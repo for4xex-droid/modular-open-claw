@@ -1,8 +1,0 @@
-C:\Users\user\.gemini\Rust-goldenrule\rust-enterprise-template\target\debug\deps\unicode_categories-3ef0bbdfa128e106.d: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\tables.rs
-
-C:\Users\user\.gemini\Rust-goldenrule\rust-enterprise-template\target\debug\deps\libunicode_categories-3ef0bbdfa128e106.rlib: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\tables.rs
-
-C:\Users\user\.gemini\Rust-goldenrule\rust-enterprise-template\target\debug\deps\libunicode_categories-3ef0bbdfa128e106.rmeta: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\tables.rs
-
-C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\lib.rs:
-C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\unicode_categories-0.1.1\src\tables.rs:

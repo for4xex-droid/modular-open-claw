@@ -1,5 +1,5 @@
 [package]
-name = "api-server"
+name = "shorts-factory"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,8 @@ edition = "2021"
 core = { path = "../../libs/core" }
 infrastructure = { path = "../../libs/infrastructure" }
 shared = { path = "../../libs/shared" }
+rig-core = { workspace = true }
 tokio = { workspace = true }
-axum = { workspace = true }
-tower-http = { version = "0.5", features = ["fs", "cors"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
