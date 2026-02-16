@@ -51,7 +51,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "core",
+ "factory-core",
  "infrastructure",
  "serde",
  "serde_json",
@@ -283,16 +283,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "shared",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -514,6 +504,16 @@ dependencies = [
  "futures-core",
  "nom",
  "pin-project-lite",
+]
+
+[[package]]
+name = "factory-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "shared",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1129,7 +1129,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "core",
+ "factory-core",
+ "reqwest",
  "shared",
  "sqlx",
  "tokio",
@@ -2133,7 +2134,7 @@ name = "shorts-factory"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "core",
+ "factory-core",
  "infrastructure",
  "rig-core",
  "serde",

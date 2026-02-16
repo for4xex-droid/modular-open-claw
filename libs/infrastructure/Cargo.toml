@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-core = { path = "../core" }
+factory_core = { path = "../core", package = "factory-core" }
 shared = { path = "../shared" }
 sqlx = { workspace = true }
 tokio = { workspace = true }
+reqwest = { workspace = true }
 async-trait = "0.1"
 anyhow = { workspace = true }
 tracing = { workspace = true }
+

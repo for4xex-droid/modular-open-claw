@@ -1,0 +1,69 @@
+//! # ドメインエラー型
+//!
+//! `thiserror` を使い、すべてのドメインエラーに明確な型を付与する。
+//! Iron Principles: `unwrap()` / `expect()` は禁止。
+
+use thiserror::Error;
+
+/// ShortsFactory のドメインエラー
+#[derive(Debug, Error)]
+pub enum FactoryError {
+    // === トレンド調査 ===
+    #[error("トレンド取得に失敗: {source}")]
+    TrendFetch {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    // === 動画生成 ===
+    #[error("ComfyUI 接続エラー (url: {url}): {source}")]
+    ComfyConnection {
+        url: String,
+        #[source]
+        source: anyhow::Error,
+    },
+
+    #[error("ComfyUI ワークフロー実行タイムアウト ({timeout_secs}秒)")]
+    ComfyTimeout { timeout_secs: u64 },
+
+    #[error("ComfyUI ワークフロー実行失敗: {reason}")]
+    ComfyWorkflowFailed { reason: String },
+
+    // === メディア編集 ===
+    #[error("FFmpeg 実行エラー: {reason}")]
+    FfmpegFailed { reason: String },
+
+    #[error("メディアファイルが見つからない: {path}")]
+    MediaNotFound { path: String },
+
+    // === ログ・通知 ===
+    #[error("ログ記録エラー: {source}")]
+    LogWrite {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    // === LLM ===
+    #[error("LLM 応答エラー: {source}")]
+    LlmResponse {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    #[error("Guardrails がプロンプトをブロック: {reason}")]
+    PromptBlocked { reason: String },
+
+    // === 設定 ===
+    #[error("設定ファイル読み込みエラー: {source}")]
+    ConfigLoad {
+        #[source]
+        source: anyhow::Error,
+    },
+
+    // === リソース管理 ===
+    #[error("VRAM不足: 必要 {required_mb}MB, 利用可能 {available_mb}MB")]
+    InsufficientVram {
+        required_mb: u64,
+        available_mb: u64,
+    },
+}
