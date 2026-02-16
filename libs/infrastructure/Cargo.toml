@@ -1,0 +1,13 @@
+[package]
+name = "infrastructure"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core = { path = "../core" }
+shared = { path = "../shared" }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+async-trait = "0.1"
+anyhow = { workspace = true }
+tracing = { workspace = true }

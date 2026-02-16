@@ -1,0 +1,29 @@
+---
+name: Security Guardrails
+description: プロジェクトに堅牢なセキュリティガードレール（入力検証、無害化など）を実装するためのガイド
+---
+
+# Security Guardrails
+
+セキュリティ実装を行う際は、必ず以下の **Security Starter Kit** のテンプレートを参照し、利用してください。
+車輪の再発明を避け、検証済みのパターンを使用することで脆弱性を防ぎます。
+
+## リソースの場所
+
+- **Kitのルート**: `C:\Users\user\.gemini\security-starter-kit`
+
+## テンプレートの使用方法
+
+### Rustプロジェクトの場合
+1. 以下のファイルを読み込む: `C:\Users\user\.gemini\security-starter-kit\rust\guardrails_template.rs`
+2. 内容を理解し、プロジェクトの `src/utils/guardrails.rs` 等にコピーまたは適合させて実装する。
+3. 特に「SQLインジェクション対策」「XSS対策」「パス・トラバーサル対策」が含まれているか確認する。
+
+### Pythonプロジェクトの場合
+1. 以下のファイルを読み込む: `C:\Users\user\.gemini\security-starter-kit\python\secure_requirements.txt`
+2. `defusedxml` などの推奨ライブラリが含まれているか確認する。
+
+## 実装時の注意点
+
+- **入力はすべて疑う**: ユーザーからの入力は、`Guardrails::sanitize()` を通すまで信頼してはならない。
+- **機密情報のハードコード禁止**: Sentinelスキャンで検出されるようなコードを書かないこと。
