@@ -1,0 +1,105 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (Lint)
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Run Tests
+        run: cargo test --workspace
+
+  audit:
+    name: Security Audit (Sentinel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Layer 1: 依存クレートの脆弱性チェック (cargo audit)
+      - uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Layer 2: Sentinel シークレットスキャン
+      - name: Secret Scan (Sentinel)
+        run: |
+          echo "🔍 Scanning for hardcoded secrets..."
+          FOUND=0
+          for ext in rs toml json yml yaml env; do
+            while IFS= read -r file; do
+              if grep -inE '(api_key|password|secret|token|private_key)\s*=\s*["\x27][a-zA-Z0-9]{8,}["\x27]' "$file" | grep -v "test\|example\|dummy\|ollama\|placeholder"; then
+                echo "⚠️  Potential secret in: $file"
+                FOUND=1
+              fi
+            done < <(find . -name "*.$ext" -not -path "./target/*" -not -path "./.git/*" 2>/dev/null)
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo "❌ Secret scan FAILED. Remove hardcoded secrets!"
+            exit 1
+          fi
+          echo "✅ No secrets found."
+
+      # Layer 3: unsafe ブロックの検出・警告
+      - name: Unsafe Code Check
+        run: |
+          echo "🔍 Checking for unsafe blocks..."
+          UNSAFE_COUNT=$(grep -rn "unsafe " --include="*.rs" . --exclude-dir=target | grep -v "test" | wc -l || true)
+          if [ "$UNSAFE_COUNT" -gt 0 ]; then
+            echo "⚠️  Found $UNSAFE_COUNT unsafe blocks:"
+            grep -rn "unsafe " --include="*.rs" . --exclude-dir=target | grep -v "test"
+            echo "Review required. Unsafe code should be minimized."
+          else
+            echo "✅ No unsafe blocks found."
+          fi
+
+  docs:
+    name: Generate Wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Generate Wiki
+        run: python3 scripts/generate_wiki.py
+        
+      - name: Check for changes
+        id: git-check
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet || echo "changed=true" >> $GITHUB_OUTPUT
+          
+      - name: Commit and Push changes
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git commit -m "docs: auto-generate CODE Wiki [skip ci]"
+          git push
