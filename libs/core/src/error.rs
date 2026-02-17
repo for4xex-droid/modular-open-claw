@@ -60,10 +60,22 @@ pub enum FactoryError {
         source: anyhow::Error,
     },
 
-    // === リソース管理 ===
+    // === 運用・リソース管理 ===
     #[error("VRAM不足: 必要 {required_mb}MB, 利用可能 {available_mb}MB")]
     InsufficientVram {
         required_mb: u64,
         available_mb: u64,
+    },
+
+    #[error("ストレージ不足: 使用率が閾値 {threshold}% を超過")]
+    StorageFull { threshold: f32 },
+
+    #[error("運用タイムアウト: {reason}")]
+    OperationalTimeout { reason: String },
+
+    #[error("OSエラー: {source}")]
+    OsError {
+        #[source]
+        source: anyhow::Error,
     },
 }

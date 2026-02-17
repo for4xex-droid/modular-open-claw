@@ -15,9 +15,12 @@
 2. **Schema Safety**: JSONパース失敗時は `shared::output_validator` を使い、LLMに修正を依頼する再試行ロジックを含めること。
 3. **File System Sandbox**: 全てのファイル操作は `shared::sandbox::PathSandbox` で検証すること。`canonicalize()` + プレフィックスチェックを必ず通す。
 4. **Zombie Killer**: 外部プロセス（ComfyUI, FFmpeg）呼び出しは必ず `shared::zombie_killer::run_with_timeout` を使用（デフォルト300秒）。タイムアウト時はプロセスを `kill` すること。
-5. **Testing First**: コードを書く前に、正常系と異常系のテストケースを作成すること。`cargo test` が通らないコードは提案しないこと。
-6. **非同期**: `tokio` と `async_trait` を使用。ブロッキング処理は禁止。
-7. **命名**: `factory_core`（`factory-core` の Cargo alias）を使用すること。
+5. **Cold Start Awareness**: 初回のモデルロード時はタイムアウトを延長（例: 600秒）するか、`/system_stats` で準備完了を確認すること。
+6. **Maintenance**: 1サイクルごとに `shared::cleaner::StorageCleaner` でゴミ掃除を行い、ディスク残量を確認すること。
+7. **No Sleep**: 起動時に `shared::os_utils::prevent_app_nap()` を呼び出し、Mac が眠らないようにすること。
+8. **Testing First**: コードを書く前に、正常系と異常系のテストケースを作成すること。`cargo test` が通らないコードは提案しないこと。
+9. **非同期**: `tokio` と `async_trait` を使用。ブロッキング処理は禁止。
+10. **命名**: `factory_core`（`factory-core` の Cargo alias）を使用すること。
 ```
 
 
