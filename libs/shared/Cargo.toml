@@ -11,3 +11,5 @@ chrono = { workspace = true }
 regex = "1.10"
 tokio = { workspace = true }
 reqwest = { workspace = true }
+sysinfo = { workspace = true }
+tracing = { workspace = true }

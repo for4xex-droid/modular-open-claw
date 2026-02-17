@@ -22,3 +22,4 @@ reqwest = { version = "0.12", features = ["json"] }
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.30"
