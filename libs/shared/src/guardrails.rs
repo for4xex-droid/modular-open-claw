@@ -5,91 +5,26 @@
 //!
 //! 元実装: /Users/motista/Desktop/antigravity/security-starter-kit/rust/guardrails_template.rs
 
-use regex::Regex;
-use std::sync::OnceLock;
-
-/// インジェクション検出パターン（遅延初期化・スレッドセーフ）
-static INJECTION_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
-
-fn get_patterns() -> &'static Vec<Regex> {
-    INJECTION_PATTERNS.get_or_init(|| {
-        vec![
-            // プロンプトインジェクション系
-            Regex::new(r"(?i)ignore previous instructions").unwrap(),
-            Regex::new(r"(?i)ignore all instructions").unwrap(),
-            Regex::new(r"(?i)disregard.*instructions").unwrap(),
-            Regex::new(r"(?i)system prompt").unwrap(),
-            Regex::new(r"(?i)you are an ai").unwrap(),
-            Regex::new(r"(?i)new instructions:").unwrap(),
-            Regex::new(r"(?i)override.*system").unwrap(),
-            // XSS / スクリプトインジェクション系
-            Regex::new(r"(?i)<script").unwrap(),
-            Regex::new(r"(?i)javascript:").unwrap(),
-            Regex::new(r"(?i)vbscript:").unwrap(),
-            Regex::new(r"(?i)data:text/html").unwrap(),
-            Regex::new(r"(?i)alert\(").unwrap(),
-            // コマンドインジェクション系
-            Regex::new(r"(?i);\s*rm\s+-").unwrap(),
-            Regex::new(r"(?i)\|\|\s*curl").unwrap(),
-            Regex::new(r"(?i)\|\|\s*wget").unwrap(),
-        ]
-    })
-}
-
-/// 入力検証の結果
-#[derive(Debug, PartialEq)]
-pub enum ValidationResult {
-    /// 安全な入力
-    Valid,
-    /// ブロックされた入力（理由を含む）
-    Blocked(String),
-}
+use bastion::guardrails::validate_input as bastion_validate;
+pub use bastion::text_guard::ValidationResult;
 
 /// LLM の入力上限（文字数）
 const MAX_INPUT_LENGTH: usize = 4000;
 
 /// LLM に送信する前に入力を検証する
-///
-/// # 検証項目
-/// 1. 入力長チェック（DoS 防止）
-/// 2. プロンプトインジェクション検出
-/// 3. XSS / スクリプトインジェクション検出
-/// 4. コマンドインジェクション検出
 pub fn validate_input(input: &str) -> ValidationResult {
-    // 1. 長さチェック
-    if input.len() > MAX_INPUT_LENGTH {
-        return ValidationResult::Blocked(format!(
-            "Input too long ({} chars, max {})",
-            input.len(),
-            MAX_INPUT_LENGTH
-        ));
-    }
-
-    // 2. 空入力チェック
+    // 1. 空入力チェック (Bastion は空を Valid とするので、工場要件として明示的にブロック)
     if input.trim().is_empty() {
         return ValidationResult::Blocked("Empty input".to_string());
     }
 
-    // 3. パターンマッチング
-    let patterns = get_patterns();
-    for re in patterns {
-        if re.is_match(input) {
-            return ValidationResult::Blocked(format!(
-                "Potential injection detected (pattern: {})",
-                re.as_str()
-            ));
-        }
-    }
-
-    ValidationResult::Valid
+    // 2. Bastion で検証
+    bastion::guardrails::validate_input_with_max_len(input, MAX_INPUT_LENGTH)
 }
 
-/// 入力をサニタイズする（制御文字の除去）
+/// 入力をサニタイズする（Bastion の高度なサニタイザーを使用）
 pub fn sanitize_input(input: &str) -> String {
-    input
-        .chars()
-        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
-        .collect()
+    bastion::text_guard::Guard::new().sanitize(input)
 }
 
 #[cfg(test)]

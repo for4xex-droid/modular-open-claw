@@ -99,6 +99,11 @@ fn extract_json_block(raw: &str) -> String {
 
 /// パースエラーから修正指示プロンプトを生成
 fn build_repair_prompt(invalid_json: &str, error: &str) -> String {
+    // Secondary Prompt Injection 対策:
+    // 注入されたバックティックによってプロンプトの構造が破壊されるのを防ぐため、
+    // バックティックをエスケープまたは置換する。
+    let safe_json = invalid_json.replace("```", "'''");
+    
     format!(
         "あなたの前回の出力は JSON パースに失敗しました。以下の情報を元に、正しい JSON を再生成してください。\n\
          \n\
@@ -115,7 +120,7 @@ fn build_repair_prompt(invalid_json: &str, error: &str) -> String {
          - 数値フィールドに文字列を入れないでください。\n\
          - 必須フィールドを省略しないでください。\n\
          - 配列が期待される場所にはオブジェクトを入れないでください。",
-        error, invalid_json
+        error, safe_json
     )
 }
 

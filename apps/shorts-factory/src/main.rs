@@ -9,7 +9,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // 設定を読み込む
     let config = FactoryConfig::default();
-    let policy = SecurityPolicy::default();
+    let policy = SecurityPolicy::default_production();
 
     tracing::info!("⚙️  Config loaded:");
     tracing::info!("   Ollama:   {}", config.ollama_url);
@@ -17,10 +17,9 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("   Model:    {}", config.model_name);
 
     // セキュリティポリシーの検証
-    tracing::info!("🔒 Security Policy:");
-    tracing::info!("   Allowed tools: {:?}", policy.allowed_tools);
-    tracing::info!("   Allowed hosts: {:?}", policy.allowed_hosts);
-    tracing::info!("   External skills blocked: {}", policy.block_external_skills);
+    tracing::info!("🔒 Industrial Security Policy (BASTION):");
+    tracing::info!("   Active Layer: Network Shield (DNS Rebinding/SSRF Prevention)");
+    tracing::info!("   Active Layer: File Jail (TOCTOU/Traversal Prevention)");
     tracing::info!("🛡️  Guardrails: ACTIVE");
 
     // 1. Ollama へ接続 (OpenAI互換 Chat Completions API)

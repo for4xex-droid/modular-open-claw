@@ -5,6 +5,7 @@ members = [
     "libs/core",
     "libs/infrastructure",
     "libs/shared",
+    "libs/bastion",
 ]
 resolver = "2"
 
