@@ -34,47 +34,26 @@ jobs:
         run: cargo test --workspace
 
   audit:
-    name: Security Audit (Sentinel)
+    name: Industrial Security Audit (Bastion)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Layer 1: 依存クレートの脆弱性チェック (cargo audit)
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Dependencies (pip-audit, bandit)
+        run: pip install pip-audit bandit
+
+      # Layer 1: cargo audit
       - uses: rustsec/audit-check@v1.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Layer 2: Sentinel シークレットスキャン
-      - name: Secret Scan (Sentinel)
+      # Layer 2: Bastion Scan (Secrets, Python Vuln, unsafe detection)
+      - name: Bastion Industrial Scan
         run: |
-          echo "🔍 Scanning for hardcoded secrets..."
-          FOUND=0
-          for ext in rs toml json yml yaml env; do
-            while IFS= read -r file; do
-              if grep -inE '(api_key|password|secret|token|private_key)\s*=\s*["\x27][a-zA-Z0-9]{8,}["\x27]' "$file" | grep -v "test\|example\|dummy\|ollama\|placeholder"; then
-                echo "⚠️  Potential secret in: $file"
-                FOUND=1
-              fi
-            done < <(find . -name "*.$ext" -not -path "./target/*" -not -path "./.git/*" 2>/dev/null)
-          done
-          if [ "$FOUND" -eq 1 ]; then
-            echo "❌ Secret scan FAILED. Remove hardcoded secrets!"
-            exit 1
-          fi
-          echo "✅ No secrets found."
-
-      # Layer 3: unsafe ブロックの検出・警告
-      - name: Unsafe Code Check
-        run: |
-          echo "🔍 Checking for unsafe blocks..."
-          UNSAFE_COUNT=$(grep -rn "unsafe " --include="*.rs" . --exclude-dir=target | grep -v "test" | wc -l || true)
-          if [ "$UNSAFE_COUNT" -gt 0 ]; then
-            echo "⚠️  Found $UNSAFE_COUNT unsafe blocks:"
-            grep -rn "unsafe " --include="*.rs" . --exclude-dir=target | grep -v "test"
-            echo "Review required. Unsafe code should be minimized."
-          else
-            echo "✅ No unsafe blocks found."
-          fi
+          cargo run -p bastion -- scan
 
   docs:
     name: Generate Wiki

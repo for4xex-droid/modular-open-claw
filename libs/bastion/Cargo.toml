@@ -1,0 +1,31 @@
+[package]
+name = "bastion"
+version = "0.2.1"
+edition = "2021"
+description = "🏰 Bastion Security Toolkit - Industrial Grade Protection"
+
+[features]
+default = ["fs", "text"]
+fs = ["libc"]
+text = ["unicode-normalization"]
+net = ["trust-dns-resolver", "reqwest", "tokio"]
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio = { version = "1", features = ["full"] }
+
+[dependencies]
+walkdir = "2.3"       # ファイル探索用
+regex = "1.9"         # シークレット検索用（正規表現）
+colored = "2.0"       # コンソール出力の色付け
+anyhow = "1.0"        # エラーハンドリング
+clap = { version = "4.4", features = ["derive"] }  # CLI サブコマンド
+url = "2.4"           # URLパース用
+
+# Security Module v2.0 Dependencies
+unicode-normalization = { version = "0.1", optional = true }
+trust-dns-resolver = { version = "0.23", optional = true }
+reqwest = { version = "0.11", optional = true, features = ["json", "rustls-tls"] }
+tokio = { version = "1", optional = true, features = ["full"] }
+libc = { version = "0.2", optional = true }
+
