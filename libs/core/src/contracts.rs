@@ -31,6 +31,21 @@ pub struct TrendResponse {
     pub items: Vec<TrendItem>,
 }
 
+// --- Concept クラスター ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConceptRequest {
+    pub trend_items: Vec<TrendItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConceptResponse {
+    pub title: String,
+    pub script: String,
+    pub visual_prompts: Vec<String>,
+    pub metadata: std::collections::HashMap<String, String>,
+}
+
 // --- Video クラスター ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,4 +71,17 @@ pub struct MediaRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaResponse {
     pub final_path: String,
+}
+
+// --- Workflow クラスター (Phase 5) ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowRequest {
+    pub category: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowResponse {
+    pub final_video_path: String,
+    pub concept: ConceptResponse,
 }

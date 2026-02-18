@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tokio::process::Command;
 
 /// FFmpeg を使用した動画編集クライアント
+#[derive(Clone)]
 pub struct MediaForgeClient {
     /// 作業用の Jail
     pub jail: Arc<Jail>,
