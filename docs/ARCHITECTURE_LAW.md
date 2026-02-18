@@ -34,7 +34,18 @@ AI アクターは、システムが提供する「檻 (Jail)」の外にある�
 
 ---
 
+## 第4条：生存維持 (Stability & Operations)
+
+システムは、24/7 稼働に耐えうる健康状態を自己監視し、機密情報を適切に防衛しなければならない。
+
+1. **Health Monitoring**: プロセスは `HealthMonitor` を保持し、メモリ使用率やファイルディスクリプタを常時監視する。閾値を超えた場合は、統治機構（Supervisor）に通知しなければならない。
+2. **Secret Encapsulation**: API キー等の機密情報は `Secret<T>` 型でラップし、ログやデバッガへの意図しない露出を型システムレベルで防御しなければならない。
+3. **Graceful Exit**: 終了信号を受信した際は、進行中の全ての `Jail` 内タスクを安全に完了または中断し、ゾンビプロセスや一時ファイルを残さずに退出しなければならない。
+
+---
+
 ## 付則：実装方針
 
 - **Core First**: 本法典のインターフェースは `libs/core` に定義し、具体的なインフラ実装（`libs/infrastructure`）と分離する。
 - **Strict Mode**: 本番環境においては `ENFORCE_GUARDRAIL=true` を常時適用し、法規違反を一切許容しない。
+- **Operational Dashboard**: 稼働状況（Health）は常に `api-server` を通じて可視化され、人間の監視者が状況を即座に把握できるようにする。

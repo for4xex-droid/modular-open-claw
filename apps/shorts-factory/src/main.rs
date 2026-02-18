@@ -11,10 +11,18 @@ use std::sync::Arc;
 mod supervisor;
 use supervisor::{Supervisor, SupervisorPolicy};
 use factory_core::contracts::TrendRequest;
+use shared::health::HealthMonitor;
+use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
+
+    // 0. 運用監視 (Phase 3)
+    let mut health = HealthMonitor::new();
+    let status = health.check();
+    tracing::info!("📊 Initial Health Status: Memory {}MB, CPU {:.1}%", 
+        status.memory_usage_mb, status.cpu_usage_percent);
 
     // 1. 設定を読み込む
     let config = FactoryConfig::default();
@@ -83,20 +91,29 @@ async fn main() -> Result<(), anyhow::Error> {
         .tool(media_forge)
         .build();
 
-    // 6. プロンプトを Guardrails で検証してから送信
-    let user_prompt = "現在のトレンドを調べて、それに基づいた動画生成ワークフローを提案して。";
-
-    // Guardrails: サニタイズ → バリデーション
-    let sanitized = guardrails::sanitize_input(user_prompt);
-    match guardrails::validate_input(&sanitized) {
-        ValidationResult::Valid => {
-            tracing::info!("🧠 Factory Manager に質問中...");
-            let response = factory_agent.prompt(&sanitized).await?;
-            println!("\n🏭 Factory Manager: {}", response);
+    // 6. メインループ (Graceful Shutdown 対応)
+    tokio::select! {
+        _ = async {
+            // 現状は一回のみ実行するデモ
+            let user_prompt = "現在のトレンドを調べて、それに基づいた動画生成ワークフローを提案して。";
+            let sanitized = guardrails::sanitize_input(user_prompt);
+            
+            match guardrails::validate_input(&sanitized) {
+                ValidationResult::Valid => {
+                    tracing::info!("🧠 Factory Manager に質問中...");
+                    let response = factory_agent.prompt(&sanitized).await.unwrap_or_else(|e| format!("Error: {}", e));
+                    println!("\n🏭 Factory Manager: {}", response);
+                }
+                ValidationResult::Blocked(reason) => {
+                    tracing::warn!("🚫 Guardrails がプロンプトをブロック: {}", reason);
+                    println!("\n⛔ プロンプトは安全上の理由でブロックされました: {}", reason);
+                }
+            }
+        } => {
+            tracing::info!("🏁 Task finished.");
         }
-        ValidationResult::Blocked(reason) => {
-            tracing::warn!("🚫 Guardrails がプロンプトをブロック: {}", reason);
-            println!("\n⛔ プロンプトは安全上の理由でブロックされました: {}", reason);
+        _ = signal::ctrl_c() => {
+            tracing::info!("🛑 SIGINT received. Shutting down gracefully...");
         }
     }
 
