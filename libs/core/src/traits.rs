@@ -72,5 +72,22 @@ pub trait FactoryLogger: Send + Sync {
     async fn log_error(&self, reason: &str) -> Result<(), FactoryError>;
 
     /// 日次サマリーを生成
-    async fn daily_summary(&self) -> Result<String, FactoryError>;
+    async fn daily_summary(&self, _jail: &bastion::fs_guard::Jail) -> Result<String, FactoryError>;
+}
+
+/// [法定義] 第1条 & 第2条：物理的境界と通信プロトコル
+///
+/// すべての AI アクターが遵守すべき基本インターフェース。
+/// 物理的なリソースにアクセスする際は、必ず Jail（檻）を介さなければならない。
+#[async_trait]
+pub trait AgentAct: Send + Sync {
+    type Input: serde::Serialize + for<'de> serde::Deserialize<'de> + Send + Clone;
+    type Output: serde::Serialize + for<'de> serde::Deserialize<'de> + Send;
+
+    /// 憲法第1条に従い、Jail ハンドルを必須とする実行メソッド
+    async fn execute(
+        &self,
+        input: Self::Input,
+        jail: &bastion::fs_guard::Jail,
+    ) -> Result<Self::Output, FactoryError>;
 }

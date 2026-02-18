@@ -5,8 +5,9 @@
 
 use async_trait::async_trait;
 use bastion::net_guard::ShieldClient;
+use factory_core::contracts::{VideoRequest, VideoResponse};
 use factory_core::error::FactoryError;
-use factory_core::traits::VideoGenerator;
+use factory_core::traits::{AgentAct, VideoGenerator};
 use rig::tool::Tool;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -72,6 +73,23 @@ pub struct ComfyArgs {
 pub struct ComfyOutput {
     /// 生成されたファイルの保存パス
     pub output_path: String,
+}
+
+#[async_trait]
+impl AgentAct for ComfyBridgeClient {
+    type Input = VideoRequest;
+    type Output = VideoResponse;
+
+    async fn execute(
+        &self,
+        input: Self::Input,
+        _jail: &bastion::fs_guard::Jail,
+    ) -> Result<Self::Output, FactoryError> {
+        let path = self.generate_video(&input.prompt, &input.workflow_id).await?;
+        Ok(VideoResponse {
+            output_path: path.to_string_lossy().to_string(),
+        })
+    }
 }
 
 impl Tool for ComfyBridgeClient {

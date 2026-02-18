@@ -748,6 +748,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bastion",
  "serde",
  "shared",
  "thiserror 1.0.69",

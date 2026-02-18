@@ -71,7 +71,7 @@ impl FactoryLogger for FactoryLogClient {
         Ok(())
     }
 
-    async fn daily_summary(&self) -> Result<String, FactoryError> {
+    async fn daily_summary(&self, _jail: &bastion::fs_guard::Jail) -> Result<String, FactoryError> {
         // 簡易的なサマリー取得
         let count: (i64,) = sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM logs WHERE event_type = 'SUCCESS'")
             .fetch_one(&self.db)

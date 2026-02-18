@@ -8,6 +8,10 @@ use infrastructure::media_forge::MediaForgeClient;
 use bastion::fs_guard::Jail;
 use std::sync::Arc;
 
+mod supervisor;
+use supervisor::{Supervisor, SupervisorPolicy};
+use factory_core::contracts::TrendRequest;
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
@@ -43,10 +47,20 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("📂 Jail Root: {}", jail_path.display());
     tracing::info!("📁 ComfyUI Sync: {}", comfy_out.display());
     
-    // 3. インフラクライアントの準備
+    // 3. 統治機構 (Supervisor) の初期化
+    let supervisor = Supervisor::new(jail.clone(), SupervisorPolicy::Retry { max_retries: 3 });
+    tracing::info!("⚖️  Governance Layer (Lex AI) Active");
+
+    // 4. インフラクライアントの準備
     let trend_sonar = TrendSonarClient::new(shield.clone());
     let comfy_bridge = ComfyBridgeClient::new(shield.clone(), &config.comfyui_url, config.comfyui_timeout_secs);
     let media_forge = MediaForgeClient::new(jail.clone());
+
+    // [法規遵守テスト] トレンドアクターを「法」の下で実行
+    let trend_res = supervisor.enforce_act(&trend_sonar, TrendRequest {
+        category: "jp_all".to_string(),
+    }).await?;
+    tracing::info!("🏆 Lex AI Test: Received {} trends under governance", trend_res.items.len());
 
     // 4. Ollama へ接続 (OpenAI互換 Chat Completions API)
     let client: openai::CompletionsClient = openai::Client::builder()
