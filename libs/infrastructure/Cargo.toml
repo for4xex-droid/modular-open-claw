@@ -16,5 +16,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 rig-core = { workspace = true }
 schemars = { workspace = true }
+uuid = { version = "1.0", features = ["v4"] }
 bastion = { path = "../bastion", features = ["net", "fs"] }
 

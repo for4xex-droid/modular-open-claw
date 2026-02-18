@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use rig::providers::openai;
 use rig::client::CompletionClient;
 use rig::completion::Prompt;
-use tracing::{info, error};
+use tracing::{info, warn, error};
 
 /// 動画コンセプト生成機 (Director)
 /// 
@@ -67,7 +67,7 @@ impl AgentAct for ConceptManager {
 
         let user_prompt = format!("トレンドリスト：\n{}\n\n動画コンセプトを生成してください。", trend_list);
 
-        match agent.prompt(user_prompt).await {
+        let result = match agent.prompt(user_prompt).await {
             Ok(response) => {
                 // JSON のみを抽出
                 let json_text = extract_json(&response)?;
@@ -85,7 +85,39 @@ impl AgentAct for ConceptManager {
                 error!("LLM Error: {}", e);
                 Err(FactoryError::Infrastructure { reason: format!("LLM Prompt Error: {}", e) })
             }
+        };
+
+        // VRAM 解放プロトコル (keep_alive: 0)
+        // rig-core の背後にある Ollama に直接アンロードを指示
+        if let Err(e) = self.unload_model().await {
+            warn!("⚠️ ConceptManager: Failed to unload model: {}", e);
         }
+
+        result
+    }
+}
+
+impl ConceptManager {
+    /// Ollama からモデルを即時アンロードし、VRAM を解放する
+    async fn unload_model(&self) -> Result<(), Box<dyn std::error::Error>> {
+        info!("🧹 ConceptManager: Releasing VRAM (keep_alive: 0)...");
+        let client = reqwest::Client::new();
+        let body = serde_json::json!({
+            "model": self.model,
+            "keep_alive": 0
+        });
+
+        // /v1/chat/completions ではなく、Ollama 自体の /api/generate を叩く必要がある場合が多い
+        // api_base が http://.../v1 の場合は、/v1 を除いたベースURLを取得
+        let base_url = self.url.trim_end_matches("/v1");
+        let unload_url = format!("{}/api/generate", base_url);
+
+        client.post(unload_url)
+            .json(&body)
+            .send()
+            .await?;
+
+        Ok(())
     }
 }
 

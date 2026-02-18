@@ -107,6 +107,32 @@ impl Jail {
         
         Ok(file)
     }
+
+    /// 安全にディレクトリを作成する。
+    pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let requested_path = path.as_ref();
+        let full_path = if requested_path.is_absolute() {
+            requested_path.to_path_buf()
+        } else {
+            self.root.join(requested_path)
+        };
+
+        // トラバーサルチェック
+        if !full_path.starts_with(&self.root) {
+            return Err(Error::new(ErrorKind::PermissionDenied, "Access Denied: Path outside of jail"));
+        }
+
+        std::fs::create_dir_all(full_path)
+    }
+
+    /// 安全にファイルにデータを書き込む。
+    pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(&self, path: P, contents: C) -> Result<()> {
+        let requested_path = path.as_ref();
+        // create_file を使用して物理的な存在と境界を確保してから書き込む
+        let mut file = self.create_file(requested_path)?;
+        use std::io::Write;
+        file.write_all(contents.as_ref())
+    }
 }
 
 #[cfg(test)]
