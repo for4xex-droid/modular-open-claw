@@ -59,6 +59,20 @@ pub struct VideoResponse {
     pub output_path: String,
 }
 
+// --- Voice クラスター ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceRequest {
+    pub text: String,
+    pub speaker_id: i32,
+    pub style: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceResponse {
+    pub audio_path: String,
+}
+
 // --- Media クラスター ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

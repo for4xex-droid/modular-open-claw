@@ -8,11 +8,14 @@ use std::sync::Arc;
 
 mod supervisor;
 mod orchestrator;
+mod arbiter;
 use supervisor::{Supervisor, SupervisorPolicy};
 use orchestrator::ProductionOrchestrator;
+use arbiter::ResourceArbiter;
 use factory_core::contracts::WorkflowRequest;
 use factory_core::traits::AgentAct;
 use infrastructure::concept_manager::ConceptManager;
+use infrastructure::voice_actor::VoiceActor;
 use shared::health::HealthMonitor;
 use tokio::signal;
 use tracing::{info, error, warn};
@@ -64,18 +67,24 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("⚖️  Governance Layer (Lex AI) Active");
 
     // 4. インフラクライアントの準備
+    let arbiter = ResourceArbiter::new();
+
+    // Infrastructure Clients
     let trend_sonar = TrendSonarClient::new(shield.clone());
-    let comfy_bridge = ComfyBridgeClient::new(shield.clone(), &config.comfyui_url, config.comfyui_timeout_secs);
-    let media_forge = MediaForgeClient::new(jail.clone());
     let concept_manager = ConceptManager::new(&config.ollama_url, &config.model_name);
+    let comfy_bridge = ComfyBridgeClient::new(shield.clone(), &config.comfyui_url, config.comfyui_timeout_secs);
+    let voice_actor = VoiceActor::new("http://localhost:5001", "jvnv-F1-jp");
+    let media_forge = MediaForgeClient::new(jail.clone());
 
     // 5. 生産ライン・オーケストレーターの準備
     let orchestrator = ProductionOrchestrator::new(
         supervisor.clone(),
-        trend_sonar.clone(),
+        arbiter.clone(),
+        trend_sonar,
         concept_manager,
-        comfy_bridge.clone(),
-        media_forge.clone(),
+        comfy_bridge,
+        voice_actor,
+        media_forge,
     );
 
     // 6. メインループ (Graceful Shutdown 対応)

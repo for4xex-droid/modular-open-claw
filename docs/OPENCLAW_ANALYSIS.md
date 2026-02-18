@@ -95,6 +95,14 @@ OpenClaw を単なるスクリプトから「自律型エージェント」へ�
 - **Autonomous Batch Loop**: 人間の介入なしに、複数のカテゴリにわたる動画を自動生成し続ける「工場」の実装。
 - **Safety-First Flow**: 大量生産時においても、ステップごとの環境隔離（Jail）と統治（Supervisor）が維持され、スケールと安全性を両立。
 
+### ローカル完結型・高度音声合成基盤 (Phase 6: Project Aitrium)
+
+Mac mini M4 Pro のオンデバイス性能を極限まで活用し、外部クラウドに頼らない完全ローカルな制作パイプラインを確立しました。
+
+- **High-Fidelity Japanese TTS**: `Style-Bert-VITS2` を採用し、感情豊かな日本語ナレーションをローカルで生成。
+- **Hardware-Aware Scheduling**: `ResourceArbiter` による「VRAM 単一占有ポリシー」の実装。GPU 資源の競合による速度低下やシステム不安定化を防止。
+- **Immediate Resource Release**: モデル使用後に VRAM を即時解放するプロトコルを各アクターに実装し、ハードウェアの稼働率を最適化。
+
 ---
 
 本ドキュメントおよび **[ARCHITECTURE_LAW.md](./ARCHITECTURE_LAW.md)** の内容を遵守し、安全かつ効率的な自動化工場の運用を継続してください。

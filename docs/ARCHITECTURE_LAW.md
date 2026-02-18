@@ -54,6 +54,16 @@ AI アクターは、システムが提供する「檻 (Jail)」の外にある�
 
 ---
 
+## 第6条：資源共有 (Resource Arbitration)
+
+Mac mini M4 Pro 等の限られたハードウェア資源において、複数の重負荷アクターによる資源競合を防止し、安定した性能を担保しなければならない。
+
+1. **Single-Tenant Policy**: VRAM を大量に消費するタスク（LLM, TTS, ImageGen）は、同時に複数が実行されてはならない。
+2. **Resource Arbiter**: 重負荷アクターは、実行前に `ResourceArbiter` から資源占有権（Guard）を取得し、終了時に即座に解放しなければならない。
+3. **Explicit Memory Release**: モデルを使用するアクターは、タスク完了後、API （例：Ollama の `keep_alive: 0`）を通じて VRAM 上のモデルを明示的にアンロードし、ハードウェアを次のタスクに明け渡さなければならない。
+
+---
+
 ## 付則：実装方針
 
 - **Core First**: 本法典のインターフェースは `libs/core` に定義し、具体的なインフラ実装（`libs/infrastructure`）と分離する。
