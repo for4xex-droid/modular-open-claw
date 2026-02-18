@@ -43,11 +43,12 @@ impl AgentAct for ConceptManager {
         input: Self::Input,
         _jail: &bastion::fs_guard::Jail,
     ) -> Result<Self::Output, FactoryError> {
-        info!("🎬 ConceptManager: Generating video concept from {} trends...", input.trend_items.len());
+        info!("🎬 ConceptManager: Generating video concept for topic '{}'...", input.topic);
 
         let client = self.get_client()?;
-        let agent = client.agent(&self.model)
-            .preamble("あなたは YouTube Shorts のプロフェッショナルな動画プロデューサーです。
+        let style_list = input.available_styles.join(", ");
+        let preamble = format!(
+            "あなたは YouTube Shorts のプロフェッショナルな動画プロデューサーです。
             与えられたトレンドキーワードに基づき、視聴者の目を引く動画コンセプトを1つ提案してください。
             
             以下の条件（3幕構成・構造化プロンプト）を厳守してください：
@@ -58,9 +59,15 @@ impl AgentAct for ConceptManager {
                - 'script_body': 本編（15〜45秒）の脚本 (日本語)
                - 'script_outro': 結末・オチ（5〜10秒）の脚本 (日本語)
                - 'common_style': 全シーン共通の画風、ライティング、特定のキャラクター指定 (英語)
+               - 'style_profile': 利用可能なスタイル [{}] の中から、この動画に最適なキーを1つ選択。
                - 'visual_prompts': 導入、本編、結末の各シーンに対応するアクションや背景描写（英語、必ず3件）
                - 'metadata': その他の設定 (HashMap<String, String>)
-            3. 視聴維持率を高めるため、各パートは起承転結を意識し、視覚的な変化が伝わるように描写してください。")
+            3. 視聴維持率を高めるため、各パートは起承転結を意識し、視覚的な変化が伝わるように描写してください。",
+            style_list
+        );
+
+        let agent = client.agent(&self.model)
+            .preamble(&preamble)
             .build();
 
         let trend_list = input.trend_items.iter()

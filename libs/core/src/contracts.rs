@@ -35,7 +35,11 @@ pub struct TrendResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConceptRequest {
+    pub topic: String,
+    pub category: String,
     pub trend_items: Vec<TrendItem>,
+    /// 利用可能な演出スタイルの一覧
+    pub available_styles: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,8 +51,10 @@ pub struct ConceptResponse {
     pub script_body: String,
     /// 結末
     pub script_outro: String,
-    /// 全体共通の画風・キャラクター指定 (Subject/Style)
+    /// 全体共通の画風、ライティング、特定のキャラクター指定 (Subject/Style)
     pub common_style: String,
+    /// 採択された演出スタイル (styles.toml のキー)
+    pub style_profile: String,
     /// 各シーン固有の描写 (Action/Background) - 必ず3件
     pub visual_prompts: Vec<String>,
     pub metadata: std::collections::HashMap<String, String>,
@@ -100,6 +106,11 @@ pub struct MediaResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRequest {
     pub category: String,
+    pub topic: String,
+    /// Remix 対象の動画ID (None の場合は新規作成)
+    pub remix_id: Option<String>,
+    /// スキップ先のステップ (None の場合はフル実行)
+    pub skip_to_step: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

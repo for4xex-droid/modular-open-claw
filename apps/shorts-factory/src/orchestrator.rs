@@ -1,8 +1,7 @@
 use factory_core::contracts::{
     ConceptRequest, TrendRequest, TrendResponse,
     VideoRequest, MediaRequest, MediaResponse,
-    VoiceRequest, VoiceResponse,
-    WorkflowRequest, WorkflowResponse
+    VoiceRequest, WorkflowRequest, WorkflowResponse
 };
 use factory_core::traits::{AgentAct, MediaEditor};
 use factory_core::error::FactoryError;
@@ -14,43 +13,52 @@ use infrastructure::voice_actor::VoiceActor;
 use infrastructure::sound_mixer::SoundMixer;
 use crate::supervisor::Supervisor;
 use crate::arbiter::{ResourceArbiter, ResourceUser};
+use crate::asset_manager::AssetManager;
+use tuning::StyleManager;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::info;
-use bastion::fs_guard::Jail;
 
-/// 生産ライン・オーケストレーター
+/// 映像量産統括者 (ProductionOrchestrator)
+/// 
+/// 複数のアクターを協調させ、トレンド分析から動画完成までのパイプラインを管理する。
 pub struct ProductionOrchestrator {
-    supervisor: Arc<Supervisor>,
-    arbiter: ResourceArbiter,
-    trend_sonar: TrendSonarClient,
-    concept_manager: ConceptManager,
-    comfy_bridge: ComfyBridgeClient,
-    voice_actor: VoiceActor,
-    sound_mixer: SoundMixer,
-    media_forge: MediaForgeClient,
+    pub trend_sonar: TrendSonarClient,
+    pub concept_manager: ConceptManager,
+    pub voice_actor: VoiceActor,
+    pub comfy_bridge: ComfyBridgeClient,
+    pub media_forge: MediaForgeClient,
+    pub sound_mixer: SoundMixer,
+    pub supervisor: Supervisor,
+    pub arbiter: Arc<ResourceArbiter>,
+    pub style_manager: Arc<StyleManager>,
+    pub asset_manager: Arc<AssetManager>,
 }
 
 impl ProductionOrchestrator {
     pub fn new(
-        supervisor: Arc<Supervisor>,
-        arbiter: ResourceArbiter,
         trend_sonar: TrendSonarClient,
         concept_manager: ConceptManager,
-        comfy_bridge: ComfyBridgeClient,
         voice_actor: VoiceActor,
-        sound_mixer: SoundMixer,
+        comfy_bridge: ComfyBridgeClient,
         media_forge: MediaForgeClient,
+        sound_mixer: SoundMixer,
+        supervisor: Supervisor,
+        arbiter: Arc<ResourceArbiter>,
+        style_manager: Arc<StyleManager>,
+        asset_manager: Arc<AssetManager>,
     ) -> Self {
         Self {
-            supervisor,
-            arbiter,
             trend_sonar,
             concept_manager,
-            comfy_bridge,
             voice_actor,
-            sound_mixer,
+            comfy_bridge,
             media_forge,
+            sound_mixer,
+            supervisor,
+            arbiter,
+            style_manager,
+            asset_manager,
         }
     }
 }
@@ -62,85 +70,126 @@ impl AgentAct for ProductionOrchestrator {
 
     async fn execute(
         &self,
-        input: Self::Input,
-        jail: &Jail,
-    ) -> Result<Self::Output, FactoryError> {
-        info!("🏭 Production Pipeline Start: Category = {}", input.category);
+        input: WorkflowRequest,
+        jail: &bastion::fs_guard::Jail,
+    ) -> Result<WorkflowResponse, FactoryError> {
+        info!("🏭 Production Pipeline Start: Category = {}, Topic = {}", input.category, input.topic);
 
-        // 1. トレンド取得 (TrendSonar) - 非重負荷
-        let trend_req = TrendRequest { category: input.category.clone() };
-        let trend_res: TrendResponse = self.supervisor.enforce_act(&self.trend_sonar, trend_req).await?;
-        
-        if trend_res.items.is_empty() {
-            return Err(FactoryError::Infrastructure { reason: "No trends found for the category".into() });
-        }
+        // 0. プロジェクト ID の決定と初期化
+        let project_id = input.remix_id.unwrap_or_else(|| {
+            format!("{}_{}", input.category, chrono::Utc::now().format("%Y%m%d_%H%M%S"))
+        });
+        let project_root = self.asset_manager.init_project(&project_id)?;
+        info!("📁 Project Workspace: {}", project_root.display());
 
-        // 2. コンセプト生成 (ConceptManager / Director) - 重負荷 (LLM)
-        let concept_res = {
-            let _guard = self.arbiter.acquire(ResourceUser::Scripting).await;
-            let concept_req = ConceptRequest { trend_items: trend_res.items };
-            self.supervisor.enforce_act(&self.concept_manager, concept_req).await?
+        // 1. コンセプトの取得 (New or Remix)
+        let concept_res = if let Some(_) = input.skip_to_step {
+             // Remix モード: キャッシュから読み込み
+             info!("🔄 Remix Mode: Loading existing concept...");
+             self.asset_manager.load_concept(&project_id)?
+        } else {
+            // 新規生成モード
+            info!("🌟 Generation Mode: Creating new concept...");
+            
+            // トレンド取得
+            let trend_req = TrendRequest { category: input.category.clone() };
+            let trend_res: TrendResponse = self.supervisor.enforce_act(&self.trend_sonar, trend_req).await?;
+            
+            // コンセプト立案 (Styles 注入 + トレンド共有)
+            let concept_req = ConceptRequest { 
+                topic: input.topic.clone(),
+                category: input.category.clone(),
+                trend_items: trend_res.items,
+                available_styles: self.style_manager.list_available_styles(),
+            };
+            let res = self.supervisor.enforce_act(&self.concept_manager, concept_req).await?;
+            
+            // 保存
+            self.asset_manager.save_concept(&project_id, &res)?;
+            res
         };
+
+        // 採択されたスタイルの取得
+        let style = self.style_manager.get_style(&concept_res.style_profile);
+        info!("🎨 Applied Style: {} ({})", style.name, style.description);
 
         // --- 3幕構成 (Intro, Body, Outro) の各コンポーネント生成 ---
         let mut video_clips = Vec::new();
         let mut audio_clips = Vec::new();
         
-        // 各パートの脚本とプロンプトの対応付け
         let acts = vec![
             (concept_res.script_intro.clone(), concept_res.visual_prompts.get(0).cloned().unwrap_or_default(), "intro"),
             (concept_res.script_body.clone(), concept_res.visual_prompts.get(1).cloned().unwrap_or_default(), "body"),
             (concept_res.script_outro.clone(), concept_res.visual_prompts.get(2).cloned().unwrap_or_default(), "outro"),
         ];
 
-        for (script, visual_prompt, act_name) in acts {
-            info!("🎬 Processing Act: {}", act_name);
+        for (i, (script, visual_prompt, act_name)) in acts.into_iter().enumerate() {
+            let audio_path = project_root.join(format!("audio/scene_{}.wav", i));
+            let video_clip_path = project_root.join(format!("visuals/scene_{}.mp4", i));
 
-            // 3.1. 音声合成 (VoiceActor) - 重負荷 (TTS)
-            let voice_res = {
-                let _guard = self.arbiter.acquire(ResourceUser::Voicing).await;
-                let voice_req = VoiceRequest {
-                    text: script,
-                    speaker_id: 0,
-                    style: Some("Neutral".to_string()),
+            // 3.1. 音声合成 (VoiceActor) / Bypass check
+            if !audio_path.exists() || input.skip_to_step.as_deref() == Some("voice") {
+                info!("🗣️  Processing Voice for Act: {}", act_name);
+                let voice_res = {
+                    let _guard = self.arbiter.acquire(ResourceUser::Voicing).await;
+                    let voice_req = VoiceRequest {
+                        text: script,
+                        speaker_id: 0,
+                        style: Some("Neutral".to_string()),
+                    };
+                    self.supervisor.enforce_act(&self.voice_actor, voice_req).await?
                 };
-                self.supervisor.enforce_act(&self.voice_actor, voice_req).await?
-            };
-            audio_clips.push(std::path::PathBuf::from(voice_res.audio_path));
+                
+                // Jail からプロジェクトディレクトリへコピー
+                let temp_voice_path = std::path::PathBuf::from(voice_res.audio_path);
+                std::fs::copy(&temp_voice_path, &audio_path).map_err(|e| FactoryError::Infrastructure {
+                    reason: format!("Failed to persist audio: {}", e),
+                })?;
+            }
+            audio_clips.push(audio_path);
 
-            // 3.2. 画像生成 (ComfyBridge) - 重負荷 (GPU)
-            // 固定部 (common_style) と 可変部 (visual_prompt) を結合
-            let full_prompt = format!("{}, {}", concept_res.common_style, visual_prompt);
-            let video_res = {
-                let _guard = self.arbiter.acquire(ResourceUser::Generating).await;
-                let video_req = VideoRequest {
-                    prompt: full_prompt,
-                    workflow_id: "shorts_standard_v1".to_string(),
+            // 3.2. 画像生成 & 映像演出 (ComfyBridge) / Bypass check
+            if !video_clip_path.exists() || input.skip_to_step.as_deref() == Some("visual") {
+                info!("🖼️  Processing Visuals for Act: {}", act_name);
+                let full_prompt = format!("{}, {}", concept_res.common_style, visual_prompt);
+                
+                let image_path = {
+                    let _guard = self.arbiter.acquire(ResourceUser::Generating).await;
+                    let video_req = VideoRequest {
+                        prompt: full_prompt,
+                        workflow_id: "shorts_standard_v1".to_string(),
+                    };
+                    let res = self.supervisor.enforce_act(&self.comfy_bridge, video_req).await?;
+                    std::path::PathBuf::from(res.output_path)
                 };
-                self.supervisor.enforce_act(&self.comfy_bridge, video_req).await?
-            };
-            
-            // 3.3. Ken Burns エフェクト適用 (CPU Offloading)
-            let image_path = std::path::PathBuf::from(video_res.output_path);
-            let video_clip = self.comfy_bridge.apply_ken_burns_effect(&image_path, 5.0, jail).await?;
-            video_clips.push(video_clip);
+                
+                // Ken Burns エフェクト適用 (Style 注入)
+                let clip = self.comfy_bridge.apply_ken_burns_effect(&image_path, 5.0, jail, &style).await?;
+                std::fs::copy(&clip, &video_clip_path).map_err(|e| FactoryError::Infrastructure {
+                    reason: format!("Failed to persist video clip: {}", e),
+                })?;
+            }
+            video_clips.push(video_clip_path);
         }
 
         // 4. 最終合成 (MediaForge & SoundMixer)
-        info!("🎞️  Orchestrator: Final Assembly (3-Act Concatenation)...");
+        info!("🎞️  Orchestrator: Final Assembly (Style: {})...", style.name);
         
         // 4.1. ナレーションを結合
         let audio_strings: Vec<String> = audio_clips.iter().map(|p| p.to_string_lossy().to_string()).collect();
-        let combined_narration = self.media_forge.concatenate_clips(audio_strings, "combined_narration.wav".to_string()).await?;
+        let combined_narration_str = self.media_forge.concatenate_clips(audio_strings, "combined_narration.wav".to_string()).await?;
+        let combined_narration = project_root.join("combined_narration.wav");
+        std::fs::rename(combined_narration_str, &combined_narration).ok();
         
         // 4.2. 動画クリップを結合
         let video_strings: Vec<String> = video_clips.iter().map(|p| p.to_string_lossy().to_string()).collect();
         let combined_video_str = self.media_forge.concatenate_clips(video_strings, "combined_visuals.mp4".to_string()).await?;
-        let combined_video = std::path::PathBuf::from(combined_video_str);
+        let combined_video = project_root.join("combined_visuals.mp4");
+        std::fs::rename(combined_video_str, &combined_video).ok();
         
-        // 4.3. BGM 混合とダッキング、正規化 (SoundMixer)
-        let finalized_audio = jail.root().join("finalized_audio.wav");
-        self.sound_mixer.mix_and_finalize(std::path::Path::new(&combined_narration), &input.category, &finalized_audio).await?;
+        // 4.3. BGM 混合とダッキング、正規化 (SoundMixer + Style 注入)
+        let finalized_audio = project_root.join("finalized_audio.wav");
+        self.sound_mixer.mix_and_finalize(&combined_narration, &input.category, &finalized_audio, &style).await?;
         
         // 4.4. 最終映像と最終音声を結合 (MediaForge)
         let media_req = MediaRequest {
@@ -149,6 +198,9 @@ impl AgentAct for ProductionOrchestrator {
             subtitle_path: None,
         };
         let media_res: MediaResponse = self.supervisor.enforce_act(&self.media_forge, media_req).await?;
+
+        // 5. 最終メタデータ保存
+        self.asset_manager.save_metadata(&project_id, &style)?;
 
         info!("🏆 Production Pipeline Completed: {}", media_res.final_path);
 

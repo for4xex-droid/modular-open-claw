@@ -10,6 +10,7 @@ use tracing::info;
 /// 資源の占有者
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceUser {
+    #[allow(dead_code)]
     Scripting, // LLM (Ollama)
     Voicing,   // TTS (Style-Bert-VITS2)
     Generating, // Image/Video (ComfyUI)

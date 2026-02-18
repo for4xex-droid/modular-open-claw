@@ -111,6 +111,15 @@ Mac mini M4 Pro のオンデバイス性能を極限まで活用し、外部ク�
 - **Professional Audio Mixing (Sound Mixer)**: ナレーションに合わせた BGM の自動ダッキング、および -14 LUFS 規格への正規化により、プラットフォームを選ばない高品質な音響を実現。
 - **Robust Process Reaper (SidecarManager)**: 外部プロセスのライフサイクルを PGID 単位で管理。SIGTERM から SIGKILL への段階的な終了シグナルにより、リソースの確実な回収を保証。
 
+### 超高速・高維持率チューニング (Phase 8: Cinematic Fine-Tuning & Remix Lab)
+
+微調整の「試行錯誤」をエンジニアリングとして構造化し、生産性とクオリティの両立を実現しました。
+
+- **The Remix Lab**: 生成済みの素材（画像・音声・脚本）を再利用し、映像演出や音響バランスのみを 5秒以内で再構築する「高速ループ」を確立。
+- **Creative Presets (Styles)**: `styles.toml` による演出の黄金律（ズーム速、ダッキング閾値等）を外出し。LLM が状況に応じて最適なスタイルを選択し、番組の多様性を確保。
+- **Dynamic Prompt Injection**: LLM に対して利用可能な演出スタイルを動的に提示し、ハルシネーションを防止しつつ自律的な演出判断を可能に。
+- **Asset Manager & Snapshot**: 動画ごとの全パラメータを `metadata.json` として永続化。過去の成功した演出の完全な再現性を担保。
+
 ---
 
 本ドキュメントおよび **[ARCHITECTURE_LAW.md](./ARCHITECTURE_LAW.md)** の内容を遵守し、安全かつ効率的な自動化工場の運用を継続してください。

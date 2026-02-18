@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 factory_core = { path = "../core", package = "factory-core" }
+tuning = { path = "../tuning" }
 shared = { path = "../shared" }
 sqlx = { workspace = true }
 tokio = { workspace = true }
