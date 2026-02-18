@@ -9,3 +9,4 @@ async-trait = "0.1"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
+bastion = { path = "../bastion", features = ["fs"] }

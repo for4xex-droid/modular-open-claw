@@ -81,4 +81,7 @@ pub enum FactoryError {
 
     #[error("インフラ構造エラー: {reason}")]
     Infrastructure { reason: String },
+
+    #[error("セキュリティ法規違反: {reason}")]
+    SecurityViolation { reason: String },
 }

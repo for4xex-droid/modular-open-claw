@@ -5,8 +5,9 @@
 
 use async_trait::async_trait;
 use bastion::net_guard::ShieldClient;
+use factory_core::contracts::{TrendRequest, TrendResponse};
 use factory_core::error::FactoryError;
-use factory_core::traits::{TrendItem, TrendSource};
+use factory_core::traits::{AgentAct, TrendItem, TrendSource};
 use rig::tool::Tool;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -61,6 +62,21 @@ pub struct TrendArgs {
 #[derive(Serialize)]
 pub struct TrendOutput {
     pub trends: Vec<TrendItem>,
+}
+
+#[async_trait]
+impl AgentAct for TrendSonarClient {
+    type Input = TrendRequest;
+    type Output = TrendResponse;
+
+    async fn execute(
+        &self,
+        input: Self::Input,
+        _jail: &bastion::fs_guard::Jail,
+    ) -> Result<Self::Output, FactoryError> {
+        let trends = self.get_trends(&input.category).await?;
+        Ok(TrendResponse { items: trends })
+    }
 }
 
 impl Tool for TrendSonarClient {

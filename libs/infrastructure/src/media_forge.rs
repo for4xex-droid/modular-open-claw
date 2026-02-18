@@ -5,8 +5,9 @@
 
 use async_trait::async_trait;
 use bastion::fs_guard::Jail;
+use factory_core::contracts::{MediaRequest, MediaResponse};
 use factory_core::error::FactoryError;
-use factory_core::traits::MediaEditor;
+use factory_core::traits::{AgentAct, MediaEditor};
 use rig::tool::Tool;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -108,6 +109,27 @@ pub enum MediaForgeArgs {
 #[derive(Serialize)]
 pub struct MediaForgeOutput {
     pub output_path: String,
+}
+
+#[async_trait]
+impl AgentAct for MediaForgeClient {
+    type Input = MediaRequest;
+    type Output = MediaResponse;
+
+    async fn execute(
+        &self,
+        input: Self::Input,
+        _jail: &bastion::fs_guard::Jail,
+    ) -> Result<Self::Output, FactoryError> {
+        let path = self.combine_assets(
+            &PathBuf::from(input.video_path),
+            &PathBuf::from(input.audio_path),
+            input.subtitle_path.as_ref().map(PathBuf::from).as_ref(),
+        ).await?;
+        Ok(MediaResponse {
+            final_path: path.to_string_lossy().to_string(),
+        })
+    }
 }
 
 impl Tool for MediaForgeClient {
