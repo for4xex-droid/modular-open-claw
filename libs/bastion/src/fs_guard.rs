@@ -10,12 +10,22 @@ use std::io::{Result, Error, ErrorKind};
 use std::os::unix::fs::OpenOptionsExt;
 
 /// 指定されたディレクトリ配下のみにファイルアクセスを制限する Jail 構造体
+#[derive(Clone, Debug)]
 pub struct Jail {
     root: PathBuf,
 }
 
 impl Jail {
-    /// 新しい Jail を初期化する。root path は絶対パスに正規化される。
+    /// 新しい Jail を初期化する。ディレクトリが存在しない場合は作成する。
+    pub fn init<P: AsRef<Path>>(root: P) -> Result<Self> {
+        let path = root.as_ref();
+        if !path.exists() {
+            std::fs::create_dir_all(path)?;
+        }
+        Self::new(path)
+    }
+
+    /// 新しい Jail を作成する。root path は絶対パスに正規化される。
     pub fn new<P: AsRef<Path>>(root: P) -> Result<Self> {
         let root_canonical = root.as_ref().canonicalize()?;
         if !root_canonical.is_dir() {

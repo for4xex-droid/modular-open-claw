@@ -15,6 +15,7 @@ use trust_dns_resolver::TokioAsyncResolver;
 use reqwest::{Client, redirect::Policy};
 
 /// ネットワークアクセスの制限を行う構造体
+#[derive(Clone, Debug)]
 pub struct ShieldClient {
     #[cfg(feature = "net")]
     client: Client,

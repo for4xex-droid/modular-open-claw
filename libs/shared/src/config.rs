@@ -13,16 +13,81 @@ pub struct FactoryConfig {
     pub comfyui_timeout_secs: u64,
     /// 本番用モデル名
     pub model_name: String,
+    /// ComfyUI の出力ディレクトリ (Jail 内の相対パス推奨)
+    pub comfyui_output_dir: String,
+}
+
+impl FactoryConfig {
+    /// 設定をファイルまたは環境変数から読み込む
+    pub fn load() -> Result<Self, config::ConfigError> {
+        let settings = config::Config::builder()
+            // デフォルト値の設定
+            .set_default("ollama_url", "http://localhost:11434/v1")?
+            .set_default("comfyui_url", "http://127.0.0.1:8188")?
+            .set_default("batch_size", 10)?
+            .set_default("comfyui_timeout_secs", 180)?
+            .set_default("model_name", "qwen2.5-coder:32b")?
+            .set_default("comfyui_output_dir", "comfy_out")?
+            // config.toml があれば読み込む
+            .add_source(config::File::with_name("config").required(false))
+            // 環境変数 (SHORTS_FACTORY_*) があれば上書き
+            .add_source(config::Environment::with_prefix("SHORTS_FACTORY"))
+            .build()?;
+
+        settings.try_deserialize()
+    }
 }
 
 impl Default for FactoryConfig {
     fn default() -> Self {
-        Self {
-            ollama_url: "http://localhost:11434/v1".to_string(),
-            comfyui_url: "http://127.0.0.1:8188".to_string(),
-            batch_size: 10,
-            comfyui_timeout_secs: 180,
-            model_name: "qwen2.5-coder:32b".to_string(),
-        }
+        Self::load().unwrap_or_else(|_| {
+            Self {
+                ollama_url: "http://localhost:11434/v1".to_string(),
+                comfyui_url: "http://127.0.0.1:8188".to_string(),
+                batch_size: 10,
+                comfyui_timeout_secs: 180,
+                model_name: "qwen2.5-coder:32b".to_string(),
+                comfyui_output_dir: "comfy_out".to_string(),
+            }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_config_load_defaults() {
+        let config = FactoryConfig::default();
+        assert_eq!(config.ollama_url, "http://localhost:11434/v1");
+        assert_eq!(config.model_name, "qwen2.5-coder:32b");
+    }
+
+    #[test]
+    fn test_config_load_from_file() {
+        // 一時的な config.toml を作成 (toml 拡張子を付加してフォーマットを認識させる)
+        let mut file = tempfile::Builder::new()
+            .suffix(".toml")
+            .tempfile()
+            .unwrap();
+        writeln!(file, "ollama_url = \"http://custom:11434/v1\"").unwrap();
+        writeln!(file, "comfyui_url = \"http://custom:8188\"").unwrap();
+        writeln!(file, "batch_size = 5").unwrap();
+        writeln!(file, "comfyui_timeout_secs = 60").unwrap();
+        writeln!(file, "model_name = \"custom-model\"").unwrap();
+        writeln!(file, "comfyui_output_dir = \"custom_out\"").unwrap();
+        
+        // config::File::from(path) を使って明示的なファイルを読み込む
+        // 拡張子があるためフォーマットは自動判別される
+        let settings = config::Config::builder()
+            .add_source(config::File::from(file.path()))
+            .build()
+            .unwrap();
+        
+        let config: FactoryConfig = settings.try_deserialize().unwrap();
+        assert_eq!(config.ollama_url, "http://custom:11434/v1");
+        assert_eq!(config.model_name, "custom-model");
     }
 }

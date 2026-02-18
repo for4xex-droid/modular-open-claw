@@ -12,4 +12,9 @@ reqwest = { workspace = true }
 async-trait = "0.1"
 anyhow = { workspace = true }
 tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rig-core = { workspace = true }
+schemars = { workspace = true }
+bastion = { path = "../bastion", features = ["net", "fs"] }
 

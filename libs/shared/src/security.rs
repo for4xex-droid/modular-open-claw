@@ -6,6 +6,7 @@ use bastion::net_guard::ShieldClient;
 /// 
 /// 許可されたホスト、ツール、リソースへのアクセスを制御する。
 /// Bastion ShieldClient を使用して SSRF や DNS Rebinding を防止する。
+#[derive(Clone, Debug)]
 pub struct SecurityPolicy {
     network_shield: ShieldClient,
     allowed_tools: Vec<String>,
@@ -41,6 +42,11 @@ impl SecurityPolicy {
                 "factory_log".to_string(),
             ],
         }
+    }
+
+    /// ShieldClient への参照を取得 (内部利用用)
+    pub fn shield(&self) -> &ShieldClient {
+        &self.network_shield
     }
 
     /// URLの安全性を検証する

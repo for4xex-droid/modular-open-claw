@@ -78,4 +78,7 @@ pub enum FactoryError {
         #[source]
         source: anyhow::Error,
     },
+
+    #[error("インフラ構造エラー: {reason}")]
+    Infrastructure { reason: String },
 }

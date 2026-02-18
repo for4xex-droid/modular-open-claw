@@ -4,3 +4,6 @@
 //! ComfyUI, FFmpeg, SQLite 等の外部サービスとの通信を担当。
 
 pub mod comfy_bridge;
+pub mod factory_log;
+pub mod media_forge;
+pub mod trend_sonar;
