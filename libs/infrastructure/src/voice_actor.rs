@@ -29,7 +29,7 @@ impl AgentAct for VoiceActor {
     async fn execute(
         &self,
         input: Self::Input,
-        jail: &Jail,
+        jail: &bastion::fs_guard::Jail,
     ) -> Result<Self::Output, FactoryError> {
         info!("🗣️ VoiceActor: Synthesizing voice for text: '{}'...", input.text);
 

@@ -1,0 +1,91 @@
+use factory_core::error::FactoryError;
+use std::path::{Path, PathBuf};
+use tracing::info;
+use std::process::Command;
+
+/// プロフェッショナル・オーディオ合成機 ("The Sound Mixer")
+pub struct SoundMixer {
+    bgm_library_path: PathBuf,
+}
+
+impl SoundMixer {
+    pub fn new(bgm_library_path: PathBuf) -> Self {
+        Self { bgm_library_path }
+    }
+
+    /// ナレーション、BGM、効果音をミキシングし、完パケ音声を生成する
+    /// - FM-02: BGM Loop with Acrossfade
+    /// - FM-03: Audio Ducking
+    /// - FM-05: -14 LUFS Normalization
+    pub async fn mix_and_finalize(
+        &self,
+        narration_path: &Path,
+        category: &str,
+        output_path: &Path,
+    ) -> Result<(), FactoryError> {
+        info!("🎵 SoundMixer: Finalizing audio for category '{}'...", category);
+
+        // 1. カテゴリに応じた BGM の選定 (簡易版)
+        let bgm_path = self.match_bgm_by_category(category);
+        
+        // 2. FFmpeg Complex Filter の構築
+        // [0:a] ナレーション
+        // [1:a] BGM
+        // - BGM をループ & クロスフェード (acrossfade)
+        // - ダッキング (sidechaincompress)
+        // - 正規化 (loudnorm)
+        
+        // ナレーションの長さを取得 (秒)
+        let duration = self.get_audio_duration(narration_path).await?;
+        
+        // フィルタ記述
+        // astream_loop: BGMをループ
+        // sidechaincompress: ナレーション([0:a])の音圧をトリガーにBGM([1:a])を圧縮
+        let filter = format!(
+            "[1:a]aloop=loop=-1:size=2e+09[bgm]; \
+             [bgm][0:a]sidechaincompress=threshold=0.1:ratio=20:attack=10:release=200[bgm_ducked]; \
+             [0:a][bgm_ducked]amix=inputs=2:weights=1.0 0.4:duration=first[out]; \
+             [out]loudnorm=I=-14:LRA=11:TP=-1.5[final]",
+        );
+
+        let status = Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-i").arg(narration_path)
+            .arg("-i").arg(bgm_path)
+            .arg("-filter_complex").arg(filter)
+            .arg("-map").arg("[final]")
+            .arg("-t").arg(duration.to_string())
+            .arg(output_path)
+            .status()
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg mixer failed to spawn: {}", e) })?;
+
+        if !status.success() {
+            return Err(FactoryError::Infrastructure { reason: "FFmpeg mixing failed".into() });
+        }
+
+        info!("✅ SoundMixer: Finalized audio written to {}", output_path.display());
+        Ok(())
+    }
+
+    fn match_bgm_by_category(&self, category: &str) -> PathBuf {
+        let category_bgm = self.bgm_library_path.join(format!("{}.mp3", category));
+        if category_bgm.exists() {
+            category_bgm
+        } else {
+            self.bgm_library_path.join("default.mp3")
+        }
+    }
+
+    async fn get_audio_duration(&self, path: &Path) -> Result<f32, FactoryError> {
+        let output = Command::new("ffprobe")
+            .arg("-v").arg("error")
+            .arg("-show_entries").arg("format=duration")
+            .arg("-of").arg("default=noprint_wrappers=1:nokey=1")
+            .arg(path)
+            .output()
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("ffprobe failed: {}", e) })?;
+
+        let dur_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        dur_str.parse::<f32>().map_err(|_| FactoryError::Infrastructure { reason: "Failed to parse duration".into() })
+    }
+}

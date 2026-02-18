@@ -2751,10 +2751,23 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
+ "sidecar",
  "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sidecar"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "libc",
+ "sysinfo",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

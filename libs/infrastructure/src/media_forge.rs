@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
+use tracing::info;
 
 /// FFmpeg を使用した動画編集クライアント
 #[derive(Clone)]
@@ -88,6 +89,41 @@ impl MediaEditor for MediaForgeClient {
             Err(FactoryError::Infrastructure {
                 reason: "FFmpeg resize failed".to_string(),
             })
+        }
+    }
+
+    /// 複数の動画クリップを 1つの動画ファイルに結合する
+    async fn concatenate_clips(&self, clips: Vec<String>, output_name: String) -> Result<String, FactoryError> {
+        let output = self.jail.root().join(&output_name);
+        info!("🎬 MediaForge: Concatenating {} clips -> {}", clips.len(), output.display());
+
+        // concat フィルタ用の一時ファイルを作成
+        // file 'path/to/clip1.mp4'
+        // file 'path/to/clip2.mp4' ...
+        let mut concat_list = String::new();
+        for clip in clips {
+            concat_list.push_str(&format!("file '{}'\n", clip));
+        }
+
+        let list_path = self.jail.root().join("concat_list.txt");
+        std::fs::write(&list_path, concat_list).map_err(|e| FactoryError::Infrastructure {
+            reason: format!("Failed to write concat list: {}", e),
+        })?;
+
+        let status = Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-f").arg("concat")
+            .arg("-safe").arg("0")
+            .arg("-i").arg(&list_path)
+            .arg("-c").arg("copy")
+            .arg(&output)
+            .status().await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg concat failed: {}", e) })?;
+
+        if status.success() {
+            Ok(output.to_string_lossy().to_string())
+        } else {
+            Err(FactoryError::Infrastructure { reason: "FFmpeg concat execution failed".into() })
         }
     }
 }

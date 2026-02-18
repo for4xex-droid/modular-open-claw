@@ -103,6 +103,14 @@ Mac mini M4 Pro のオンデバイス性能を極限まで活用し、外部ク�
 - **Hardware-Aware Scheduling**: `ResourceArbiter` による「VRAM 単一占有ポリシー」の実装。GPU 資源の競合による速度低下やシステム不安定化を防止。
 - **Immediate Resource Release**: モデル使用後に VRAM を即時解放するプロトコルを各アクターに実装し、ハードウェアの稼働率を最適化。
 
+### 放送局グレード・自動量産基盤 (Phase 7: Automated Broadcast Station)
+
+「作れる」段階から「視聴者を離さない（高維持率）」段階へと進化し、運用の安全性もさらに強化されました。
+
+- **Cinematic Directing (Cameraman)**: 静止画に数学的なイージングを伴う Ken Burns エフェクトを適用し、視聴者の離脱を防ぐダイナミックな映像演出を自動化。
+- **Professional Audio Mixing (Sound Mixer)**: ナレーションに合わせた BGM の自動ダッキング、および -14 LUFS 規格への正規化により、プラットフォームを選ばない高品質な音響を実現。
+- **Robust Process Reaper (SidecarManager)**: 外部プロセスのライフサイクルを PGID 単位で管理。SIGTERM から SIGKILL への段階的な終了シグナルにより、リソースの確実な回収を保証。
+
 ---
 
 本ドキュメントおよび **[ARCHITECTURE_LAW.md](./ARCHITECTURE_LAW.md)** の内容を遵守し、安全かつ効率的な自動化工場の運用を継続してください。

@@ -9,3 +9,4 @@ pub mod factory_log;
 pub mod media_forge;
 pub mod trend_sonar;
 pub mod voice_actor;
+pub mod sound_mixer;

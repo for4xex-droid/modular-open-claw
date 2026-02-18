@@ -11,6 +11,7 @@ use factory_core::traits::{AgentAct, VideoGenerator};
 use rig::tool::Tool;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -61,7 +62,7 @@ impl VideoGenerator for ComfyBridgeClient {
     }
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 pub struct ComfyArgs {
     /// 動画のプロンプト
     pub prompt: String,
@@ -69,7 +70,7 @@ pub struct ComfyArgs {
     pub workflow_id: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 pub struct ComfyOutput {
     /// 生成されたファイルの保存パス
     pub output_path: String,
@@ -113,3 +114,52 @@ impl Tool for ComfyBridgeClient {
         })
     }
 }
+
+impl ComfyBridgeClient {
+    /// 静止画に対して Ken Burns エフェクト (Pan & Zoom) を適用し、滑らかな動画クリップを生成する
+    /// VE-01: 数学的なイージング関数による脱カクつき実装
+    pub async fn apply_ken_burns_effect(
+        &self,
+        image_path: &std::path::Path,
+        duration_secs: f32,
+        _jail: &bastion::fs_guard::Jail,
+    ) -> Result<PathBuf, FactoryError> {
+        let output_path = image_path.with_extension("mp4");
+        info!("🎥 ComfyBridge: Applying Ken Burns effect to {} -> {}", image_path.display(), output_path.display());
+
+        // Polish: 30fps で 5秒間のズーム。
+        // zoom='1+0.2*sin(on/150*PI/2)': 1.0倍から1.2倍までサインカーブで滑らかにズーム
+        // s=1920x1080: 計算解像度を固定してカクつき(Jitter)を防止
+        let zoom_expr = "1+0.2*sin(on/150*3.14159/2)"; // 30fps * 5s = 150 frames
+        let filter = format!(
+            "zoompan=z='{}':d=150:s=1920x1080:fps=30,format=yuv420p",
+            zoom_expr
+        );
+
+        let status = Command::new("ffmpeg")
+            .arg("-y") // 上書き許可
+            .arg("-loop")
+            .arg("1")
+            .arg("-i")
+            .arg(image_path)
+            .arg("-vf")
+            .arg(filter)
+            .arg("-c:v")
+            .arg("libx264") // CPU エンコーディング (NF-01: CPU Offloading)
+            .arg("-t")
+            .arg(duration_secs.to_string())
+            .arg("-pix_fmt")
+            .arg("yuv420p")
+            .arg(&output_path)
+            .status()
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg execution failed: {}", e) })?;
+
+        if !status.success() {
+            return Err(FactoryError::Infrastructure { reason: "FFmpeg failed to apply Ken Burns effect".into() });
+        }
+
+        Ok(output_path)
+    }
+}
+
+use std::process::Command;
