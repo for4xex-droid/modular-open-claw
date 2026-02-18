@@ -17,7 +17,7 @@ pub trait TrendSource: Send + Sync {
 }
 
 /// トレンド情報の1件分
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TrendItem {
     /// キーワード
     pub keyword: String,
