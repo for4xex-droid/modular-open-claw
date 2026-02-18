@@ -1,0 +1,29 @@
+[default]
+name = "default"
+description = "標準的な演出。穏やかなズームと自然な音響。"
+zoom_speed = 0.0015
+pan_intensity = 0.5
+bgm_volume = 0.15
+ducking_threshold = 0.1
+ducking_ratio = 0.4
+fade_duration = 3.0
+
+[documentary]
+name = "documentary"
+description = "ドキュメンタリー風。非常にゆっくりとした動きで重厚感を演出。"
+zoom_speed = 0.0005
+pan_intensity = 0.2
+bgm_volume = 0.12
+ducking_threshold = 0.08
+ducking_ratio = 0.3
+fade_duration = 5.0
+
+[hype]
+name = "hype"
+description = "ハイテンション。速いズームとパンで視聴者の目を引く。"
+zoom_speed = 0.004
+pan_intensity = 0.8
+bgm_volume = 0.2
+ducking_threshold = 0.15
+ducking_ratio = 0.5
+fade_duration = 2.0

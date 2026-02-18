@@ -22,11 +22,13 @@ impl SoundMixer {
         narration_path: &Path,
         category: &str,
         output_path: &Path,
-    ) -> Result<(), FactoryError> {
-        info!("🎵 SoundMixer: Finalizing audio for category '{}'...", category);
+        style: &tuning::StyleProfile,
+    ) -> Result<PathBuf, FactoryError> {
+        info!("🎶 SoundMixer: Mixing narration with BGM (Style: {})...", style.name);
+        let output = output_path.to_path_buf();
 
-        // 1. カテゴリに応じた BGM の選定 (簡易版)
-        let bgm_path = self.match_bgm_by_category(category);
+        // 1. BGM 選択 (Category に基づく、なければ default.mp3)
+        let bgm_path = self.select_bgm(category).await?;
         
         // 2. FFmpeg Complex Filter の構築
         // [0:a] ナレーション
@@ -41,11 +43,16 @@ impl SoundMixer {
         // フィルタ記述
         // astream_loop: BGMをループ
         // sidechaincompress: ナレーション([0:a])の音圧をトリガーにBGM([1:a])を圧縮
+        // style パラメータを注入
         let filter = format!(
             "[1:a]aloop=loop=-1:size=2e+09[bgm]; \
-             [bgm][0:a]sidechaincompress=threshold=0.1:ratio=20:attack=10:release=200[bgm_ducked]; \
-             [0:a][bgm_ducked]amix=inputs=2:weights=1.0 0.4:duration=first[out]; \
-             [out]loudnorm=I=-14:LRA=11:TP=-1.5[final]",
+             [bgm][0:a]sidechaincompress=threshold={}:ratio=20:attack=10:release=200[bgm_ducked]; \
+             [0:a][bgm_ducked]amix=inputs=2:weights=1.0 {}:duration=first[out]; \
+             [out]afade=t=out:st=30:d={}[faded]; \
+             [faded]loudnorm=I=-14:LRA=11:TP=-1.5[final]",
+            style.ducking_threshold,
+            style.ducking_ratio,
+            style.fade_duration
         );
 
         let status = Command::new("ffmpeg")
@@ -59,20 +66,25 @@ impl SoundMixer {
             .status()
             .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg mixer failed to spawn: {}", e) })?;
 
-        if !status.success() {
-            return Err(FactoryError::Infrastructure { reason: "FFmpeg mixing failed".into() });
+        if status.success() {
+            info!("✅ SoundMixer: Finalized audio written to {}", output_path.display());
+            Ok(output)
+        } else {
+            Err(FactoryError::Infrastructure { reason: "FFmpeg mixer execution failed".into() })
         }
-
-        info!("✅ SoundMixer: Finalized audio written to {}", output_path.display());
-        Ok(())
     }
 
-    fn match_bgm_by_category(&self, category: &str) -> PathBuf {
+    async fn select_bgm(&self, category: &str) -> Result<PathBuf, FactoryError> {
         let category_bgm = self.bgm_library_path.join(format!("{}.mp3", category));
         if category_bgm.exists() {
-            category_bgm
+            Ok(category_bgm)
         } else {
-            self.bgm_library_path.join("default.mp3")
+            let default_bgm = self.bgm_library_path.join("default.mp3");
+            if default_bgm.exists() {
+                Ok(default_bgm)
+            } else {
+                Err(FactoryError::MediaNotFound { path: "default.mp3".into() })
+            }
         }
     }
 

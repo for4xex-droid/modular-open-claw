@@ -11,6 +11,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub enum SupervisorPolicy {
     /// 失敗時に即座に停止 (Deny)
+    #[allow(dead_code)]
     Strict,
     /// 失敗をログに記録して継続試行 (Retry)
     Retry { max_retries: usize },

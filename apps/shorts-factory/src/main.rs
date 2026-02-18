@@ -9,6 +9,7 @@ use std::sync::Arc;
 mod supervisor;
 mod orchestrator;
 mod arbiter;
+mod asset_manager;
 use supervisor::{Supervisor, SupervisorPolicy};
 use orchestrator::ProductionOrchestrator;
 use arbiter::ResourceArbiter;
@@ -24,9 +25,34 @@ use tokio::sync::Mutex;
 use sidecar::SidecarManager;
 use std::process::Command;
 
+use clap::Parser;
+use tuning::StyleManager;
+use asset_manager::AssetManager;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// 動画のカテゴリ
+    #[arg(short, long, default_value = "tech")]
+    category: String,
+
+    /// 動画のトピック (テーマ)
+    #[arg(short, long, default_value = "AIの未来")]
+    topic: String,
+
+    /// Remix 対象の動画ID (workspace/<ID> を再利用)
+    #[arg(short, long)]
+    remix: Option<String>,
+
+    /// スキップ先のステップ (voice, visual)
+    #[arg(short, long)]
+    step: Option<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
+    let args = Args::parse();
 
     // 0. 運用監視 (Phase 3)
     let health = Arc::new(Mutex::new(HealthMonitor::new()));
@@ -66,34 +92,34 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("📁 ComfyUI Sync: {}", comfy_out.display());
     
     // 3. 統治機構 (Supervisor) の初期化
-    let supervisor = Arc::new(Supervisor::new(jail.clone(), SupervisorPolicy::Retry { max_retries: 3 }));
+    let supervisor = Supervisor::new(jail.clone(), SupervisorPolicy::Retry { max_retries: 3 });
     tracing::info!("⚖️  Governance Layer (Lex AI) Active");
 
-    // 4. インフラクライアントの準備
-    let arbiter = ResourceArbiter::new();
+    // 4. 新規マネージャの初期化 (Phase 8)
+    let style_path = std::env::current_dir()?.join("styles.toml");
+    let style_manager = Arc::new(StyleManager::load_from_file(style_path).unwrap_or_else(|_| {
+        warn!("⚠️ styles.toml not found, using empty manager");
+        StyleManager::new_empty()
+    }));
+    
+    let asset_manager = Arc::new(AssetManager::new(std::env::current_dir()?.join("workspace")));
 
-    // Sidecar Manager ("The Reaper") の初期化
+    // 5. インフラクライアントの準備
+    let arbiter = Arc::new(ResourceArbiter::new());
+
+    // Sidecar Manager ("The Reaper")
     let sidecar_manager = Arc::new(SidecarManager::new(vec![
-        "python".to_string(),
-        "python3".to_string(),
-        "uv".to_string(),
-        "main".to_string(),
+        "python".to_string(), "python3".to_string(), "uv".to_string(), "main".to_string(),
     ]));
 
-    // TTS サーバーの起動 (Port: 5001)
+    // TTS Sidecar
     {
         let sm = sidecar_manager.clone();
         sm.clean_port(5001).await?;
-        
-        // uv run server_fastapi.py を実行するコマンドを構築
-        // Cwd はプロジェクトルートからの相対パス
         let mut cmd = Command::new("uv");
-        cmd.arg("run")
-           .arg("server_fastapi.py")
-           .current_dir("services/Style-Bert-VITS2");
-        
+        cmd.arg("run").arg("server_fastapi.py").current_dir("services/Style-Bert-VITS2");
         sm.spawn(cmd).await?;
-        info!("🎙️  TTS Sidecar server (Style-Bert-VITS2) spawned on port 5001");
+        info!("🎙️  TTS Sidecar server spawned on port 5001");
     }
 
     // Infrastructure Clients
@@ -108,55 +134,43 @@ async fn main() -> Result<(), anyhow::Error> {
     let sound_mixer = SoundMixer::new(bgm_path);
     let media_forge = MediaForgeClient::new(jail.clone());
 
-    // 5. 生産ライン・オーケストレーターの準備
+    // 6. 生産ライン・オーケストレーターの準備
     let orchestrator = ProductionOrchestrator::new(
-        supervisor.clone(),
-        arbiter.clone(),
         trend_sonar,
         concept_manager,
-        comfy_bridge,
         voice_actor,
-        sound_mixer,
+        comfy_bridge,
         media_forge,
+        sound_mixer,
+        supervisor,
+        arbiter,
+        style_manager,
+        asset_manager,
     );
 
-    // 6. メインループ (Graceful Shutdown 対応)
-    tokio::select! {
-        _ = async {
-            // 自動量産実行 (Phase 5 Batch Loop)
-            let categories = vec!["jp_all", "tech", "entertainment"];
-            
-            for category in categories {
-                let workflow_req = WorkflowRequest { category: category.to_string() };
-                
-                info!("🚀 Starting Production Pipeline for category: {}", workflow_req.category);
-                
-                // リソースチェック
-                let status = health.lock().await.check();
-                if status.memory_usage_mb > 1024 {
-                    warn!("⚠️ High memory usage detected ({}MB). Skipping batch...", status.memory_usage_mb);
-                    break;
-                }
+    // 7. 実行
+    let workflow_req = WorkflowRequest { 
+        category: args.category,
+        topic: args.topic,
+        remix_id: args.remix,
+        skip_to_step: args.step,
+    };
 
-                match orchestrator.execute(workflow_req, &jail).await {
-                    Ok(res) => {
-                        println!("\n🎬 動画生成完了！");
-                        println!("   🏷️ カテゴリ: {}", category);
-                        println!("   📝 タイトル: {}", res.concept.title);
-                        println!("   🎥 ファイル: {}", res.final_video_path);
-                    }
-                    Err(e) => {
-                        error!("❌ カテゴリ {} の生成パイプラインが失敗: {}", category, e);
-                    }
+    info!("🚀 Launching Production Pipeline...");
+    
+    tokio::select! {
+        res = orchestrator.execute(workflow_req, &jail) => {
+            match res {
+                Ok(res) => {
+                    println!("\n🎬 動画生成完了！");
+                    println!("   📝 タイトル: {}", res.concept.title);
+                    println!("   🎨 スタイル: {}", res.concept.style_profile);
+                    println!("   🎥 ファイル: {}", res.final_video_path);
                 }
-                
-                // 次のバッチまで少し待機
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                Err(e) => {
+                    error!("❌ 生成パイプラインが失敗: {}", e);
+                }
             }
-            
-            info!("✅ All batches scheduled or completed.");
-        } => {
-            tracing::info!("🏁 Batch Production Task finished.");
         }
         _ = signal::ctrl_c() => {
             tracing::info!("🛑 SIGINT received. Shutting down gracefully...");

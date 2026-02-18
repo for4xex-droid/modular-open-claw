@@ -16,6 +16,9 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 async-trait = "0.1"
+chrono = "0.4"
+clap = { version = "4.4", features = ["derive"] }
+tuning = { path = "../../libs/tuning" }
 bastion = { path = "../../libs/bastion", features = ["net", "fs"] }
 
 [dev-dependencies]
