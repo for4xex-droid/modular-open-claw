@@ -14,4 +14,8 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
+async-trait = "0.1"
 bastion = { path = "../../libs/bastion", features = ["net", "fs"] }
+
+[dev-dependencies]
+tempfile = "3"

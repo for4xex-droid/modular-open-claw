@@ -1,6 +1,4 @@
-use rig::{client::CompletionClient, completion::Prompt, providers::openai};
 use shared::config::FactoryConfig;
-use shared::guardrails::{self, ValidationResult};
 use shared::security::SecurityPolicy;
 use infrastructure::comfy_bridge::ComfyBridgeClient;
 use infrastructure::trend_sonar::TrendSonarClient;
@@ -9,18 +7,24 @@ use bastion::fs_guard::Jail;
 use std::sync::Arc;
 
 mod supervisor;
+mod orchestrator;
 use supervisor::{Supervisor, SupervisorPolicy};
-use factory_core::contracts::TrendRequest;
+use orchestrator::ProductionOrchestrator;
+use factory_core::contracts::WorkflowRequest;
+use factory_core::traits::AgentAct;
+use infrastructure::concept_manager::ConceptManager;
 use shared::health::HealthMonitor;
 use tokio::signal;
+use tracing::{info, error, warn};
+use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
 
     // 0. 運用監視 (Phase 3)
-    let mut health = HealthMonitor::new();
-    let status = health.check();
+    let health = Arc::new(Mutex::new(HealthMonitor::new()));
+    let status = health.lock().await.check();
     tracing::info!("📊 Initial Health Status: Memory {}MB, CPU {:.1}%", 
         status.memory_usage_mb, status.cpu_usage_percent);
 
@@ -56,61 +60,61 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing::info!("📁 ComfyUI Sync: {}", comfy_out.display());
     
     // 3. 統治機構 (Supervisor) の初期化
-    let supervisor = Supervisor::new(jail.clone(), SupervisorPolicy::Retry { max_retries: 3 });
+    let supervisor = Arc::new(Supervisor::new(jail.clone(), SupervisorPolicy::Retry { max_retries: 3 }));
     tracing::info!("⚖️  Governance Layer (Lex AI) Active");
 
     // 4. インフラクライアントの準備
     let trend_sonar = TrendSonarClient::new(shield.clone());
     let comfy_bridge = ComfyBridgeClient::new(shield.clone(), &config.comfyui_url, config.comfyui_timeout_secs);
     let media_forge = MediaForgeClient::new(jail.clone());
+    let concept_manager = ConceptManager::new(&config.ollama_url, &config.model_name);
 
-    // [法規遵守テスト] トレンドアクターを「法」の下で実行
-    let trend_res = supervisor.enforce_act(&trend_sonar, TrendRequest {
-        category: "jp_all".to_string(),
-    }).await?;
-    tracing::info!("🏆 Lex AI Test: Received {} trends under governance", trend_res.items.len());
-
-    // 4. Ollama へ接続 (OpenAI互換 Chat Completions API)
-    let client: openai::CompletionsClient = openai::Client::builder()
-        .api_key("ollama")
-        .base_url(&config.ollama_url)
-        .build()?
-        .completions_api();
-
-    // 5. Factory Agent (工場長) を作成し、ツールを装着
-    tracing::info!("🤝 Factory Manager (Agent) wrapping tools...");
-    let factory_agent = client
-        .agent(&config.model_name)
-        .preamble(
-            "あなたは ShortsFactory の工場長です。\
-             YouTube Shorts向けの動画を効率的に量産する戦略を立案し、ツールを駆使して実行してください。\
-             回答は必ず日本語で行ってください。",
-        )
-        .tool(trend_sonar)
-        .tool(comfy_bridge)
-        .tool(media_forge)
-        .build();
+    // 5. 生産ライン・オーケストレーターの準備
+    let orchestrator = ProductionOrchestrator::new(
+        supervisor.clone(),
+        trend_sonar.clone(),
+        concept_manager,
+        comfy_bridge.clone(),
+        media_forge.clone(),
+    );
 
     // 6. メインループ (Graceful Shutdown 対応)
     tokio::select! {
         _ = async {
-            // 現状は一回のみ実行するデモ
-            let user_prompt = "現在のトレンドを調べて、それに基づいた動画生成ワークフローを提案して。";
-            let sanitized = guardrails::sanitize_input(user_prompt);
+            // 自動量産実行 (Phase 5 Batch Loop)
+            let categories = vec!["jp_all", "tech", "entertainment"];
             
-            match guardrails::validate_input(&sanitized) {
-                ValidationResult::Valid => {
-                    tracing::info!("🧠 Factory Manager に質問中...");
-                    let response = factory_agent.prompt(&sanitized).await.unwrap_or_else(|e| format!("Error: {}", e));
-                    println!("\n🏭 Factory Manager: {}", response);
+            for category in categories {
+                let workflow_req = WorkflowRequest { category: category.to_string() };
+                
+                info!("🚀 Starting Production Pipeline for category: {}", workflow_req.category);
+                
+                // リソースチェック
+                let status = health.lock().await.check();
+                if status.memory_usage_mb > 1024 {
+                    warn!("⚠️ High memory usage detected ({}MB). Skipping batch...", status.memory_usage_mb);
+                    break;
                 }
-                ValidationResult::Blocked(reason) => {
-                    tracing::warn!("🚫 Guardrails がプロンプトをブロック: {}", reason);
-                    println!("\n⛔ プロンプトは安全上の理由でブロックされました: {}", reason);
+
+                match orchestrator.execute(workflow_req, &jail).await {
+                    Ok(res) => {
+                        println!("\n🎬 動画生成完了！");
+                        println!("   🏷️ カテゴリ: {}", category);
+                        println!("   📝 タイトル: {}", res.concept.title);
+                        println!("   🎥 ファイル: {}", res.final_video_path);
+                    }
+                    Err(e) => {
+                        error!("❌ カテゴリ {} の生成パイプラインが失敗: {}", category, e);
+                    }
                 }
+                
+                // 次のバッチまで少し待機
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
             }
+            
+            info!("✅ All batches scheduled or completed.");
         } => {
-            tracing::info!("🏁 Task finished.");
+            tracing::info!("🏁 Batch Production Task finished.");
         }
         _ = signal::ctrl_c() => {
             tracing::info!("🛑 SIGINT received. Shutting down gracefully...");

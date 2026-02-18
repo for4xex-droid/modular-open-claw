@@ -68,3 +68,65 @@ impl Supervisor {
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use tempfile::tempdir;
+
+    struct MockActor {
+        fail_count: std::sync::atomic::AtomicUsize,
+        security_violation: bool,
+    }
+
+    #[async_trait]
+    impl AgentAct for MockActor {
+        type Input = ();
+        type Output = String;
+
+        async fn execute(&self, _input: Self::Input, _jail: &Jail) -> Result<Self::Output, FactoryError> {
+            if self.security_violation {
+                return Err(FactoryError::SecurityViolation { reason: "test violation".into() });
+            }
+
+            let count = self.fail_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if count < 2 {
+                Err(FactoryError::Infrastructure { reason: "temporary failure".into() })
+            } else {
+                Ok("success".into())
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_supervisor_retry_policy() {
+        let dir = tempdir().unwrap();
+        let jail = Arc::new(Jail::init(dir.path()).unwrap());
+        let supervisor = Supervisor::new(jail, SupervisorPolicy::Retry { max_retries: 3 });
+        
+        let actor = MockActor {
+            fail_count: std::sync::atomic::AtomicUsize::new(0),
+            security_violation: false,
+        };
+
+        let result = supervisor.enforce_act(&actor, ()).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "success");
+        assert_eq!(actor.fail_count.load(std::sync::atomic::Ordering::SeqCst), 3);
+    }
+
+    #[tokio::test]
+    async fn test_supervisor_security_escalation() {
+        let dir = tempdir().unwrap();
+        let jail = Arc::new(Jail::init(dir.path()).unwrap());
+        let supervisor = Supervisor::new(jail, SupervisorPolicy::Retry { max_retries: 3 });
+        
+        let actor = MockActor {
+            fail_count: std::sync::atomic::AtomicUsize::new(0),
+            security_violation: true,
+        };
+
+        let result = supervisor.enforce_act(&actor, ()).await;
+        assert!(matches!(result, Err(FactoryError::SecurityViolation { .. })));
+    }
+}

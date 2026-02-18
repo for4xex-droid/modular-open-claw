@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// トレンド収集クライアント
+#[derive(Clone)]
 pub struct TrendSonarClient {
     /// Bastion ネットワークシールド
     pub shield: Arc<ShieldClient>,
