@@ -16,10 +16,13 @@ use factory_core::contracts::WorkflowRequest;
 use factory_core::traits::AgentAct;
 use infrastructure::concept_manager::ConceptManager;
 use infrastructure::voice_actor::VoiceActor;
+use infrastructure::sound_mixer::SoundMixer;
 use shared::health::HealthMonitor;
 use tokio::signal;
 use tracing::{info, error, warn};
 use tokio::sync::Mutex;
+use sidecar::SidecarManager;
+use std::process::Command;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -69,11 +72,40 @@ async fn main() -> Result<(), anyhow::Error> {
     // 4. インフラクライアントの準備
     let arbiter = ResourceArbiter::new();
 
+    // Sidecar Manager ("The Reaper") の初期化
+    let sidecar_manager = Arc::new(SidecarManager::new(vec![
+        "python".to_string(),
+        "python3".to_string(),
+        "uv".to_string(),
+        "main".to_string(),
+    ]));
+
+    // TTS サーバーの起動 (Port: 5001)
+    {
+        let sm = sidecar_manager.clone();
+        sm.clean_port(5001).await?;
+        
+        // uv run server_fastapi.py を実行するコマンドを構築
+        // Cwd はプロジェクトルートからの相対パス
+        let mut cmd = Command::new("uv");
+        cmd.arg("run")
+           .arg("server_fastapi.py")
+           .current_dir("services/Style-Bert-VITS2");
+        
+        sm.spawn(cmd).await?;
+        info!("🎙️  TTS Sidecar server (Style-Bert-VITS2) spawned on port 5001");
+    }
+
     // Infrastructure Clients
     let trend_sonar = TrendSonarClient::new(shield.clone());
     let concept_manager = ConceptManager::new(&config.ollama_url, &config.model_name);
     let comfy_bridge = ComfyBridgeClient::new(shield.clone(), &config.comfyui_url, config.comfyui_timeout_secs);
     let voice_actor = VoiceActor::new("http://localhost:5001", "jvnv-F1-jp");
+    let bgm_path = std::env::current_dir()?.join("resources/bgm");
+    if !bgm_path.exists() {
+        std::fs::create_dir_all(&bgm_path)?;
+    }
+    let sound_mixer = SoundMixer::new(bgm_path);
     let media_forge = MediaForgeClient::new(jail.clone());
 
     // 5. 生産ライン・オーケストレーターの準備
@@ -84,6 +116,7 @@ async fn main() -> Result<(), anyhow::Error> {
         concept_manager,
         comfy_bridge,
         voice_actor,
+        sound_mixer,
         media_forge,
     );
 

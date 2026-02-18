@@ -58,6 +58,9 @@ pub trait MediaEditor: Send + Sync {
 
     /// 動画をショート用にリサイズ (9:16, 1080x1920)
     async fn resize_for_shorts(&self, input: &PathBuf) -> Result<PathBuf, FactoryError>;
+
+    /// 複数のメディアクリップを 1つのファイルに結合
+    async fn concatenate_clips(&self, clips: Vec<String>, output_name: String) -> Result<String, FactoryError>;
 }
 
 /// ログ・通知ツール (FactoryLog)

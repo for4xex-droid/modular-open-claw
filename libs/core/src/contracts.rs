@@ -41,7 +41,15 @@ pub struct ConceptRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConceptResponse {
     pub title: String,
-    pub script: String,
+    /// 導入部
+    pub script_intro: String,
+    /// 本編
+    pub script_body: String,
+    /// 結末
+    pub script_outro: String,
+    /// 全体共通の画風・キャラクター指定 (Subject/Style)
+    pub common_style: String,
+    /// 各シーン固有の描写 (Action/Background) - 必ず3件
     pub visual_prompts: Vec<String>,
     pub metadata: std::collections::HashMap<String, String>,
 }

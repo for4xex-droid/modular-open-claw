@@ -64,6 +64,16 @@ Mac mini M4 Pro 等の限られたハードウェア資源において、複数�
 
 ---
 
+## 第7条：放送品質 (Broadcast Grade Quality)
+
+システムが生成する最終成果物は、視聴者の離脱を防ぎ、プラットフォームの品質基準を満たす「放送局グレード」でなければならない。
+
+1.  **The Reaper (Process Lifecycle)**: 外部のサイドカープロセス（TTSサーバー等）は `SidecarManager` によって管理され、終了時は PGID を用いた「Graceful-then-Hard Kill」プロトコルを遵守しなければならない。
+2.  **The Cameraman (Visual Smoothness)**: 静止画から動画を生成する際は、数学的なイージング関数を用いた Ken Burns エフェクトを適用し、機械的な直線移動（Jitter）を排除しなければならない。
+3.  **The Sound Mixer (Audio Standards)**: 音声合成と BGM の合成には「Audio Ducking（サイドチェーン圧縮）」を適用し、全体の音圧は EBU R128 (-14 LUFS) 規格に準拠させなければならない。
+
+---
+
 ## 付則：実装方針
 
 - **Core First**: 本法典のインターフェースは `libs/core` に定義し、具体的なインフラ実装（`libs/infrastructure`）と分離する。
