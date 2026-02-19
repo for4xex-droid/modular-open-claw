@@ -10,6 +10,9 @@ mod supervisor;
 mod orchestrator;
 mod arbiter;
 mod asset_manager;
+mod server;
+use server::telemetry::TelemetryHub;
+use server::router::{create_router, AppState};
 use supervisor::{Supervisor, SupervisorPolicy};
 use orchestrator::ProductionOrchestrator;
 use arbiter::ResourceArbiter;
@@ -32,21 +35,35 @@ use asset_manager::AssetManager;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// 動画のカテゴリ
-    #[arg(short, long, default_value = "tech")]
-    category: String,
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
 
-    /// 動画のトピック (テーマ)
-    #[arg(short, long, default_value = "AIの未来")]
-    topic: String,
+#[derive(clap::Subcommand, Debug)]
+enum Commands {
+    /// 通常の動画生成モード
+    Generate {
+        /// 動画のカテゴリ
+        #[arg(short, long, default_value = "tech")]
+        category: String,
 
-    /// Remix 対象の動画ID (workspace/<ID> を再利用)
-    #[arg(short, long)]
-    remix: Option<String>,
+        /// 動画のトピック (テーマ)
+        #[arg(short, long, default_value = "AIの未来")]
+        topic: String,
 
-    /// スキップ先のステップ (voice, visual)
-    #[arg(short, long)]
-    step: Option<String>,
+        /// Remix 対象の動画ID (workspace/<ID> を再利用)
+        #[arg(short, long)]
+        remix: Option<String>,
+
+        /// スキップ先のステップ (voice, visual)
+        #[arg(short, long)]
+        step: Option<String>,
+    },
+    /// 指令センター用サーバーモード (Port: 3000)
+    Serve {
+        #[arg(short, long, default_value = "3000")]
+        port: u16,
+    }
 }
 
 #[tokio::main]
@@ -135,7 +152,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let media_forge = MediaForgeClient::new(jail.clone());
 
     // 6. 生産ライン・オーケストレーターの準備
-    let orchestrator = ProductionOrchestrator::new(
+    let orchestrator = Arc::new(ProductionOrchestrator::new(
         trend_sonar,
         concept_manager,
         voice_actor,
@@ -144,36 +161,68 @@ async fn main() -> Result<(), anyhow::Error> {
         sound_mixer,
         supervisor,
         arbiter,
-        style_manager,
-        asset_manager,
-    );
+        style_manager.clone(),
+        asset_manager.clone(),
+    ));
 
-    // 7. 実行
-    let workflow_req = WorkflowRequest { 
-        category: args.category,
-        topic: args.topic,
-        remix_id: args.remix,
-        skip_to_step: args.step,
-    };
+    // コマンド分岐
+    match args.command.unwrap_or(Commands::Generate { 
+        category: "tech".to_string(), 
+        topic: "AIの未来".to_string(), 
+        remix: None, 
+        step: None 
+    }) {
+        Commands::Serve { port } => {
+            info!("📡 Starting Command Center Server on port {}", port);
+            
+            // Telemetry Hub
+            let telemetry = Arc::new(TelemetryHub::new());
+            telemetry.start_heartbeat_loop().await;
 
-    info!("🚀 Launching Production Pipeline...");
-    
-    tokio::select! {
-        res = orchestrator.execute(workflow_req, &jail) => {
-            match res {
-                Ok(res) => {
-                    println!("\n🎬 動画生成完了！");
-                    println!("   📝 タイトル: {}", res.concept.title);
-                    println!("   🎨 スタイル: {}", res.concept.style_profile);
-                    println!("   🎥 ファイル: {}", res.final_video_path);
+            // Axum Router
+            let state = Arc::new(AppState {
+                telemetry,
+                orchestrator,
+                style_manager,
+                jail,
+                is_busy: Arc::new(std::sync::Mutex::new(false)),
+                asset_manager,
+            });
+            let app = create_router(state);
+            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
+            
+            axum::serve(listener, app).await?;
+        }
+        Commands::Generate { category, topic, remix, step } => {
+            let workflow_req = WorkflowRequest { 
+                category: category.clone(), 
+                topic: topic.clone(),
+                remix_id: remix.clone(),
+                skip_to_step: step.clone(),
+                style_name: String::new(), 
+                custom_style: None,
+            };
+        
+            info!("🚀 Launching Production Pipeline...");
+            
+            tokio::select! {
+                res = orchestrator.execute(workflow_req, &jail) => {
+                    match res {
+                        Ok(res) => {
+                            println!("\n🎬 動画生成完了！");
+                            println!("   📝 タイトル: {}", res.concept.title);
+                            println!("   🎨 スタイル: {}", res.concept.style_profile);
+                            println!("   🎥 ファイル: {}", res.final_video_path);
+                        }
+                        Err(e) => {
+                            error!("❌ 生成パイプラインが失敗: {}", e);
+                        }
+                    }
                 }
-                Err(e) => {
-                    error!("❌ 生成パイプラインが失敗: {}", e);
+                _ = signal::ctrl_c() => {
+                    tracing::info!("🛑 SIGINT received. Shutting down gracefully...");
                 }
             }
-        }
-        _ = signal::ctrl_c() => {
-            tracing::info!("🛑 SIGINT received. Shutting down gracefully...");
         }
     }
 

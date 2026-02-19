@@ -2,6 +2,7 @@
 members = [
     "apps/api-server",
     "apps/shorts-factory",
+    "apps/command-center/src-tauri",
     "libs/core",
     "libs/infrastructure",
     "libs/shared",
