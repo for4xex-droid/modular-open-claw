@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use factory_core::contracts::ConceptResponse;
 use factory_core::error::FactoryError;
 use tuning::StyleProfile;
+use serde::{Serialize, Deserialize};
 
 /// 中間素材と最終成果物の管理、および永続化 (Remix Mode の基盤)
 pub struct AssetManager {
@@ -88,4 +89,86 @@ impl AssetManager {
             reason: format!("Failed to write metadata.json: {}", e),
         })
     }
+
+    /// ワークスペース内の全プロジェクトをスキャンして一覧を返す
+    pub fn list_projects(&self) -> Vec<ProjectSummary> {
+        let mut projects = Vec::new();
+        
+        if let Ok(entries) = std::fs::read_dir(&self.base_dir) {
+            for entry in entries.flatten() {
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_dir() {
+                        let project_id = entry.file_name().to_string_lossy().to_string();
+                        // 隠しディレクトリ等はスキップ
+                        if project_id.starts_with('.') { continue; }
+
+                        if let Some(summary) = self.read_project_summary(&project_id) {
+                            projects.push(summary);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 新しい順にソート
+        projects.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        projects
+    }
+
+    fn read_project_summary(&self, project_id: &str) -> Option<ProjectSummary> {
+        let root = self.base_dir.join(project_id);
+        
+        // Metadata (Timestamp, Style)
+        let meta_path = root.join("metadata.json");
+        let (timestamp, style) = if meta_path.exists() {
+            let content = std::fs::read_to_string(&meta_path).ok()?;
+            let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+            (
+                json["timestamp"].as_str().unwrap_or("").to_string(),
+                json["style_used"]["name"].as_str().map(|s| s.to_string())
+            )
+        } else {
+            // metadataがない場合はディレクトリの更新日時等を代用すべきだが、今回はスキップ
+            // または concept.json だけあれば表示する方針もアリ
+            return None;
+        };
+
+        // Concept (Title)
+        let concept_path = root.join("concept.json");
+        let title = if concept_path.exists() {
+            let content = std::fs::read_to_string(&concept_path).ok()?;
+            let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+            json["title"].as_str().unwrap_or(project_id).to_string()
+        } else {
+            project_id.to_string()
+        };
+
+        // Thumbnail (Priority: thumb.png > final_video.mp4 (handled by frontend) > default)
+        // ここではAPIとしてアクセス可能なパス ("/assets/...") を返す
+        let thumb_path = if root.join("thumb.png").exists() {
+            Some(format!("/assets/{}/thumb.png", project_id))
+        } else if root.join("final.mp4").exists() {
+            // フロントエンドで video タグの poster として使うか、動画そのものをサムネイル代わりにする
+             Some(format!("/assets/{}/final.mp4", project_id))
+        } else {
+            None
+        };
+
+        Some(ProjectSummary {
+            id: project_id.to_string(),
+            title,
+            style,
+            created_at: timestamp,
+            thumbnail_url: thumb_path,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectSummary {
+    pub id: String,
+    pub title: String,
+    pub style: Option<String>,
+    pub created_at: String,
+    pub thumbnail_url: Option<String>,
 }

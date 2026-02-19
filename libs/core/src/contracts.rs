@@ -104,6 +104,19 @@ pub struct MediaResponse {
 // --- Workflow クラスター (Phase 5) ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomStyle {
+    // --- 視覚演出 (Cameraman) ---
+    pub zoom_speed: Option<f64>,
+    pub pan_intensity: Option<f64>,
+    
+    // --- 音響演出 (SoundMixer) ---
+    pub bgm_volume: Option<f32>,
+    pub ducking_threshold: Option<f32>,
+    pub ducking_ratio: Option<f32>,
+    pub fade_duration: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRequest {
     pub category: String,
     pub topic: String,
@@ -111,6 +124,13 @@ pub struct WorkflowRequest {
     pub remix_id: Option<String>,
     /// スキップ先のステップ (None の場合はフル実行)
     pub skip_to_step: Option<String>,
+    
+    // --- Phase 8.5 Remix Lab Extensions ---
+    /// 適用するスタイル名 (styles.toml のキー)
+    #[serde(default)]
+    pub style_name: String,
+    /// ユーザーによるカスタム調整 (None の場合はプリセット通り)
+    pub custom_style: Option<CustomStyle>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

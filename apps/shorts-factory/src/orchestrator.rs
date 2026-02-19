@@ -1,7 +1,8 @@
 use factory_core::contracts::{
     ConceptRequest, TrendRequest, TrendResponse,
     VideoRequest, MediaRequest, MediaResponse,
-    VoiceRequest, WorkflowRequest, WorkflowResponse
+    VoiceRequest, WorkflowRequest, WorkflowResponse,
+    CustomStyle
 };
 use factory_core::traits::{AgentAct, MediaEditor};
 use factory_core::error::FactoryError;
@@ -110,8 +111,28 @@ impl AgentAct for ProductionOrchestrator {
         };
 
         // 採択されたスタイルの取得
-        let style = self.style_manager.get_style(&concept_res.style_profile);
-        info!("🎨 Applied Style: {} ({})", style.name, style.description);
+        // Phase 8.5: Remix Override logic
+        let base_style_name = if !input.style_name.is_empty() {
+            &input.style_name
+        } else {
+            &concept_res.style_profile
+        };
+        
+        let mut style = self.style_manager.get_style(base_style_name);
+        
+        // Custom Overrides application
+        if let Some(custom) = &input.custom_style {
+            info!("🛠️  Applying Custom Style Overrides...");
+            if let Some(v) = custom.zoom_speed { style.zoom_speed = v; }
+            if let Some(v) = custom.pan_intensity { style.pan_intensity = v; }
+            if let Some(v) = custom.bgm_volume { style.bgm_volume = v; }
+            if let Some(v) = custom.ducking_threshold { style.ducking_threshold = v; }
+            if let Some(v) = custom.ducking_ratio { style.ducking_ratio = v; }
+            if let Some(v) = custom.fade_duration { style.fade_duration = v; }
+        }
+        
+        info!("🎨 Applied Style: {} ({}) [Zoom: {:.4}, Vol: {:.2}]", 
+            style.name, style.description, style.zoom_speed, style.bgm_volume);
 
         // --- 3幕構成 (Intro, Body, Outro) の各コンポーネント生成 ---
         let mut video_clips = Vec::new();
