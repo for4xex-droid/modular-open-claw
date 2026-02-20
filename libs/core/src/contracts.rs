@@ -140,28 +140,62 @@ pub struct WorkflowResponse {
     pub concept: ConceptResponse,
 }
 
-// --- Phase 10-F: The JSON Contract (KarmaDirectives) ---
+// --- Phase 10-F: The Absolute Contract v2 (最終確定・Rust構造体) ---
 
-/// LLM Structured Output の厳密な型定義。
-/// Samsara の合成フェーズで LLM が出力し、`jobs.karma_directives` にJSON文字列として格納される。
-/// `CHECK(json_valid(karma_directives))` と連携し、不正なJSONをDBレイヤーで物理的に弾く。
+/// LLMに要求する、本日のタスク生成の「全体レスポンス」。
+/// `topic` と `style` は DB の独立カラムへ、`directives` は JSON カラムへ分離格納される。
+/// (The Split Payload — データの二重化防止)
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct KarmaDirectives {
-    /// 今回生成する動画のトピック (例: "最新のAIニュースまとめ")
+pub struct LlmJobResponse {
+    /// 動画の具体的なテーマ (DB `jobs.topic` カラムへ直接マッピング)
     pub topic: String,
 
-    /// skills.md 内の最適なワークフロー/スタイル名 (例: "tech_news_v1")
+    /// 使用するワークフロー (DB `jobs.style_name` カラムへ直接マッピング)
+    /// ※Rust側で INSERT 前にファイルの実在チェック (Skill Existence Validation) を行うこと！
     pub style: String,
 
-    /// ポジティブプロンプトへの追加指示 (Karmaから導出)
-    pub positive_prompt_additions: Option<String>,
+    /// DB `jobs.karma_directives` カラム (JSON) に格納される純粋な指示群
+    pub directives: KarmaDirectives,
+}
 
-    /// ネガティブプロンプトへの追加指示 (例: "ネオンカラーは使わないこと")
-    pub negative_prompt_additions: Option<String>,
+/// The strict JSON contract for the LLM output.
+/// DB の `karma_directives` カラムに JSON 文字列として格納される「純粋な指示書」。
+/// `CHECK(json_valid(karma_directives))` と連携し、不正な JSON を DB レイヤーで物理的に弾く。
+///
+/// # Design Decisions (The Payload Audit)
+/// - `topic`/`style` は含まない（Split Payload: DB カラムと JSON の二重化防止）
+/// - `parameter_overrides` は二重 HashMap（Node-Targeted Overrides: ComfyUI ノード狙い撃ち）
+/// - `confidence_score` は `u8` だが、DB 挿入前に `.clamped()` で 0-100 に強制（Bounded Clamp）
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct KarmaDirectives {
+    /// プロンプトへの追加指示 (Karmaから導出)
+    #[serde(default)]
+    pub positive_prompt_additions: String,
 
-    /// 全般的な実行ノート・注意事項 (Karmaから導出)
-    pub execution_notes: Option<String>,
+    /// NGワードや避けるべき表現
+    #[serde(default)]
+    pub negative_prompt_additions: String,
 
-    /// LLM 自身のこの生成に対する自信度 (0-100)。weight 計算の基準値。
+    /// ComfyUI ノードを正確に狙い撃ちするための二重階層マップ (Node-Targeted Overrides)
+    /// 構造: { "NodeTitle": { "parameter_name": value } }
+    /// 例: { "[API_SAMPLER]": { "cfg": 8.0, "denoise": 0.65 } }
+    #[serde(default)]
+    pub parameter_overrides: std::collections::HashMap<String, std::collections::HashMap<String, serde_json::Value>>,
+
+    /// 過去のKarmaから導き出された、全体的な注意事項
+    #[serde(default)]
+    pub execution_notes: String,
+
+    /// LLM 自身のこの生成に対する自信度 (0-100)。
+    /// DB挿入前に必ず `.clamped()` を呼び出すこと。
     pub confidence_score: u8,
 }
+
+impl KarmaDirectives {
+    /// The Bounded Clamp: u8 (max 255) と SQLite CHECK(weight BETWEEN 0 AND 100) の衝突を防ぐ安全弁。
+    /// LLMの出力を信用せず、物理的に 0-100 の範囲に強制する。
+    pub fn clamped_confidence(&self) -> u8 {
+        self.confidence_score.clamp(0, 100)
+    }
+}
+

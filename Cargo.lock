@@ -1591,6 +1591,7 @@ dependencies = [
  "async-trait",
  "bastion",
  "serde",
+ "serde_json",
  "shared",
  "thiserror 1.0.69",
 ]
