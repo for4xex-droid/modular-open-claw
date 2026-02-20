@@ -34,5 +34,9 @@ pub enum ControlCommand {
         style: Option<String>,
     },
     StopGracefully,
+    /// Hybrid Nuke Protocol: 即時強制終了要求
+    EmergencyShutdown,
     ApprovalResponse { transition_id: Uuid, approved: bool },
+    /// Samsara Phase 4: 人間からのクリエイティブ評価
+    SetCreativeRating { job_id: String, rating: i32 },
 }

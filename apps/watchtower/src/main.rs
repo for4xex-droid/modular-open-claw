@@ -41,21 +41,54 @@ async fn status(ctx: PoiseContext<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// EMERGENCY KILL SWITCH (The Nuke Button)
+/// Emergency kill switch (Hybrid Nuke Protocol)
 #[poise::command(slash_command, owners_only)]
-async fn nuke(ctx: PoiseContext<'_>) -> Result<(), Error> {
-    ctx.say("⚠️ INITIATING EMERGENCY SHUTDOWN Protocol...").await?;
-    let pid_str = std::fs::read_to_string("/tmp/aiome.id")
-        .map_err(|e| Box::new(e) as Error)?; 
-    let pid: i32 = pid_str.trim().parse()?;
-    match signal::kill(Pid::from_raw(-pid), Signal::SIGKILL) {
-        Ok(_) => {
-            ctx.say(format!("✅ Target Destroyed (PGID: -{}). System halted.", pid)).await?;
-            info!("💀 Executed NUKE command on PGID -{}", pid);
+async fn nuke(
+    ctx: PoiseContext<'_>,
+    #[description = "Skip graceful shutdown and force kill immediately"] force: Option<bool>,
+) -> Result<(), Error> {
+    let force = force.unwrap_or(false);
+
+    if !force {
+        // Stage 1: Try graceful shutdown via UDS
+        ctx.say("⚠️ **Stage 1**: Sending graceful shutdown via UDS...").await?;
+        let cmd = ControlCommand::StopGracefully;
+        if let Err(_) = ctx.data().cmd_tx.send(cmd).await {
+            ctx.say("❌ UDS channel closed. Escalating to Stage 2 (SIGKILL)...").await?;
+        } else {
+            // Wait 5 seconds for graceful shutdown
+            ctx.say("⏳ Waiting 5 seconds for Core to shut down gracefully...").await?;
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            
+            // Check if Core is still alive
+            let still_alive = std::fs::read_to_string("/tmp/aiome.id").is_ok();
+            if !still_alive {
+                ctx.say("✅ **Core shut down gracefully.** No SIGKILL needed.").await?;
+                return Ok(());
+            }
+            ctx.say("⚠️ Core still alive after 5s. Escalating to **Stage 2** (SIGKILL)...").await?;
+        }
+    } else {
+        ctx.say("⚠️ **FORCE MODE**: Skipping graceful shutdown. Going straight to SIGKILL...").await?;
+    }
+
+    // Stage 2: SIGKILL via PID file (物理的処刑権限は永久保持)
+    match std::fs::read_to_string("/tmp/aiome.id") {
+        Ok(pid_str) => {
+            let pid: i32 = pid_str.trim().parse()?;
+            match signal::kill(Pid::from_raw(-pid), Signal::SIGKILL) {
+                Ok(_) => {
+                    ctx.say(format!("💀 **Target Destroyed** (PGID: -{}). System halted.", pid)).await?;
+                    info!("💀 Executed NUKE Stage 2 (SIGKILL) on PGID -{}", pid);
+                }
+                Err(e) => {
+                    ctx.say(format!("❌ SIGKILL FAILED: {}", e)).await?;
+                    error!("Failed to kill PGID -{}: {}", pid, e);
+                }
+            }
         }
         Err(e) => {
-            ctx.say(format!("❌ NUKE FAILED: {}", e)).await?;
-            error!("Failed to kill PGID -{}: {}", pid, e);
+            ctx.say(format!("❌ Cannot read PID file `/tmp/aiome.id`: {}. Core may already be dead.", e)).await?;
         }
     }
     Ok(())
@@ -97,12 +130,24 @@ async fn main() -> anyhow::Result<()> {
     let (event_tx, mut event_rx) = mpsc::channel::<CoreEvent>(100);
     let (cmd_tx, mut cmd_rx) = mpsc::channel::<ControlCommand>(100);
 
-    // UDS Loop
+    // === W-1 & W-4: UDS Loop with Reconnection Visibility and Heartbeat Timeout ===
     let status_clone = latest_status.clone();
+    let last_heartbeat_time = Arc::new(std::sync::atomic::AtomicI64::new(0));
+    let hb_time_writer = last_heartbeat_time.clone();
+
+    // Channel to send Discord messages from the UDS task
+    let (discord_tx, mut discord_rx) = mpsc::channel::<String>(50);
+    let discord_tx_uds = discord_tx.clone();
+
     tokio::spawn(async move {
+        let mut was_connected = false;
         loop {
             match UnixStream::connect("/tmp/aiome.sock").await {
                 Ok(stream) => {
+                    if was_connected {
+                        let _ = discord_tx_uds.send("🟢 **Core Reconnected.** UDS link restored.".to_string()).await;
+                    }
+                    was_connected = true;
                     info!("🔗 Connected to Core.");
                     let mut framed = Framed::new(stream, LengthDelimitedCodec::new());
                     loop {
@@ -113,7 +158,12 @@ async fn main() -> anyhow::Result<()> {
                                     Some(Ok(bytes)) => {
                                         if let Ok(event) = serde_json::from_slice::<CoreEvent>(&bytes) {
                                             match event {
-                                                CoreEvent::Heartbeat(s) => { *status_clone.lock().await = Some(s); }
+                                                CoreEvent::Heartbeat(s) => {
+                                                    *status_clone.lock().await = Some(s);
+                                                    // Update heartbeat timestamp (epoch seconds)
+                                                    let now = chrono::Utc::now().timestamp();
+                                                    hb_time_writer.store(now, std::sync::atomic::Ordering::Relaxed);
+                                                }
                                                 _ => { let _ = event_tx.send(event).await; }
                                             }
                                         }
@@ -131,8 +181,47 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
+                    // Connection lost
+                    let _ = discord_tx_uds.send("⚠️ **Core Disconnected.** UDS link lost. Retrying in 5s...".to_string()).await;
+                    *status_clone.lock().await = None;
                 }
-                Err(_) => tokio::time::sleep(tokio::time::Duration::from_secs(5)).await,
+                Err(_) => {
+                    if was_connected {
+                        let _ = discord_tx_uds.send("⚠️ **Core Disconnected.** Cannot reach UDS. Retrying in 5s...".to_string()).await;
+                        *status_clone.lock().await = None;
+                        was_connected = false;
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                }
+            }
+        }
+    });
+
+    // === W-4: Heartbeat Sentinel — 30-second timeout watchdog ===
+    let hb_time_reader = last_heartbeat_time.clone();
+    let discord_tx_sentinel = discord_tx.clone();
+    let latest_status_sentinel = latest_status.clone();
+    tokio::spawn(async move {
+        let mut alerted = false;
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
+        loop {
+            interval.tick().await;
+            let last_hb = hb_time_reader.load(std::sync::atomic::Ordering::Relaxed);
+            if last_hb == 0 { continue; } // No heartbeat received yet
+            let now = chrono::Utc::now().timestamp();
+            let elapsed = now - last_hb;
+            if elapsed > 30 && !alerted {
+                let _ = discord_tx_sentinel.send(
+                    "⚠️ **Heartbeat Lost** — Core may be unresponsive. No heartbeat for 30+ seconds.".to_string()
+                ).await;
+                *latest_status_sentinel.lock().await = None;
+                alerted = true;
+            } else if elapsed <= 30 && alerted {
+                // Heartbeat recovered
+                let _ = discord_tx_sentinel.send(
+                    "💚 **Heartbeat Recovered** — Core is responsive again.".to_string()
+                ).await;
+                alerted = false;
             }
         }
     });
@@ -172,7 +261,7 @@ async fn main() -> anyhow::Result<()> {
                     log_channel_id: ChannelId::new(log_channel_id) 
                 };
                 
-                // Event Forwarder with Throttling
+                // Event Forwarder with Throttling + System Alert Channel
                 let http = ctx.http.clone();
                 let log_chan = data.log_channel_id;
                 tokio::spawn(async move {
@@ -197,6 +286,10 @@ async fn main() -> anyhow::Result<()> {
                                     }
                                     _ => {}
                                 }
+                            }
+                            // W-1 & W-4: System alerts from UDS loop and Heartbeat Sentinel
+                            Some(alert_msg) = discord_rx.recv() => {
+                                let _ = log_chan.say(&http, &alert_msg).await;
                             }
                             _ = interval.tick() => {
                                 flush_logs(&mut buffer, log_chan, &http).await;
