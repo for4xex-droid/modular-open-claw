@@ -7,3 +7,11 @@
 *~
 .idea/
 .vscode/
+
+# Local data & temporary results
+/workspace/
+/resources/bgm/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
