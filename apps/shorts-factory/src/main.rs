@@ -1,7 +1,7 @@
 use shared::config::FactoryConfig;
 use shared::security::SecurityPolicy;
 use infrastructure::comfy_bridge::ComfyBridgeClient;
-use infrastructure::trend_sonar::TrendSonarClient;
+use infrastructure::trend_sonar::BraveTrendSonar;
 use infrastructure::media_forge::MediaForgeClient;
 use bastion::fs_guard::Jail;
 use std::sync::Arc;
@@ -192,6 +192,7 @@ async fn main() -> Result<(), anyhow::Error> {
         job_queue.clone(),
         config.ollama_url.clone(),
         config.model_name.clone(),
+        config.brave_api_key.clone(),
     ).await.map_err(|e| factory_core::error::FactoryError::Infrastructure { reason: format!("Cron failed to start: {}", e) })?;
 
     // Sidecar Manager ("The Reaper")
@@ -210,7 +211,7 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 
     // Infrastructure Clients
-    let trend_sonar = TrendSonarClient::new(shield.clone());
+    let trend_sonar = BraveTrendSonar::new(config.brave_api_key.clone());
     let concept_manager = ConceptManager::new(&config.ollama_url, &config.model_name);
     let comfy_bridge = ComfyBridgeClient::new(
         shield.clone(),

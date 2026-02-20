@@ -15,6 +15,8 @@ pub struct FactoryConfig {
     pub model_name: String,
     /// ComfyUI のベースディレクトリ (Zero-Copy)
     pub comfyui_base_dir: String,
+    /// Brave Search API Key for The Automaton's Brain (Phase 10-B)
+    pub brave_api_key: String,
 }
 
 impl FactoryConfig {
@@ -28,6 +30,7 @@ impl FactoryConfig {
             .set_default("comfyui_timeout_secs", 180)?
             .set_default("model_name", "qwen2.5-coder:32b")?
             .set_default("comfyui_base_dir", std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()))?
+            .set_default("brave_api_key", std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()))?
             // config.toml があれば読み込む
             .add_source(config::File::with_name("config").required(false))
             // 環境変数 (SHORTS_FACTORY_*) があれば上書き
@@ -48,6 +51,7 @@ impl Default for FactoryConfig {
                 comfyui_timeout_secs: 180,
                 model_name: "qwen2.5-coder:32b".to_string(),
                 comfyui_base_dir: std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()),
+                brave_api_key: std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()),
             }
         })
     }
