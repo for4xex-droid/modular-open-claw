@@ -11,7 +11,7 @@ use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
 use anyhow::Context as _; // Import trait for .context() method
 
-use serenity::all::{ChannelId, CreateMessage, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage};
+use serenity::all::{ChannelId, CreateMessage, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, CreateEmbed, ReactionType};
 
 struct Data {
     cmd_tx: mpsc::Sender<ControlCommand>,
@@ -231,6 +231,7 @@ async fn main() -> anyhow::Result<()> {
             commands: vec![status(), nuke(), generate()],
             event_handler: |ctx, event, _framework, data| {
                 Box::pin(async move {
+                    // Handle approval buttons
                     if let serenity::FullEvent::InteractionCreate { interaction } = event {
                         if let Some(it) = interaction.as_message_component() {
                             if it.data.custom_id.starts_with("approve_") || it.data.custom_id.starts_with("reject_") {
@@ -248,6 +249,33 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
+
+                    // W-3: Handle 🔥/🗑️ reactions for Samsara evaluation
+                    if let serenity::FullEvent::ReactionAdd { add_reaction } = event {
+                        // Ignore bot's own reactions
+                        if add_reaction.user_id.map(|u| u != ctx.cache.current_user().id).unwrap_or(false) {
+                            let emoji = add_reaction.emoji.to_string();
+                            let rating = match emoji.as_str() {
+                                "🔥" => Some(1i32),
+                                "🗑️" => Some(-1i32),
+                                _ => None,
+                            };
+                            if let Some(r) = rating {
+                                // Read the embed from the message to extract the job_id
+                                if let Ok(msg) = add_reaction.channel_id.message(&ctx.http, add_reaction.message_id).await {
+                                    if let Some(embed) = msg.embeds.first() {
+                                        // Extract job_id from the "Job ID" field
+                                        if let Some(field) = embed.fields.iter().find(|f| f.name == "Job ID") {
+                                            let job_id = field.value.clone();
+                                            let _ = data.cmd_tx.send(ControlCommand::SetCreativeRating { job_id: job_id.clone(), rating: r }).await;
+                                            let _ = add_reaction.channel_id.say(&ctx.http, format!("🧘 **Karma Received**: Job {} rated {} by human.", job_id, if r > 0 { "🔥 (+1)" } else { "🗑️ (-1)" })).await;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Ok(())
                 })
             },
@@ -255,6 +283,7 @@ async fn main() -> anyhow::Result<()> {
         })
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
+                let cmd_tx_clone = cmd_tx.clone();
                 let data = Data { 
                     cmd_tx, 
                     latest_status, 
@@ -284,6 +313,43 @@ async fn main() -> anyhow::Result<()> {
                                             .button(CreateButton::new(format!("reject_{}", transition_id)).label("❌ Reject").style(serenity::ButtonStyle::Danger));
                                         let _ = log_chan.send_message(&http, msg).await;
                                     }
+                                    CoreEvent::TaskCompleted { job_id, result, topic, style, .. } => {
+                                        // W-3: Rich embed notification for completed jobs
+                                        let is_success = result.to_lowercase().contains("success") || result.to_lowercase().contains("completed");
+                                        let embed = CreateEmbed::new()
+                                            .title(if is_success { "✅ Job Completed" } else { "❌ Job Failed" })
+                                            .field("Topic", &topic, true)
+                                            .field("Style", &style, true)
+                                            .field("Job ID", &job_id, false)
+                                            .field("Result", &result, false)
+                                            .color(if is_success { 0x00FF41 } else { 0xFF003C })
+                                            .footer(serenity::all::CreateEmbedFooter::new("React 🔥 = Best (+1) | 🗑️ = Trash (-1) | No reaction = Neutral (0) after 30min"));
+                                        let msg = CreateMessage::new().embed(embed);
+                                        if let Ok(sent) = log_chan.send_message(&http, msg).await {
+                                            // Add reaction buttons
+                                            let _ = sent.react(&http, ReactionType::Unicode("🔥".to_string())).await;
+                                            let _ = sent.react(&http, ReactionType::Unicode("🗑️".to_string())).await;
+
+                                            // Lazy Distillation: 30-minute timer for default positive
+                                            let cmd_tx_lazy = cmd_tx_clone.clone();
+                                            let job_id_lazy = job_id.clone();
+                                            let msg_id = sent.id;
+                                            let http_lazy = http.clone();
+                                            let chan_lazy = log_chan;
+                                            tokio::spawn(async move {
+                                                tokio::time::sleep(tokio::time::Duration::from_secs(30 * 60)).await;
+                                                // Check if human has reacted (fetch message, look for non-bot reactions)
+                                                if let Ok(msg) = chan_lazy.message(&http_lazy, msg_id).await {
+                                                    let has_human_reaction = msg.reactions.iter().any(|r| r.count > 1); // >1 means someone besides bot reacted
+                                                    if !has_human_reaction {
+                                                        // Default Positive: no reaction = neutral (0)
+                                                        let _ = cmd_tx_lazy.send(ControlCommand::SetCreativeRating { job_id: job_id_lazy, rating: 0 }).await;
+                                                        let _ = chan_lazy.say(&http_lazy, format!("🧘 **Lazy Distillation**: Job {} auto-rated 0 (neutral). No human feedback received.", msg_id)).await;
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
                                     _ => {}
                                 }
                             }
@@ -304,7 +370,9 @@ async fn main() -> anyhow::Result<()> {
         })
         .build();
 
-    let client = serenity::ClientBuilder::new(token, serenity::GatewayIntents::non_privileged())
+    let intents = serenity::GatewayIntents::non_privileged()
+        | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS;
+    let client = serenity::ClientBuilder::new(token, intents)
         .framework(framework)
         .await;
 
