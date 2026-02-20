@@ -85,9 +85,29 @@ pub async fn start_cron_scheduler(
             })
         })?
     ).await?;
+
+    // === Job 4: DB Scavenger — Runs daily at 01:00 (Thermal Death Prevention) ===
+    let jq_scavenger = job_queue.clone();
+    sched.add(
+        Job::new_async("0 0 1 * * *", move |_uuid, mut _l| {
+            let jq = jq_scavenger.clone();
+            Box::pin(async move {
+                match jq.purge_old_jobs(30).await {
+                    Ok(count) => {
+                        if count > 0 {
+                            info!("🧹 [DB Scavenger] Purged {} old job(s). DB optimized.", count);
+                        } else {
+                            info!("🧹 [DB Scavenger] No old jobs to purge. DB is clean.");
+                        }
+                    }
+                    Err(e) => error!("❌ [DB Scavenger] Failed to purge: {}", e),
+                }
+            })
+        })?
+    ).await?;
     
     sched.start().await?;
-    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m)");
+    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m, Scavenger: daily@01:00)");
 
     Ok(sched)
 }

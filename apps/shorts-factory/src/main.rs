@@ -87,9 +87,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let args = Args::parse();
 
-    // 0.2. Start Watchtower UDS Server
-    let wt_server = server::watchtower::WatchtowerServer::new(log_rx, job_tx);
-    tokio::spawn(wt_server.start());
+    // 0.2. Watchtower UDS Server — deferred to after job_queue init (line ~190)
+    //       log_rx and job_tx are passed later.
 
     // Status tracking for Heartbeat
     let current_job = Arc::new(Mutex::new(Option::<String>::None));
@@ -186,6 +185,10 @@ async fn main() -> Result<(), anyhow::Error> {
     }
     let db_filepath = format!("sqlite://{}", db_dir.join("shorts_factory.db").display());
     let job_queue = Arc::new(infrastructure::job_queue::SqliteJobQueue::new(&db_filepath).await?);
+
+    // 0.2. Start Watchtower UDS Server (deferred — needs job_queue Arc)
+    let wt_server = server::watchtower::WatchtowerServer::new(log_rx, job_tx, job_queue.clone());
+    tokio::spawn(wt_server.start());
 
     let _cron_scheduler = server::cron::start_cron_scheduler(
         job_queue.clone(),

@@ -1,4 +1,7 @@
 use bytes::Bytes;
+use std::sync::Arc;
+use infrastructure::job_queue::SqliteJobQueue;
+use factory_core::traits::JobQueue;
 use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
 use tokio::net::{UnixListener, UnixStream};
@@ -79,11 +82,16 @@ use factory_core::contracts::WorkflowRequest;
 pub struct WatchtowerServer {
     log_rx: mpsc::Receiver<CoreEvent>,
     job_tx: mpsc::Sender<WorkflowRequest>,
+    job_queue: Arc<SqliteJobQueue>,
 }
 
 impl WatchtowerServer {
-    pub fn new(log_rx: mpsc::Receiver<CoreEvent>, job_tx: mpsc::Sender<WorkflowRequest>) -> Self {
-        Self { log_rx, job_tx }
+    pub fn new(
+        log_rx: mpsc::Receiver<CoreEvent>,
+        job_tx: mpsc::Sender<WorkflowRequest>,
+        job_queue: Arc<SqliteJobQueue>,
+    ) -> Self {
+        Self { log_rx, job_tx, job_queue }
     }
 
     pub async fn start(mut self) -> Result<(), anyhow::Error> {
@@ -170,6 +178,24 @@ impl WatchtowerServer {
                  if let Err(e) = self.job_tx.send(req).await {
                      error!("❌ Failed to send WorkflowRequest to Core dispatcher: {}", e);
                  }
+             }
+             ControlCommand::SetCreativeRating { job_id, rating } => {
+                 info!("🧘 Samsara Rating Received: job={} rating={}", job_id, rating);
+                 match self.job_queue.set_creative_rating(&job_id, rating).await {
+                     Ok(_) => info!("✅ Creative rating saved: job={} rating={}", job_id, rating),
+                     Err(e) => error!("❌ Failed to save creative rating: {}", e),
+                 }
+             }
+             ControlCommand::StopGracefully => {
+                 info!("🛑 Graceful shutdown requested via Watchtower");
+                 std::process::exit(0);
+             }
+             ControlCommand::EmergencyShutdown => {
+                 error!("💀 Emergency shutdown requested via Watchtower");
+                 std::process::exit(1);
+             }
+             ControlCommand::GetStatus => {
+                 info!("📊 Status request received (handled via Heartbeat)");
              }
              _ => {
                  warn!("⚠️ Unhandled command: {:?}", cmd);
