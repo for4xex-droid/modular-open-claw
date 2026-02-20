@@ -23,6 +23,7 @@ pub struct AppState {
     pub jail: Arc<Jail>,
     pub is_busy: Arc<Mutex<bool>>, // Resource Locking
     pub asset_manager: Arc<AssetManager>,
+    pub current_job: Arc<tokio::sync::Mutex<Option<String>>>,
 }
 
 
@@ -108,7 +109,14 @@ async fn remix_handler(
     let job_id_clone = job_id.clone();
     
     // 2. Asynchronous Job Creation
+    let state_clone = state.clone();
     tokio::spawn(async move {
+        // Set current job info
+        {
+            let mut job_info = state_clone.current_job.lock().await;
+            *job_info = Some(format!("Remix: {}", job_id_clone));
+        }
+
         // Execute the heavy task
         match orchestrator.execute(payload.clone(), &jail).await {
             Ok(res) => {
@@ -123,7 +131,12 @@ async fn remix_handler(
             }
         }
 
-        // Release Lock
+        // Release Lock & Clear job info
+        {
+            let mut job_info = state_clone.current_job.lock().await;
+            *job_info = None;
+        }
+
         if let Ok(mut busy) = busy_lock.lock() {
             *busy = false;
             telemetry.broadcast_log("INFO", "System Ready");

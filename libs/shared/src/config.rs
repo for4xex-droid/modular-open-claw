@@ -5,16 +5,16 @@ use serde::{Deserialize, Serialize};
 pub struct FactoryConfig {
     /// Ollama API エンドポイント
     pub ollama_url: String,
-    /// ComfyUI API エンドポイント
-    pub comfyui_url: String,
+    /// ComfyUI REST/WebSocket API エンドポイント
+    pub comfyui_api_url: String,
     /// バッチサイズ（一括企画する動画の本数）
     pub batch_size: usize,
     /// ComfyUI タイムアウト（秒）
     pub comfyui_timeout_secs: u64,
     /// 本番用モデル名
     pub model_name: String,
-    /// ComfyUI の出力ディレクトリ (Jail 内の相対パス推奨)
-    pub comfyui_output_dir: String,
+    /// ComfyUI のベースディレクトリ (Zero-Copy)
+    pub comfyui_base_dir: String,
 }
 
 impl FactoryConfig {
@@ -23,11 +23,11 @@ impl FactoryConfig {
         let settings = config::Config::builder()
             // デフォルト値の設定
             .set_default("ollama_url", "http://localhost:11434/v1")?
-            .set_default("comfyui_url", "http://127.0.0.1:8188")?
+            .set_default("comfyui_api_url", std::env::var("COMFYUI_API_URL").unwrap_or_else(|_| "ws://127.0.0.1:8188/ws".to_string()))?
             .set_default("batch_size", 10)?
             .set_default("comfyui_timeout_secs", 180)?
             .set_default("model_name", "qwen2.5-coder:32b")?
-            .set_default("comfyui_output_dir", "comfy_out")?
+            .set_default("comfyui_base_dir", std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()))?
             // config.toml があれば読み込む
             .add_source(config::File::with_name("config").required(false))
             // 環境変数 (SHORTS_FACTORY_*) があれば上書き
@@ -43,11 +43,11 @@ impl Default for FactoryConfig {
         Self::load().unwrap_or_else(|_| {
             Self {
                 ollama_url: "http://localhost:11434/v1".to_string(),
-                comfyui_url: "http://127.0.0.1:8188".to_string(),
+                comfyui_api_url: std::env::var("COMFYUI_API_URL").unwrap_or_else(|_| "ws://127.0.0.1:8188/ws".to_string()),
                 batch_size: 10,
                 comfyui_timeout_secs: 180,
                 model_name: "qwen2.5-coder:32b".to_string(),
-                comfyui_output_dir: "comfy_out".to_string(),
+                comfyui_base_dir: std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()),
             }
         })
     }
@@ -73,11 +73,11 @@ mod tests {
             .tempfile()
             .unwrap();
         writeln!(file, "ollama_url = \"http://custom:11434/v1\"").unwrap();
-        writeln!(file, "comfyui_url = \"http://custom:8188\"").unwrap();
+        writeln!(file, "comfyui_api_url = \"ws://custom:8188/ws\"").unwrap();
         writeln!(file, "batch_size = 5").unwrap();
         writeln!(file, "comfyui_timeout_secs = 60").unwrap();
         writeln!(file, "model_name = \"custom-model\"").unwrap();
-        writeln!(file, "comfyui_output_dir = \"custom_out\"").unwrap();
+        writeln!(file, "comfyui_base_dir = \"custom_dir\"").unwrap();
         
         // config::File::from(path) を使って明示的なファイルを読み込む
         // 拡張子があるためフォーマットは自動判別される

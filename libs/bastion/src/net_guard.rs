@@ -35,6 +35,13 @@ impl ShieldClient {
         Ok(self.client.get(url).send().await?)
     }
 
+    /// 安全に POST リクエストを送信する (JSON ペイロード)
+    #[cfg(feature = "net")]
+    pub async fn post<T: serde::Serialize>(&self, url: &str, json_body: &T) -> Result<reqwest::Response> {
+        self.validate_url(url).await?;
+        Ok(self.client.post(url).json(json_body).send().await?)
+    }
+
     /// URL を検証する（Allowlist, DNS解決, IPチェック）
     pub async fn validate_url(&self, url_str: &str) -> Result<()> {
         let url = url::Url::parse(url_str)?;

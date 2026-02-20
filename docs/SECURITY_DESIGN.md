@@ -146,5 +146,19 @@ ShortsFactory はその逆で、**LLM は「考えるだけ」、実行はすべ
 
 ---
 
-*最終更新: 2026-02-17*
+## 7. The Watchtower Security (Phase 9) — 外部監視層の要塞化
+
+外部インターフェース（Discord Bot）との通信を安全に保つための設計判断。
+
+| 項目 | 実装方針 | 目的 |
+|---|---|---|
+| **PGID Authority** | `setpgid(0,0)` | 子プロセスを含めた完全な強制終了 (`kill -PGID`) の保証 |
+| **Orphan Socket Fix** | 起動時の `rm /tmp/aiome.sock` | 前回のゴミによる起動失敗と権限問題の回避 |
+| **Permission 600** | `chmod 600` (macOS/Unix) | UDS へのアクセスを同一ユーザーに限定し、サイドチャネル攻撃を防止 |
+| **LDC Framing** | `LengthDelimitedCodec` | ストリーム通信におけるメッセージ境界の厳格化 |
+| **Backpressure Trap** | `try_send` によるログドロップ | 監視側が詰まっても動画生成（Core）を止めない設計 |
+
+---
+
+*最終更新: 2026-02-20*
 *文書管理: Modular OpenClaw Security Team*

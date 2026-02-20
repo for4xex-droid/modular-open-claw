@@ -13,6 +13,8 @@ tokio = { workspace = true }
 reqwest = { workspace = true }
 sysinfo.workspace = true
 tracing = { workspace = true }
+nix = { workspace = true }
+tokio-util = { workspace = true }
 bastion = { path = "../bastion", features = ["fs", "net"] }
 anyhow = { workspace = true }
 config = { workspace = true }

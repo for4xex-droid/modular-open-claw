@@ -35,18 +35,36 @@ libs/shared          ← 共通型 (Config, Security, Guardrails)
 
 詳細: [docs/SECURITY_DESIGN.md](docs/SECURITY_DESIGN.md)
 
-## クイックスタート
+## 実行コンポーネント
+
+### 1. 工場本体 (Core / Command Center)
+```bash
+# サーバーモードで起動 (GUI / Discord連携に必須)
+cargo run -p shorts-factory -- serve
+```
+- Web UI: `http://localhost:3000` (コマンドセンター)
+- API Port: `5000`
+
+### 2. 監視所 (Watchtower - Discord Bot)
+```bash
+# 別ターミナルで起動 (.env にトークンが必要)
+cargo run -p watchtower
+```
+- コマンド: `/status`, `/nuke`, `/generate`
+
+### 🛠 サービス永続化 (macOS launchd)
+
+`scripts/` にある `.plist` ファイルを使用することで、OS 起動時に自動でバックグラウンド実行させることができます。
 
 ```bash
-# 前提条件: Ollama + ComfyUI がローカルで動作していること
+cp scripts/*.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.aiome.core.plist
+launchctl load ~/Library/LaunchAgents/com.aiome.watchtower.plist
+```
 
-# ビルド
-cargo build -p shorts-factory
+## テスト
 
-# 実行
-cargo run -p shorts-factory
-
-# テスト
+```bash
 cargo test --workspace
 ```
 

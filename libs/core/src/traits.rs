@@ -37,6 +37,7 @@ pub trait VideoGenerator: Send + Sync {
         &self,
         prompt: &str,
         workflow_id: &str,
+        input_image: Option<&std::path::Path>,
     ) -> Result<PathBuf, FactoryError>;
 
     /// ComfyUI の接続状態を確認
@@ -61,6 +62,64 @@ pub trait MediaEditor: Send + Sync {
 
     /// 複数のメディアクリップを 1つのファイルに結合
     async fn concatenate_clips(&self, clips: Vec<String>, output_name: String) -> Result<String, FactoryError>;
+}
+
+// --- Phase 10: The Automaton ---
+
+/// ジョブステータス
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum JobStatus {
+    Pending,
+    Processing,
+    Completed,
+    Failed,
+}
+
+impl ToString for JobStatus {
+    fn to_string(&self) -> String {
+        match self {
+            JobStatus::Pending => "Pending".to_string(),
+            JobStatus::Processing => "Processing".to_string(),
+            JobStatus::Completed => "Completed".to_string(),
+            JobStatus::Failed => "Failed".to_string(),
+        }
+    }
+}
+
+/// 永続化ジョブ
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Job {
+    pub id: String,
+    pub topic: String,
+    pub style: String,
+    pub karma_directives: Option<String>,
+    pub status: JobStatus,
+    pub error_message: Option<String>,
+}
+
+/// ジョブキュー (The Persistent Memory & Samsara)
+///
+/// SQLite等を用いた非同期ジョブ管理とKarmaの抽出・記録を行う。
+#[async_trait]
+pub trait JobQueue: Send + Sync {
+    /// 新規ジョブをキューに追加 (Pending)
+    async fn enqueue(&self, topic: &str, style: &str, karma_directives: Option<&str>) -> Result<String, FactoryError>;
+
+    /// 次に実行すべき Pending ジョブを 1件取得し、Processing に更新
+    async fn dequeue(&self) -> Result<Option<Job>, FactoryError>;
+
+    /// ジョブを完了状態にする
+    async fn complete_job(&self, job_id: &str) -> Result<(), FactoryError>;
+
+    /// ジョブを失敗状態にする
+    async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), FactoryError>;
+
+    // --- Phase 10-A.5 The Samsara Protocol ---
+    /// RAG-Driven Karma Injection: トピックとSkillIDに関連する過去の教訓を抽出する
+    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64) -> Result<Vec<String>, FactoryError>;
+
+    /// 抽出された教訓（Karma）を保存する (陳腐化防止のため skill_id に紐付ける)
+    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, is_success: bool, human_rating: Option<i32>) -> Result<(), FactoryError>;
 }
 
 /// ログ・通知ツール (FactoryLog)

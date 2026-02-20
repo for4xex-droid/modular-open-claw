@@ -7,3 +7,4 @@ pub mod sandbox;
 pub mod security;
 pub mod zombie_killer;
 pub mod health;
+pub mod watchtower;
