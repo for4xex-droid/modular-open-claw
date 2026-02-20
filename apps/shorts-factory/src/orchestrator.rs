@@ -179,6 +179,7 @@ impl AgentAct for ProductionOrchestrator {
                     let video_req = VideoRequest {
                         prompt: full_prompt,
                         workflow_id: "shorts_standard_v1".to_string(),
+                        input_image: None,
                     };
                     let res = self.supervisor.enforce_act(&self.comfy_bridge, video_req).await?;
                     std::path::PathBuf::from(res.output_path)

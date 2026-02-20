@@ -66,6 +66,7 @@ pub struct ConceptResponse {
 pub struct VideoRequest {
     pub prompt: String,
     pub workflow_id: String,
+    pub input_image: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -19,4 +19,8 @@ rig-core = { workspace = true }
 schemars = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
 bastion = { path = "../bastion", features = ["net", "fs"] }
+tokio-tungstenite = "0.28.0"
+rand = "0.10.0"
+futures-util = "0.3.32"
+chrono.workspace = true
 

@@ -2,6 +2,7 @@
 members = [
     "apps/api-server",
     "apps/shorts-factory",
+    "apps/watchtower",
     "apps/command-center/src-tauri",
     "libs/core",
     "libs/infrastructure",
@@ -30,3 +31,5 @@ sysinfo = "0.30"
 config = "0.14"
 schemars = "0.8"
 unicode-normalization = "0.1"
+nix = { version = "0.27", features = ["process", "signal", "user", "fs"] }
+tokio-util = { version = "0.7", features = ["codec", "io"] }
