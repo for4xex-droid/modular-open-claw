@@ -22,7 +22,13 @@ pub enum CoreEvent {
     Log(LogEntry),
     Heartbeat(SystemStatus),
     ApprovalRequest { transition_id: Uuid, description: String },
-    TaskCompleted { job_id: String, result: String },
+    TaskCompleted { 
+        job_id: String, 
+        result: String,
+        topic: String,
+        style: String,
+        thumbnail_url: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
