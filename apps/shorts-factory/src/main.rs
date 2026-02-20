@@ -16,7 +16,6 @@ use server::router::{create_router, AppState};
 use supervisor::{Supervisor, SupervisorPolicy};
 use orchestrator::ProductionOrchestrator;
 use arbiter::ResourceArbiter;
-use factory_core::contracts::WorkflowRequest;
 use factory_core::traits::AgentAct;
 use infrastructure::concept_manager::ConceptManager;
 use infrastructure::voice_actor::VoiceActor;

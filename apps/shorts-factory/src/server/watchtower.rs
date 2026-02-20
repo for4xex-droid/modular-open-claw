@@ -1,7 +1,6 @@
 use bytes::Bytes;
 use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
-use std::sync::Arc;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};

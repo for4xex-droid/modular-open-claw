@@ -1,8 +1,7 @@
 use factory_core::contracts::{
     ConceptRequest, TrendRequest, TrendResponse,
     VideoRequest, MediaRequest, MediaResponse,
-    VoiceRequest, WorkflowRequest, WorkflowResponse,
-    CustomStyle
+    VoiceRequest, WorkflowRequest, WorkflowResponse
 };
 use factory_core::traits::{AgentAct, MediaEditor};
 use factory_core::error::FactoryError;

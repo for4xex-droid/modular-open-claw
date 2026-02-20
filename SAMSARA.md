@@ -39,24 +39,83 @@ Cron ワーカーが発火し、システムが目覚めます。
 🥉 第三位【Karma (判例 / 過去の成功・失敗から得た教訓)】
 ```
 
-LLM はこの階層に従い出力を生成しますが、**The Parsing Panic 防衛** として、出力は厳密な JSON 形式（トピック、スタイル、そして特記事項である `karma_directives`）に保たれます。パースに失敗した場合は、絶対に止まらないようにハードコードされたデフォルトジョブが展開されます。
+LLM はこの階層に従い、**The Absolute Contract v2 (`LlmJobResponse`)** という厳密な JSON 構造で出力します:
+
+```json
+{
+  "topic": "今回作成する動画のテーマ",
+  "style": "skills内のワークフロー名",
+  "directives": {
+    "positive_prompt_additions": "Karmaから学んだプラス要素",
+    "negative_prompt_additions": "KarmaからのNG要素",
+    "parameter_overrides": {
+      "[API_SAMPLER]": { "cfg": 8.0, "denoise": 0.65 }
+    },
+    "execution_notes": "全体的な注意事項",
+    "confidence_score": 80
+  }
+}
+```
+
+- `topic` と `style` は DB の独立カラムへ、`directives` のみが JSON カラムに格納されます (**Split Payload**)。
+- **Skill Existence Validation**: 指定されたワークフローが物理的に存在するか検証し、幻覚を防ぎます。
+- **Bounded Clamp**: `confidence_score` は Rust 側で `0-100` に強制されます。
+- パースに失敗した場合は、**The Parsing Panic 防衛** としてハードコードされたデフォルトジョブが展開されます。
 
 ### Phase 3: Action (実行)
 決定したジョブ定義が SQLite の `jobs` テーブルに `Pending` としてエンキューされます。
-実行ワーカー (Orchestrator/ComfyBridge 等) はこれをデキューして実際の動画生成作業を行います。この時、**The Payload Gap 防衛** により、`karma_directives`（Karma から得た具体的なプロンプト追加指示）が実務レベルの生成プロンプトへと直接注入され、過去の教訓が具体的な「行動」として反映されます。
+実行ワーカー (Orchestrator/ComfyBridge 等) はこれをデキューして実際の動画生成作業を行います。
+
+- **Node-Targeted Overrides**: `parameter_overrides` の二重 HashMap により、ComfyUI の特定ノードのパラメータ（CFG, Denoise 等）を直接上書きします。
+- **The Heartbeat Pulse**: 長時間レンダリング中のワーカーは 5分ごとに `last_heartbeat` を更新し、生存を証明します。
 
 ### Phase 4: Distillation (業の抽出・死と反省)
-ジョブが完了、あるいは失敗した際、その実行ログ（および Discord 等を通じた人間からの客観的評価＝Human-in-the-Loop）を LLM に渡し、「次回への教訓（1〜2文）」を抽出させます。
-抽出された Karma は、使用された `skill_id` に紐づいて `karma_logs` に保存され、次の Awakening に備えて永続的に蓄積されます（Relational Tagging による陳腐化スキル教訓の回避）。
+ジョブが完了、あるいは失敗した際、その実行ログは即座に DB に永続化されます (**Log-First Distillation**)。
+LLM が利用可能な場合、ログを LLM に渡し「次回への教訓（1〜2文）」を抽出させます。
+LLM がダウンしている場合でも、ログは DB に保存済みのため、**Deferred Distillation（遅延蒸留）** により後から非同期で Karma を抽出します。
 
 ---
 
-## 3. 運用・フェイルセーフ (Operations & Guardrails)
+## 3. 防壁体系 (The Immortal Schema & Guardrails)
 
-Samsara Protocol を運用するにあたり、以下の防壁が作動しています。
+### データベース防壁 (DDL Level)
 
-*   **The Echo Chamber 防衛 (客観的評価)**: 技術的に成功してもクリエイティブとして「面白くない」動画を作り続けるループを防ぐため、Karma の抽出時に人間の評価（`human_rating`）を混ぜ込むアーキテクチャになっています。
-*   **The Day One Vacuum (初回起動)**: `karma_logs` が空の初日においては、LLM が幻覚を起こさないよう「Karma は存在しないので Soul と Skills に従い大胆にタスクを生成せよ」というフォールバック指示が設計されています。
-*   **WAL Mode & Busy Timeout**: 実行用のジョブキューと Karma 管理のキューは別々のスレッド/プロセスで叩かれる可能性があるため、SQLite は `PRAGMA journal_mode=WAL` とアクセス待機設定により、デッドロックを起こさず非同期ロックを回避します。
+| # | 防壁 | 実装 | 対象リスク |
+|---|------|------|-----------|
+| 1 | `CREATE TABLE IF NOT EXISTS` | DDL | 再起動時データ全損 |
+| 2 | `CHECK(json_valid(karma_directives))` | DDL | JSON腐敗 |
+| 3 | `ON DELETE SET NULL` | DDL | 教訓の連鎖消滅 |
+| 4 | `CHECK(weight BETWEEN 0 AND 100)` | DDL | カルマ特異点 |
+| 5 | Embedded Migrations (`ALTER TABLE`) | DDL | スキーマ不一致 |
+
+### Rust防壁 (Application Level)
+
+| # | 防壁 | 実装 | 対象リスク |
+|---|------|------|-----------|
+| 6 | Split Payload | `LlmJobResponse` / `KarmaDirectives` | データ二重化 |
+| 7 | Node-Targeted Overrides | `HashMap<NodeTitle, HashMap<Param, Value>>` | パラメータの空振り |
+| 8 | Skill Existence Validation | `Path::exists()` | LLM幻覚ワークフロー |
+| 9 | Bounded Clamp | `clamped_confidence()` | u8/DB制約衝突 |
+
+### 運用防壁 (Operational Level)
+
+| # | 防壁 | 実装 | 対象リスク |
+|---|------|------|-----------|
+| 10 | Zombie Hunter (Heartbeat版) | 15分間隔 Cron | ゾンビジョブ |
+| 11 | Heartbeat Pulse | `last_heartbeat` カラム | 長時間処理の誤認キル |
+| 12 | Log-First Distillation | `execution_log` カラム | LLMダウン時の教訓消失 |
+| 13 | Deferred Distillation | 30分間隔 Cron | 非同期Karma蒸留 |
+
+---
+
+## 4. Cron スケジュール
+
+| ジョブ | 頻度 | 役割 |
+|--------|------|------|
+| **Samsara Synthesis** | 毎日 19:00 | 次のジョブを LLM で合成・エンキュー |
+| **Zombie Hunter** | 15分毎 | Heartbeat が途絶えたジョブを回収 |
+| **Deferred Distillation** | 30分毎 | ログはあるが未蒸留のジョブから Karma を遅延抽出 |
+
+---
 
 Aiome はこのプロトコルを通じて、運用日数を重ねるごとに人間のアーキテクトの感性を学習し、より鋭く、より洗練された自律的クリエイターへと進化を遂げます。
