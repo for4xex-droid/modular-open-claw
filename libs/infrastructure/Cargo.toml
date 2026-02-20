@@ -23,4 +23,5 @@ tokio-tungstenite = "0.28.0"
 rand = "0.10.0"
 futures-util = "0.3.32"
 chrono.workspace = true
+regex = "1.12.3"
 

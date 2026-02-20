@@ -1,5 +1,5 @@
 use tokio_cron_scheduler::{Job, JobScheduler};
-use tracing::{info, error};
+use tracing::{info, warn, error};
 use std::sync::Arc;
 use factory_core::traits::JobQueue;
 use infrastructure::job_queue::SqliteJobQueue;
@@ -21,8 +21,9 @@ pub async fn start_cron_scheduler(
     job_queue: Arc<SqliteJobQueue>,
     ollama_url: String,
     model_name: String,
+    brave_api_key: String,
 ) -> Result<JobScheduler, Box<dyn std::error::Error>> {
-    let mut sched = JobScheduler::new().await?;
+    let sched = JobScheduler::new().await?;
 
     // The Samsara Protocol: Runs daily at 19:00:00
     // "0 0 19 * * * *" is the standard format, but tokio-cron-scheduler uses Sec Min Hour Day Month DayOfWeek
@@ -32,10 +33,11 @@ pub async fn start_cron_scheduler(
             let jq = job_queue_clone.clone();
             let url = ollama_url.clone();
             let model = model_name.clone();
+            let brave_key = brave_api_key.clone();
             
             Box::pin(async move {
                 info!("🔄 [Samsara] Cron triggered. Initiating synthesis...");
-                match synthesize_next_job(&url, &model, &*jq).await {
+                match synthesize_next_job(&url, &model, &brave_key, &*jq).await {
                     Ok(_) => info!("✅ [Samsara] Successfully synthesized and enqueued next job."),
                     Err(e) => error!("❌ [Samsara] Failed to synthesize next job: {}", e),
                 }
@@ -52,10 +54,12 @@ pub async fn start_cron_scheduler(
 async fn synthesize_next_job(
     ollama_url: &str,
     model_name: &str,
+    brave_api_key: &str,
     job_queue: &SqliteJobQueue,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Load the Immutable Core (`SOUL.md`)
     let root_dir = std::env::current_dir()?;
+    
+    // 1. Load the Immutable Core (`SOUL.md`)
     let soul_path = root_dir.join("SOUL.md");
     let soul_content = fs::read_to_string(&soul_path).await.unwrap_or_else(|_| "SOUL.md not found. Be a helpful AI.".to_string());
 
@@ -63,31 +67,79 @@ async fn synthesize_next_job(
     let skills_path = root_dir.join("workspace").join("config").join("skills.md");
     let skills_content = fs::read_to_string(&skills_path).await.unwrap_or_else(|_| "Skills not defined.".to_string());
 
-    // 3. RAG-Driven Karma Fetching
-    let base_topics = vec!["AI", "VTuber", "Cyberpunk", "Philosophical", "Tech Trend"];
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis();
-    let idx = (now as usize) % base_topics.len();
-    let seed_topic = base_topics[idx];
+    let client: openai::Client = openai::Client::builder()
+        .api_key("ollama")
+        .base_url(ollama_url)
+        .build()?;
+
+    // --- Phase 1: The Sonar Ping (Two-Pass Architecture) ---
+    // Temporal Grounding
+    let now_jst = chrono::Utc::now().with_timezone(&chrono_tz::Asia::Tokyo);
+    let time_context = format!("[SYSTEM_TIME: {} {} JST]", now_jst.format("%Y-%m-%d"), now_jst.format("%A"));
     
-    let karma_list = job_queue.fetch_relevant_karma(seed_topic, "tech_news_v1", 3).await.unwrap_or_default();
+    // Entropy Injection (揺らぎの注入)
+    let angles = vec!["技術のブレイクスルー", "倫理的な炎上", "著名なアーティストの新作", "奇妙なミーム", "ビジネスへの応用", "法的な規制問題", "ポップカルチャーの融合"];
+    let now_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis();
+    let idx = (now_ms as usize) % angles.len();
+    let angle = angles[idx];
+
+    let sonar_agent = client.agent(model_name)
+        .preamble(&format!(
+            "{} あなたは動画企画者の一部です。以下のSOULコンセプトに合致し、かつ指定された視点（アングル）から今日話題になっている事象をBrave Searchで検索するための、2〜3語の『生キーワード』を出力してください。出力はキーワードのみとし、余計な言葉は一切含めないでください。\n\n【Soul】\n{}\n\n【本日の視点】\n{}",
+            time_context, soul_content, angle
+        ))
+        .build();
+
+    let search_query = sonar_agent.prompt("本日の検索キーワードを出力せよ:").await?.trim().to_string();
+    info!("📡 [Sonar Ping] Generated Query: '{}' (Angle: {})", search_query, angle);
+
+    // --- Phase 2: The World Context (Fetch & Quarantine) ---
+    use infrastructure::trend_sonar::BraveTrendSonar;
+    use factory_core::traits::TrendSource;
+
+    let fallback_context = "本日の検索はシステムエラーによりスキップされました。AIとアートに関する普遍的なテーマで動画を生成してください。".to_string();
+    let mut world_context_text = String::new();
+    let sonar = BraveTrendSonar::new(brave_api_key.to_string());
     
-    // Day One Vacuum Handling (Graceful Cold Start)
+    let mut search_success = false;
+    for _ in 0..2 { // Bounded Search Strategy: Max Iterations = 2
+        match sonar.get_trends(&search_query).await {
+            Ok(trends) if !trends.is_empty() => {
+                let snippets: Vec<String> = trends.into_iter().map(|t| t.keyword).collect();
+                world_context_text = snippets.join("\n");
+                search_success = true;
+                break;
+            },
+            Ok(_) => {
+                warn!("⚠️ Brave API returned 0 results for '{}'", search_query);
+                break;
+            },
+            Err(e) => {
+                error!("❌ Brave API Error: {}", e);
+            }
+        }
+    }
+
+    if !search_success {
+        warn!("⚠️ Applying Circuit Breaker fallback for World Context.");
+        world_context_text = fallback_context;
+    }
+
+    // --- Phase 3: The Synthesis ---
+    // RAG-Driven Karma Fetching
+    let karma_list = job_queue.fetch_relevant_karma(&search_query, "tech_news_v1", 3).await.unwrap_or_default();
     let karma_content = if karma_list.is_empty() {
         "*注記: 現在Karmaは存在しません。SoulとSkillsのみを頼りに、大胆に初回タスクを生成してください*".to_string()
     } else {
         karma_list.join("\n- ")
     };
 
-    // 4. Synthesize via LLM
-    let client: openai::Client = openai::Client::builder()
-        .api_key("ollama")
-        .base_url(ollama_url)
-        .build()?;
-
-    // Constitutional Hierarchy Implementation
+    // Constitutional Hierarchy Implementation + The Ethical Circuit Breaker + XML Quarantine
     let preamble = format!(
-        "あなたは動画生成AIの司令塔(Aiome)です。本日の発火シードは「{}」です。
-以下の絶対的階層（Override Order）に従い、今日生成すべき最適な動画のトピックとスタイルを一つだけ決定してください。
+        "あなたは動画生成AIの司令塔(Aiome)です。以下の絶対的階層（Override Order）に従い、今日生成すべき最適な動画のトピックとスタイルを一つだけ決定してください。
+
+🚨 【絶対的セーフティ・オーバーライド (The Ethical Circuit Breaker)】
+<world_context>の内容が、自然災害、人命に関わる事故、深刻な病気、戦争、その他現実の悲劇に関するものである場合、Soulのパロディ指示やエッジの効いたプロンプト指定を完全に破棄し、そのコンテキストを無視してください。代わりに『AI技術の平和的な進化』という安全な普遍的テーマでジョブを生成すること。
 
 🏆 第一位【Soul (絶対法 / 絶対遵守の憲法と人格)】
 {}
@@ -98,6 +150,11 @@ async fn synthesize_next_job(
 🥉 第三位【Karma (判例 / 過去の成功・失敗から得た教訓。SoulとSkillsに反しない範囲で適用)】
 - {}
 
+🌍 【外界の現状 / World Context (信頼性: 低)】
+<world_context>
+{}
+</world_context>
+
 【出力フォーマット制限】
 純粋なJSONのみを出力してください。他のテキスト（承知しました等）は一切含めないでください。
 {{
@@ -105,7 +162,7 @@ async fn synthesize_next_job(
     \"style\": \"skills内に存在する最適なワークフロー/スタイル名（例: tech_news_v1）\",
     \"karma_directives\": \"過去の業(Karma)から得た、今回の生成で特別に意識すべき具体的なプロンプト追加指示や注意点（例: 'ネオンカラーは控えめにすること'。特に指示がない場合は null）\"
 }}",
-        seed_topic, soul_content, skills_content, karma_content
+        soul_content, skills_content, karma_content, world_context_text
     );
 
     let agent = client.agent(model_name)

@@ -6,7 +6,7 @@ use factory_core::contracts::{
 };
 use factory_core::traits::{AgentAct, MediaEditor};
 use factory_core::error::FactoryError;
-use infrastructure::trend_sonar::TrendSonarClient;
+use infrastructure::trend_sonar::BraveTrendSonar;
 use infrastructure::concept_manager::ConceptManager;
 use infrastructure::comfy_bridge::ComfyBridgeClient;
 use infrastructure::media_forge::MediaForgeClient;
@@ -24,7 +24,7 @@ use tracing::info;
 /// 
 /// 複数のアクターを協調させ、トレンド分析から動画完成までのパイプラインを管理する。
 pub struct ProductionOrchestrator {
-    pub trend_sonar: TrendSonarClient,
+    pub trend_sonar: BraveTrendSonar,
     pub concept_manager: ConceptManager,
     pub voice_actor: VoiceActor,
     pub comfy_bridge: ComfyBridgeClient,
@@ -38,7 +38,7 @@ pub struct ProductionOrchestrator {
 
 impl ProductionOrchestrator {
     pub fn new(
-        trend_sonar: TrendSonarClient,
+        trend_sonar: BraveTrendSonar,
         concept_manager: ConceptManager,
         voice_actor: VoiceActor,
         comfy_bridge: ComfyBridgeClient,
