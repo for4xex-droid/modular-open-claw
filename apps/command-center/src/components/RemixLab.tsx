@@ -2,32 +2,46 @@ import { useEffect, useState, useRef } from 'react';
 import { ProjectSummary } from './Warehouse';
 import { Play, Zap, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useWebSocket } from 'react-use-websocket/dist/lib/use-websocket'; // Need to check if installed or use native
-
-// Using native WebSocket for now as we did in FactoryLine (or verify FactoryLine implementation)
-// Actually FactoryLine used 'react-use-websocket'? Let's check FactoryLine to be consistent.
-// I will use native WebSocket standard pattern or copy from FactoryLine to avoid dependency issues if not installed.
-// Checking FactoryLine first is safer. But for now I'll write standard WS logic.
-
-interface StyleProfile {
-    name: string;
-    description: string;
-}
+import { invoke } from '@tauri-apps/api/core';
 
 interface RemixLabProps {
     targetProject: ProjectSummary | null;
 }
 
+interface RemixResponse {
+    job_id: string;
+}
+
+interface CoreHealthStatus {
+    online: boolean;
+}
+
 export function RemixLab({ targetProject }: RemixLabProps) {
-    const [styles, setStyles] = useState<string[]>([]); // Just names for now based on API
+    const [styles, setStyles] = useState<string[]>([]);
     const [selectedStyle, setSelectedStyle] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [jobId, setJobId] = useState<string | null>(null);
     const [timestamp, setTimestamp] = useState(Date.now());
     const [systemLocked, setSystemLocked] = useState(false);
+    const [coreOnline, setCoreOnline] = useState(true);
     const [logs, setLogs] = useState<string[]>([]);
 
-    // WebSocket for Heartbeat (Lock) and Logs (Completion)
+    // Poll Core status via Tauri (Circuit Breaker)
+    useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                const status = await invoke<CoreHealthStatus>('get_core_status');
+                setCoreOnline(status.online);
+            } catch {
+                setCoreOnline(false);
+            }
+        };
+        checkHealth();
+        const interval = setInterval(checkHealth, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // WebSocket for real-time job status monitoring
     useEffect(() => {
         const ws = new WebSocket('ws://localhost:3000/ws');
 
@@ -35,9 +49,8 @@ export function RemixLab({ targetProject }: RemixLabProps) {
             try {
                 const data = JSON.parse(event.data);
 
-                // Heartbeat Check
+                // Heartbeat Check — lock if active_actor is present
                 if (data.type === 'heartbeat') {
-                    // Lock if active_actor is present
                     setSystemLocked(!!data.active_actor);
                 }
 
@@ -45,7 +58,7 @@ export function RemixLab({ targetProject }: RemixLabProps) {
                 if (data.level && data.message) {
                     if (data.message.includes("Job Completed:") && data.message.includes(jobId || "NEVER_MATCH")) {
                         setIsProcessing(false);
-                        setTimestamp(Date.now()); // Cache Busting
+                        setTimestamp(Date.now());
                         setLogs(prev => [`✅ Job Finished! Reloading preview...`, ...prev]);
                     }
                     if (data.message.includes("Job Failed:") && data.message.includes(jobId || "NEVER_MATCH")) {
@@ -53,7 +66,7 @@ export function RemixLab({ targetProject }: RemixLabProps) {
                         setLogs(prev => [`❌ Job Failed! Check server logs.`, ...prev]);
                     }
                 }
-            } catch (e) {
+            } catch {
                 // Ignore parse errors
             }
         };
@@ -61,15 +74,17 @@ export function RemixLab({ targetProject }: RemixLabProps) {
         return () => ws.close();
     }, [jobId]);
 
-    // Fetch Styles
+    // Fetch Styles via Tauri
     useEffect(() => {
-        fetch('http://localhost:3000/api/styles')
-            .then(res => res.json())
-            .then((data: string[]) => {
+        invoke<string[]>('get_styles')
+            .then((data) => {
                 setStyles(data);
                 if (data.length > 0) setSelectedStyle(data[0]);
             })
-            .catch(err => console.error("Failed to fetch styles:", err));
+            .catch(err => {
+                console.error("Failed to fetch styles:", err);
+                setLogs(prev => [`⚠️ Failed to load styles: ${err}`, ...prev]);
+            });
     }, []);
 
     const handleExecute = async () => {
@@ -79,32 +94,21 @@ export function RemixLab({ targetProject }: RemixLabProps) {
         setLogs(prev => [`🚀 Sending Remix Request for ${targetProject.id}...`, ...prev]);
 
         try {
-            const res = await fetch('http://localhost:3000/api/remix', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    category: "remix", // Dummy
-                    topic: "remix",    // Dummy
+            const data = await invoke<RemixResponse>('post_remix', {
+                request: {
+                    category: "remix",
+                    topic: "remix",
                     remix_id: targetProject.id,
                     style_name: selectedStyle,
-                    custom_style: null // TODO: Implement custom overrides UI
-                })
+                    custom_style: null,
+                }
             });
-
-            if (res.status === 429) {
-                setLogs(prev => [`⚠️ System Busy! Request Rejected.`, ...prev]);
-                setIsProcessing(false);
-                return;
-            }
-
-            const data = await res.json();
             setJobId(data.job_id);
             setLogs(prev => [`⏳ Job Accepted: ${data.job_id}`, ...prev]);
-
         } catch (e) {
-            console.error(e);
+            const errMsg = typeof e === 'string' ? e : 'Unknown error';
             setIsProcessing(false);
-            setLogs(prev => [`❌ Network Error`, ...prev]);
+            setLogs(prev => [`❌ ${errMsg}`, ...prev]);
         }
     };
 
@@ -128,6 +132,14 @@ export function RemixLab({ targetProject }: RemixLabProps) {
                     <Zap size={20} className="text-sonar-green" />
                     REMIX LAB
                 </h2>
+
+                {/* Core Status Indicator */}
+                {!coreOnline && (
+                    <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-sonar-red text-xs font-mono flex items-center gap-2">
+                        <div className="w-2 h-2 bg-sonar-red rounded-full animate-pulse"></div>
+                        CORE OFFLINE — Commands will fail
+                    </div>
+                )}
 
                 <div className="mb-8">
                     <label className="text-xs font-mono text-gray-500 mb-2 block">TARGET PROJECT</label>
@@ -154,16 +166,18 @@ export function RemixLab({ targetProject }: RemixLabProps) {
                 <div className="mt-auto">
                     <button
                         onClick={handleExecute}
-                        disabled={isProcessing || systemLocked}
+                        disabled={isProcessing || systemLocked || !coreOnline}
                         className={clsx(
                             "w-full py-4 rounded-lg font-bold tracking-widest transition-all duration-300 flex items-center justify-center gap-2",
-                            isProcessing || systemLocked
+                            isProcessing || systemLocked || !coreOnline
                                 ? "bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700"
                                 : "bg-sonar-green text-black hover:bg-white hover:shadow-[0_0_20px_#00FF41]"
                         )}
                     >
                         {isProcessing ? (
                             <span className="animate-pulse">PROCESSING...</span>
+                        ) : !coreOnline ? (
+                            <span>CORE OFFLINE</span>
                         ) : systemLocked ? (
                             <span>SYSTEM LOCKED</span>
                         ) : (
@@ -195,7 +209,7 @@ export function RemixLab({ targetProject }: RemixLabProps) {
                     <div className="w-full max-w-4xl aspect-video bg-black border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative group">
                         {targetProject.thumbnail_url ? (
                             <video
-                                key={timestamp} // Cache Busting Key
+                                key={timestamp}
                                 src={`http://localhost:3000/assets/${targetProject.id}/final.mp4?t=${timestamp}`}
                                 className="w-full h-full object-contain"
                                 controls

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Play, RotateCw, FileVideo } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface ProjectSummary {
     id: string;
@@ -12,16 +13,17 @@ export interface ProjectSummary {
 export function Warehouse({ onRemix }: { onRemix: (project: ProjectSummary) => void }) {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/projects')
-            .then(res => res.json())
+        invoke<ProjectSummary[]>('get_projects')
             .then(data => {
                 setProjects(data);
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to load projects:", err);
+                setError(typeof err === 'string' ? err : 'Failed to connect to Core');
                 setLoading(false);
             });
     }, []);
@@ -34,6 +36,21 @@ export function Warehouse({ onRemix }: { onRemix: (project: ProjectSummary) => v
         );
     }
 
+    if (error) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-sonar-red font-mono gap-4">
+                <div className="text-2xl">⚠️ CORE OFFLINE</div>
+                <div className="text-sm text-gray-500">{error}</div>
+                <button
+                    onClick={() => { setError(null); setLoading(true); invoke<ProjectSummary[]>('get_projects').then(d => { setProjects(d); setLoading(false); }).catch(e => { setError(typeof e === 'string' ? e : 'Connection failed'); setLoading(false); }); }}
+                    className="px-4 py-2 border border-sonar-green text-sonar-green hover:bg-sonar-green hover:text-black transition-all rounded"
+                >
+                    RETRY
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="h-full p-8 overflow-y-auto custom-scrollbar">
             <header className="mb-8 flex items-end justify-between border-b border-gray-800 pb-4">
@@ -42,7 +59,7 @@ export function Warehouse({ onRemix }: { onRemix: (project: ProjectSummary) => v
                         THE <span className="text-sonar-green font-bold">WAREHOUSE</span>
                     </h1>
                     <p className="text-gray-500 text-sm mt-1 font-mono">
-                        ARCHIKVE SIZE: {projects.length} UNITS
+                        ARCHIVE SIZE: {projects.length} UNITS
                     </p>
                 </div>
             </header>
