@@ -139,3 +139,29 @@ pub struct WorkflowResponse {
     pub final_video_path: String,
     pub concept: ConceptResponse,
 }
+
+// --- Phase 10-F: The JSON Contract (KarmaDirectives) ---
+
+/// LLM Structured Output の厳密な型定義。
+/// Samsara の合成フェーズで LLM が出力し、`jobs.karma_directives` にJSON文字列として格納される。
+/// `CHECK(json_valid(karma_directives))` と連携し、不正なJSONをDBレイヤーで物理的に弾く。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct KarmaDirectives {
+    /// 今回生成する動画のトピック (例: "最新のAIニュースまとめ")
+    pub topic: String,
+
+    /// skills.md 内の最適なワークフロー/スタイル名 (例: "tech_news_v1")
+    pub style: String,
+
+    /// ポジティブプロンプトへの追加指示 (Karmaから導出)
+    pub positive_prompt_additions: Option<String>,
+
+    /// ネガティブプロンプトへの追加指示 (例: "ネオンカラーは使わないこと")
+    pub negative_prompt_additions: Option<String>,
+
+    /// 全般的な実行ノート・注意事項 (Karmaから導出)
+    pub execution_notes: Option<String>,
+
+    /// LLM 自身のこの生成に対する自信度 (0-100)。weight 計算の基準値。
+    pub confidence_score: u8,
+}

@@ -228,8 +228,9 @@ pub async fn distill_karma(
     
     let lesson = agent.prompt(user_prompt).await?;
     
-    // Distill phase inherently binds the karma to the specific skill_id used.
-    job_queue.store_karma(job_id, skill_id, lesson.trim(), is_success, human_rating).await?;
+    // Distill phase generates 'Technical' karma (automated system introspection).
+    // 'Creative' karma is generated separately via human async feedback (set_creative_rating).
+    job_queue.store_karma(job_id, skill_id, lesson.trim(), "Technical").await?;
     info!("🧘 [Samsara] Karma distilled for Job {} (Skill: {}): {}", job_id, skill_id, lesson.trim());
     
     Ok(())
