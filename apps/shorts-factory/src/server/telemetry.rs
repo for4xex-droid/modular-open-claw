@@ -2,7 +2,6 @@ use tokio::sync::broadcast;
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, Mutex};
 use sysinfo::{System, RefreshKind, CpuRefreshKind, MemoryRefreshKind};
-use tracing::{info, warn};
 
 /// システム全体の稼働状況 (Heartbeat)
 #[derive(Debug, Clone, Serialize, Deserialize)]

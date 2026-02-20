@@ -34,6 +34,11 @@ impl SqliteJobQueue {
         Ok(queue)
     }
 
+    /// Read-only reference to the connection pool (for advanced queries).
+    pub fn pool_ref(&self) -> &SqlitePool {
+        &self.pool
+    }
+
     /// The Immortal Samsara Schema (完全不可侵DDL)
     /// 
     /// Guardrails implemented at the DB level:
@@ -53,8 +58,10 @@ impl SqliteJobQueue {
                 karma_directives TEXT NOT NULL CHECK(json_valid(karma_directives)), 
                 status TEXT NOT NULL CHECK(status IN ('Pending', 'Processing', 'Completed', 'Failed')),
                 started_at TEXT, 
+                last_heartbeat TEXT,
                 tech_karma_extracted INTEGER NOT NULL DEFAULT 0, 
                 creative_rating INTEGER CHECK(creative_rating IN (-1, 0, 1)), 
+                execution_log TEXT,
                 error_message TEXT,
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
@@ -63,6 +70,15 @@ impl SqliteJobQueue {
         .execute(&self.pool)
         .await
         .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create jobs table: {}", e) })?;
+
+        // Embedded Migrations: safely add columns that may not exist in older schemas.
+        // SQLite ALTER TABLE ADD COLUMN errors are silently ignored (idempotent).
+        for migration in [
+            "ALTER TABLE jobs ADD COLUMN last_heartbeat TEXT",
+            "ALTER TABLE jobs ADD COLUMN execution_log TEXT",
+        ] {
+            let _ = sqlx::query(migration).execute(&self.pool).await;
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS karma_logs (
@@ -121,7 +137,7 @@ impl JobQueue for SqliteJobQueue {
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to start transaction: {}", e) })?;
 
         let row = sqlx::query(
-            "SELECT id, topic, style_name, karma_directives, status, started_at, tech_karma_extracted, creative_rating, error_message FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
         )
         .bind(JobStatus::Pending.to_string())
         .fetch_optional(&mut *tx)
@@ -135,12 +151,14 @@ impl JobQueue for SqliteJobQueue {
             let karma_directives: Option<String> = try_get_optional_string(&r, "karma_directives");
             let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
             let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
+            let execution_log: Option<String> = try_get_optional_string(&r, "execution_log");
             let error_message: Option<String> = try_get_optional_string(&r, "error_message");
 
             let now = Utc::now().to_rfc3339();
-            // Set status to Processing AND record the started_at timestamp for Zombie Hunter
-            sqlx::query("UPDATE jobs SET status = ?, started_at = ?, updated_at = ? WHERE id = ?")
+            // Set status to Processing, record started_at AND first heartbeat
+            sqlx::query("UPDATE jobs SET status = ?, started_at = ?, last_heartbeat = ?, updated_at = ? WHERE id = ?")
                 .bind(JobStatus::Processing.to_string())
+                .bind(&now)
                 .bind(&now)
                 .bind(&now)
                 .bind(&id)
@@ -157,9 +175,11 @@ impl JobQueue for SqliteJobQueue {
                 style,
                 karma_directives,
                 status: JobStatus::Processing,
-                started_at: Some(now),
+                started_at: Some(now.clone()),
+                last_heartbeat: Some(now),
                 tech_karma_extracted: tech_karma_extracted != 0,
                 creative_rating,
+                execution_log,
                 error_message,
             }))
         } else {
@@ -248,17 +268,18 @@ impl JobQueue for SqliteJobQueue {
         Ok(())
     }
 
-    /// The Zombie Hunter: Reclaims jobs stuck in 'Processing' for longer than `timeout_hours`.
-    /// This prevents "eternal ghost jobs" after a crash, power outage, or OS restart.
-    async fn reclaim_zombie_jobs(&self, timeout_hours: i64) -> Result<u64, FactoryError> {
+    /// The Zombie Hunter (Heartbeat Edition): Reclaims jobs whose heartbeat has gone silent.
+    /// Uses `last_heartbeat` instead of `started_at`, preventing false kills on long-running jobs.
+    async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, FactoryError> {
         let now = Utc::now().to_rfc3339();
         let result = sqlx::query(
-            "UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed: exceeded processing timeout', updated_at = ? 
-             WHERE status = 'Processing' AND started_at IS NOT NULL 
-             AND (julianday('now') - julianday(started_at)) * 24 > ?"
+            "UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed: heartbeat timeout exceeded', updated_at = ? 
+             WHERE status = 'Processing' 
+             AND last_heartbeat IS NOT NULL 
+             AND (julianday('now') - julianday(last_heartbeat)) * 24 * 60 > ?"
         )
         .bind(&now)
-        .bind(timeout_hours)
+        .bind(timeout_minutes)
         .execute(&self.pool)
         .await
         .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to reclaim zombie jobs: {}", e) })?;
@@ -271,7 +292,6 @@ impl JobQueue for SqliteJobQueue {
     }
 
     /// Sets the creative rating for a completed job (Human-in-the-Loop, Asynchronous Karma).
-    /// This is decoupled from the Samsara cycle to prevent deadlock (罠1 防衛).
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), FactoryError> {
         let now = Utc::now().to_rfc3339();
         sqlx::query("UPDATE jobs SET creative_rating = ?, updated_at = ? WHERE id = ?")
@@ -281,6 +301,84 @@ impl JobQueue for SqliteJobQueue {
             .execute(&self.pool)
             .await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to set creative rating for job {}: {}", job_id, e) })?;
+        Ok(())
+    }
+
+    /// The Heartbeat Pulse: Worker calls this periodically to prove it's alive.
+    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), FactoryError> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("UPDATE jobs SET last_heartbeat = ?, updated_at = ? WHERE id = ?")
+            .bind(&now)
+            .bind(&now)
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to pulse heartbeat for job {}: {}", job_id, e) })?;
+        Ok(())
+    }
+
+    /// Log-First Distillation: Stores the execution log in the DB.
+    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), FactoryError> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("UPDATE jobs SET execution_log = ?, updated_at = ? WHERE id = ?")
+            .bind(log)
+            .bind(&now)
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to store execution log for job {}: {}", job_id, e) })?;
+        Ok(())
+    }
+
+    /// Deferred Distillation: Find completed/failed jobs with logs but no karma extracted yet.
+    async fn fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
+                    tech_karma_extracted, creative_rating, execution_log, error_message 
+             FROM jobs 
+             WHERE execution_log IS NOT NULL 
+             AND tech_karma_extracted = 0 
+             AND status IN ('Completed', 'Failed') 
+             ORDER BY updated_at ASC LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch undistilled jobs: {}", e) })?;
+
+        let mut jobs = Vec::new();
+        for r in rows {
+            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            jobs.push(Job {
+                id: r.get("id"),
+                topic: r.get("topic"),
+                style: r.get("style_name"),
+                karma_directives: try_get_optional_string(&r, "karma_directives"),
+                status: match r.get::<String, _>("status").as_str() {
+                    "Completed" => JobStatus::Completed,
+                    "Failed" => JobStatus::Failed,
+                    _ => JobStatus::Pending,
+                },
+                started_at: try_get_optional_string(&r, "started_at"),
+                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
+                tech_karma_extracted: tech_karma_extracted != 0,
+                creative_rating: r.try_get("creative_rating").ok(),
+                execution_log: try_get_optional_string(&r, "execution_log"),
+                error_message: try_get_optional_string(&r, "error_message"),
+            });
+        }
+        Ok(jobs)
+    }
+
+    /// Marks a job as having had its karma extracted (tech_karma_extracted = 1).
+    async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), FactoryError> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("UPDATE jobs SET tech_karma_extracted = 1, updated_at = ? WHERE id = ?")
+            .bind(&now)
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to mark karma extracted for job {}: {}", job_id, e) })?;
         Ok(())
     }
 }

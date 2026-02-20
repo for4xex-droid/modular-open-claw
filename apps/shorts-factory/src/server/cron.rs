@@ -6,9 +6,7 @@ use infrastructure::job_queue::SqliteJobQueue;
 use rig::providers::openai;
 use rig::completion::Prompt;
 use rig::client::CompletionClient;
-use std::path::Path;
 use tokio::fs;
-use serde::Deserialize;
 use factory_core::contracts::LlmJobResponse;
 
 pub async fn start_cron_scheduler(
@@ -16,15 +14,14 @@ pub async fn start_cron_scheduler(
     ollama_url: String,
     model_name: String,
     brave_api_key: String,
-) -> Result<JobScheduler, Box<dyn std::error::Error>> {
+) -> Result<JobScheduler, Box<dyn std::error::Error + Send + Sync>> {
     let sched = JobScheduler::new().await?;
 
-    // The Samsara Protocol: Runs daily at 19:00:00
-    // "0 0 19 * * * *" is the standard format, but tokio-cron-scheduler uses Sec Min Hour Day Month DayOfWeek
-    let job_queue_clone = job_queue.clone();
+    // === Job 1: The Samsara Protocol — Runs daily at 19:00 ===
+    let jq_samsara = job_queue.clone();
     sched.add(
         Job::new_async("0 0 19 * * *", move |_uuid, mut _l| {
-            let jq = job_queue_clone.clone();
+            let jq = jq_samsara.clone();
             let url = ollama_url.clone();
             let model = model_name.clone();
             let brave_key = brave_api_key.clone();
@@ -38,9 +35,59 @@ pub async fn start_cron_scheduler(
             })
         })?
     ).await?;
+
+    // === Job 2: The Zombie Hunter — Runs every 15 minutes ===
+    let jq_zombie = job_queue.clone();
+    sched.add(
+        Job::new_async("0 */15 * * * *", move |_uuid, mut _l| {
+            let jq = jq_zombie.clone();
+            Box::pin(async move {
+                match jq.reclaim_zombie_jobs(15).await {
+                    Ok(count) => {
+                        if count > 0 {
+                            warn!("🧟 [Zombie Hunter] Reclaimed {} ghost job(s)", count);
+                        }
+                    }
+                    Err(e) => error!("❌ [Zombie Hunter] Failed to reclaim: {}", e),
+                }
+            })
+        })?
+    ).await?;
+
+    // === Job 3: Deferred Distillation — Runs every 30 minutes ===
+    let jq_distill = job_queue.clone();
+    sched.add(
+        Job::new_async("0 */30 * * * *", move |_uuid, mut _l| {
+            let jq = jq_distill.clone();
+            Box::pin(async move {
+                match jq.fetch_undistilled_jobs(5).await {
+                    Ok(jobs) => {
+                        for job in jobs {
+                            let is_success = job.status == factory_core::traits::JobStatus::Completed;
+                            let log = job.execution_log.unwrap_or_default();
+                            info!("🧘 [Deferred Distillation] Processing undistilled Job: {}", job.id);
+                            // Attempt distillation. If LLM is still down, the job stays undistilled and will be retried next cycle.
+                            match distill_karma(
+                                "http://localhost:11434/v1", "qwen2.5-coder:32b",
+                                &*jq, &job.id, &job.style, &log, is_success, job.creative_rating
+                            ).await {
+                                Ok(_) => {
+                                    // Mark as distilled via trait method
+                                    let _ = jq.mark_karma_extracted(&job.id).await;
+                                    info!("✅ [Deferred Distillation] Karma extracted for Job {}", job.id);
+                                }
+                                Err(e) => warn!("⚠️ [Deferred Distillation] LLM unavailable, will retry: {}", e),
+                            }
+                        }
+                    }
+                    Err(e) => error!("❌ [Deferred Distillation] Failed to fetch undistilled: {}", e),
+                }
+            })
+        })?
+    ).await?;
     
     sched.start().await?;
-    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning.");
+    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m)");
 
     Ok(sched)
 }
@@ -50,7 +97,7 @@ async fn synthesize_next_job(
     model_name: &str,
     brave_api_key: &str,
     job_queue: &SqliteJobQueue,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let root_dir = std::env::current_dir()?;
     
     // 1. Load the Immutable Core (`SOUL.md`)
@@ -231,7 +278,7 @@ pub async fn distill_karma(
     execution_log: &str,
     is_success: bool,
     human_rating: Option<i32>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client: openai::Client = openai::Client::builder()
         .api_key("ollama")
         .base_url(ollama_url)
@@ -252,8 +299,8 @@ pub async fn distill_karma(
     Ok(())
 }
 
-fn extract_json(text: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let start = text.find('{').ok_or("No JSON object found")?;
-    let end = text.rfind('}').ok_or("No JSON object found")? + 1;
+fn extract_json(text: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let start = text.find('{').ok_or_else(|| -> Box<dyn std::error::Error + Send + Sync> { "No JSON object found".into() })?;
+    let end = text.rfind('}').ok_or_else(|| -> Box<dyn std::error::Error + Send + Sync> { "No JSON object found".into() })? + 1;
     Ok(text[start..end].to_string())
 }

@@ -97,10 +97,14 @@ pub struct Job {
     pub status: JobStatus,
     /// ゾンビタスク回収のための実行開始時刻
     pub started_at: Option<String>,
+    /// The Heartbeat Pulse: 長時間レンダリング中のワーカー生存証明
+    pub last_heartbeat: Option<String>,
     /// 技術的教訓の自動抽出が完了したか
     pub tech_karma_extracted: bool,
     /// クリエイティブ評価 (人間からの非同期評価): -1=ボツ, 0=普通, 1=最高, None=未評価
     pub creative_rating: Option<i32>,
+    /// Log-First Distillation: 実行ログを永続化し、LLMダウン時でも後から蒸留可能にする
+    pub execution_log: Option<String>,
     pub error_message: Option<String>,
 }
 
@@ -131,10 +135,23 @@ pub trait JobQueue: Send + Sync {
     async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str) -> Result<(), FactoryError>;
 
     /// The Zombie Hunter: 一定時間以上 Processing のまま放置されたジョブを Failed に強制移行する
-    async fn reclaim_zombie_jobs(&self, timeout_hours: i64) -> Result<u64, FactoryError>;
+    /// Heartbeat 版: last_heartbeat が timeout 分以上途絶えているものを回収
+    async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, FactoryError>;
 
     /// クリエイティブ評価 (人間からの非同期フィードバック) を設定する
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), FactoryError>;
+
+    /// The Heartbeat Pulse: 長時間処理中のワーカーが生存を証明する
+    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), FactoryError>;
+
+    /// Log-First Distillation: 実行ログをDBに永続化する（LLMダウン時でも教訓を失わない）
+    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), FactoryError>;
+
+    /// Deferred Distillation: ログはあるが Karma 未抽出のジョブを検索する
+    async fn fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, FactoryError>;
+
+    /// Distillation完了マーク: tech_karma_extracted = 1 にセットする
+    async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), FactoryError>;
 }
 
 /// ログ・通知ツール (FactoryLog)
