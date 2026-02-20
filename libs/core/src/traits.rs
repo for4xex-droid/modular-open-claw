@@ -86,20 +86,28 @@ impl ToString for JobStatus {
     }
 }
 
-/// 永続化ジョブ
+/// 永続化ジョブ (The Immortal Schema)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Job {
     pub id: String,
     pub topic: String,
     pub style: String,
+    /// LLM Structured Output (KarmaDirectives) をJSON文字列として格納
     pub karma_directives: Option<String>,
     pub status: JobStatus,
+    /// ゾンビタスク回収のための実行開始時刻
+    pub started_at: Option<String>,
+    /// 技術的教訓の自動抽出が完了したか
+    pub tech_karma_extracted: bool,
+    /// クリエイティブ評価 (人間からの非同期評価): -1=ボツ, 0=普通, 1=最高, None=未評価
+    pub creative_rating: Option<i32>,
     pub error_message: Option<String>,
 }
 
 /// ジョブキュー (The Persistent Memory & Samsara)
 ///
 /// SQLite等を用いた非同期ジョブ管理とKarmaの抽出・記録を行う。
+/// The Immortal Schema に準拠。
 #[async_trait]
 pub trait JobQueue: Send + Sync {
     /// 新規ジョブをキューに追加 (Pending)
@@ -118,8 +126,15 @@ pub trait JobQueue: Send + Sync {
     /// RAG-Driven Karma Injection: トピックとSkillIDに関連する過去の教訓を抽出する
     async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64) -> Result<Vec<String>, FactoryError>;
 
-    /// 抽出された教訓（Karma）を保存する (陳腐化防止のため skill_id に紐付ける)
-    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, is_success: bool, human_rating: Option<i32>) -> Result<(), FactoryError>;
+    /// 抽出された教訓（Karma）を保存する
+    /// `karma_type`: 'Technical', 'Creative', 'Synthesized'
+    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str) -> Result<(), FactoryError>;
+
+    /// The Zombie Hunter: 一定時間以上 Processing のまま放置されたジョブを Failed に強制移行する
+    async fn reclaim_zombie_jobs(&self, timeout_hours: i64) -> Result<u64, FactoryError>;
+
+    /// クリエイティブ評価 (人間からの非同期フィードバック) を設定する
+    async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), FactoryError>;
 }
 
 /// ログ・通知ツール (FactoryLog)
