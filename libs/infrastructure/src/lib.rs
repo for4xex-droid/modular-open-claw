@@ -11,3 +11,4 @@ pub mod trend_sonar;
 pub mod voice_actor;
 pub mod sound_mixer;
 pub mod job_queue;
+mod job_queue_tests;

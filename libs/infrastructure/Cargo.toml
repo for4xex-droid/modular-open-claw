@@ -25,3 +25,6 @@ futures-util = "0.3.32"
 chrono.workspace = true
 regex = "1.12.3"
 
+[dev-dependencies]
+tempfile = "3"
+

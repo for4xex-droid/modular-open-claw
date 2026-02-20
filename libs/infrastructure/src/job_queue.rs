@@ -213,15 +213,18 @@ impl JobQueue for SqliteJobQueue {
     }
 
     async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64) -> Result<Vec<String>, FactoryError> {
-        // RAG-Driven Karma Injection:
-        // - Fetch karma relevant to the specific skill_id OR matching topic keywords OR 'global' scope.
-        // - weight > 0 ensures we omit fully "decayed" karma (The Karma Singularity protection).
+        // Boltzmann RAG: Time-Decay Karma Injection
+        // - effective_weight = max(0, weight - days_since_creation * 0.5)
+        // - Older karma naturally fades, preventing the Success Trap
+        // - Fresh insights are always prioritized
         let topic_pattern = format!("%{}%", topic);
 
         let rows = sqlx::query(
-            "SELECT id, lesson FROM karma_logs 
+            "SELECT id, lesson,
+              max(0, weight - (julianday('now') - julianday(created_at)) * 0.5) AS effective_weight
+             FROM karma_logs 
              WHERE weight > 0 AND (related_skill = ? OR related_skill = 'global' OR lesson LIKE ?) 
-             ORDER BY weight DESC, created_at DESC LIMIT ?"
+             ORDER BY effective_weight DESC, created_at DESC LIMIT ?"
         )
         .bind(skill_id)
         .bind(&topic_pattern)
@@ -292,15 +295,24 @@ impl JobQueue for SqliteJobQueue {
     }
 
     /// Sets the creative rating for a completed job (Human-in-the-Loop, Asynchronous Karma).
+    /// Atomic Guard: Only Completed or Processing jobs can receive ratings.
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), FactoryError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET creative_rating = ?, updated_at = ? WHERE id = ?")
-            .bind(rating)
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to set creative rating for job {}: {}", job_id, e) })?;
+        let result = sqlx::query(
+            "UPDATE jobs SET creative_rating = ?, updated_at = ? WHERE id = ? AND status IN ('Completed', 'Processing')"
+        )
+        .bind(rating)
+        .bind(&now)
+        .bind(job_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to set creative rating for job {}: {}", job_id, e) })?;
+
+        if result.rows_affected() == 0 {
+            return Err(FactoryError::Infrastructure {
+                reason: format!("Atomic Guard: Job '{}' is not in Completed/Processing state, rating rejected", job_id),
+            });
+        }
         Ok(())
     }
 
@@ -380,6 +392,25 @@ impl JobQueue for SqliteJobQueue {
             .await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to mark karma extracted for job {}: {}", job_id, e) })?;
         Ok(())
+    }
+
+    /// DB Scavenger: Purge Completed/Failed jobs older than `days` days.
+    /// karma_logs survive via ON DELETE SET NULL (Eternal Karma — jobs die, lessons live).
+    async fn purge_old_jobs(&self, days: i64) -> Result<u64, FactoryError> {
+        let result = sqlx::query(
+            "DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < datetime('now', ? || ' days')"
+        )
+        .bind(format!("-{}", days))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to purge old jobs: {}", e) })?;
+
+        let purged = result.rows_affected();
+
+        // Optimize DB after purge (lightweight alternative to VACUUM for WAL mode)
+        let _ = sqlx::query("PRAGMA optimize;").execute(&self.pool).await;
+
+        Ok(purged)
     }
 }
 

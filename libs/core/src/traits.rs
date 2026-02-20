@@ -152,6 +152,11 @@ pub trait JobQueue: Send + Sync {
 
     /// Distillation完了マーク: tech_karma_extracted = 1 にセットする
     async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), FactoryError>;
+
+    /// DB Scavenger: 指定日数以上経過した Completed/Failed ジョブを物理削除する。
+    /// karma_logs は `ON DELETE SET NULL` により孤立しても保持される (Eternal Karma)。
+    /// 戻り値は削除されたジョブ数。
+    async fn purge_old_jobs(&self, days: i64) -> Result<u64, FactoryError>;
 }
 
 /// ログ・通知ツール (FactoryLog)
