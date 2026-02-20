@@ -9,13 +9,7 @@ use rig::client::CompletionClient;
 use std::path::Path;
 use tokio::fs;
 use serde::Deserialize;
-
-#[derive(Deserialize, Clone)]
-struct SynthesizedTask {
-    topic: String,
-    style: String,
-    karma_directives: Option<String>,
-}
+use factory_core::contracts::LlmJobResponse;
 
 pub async fn start_cron_scheduler(
     job_queue: Arc<SqliteJobQueue>,
@@ -160,7 +154,13 @@ async fn synthesize_next_job(
 {{
     \"topic\": \"今回作成する動画のテーマ（例: 最近のAIニュースまとめ）\",
     \"style\": \"skills内に存在する最適なワークフロー/スタイル名（例: tech_news_v1）\",
-    \"karma_directives\": \"過去の業(Karma)から得た、今回の生成で特別に意識すべき具体的なプロンプト追加指示や注意点（例: 'ネオンカラーは控えめにすること'。特に指示がない場合は null）\"
+    \"directives\": {{
+        \"positive_prompt_additions\": \"Karmaから学んだプラス要素\",
+        \"negative_prompt_additions\": \"Karmaから学んだNG要素\",
+        \"parameter_overrides\": {{}},
+        \"execution_notes\": \"全体的な注意事項\",
+        \"confidence_score\": 80
+    }}
 }}",
         soul_content, skills_content, karma_content, world_context_text
     );
@@ -172,17 +172,17 @@ async fn synthesize_next_job(
     let user_prompt = "上記の絶対的階層を踏まえ、強くてニューゲームを体現するような次のジョブ（JSON）を生成せよ。".to_string();
     
     // 5. The Parsing Panic 防衛用デフォルトジョブ (Fallback)
-    let fallback_task = SynthesizedTask {
+    let fallback_task = LlmJobResponse {
         topic: "AI最新技術の概要解説".to_string(),
         style: "tech_news_v1".to_string(),
-        karma_directives: None,
+        directives: factory_core::contracts::KarmaDirectives::default(),
     };
 
     let task = match agent.prompt(user_prompt).await {
         Ok(response) => {
             match extract_json(&response) {
                 Ok(json_text) => {
-                    serde_json::from_str::<SynthesizedTask>(&json_text).unwrap_or_else(|e| {
+                    serde_json::from_str::<LlmJobResponse>(&json_text).unwrap_or_else(|e| {
                         error!("❌ [Samsara Error] Failed to parse generated JSON: {}. Falling back to default task.", e);
                         fallback_task.clone()
                     })
@@ -199,9 +199,25 @@ async fn synthesize_next_job(
         }
     };
 
-    // 6. Enqueue the synthesized/fallback job
-    let job_id = job_queue.enqueue(&task.topic, &task.style, task.karma_directives.as_deref()).await?;
-    info!("🔮 [Samsara] New Job Enqueued: ID={}, Topic='{}', Style='{}', Directives='{:?}'", job_id, task.topic, task.style, task.karma_directives);
+    // 6. Skill Existence Validation (The Hallucinated Skill 防衛)
+    let validated_style = {
+        let workflow_dir = root_dir.join("workspace").join("workflows");
+        let workflow_path = workflow_dir.join(format!("{}.json", &task.style));
+        if workflow_path.exists() {
+            task.style.clone()
+        } else {
+            warn!("⚠️ [Samsara] Workflow '{}' not found at {:?}. Falling back to 'tech_news_v1'.", task.style, workflow_path);
+            "tech_news_v1".to_string()
+        }
+    };
+
+    // 7. The Split Payload — Serialize only `directives` into the JSON column
+    let directives_json = serde_json::to_string(&task.directives).unwrap_or_else(|_| "{}".to_string());
+
+    // 8. Enqueue the synthesized/fallback job
+    let job_id = job_queue.enqueue(&task.topic, &validated_style, Some(&directives_json)).await?;
+    info!("🔮 [Samsara] New Job Enqueued: ID={}, Topic='{}', Style='{}', Confidence={}", 
+        job_id, task.topic, validated_style, task.directives.clamped_confidence());
 
     Ok(())
 }
