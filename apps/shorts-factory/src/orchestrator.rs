@@ -33,6 +33,7 @@ pub struct ProductionOrchestrator {
     pub arbiter: Arc<ResourceArbiter>,
     pub style_manager: Arc<StyleManager>,
     pub asset_manager: Arc<AssetManager>,
+    pub export_dir: String,
 }
 
 impl ProductionOrchestrator {
@@ -47,6 +48,7 @@ impl ProductionOrchestrator {
         arbiter: Arc<ResourceArbiter>,
         style_manager: Arc<StyleManager>,
         asset_manager: Arc<AssetManager>,
+        export_dir: String,
     ) -> Self {
         Self {
             trend_sonar,
@@ -59,6 +61,7 @@ impl ProductionOrchestrator {
             arbiter,
             style_manager,
             asset_manager,
+            export_dir,
         }
     }
 }
@@ -223,10 +226,19 @@ impl AgentAct for ProductionOrchestrator {
         // 5. 最終メタデータ保存
         self.asset_manager.save_metadata(&project_id, &style)?;
 
-        info!("🏆 Production Pipeline Completed: {}", media_res.final_path);
+        // 6. Safe Move Protocol v2: 納品先への安全な移動
+        info!("🚚  Orchestrator: Delivering final output via Safe Move Protocol...");
+        let final_video_path = std::path::PathBuf::from(&media_res.final_path);
+        let delivered_path = infrastructure::workspace_manager::WorkspaceManager::deliver_output(
+            &project_id,
+            &final_video_path,
+            &self.export_dir,
+        ).await?;
+
+        info!("🏆 Production Pipeline Completed: {}", delivered_path.display());
 
         Ok(WorkflowResponse {
-            final_video_path: media_res.final_path,
+            final_video_path: delivered_path.to_string_lossy().to_string(),
             concept: concept_res,
         })
     }

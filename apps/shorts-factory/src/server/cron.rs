@@ -14,6 +14,9 @@ pub async fn start_cron_scheduler(
     ollama_url: String,
     model_name: String,
     brave_api_key: String,
+    workspace_dir: String,
+    comfyui_base_dir: String,
+    clean_after_hours: u64,
 ) -> Result<JobScheduler, Box<dyn std::error::Error + Send + Sync>> {
     let sched = JobScheduler::new().await?;
 
@@ -106,8 +109,35 @@ pub async fn start_cron_scheduler(
         })?
     ).await?;
     
+    // === Job 5: The File Scavenger (Deep Cleansing) — Runs daily at 02:00 ===
+    let ws_dir = workspace_dir.clone();
+    let comfy_dir = comfyui_base_dir.clone();
+    sched.add(
+        Job::new_async("0 0 2 * * *", move |_uuid, mut _l| {
+            let w_dir = ws_dir.clone();
+            let c_dir_base = comfy_dir.clone(); // The base dir is outside workspace, wait, comfyui_base_dir is absolute path.
+            let hours = clean_after_hours;
+            Box::pin(async move {
+                let allowed = [".mp4", ".png", ".jpg", ".jpeg", ".wav", ".json", ".latent"];
+                
+                // 1. Workspace Cleanup
+                match infrastructure::workspace_manager::WorkspaceManager::cleanup_expired_files(&w_dir, hours, &allowed).await {
+                    Ok(_) => info!("🧹 [File Scavenger] Workspace deep cleansing complete."),
+                    Err(e) => error!("❌ [File Scavenger] Failed to clean workspace: {}", e),
+                }
+
+                // 2. ComfyUI Temp Cleanup
+                let comfy_temp = format!("{}/temp", c_dir_base);
+                match infrastructure::workspace_manager::WorkspaceManager::cleanup_expired_files(&comfy_temp, hours, &allowed).await {
+                    Ok(_) => info!("🧹 [File Scavenger] ComfyUI temp deep cleansing complete."),
+                    Err(e) => error!("❌ [File Scavenger] Failed to clean ComfyUI temp: {}", e),
+                }
+            })
+        })?
+    ).await?;
+
     sched.start().await?;
-    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m, Scavenger: daily@01:00)");
+    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m, DB Scavenger: daily@01:00, File Scavenger: daily@02:00)");
 
     Ok(sched)
 }
