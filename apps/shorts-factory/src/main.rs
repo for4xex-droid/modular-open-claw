@@ -195,6 +195,9 @@ async fn main() -> Result<(), anyhow::Error> {
         config.ollama_url.clone(),
         config.model_name.clone(),
         config.brave_api_key.clone(),
+        config.workspace_dir.clone(),
+        config.comfyui_base_dir.clone(),
+        config.clean_after_hours,
     ).await.map_err(|e| factory_core::error::FactoryError::Infrastructure { reason: format!("Cron failed to start: {}", e) })?;
 
     // Sidecar Manager ("The Reaper")
@@ -241,6 +244,7 @@ async fn main() -> Result<(), anyhow::Error> {
         arbiter,
         style_manager.clone(),
         asset_manager.clone(),
+        config.export_dir.clone(),
     ));
 
     // コマンド分岐

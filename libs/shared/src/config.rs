@@ -17,6 +17,12 @@ pub struct FactoryConfig {
     pub comfyui_base_dir: String,
     /// Brave Search API Key for The Automaton's Brain (Phase 10-B)
     pub brave_api_key: String,
+    /// 最終動画の納品先ディレクトリ (Phase 10-C)
+    pub export_dir: String,
+    /// プロジェクトのワークスペースディレクトリ (Phase 10-D)
+    pub workspace_dir: String,
+    /// ファイル清掃までの経過時間(時間) (Phase 10-D)
+    pub clean_after_hours: u64,
 }
 
 impl FactoryConfig {
@@ -31,6 +37,9 @@ impl FactoryConfig {
             .set_default("model_name", "qwen2.5-coder:32b")?
             .set_default("comfyui_base_dir", std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()))?
             .set_default("brave_api_key", std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()))?
+            .set_default("export_dir", std::env::var("EXPORT_DIR").unwrap_or_else(|_| "/Users/motista/Library/Mobile Documents/com~apple~CloudDocs/Aiome_Exports".to_string()))?
+            .set_default("workspace_dir", std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "./workspace".to_string()))?
+            .set_default("clean_after_hours", 24)?
             // config.toml があれば読み込む
             .add_source(config::File::with_name("config").required(false))
             // 環境変数 (SHORTS_FACTORY_*) があれば上書き
@@ -52,6 +61,9 @@ impl Default for FactoryConfig {
                 model_name: "qwen2.5-coder:32b".to_string(),
                 comfyui_base_dir: std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()),
                 brave_api_key: std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()),
+                export_dir: std::env::var("EXPORT_DIR").unwrap_or_else(|_| "/Users/motista/Library/Mobile Documents/com~apple~CloudDocs/Aiome_Exports".to_string()),
+                workspace_dir: std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "./workspace".to_string()),
+                clean_after_hours: 24,
             }
         })
     }
