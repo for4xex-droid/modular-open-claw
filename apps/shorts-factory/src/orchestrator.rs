@@ -139,16 +139,41 @@ impl AgentAct for ProductionOrchestrator {
         // --- 3幕構成 (Intro, Body, Outro) の各コンポーネント生成 ---
         let mut video_clips = Vec::new();
         let mut audio_clips = Vec::new();
+        let mut srt_index = 1;
+        let mut current_time = 0.0f32;
+        let mut srt_content = String::new();
         
         let acts = vec![
-            (concept_res.script_intro.clone(), concept_res.visual_prompts.get(0).cloned().unwrap_or_default(), "intro"),
-            (concept_res.script_body.clone(), concept_res.visual_prompts.get(1).cloned().unwrap_or_default(), "body"),
-            (concept_res.script_outro.clone(), concept_res.visual_prompts.get(2).cloned().unwrap_or_default(), "outro"),
+            (
+                if concept_res.display_intro.is_empty() { concept_res.script_intro.clone() } else { concept_res.display_intro.clone() },
+                concept_res.script_intro.clone(),
+                concept_res.visual_prompts.get(0).cloned().unwrap_or_default(),
+                "intro"
+            ),
+            (
+                if concept_res.display_body.is_empty() { concept_res.script_body.clone() } else { concept_res.display_body.clone() },
+                concept_res.script_body.clone(),
+                concept_res.visual_prompts.get(1).cloned().unwrap_or_default(),
+                "body"
+            ),
+            (
+                if concept_res.display_outro.is_empty() { concept_res.script_outro.clone() } else { concept_res.display_outro.clone() },
+                concept_res.script_outro.clone(),
+                concept_res.visual_prompts.get(2).cloned().unwrap_or_default(),
+                "outro"
+            ),
         ];
 
-        for (i, (script, visual_prompt, act_name)) in acts.into_iter().enumerate() {
+        for (i, (display_text, script_text, visual_prompt, act_name)) in acts.into_iter().enumerate() {
             let audio_path = project_root.join(format!("audio/scene_{}.wav", i));
             let video_clip_path = project_root.join(format!("visuals/scene_{}.mp4", i));
+
+            if let Some(parent) = audio_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            if let Some(parent) = video_clip_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
 
             // 3.1. 音声合成 (VoiceActor) / Bypass check
             if !audio_path.exists() || input.skip_to_step.as_deref() == Some("voice") {
@@ -156,19 +181,54 @@ impl AgentAct for ProductionOrchestrator {
                 let voice_res = {
                     let _guard = self.arbiter.acquire(ResourceUser::Voicing).await;
                     let voice_req = VoiceRequest {
-                        text: script,
-                        speaker_id: 0,
-                        style: Some("Neutral".to_string()),
+                        text: script_text.clone(),
+                        voice: "aiome_narrator".to_string(),
+                        speed: if act_name == "outro" { Some(1.15) } else { None },
                     };
                     self.supervisor.enforce_act(&self.voice_actor, voice_req).await?
                 };
                 
                 // Jail からプロジェクトディレクトリへコピー
-                let temp_voice_path = std::path::PathBuf::from(voice_res.audio_path);
+                let temp_voice_path = self.supervisor.jail().root().join(std::path::PathBuf::from(voice_res.audio_path));
                 std::fs::copy(&temp_voice_path, &audio_path).map_err(|e| FactoryError::Infrastructure {
                     reason: format!("Failed to persist audio: {}", e),
                 })?;
             }
+            
+            // 精緻な同期ロジック (The Synchronizer): 音声の尺長をミリ秒単位で取得
+            let duration = self.media_forge.get_duration(&audio_path).await.unwrap_or(5.0);
+            info!("⏳ Act '{}' duration: {:.2}s", act_name, duration);
+            
+            // 複数の字幕に分割 (The Subtitle Splitter) & 精密な時間配分 (Character Ratio Sync)
+            let sentences = split_into_sentences(&display_text);
+            let total_chars: usize = sentences.iter().map(|s| s.chars().count()).sum();
+            let sentence_count = sentences.len();
+            
+            if total_chars > 0 {
+                let mut accumulated_duration = 0.0f32;
+                for (j, sentence) in sentences.into_iter().enumerate() {
+                    let char_count = sentence.chars().count();
+                    let ratio = char_count as f32 / total_chars as f32;
+                    let sentence_duration = duration * ratio;
+                    
+                    let start = current_time + accumulated_duration;
+                    let end = if j == sentence_count - 1 {
+                        current_time + duration // 最後の文は確実に Act の終わりまで
+                    } else {
+                        start + sentence_duration
+                    };
+                    
+                    let start_time_str = format_srt_time(start);
+                    let end_time_str = format_srt_time(end);
+                    
+                    srt_content.push_str(&format!("{}\n{} --> {}\n{}\n\n", srt_index, start_time_str, end_time_str, sentence));
+                    srt_index += 1;
+                    accumulated_duration += sentence_duration;
+                }
+            }
+            
+            current_time += duration;
+
             audio_clips.push(audio_path);
 
             // 3.2. 画像生成 & 映像演出 (ComfyBridge) / Bypass check
@@ -176,7 +236,7 @@ impl AgentAct for ProductionOrchestrator {
                 info!("🖼️  Processing Visuals for Act: {}", act_name);
                 let full_prompt = format!("{}, {}", concept_res.common_style, visual_prompt);
                 
-                let image_path = {
+                let (image_path, comfy_job_id) = {
                     let _guard = self.arbiter.acquire(ResourceUser::Generating).await;
                     let video_req = VideoRequest {
                         prompt: full_prompt,
@@ -184,17 +244,27 @@ impl AgentAct for ProductionOrchestrator {
                         input_image: None,
                     };
                     let res = self.supervisor.enforce_act(&self.comfy_bridge, video_req).await?;
-                    std::path::PathBuf::from(res.output_path)
+                    (std::path::PathBuf::from(res.output_path), res.job_id)
                 };
                 
-                // Ken Burns エフェクト適用 (Style 注入)
-                let clip = self.comfy_bridge.apply_ken_burns_effect(&image_path, 5.0, jail, &style).await?;
-                std::fs::copy(&clip, &video_clip_path).map_err(|e| FactoryError::Infrastructure {
+                // Ken Burns エフェクト適用 (音声尺長に同期)
+                let clip = self.comfy_bridge.apply_ken_burns_effect(&image_path, duration, jail, &style).await?;
+                let temp_clip_path = self.supervisor.jail().root().join(clip);
+                std::fs::copy(&temp_clip_path, &video_clip_path).map_err(|e| FactoryError::Infrastructure {
                     reason: format!("Failed to persist video clip: {}", e),
                 })?;
+                
+                // --- The Invisible Landfill ---
+                self.comfy_bridge.delete_output_debris(&comfy_job_id);
             }
             video_clips.push(video_clip_path);
         }
+
+        // 字幕ファイルの永続化
+        let subtitle_path = project_root.join("subtitles.srt");
+        std::fs::write(&subtitle_path, srt_content).map_err(|e| FactoryError::Infrastructure {
+            reason: format!("Failed to write subtitles: {}", e),
+        })?;
 
         // 4. 最終合成 (MediaForge & SoundMixer)
         info!("🎞️  Orchestrator: Final Assembly (Style: {})...", style.name);
@@ -211,15 +281,15 @@ impl AgentAct for ProductionOrchestrator {
         let combined_video = project_root.join("combined_visuals.mp4");
         std::fs::rename(combined_video_str, &combined_video).ok();
         
-        // 4.3. BGM 混合とダッキング、正規化 (SoundMixer + Style 注入)
+        // 4.3. BGM 混合とダッキング、正規化
         let finalized_audio = project_root.join("finalized_audio.wav");
         self.sound_mixer.mix_and_finalize(&combined_narration, &input.category, &finalized_audio, &style).await?;
         
-        // 4.4. 最終映像と最終音声を結合 (MediaForge)
+        // 4.4. 最終映像と最終音声を結合 (字幕焼き込み)
         let media_req = MediaRequest {
             video_path: combined_video.to_string_lossy().to_string(),
             audio_path: finalized_audio.to_string_lossy().to_string(),
-            subtitle_path: None,
+            subtitle_path: Some(subtitle_path.to_string_lossy().to_string()),
         };
         let media_res: MediaResponse = self.supervisor.enforce_act(&self.media_forge, media_req).await?;
 
@@ -242,4 +312,38 @@ impl AgentAct for ProductionOrchestrator {
             concept: concept_res,
         })
     }
+}
+
+/// SRT 形式のタイムスタンプ文字列を生成 (HH:MM:SS,mmm)
+fn format_srt_time(secs: f32) -> String {
+    let hours = (secs / 3600.0) as u32;
+    let minutes = ((secs % 3600.0) / 60.0) as u32;
+    let seconds = (secs % 60.0) as u32;
+    let millis = ((secs % 1.0) * 1000.0) as u32;
+    format!("{:02}:{:02}:{:02},{:03}", hours, minutes, seconds, millis)
+}
+
+/// テキストを句読点や改行で文章単位に分割する
+fn split_into_sentences(text: &str) -> Vec<String> {
+    let mut sentences = Vec::new();
+    let mut current = String::new();
+    
+    for c in text.chars() {
+        current.push(c);
+        // 文の区切り文字
+        if c == '。' || c == '？' || c == '！' || c == '\n' {
+            let s = current.trim().to_string();
+            if !s.is_empty() {
+                sentences.push(s);
+            }
+            current.clear();
+        }
+    }
+    
+    // 残りのテキスト
+    if !current.trim().is_empty() {
+        sentences.push(current.trim().to_string());
+    }
+    
+    sentences
 }

@@ -83,7 +83,6 @@ impl TrendSource for BraveTrendSonar {
             .query(&[("q", category), ("freshness", "pd"), ("count", "3")])
             .header("X-Subscription-Token", &self.api_key)
             .header("Accept", "application/json")
-            .header("Accept-Encoding", "gzip")
             .send()
             .await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Brave API request failed: {}", e) })?;

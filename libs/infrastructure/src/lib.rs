@@ -14,3 +14,5 @@ pub mod job_queue;
 mod job_queue_tests;
 pub mod workspace_manager;
 mod workspace_manager_tests;
+pub mod sns_watcher;
+pub mod oracle;

@@ -25,6 +25,7 @@ futures-util = "0.3.32"
 chrono.workspace = true
 regex = "1.12.3"
 async-recursion = "1.1.1"
+unicode-normalization = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// ShortsFactory 全体の設定
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct FactoryConfig {
     /// Ollama API エンドポイント
     pub ollama_url: String,
@@ -13,6 +13,8 @@ pub struct FactoryConfig {
     pub comfyui_timeout_secs: u64,
     /// 本番用モデル名
     pub model_name: String,
+    /// 台本生成用モデル名 (Gemini等)
+    pub script_model: String,
     /// ComfyUI のベースディレクトリ (Zero-Copy)
     pub comfyui_base_dir: String,
     /// Brave Search API Key for The Automaton's Brain (Phase 10-B)
@@ -23,6 +25,32 @@ pub struct FactoryConfig {
     pub workspace_dir: String,
     /// ファイル清掃までの経過時間(時間) (Phase 10-D)
     pub clean_after_hours: u64,
+    /// YouTube Data API Key for Phase 11 Sentinel
+    pub youtube_api_key: String,
+    /// Gemini API Key for The Oracle (Phase 11-D)
+    pub gemini_api_key: String,
+    /// TikTok API Key for Phase 11 Sentinel (Placeholder)
+    pub tiktok_api_key: String,
+}
+
+impl std::fmt::Debug for FactoryConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FactoryConfig")
+            .field("ollama_url", &self.ollama_url)
+            .field("comfyui_api_url", &self.comfyui_api_url)
+            .field("batch_size", &self.batch_size)
+            .field("comfyui_timeout_secs", &self.comfyui_timeout_secs)
+            .field("model_name", &self.model_name)
+            .field("comfyui_base_dir", &self.comfyui_base_dir)
+            .field("brave_api_key", if self.brave_api_key.is_empty() { &"" } else { &"***" })
+            .field("export_dir", &self.export_dir)
+            .field("workspace_dir", &self.workspace_dir)
+            .field("clean_after_hours", &self.clean_after_hours)
+            .field("youtube_api_key", if self.youtube_api_key.is_empty() { &"" } else { &"***" })
+            .field("gemini_api_key", if self.gemini_api_key.is_empty() { &"" } else { &"***" })
+            .field("tiktok_api_key", if self.tiktok_api_key.is_empty() { &"" } else { &"***" })
+            .finish()
+    }
 }
 
 impl FactoryConfig {
@@ -35,11 +63,15 @@ impl FactoryConfig {
             .set_default("batch_size", 10)?
             .set_default("comfyui_timeout_secs", 180)?
             .set_default("model_name", "qwen2.5-coder:32b")?
+            .set_default("script_model", "gemini-2.0-flash")?
             .set_default("comfyui_base_dir", std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()))?
             .set_default("brave_api_key", std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()))?
             .set_default("export_dir", std::env::var("EXPORT_DIR").unwrap_or_else(|_| "/Users/motista/Library/Mobile Documents/com~apple~CloudDocs/Aiome_Exports".to_string()))?
             .set_default("workspace_dir", std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "./workspace".to_string()))?
             .set_default("clean_after_hours", 24)?
+            .set_default("youtube_api_key", std::env::var("YOUTUBE_API_KEY").unwrap_or_else(|_| "".to_string()))?
+            .set_default("gemini_api_key", std::env::var("GEMINI_API_KEY").unwrap_or_else(|_| "".to_string()))?
+            .set_default("tiktok_api_key", std::env::var("TIKTOK_API_KEY").unwrap_or_else(|_| "".to_string()))?
             // config.toml があれば読み込む
             .add_source(config::File::with_name("config").required(false))
             // 環境変数 (SHORTS_FACTORY_*) があれば上書き
@@ -59,11 +91,15 @@ impl Default for FactoryConfig {
                 batch_size: 10,
                 comfyui_timeout_secs: 180,
                 model_name: "qwen2.5-coder:32b".to_string(),
+                script_model: "gemini-2.0-flash".to_string(),
                 comfyui_base_dir: std::env::var("COMFYUI_BASE_DIR").unwrap_or_else(|_| "/Users/motista/Desktop/ComfyUI".to_string()),
                 brave_api_key: std::env::var("BRAVE_API_KEY").unwrap_or_else(|_| "".to_string()),
                 export_dir: std::env::var("EXPORT_DIR").unwrap_or_else(|_| "/Users/motista/Library/Mobile Documents/com~apple~CloudDocs/Aiome_Exports".to_string()),
                 workspace_dir: std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "./workspace".to_string()),
                 clean_after_hours: 24,
+                youtube_api_key: std::env::var("YOUTUBE_API_KEY").unwrap_or_else(|_| "".to_string()),
+                gemini_api_key: std::env::var("GEMINI_API_KEY").unwrap_or_else(|_| "".to_string()),
+                tiktok_api_key: std::env::var("TIKTOK_API_KEY").unwrap_or_else(|_| "".to_string()),
             }
         })
     }
@@ -94,6 +130,13 @@ mod tests {
         writeln!(file, "comfyui_timeout_secs = 60").unwrap();
         writeln!(file, "model_name = \"custom-model\"").unwrap();
         writeln!(file, "comfyui_base_dir = \"custom_dir\"").unwrap();
+        writeln!(file, "brave_api_key = \"\"").unwrap();
+        writeln!(file, "export_dir = \"/tmp/exports\"").unwrap();
+        writeln!(file, "workspace_dir = \"./workspace\"").unwrap();
+        writeln!(file, "clean_after_hours = 24").unwrap();
+        writeln!(file, "youtube_api_key = \"\"").unwrap();
+        writeln!(file, "gemini_api_key = \"\"").unwrap();
+        writeln!(file, "tiktok_api_key = \"\"").unwrap();
         
         // config::File::from(path) を使って明示的なファイルを読み込む
         // 拡張子があるためフォーマットは自動判別される

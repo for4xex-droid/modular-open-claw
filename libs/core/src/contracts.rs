@@ -45,6 +45,13 @@ pub struct ConceptRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConceptResponse {
     pub title: String,
+    /// 字幕表示用テキスト（英数字・記号をそのまま使用）
+    #[serde(default)]
+    pub display_intro: String,
+    #[serde(default)]
+    pub display_body: String,
+    #[serde(default)]
+    pub display_outro: String,
     /// 導入部
     pub script_intro: String,
     /// 本編
@@ -72,6 +79,7 @@ pub struct VideoRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoResponse {
     pub output_path: String,
+    pub job_id: String,
 }
 
 // --- Voice クラスター ---
@@ -79,8 +87,9 @@ pub struct VideoResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceRequest {
     pub text: String,
-    pub speaker_id: i32,
-    pub style: Option<String>,
+    pub voice: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,3 +208,18 @@ impl KarmaDirectives {
     }
 }
 
+// --- Phase 11: The Absolute Contract v3 (神託の契約) ---
+
+/// LLM（The Oracle）による動画の最終審判。
+/// 大衆の反応（Engagement）と設計者の美学（Soul）を統合し、次世代への「業（Karma）」を導き出す。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OracleVerdict {
+    /// トピックや脚本のエンゲージメントスコア (-1.0 〜 1.0)
+    pub topic_score: f64,
+    /// 映像スタイルや演出のエンゲージメントスコア (-1.0 〜 1.0)
+    pub visual_score: f64,
+    /// Soul.md（美学）との適合度 (0.0 〜 1.0)
+    pub soul_score: f64,
+    /// 次元分解に基づく分析とインサイト
+    pub reasoning: String,
+}

@@ -169,8 +169,6 @@ impl WorkspaceManager {
                 };
 
                 let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                let is_allowed = allowed_extensions.contains(&extension) || 
-                                 allowed_extensions.iter().any(|&ae| ae == format!(".{}", extension));
 
                 // Extension whitelist logic: 
                 // Either match purely the extension string ("mp4") or with dot (".mp4")
@@ -207,7 +205,6 @@ impl WorkspaceManager {
                 Err(e) => {
                     // Could be recreating while we delete, just ignore
                     warn!("⚠️ The Scavenger: Could not prune directory {}: {}", dir.display(), e);
-                    has_contents = true; // Signal to parent that we still exist
                 }
             }
         }

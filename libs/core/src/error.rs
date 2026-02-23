@@ -82,6 +82,9 @@ pub enum FactoryError {
     #[error("インフラ構造エラー: {reason}")]
     Infrastructure { reason: String },
 
+    #[error("音声合成失敗 (TTS): {reason}")]
+    TtsFailure { reason: String },
+
     #[error("セキュリティ法規違反: {reason}")]
     SecurityViolation { reason: String },
 }

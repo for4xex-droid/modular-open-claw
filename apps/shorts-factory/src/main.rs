@@ -5,18 +5,22 @@ use infrastructure::trend_sonar::BraveTrendSonar;
 use infrastructure::media_forge::MediaForgeClient;
 use bastion::fs_guard::Jail;
 use std::sync::Arc;
+use std::time::Duration;
 
 mod supervisor;
 mod orchestrator;
 mod arbiter;
 mod asset_manager;
 mod server;
+mod simulator;
+mod job_worker;
+use job_worker::JobWorker;
 use server::telemetry::TelemetryHub;
 use server::router::{create_router, AppState};
 use supervisor::{Supervisor, SupervisorPolicy};
 use orchestrator::ProductionOrchestrator;
 use arbiter::ResourceArbiter;
-use factory_core::traits::AgentAct;
+use factory_core::traits::{AgentAct, JobQueue};
 use infrastructure::concept_manager::ConceptManager;
 use infrastructure::voice_actor::VoiceActor;
 use infrastructure::sound_mixer::SoundMixer;
@@ -62,14 +66,29 @@ enum Commands {
     Serve {
         #[arg(short, long, default_value = "3000")]
         port: u16,
-    }
+    },
+    /// SNS動画IDをジョブに紐付ける (The Anchor Link)
+    LinkSns {
+        /// 紐付け対象のジョブID
+        #[arg(short, long)]
+        job_id: String,
+        /// 投稿プラットフォーム (youtube, tiktok, etc.)
+        #[arg(short, long, default_value = "youtube")]
+        platform: String,
+        /// SNS側の動画ID
+        #[arg(short, long)]
+        video_id: String,
+    },
+    /// 進化の妥当性検証シミュレーター (Phase 11 Step 4)
+    SimulateEvolution,
+    /// 今すぐ Samsara プロトコル（合成・エンキュー）を実行する
+    SamsaraNow,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-// [Deleted] tracing_subscriber::fmt::init();
+    dotenvy::dotenv().ok();
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
     // 0.1. Watchtower Logging & Heartbeat (The Backpressure Trap Fix)
     // ログ転送用のチャネルを作成 (容量1000)
     use shared::watchtower::CoreEvent;
@@ -190,11 +209,21 @@ async fn main() -> Result<(), anyhow::Error> {
     let wt_server = server::watchtower::WatchtowerServer::new(log_rx, job_tx, job_queue.clone());
     tokio::spawn(wt_server.start());
 
+    // 5.2 The Soul of the World (Load Soul.md for Oracle)
+    let soul_md_path = std::env::current_dir()?.join("SOUL.md");
+    let soul_md = std::fs::read_to_string(&soul_md_path).unwrap_or_else(|_| {
+        warn!("⚠️ SOUL.md not found at {}. Using default soul.", soul_md_path.display());
+        "## Default Soul\n- Be creative.\n- Stay true to the mission.".to_string()
+    });
+
     let _cron_scheduler = server::cron::start_cron_scheduler(
         job_queue.clone(),
         config.ollama_url.clone(),
         config.model_name.clone(),
         config.brave_api_key.clone(),
+        config.youtube_api_key.clone(),
+        config.gemini_api_key.clone(),
+        soul_md.clone(),
         config.workspace_dir.clone(),
         config.comfyui_base_dir.clone(),
         config.clean_after_hours,
@@ -202,29 +231,35 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Sidecar Manager ("The Reaper")
     let sidecar_manager = Arc::new(SidecarManager::new(vec![
-        "python".to_string(), "python3".to_string(), "uv".to_string(), "main".to_string(),
+        "python".to_string(), "python3".to_string(), "Python".to_string(), "uv".to_string(), "main".to_string(),
     ]));
 
-    // TTS Sidecar
+    // TTS Sidecar (Qwen3-TTS)
     {
         let sm = sidecar_manager.clone();
         sm.clean_port(5001).await?;
-        let mut cmd = Command::new("uv");
-        cmd.arg("run").arg("server_fastapi.py").current_dir("services/Style-Bert-VITS2");
+        // TIME_WAIT ソケット解放を待機
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        let mut cmd = Command::new(".venv/bin/python");
+        cmd.arg("tts_server.py")
+           .env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+           .current_dir("services/qwen3-tts");
         sm.spawn(cmd).await?;
-        info!("🎙️  TTS Sidecar server spawned on port 5001");
+        info!("🎙️  TTS Sidecar server (Qwen3-TTS) spawned on port 5001");
+        // コールドスタート（モデルロード）待機
+        tokio::time::sleep(Duration::from_secs(10)).await;
     }
 
     // Infrastructure Clients
     let trend_sonar = BraveTrendSonar::new(config.brave_api_key.clone());
-    let concept_manager = ConceptManager::new(&config.ollama_url, &config.model_name);
+    let concept_manager = ConceptManager::new(&config.gemini_api_key, &config.script_model);
     let comfy_bridge = ComfyBridgeClient::new(
         shield.clone(),
         &config.comfyui_api_url,
         &config.comfyui_base_dir,
         config.comfyui_timeout_secs,
     );
-    let voice_actor = VoiceActor::new("http://localhost:5001", "jvnv-F1-jp");
+    let voice_actor = VoiceActor::new("http://localhost:5001", "aiome_narrator");
     let bgm_path = std::env::current_dir()?.join("resources/bgm");
     if !bgm_path.exists() {
         std::fs::create_dir_all(&bgm_path)?;
@@ -260,6 +295,15 @@ async fn main() -> Result<(), anyhow::Error> {
             // Telemetry Hub
             let telemetry = Arc::new(TelemetryHub::new());
             telemetry.start_heartbeat_loop().await;
+
+            // 6.2 Autonomous JobWorker (The Autonomous Engine)
+            let worker = Arc::new(JobWorker::new(
+                job_queue.clone(),
+                orchestrator.clone(),
+                jail.clone(),
+                soul_md.clone(),
+            ));
+            tokio::spawn(worker.start_loop());
 
             // Axum Router
             let state = Arc::new(AppState {
@@ -323,6 +367,37 @@ async fn main() -> Result<(), anyhow::Error> {
             let app = create_router(state);
             let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
             axum::serve(listener, app).await?;
+        }
+        Commands::LinkSns { job_id, platform, video_id } => {
+            info!("🔗 Linking Job {} to {} video ID: {}", job_id, platform, video_id);
+            match job_queue.link_sns_data(&job_id, &platform, &video_id).await {
+                Ok(_) => info!("✅ Linking Successful."),
+                Err(e) => error!("❌ Failed to link SNS data: {}", e),
+            }
+        }
+        Commands::SimulateEvolution => {
+            info!("🔬 Preparing Evolution Simulator environment...");
+            if let Err(e) = simulator::run_evolution_simulation(
+                job_queue.pool_ref(),
+                &config.gemini_api_key,
+                "gemini-2.5-flash",
+                soul_md.clone(),
+            ).await {
+                error!("❌ Evolution Simulation Failed: {}", e);
+            }
+        }
+        Commands::SamsaraNow => {
+            info!("🔄 [Samsara] Manual trigger initiated. Starting synthesis...");
+            let config = FactoryConfig::default();
+            match server::cron::synthesize_next_job(
+                &config.gemini_api_key,
+                "gemini-2.5-flash",
+                &config.brave_api_key,
+                &*job_queue,
+            ).await {
+                Ok(_) => info!("✅ [Samsara] Manual synthesis complete. Job enqueued."),
+                Err(e) => error!("❌ [Samsara] Manual synthesis failed: {}", e),
+            }
         }
         Commands::Generate { category, topic, remix, step } => {
             let workflow_req = WorkflowRequest { 

@@ -186,6 +186,13 @@ impl WatchtowerServer {
                      Err(e) => error!("❌ Failed to save creative rating: {}", e),
                  }
              }
+             ControlCommand::LinkSns { job_id, platform, video_id } => {
+                 info!("🔗 Linking Job {} to {} video ID: {}", job_id, platform, video_id);
+                 match self.job_queue.link_sns_data(&job_id, &platform, &video_id).await {
+                     Ok(_) => info!("✅ SNS data linked: job={} video_id={}", job_id, video_id),
+                     Err(e) => error!("❌ Failed to link SNS data: {}", e),
+                 }
+             }
              ControlCommand::StopGracefully => {
                  info!("🛑 Graceful shutdown requested via Watchtower");
                  std::process::exit(0);

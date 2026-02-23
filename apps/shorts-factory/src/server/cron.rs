@@ -3,17 +3,27 @@ use tracing::{info, warn, error};
 use std::sync::Arc;
 use factory_core::traits::JobQueue;
 use infrastructure::job_queue::SqliteJobQueue;
-use rig::providers::openai;
+use rig::providers::gemini;
 use rig::completion::Prompt;
 use rig::client::CompletionClient;
 use tokio::fs;
 use factory_core::contracts::LlmJobResponse;
+
+fn compute_soul_hash(soul_content: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    soul_content.hash(&mut hasher);
+    format!("{:16x}", hasher.finish())
+}
 
 pub async fn start_cron_scheduler(
     job_queue: Arc<SqliteJobQueue>,
     ollama_url: String,
     model_name: String,
     brave_api_key: String,
+    youtube_api_key: String,
+    gemini_api_key: String,
+    soul_md: String,
     workspace_dir: String,
     comfyui_base_dir: String,
     clean_after_hours: u64,
@@ -22,16 +32,17 @@ pub async fn start_cron_scheduler(
 
     // === Job 1: The Samsara Protocol — Runs daily at 19:00 ===
     let jq_samsara = job_queue.clone();
+    let gem_key_samsara = gemini_api_key.clone();
+    let brave_key_samsara = brave_api_key.clone();
     sched.add(
         Job::new_async("0 0 19 * * *", move |_uuid, mut _l| {
             let jq = jq_samsara.clone();
-            let url = ollama_url.clone();
-            let model = model_name.clone();
-            let brave_key = brave_api_key.clone();
+            let gem_key = gem_key_samsara.clone();
+            let brave_key = brave_key_samsara.clone();
             
             Box::pin(async move {
                 info!("🔄 [Samsara] Cron triggered. Initiating synthesis...");
-                match synthesize_next_job(&url, &model, &brave_key, &*jq).await {
+                match synthesize_next_job(&gem_key, "gemini-2.5-flash", &brave_key, &*jq).await {
                     Ok(_) => info!("✅ [Samsara] Successfully synthesized and enqueued next job."),
                     Err(e) => error!("❌ [Samsara] Failed to synthesize next job: {}", e),
                 }
@@ -59,9 +70,14 @@ pub async fn start_cron_scheduler(
 
     // === Job 3: Deferred Distillation — Runs every 30 minutes ===
     let jq_distill = job_queue.clone();
+    let s_md_distill = soul_md.clone();
+    let gem_key_distill = gemini_api_key.clone();
     sched.add(
         Job::new_async("0 */30 * * * *", move |_uuid, mut _l| {
             let jq = jq_distill.clone();
+            let s_md = s_md_distill.clone();
+            let gem_key = gem_key_distill.clone();
+
             Box::pin(async move {
                 match jq.fetch_undistilled_jobs(5).await {
                     Ok(jobs) => {
@@ -71,8 +87,8 @@ pub async fn start_cron_scheduler(
                             info!("🧘 [Deferred Distillation] Processing undistilled Job: {}", job.id);
                             // Attempt distillation. If LLM is still down, the job stays undistilled and will be retried next cycle.
                             match distill_karma(
-                                "http://localhost:11434/v1", "qwen2.5-coder:32b",
-                                &*jq, &job.id, &job.style, &log, is_success, job.creative_rating
+                                &gem_key, "gemini-2.5-flash",
+                                &*jq, &job.id, &job.style, &log, is_success, job.creative_rating, &s_md
                             ).await {
                                 Ok(_) => {
                                     // Mark as distilled via trait method
@@ -95,7 +111,7 @@ pub async fn start_cron_scheduler(
         Job::new_async("0 0 1 * * *", move |_uuid, mut _l| {
             let jq = jq_scavenger.clone();
             Box::pin(async move {
-                match jq.purge_old_jobs(30).await {
+                match jq.purge_old_jobs(60).await {
                     Ok(count) => {
                         if count > 0 {
                             info!("🧹 [DB Scavenger] Purged {} old job(s). DB optimized.", count);
@@ -108,14 +124,13 @@ pub async fn start_cron_scheduler(
             })
         })?
     ).await?;
-    
     // === Job 5: The File Scavenger (Deep Cleansing) — Runs daily at 02:00 ===
     let ws_dir = workspace_dir.clone();
     let comfy_dir = comfyui_base_dir.clone();
     sched.add(
         Job::new_async("0 0 2 * * *", move |_uuid, mut _l| {
             let w_dir = ws_dir.clone();
-            let c_dir_base = comfy_dir.clone(); // The base dir is outside workspace, wait, comfyui_base_dir is absolute path.
+            let c_dir_base = comfy_dir.clone(); 
             let hours = clean_after_hours;
             Box::pin(async move {
                 let allowed = [".mp4", ".png", ".jpg", ".jpeg", ".wav", ".json", ".latent"];
@@ -136,14 +151,184 @@ pub async fn start_cron_scheduler(
         })?
     ).await?;
 
+    // === Job 6: The Delayed Watcher — Runs every 4 hours (The Sentinel) ===
+    let jq_watcher = job_queue.clone();
+    let yt_key = youtube_api_key.clone();
+    sched.add(
+        Job::new_async("0 0 */4 * * *", move |_uuid, mut _l| {
+            let jq = jq_watcher.clone();
+            let watcher = infrastructure::sns_watcher::SnsWatcher::new(yt_key.clone());
+            Box::pin(async move {
+                info!("👁️ [Sentinel] Delayed Watcher triggered. Scanning milestones...");
+                
+                // --- The Global Circuit Breaker ---
+                if let Ok(failures) = jq.get_global_api_failures().await {
+                    if failures >= 5 {
+                        warn!("🚨 [Sentinel] GLOBAL SLEEP MODE OVERRIDE. Consecutive API failures ({}). Skipping Execution.", failures);
+                        return;
+                    }
+                }
+
+                let milestones = vec![1, 7, 30]; // 24h, 7d, 30d
+                for days in milestones {
+                    match jq.fetch_jobs_for_evaluation(days, 10).await {
+                        Ok(jobs) => {
+                            for job in jobs {
+                                // Guard: SNS linking check
+                                let platform = match job.sns_platform.as_ref() {
+                                    Some(p) => p,
+                                    None => continue,
+                                };
+                                let video_id = match job.sns_video_id.as_ref() {
+                                    Some(id) => id,
+                                    None => continue,
+                                };
+
+                                // The Soft-Fail Resilience: Catch and log individual job errors
+                                match watcher.fetch_metrics(platform, video_id).await {
+                                    Ok(m) => {
+                                        // Reset Global Circuit Breaker on success
+                                        let _ = jq.record_global_api_success().await;
+
+                                        info!("📊 [Sentinel] Milestone {}d reached for Job {}: {} views, {} likes", days, job.id, m.views, m.likes);
+                                        // Record to Metrics Ledger (with comments for Temporal Context Guard)
+                                        let comments_json = serde_json::to_string(&m.comments).unwrap_or_else(|_| "[]".to_string());
+                                        if let Err(e) = jq.record_sns_metrics(&job.id, days, m.views, m.likes, m.comments_count, Some(&comments_json)).await {
+                                            error!("❌ [Sentinel] Failed to record metrics: {}", e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!("⚠️ [Sentinel] Failed to fetch metrics for Job {} (skip): {}", job.id, e);
+                                        
+                                        // Trip the global circuit breaker if the API fails
+                                        let _ = jq.record_global_api_failure().await;
+                                        
+                                        match jq.increment_job_retry_count(&job.id).await {
+                                            Ok(true) => error!("💀 [Sentinel] Poison Pill Activated for Job {}: API continually fails. Abandoning.", job.id),
+                                            Err(inc_err) => error!("❌ [Sentinel] Failed to increment retry count: {}", inc_err),
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => error!("❌ [Sentinel] Failed to fetch jobs for milestone {}d: {}", days, e),
+                    }
+                }
+            })
+        })?
+    ).await?;
+
+    // === Job 7: The Oracle Evaluator — Runs every 1 hour (The Final Verdict) ===
+    let jq_eval = job_queue.clone();
+    let gem_key_eval = gemini_api_key.clone();
+    let s_md_eval = soul_md.clone();
+    sched.add(
+        Job::new_async("0 0 * * * *", move |_uuid, mut _l| {
+            let jq = jq_eval.clone();
+            let s_md = s_md_eval.clone();
+            let oracle = infrastructure::oracle::Oracle::new(&gem_key_eval, "gemini-2.5-flash", s_md.clone());
+            Box::pin(async move {
+                let current_soul_hash = compute_soul_hash(&s_md);
+                info!("🔮 [Oracle] Evaluator triggered. Checking for pending verdicts...");
+
+                // --- The Global Circuit Breaker ---
+                if let Ok(failures) = jq.get_global_api_failures().await {
+                    if failures >= 5 {
+                        warn!("🚨 [Oracle] GLOBAL SLEEP MODE OVERRIDE. Consecutive API failures ({}). Skipping Execution.", failures);
+                        return;
+                    }
+                }
+
+                match jq.fetch_pending_evaluations(10).await {
+                    Ok(records) => {
+                        for record in records {
+                            // Guard: raw_comments_json must exist for evaluation
+                            let comments_json = match record.raw_comments_json.as_ref() {
+                                Some(json) => json,
+                                None => {
+                                    warn!("⚠️ [Oracle] Skipping evaluation for ID {} (no raw comments)", record.id);
+                                    continue;
+                                }
+                            };
+
+                            // Fetch job context (topic/style) for evaluation
+                            // Note: fetch_job by ID is needed here.
+                            // Assuming JobQueue has fetch_job or we use record context.
+                            // Let's assume we need to fetch the job.
+                            match jq.fetch_job(&record.job_id).await {
+                                Ok(Some(job)) => {
+                                    match oracle.evaluate(
+                                        record.milestone_days,
+                                        &job.topic,
+                                        &job.style,
+                                        record.views,
+                                        record.likes,
+                                        comments_json,
+                                    ).await {
+                                        Ok(verdict) => {
+                                            // Reset Global Circuit Breaker on success
+                                            let _ = jq.record_global_api_success().await;
+
+                                            info!("⚖️ [Oracle] Verdict decided for Job {}: topic={:.2}, soul={:.2}", 
+                                                record.job_id, verdict.topic_score, verdict.soul_score);
+                                            
+                                            // Commit the Phase 11 Idempotent Transaction
+                                            if let Err(e) = jq.apply_final_verdict(record.id, verdict, &current_soul_hash).await {
+                                                error!("❌ [Oracle] Failed to commit verdict for Job {}: {}", record.job_id, e);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!("❌ [Oracle] Evaluation failed for Job {}: {}", record.job_id, e);
+                                            
+                                            // Trip the global circuit breaker if the API fails
+                                            let _ = jq.record_global_api_failure().await;
+                                            
+                                            match jq.increment_oracle_retry_count(record.id).await {
+                                                Ok(true) => error!("💀 [Oracle] Poison Pill Activated for Record {}: LLM continually fails. Abandoning.", record.id),
+                                                Err(inc_err) => error!("❌ [Oracle] Failed to increment oracle retry count: {}", inc_err),
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+                                }
+                                Ok(None) => error!("❌ [Oracle] Job {} not found for record {}", record.job_id, record.id),
+                                Err(e) => error!("❌ [Oracle] Failed to fetch job {}: {}", record.job_id, e),
+                            }
+                        }
+                    }
+                    Err(e) => error!("❌ [Oracle] Failed to fetch pending evaluations: {}", e),
+                }
+            })
+        })?
+    ).await?;
+
+    // === Job 8: The Karma Distiller — Runs daily at 04:00 (Memory Compression) ===
+    let jq_distill = job_queue.clone();
+    let gem_key_distill = gemini_api_key.clone();
+    let s_md_compress = soul_md.clone();
+    sched.add(
+        Job::new_async("0 0 4 * * *", move |_uuid, mut _l| {
+            let jq = jq_distill.clone();
+            let key = gem_key_distill.clone();
+            let s_md = s_md_compress.clone();
+            Box::pin(async move {
+                info!("🧬 [Distiller] Analyzing memory banks for Token Asphyxiation...");
+                if let Err(e) = compress_karma_memories(&key, "gemini-2.5-flash", &*jq, &s_md).await {
+                    error!("❌ [Distiller] Karma Compression Failed: {}", e);
+                }
+            })
+        })?
+    ).await?;
+
     sched.start().await?;
-    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: every 15m, Distillation: every 30m, DB Scavenger: daily@01:00, File Scavenger: daily@02:00)");
+    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: 15m, Distiller: daily@04:00, Scavengers: daily, Sentinel: 4h, Oracle: 1h)");
 
     Ok(sched)
 }
 
-async fn synthesize_next_job(
-    ollama_url: &str,
+pub async fn synthesize_next_job(
+    gemini_api_key: &str,
     model_name: &str,
     brave_api_key: &str,
     job_queue: &SqliteJobQueue,
@@ -153,15 +338,14 @@ async fn synthesize_next_job(
     // 1. Load the Immutable Core (`SOUL.md`)
     let soul_path = root_dir.join("SOUL.md");
     let soul_content = fs::read_to_string(&soul_path).await.unwrap_or_else(|_| "SOUL.md not found. Be a helpful AI.".to_string());
+    let current_soul_hash = compute_soul_hash(&soul_content);
 
     // 2. Load the Capability Matrix (`skills.md`)
     let skills_path = root_dir.join("workspace").join("config").join("skills.md");
     let skills_content = fs::read_to_string(&skills_path).await.unwrap_or_else(|_| "Skills not defined.".to_string());
 
-    let client: openai::Client = openai::Client::builder()
-        .api_key("ollama")
-        .base_url(ollama_url)
-        .build()?;
+    let client: gemini::Client = gemini::Client::new(gemini_api_key)
+        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Gemini Client init failed: {}", e))))?;
 
     // --- Phase 1: The Sonar Ping (Two-Pass Architecture) ---
     // Temporal Grounding
@@ -218,7 +402,7 @@ async fn synthesize_next_job(
 
     // --- Phase 3: The Synthesis ---
     // RAG-Driven Karma Fetching
-    let karma_list = job_queue.fetch_relevant_karma(&search_query, "tech_news_v1", 3).await.unwrap_or_default();
+    let karma_list = job_queue.fetch_relevant_karma(&search_query, "tech_news_v1", 3, &current_soul_hash).await.unwrap_or_default();
     let karma_content = if karma_list.is_empty() {
         "*注記: 現在Karmaは存在しません。SoulとSkillsのみを頼りに、大胆に初回タスクを生成してください*".to_string()
     } else {
@@ -298,7 +482,7 @@ async fn synthesize_next_job(
 
     // 6. Skill Existence Validation (The Hallucinated Skill 防衛)
     let validated_style = {
-        let workflow_dir = root_dir.join("workspace").join("workflows");
+        let workflow_dir = root_dir.join("resources").join("workflows");
         let workflow_path = workflow_dir.join(format!("{}.json", &task.style));
         if workflow_path.exists() {
             task.style.clone()
@@ -320,7 +504,7 @@ async fn synthesize_next_job(
 }
 
 pub async fn distill_karma(
-    ollama_url: &str,
+    gemini_key: &str,
     model_name: &str,
     job_queue: &SqliteJobQueue,
     job_id: &str,
@@ -328,11 +512,11 @@ pub async fn distill_karma(
     execution_log: &str,
     is_success: bool,
     human_rating: Option<i32>,
+    soul_content: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let client: openai::Client = openai::Client::builder()
-        .api_key("ollama")
-        .base_url(ollama_url)
-        .build()?;
+    let current_soul_hash = compute_soul_hash(soul_content);
+    let client: gemini::Client = gemini::Client::new(gemini_key)
+        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Gemini Client init failed: {}", e))))?;
 
     let preamble = "あなたはAIエージェントの記憶と経験を整理する「内省モジュール(Reflector)」です。与えられた実行ログから、次回以降の動画生成で活かせる【短く具体的な教訓】を1〜2文で抽出してください。出力は教訓のテキストのみとし、余計な言葉遣いは含めないでください。";
     
@@ -343,14 +527,92 @@ pub async fn distill_karma(
     
     // Distill phase generates 'Technical' karma (automated system introspection).
     // 'Creative' karma is generated separately via human async feedback (set_creative_rating).
-    job_queue.store_karma(job_id, skill_id, lesson.trim(), "Technical").await?;
+    job_queue.store_karma(job_id, skill_id, lesson.trim(), "Technical", &current_soul_hash).await?;
     info!("🧘 [Samsara] Karma distilled for Job {} (Skill: {}): {}", job_id, skill_id, lesson.trim());
     
     Ok(())
 }
 
 fn extract_json(text: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let start = text.find('{').ok_or_else(|| -> Box<dyn std::error::Error + Send + Sync> { "No JSON object found".into() })?;
-    let end = text.rfind('}').ok_or_else(|| -> Box<dyn std::error::Error + Send + Sync> { "No JSON object found".into() })? + 1;
-    Ok(text[start..end].to_string())
+    let mut clean_text = text.to_string();
+    
+    // 1. markdown code block: ```json ... ``` の中身を抽出
+    if let Some(start_idx) = clean_text.find("```json") {
+        let after_start = &clean_text[start_idx + 7..];
+        if let Some(end_idx) = after_start.find("```") {
+            clean_text = after_start[..end_idx].to_string();
+        }
+    } else if let Some(start_idx) = clean_text.find("```") {
+        let after_start = &clean_text[start_idx + 3..];
+        if let Some(end_idx) = after_start.find("```") {
+            clean_text = after_start[..end_idx].to_string();
+        }
+    }
+
+    if let (Some(start), Some(end)) = (clean_text.find('{'), clean_text.rfind('}')) {
+        let mut json_str = clean_text[start..=end].to_string();
+        // Remove trailing commas before closing braces/brackets
+        json_str = json_str.replace(",\n}", "\n}").replace(",}", "}").replace(",\n]", "\n]").replace(",]", "]");
+        
+        // Fix missing quotes for keys/values
+        let re_missing_both = regex::Regex::new(r#""([a-zA-Z_]+)"\s*:\s*([^"\[\{\s][^",\n]+)\s*,"#).unwrap();
+        json_str = re_missing_both.replace_all(&json_str, "\"$1\": \"$2\",").to_string();
+        
+        let re_missing_start = regex::Regex::new(r#""([a-zA-Z_]+)"\s*:\s*([^"\[\{\s][^"\n]+)","#).unwrap();
+        json_str = re_missing_start.replace_all(&json_str, "\"$1\": \"$2\",").to_string();
+
+        Ok(json_str)
+    } else {
+        Err("LLM response did not contain JSON".into())
+    }
+}
+
+async fn compress_karma_memories(
+    gemini_key: &str,
+    model_name: &str,
+    job_queue: &SqliteJobQueue,
+    soul_content: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let current_soul_hash = compute_soul_hash(soul_content);
+    let threshold = 20; // Token Asphyxiation Trigger Limit
+    let skills = job_queue.fetch_skills_for_distillation(threshold).await?;
+
+    if skills.is_empty() {
+        return Ok(());
+    }
+
+    let client: rig::providers::gemini::Client = rig::providers::gemini::Client::new(gemini_key)
+        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Gemini Client init failed: {}", e))))?;
+
+    // The Distiller Preamble: Absolute compression of semantic memories
+    let preamble = "あなたはAIエージェントの膨大な記憶を整理・圧縮する「深層意識(Karma Distiller)」です。\n以下のリストは、特定のスキルに関する過去の複数の教訓（Karma）です。\n重複する内容を統合し、最も重要で普遍的な【単一の高度な戒め（Synthesized Karma）】として抽出してください。\n出力は純粋なテキストのみとし、絶対に前置きや形式的な言葉を含めず、核心のみを述べてください。";
+
+    for skill in skills {
+        let raw_karmas = job_queue.fetch_raw_karma_for_skill(&skill).await?;
+        if raw_karmas.len() as i64 <= threshold { continue; } // Double check
+
+        info!("🧬 [Distiller] Compressing {} memories for skill '{}'...", raw_karmas.len(), skill);
+        
+        let mut text_blocks = Vec::new();
+        let mut ids = Vec::new();
+        for (i, (id, lesson)) in raw_karmas.iter().enumerate() {
+            text_blocks.push(format!("{}. {}", i+1, lesson));
+            ids.push(id.clone());
+        }
+
+        let user_prompt = format!("【対象スキル: {}】\n以下の教訓群を1つの究極の戒めに蒸留してください：\n{}", skill, text_blocks.join("\n"));
+        
+        let agent: rig::agent::Agent<rig::providers::gemini::completion::CompletionModel> = client.agent(model_name).preamble(preamble).build();
+        match agent.prompt(user_prompt).await {
+            Ok(distilled) => {
+                info!("🔮 [Distiller] Synthesized Karma for '{}': {}", skill, distilled);
+                if let Err(e) = job_queue.apply_distilled_karma(&skill, &distilled, &ids, &current_soul_hash).await {
+                    error!("❌ [Distiller] Failed to apply distilled karma to DB: {}", e);
+                }
+            }
+            Err(e) => error!("❌ [Distiller] LLM compression failed for {}: {}", skill, e),
+        }
+    }
+
+    Ok(())
 }

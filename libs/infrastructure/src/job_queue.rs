@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use factory_core::traits::{Job, JobQueue, JobStatus};
+use factory_core::traits::{Job, JobQueue, JobStatus, SnsMetricsRecord};
+use factory_core::contracts::OracleVerdict;
 use factory_core::error::FactoryError;
 use sqlx::{SqlitePool, Row};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
@@ -17,8 +18,9 @@ pub struct SqliteJobQueue {
 impl SqliteJobQueue {
     /// Connects to the SQLite database and initializes the WAL mode and schema.
     pub async fn new(db_path: &str) -> Result<Self, FactoryError> {
-        let options = SqliteConnectOptions::new()
-            .filename(db_path)
+        use std::str::FromStr;
+        let options = SqliteConnectOptions::from_str(db_path)
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Invalid db_path {}: {}", db_path, e) })?
             .create_if_missing(true)
             .journal_mode(SqliteJournalMode::Wal)
             .busy_timeout(Duration::from_millis(5000));
@@ -63,6 +65,9 @@ impl SqliteJobQueue {
                 creative_rating INTEGER CHECK(creative_rating IN (-1, 0, 1)), 
                 execution_log TEXT,
                 error_message TEXT,
+                sns_platform TEXT,
+                sns_video_id TEXT,
+                published_at TEXT,
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             );"
@@ -76,6 +81,10 @@ impl SqliteJobQueue {
         for migration in [
             "ALTER TABLE jobs ADD COLUMN last_heartbeat TEXT",
             "ALTER TABLE jobs ADD COLUMN execution_log TEXT",
+            "ALTER TABLE jobs ADD COLUMN sns_platform TEXT",
+            "ALTER TABLE jobs ADD COLUMN sns_video_id TEXT",
+            "ALTER TABLE jobs ADD COLUMN published_at TEXT",
+            "ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0",
         ] {
             let _ = sqlx::query(migration).execute(&self.pool).await;
         }
@@ -102,6 +111,54 @@ impl SqliteJobQueue {
             .execute(&self.pool).await.ok();
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_skill_weight ON karma_logs(related_skill, weight DESC);")
             .execute(&self.pool).await.ok();
+        
+        // The Metrics Ledger (評価台帳)
+        // Stores chronological snapshots of SNS performance at milestones (24h, 7d, 30d).
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sns_metrics_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL,
+                milestone_days INTEGER NOT NULL,
+                views INTEGER NOT NULL,
+                likes INTEGER NOT NULL,
+                comments_count INTEGER NOT NULL,
+                raw_comments_json TEXT,
+                oracle_score_topic REAL,
+                oracle_score_visual REAL,
+                oracle_score_soul REAL,
+                oracle_reason TEXT,
+                is_finalized INTEGER NOT NULL DEFAULT 0,
+                recorded_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE CASCADE
+            );"
+        ).execute(&self.pool).await.map_err(|e| FactoryError::Infrastructure {
+            reason: format!("Failed to create sns_metrics_history: {}", e),
+        })?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_sns_metrics_job ON sns_metrics_history(job_id, milestone_days);")
+            .execute(&self.pool).await.ok();
+
+        // New migrations for sns_metrics_history refinement
+        for migration in [
+            "ALTER TABLE sns_metrics_history ADD COLUMN raw_comments_json TEXT",
+            "ALTER TABLE sns_metrics_history ADD COLUMN is_finalized INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE sns_metrics_history ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE karma_logs ADD COLUMN soul_version_hash TEXT",
+        ] {
+            let _ = sqlx::query(migration).execute(&self.pool).await;
+        }
+
+        // The Temporal Voids protection: Global Circuit Breaker State
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS system_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create system_state table: {}", e) })?;
 
         Ok(())
     }
@@ -132,12 +189,57 @@ impl JobQueue for SqliteJobQueue {
         Ok(id)
     }
 
+    async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, FactoryError> {
+        let row = sqlx::query(
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs WHERE id = ?"
+        )
+        .bind(job_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch job {}: {}", job_id, e) })?;
+
+        if let Some(r) = row {
+            let id: String = r.get("id");
+            let topic: String = r.get("topic");
+            let style: String = r.get("style_name");
+            let karma_directives: Option<String> = try_get_optional_string(&r, "karma_directives");
+            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
+            let execution_log: Option<String> = try_get_optional_string(&r, "execution_log");
+            let error_message: Option<String> = try_get_optional_string(&r, "error_message");
+            let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
+            let sns_video_id: Option<String> = try_get_optional_string(&r, "sns_video_id");
+            let published_at: Option<String> = try_get_optional_string(&r, "published_at");
+            let status_str: String = r.get("status");
+            let status = JobStatus::from_string(&status_str);
+
+            Ok(Some(Job {
+                id,
+                topic,
+                style,
+                karma_directives,
+                status,
+                started_at: r.get("started_at"),
+                last_heartbeat: r.get("last_heartbeat"),
+                tech_karma_extracted: tech_karma_extracted != 0,
+                creative_rating,
+                execution_log,
+                error_message,
+                sns_platform,
+                sns_video_id,
+                published_at,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
     async fn dequeue(&self) -> Result<Option<Job>, FactoryError> {
         let mut tx = self.pool.begin().await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to start transaction: {}", e) })?;
 
         let row = sqlx::query(
-            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
         )
         .bind(JobStatus::Pending.to_string())
         .fetch_optional(&mut *tx)
@@ -153,6 +255,9 @@ impl JobQueue for SqliteJobQueue {
             let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
             let execution_log: Option<String> = try_get_optional_string(&r, "execution_log");
             let error_message: Option<String> = try_get_optional_string(&r, "error_message");
+            let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
+            let sns_video_id: Option<String> = try_get_optional_string(&r, "sns_video_id");
+            let published_at: Option<String> = try_get_optional_string(&r, "published_at");
 
             let now = Utc::now().to_rfc3339();
             // Set status to Processing, record started_at AND first heartbeat
@@ -181,6 +286,9 @@ impl JobQueue for SqliteJobQueue {
                 creative_rating,
                 execution_log,
                 error_message,
+                sns_platform,
+                sns_video_id,
+                published_at,
             }))
         } else {
             Ok(None)
@@ -212,7 +320,7 @@ impl JobQueue for SqliteJobQueue {
         Ok(())
     }
 
-    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64) -> Result<Vec<String>, FactoryError> {
+    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64, current_soul_hash: &str) -> Result<Vec<String>, FactoryError> {
         // Boltzmann RAG: Time-Decay Karma Injection
         // - effective_weight = max(0, weight - days_since_creation * 0.5)
         // - Older karma naturally fades, preventing the Success Trap
@@ -220,7 +328,7 @@ impl JobQueue for SqliteJobQueue {
         let topic_pattern = format!("%{}%", topic);
 
         let rows = sqlx::query(
-            "SELECT id, lesson,
+            "SELECT id, lesson, soul_version_hash,
               max(0, weight - (julianday('now') - julianday(created_at)) * 0.5) AS effective_weight
              FROM karma_logs 
              WHERE weight > 0 AND (related_skill = ? OR related_skill = 'global' OR lesson LIKE ?) 
@@ -236,7 +344,16 @@ impl JobQueue for SqliteJobQueue {
         let mut karma = Vec::new();
         for row in &rows {
             let lesson: String = row.get("lesson");
-            karma.push(lesson);
+            let karma_hash: Option<String> = try_get_optional_string(row, "soul_version_hash");
+            
+            let mut processed_lesson = lesson;
+            if let Some(h) = karma_hash {
+                // The Cognitive Dissonance Trap Fix: Warn LLM if this karma is from a different era
+                if h != current_soul_hash {
+                    processed_lesson = format!("[LEGACY KARMA - from an older Soul version]\n{}", processed_lesson);
+                }
+            }
+            karma.push(processed_lesson);
         }
 
         // Update last_applied_at for applied karma entries (Usage Tracking for TTL Decay)
@@ -253,17 +370,18 @@ impl JobQueue for SqliteJobQueue {
         Ok(karma)
     }
 
-    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str) -> Result<(), FactoryError> {
+    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str, soul_hash: &str) -> Result<(), FactoryError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         sqlx::query(
-            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(job_id)
         .bind(karma_type)
         .bind(skill_id)
         .bind(lesson)
+        .bind(soul_hash)
         .bind(&now)
         .execute(&self.pool)
         .await
@@ -346,12 +464,13 @@ impl JobQueue for SqliteJobQueue {
     async fn fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, FactoryError> {
         let rows = sqlx::query(
             "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
-                    tech_karma_extracted, creative_rating, execution_log, error_message 
-             FROM jobs 
-             WHERE execution_log IS NOT NULL 
-             AND tech_karma_extracted = 0 
-             AND status IN ('Completed', 'Failed') 
-             ORDER BY updated_at ASC LIMIT ?"
+                     tech_karma_extracted, creative_rating, execution_log, error_message,
+                     sns_platform, sns_video_id, published_at 
+              FROM jobs 
+              WHERE execution_log IS NOT NULL 
+              AND tech_karma_extracted = 0 
+              AND status IN ('Completed', 'Failed') 
+              ORDER BY updated_at ASC LIMIT ?"
         )
         .bind(limit)
         .fetch_all(&self.pool)
@@ -377,6 +496,9 @@ impl JobQueue for SqliteJobQueue {
                 creative_rating: r.try_get("creative_rating").ok(),
                 execution_log: try_get_optional_string(&r, "execution_log"),
                 error_message: try_get_optional_string(&r, "error_message"),
+                sns_platform: try_get_optional_string(&r, "sns_platform"),
+                sns_video_id: try_get_optional_string(&r, "sns_video_id"),
+                published_at: try_get_optional_string(&r, "published_at"),
             });
         }
         Ok(jobs)
@@ -396,6 +518,7 @@ impl JobQueue for SqliteJobQueue {
 
     /// DB Scavenger: Purge Completed/Failed jobs older than `days` days.
     /// karma_logs survive via ON DELETE SET NULL (Eternal Karma — jobs die, lessons live).
+    /// Rigid Review: Purge threshold is typically >30 days (e.g. 60) to prevent the Watcher from losing targets.
     async fn purge_old_jobs(&self, days: i64) -> Result<u64, FactoryError> {
         let result = sqlx::query(
             "DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < datetime('now', ? || ' days')"
@@ -411,6 +534,357 @@ impl JobQueue for SqliteJobQueue {
         let _ = sqlx::query("PRAGMA optimize;").execute(&self.pool).await;
 
         Ok(purged)
+    }
+
+    async fn link_sns_data(&self, job_id: &str, platform: &str, video_id: &str) -> Result<(), FactoryError> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query("UPDATE jobs SET sns_platform = ?, sns_video_id = ?, published_at = ?, updated_at = ? WHERE id = ?")
+            .bind(platform)
+            .bind(video_id)
+            .bind(&now)
+            .bind(&now)
+            .bind(job_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to link SNS data for job {}: {}", job_id, e) })?;
+        Ok(())
+    }
+
+    async fn fetch_jobs_for_evaluation(&self, milestone_days: i64, limit: i64) -> Result<Vec<Job>, FactoryError> {
+        // The Catch-up Logic: State-based query that finds jobs past their milestone without a record.
+        let rows = sqlx::query(
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
+                     tech_karma_extracted, creative_rating, execution_log, error_message,
+                     sns_platform, sns_video_id, published_at 
+              FROM jobs 
+              WHERE sns_platform IS NOT NULL 
+              AND sns_video_id IS NOT NULL 
+              AND published_at IS NOT NULL
+              AND published_at <= datetime('now', ? || ' days')
+              AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = ?)
+              ORDER BY published_at ASC LIMIT ?"
+        )
+        .bind(format!("-{}", milestone_days))
+        .bind(milestone_days)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch jobs for evaluation: {}", e) })?;
+
+        let mut jobs = Vec::new();
+        for r in rows {
+            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            jobs.push(Job {
+                id: r.get("id"),
+                topic: r.get("topic"),
+                style: r.get("style_name"),
+                karma_directives: try_get_optional_string(&r, "karma_directives"),
+                status: match r.get::<String, _>("status").as_str() {
+                    "Completed" => JobStatus::Completed,
+                    "Failed" => JobStatus::Failed,
+                    _ => JobStatus::Pending,
+                },
+                started_at: try_get_optional_string(&r, "started_at"),
+                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
+                tech_karma_extracted: tech_karma_extracted != 0,
+                creative_rating: r.try_get("creative_rating").ok(),
+                execution_log: try_get_optional_string(&r, "execution_log"),
+                error_message: try_get_optional_string(&r, "error_message"),
+                sns_platform: try_get_optional_string(&r, "sns_platform"),
+                sns_video_id: try_get_optional_string(&r, "sns_video_id"),
+                published_at: try_get_optional_string(&r, "published_at"),
+            });
+        }
+        Ok(jobs)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn record_sns_metrics(
+        &self,
+        job_id: &str,
+        milestone_days: i64,
+        views: i64,
+        likes: i64,
+        comments_count: i64,
+        raw_comments: Option<&str>,
+    ) -> Result<(), FactoryError> {
+        sqlx::query(
+            "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json)
+             VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(job_id)
+        .bind(milestone_days)
+        .bind(views)
+        .bind(likes)
+        .bind(comments_count)
+        .bind(raw_comments)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to record SNS metrics: {}", e) })?;
+        Ok(())
+    }
+    async fn fetch_pending_evaluations(&self, limit: i64) -> Result<Vec<SnsMetricsRecord>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, job_id, milestone_days, views, likes, comments_count, raw_comments_json
+             FROM sns_metrics_history
+             WHERE is_finalized = 0
+             LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch pending evaluations: {}", e) })?;
+
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(SnsMetricsRecord {
+                id: row.get("id"),
+                job_id: row.get("job_id"),
+                milestone_days: row.get("milestone_days"),
+                views: row.get("views"),
+                likes: row.get("likes"),
+                comments_count: row.get("comments_count"),
+                raw_comments_json: row.get("raw_comments_json"),
+            });
+        }
+        Ok(out)
+    }
+
+    async fn apply_final_verdict(
+        &self,
+        record_id: i64,
+        verdict: OracleVerdict,
+        soul_hash: &str,
+    ) -> Result<(), FactoryError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to start transaction: {}", e) })?;
+
+        // 1. Update the Metrics Ledger (The Proof)
+        sqlx::query(
+            "UPDATE sns_metrics_history 
+             SET oracle_score_topic = ?, oracle_score_visual = ?, oracle_score_soul = ?, oracle_reason = ?, is_finalized = 1
+             WHERE id = ?"
+        )
+        .bind(verdict.topic_score)
+        .bind(verdict.visual_score)
+        .bind(verdict.soul_score)
+        .bind(&verdict.reasoning)
+        .bind(record_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update ledger: {}", e) })?;
+
+        // 2. Fetch job info for Karma update
+        let job_row = sqlx::query(
+            "SELECT j.id, j.topic, j.style_name, h.milestone_days 
+             FROM jobs j 
+             JOIN sns_metrics_history h ON j.id = h.job_id 
+             WHERE h.id = ?"
+        )
+        .bind(record_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch job context: {}", e) })?;
+
+        let job_id: String = job_row.get("id");
+        let topic: String = job_row.get("topic");
+        let style_name: String = job_row.get("style_name");
+        let milestone_days: i64 = job_row.get("milestone_days");
+
+        // 3. If it's the Final Verdict (30d), store the lesson in Karma Logs
+        // Average Engagement * Soul Score => Weight (0-100)
+        if milestone_days == 30 {
+            // Semantic Karma Refinement (The Semantic Void 修正)
+            // もし魂が汚染されていたら、Oracleの理由を「新たな戒め」として最高優先度で叩き込む
+            if verdict.soul_score <= 0.5 {
+                let karma_id = Uuid::new_v4().to_string();
+                let lesson = format!("SOUL VIOLATION / 魂の汚染: {}", verdict.reasoning);
+                
+                sqlx::query(
+                    "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&karma_id)
+                .bind(&job_id)
+                .bind("Synthesized") // 新たな叡智・戒めとして合成
+                .bind(&style_name) // ここでの関連スキルは映像スタイル
+                .bind(&lesson)
+                .bind(100) // 絶対的な掟として RAG のトップに固定
+                .bind(soul_hash)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to inject Semantic Refinement: {}", e) })?;
+            }
+            let avg_engagement = (verdict.topic_score + verdict.visual_score) / 2.0;
+            let calculated_weight = (50.0 + (avg_engagement * verdict.soul_score * 50.0)) as i64;
+            let weight = calculated_weight.clamp(0, 100);
+
+            sqlx::query(
+                "INSERT INTO karma_logs (job_id, topic, style_name, lesson, weight, soul_version_hash)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&job_id)
+            .bind(&topic)
+            .bind(&style_name)
+            .bind(&verdict.reasoning)
+            .bind(weight)
+            .bind(soul_hash)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update Karma logs: {}", e) })?;
+        }
+
+        tx.commit().await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to commit transaction: {}", e) })?;
+
+        Ok(())
+    }
+}
+
+impl SqliteJobQueue {
+    // --- Ultimate Production Audit: Karma Distillation ---
+    pub async fn fetch_skills_for_distillation(&self, threshold: i64) -> Result<Vec<String>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > ?"
+        )
+        .bind(threshold)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch skills for distillation: {}", e) })?;
+
+        let mut skills = Vec::new();
+        for r in rows {
+            skills.push(r.try_get("related_skill").unwrap_or_else(|_| "".to_string()));
+        }
+        Ok(skills)
+    }
+
+    pub async fn fetch_raw_karma_for_skill(&self, skill: &str) -> Result<Vec<(String, String)>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, lesson FROM karma_logs WHERE related_skill = ?"
+        )
+        .bind(skill)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch raw karma for skill: {}", e) })?;
+
+        let mut karma = Vec::new();
+        for r in rows {
+            let id: String = try_get_optional_string(&r, "id").unwrap_or_else(|| "".to_string());
+            let lesson: String = try_get_optional_string(&r, "lesson").unwrap_or_else(|| "".to_string());
+            karma.push((id, lesson));
+        }
+        Ok(karma)
+    }
+
+    pub async fn apply_distilled_karma(&self, skill: &str, distilled_lesson: &str, old_karma_ids: &[String], soul_hash: &str) -> Result<(), FactoryError> {
+        let mut tx = self.pool.begin().await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to start tx for distillation: {}", e) })?;
+
+        for id in old_karma_ids {
+            sqlx::query("DELETE FROM karma_logs WHERE id = ?").bind(id).execute(&mut *tx).await
+                .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to delete old karma {}: {}", id, e) })?;
+        }
+
+        let new_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash)
+             VALUES (?, 'Synthesized', ?, ?, 100, ?)"
+        )
+            .bind(&new_id)
+            .bind(skill)
+            .bind(distilled_lesson)
+            .bind(soul_hash)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to insert synthesized karma: {}", e) })?;
+
+        tx.commit().await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to commit distlillation tx: {}", e) })?;
+
+        Ok(())
+    }
+
+    // --- Ultimate Production Audit: Poison Pill (Infinite Billing Loop Defense) ---
+    pub async fn increment_job_retry_count(&self, job_id: &str) -> Result<bool, FactoryError> {
+        let row = sqlx::query("UPDATE jobs SET retry_count = retry_count + 1 WHERE id = ? RETURNING retry_count")
+            .bind(job_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to increment job retry count: {}", e) })?;
+            
+        let count: i64 = row.get("retry_count");
+        if count >= 3 {
+            sqlx::query("UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill Activated: API continually fails.' WHERE id = ?")
+                .bind(job_id)
+                .execute(&self.pool).await.ok();
+            Ok(true) // Poison pill activated
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn increment_oracle_retry_count(&self, record_id: i64) -> Result<bool, FactoryError> {
+        let row = sqlx::query("UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = ? RETURNING retry_count")
+            .bind(record_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to increment oracle retry count: {}", e) })?;
+            
+        let count: i64 = row.get("retry_count");
+        if count >= 3 {
+            sqlx::query("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?")
+                .bind(record_id)
+                .execute(&self.pool).await.ok();
+            Ok(true) // Poison pill activated
+        } else {
+            Ok(false)
+        }
+    }
+
+    // --- The Final Wire: Global Circuit Breaker (Mass Extinction Defense) ---
+    pub async fn get_global_api_failures(&self) -> Result<i64, FactoryError> {
+        let row = sqlx::query("SELECT value FROM system_state WHERE key = 'consecutive_api_failures'")
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to read system_state: {}", e) })?;
+        
+        if let Some(r) = row {
+            let val_str: String = r.try_get("value").unwrap_or_default();
+            Ok(val_str.parse().unwrap_or(0))
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub async fn record_global_api_failure(&self) -> Result<i64, FactoryError> {
+        let current = self.get_global_api_failures().await?;
+        let next = current + 1;
+        
+        sqlx::query(
+            "INSERT INTO system_state (key, value, updated_at) 
+             VALUES ('consecutive_api_failures', ?, datetime('now'))
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+        )
+        .bind(next.to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update system_state: {}", e) })?;
+        
+        Ok(next)
+    }
+
+    pub async fn record_global_api_success(&self) -> Result<(), FactoryError> {
+        sqlx::query(
+            "INSERT INTO system_state (key, value, updated_at) 
+             VALUES ('consecutive_api_failures', '0', datetime('now'))
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to reset system_state: {}", e) })?;
+        
+        Ok(())
     }
 }
 
