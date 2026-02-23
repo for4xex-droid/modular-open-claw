@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Warehouse, ProjectSummary } from "./components/Warehouse";
 import { RemixLab } from "./components/RemixLab";
 import { FactoryLine } from "./components/FactoryLine";
-import { LayoutDashboard, Library, Settings2 } from "lucide-react";
+import { JobDashboard } from "./components/JobDashboard";
+import { KarmaViewer } from "./components/KarmaViewer";
+import { LayoutDashboard, Library, Settings2, Clock, Database } from "lucide-react";
 import { clsx } from 'clsx';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'monitor' | 'warehouse' | 'remix'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'warehouse' | 'remix' | 'jobs' | 'karma'>('monitor');
   const [selectedProject, setSelectedProject] = useState<ProjectSummary | null>(null);
 
   const handleRemix = (project: ProjectSummary) => {
@@ -29,6 +31,16 @@ function App() {
             icon={<LayoutDashboard size={20} />}
           />
           <NavButton
+            active={activeTab === 'jobs'}
+            onClick={() => setActiveTab('jobs')}
+            icon={<Clock size={20} />}
+          />
+          <NavButton
+            active={activeTab === 'karma'}
+            onClick={() => setActiveTab('karma')}
+            icon={<Database size={20} />}
+          />
+          <NavButton
             active={activeTab === 'warehouse'}
             onClick={() => setActiveTab('warehouse')}
             icon={<Library size={20} />}
@@ -46,6 +58,10 @@ function App() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none"></div>
 
         {activeTab === 'monitor' && <FactoryLine />}
+
+        {activeTab === 'jobs' && <JobDashboard />}
+
+        {activeTab === 'karma' && <KarmaViewer />}
 
         {activeTab === 'warehouse' && (
           <Warehouse onRemix={handleRemix} />

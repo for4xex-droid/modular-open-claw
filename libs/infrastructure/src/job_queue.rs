@@ -886,10 +886,73 @@ impl SqliteJobQueue {
         
         Ok(())
     }
+    pub async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<factory_core::traits::Job>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch recent jobs: {}", e) })?;
+
+        let mut jobs = Vec::new();
+        for r in rows {
+            use sqlx::Row;
+            let status_str: String = r.get("status");
+            let status = factory_core::traits::JobStatus::from_string(&status_str);
+            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+
+            jobs.push(factory_core::traits::Job {
+                id: r.get("id"),
+                topic: r.get("topic"),
+                style: r.get("style_name"),
+                karma_directives: try_get_optional_string(&r, "karma_directives"),
+                status,
+                started_at: try_get_optional_string(&r, "started_at"),
+                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
+                tech_karma_extracted: tech_karma_extracted != 0,
+                creative_rating: r.try_get("creative_rating").ok(),
+                execution_log: try_get_optional_string(&r, "execution_log"),
+                error_message: try_get_optional_string(&r, "error_message"),
+                sns_platform: try_get_optional_string(&r, "sns_platform"),
+                sns_video_id: try_get_optional_string(&r, "sns_video_id"),
+                published_at: try_get_optional_string(&r, "published_at"),
+            });
+        }
+        Ok(jobs)
+    }
+
+    pub async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT * FROM karma_logs ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })?;
+
+        let mut karmas = Vec::new();
+        for row in rows {
+            use sqlx::Row;
+            karmas.push(serde_json::json!({
+                "id": row.try_get::<String, _>("id").unwrap_or_default(),
+                "job_id": row.try_get::<String, _>("job_id").unwrap_or_default(),
+                "skill_id": row.try_get::<String, _>("related_skill").unwrap_or_default(),
+                "lesson": row.try_get::<String, _>("lesson").unwrap_or_default(),
+                "karma_type": row.try_get::<String, _>("karma_type").unwrap_or_default(),
+                "weight": row.try_get::<i64, _>("weight").unwrap_or_default(),
+                "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+                "last_applied_at": row.try_get::<Option<String>, _>("last_applied_at").unwrap_or_default(),
+                "soul_version_hash": row.try_get::<Option<String>, _>("soul_version_hash").unwrap_or_default(),
+            }));
+        }
+        Ok(karmas)
+    }
 }
 
 // Helper function because `get` on Option panics if type is unexpected, 
 // using try_get is safer if column can be NULL.
 fn try_get_optional_string(row: &sqlx::sqlite::SqliteRow, col: &str) -> Option<String> {
+    use sqlx::Row;
     row.try_get(col).ok()
 }
