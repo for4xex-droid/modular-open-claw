@@ -15,6 +15,7 @@ use bastion::fs_guard::Jail;
 use tower_http::services::ServeDir;
 use uuid::Uuid;
 use crate::asset_manager::AssetManager;
+use infrastructure::job_queue::SqliteJobQueue;
 
 pub struct AppState {
     pub telemetry: Arc<TelemetryHub>,
@@ -24,6 +25,7 @@ pub struct AppState {
     pub is_busy: Arc<Mutex<bool>>, // Resource Locking
     pub asset_manager: Arc<AssetManager>,
     pub current_job: Arc<tokio::sync::Mutex<Option<String>>>,
+    pub job_queue: Arc<SqliteJobQueue>,
 }
 
 
@@ -35,6 +37,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/remix", post(remix_handler))
         .route("/api/styles", get(styles_handler))
         .route("/api/projects", get(projects_handler))
+        .route("/api/jobs", get(jobs_handler))
+        .route("/api/jobs/:id", get(job_detail_handler))
+        .route("/api/jobs/:id/rate", post(job_rate_handler))
+        .route("/api/karma", get(karma_handler))
         .nest_service("/assets", ServeDir::new("workspace")) // Serve static assets
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -173,4 +179,50 @@ async fn projects_handler(
     // For now, I will write the handler assuming state.asset_manager exists.
     let projects = state.asset_manager.list_projects();
     Json(projects)
+}
+
+// --- Job & Karma Handlers ---
+use axum::extract::Path;
+
+pub async fn jobs_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    match state.job_queue.fetch_recent_jobs(100).await {
+        Ok(jobs) => (StatusCode::OK, Json(serde_json::to_value(jobs).unwrap_or_default())).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+    }
+}
+
+pub async fn job_detail_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    use factory_core::traits::JobQueue;
+    match state.job_queue.fetch_job(&id).await {
+        Ok(Some(job)) => (StatusCode::OK, Json(serde_json::to_value(job).unwrap_or_default())).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Job not found"}))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+    }
+}
+
+pub async fn karma_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    match state.job_queue.fetch_all_karma(200).await {
+        Ok(karmas) => (StatusCode::OK, Json(serde_json::to_value(karmas).unwrap_or_default())).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+    }
+}
+
+pub async fn job_rate_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(payload): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    use factory_core::traits::JobQueue;
+    let rating = payload.get("rating").and_then(|v| v.as_i64()).unwrap_or(50) as i32;
+    match state.job_queue.set_creative_rating(&id, rating).await {
+        Ok(_) => (StatusCode::OK, Json(serde_json::json!({"status": "success"}))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+    }
 }

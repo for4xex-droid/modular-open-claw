@@ -85,6 +85,10 @@ impl AgentAct for ConceptManager {
             【ビジュアルプロンプト制約 ★重要★】
             visual_prompts は、各セクション（intro, body, outro）の内容を象徴する具体的かつ詳細な英語の描写にしてください。
             - 抽象的な表現（例: \"future city\"）は避け、具体的な要素（例: \"neon-lit Tokyo street with holographic advertisements, heavy rain, 8k resolution\"）を記述すること。
+            - 構図の指定（例: rule of thirds, dynamic angle, extreme close-up, dramatic perspective）を含めること。
+            - ライティングの指定（例: cinematic lighting, volumetric fog, rim lighting, glowing neon）を追加し、プロの品質を確保すること。
+            - Pony V6/SDXL等のモデルにおいてクオリティを引き上げる修飾語（例: hyper-detailed, masterpiece, best quality, ultra highres）を付与すること。
+            - 人物を描画する場合、表情やポーズ（例: confident smile, pointing at camera）も指定すること。
             - 文脈無視の画像は絶対禁止。台本の内容と密接に関連したビジュアルを提案してください。
             - 全て英語で記述し、カンマ区切りで詳細な属性を追加してください。
 

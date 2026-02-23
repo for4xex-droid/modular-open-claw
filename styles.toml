@@ -27,3 +27,33 @@ bgm_volume = 0.2
 ducking_threshold = 0.15
 ducking_ratio = 0.5
 fade_duration = 2.0
+
+[cinematic]
+name = "cinematic"
+description = "映画のような重厚かつダイナミックな演出。スローなパンと没入感のある音響。"
+zoom_speed = 0.001
+pan_intensity = 0.9
+bgm_volume = 0.18
+ducking_threshold = 0.12
+ducking_ratio = 0.35
+fade_duration = 4.0
+
+[fast_cuts]
+name = "fast_cuts"
+description = "TikTok/Shorts特化のハイペースな演出。強力なパンと早めのトランジション。"
+zoom_speed = 0.005
+pan_intensity = 1.2
+bgm_volume = 0.22
+ducking_threshold = 0.2
+ducking_ratio = 0.6
+fade_duration = 1.0
+
+[aesthetic]
+name = "aesthetic"
+description = "ASMRやローファイ系向けの落ち着いた演出。微小な動きと控えめな音響。"
+zoom_speed = 0.0008
+pan_intensity = 0.3
+bgm_volume = 0.1
+ducking_threshold = 0.05
+ducking_ratio = 0.25
+fade_duration = 6.0

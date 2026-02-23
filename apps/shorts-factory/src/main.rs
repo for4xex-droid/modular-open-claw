@@ -231,11 +231,16 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Sidecar Manager ("The Reaper")
     let sidecar_manager = Arc::new(SidecarManager::new(vec![
-        "python".to_string(), "python3".to_string(), "Python".to_string(), "uv".to_string(), "main".to_string(),
+        "python".to_string(), "python3".to_string(), "Python".to_string(), "uv".to_string(), "main".to_string(), "shorts-factory".to_string(), "shorts-fa".to_string()
     ]));
 
+    let should_spawn_tts = match &args.command {
+        Some(Commands::Serve { .. }) | Some(Commands::Generate { .. }) | None => true,
+        _ => false,
+    };
+
     // TTS Sidecar (Qwen3-TTS)
-    {
+    if should_spawn_tts {
         let sm = sidecar_manager.clone();
         sm.clean_port(5001).await?;
         // TIME_WAIT ソケット解放を待機
@@ -249,6 +254,7 @@ async fn main() -> Result<(), anyhow::Error> {
         // コールドスタート（モデルロード）待機
         tokio::time::sleep(Duration::from_secs(10)).await;
     }
+
 
     // Infrastructure Clients
     let trend_sonar = BraveTrendSonar::new(config.brave_api_key.clone());
@@ -314,6 +320,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 is_busy: Arc::new(std::sync::Mutex::new(false)),
                 asset_manager,
                 current_job: current_job.clone(),
+                job_queue: job_queue.clone(),
             });
             let worker_state = state.clone(); 
             tokio::spawn(async move {
