@@ -1,0 +1,7 @@
+torch
+torchaudio
+transformers
+fastapi
+uvicorn[standard]
+soundfile
+accelerate

@@ -184,9 +184,10 @@ mod tests {
         let (jq, _tmp) = create_test_queue().await;
 
         let id = jq.enqueue("Karma Test", "karma", Some("{}")).await.unwrap();
-        jq.store_karma(&id, "comfy_bridge", "Use CFG 7.5 for anime", "Technical").await.unwrap();
+        let hash = "test_hash";
+        jq.store_karma(&id, "comfy_bridge", "Use CFG 7.5 for anime", "Technical", hash).await.unwrap();
 
-        let results = jq.fetch_relevant_karma("Karma Test", "comfy_bridge", 10).await.unwrap();
+        let results = jq.fetch_relevant_karma("Karma Test", "comfy_bridge", 10, hash).await.unwrap();
         assert_eq!(results.len(), 1);
         assert!(results[0].contains("CFG 7.5"));
     }
@@ -266,5 +267,56 @@ mod tests {
         assert!(got1 || got2, "At least one dequeue should succeed: got1={}, got2={}", got1, got2);
         // They should not both succeed (exclusivity)
         assert!(!(got1 && got2), "Both dequeues should not both get the job: got1={}, got2={}", got1, got2);
+    }
+
+    // ===== 9. The Final Wire: Global Circuit Breaker =====
+    #[tokio::test]
+    async fn test_global_circuit_breaker() {
+        let (jq, _tmp) = create_test_queue().await;
+        
+        // Initial state
+        let fails = jq.get_global_api_failures().await.unwrap();
+        assert_eq!(fails, 0);
+
+        // Record a failure
+        let new_fails = jq.record_global_api_failure().await.unwrap();
+        assert_eq!(new_fails, 1);
+
+        // Record another failure
+        let new_fails = jq.record_global_api_failure().await.unwrap();
+        assert_eq!(new_fails, 2);
+
+        let fails = jq.get_global_api_failures().await.unwrap();
+        assert_eq!(fails, 2);
+
+        // Record a success
+        jq.record_global_api_success().await.unwrap();
+
+        let fails = jq.get_global_api_failures().await.unwrap();
+        assert_eq!(fails, 0);
+    }
+
+    // ===== 10. Temporal Voids: Soul Versioning =====
+    #[tokio::test]
+    async fn test_soul_versioning_dissonance() {
+        let (jq, _tmp) = create_test_queue().await;
+        
+        let id = jq.enqueue("Soul Test", "soul_style", Some("{}")).await.unwrap();
+        
+        let soul_v1 = "hash_v1";
+        let soul_v2 = "hash_v2";
+
+        // Store karma under Soul v1
+        jq.store_karma(&id, "soul_skill", "Use this workflow", "Technical", soul_v1).await.unwrap();
+
+        // Fetch karma using Soul v1
+        let karma_v1 = jq.fetch_relevant_karma("Soul Test", "soul_skill", 10, soul_v1).await.unwrap();
+        assert_eq!(karma_v1.len(), 1);
+        assert!(!karma_v1[0].contains("[LEGACY KARMA"));
+
+        // Fetch karma using Soul v2 (Simulating a Soul evolution / Cognitive Dissonance)
+        let karma_v2 = jq.fetch_relevant_karma("Soul Test", "soul_skill", 10, soul_v2).await.unwrap();
+        assert_eq!(karma_v2.len(), 1);
+        assert!(karma_v2[0].contains("[LEGACY KARMA"));
     }
 }

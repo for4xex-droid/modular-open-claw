@@ -28,6 +28,10 @@ impl Supervisor {
         Self { jail, policy }
     }
 
+    pub fn jail(&self) -> Arc<Jail> {
+        self.jail.clone()
+    }
+
     /// アクターを「法」の下で実行する
     pub async fn enforce_act<A>(&self, actor: &A, input: A::Input) -> Result<A::Output, FactoryError>
     where

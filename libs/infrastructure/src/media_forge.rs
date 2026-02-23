@@ -1,8 +1,3 @@
-//! # MediaForge — FFmpeg 動画合成エンジン
-//!
-//! 動画、音声、字幕ファイルを合成して最終的な作品を書き出す。
-//! Bastion Jail を使用して、一時ファイルが指定された領域外に漏れるのを防ぐ。
-
 use async_trait::async_trait;
 use bastion::fs_guard::Jail;
 use factory_core::contracts::{MediaRequest, MediaResponse};
@@ -12,6 +7,7 @@ use rig::tool::Tool;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
 use tracing::info;
@@ -33,10 +29,10 @@ impl MediaForgeClient {
 impl MediaEditor for MediaForgeClient {
     async fn combine_assets(
         &self,
-        video: &PathBuf,
-        audio: &PathBuf,
-        subtitle: Option<&PathBuf>,
-    ) -> Result<PathBuf, FactoryError> {
+        video: &std::path::PathBuf,
+        audio: &std::path::PathBuf,
+        subtitle: Option<&std::path::PathBuf>,
+    ) -> Result<std::path::PathBuf, FactoryError> {
         let output = self.jail.root().join("final_output.mp4");
         
         let mut cmd = Command::new("ffmpeg");
@@ -44,50 +40,80 @@ impl MediaEditor for MediaForgeClient {
            .arg("-i").arg(video)
            .arg("-i").arg(audio);
         
+        // 字幕の焼き込み (Hard-burn) - Grade S Design
         if let Some(sub) = subtitle {
-            cmd.arg("-i").arg(sub);
+            // FFmpeg's subtitles filter has extremely sensitive escaping.
+            // On Unix-like systems (macOS), absolute paths starting with / are usually fine,
+            // but for absolute robustness, we escape colons and wrap in single quotes.
+            // The single-quote escape pattern in FFmpeg is: ' -> '\'' (close, escaped quote, re-open)
+            let sub_path = sub.to_string_lossy()
+                .replace("'", "'\\''")
+                .replace(":", "\\:");
+            
+            // Design: High visibility yellow for SNS, thick outline, and UI-safe MarginV=140
+            // We use the explicit 'filename=' key to avoid ambiguity.
+            let filter = format!(
+                "subtitles=filename='{}':force_style='FontName=Hiragino Sans,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2.0,Shadow=1.0,Alignment=2,MarginV=120'",
+                sub_path
+            );
+            cmd.arg("-vf").arg(filter);
         }
 
-        cmd.arg("-c:v").arg("copy")
+        // M4 Pro 最適化: Hardware Encoder (h264_videotoolbox) 強制
+        // 再エンコードが必要なため、CPU負荷を下げ速度を数倍に引き上げる
+        cmd.arg("-c:v").arg("h264_videotoolbox")
+           .arg("-b:v").arg("6000k") // ショート動画向けの高ビットレート
+           .arg("-pix_fmt").arg("yuv420p")
            .arg("-c:a").arg("aac")
+           .arg("-shortest")
+           .stdin(Stdio::null())
            .arg(&output);
 
-        tracing::info!("MediaForge: Running FFmpeg to combine assets...");
+        tracing::info!("MediaForge: Running hardware-accelerated FFmpeg (M4 Pro) with Grade S subtitles...");
         
-        let status = cmd.status().await.map_err(|e| FactoryError::Infrastructure {
+        let output_res = cmd.output()
+           .await
+           .map_err(|e| FactoryError::Infrastructure {
             reason: format!("Failed to spawn ffmpeg: {}", e),
         })?;
 
-        if status.success() {
+        if output_res.status.success() {
             Ok(output)
         } else {
+            let err = String::from_utf8_lossy(&output_res.stderr);
             Err(FactoryError::Infrastructure {
-                reason: "FFmpeg execution failed".to_string(),
+                reason: format!("FFmpeg execution failed: {}", err),
             })
         }
     }
 
-    async fn resize_for_shorts(&self, input: &PathBuf) -> Result<PathBuf, FactoryError> {
+    async fn resize_for_shorts(&self, input: &std::path::PathBuf) -> Result<std::path::PathBuf, FactoryError> {
         let output = self.jail.root().join("resized_shorts.mp4");
         
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y")
            .arg("-i").arg(input)
            .arg("-vf").arg("scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920")
+           .arg("-c:v").arg("h264_videotoolbox") // M4 Pro 最適化
+           .arg("-b:v").arg("8000k")
+           .arg("-pix_fmt").arg("yuv420p")
            .arg("-c:a").arg("copy")
+           .stdin(Stdio::null())
            .arg(&output);
 
-        tracing::info!("MediaForge: Resizing video for YouTube Shorts (9:16)...");
-
-        let status = cmd.status().await.map_err(|e| FactoryError::Infrastructure {
+        tracing::info!("MediaForge: Resizing video (Hardware Accelerated)...");
+        let output_res = cmd.output()
+           .await
+           .map_err(|e| FactoryError::Infrastructure {
             reason: format!("Failed to spawn ffmpeg: {}", e),
         })?;
 
-        if status.success() {
+        if output_res.status.success() {
             Ok(output)
         } else {
+            let err = String::from_utf8_lossy(&output_res.stderr);
             Err(FactoryError::Infrastructure {
-                reason: "FFmpeg resize failed".to_string(),
+                reason: format!("FFmpeg resize failed: {}", err),
             })
         }
     }
@@ -97,9 +123,6 @@ impl MediaEditor for MediaForgeClient {
         let output = self.jail.root().join(&output_name);
         info!("🎬 MediaForge: Concatenating {} clips -> {}", clips.len(), output.display());
 
-        // concat フィルタ用の一時ファイルを作成
-        // file 'path/to/clip1.mp4'
-        // file 'path/to/clip2.mp4' ...
         let mut concat_list = String::new();
         for clip in clips {
             concat_list.push_str(&format!("file '{}'\n", clip));
@@ -117,7 +140,10 @@ impl MediaEditor for MediaForgeClient {
             .arg("-i").arg(&list_path)
             .arg("-c").arg("copy")
             .arg(&output)
-            .status().await
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg concat failed: {}", e) })?;
 
         if status.success() {
@@ -125,6 +151,21 @@ impl MediaEditor for MediaForgeClient {
         } else {
             Err(FactoryError::Infrastructure { reason: "FFmpeg concat execution failed".into() })
         }
+    }
+
+    async fn get_duration(&self, path: &std::path::Path) -> Result<f32, FactoryError> {
+        let output = Command::new("ffprobe")
+            .arg("-v").arg("error")
+            .arg("-show_entries").arg("format=duration")
+            .arg("-of").arg("default=noprint_wrappers=1:nokey=1")
+            .arg(path)
+            .stderr(Stdio::null())
+            .output()
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("ffprobe duration failed: {}", e) })?;
+
+        let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        s.parse::<f32>().map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to parse duration '{}': {}", s, e) })
     }
 }
 

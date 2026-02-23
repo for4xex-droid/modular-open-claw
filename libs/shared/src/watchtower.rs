@@ -45,4 +45,10 @@ pub enum ControlCommand {
     ApprovalResponse { transition_id: Uuid, approved: bool },
     /// Samsara Phase 4: 人間からのクリエイティブ評価
     SetCreativeRating { job_id: String, rating: i32 },
+    /// Phase 11: The Anchor Link (SNS動画IDの紐付け)
+    LinkSns {
+        job_id: String,
+        platform: String,
+        video_id: String,
+    },
 }

@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::process::Stdio;
+use tokio::process::Command;
 
 /// ComfyUI API クライアント
 #[derive(Clone)]
@@ -86,6 +88,86 @@ impl ComfyBridgeClient {
         }
     }
 
+    /// KSampler ノードの positive/negative 入力に繋がっている CLIPTextEncode ノードを特定し、
+    /// Pony V6 XL 専用の品質タグ (score_9...) と 拒絶呪文 (uncanny, nsfw...) を強制挿入する。
+    pub fn enforce_pony_quality_and_safety(workflow: &mut serde_json::Value) -> Result<(), FactoryError> {
+        let neg_curse = ", score_6, score_5, score_4, score_3, score_2, score_1, \
+            nsfw, explicit, deformed, ugly, bad anatomy, bad hands, bad fingers, extra digits, fewer digits, \
+            text, watermark, signature, username, uncanny, creepy, fleshy, biological horror, gross, \
+            worst quality, low quality, normal quality, blurry, out of focus, 3d, photo, realistic, \
+            jpeg artifacts, mutation, extra limbs, simple background";
+        
+        let pos_blessing = "score_9, score_8_up, score_7_up, source_anime, masterpiece, best quality, rating_safe, ";
+        
+        let mut negative_node_ids = std::collections::HashSet::new();
+        let mut positive_node_ids = std::collections::HashSet::new();
+        
+        if let Some(nodes) = workflow.as_object() {
+            for (_, node) in nodes {
+                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    if class_type == "KSampler" || class_type == "KSamplerAdvanced" {
+                        if let Some(inputs) = node.get("inputs") {
+                            // Negative
+                            if let Some(negative) = inputs.get("negative").and_then(|v| v.as_array()) {
+                                if let Some(neg_id) = negative.first().and_then(|v| v.as_str()) {
+                                    negative_node_ids.insert(neg_id.to_string());
+                                }
+                            }
+                            // Positive
+                            if let Some(positive) = inputs.get("positive").and_then(|v| v.as_array()) {
+                                if let Some(pos_id) = positive.first().and_then(|v| v.as_str()) {
+                                    positive_node_ids.insert(pos_id.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Negative の呪い
+        for neg_id in negative_node_ids {
+            if let Some(node) = workflow.get_mut(&neg_id) {
+                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    if class_type == "CLIPTextEncode" {
+                        if let Some(inputs) = node.get_mut("inputs") {
+                            if let Some(text) = inputs.get_mut("text") {
+                                if let Some(t_str) = text.as_str() {
+                                    if !t_str.contains("score_6") {
+                                        let new_text = format!("{}{}", t_str, neg_curse);
+                                        *text = serde_json::Value::String(new_text);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Positive の祝福 (Quality tags)
+        for pos_id in positive_node_ids {
+            if let Some(node) = workflow.get_mut(&pos_id) {
+                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    if class_type == "CLIPTextEncode" {
+                        if let Some(inputs) = node.get_mut("inputs") {
+                            if let Some(text) = inputs.get_mut("text") {
+                                if let Some(t_str) = text.as_str() {
+                                    if !t_str.contains("score_9") {
+                                        let new_text = format!("{}{}", pos_blessing, t_str);
+                                        *text = serde_json::Value::String(new_text);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
     pub async fn clear_comfy_queue(&self) -> Result<(), FactoryError> {
         let http_base = self.api_url.replace("ws://", "http://").replace("/ws", "");
         let url = format!("{}/queue", http_base);
@@ -97,6 +179,25 @@ impl ComfyBridgeClient {
             Err(e) => Err(FactoryError::ComfyConnection { url, source: e.into() }),
         }
     }
+
+    /// ComfyUI の output ディレクトリにある、指定した接頭辞 (job_id) を持つすべてのファイルを削除する
+    pub fn delete_output_debris(&self, prefix: &str) {
+        let output_dir = self.base_dir.join("output");
+        if let Ok(entries) = std::fs::read_dir(output_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                    if filename.starts_with(prefix) {
+                        if let Err(e) = std::fs::remove_file(&path) {
+                            tracing::warn!("Failed to delete output debris {:?}: {}", path, e);
+                        } else {
+                            tracing::info!("🧹 ComfyBridge: Erased output debris -> {:?}", path);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -106,7 +207,7 @@ impl VideoGenerator for ComfyBridgeClient {
         prompt: &str,
         workflow_id: &str,
         input_image: Option<&std::path::Path>,
-    ) -> Result<PathBuf, FactoryError> {
+    ) -> Result<VideoResponse, FactoryError> {
         // 1. The Zombie Queue 排除 (Pre-flight Queue Purge)
         self.clear_comfy_queue().await?;
 
@@ -139,6 +240,9 @@ impl VideoGenerator for ComfyBridgeClient {
         if let Some(save_node) = Self::find_node_id_by_title(&workflow, "[API_SAVE]") {
             Self::inject_node_value(&mut workflow, &save_node, "filename_prefix", serde_json::Value::String(job_id.clone()))?;
         }
+
+        // 4.5 TOS Guillotine: 物理的な NSFW/Gore 遮断 & 品質タグ強制 (プロンプト注入後に適用)
+        Self::enforce_pony_quality_and_safety(&mut workflow)?;
 
         // 5. Zero-Copy Input Injection (入力画像渡し)
         let mut injected_input_name = None;
@@ -247,7 +351,10 @@ impl VideoGenerator for ComfyBridgeClient {
             return Err(FactoryError::ComfyWorkflowFailed { reason: format!("Expected output file does not exist: {:?}", out_path) });
         }
         
-        Ok(out_path)
+        Ok(VideoResponse {
+            output_path: out_path.to_string_lossy().to_string(),
+            job_id,
+        })
     }
 
     async fn health_check(&self) -> Result<bool, FactoryError> {
@@ -291,10 +398,7 @@ impl AgentAct for ComfyBridgeClient {
         _jail: &bastion::fs_guard::Jail,
     ) -> Result<Self::Output, FactoryError> {
         let input_path = input.input_image.as_deref().map(std::path::Path::new);
-        let path = self.generate_video(&input.prompt, &input.workflow_id, input_path).await?;
-        Ok(VideoResponse {
-            output_path: path.to_string_lossy().to_string(),
-        })
+        self.generate_video(&input.prompt, &input.workflow_id, input_path).await
     }
 }
 
@@ -313,9 +417,9 @@ impl Tool for ComfyBridgeClient {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-        let path = self.generate_video(&args.prompt, &args.workflow_id, None).await?;
+        let res = self.generate_video(&args.prompt, &args.workflow_id, None).await?;
         Ok(ComfyOutput {
-            output_path: path.to_string_lossy().to_string(),
+            output_path: res.output_path,
         })
     }
 }
@@ -341,21 +445,29 @@ impl ComfyBridgeClient {
         let total_frames = (30.0 * duration_secs) as usize;
         let zoom_expr = format!("1+{}*sin(on/{}*3.14159/2)", style.zoom_speed * 100.0, total_frames); 
         
+        // M4 Pro Optimization: Hardware acceleration + Proper Vertical Handling
+        // First scale the image to a reasonable size (2K height) to allow zoom without extreme overhead.
+        // 8K scale was causing massive slowdowns in the software zoompan filter.
         let filter = format!(
-            "zoompan=z='{}':d={}:s=1920x1080:fps=30,format=yuv420p",
+            "scale=-1:2160,zoompan=z='{}':d={}:s=1080x1920:fps=30,format=yuv420p",
             zoom_expr, total_frames
         );
+        
+        info!("MediaForge: Applying hardware-accelerated Ken Burns (M4 Pro)...");
 
         let status = Command::new("ffmpeg")
             .arg("-y")
             .arg("-loop").arg("1")
             .arg("-i").arg(image_path)
             .arg("-vf").arg(filter)
-            .arg("-c:v").arg("libx264")
+            .arg("-c:v").arg("h264_videotoolbox") // M4 Pro Hardware Accel
+            .arg("-b:v").arg("8000k")
             .arg("-t").arg(duration_secs.to_string())
             .arg("-pix_fmt").arg("yuv420p")
             .arg(&output_path)
+            .stdin(Stdio::null()) // Avoid SIGTTIN on background execution
             .status()
+            .await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("FFmpeg execution failed: {}", e) })?;
 
         if !status.success() {
@@ -366,4 +478,4 @@ impl ComfyBridgeClient {
     }
 }
 
-use std::process::Command;
+

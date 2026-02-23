@@ -4,6 +4,7 @@
 //! 具体実装は `libs/infrastructure` に配置する（依存性逆転の原則）。
 
 use crate::error::FactoryError;
+use crate::contracts::OracleVerdict;
 use async_trait::async_trait;
 use std::path::PathBuf;
 
@@ -38,7 +39,7 @@ pub trait VideoGenerator: Send + Sync {
         prompt: &str,
         workflow_id: &str,
         input_image: Option<&std::path::Path>,
-    ) -> Result<PathBuf, FactoryError>;
+    ) -> Result<crate::contracts::VideoResponse, FactoryError>;
 
     /// ComfyUI の接続状態を確認
     async fn health_check(&self) -> Result<bool, FactoryError>;
@@ -62,6 +63,9 @@ pub trait MediaEditor: Send + Sync {
 
     /// 複数のメディアクリップを 1つのファイルに結合
     async fn concatenate_clips(&self, clips: Vec<String>, output_name: String) -> Result<String, FactoryError>;
+
+    /// メディアファイルの尺長（秒）を取得する
+    async fn get_duration(&self, path: &std::path::Path) -> Result<f32, FactoryError>;
 }
 
 // --- Phase 10: The Automaton ---
@@ -86,6 +90,17 @@ impl ToString for JobStatus {
     }
 }
 
+impl JobStatus {
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "Processing" => JobStatus::Processing,
+            "Completed" => JobStatus::Completed,
+            "Failed" => JobStatus::Failed,
+            _ => JobStatus::Pending,
+        }
+    }
+}
+
 /// 永続化ジョブ (The Immortal Schema)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Job {
@@ -106,6 +121,10 @@ pub struct Job {
     /// Log-First Distillation: 実行ログを永続化し、LLMダウン時でも後から蒸留可能にする
     pub execution_log: Option<String>,
     pub error_message: Option<String>,
+    // --- Phase 11: World-in-the-Loop SNS Integration ---
+    pub sns_platform: Option<String>,
+    pub sns_video_id: Option<String>,
+    pub published_at: Option<String>,
 }
 
 /// ジョブキュー (The Persistent Memory & Samsara)
@@ -116,6 +135,9 @@ pub struct Job {
 pub trait JobQueue: Send + Sync {
     /// 新規ジョブをキューに追加 (Pending)
     async fn enqueue(&self, topic: &str, style: &str, karma_directives: Option<&str>) -> Result<String, FactoryError>;
+
+    /// 指定したIDのジョブを取得する
+    async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, FactoryError>;
 
     /// 次に実行すべき Pending ジョブを 1件取得し、Processing に更新
     async fn dequeue(&self) -> Result<Option<Job>, FactoryError>;
@@ -128,11 +150,11 @@ pub trait JobQueue: Send + Sync {
 
     // --- Phase 10-A.5 The Samsara Protocol ---
     /// RAG-Driven Karma Injection: トピックとSkillIDに関連する過去の教訓を抽出する
-    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64) -> Result<Vec<String>, FactoryError>;
+    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64, current_soul_hash: &str) -> Result<Vec<String>, FactoryError>;
 
     /// 抽出された教訓（Karma）を保存する
     /// `karma_type`: 'Technical', 'Creative', 'Synthesized'
-    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str) -> Result<(), FactoryError>;
+    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str, soul_hash: &str) -> Result<(), FactoryError>;
 
     /// The Zombie Hunter: 一定時間以上 Processing のまま放置されたジョブを Failed に強制移行する
     /// Heartbeat 版: last_heartbeat が timeout 分以上途絶えているものを回収
@@ -157,7 +179,50 @@ pub trait JobQueue: Send + Sync {
     /// karma_logs は `ON DELETE SET NULL` により孤立しても保持される (Eternal Karma)。
     /// 戻り値は削除されたジョブ数。
     async fn purge_old_jobs(&self, days: i64) -> Result<u64, FactoryError>;
+
+    /// SNS動画IDをジョブに紐付ける (Phase 11: The Anchor Link)
+    async fn link_sns_data(&self, job_id: &str, platform: &str, video_id: &str) -> Result<(), FactoryError>;
+
+    /// 評価マイルストーンに到達した未評価のジョブを取得する (Phase 11: The Catch-up Logic)
+    async fn fetch_jobs_for_evaluation(&self, milestone_days: i64, limit: i64) -> Result<Vec<Job>, FactoryError>;
+
+    /// 取得したSNSメトリクスを台帳に記録する (Phase 11: The Metrics Ledger)
+    #[allow(clippy::too_many_arguments)]
+    async fn record_sns_metrics(
+        &self,
+        job_id: &str,
+        milestone_days: i64,
+        views: i64,
+        likes: i64,
+        comments_count: i64,
+        raw_comments: Option<&str>,
+    ) -> Result<(), FactoryError>;
+
+    /// 評価待ち（Oracle未実行）のメトリクス履歴を取得する (Phase 11: Evaluate Phase)
+    async fn fetch_pending_evaluations(&self, limit: i64) -> Result<Vec<SnsMetricsRecord>, FactoryError>;
+
+    /// Oracleの評価を適用し、業（Karma）を更新・台帳を完了させる (Phase 11: Commit Phase)
+    /// 「台帳の完了」と「業の永続化」を単一トランザクションで行う冪等なアトミック操作。
+    async fn apply_final_verdict(
+        &self,
+        record_id: i64,
+        verdict: OracleVerdict,
+        soul_hash: &str,
+    ) -> Result<(), FactoryError>;
 }
+
+/// 評価台帳（sns_metrics_history）のレコード構造体
+#[derive(Debug, Clone)]
+pub struct SnsMetricsRecord {
+    pub id: i64,
+    pub job_id: String,
+    pub milestone_days: i64,
+    pub views: i64,
+    pub likes: i64,
+    pub comments_count: i64,
+    pub raw_comments_json: Option<String>,
+}
+
 
 /// ログ・通知ツール (FactoryLog)
 ///

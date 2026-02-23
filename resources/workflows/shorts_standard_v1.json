@@ -1,0 +1,104 @@
+{
+    "3": {
+        "inputs": {
+            "seed": 1,
+            "steps": 25,
+            "cfg": 7.0,
+            "sampler_name": "euler_ancestral",
+            "scheduler": "karras",
+            "denoise": 1.0,
+            "model": [
+                "4",
+                0
+            ],
+            "positive": [
+                "6",
+                0
+            ],
+            "negative": [
+                "7",
+                0
+            ],
+            "latent_image": [
+                "5",
+                0
+            ]
+        },
+        "class_type": "KSampler",
+        "_meta": {
+            "title": "[API_SAMPLER]"
+        }
+    },
+    "6": {
+        "inputs": {
+            "text": "masterpiece, best quality, ultra detailed",
+            "clip": [
+                "4",
+                1
+            ]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "[API_PROMPT]"
+        }
+    },
+    "9": {
+        "inputs": {
+            "filename_prefix": "factory_test",
+            "images": [
+                "8",
+                0
+            ]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "[API_SAVE]"
+        }
+    },
+    "10": {
+        "inputs": {
+            "image": "default.png"
+        },
+        "class_type": "LoadImage",
+        "_meta": {
+            "title": "[API_IMAGE_INPUT]"
+        }
+    },
+    "4": {
+        "inputs": {
+            "ckpt_name": "ponyDiffusionV6XL.safetensors"
+        },
+        "class_type": "CheckpointLoaderSimple"
+    },
+    "5": {
+        "inputs": {
+            "width": 768,
+            "height": 1344,
+            "batch_size": 1
+        },
+        "class_type": "EmptyLatentImage"
+    },
+    "7": {
+        "inputs": {
+            "text": "bad hands",
+            "clip": [
+                "4",
+                1
+            ]
+        },
+        "class_type": "CLIPTextEncode"
+    },
+    "8": {
+        "inputs": {
+            "samples": [
+                "3",
+                0
+            ],
+            "vae": [
+                "4",
+                2
+            ]
+        },
+        "class_type": "VAEDecode"
+    }
+}
