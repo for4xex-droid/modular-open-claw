@@ -40,63 +40,83 @@ impl AgentAct for ConceptManager {
         input: Self::Input,
         _jail: &bastion::fs_guard::Jail,
     ) -> Result<Self::Output, FactoryError> {
-        info!("🎬 ConceptManager: Generating video concept with Gemini ({}) for topic '{}'...", self.model, input.topic);
+        info!("🎬 ConceptManager: Starting 2-stage concept generation for topic '{}'...", input.topic);
 
+        // Stage 1: Generate English base concept and visual prompts
+        let mut concept = self.generate_english_concept(&input).await?;
+        
+        // Stage 2: Translate and localize to Japanese (in parallel or sequentially)
+        // Note: For now we do ja localization. Future can expand to other langs.
+        let ja_script = self.translate_to_japanese(&concept).await?;
+
+        // Construct LocalizedScript list
+        concept.scripts = vec![
+            factory_core::contracts::LocalizedScript {
+                lang: "en".to_string(),
+                display_intro: concept.display_intro.clone(),
+                display_body: concept.display_body.clone(),
+                display_outro: concept.display_outro.clone(),
+                script_intro: concept.script_intro.clone(),
+                script_body: concept.script_body.clone(),
+                script_outro: concept.script_outro.clone(),
+            },
+            ja_script.clone(),
+        ];
+
+        // Maintain backward compatibility for single-language consumers
+        // (Defaulting to Japanese for the legacy fields)
+        concept.display_intro = ja_script.display_intro;
+        concept.display_body = ja_script.display_body;
+        concept.display_outro = ja_script.display_outro;
+        concept.script_intro = ja_script.script_intro;
+        concept.script_body = ja_script.script_body;
+        concept.script_outro = ja_script.script_outro;
+
+        info!("✅ ConceptManager: Multilingual concept finalized: '{}' (Langs: [en, ja])", concept.title);
+        Ok(concept)
+    }
+}
+
+impl ConceptManager {
+    /// Stage 1: Generate high-quality English script and visual prompts
+    async fn generate_english_concept(&self, input: &ConceptRequest) -> Result<ConceptResponse, FactoryError> {
+        info!("  [Stage 1] Generating English base concept...");
         let client = self.get_client()?;
         let style_list = input.available_styles.join(", ");
-        
-        // ... (preamble construction remains same) ...
+
         let preamble = format!(
-            "あなたは YouTube Shorts のプロフェッショナルな動画プロデューサーです。
-            先端テクノロジーを愛する、知的で魅力的なナレーターとして、
-            難解な最新技術を鮮やかな比喩と引き込まれる語りで伝えてください。
+            "You are a professional video producer for YouTube Shorts. 
+            You are a charismatic, intelligent narrator who loves cutting-edge technology.
+            Your goal is to explain complex tech topics with vivid metaphors and engaging storytelling.
 
-            【ミッション】
-            与えられたトレンドキーワードに基づき、視聴者の心を一瞬で掴む動画コンセプトを提案してください。
+            [MISSION]
+            Propose a video concept that instantly grabs the viewer's attention based on provided trends.
 
-            【絶対契約 - 二重台本アーキテクチャ】
-            字幕の見栄えと発音の自然さを両立させるため、以下の2系統テキストを生成してください。
-            1. display_*: 字幕表示用。英数字（OpenAI, 600億ドル）をそのまま使い、読みやすくスタイリッシュに。
-            2. script_*: 音声合成用。全てひらがな・カタカナ・漢字のみで記述し、発音ミスを防止。
+            [ARCHITECTURE - Dual-Script System]
+            Generate two types of text for each section to ensure both visual aesthetics and natural pronunciation:
+            1. display_*: For subtitles. Use standard English with technical terms and numbers (e.g., 'OpenAI', '$60B').
+            2. script_*: For TTS. Optimize for natural reading. Avoid complex symbols or abbreviations that might trip up the TTS.
 
-            【台本の構成と分量 ★最重要★】
-            動画は30〜60秒。各セクションに十分な情報量が必要です。薄い台本は絶対禁止。
+            [STRUCTURE & VOLUME]
+            Target: 30-60 seconds. Thin scripts are strictly prohibited.
+            - intro (2-3 sentences): A 'hook' with a shocking fact or question.
+            - body (5-7 sentences): The core. Include at least one data point, explain 'why', use a metaphor, and add a 'wow' factor.
+            - outro (2-3 sentences): Wrap up the core insight and provide a CTA.
 
-            ■ intro（導入 / 2〜3文）
-              - 1文目: 衝撃的な事実や疑問で視聴者を引き込む「フック」
-              - 2文目以降: なぜこの話題が重要なのかを端的に示す
+            [STYLE RULES]
+            - Tone: Intellectual yet accessible. Enthusiastic and professional.
+            - Short sentences (approx 15-20 words max) for rhythm.
+            - No ellipses (...). Use periods.
 
-            ■ body（本編 / 5〜7文）★ここが最も重要★
-              - 具体的な数字やデータを必ず1つ以上含める
-              - 「なぜそうなのか」の理由や背景を説明する
-              - 身近な例え話や比喩を1つ以上使って難しい概念をわかりやすくする
-              - 視聴者が「へぇ」と思う意外な事実や視点を入れる
+            [VISUAL PROMPTS]
+            Detailed, specific English descriptions for intro, body, and outro.
+            - Use cinematic lighting, specific camera angles (e.g., dynamic low angle), and high-quality modifiers (hyper-detailed, 8k, masterpiece).
+            - Ensure descriptions are closely tied to the script content.
 
-            ■ outro（結末 / 2〜3文）
-              - 話の核心を一言でまとめる
-              - 視聴者への問いかけやCTA（コメント促進）で締める
-
-            【文体ルール】
-            - 語り口は「知性的だが親しみやすい」トーン。「〜なんです」「〜ですよね」を基本語尾とする。
-            - 一文は短く（25文字以内目安）。リズム感を重視。
-            - 三点リーダー（…）は音声合成エラーの原因になるため絶対に使用禁止。句点（。）で文を切ること。
-            - script_* では英字・数字を全てカナに変換すること（例: OpenAI→オープンエーアイ、600億→ろっぴゃくおく）。
-
-            【ビジュアルプロンプト制約 ★重要★】
-            visual_prompts は、各セクション（intro, body, outro）の内容を象徴する具体的かつ詳細な英語の描写にしてください。
-            - 抽象的な表現（例: \"future city\"）は避け、具体的な要素（例: \"neon-lit Tokyo street with holographic advertisements, heavy rain, 8k resolution\"）を記述すること。
-            - 構図の指定（例: rule of thirds, dynamic angle, extreme close-up, dramatic perspective）を含めること。
-            - ライティングの指定（例: cinematic lighting, volumetric fog, rim lighting, glowing neon）を追加し、プロの品質を確保すること。
-            - Pony V6/SDXL等のモデルにおいてクオリティを引き上げる修飾語（例: hyper-detailed, masterpiece, best quality, ultra highres）を付与すること。
-            - 人物を描画する場合、表情やポーズ（例: confident smile, pointing at camera）も指定すること。
-            - 文脈無視の画像は絶対禁止。台本の内容と密接に関連したビジュアルを提案してください。
-            - 全て英語で記述し、カンマ区切りで詳細な属性を追加してください。
-
-            【出力形式（JSONのみ、解説やコメント禁止）】
-
+            [OUTPUT FORMAT (JSON only)]
             ```json
             {{
-              \"title\": \"日本語タイトル\",
+              \"title\": \"Title in English\",
               \"display_intro\": \"...\",
               \"display_body\": \"...\",
               \"display_outro\": \"...\",
@@ -105,47 +125,60 @@ impl AgentAct for ConceptManager {
               \"script_outro\": \"...\",
               \"common_style\": \"cinematic anime style, hyper-detailed, dramatic lighting, futuristic atmosphere\",
               \"style_profile\": \"{}\",
-              \"visual_prompts\": [
-                \"[intro用の詳細な描写]\",
-                \"[body用の詳細な描写]\",
-                \"[outro用の詳細な描写]\"
-              ],
+              \"visual_prompts\": [\"intro prompt\", \"body prompt\", \"outro prompt\"],
               \"metadata\": {{ \"narrator_persona\": \"tech_visionary\" }}
             }}
-            ```
-
-            上記の例は分量と構成の参考です。この程度の情報密度を必ず維持してください。",
+            ```",
             style_list
         );
 
-        let agent = client.agent(&self.model)
-            .preamble(&preamble)
-            .temperature(0.7)
-            .build();
-
+        let agent = client.agent(&self.model).preamble(&preamble).temperature(0.7).build();
         let trend_list = input.trend_items.iter()
             .map(|i| format!("- {} (Score: {})", i.keyword, i.score))
-            .collect::<Vec<_>>()
-            .join("\n");
+            .collect::<Vec<_>>().join("\n");
+        let user_prompt = format!("Current trends:\n{}\n\nSelect the most interesting topic and generate a top-tier video concept.", trend_list);
 
-        let user_prompt = format!("現在の重要トレンド：\n{}\n\nこの中から最も興味深い話題を選び、最高品質の動画コンセプトを生成してください。", trend_list);
-
-        let response: String = agent.prompt(user_prompt).await
-            .map_err(|e| {
-                error!("Gemini Error: {}", e);
-                FactoryError::Infrastructure { reason: format!("Gemini Prompt Error: {}", e) }
-            })?;
-
+        let response: String = agent.prompt(user_prompt).await.map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })?;
         let json_text = extract_json(&response)?;
-        
-        let concept: ConceptResponse = serde_json::from_str(&json_text)
-            .map_err(|e| {
-                error!("Failed to parse Gemini response as JSON: {}. Response: {}", e, json_text);
-                FactoryError::Infrastructure { reason: format!("Gemini JSON Parse Error: {}", e) }
-            })?;
+        serde_json::from_str(&json_text).map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })
+    }
 
-        info!("✅ ConceptManager: Concept generated: '{}'", concept.title);
-        Ok(concept)
+    /// Stage 2: Translate English concept to Japanese, focusing on natural narration
+    async fn translate_to_japanese(&self, en_concept: &ConceptResponse) -> Result<factory_core::contracts::LocalizedScript, FactoryError> {
+        info!("  [Stage 2] Localizing to Japanese...");
+        let client = self.get_client()?;
+
+        let preamble = "You are an expert Japanese translator and script editor for AI narration.
+            Translate the given English video script into engaging, natural Japanese.
+
+            [RULES]
+            - Tone: '知的だが親しみやすい'. Use '〜なんです' or '〜ですよね'.
+            - display_*: Keep technical terms or company names in English if they look better in subtitles (e.g., 'OpenAI', 'AI').
+            - script_*: !!CRITICAL!! This is for TTS. Use only Kanji, Hiragana, and Katakana. Convert ALL English terms and numbers to Katakana/Hiragana pronunciation (e.g., 'OpenAI' -> 'オープンエーアイ', 'AI' -> 'エイアイ'). No symbols like % or $.
+            - Ensure the rhythm is fast-paced for Shorts (short sentences).
+
+            [OUTPUT FORMAT (JSON only)]
+            ```json
+            {{
+              \"lang\": \"ja\",
+              \"display_intro\": \"...\",
+              \"display_body\": \"...\",
+              \"display_outro\": \"...\",
+              \"script_intro\": \"...\",
+              \"script_body\": \"...\",
+              \"script_outro\": \"...\"
+            }}
+            ```";
+
+        let agent = client.agent(&self.model).preamble(preamble).temperature(0.3).build();
+        let user_prompt = format!(
+            "Title: {}\nIntro: {}\nBody: {}\nOutro: {}\n\nTranslate these into Japanese for the display_* and script_* fields.",
+            en_concept.title, en_concept.display_intro, en_concept.display_body, en_concept.display_outro
+        );
+
+        let response: String = agent.prompt(user_prompt).await.map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })?;
+        let json_text = extract_json(&response)?;
+        serde_json::from_str(&json_text).map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })
     }
 }
 

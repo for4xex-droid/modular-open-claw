@@ -32,6 +32,7 @@ impl MediaEditor for MediaForgeClient {
         video: &std::path::PathBuf,
         audio: &std::path::PathBuf,
         subtitle: Option<&std::path::PathBuf>,
+        force_style: Option<String>,
     ) -> Result<std::path::PathBuf, FactoryError> {
         let output = self.jail.root().join("final_output.mp4");
         
@@ -42,19 +43,23 @@ impl MediaEditor for MediaForgeClient {
         
         // 字幕の焼き込み (Hard-burn) - Grade S Design
         if let Some(sub) = subtitle {
-            // FFmpeg's subtitles filter has extremely sensitive escaping.
-            // On Unix-like systems (macOS), absolute paths starting with / are usually fine,
-            // but for absolute robustness, we escape colons and wrap in single quotes.
-            // The single-quote escape pattern in FFmpeg is: ' -> '\'' (close, escaped quote, re-open)
             let sub_path = sub.to_string_lossy()
                 .replace("'", "'\\''")
                 .replace(":", "\\:");
             
-            // Design: High visibility yellow for SNS, thick outline, and UI-safe MarginV=140
-            // We use the explicit 'filename=' key to avoid ambiguity.
+            // デフォルトスタイル。FontSize=18, MarginV=30 (M4 Pro & Libass coordinate system optimization)
+            let default_style = "FontName=Hiragino Sans,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2.0,Shadow=1.0,Alignment=2,MarginV=30";
+            let active_style = if let Some(fs) = force_style {
+                 // force_style が指定されている場合、デフォルトとマージ or 単体使用
+                 // 今回は簡易的に、FontName等を上書きするためにそのまま使うか、連結するか
+                 format!("{},{}", default_style, fs)
+            } else {
+                 default_style.to_string()
+            };
+
             let filter = format!(
-                "subtitles=filename='{}':force_style='FontName=Hiragino Sans,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2.0,Shadow=1.0,Alignment=2,MarginV=120'",
-                sub_path
+                "subtitles=filename='{}':force_style='{}'",
+                sub_path, active_style
             );
             cmd.arg("-vf").arg(filter);
         }
@@ -177,6 +182,7 @@ pub enum MediaForgeArgs {
         video_path: String,
         audio_path: String,
         subtitle_path: Option<String>,
+        force_style: Option<String>,
     },
     /// Shorts 用にリサイズ (9:16)
     Resize {
@@ -203,6 +209,7 @@ impl AgentAct for MediaForgeClient {
             &PathBuf::from(input.video_path),
             &PathBuf::from(input.audio_path),
             input.subtitle_path.as_ref().map(PathBuf::from).as_ref(),
+            input.force_style,
         ).await?;
         Ok(MediaResponse {
             final_path: path.to_string_lossy().to_string(),
@@ -226,11 +233,12 @@ impl Tool for MediaForgeClient {
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let path = match args {
-            MediaForgeArgs::Combine { video_path, audio_path, subtitle_path } => {
+            MediaForgeArgs::Combine { video_path, audio_path, subtitle_path, force_style } => {
                 self.combine_assets(
                     &PathBuf::from(video_path),
                     &PathBuf::from(audio_path),
                     subtitle_path.as_ref().map(PathBuf::from).as_ref(),
+                    force_style,
                 ).await?
             }
             MediaForgeArgs::Resize { input_path } => {

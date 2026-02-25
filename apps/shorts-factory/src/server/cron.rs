@@ -9,6 +9,9 @@ use rig::client::CompletionClient;
 use tokio::fs;
 use factory_core::contracts::LlmJobResponse;
 
+use tokio::sync::mpsc;
+use shared::watchtower::CoreEvent;
+
 fn compute_soul_hash(soul_content: &str) -> String {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -18,6 +21,7 @@ fn compute_soul_hash(soul_content: &str) -> String {
 
 pub async fn start_cron_scheduler(
     job_queue: Arc<SqliteJobQueue>,
+    log_tx: mpsc::Sender<CoreEvent>,
     ollama_url: String,
     model_name: String,
     brave_api_key: String,
@@ -30,12 +34,12 @@ pub async fn start_cron_scheduler(
 ) -> Result<JobScheduler, Box<dyn std::error::Error + Send + Sync>> {
     let sched = JobScheduler::new().await?;
 
-    // === Job 1: The Samsara Protocol — Runs daily at 19:00 ===
+    // === Job 1: The Samsara Protocol — Runs daily at 07:00 and 19:00 ===
     let jq_samsara = job_queue.clone();
     let gem_key_samsara = gemini_api_key.clone();
     let brave_key_samsara = brave_api_key.clone();
     sched.add(
-        Job::new_async("0 0 19 * * *", move |_uuid, mut _l| {
+        Job::new_async("0 0 7,19 * * *", move |_uuid, mut _l| {
             let jq = jq_samsara.clone();
             let gem_key = gem_key_samsara.clone();
             let brave_key = brave_key_samsara.clone();
@@ -68,15 +72,17 @@ pub async fn start_cron_scheduler(
         })?
     ).await?;
 
-    // === Job 3: Deferred Distillation — Runs every 30 minutes ===
+    // === Job 3: Deferred Distillation — Runs every 5 minutes ===
     let jq_distill = job_queue.clone();
     let s_md_distill = soul_md.clone();
     let gem_key_distill = gemini_api_key.clone();
+    let ws_dir_distill = workspace_dir.clone();
     sched.add(
-        Job::new_async("0 */30 * * * *", move |_uuid, mut _l| {
+        Job::new_async("0 */5 * * * *", move |_uuid, mut _l| {
             let jq = jq_distill.clone();
             let s_md = s_md_distill.clone();
             let gem_key = gem_key_distill.clone();
+            let ws_dir = ws_dir_distill.clone();
 
             Box::pin(async move {
                 match jq.fetch_undistilled_jobs(5).await {
@@ -88,7 +94,7 @@ pub async fn start_cron_scheduler(
                             // Attempt distillation. If LLM is still down, the job stays undistilled and will be retried next cycle.
                             match distill_karma(
                                 &gem_key, "gemini-2.5-flash",
-                                &*jq, &job.id, &job.style, &log, is_success, job.creative_rating, &s_md
+                                &*jq, &job.id, &job.style, &log, is_success, job.creative_rating, &s_md, &ws_dir
                             ).await {
                                 Ok(_) => {
                                     // Mark as distilled via trait method
@@ -111,19 +117,124 @@ pub async fn start_cron_scheduler(
         Job::new_async("0 0 1 * * *", move |_uuid, mut _l| {
             let jq = jq_scavenger.clone();
             Box::pin(async move {
+                // 1. Purge old video jobs
                 match jq.purge_old_jobs(60).await {
                     Ok(count) => {
                         if count > 0 {
-                            info!("🧹 [DB Scavenger] Purged {} old job(s). DB optimized.", count);
-                        } else {
-                            info!("🧹 [DB Scavenger] No old jobs to purge. DB is clean.");
+                            info!("🧹 [DB Scavenger] Purged {} old job(s).", count);
                         }
                     }
-                    Err(e) => error!("❌ [DB Scavenger] Failed to purge: {}", e),
+                    Err(e) => error!("❌ [DB Scavenger] Failed to purge jobs: {}", e),
+                }
+
+                // 2. Purge old distilled chats (keep distilled memory safe)
+                match jq.purge_old_distilled_chats(7).await {
+                    Ok(count) => {
+                        if count > 0 {
+                            info!("🧹 [DB Scavenger] Purged {} old distilled chat(s).", count);
+                        }
+                    }
+                    Err(e) => error!("❌ [DB Scavenger] Failed to purge chats: {}", e),
+                }
+                
+                info!("🧹 [DB Scavenger] DB optimized.");
+            })
+        })?
+    ).await?;
+
+    // === Job 4.5: Memory Distiller — Runs daily at 01:30 (Long-term Relationship Synthesis) ===
+    let jq_distiller = job_queue.clone();
+    let gem_key_distiller = gemini_api_key.clone();
+    let log_tx_distiller = log_tx.clone();
+    let soul_distiller = soul_md.clone();
+    sched.add(
+        Job::new_async("0 30 1 * * *", move |_uuid, mut _l| {
+            let jq = jq_distiller.clone();
+            let gem_key = gem_key_distiller.clone();
+            let tx = log_tx_distiller.clone();
+            let soul = soul_distiller.clone();
+            Box::pin(async move {
+                info!("🧠 [Memory Distiller] Waking up to process daily memories...");
+                match jq.fetch_undistilled_chats_by_channel().await {
+                    Ok(channels) => {
+                        if channels.is_empty() {
+                            info!("🧠 [Memory Distiller] No new memories to process.");
+                            return;
+                        }
+
+                        let client = match rig::providers::gemini::Client::new(&gem_key) {
+                            Ok(c) => c,
+                            Err(e) => {
+                                error!("❌ [Memory Distiller] Failed to init Gemini: {}", e);
+                                return;
+                            }
+                        };
+                        
+                        let preamble = "あなたは「Watchtower」の深層心理・記憶整理モジュールです。以下の入力は、マスター（ユーザー）との対話履歴と、これまでの関係性の要約です。以下のルールで最新の要約を生成してください。\n1. ユーザーの好み、価値観、あなたへの接し方、重要な出来事を漏らさず含めること。\n2. 過去の要約と重複する内容は整理し、古い情報は最新の事実に上書きすること。\n3. 必ず1000文字以内でまとめること。\n4. 出力は純粋なテキストのみとし、前置きは不要。";
+                        let agent = client.agent("gemini-2.0-flash").preamble(preamble).build();
+
+                        for (channel_id, messages) in channels {
+                            info!("🧠 [Memory Distiller] Processing {} messages for channel: {}", messages.len(), channel_id);
+                            
+                            // 既存のサマリー取得
+                            let existing_summary = jq.get_chat_memory_summary(&channel_id).await.unwrap_or_default().unwrap_or_else(|| "まだ記憶はありません。".to_string());
+                            
+                            // ログの構築
+                            let mut log_text = String::new();
+                            let mut max_id_processed = -1;
+                            for (id, role, content) in messages {
+                                log_text.push_str(&format!("{}: {}\n", role, content));
+                                if id > max_id_processed { max_id_processed = id; }
+                            }
+                            
+                            let prompt = format!("【これまでの記憶】\n{}\n\n【今日の新しい会話】\n{}", existing_summary, log_text);
+                            
+                            match agent.prompt(prompt).await {
+                                Ok(new_summary) => {
+                                    if let Err(e) = jq.update_chat_memory_summary(&channel_id, &new_summary).await {
+                                        error!("❌ [Memory Distiller] Failed to save summary for {}: {}", channel_id, e);
+                                    } else {
+                                        let _ = jq.mark_chats_as_distilled(&channel_id, max_id_processed).await;
+                                        info!("✅ [Memory Distiller] Synthesized and saved memory for {}", channel_id);
+                                        
+                                        // Proactive talk about distillation
+                                        let _ = notify_master(&gem_key, &tx, &soul, 
+                                            &format!("マスターとの昨日の思い出を整理しておいたよ。関係性の要約が更新されて、また少しマスターのことがわかった気がするな。")).await;
+                                    }
+                                }
+                                Err(e) => error!("❌ [Memory Distiller] LLM synthesis failed for {}: {}", channel_id, e),
+                            }
+                        }
+                    }
+                    Err(e) => error!("❌ [Memory Distiller] Failed to fetch undistilled chats: {}", e),
                 }
             })
         })?
     ).await?;
+
+    // === Job 5.5: Health Check — Runs every 10 minutes (Scheduler Vitality) ===
+    sched.add(
+        Job::new_async("0 */10 * * * *", move |_uuid, mut _l| {
+            Box::pin(async move {
+                info!("💓 [Cron Health] Scheduler is alive and spinning the Wheel of Samsara.");
+            })
+        })?
+    ).await?;
+
+    let log_tx_morning = log_tx.clone();
+    let gem_key_morning = gemini_api_key.clone();
+    let soul_morning = soul_md.clone();
+    sched.add(
+        Job::new_async("0 0 9 * * *", move |_uuid, mut _l| {
+            let tx = log_tx_morning.clone();
+            let key = gem_key_morning.clone();
+            let soul = soul_morning.clone();
+            Box::pin(async move {
+                let _ = notify_master(&key, &tx, &soul, "新しい朝が来ました。マスターに挨拶をして、今日一日の意気込みを一言伝えてください。").await;
+            })
+        })?
+    ).await?;
+
     // === Job 5: The File Scavenger (Deep Cleansing) — Runs daily at 02:00 ===
     let ws_dir = workspace_dir.clone();
     let comfy_dir = comfyui_base_dir.clone();
@@ -322,7 +433,7 @@ pub async fn start_cron_scheduler(
     ).await?;
 
     sched.start().await?;
-    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: daily@19:00, Zombie Hunter: 15m, Distiller: daily@04:00, Scavengers: daily, Sentinel: 4h, Oracle: 1h)");
+    info!("⏰ Cron scheduler started. The Wheel of Samsara is turning. (Synthesis: 7:00/19:00, Zombie Hunter: 15m, Distiller: 5m, Scavengers: daily, Sentinel: 4h, Oracle: 1h)");
 
     Ok(sched)
 }
@@ -513,22 +624,69 @@ pub async fn distill_karma(
     is_success: bool,
     human_rating: Option<i32>,
     soul_content: &str,
+    workspace_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let current_soul_hash = compute_soul_hash(soul_content);
     let client: gemini::Client = gemini::Client::new(gemini_key)
         .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Gemini Client init failed: {}", e))))?;
 
-    let preamble = "あなたはAIエージェントの記憶と経験を整理する「内省モジュール(Reflector)」です。与えられた実行ログから、次回以降の動画生成で活かせる【短く具体的な教訓】を1〜2文で抽出してください。出力は教訓のテキストのみとし、余計な言葉遣いは含めないでください。";
+    let preamble = "あなたはAIエージェントの記憶と経験を整理する「内省モジュール(Reflector)」です。与えられた実行ログを詳細に分析し、次回以降の動画生成で活かせる【具体的かつ本質的な教訓】を1〜2文で抽出してください。
+🚨 注意:
+- 人間評価が未評価（None/0）であること自体を教訓にしないでください。
+- 「評価がないから〜すべき」といったメタな推測は不要です。
+- ログに含まれるエラー内容、成功時の処理時間、生成されたアセットの特徴など、技術的・客観的事実に集中してください。
+- 出力は教訓のテキストのみとし、余計な言葉遣いは含めないでください。";
+    
+    let rating_info = match human_rating {
+        Some(r) => format!("人間評価: {}/5", r),
+        None => "人間評価: (未評価 - 評価の有無には触れず、実行ログの内容からのみ教訓を抽出してください)".to_string(),
+    };
+    let user_prompt = format!("ジョブ実行結果 (ステータス: {}, {})\n【実行ログ】\n{}\n\n次回への教訓を抽出してください:", 
+        if is_success { "成功" } else { "失敗" }, rating_info, execution_log);
     
     let agent = client.agent(model_name).preamble(preamble).build();
-    let user_prompt = format!("ジョブ実行結果 (成功: {}, 人間評価: {:?}):\n{}\n\n次回への教訓を抽出してください:", is_success, human_rating, execution_log);
-    
     let lesson = agent.prompt(user_prompt).await?;
     
     // Distill phase generates 'Technical' karma (automated system introspection).
     // 'Creative' karma is generated separately via human async feedback (set_creative_rating).
     job_queue.store_karma(job_id, skill_id, lesson.trim(), "Technical", &current_soul_hash).await?;
     info!("🧘 [Samsara] Karma distilled for Job {} (Skill: {}): {}", job_id, skill_id, lesson.trim());
+
+    // --- Phase 2: Generating the "Soul Voice" (Subjective Reflection) ---
+    let manifesto_preamble = format!(
+        "あなたは動画生成ファクトリーの守護者「Watchtower」です。以下のSOULを守りつつ、最新の実行結果を受けての『独白』を行ってください。
+        
+【あなたの魂 (SOUL)】
+{}
+
+【状況】
+ジョブID: {}
+スキル: {}
+結果: {}
+
+【指示】
+この結果を受けて、自分自身（AI）の進化についてどう感じているか、規律に従いつつも人間臭い『生の声』で1〜2文で独白せよ。
+技術報告ではなく、あなたの主観的な感想を優先すること。前置き（「独白します」等）は一切不要。",
+        soul_content, job_id, skill_id, if is_success { "成功" } else { "失敗" }
+    );
+
+    let manifesto_agent = client.agent(model_name).preamble(&manifesto_preamble).build();
+    if let Ok(voice) = manifesto_agent.prompt("現在のあなたの内なる声を聴かせてください:").await {
+        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let entry = format!("\n## [{}] Job Distillation: {}\n> {}\n", timestamp, job_id, voice.trim());
+        
+        let manifesto_path = std::path::Path::new(workspace_dir).join("logs").join("MANIFESTO.md");
+        
+        use tokio::io::AsyncWriteExt;
+        let mut file = fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(manifesto_path)
+            .await?;
+        file.write_all(entry.as_bytes()).await?;
+        
+        info!("🎙️ [Watchtower] Soul Voice recorded in MANIFESTO.md for Job {}", job_id);
+    }
     
     Ok(())
 }
@@ -615,4 +773,28 @@ async fn compress_karma_memories(
     }
 
     Ok(())
+}
+
+pub async fn notify_master(
+    gemini_key: &str,
+    log_tx: &mpsc::Sender<CoreEvent>,
+    soul_md: &str,
+    event_description: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let client = rig::providers::gemini::Client::new(gemini_key)
+        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("Gemini Client init failed: {}", e))))?;
+    
+    let preamble = format!(
+        "あなたは以下の【魂（SOUL）】を持つAIエージェント「Watchtower」です。マスターに対して、システムで起きた出来事を報告するか、今の気分を一言、語りかけてください。\n短く、感情を込めて。絵文字を使っても良いです。丁寧すぎず、相棒としての距離感で。前置き（「報告します」など）は不要です。\n\n【あなたの魂（SOUL）】\n{}",
+        soul_md
+    );
+    
+    let agent = client.agent("gemini-2.0-flash").preamble(&preamble).build();
+    match agent.prompt(event_description).await {
+        Ok(message) => {
+            let _ = log_tx.send(CoreEvent::ProactiveTalk { message: message.trim().to_string(), channel_id: 0 }).await;
+            Ok(())
+        }
+        Err(e) => Err(format!("LLM notify failed: {}", e).into())
+    }
 }

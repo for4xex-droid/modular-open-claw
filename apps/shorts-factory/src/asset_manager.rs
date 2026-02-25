@@ -39,15 +39,32 @@ impl AssetManager {
         })
     }
 
-    /// コンセプトを読み込み
+    /// コンセプトを読み込み (自動マイグレーション対応)
     pub fn load_concept(&self, project_id: &str) -> Result<ConceptResponse, FactoryError> {
         let path = self.base_dir.join(project_id).join("concept.json");
         let content = std::fs::read_to_string(path).map_err(|e| FactoryError::MediaNotFound {
             path: format!("concept.json for {}: {}", project_id, e),
         })?;
-        serde_json::from_str(&content).map_err(|e| FactoryError::Infrastructure {
+        
+        let mut concept: ConceptResponse = serde_json::from_str(&content).map_err(|e| FactoryError::Infrastructure {
             reason: format!("Failed to parse concept.json: {}", e),
-        })
+        })?;
+
+        // --- Backward Compatibility Migration ---
+        // もし scripts が空で、旧形式の日本語台本が存在する場合、ja ロケールとして統合する
+        if concept.scripts.is_empty() && !concept.script_intro.is_empty() {
+             concept.scripts.push(factory_core::contracts::LocalizedScript {
+                 lang: "ja".to_string(),
+                 display_intro: concept.display_intro.clone(),
+                 display_body: concept.display_body.clone(),
+                 display_outro: concept.display_outro.clone(),
+                 script_intro: concept.script_intro.clone(),
+                 script_body: concept.script_body.clone(),
+                 script_outro: concept.script_outro.clone(),
+             });
+        }
+
+        Ok(concept)
     }
 
     /// 素材（動画・音声）の存在チェック

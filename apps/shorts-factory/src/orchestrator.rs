@@ -76,29 +76,27 @@ impl AgentAct for ProductionOrchestrator {
         input: WorkflowRequest,
         jail: &bastion::fs_guard::Jail,
     ) -> Result<WorkflowResponse, FactoryError> {
-        info!("🏭 Production Pipeline Start: Category = {}, Topic = {}", input.category, input.topic);
+        info!("🏭 Aiome Video Forge: Starting Pipeline for topic '{}'", input.topic);
 
-        // 0. プロジェクト ID の決定と初期化
+        // --- Phase 1: Concept & Setup ---
         let project_id = input.remix_id.unwrap_or_else(|| {
             format!("{}_{}", input.category, chrono::Utc::now().format("%Y%m%d_%H%M%S"))
         });
         let project_root = self.asset_manager.init_project(&project_id)?;
-        info!("📁 Project Workspace: {}", project_root.display());
+        
+        // target_langs の決定（指定なしなら ja + en）
+        let target_langs = if input.target_langs.is_empty() {
+            vec!["ja".to_string(), "en".to_string()]
+        } else {
+            input.target_langs.clone()
+        };
 
-        // 1. コンセプトの取得 (New or Remix)
-        let concept_res = if let Some(_) = input.skip_to_step {
-             // Remix モード: キャッシュから読み込み
-             info!("🔄 Remix Mode: Loading existing concept...");
+        // コンセプト取得
+        let concept_res = if input.skip_to_step.is_some() {
              self.asset_manager.load_concept(&project_id)?
         } else {
-            // 新規生成モード
-            info!("🌟 Generation Mode: Creating new concept...");
-            
-            // トレンド取得
             let trend_req = TrendRequest { category: input.category.clone() };
             let trend_res: TrendResponse = self.supervisor.enforce_act(&self.trend_sonar, trend_req).await?;
-            
-            // コンセプト立案 (Styles 注入 + トレンド共有)
             let concept_req = ConceptRequest { 
                 topic: input.topic.clone(),
                 category: input.category.clone(),
@@ -106,25 +104,14 @@ impl AgentAct for ProductionOrchestrator {
                 available_styles: self.style_manager.list_available_styles(),
             };
             let res = self.supervisor.enforce_act(&self.concept_manager, concept_req).await?;
-            
-            // 保存
             self.asset_manager.save_concept(&project_id, &res)?;
             res
         };
 
-        // 採択されたスタイルの取得
-        // Phase 8.5: Remix Override logic
-        let base_style_name = if !input.style_name.is_empty() {
-            &input.style_name
-        } else {
-            &concept_res.style_profile
-        };
-        
+        // スタイル決定
+        let base_style_name = if !input.style_name.is_empty() { &input.style_name } else { &concept_res.style_profile };
         let mut style = self.style_manager.get_style(base_style_name);
-        
-        // Custom Overrides application
         if let Some(custom) = &input.custom_style {
-            info!("🛠️  Applying Custom Style Overrides...");
             if let Some(v) = custom.zoom_speed { style.zoom_speed = v; }
             if let Some(v) = custom.pan_intensity { style.pan_intensity = v; }
             if let Some(v) = custom.bgm_volume { style.bgm_volume = v; }
@@ -132,185 +119,171 @@ impl AgentAct for ProductionOrchestrator {
             if let Some(v) = custom.ducking_ratio { style.ducking_ratio = v; }
             if let Some(v) = custom.fade_duration { style.fade_duration = v; }
         }
-        
-        info!("🎨 Applied Style: {} ({}) [Zoom: {:.4}, Vol: {:.2}]", 
-            style.name, style.description, style.zoom_speed, style.bgm_volume);
 
-        // --- 3幕構成 (Intro, Body, Outro) の各コンポーネント生成 ---
-        let mut video_clips = Vec::new();
-        let mut audio_clips = Vec::new();
-        let mut srt_index = 1;
-        let mut current_time = 0.0f32;
-        let mut srt_content = String::new();
-        
-        let acts = vec![
-            (
-                if concept_res.display_intro.is_empty() { concept_res.script_intro.clone() } else { concept_res.display_intro.clone() },
-                concept_res.script_intro.clone(),
-                concept_res.visual_prompts.get(0).cloned().unwrap_or_default(),
-                "intro"
-            ),
-            (
-                if concept_res.display_body.is_empty() { concept_res.script_body.clone() } else { concept_res.display_body.clone() },
-                concept_res.script_body.clone(),
-                concept_res.visual_prompts.get(1).cloned().unwrap_or_default(),
-                "body"
-            ),
-            (
-                if concept_res.display_outro.is_empty() { concept_res.script_outro.clone() } else { concept_res.display_outro.clone() },
-                concept_res.script_outro.clone(),
-                concept_res.visual_prompts.get(2).cloned().unwrap_or_default(),
-                "outro"
-            ),
-        ];
+        // --- Phase 2: Asset Generation (Exclusive GPU Access) ---
+        info!("💎 Phase 2: Asset Generation (GPU Exclusive)...");
+        let mut audio_assets = std::collections::HashMap::new(); // lang -> Vec<PathBuf>
+        let mut image_assets = Vec::new(); // Vec<PathBuf>
 
-        for (i, (display_text, script_text, visual_prompt, act_name)) in acts.into_iter().enumerate() {
-            let audio_path = project_root.join(format!("audio/scene_{}.wav", i));
-            let video_clip_path = project_root.join(format!("visuals/scene_{}.mp4", i));
+        {
+            let _gpu_guard = self.arbiter.acquire_gpu(ResourceUser::Generating).await
+                .map_err(|e| FactoryError::Infrastructure { reason: format!("Arbiter error: {}", e) })?;
 
-            if let Some(parent) = audio_path.parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
-            if let Some(parent) = video_clip_path.parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
-
-            // 3.1. 音声合成 (VoiceActor) / Bypass check
-            if !audio_path.exists() || input.skip_to_step.as_deref() == Some("voice") {
-                info!("🗣️  Processing Voice for Act: {}", act_name);
-                let voice_res = {
-                    let _guard = self.arbiter.acquire(ResourceUser::Voicing).await;
-                    let voice_req = VoiceRequest {
-                        text: script_text.clone(),
-                        voice: "aiome_narrator".to_string(),
-                        speed: if act_name == "outro" { Some(1.15) } else { None },
-                    };
-                    self.supervisor.enforce_act(&self.voice_actor, voice_req).await?
-                };
-                
-                // Jail からプロジェクトディレクトリへコピー
-                let temp_voice_path = self.supervisor.jail().root().join(std::path::PathBuf::from(voice_res.audio_path));
-                std::fs::copy(&temp_voice_path, &audio_path).map_err(|e| FactoryError::Infrastructure {
-                    reason: format!("Failed to persist audio: {}", e),
-                })?;
-            }
-            
-            // 精緻な同期ロジック (The Synchronizer): 音声の尺長をミリ秒単位で取得
-            let duration = self.media_forge.get_duration(&audio_path).await.unwrap_or(5.0);
-            info!("⏳ Act '{}' duration: {:.2}s", act_name, duration);
-            
-            // 複数の字幕に分割 (The Subtitle Splitter) & 精密な時間配分 (Character Ratio Sync)
-            let sentences = split_into_sentences(&display_text);
-            let total_chars: usize = sentences.iter().map(|s| s.chars().count()).sum();
-            let sentence_count = sentences.len();
-            
-            if total_chars > 0 {
-                let mut accumulated_duration = 0.0f32;
-                for (j, sentence) in sentences.into_iter().enumerate() {
-                    let char_count = sentence.chars().count();
-                    let ratio = char_count as f32 / total_chars as f32;
-                    let sentence_duration = duration * ratio;
-                    
-                    let start = current_time + accumulated_duration;
-                    let end = if j == sentence_count - 1 {
-                        current_time + duration // 最後の文は確実に Act の終わりまで
-                    } else {
-                        start + sentence_duration
-                    };
-                    
-                    let start_time_str = format_srt_time(start);
-                    let end_time_str = format_srt_time(end);
-                    
-                    srt_content.push_str(&format!("{}\n{} --> {}\n{}\n\n", srt_index, start_time_str, end_time_str, sentence));
-                    srt_index += 1;
-                    accumulated_duration += sentence_duration;
-                }
-            }
-            
-            current_time += duration;
-
-            audio_clips.push(audio_path);
-
-            // 3.2. 画像生成 & 映像演出 (ComfyBridge) / Bypass check
-            if !video_clip_path.exists() || input.skip_to_step.as_deref() == Some("visual") {
-                info!("🖼️  Processing Visuals for Act: {}", act_name);
-                let full_prompt = format!("{}, {}", concept_res.common_style, visual_prompt);
-                
-                let (image_path, comfy_job_id) = {
-                    let _guard = self.arbiter.acquire(ResourceUser::Generating).await;
+            // 2.1. 画像生成 x 3 (Intro, Body, Outro)
+            for (i, visual_prompt) in concept_res.visual_prompts.iter().enumerate() {
+                let img_path = project_root.join(format!("visuals/scene_{}.png", i));
+                if !img_path.exists() {
+                    let full_prompt = format!("{}, {}", concept_res.common_style, visual_prompt);
                     let video_req = VideoRequest {
                         prompt: full_prompt,
                         workflow_id: "shorts_standard_v1".to_string(),
                         input_image: None,
                     };
                     let res = self.supervisor.enforce_act(&self.comfy_bridge, video_req).await?;
-                    (std::path::PathBuf::from(res.output_path), res.job_id)
+                    let temp_path = self.supervisor.jail().root().join(&res.output_path);
+                    std::fs::create_dir_all(img_path.parent().unwrap()).ok();
+                    std::fs::copy(&temp_path, &img_path).map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })?;
+                    self.comfy_bridge.delete_output_debris(&res.job_id);
+                }
+                image_assets.push(img_path);
+            }
+
+            // 2.2. TTS生成 for each lang
+            for lang in &target_langs {
+                if let Some(script) = concept_res.scripts.iter().find(|s| &s.lang == lang) {
+                    info!("🗣️ Generating TTS for language: {}", lang);
+                    let mut lang_audios = Vec::new();
+                    let acts = vec![&script.script_intro, &script.script_body, &script.script_outro];
+                    
+                    for (i, script_text) in acts.into_iter().enumerate() {
+                        let audio_path = project_root.join(format!("audio/scene_{}_{}.wav", i, lang));
+                        if !audio_path.exists() {
+                            let voice_req = VoiceRequest {
+                                text: script_text.clone(),
+                                voice: String::new(), // Auto-map by lang in VoiceActor
+                                speed: None,
+                                lang: Some(lang.clone()),
+                            };
+                            let v_res = self.supervisor.enforce_act(&self.voice_actor, voice_req).await?;
+                            let temp_v = self.supervisor.jail().root().join(&v_res.audio_path);
+                            std::fs::create_dir_all(audio_path.parent().unwrap()).ok();
+                            std::fs::copy(&temp_v, &audio_path).map_err(|e| FactoryError::Infrastructure { reason: e.to_string() })?;
+                        }
+                        lang_audios.push(audio_path);
+                    }
+                    audio_assets.insert(lang.clone(), lang_audios);
+                }
+            }
+        } // GPU Guard released
+
+        // --- Phase 3: Forge & Parallel Composition ---
+        info!("🔥 Phase 3: Forge (Video Composition)...");
+        let mut output_videos = Vec::new();
+
+        for lang in &target_langs {
+            if let (Some(audios), Some(script)) = (audio_assets.get(lang), concept_res.scripts.iter().find(|s| &s.lang == lang)) {
+                let _forge_guard = self.arbiter.acquire_forge(ResourceUser::Forging).await
+                    .map_err(|e| FactoryError::Infrastructure { reason: format!("Arbiter error: {}", e) })?;
+
+                info!("🎬 Forging video for language: {}", lang);
+                let lang_proj_root = project_root.join(lang);
+                std::fs::create_dir_all(&lang_proj_root).ok();
+
+                // 3.1. Ken Burns / Subtitle Generation
+                let mut video_clips = Vec::new();
+                let mut srt_content = String::new();
+                let mut current_time = 0.0f32;
+                let mut srt_index = 1;
+
+                let displays = vec![&script.display_intro, &script.display_body, &script.display_outro];
+
+                for (i, (img_path, audio_path)) in image_assets.iter().zip(audios.iter()).enumerate() {
+                    let duration = self.media_forge.get_duration(audio_path).await.unwrap_or(5.0);
+                    let clip_path = lang_proj_root.join(format!("clip_{}.mp4", i));
+                    
+                    // Ken Burns
+                    let clip = self.comfy_bridge.apply_ken_burns_effect(img_path, duration, jail, &style).await?;
+                    let temp_clip = self.supervisor.jail().root().join(clip);
+                    std::fs::copy(&temp_clip, &clip_path).ok();
+                    video_clips.push(clip_path);
+
+                    // Subtitles
+                    let sentences = split_into_sentences(displays[i]);
+                    let total_chars: usize = sentences.iter().map(|s| s.chars().count()).sum();
+                    let mut accumulated = 0.0f32;
+                    for sentence in sentences {
+                        let ratio = sentence.chars().count() as f32 / total_chars as f32;
+                        let s_duration = duration * ratio;
+                        let start = format_srt_time(current_time + accumulated);
+                        let end = format_srt_time(current_time + accumulated + s_duration);
+                        srt_content.push_str(&format!("{}\n{} --> {}\n{}\n\n", srt_index, start, end, sentence));
+                        srt_index += 1;
+                        accumulated += s_duration;
+                    }
+                    current_time += duration;
+                }
+
+                let srt_path = lang_proj_root.join("subtitles.srt");
+                std::fs::write(&srt_path, srt_content).ok();
+
+                // 3.2. Final Assembly per language
+                let combined_v = self.media_forge.concatenate_clips(video_clips.iter().map(|p| p.to_string_lossy().to_string()).collect(), format!("v_{}.mp4", lang)).await?;
+                let combined_a = self.media_forge.concatenate_clips(audios.iter().map(|p| p.to_string_lossy().to_string()).collect(), format!("a_{}.wav", lang)).await?;
+                
+                let finalized_a = lang_proj_root.join("final_audio.wav");
+                self.sound_mixer.mix_and_finalize(&std::path::PathBuf::from(combined_a), &input.category, &finalized_a, &style).await?;
+
+                let style_with_font = format!("Fontname={},FontSize={}", font_for_lang(lang), font_size_for_lang(lang));
+                let media_req = MediaRequest {
+                    video_path: combined_v,
+                    audio_path: finalized_a.to_string_lossy().to_string(),
+                    subtitle_path: Some(srt_path.to_string_lossy().to_string()),
+                    force_style: Some(style_with_font),
                 };
                 
-                // Ken Burns エフェクト適用 (音声尺長に同期)
-                let clip = self.comfy_bridge.apply_ken_burns_effect(&image_path, duration, jail, &style).await?;
-                let temp_clip_path = self.supervisor.jail().root().join(clip);
-                std::fs::copy(&temp_clip_path, &video_clip_path).map_err(|e| FactoryError::Infrastructure {
-                    reason: format!("Failed to persist video clip: {}", e),
-                })?;
-                
-                // --- The Invisible Landfill ---
-                self.comfy_bridge.delete_output_debris(&comfy_job_id);
+                let media_res: MediaResponse = self.supervisor.enforce_act(&self.media_forge, media_req).await?;
+
+                let final_path = std::path::PathBuf::from(media_res.final_path);
+                let delivered = infrastructure::workspace_manager::WorkspaceManager::deliver_output(
+                    &format!("{}_{}", project_id, lang),
+                    &final_path,
+                    &self.export_dir,
+                ).await?;
+
+                output_videos.push(factory_core::contracts::OutputVideo {
+                    lang: lang.clone(),
+                    path: delivered.to_string_lossy().to_string(),
+                });
             }
-            video_clips.push(video_clip_path);
         }
 
-        // 字幕ファイルの永続化
-        let subtitle_path = project_root.join("subtitles.srt");
-        std::fs::write(&subtitle_path, srt_content).map_err(|e| FactoryError::Infrastructure {
-            reason: format!("Failed to write subtitles: {}", e),
-        })?;
-
-        // 4. 最終合成 (MediaForge & SoundMixer)
-        info!("🎞️  Orchestrator: Final Assembly (Style: {})...", style.name);
+        let first_path = output_videos.first().map(|v| v.path.clone()).unwrap_or_default();
         
-        // 4.1. ナレーションを結合
-        let audio_strings: Vec<String> = audio_clips.iter().map(|p| p.to_string_lossy().to_string()).collect();
-        let combined_narration_str = self.media_forge.concatenate_clips(audio_strings, "combined_narration.wav".to_string()).await?;
-        let combined_narration = project_root.join("combined_narration.wav");
-        std::fs::rename(combined_narration_str, &combined_narration).ok();
-        
-        // 4.2. 動画クリップを結合
-        let video_strings: Vec<String> = video_clips.iter().map(|p| p.to_string_lossy().to_string()).collect();
-        let combined_video_str = self.media_forge.concatenate_clips(video_strings, "combined_visuals.mp4".to_string()).await?;
-        let combined_video = project_root.join("combined_visuals.mp4");
-        std::fs::rename(combined_video_str, &combined_video).ok();
-        
-        // 4.3. BGM 混合とダッキング、正規化
-        let finalized_audio = project_root.join("finalized_audio.wav");
-        self.sound_mixer.mix_and_finalize(&combined_narration, &input.category, &finalized_audio, &style).await?;
-        
-        // 4.4. 最終映像と最終音声を結合 (字幕焼き込み)
-        let media_req = MediaRequest {
-            video_path: combined_video.to_string_lossy().to_string(),
-            audio_path: finalized_audio.to_string_lossy().to_string(),
-            subtitle_path: Some(subtitle_path.to_string_lossy().to_string()),
-        };
-        let media_res: MediaResponse = self.supervisor.enforce_act(&self.media_forge, media_req).await?;
-
-        // 5. 最終メタデータ保存
-        self.asset_manager.save_metadata(&project_id, &style)?;
-
-        // 6. Safe Move Protocol v2: 納品先への安全な移動
-        info!("🚚  Orchestrator: Delivering final output via Safe Move Protocol...");
-        let final_video_path = std::path::PathBuf::from(&media_res.final_path);
-        let delivered_path = infrastructure::workspace_manager::WorkspaceManager::deliver_output(
-            &project_id,
-            &final_video_path,
-            &self.export_dir,
-        ).await?;
-
-        info!("🏆 Production Pipeline Completed: {}", delivered_path.display());
+        info!("🏆 Aiome Video Forge: Pipeline Completed for {} languages", output_videos.len());
 
         Ok(WorkflowResponse {
-            final_video_path: delivered_path.to_string_lossy().to_string(),
+            final_video_path: first_path,
+            output_videos,
             concept: concept_res,
         })
+    }
+}
+
+/// 言語別フォントマッピング
+fn font_for_lang(lang: &str) -> &str {
+    match lang {
+        "ja" => "Noto Sans JP Black",
+        "en" => "Inter Bold",
+        _ => "Noto Sans Bold",
+    }
+}
+
+/// 言語別デフォルトフォントサイズ
+fn font_size_for_lang(lang: &str) -> i32 {
+    match lang {
+        "ja" => 18,
+        "en" => 12, // 英語は単語数が多くなりやすいため大幅に縮小
+        _ => 16,
     }
 }
 
@@ -323,15 +296,28 @@ fn format_srt_time(secs: f32) -> String {
     format!("{:02}:{:02}:{:02},{:03}", hours, minutes, seconds, millis)
 }
 
-/// テキストを句読点や改行で文章単位に分割する
+/// テキストを句読点や改行で文章単位に分割する。
+/// 英語の場合はピリオド等でも分割し、かつ長すぎる場合はスペースでチャンク分けする。
 fn split_into_sentences(text: &str) -> Vec<String> {
     let mut sentences = Vec::new();
     let mut current = String::new();
     
+    // 英語と日本語の両方の句切りに対応
+    let delimiters = ['。', '？', '！', '.', '?', '!', '\n'];
+    
     for c in text.chars() {
         current.push(c);
-        // 文の区切り文字
-        if c == '。' || c == '？' || c == '！' || c == '\n' {
+        
+        let should_split = if delimiters.contains(&c) {
+            true
+        } else if (c == ' ' || c == '、' || c == ',') && current.chars().count() > 30 {
+            // 30文字を超えていて、区切り（スペース、読点、コンマ）があれば分割
+            true
+        } else {
+            false
+        };
+
+        if should_split {
             let s = current.trim().to_string();
             if !s.is_empty() {
                 sentences.push(s);

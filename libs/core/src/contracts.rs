@@ -43,6 +43,17 @@ pub struct ConceptRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalizedScript {
+    pub lang: String,
+    pub display_intro: String,
+    pub display_body: String,
+    pub display_outro: String,
+    pub script_intro: String,
+    pub script_body: String,
+    pub script_outro: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConceptResponse {
     pub title: String,
     /// 字幕表示用テキスト（英数字・記号をそのまま使用）
@@ -52,12 +63,20 @@ pub struct ConceptResponse {
     pub display_body: String,
     #[serde(default)]
     pub display_outro: String,
-    /// 導入部
+    /// 導入部 (backward compatibility)
+    #[serde(default)]
     pub script_intro: String,
-    /// 本編
+    /// 本編 (backward compatibility)
+    #[serde(default)]
     pub script_body: String,
-    /// 結末
+    /// 結末 (backward compatibility)
+    #[serde(default)]
     pub script_outro: String,
+    
+    /// 多言語化された台本リスト
+    #[serde(default)]
+    pub scripts: Vec<LocalizedScript>,
+
     /// 全体共通の画風、ライティング、特定のキャラクター指定 (Subject/Style)
     pub common_style: String,
     /// 採択された演出スタイル (styles.toml のキー)
@@ -90,6 +109,9 @@ pub struct VoiceRequest {
     pub voice: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speed: Option<f32>,
+    /// 音声の言語 (ja, en等)
+    #[serde(default)]
+    pub lang: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +126,7 @@ pub struct MediaRequest {
     pub video_path: String,
     pub audio_path: String,
     pub subtitle_path: Option<String>,
+    pub force_style: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,6 +150,12 @@ pub struct CustomStyle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputVideo {
+    pub lang: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRequest {
     pub category: String,
     pub topic: String,
@@ -141,11 +170,18 @@ pub struct WorkflowRequest {
     pub style_name: String,
     /// ユーザーによるカスタム調整 (None の場合はプリセット通り)
     pub custom_style: Option<CustomStyle>,
+
+    /// 生成対象言語 (例: ["ja", "en"])
+    #[serde(default)]
+    pub target_langs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowResponse {
     pub final_video_path: String,
+    /// 多言語出力された動画のリスト
+    #[serde(default)]
+    pub output_videos: Vec<OutputVideo>,
     pub concept: ConceptResponse,
 }
 

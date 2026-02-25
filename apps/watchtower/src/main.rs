@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use tracing::{info, error};
+use tracing::{info, warn, error};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use shared::watchtower::{ControlCommand, CoreEvent, SystemStatus, LogEntry};
@@ -17,6 +17,8 @@ struct Data {
     cmd_tx: mpsc::Sender<ControlCommand>,
     latest_status: Arc<Mutex<Option<SystemStatus>>>,
     log_channel_id: ChannelId,
+    command_channel_id: ChannelId,
+    chat_channel_id: ChannelId,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -94,6 +96,14 @@ async fn nuke(
     Ok(())
 }
 
+/// View Agent Evolution Stats
+#[poise::command(slash_command)]
+async fn stats(ctx: PoiseContext<'_>) -> Result<(), Error> {
+    ctx.data().cmd_tx.send(ControlCommand::GetAgentStats).await?;
+    ctx.say("⏳ Fetching emotional and technical stats from Core...").await?;
+    Ok(())
+}
+
 /// Start a new video generation task
 #[poise::command(slash_command)]
 async fn generate(
@@ -112,6 +122,44 @@ async fn generate(
     Ok(())
 }
 
+/// Talk directly to her (Watchtower/OpenClaw)
+#[poise::command(slash_command)]
+async fn talk(
+    ctx: PoiseContext<'_>,
+    #[description = "Message to her"] message: String,
+) -> Result<(), Error> {
+    let channel_id = ctx.channel_id().get();
+    info!("💬 Sending chat command to Core: {}", message);
+    let cmd = ControlCommand::Chat { message, channel_id };
+    if let Err(e) = ctx.data().cmd_tx.send(cmd).await {
+        error!("❌ Failed to send Chat command to Core: {}", e);
+        ctx.say(format!("❌ Failed to reach Core: {}", e)).await?;
+    } else {
+        info!("✅ Chat command sent to Core.");
+        ctx.say("💬 ...").await?;
+    }
+    Ok(())
+}
+
+/// Ask her to perform system commands (Command Center)
+#[poise::command(slash_command)]
+async fn command(
+    ctx: PoiseContext<'_>,
+    #[description = "Request system action or status"] request: String,
+) -> Result<(), Error> {
+    let channel_id = ctx.channel_id().get();
+    info!("⚙️ Sending CommandChat to Core: {}", request);
+    let cmd = ControlCommand::CommandChat { message: request, channel_id };
+    if let Err(e) = ctx.data().cmd_tx.send(cmd).await {
+        error!("❌ Failed to send CommandChat to Core: {}", e);
+        ctx.say(format!("❌ Failed to reach Core: {}", e)).await?;
+    } else {
+        info!("✅ CommandChat sent to Core.");
+        ctx.say("⚙️ ...").await?;
+    }
+    Ok(())
+}
+
 // ... event handler ...
 
 
@@ -122,6 +170,14 @@ async fn main() -> anyhow::Result<()> {
     
     let token = std::env::var("DISCORD_TOKEN").context("Missing DISCORD_TOKEN")?;
     let log_channel_id: u64 = std::env::var("DISCORD_LOG_CHANNEL_ID")
+        .unwrap_or_default()
+        .parse()
+        .unwrap_or(0);
+    let command_channel_id: u64 = std::env::var("DISCORD_COMMAND_CHANNEL_ID")
+        .unwrap_or_default()
+        .parse()
+        .unwrap_or(log_channel_id); // Default to log channel if not specified
+    let chat_channel_id: u64 = std::env::var("DISCORD_CHAT_CHANNEL_ID")
         .unwrap_or_default()
         .parse()
         .unwrap_or(0);
@@ -185,7 +241,14 @@ async fn main() -> anyhow::Result<()> {
                     let _ = discord_tx_uds.send("⚠️ **Core Disconnected.** UDS link lost. Retrying in 5s...".to_string()).await;
                     *status_clone.lock().await = None;
                 }
-                Err(_) => {
+                Err(e) => {
+                    if !was_connected {
+                        // We use warn! instead of error! for initial Retries to reduce noise
+                        warn!("⏳ Waiting for Core UDS at /tmp/aiome.sock (is shorts-factory running?): {}", e);
+                    } else {
+                        error!("❌ UDS Connection lost at /tmp/aiome.sock: {}", e);
+                    }
+
                     if was_connected {
                         let _ = discord_tx_uds.send("⚠️ **Core Disconnected.** Cannot reach UDS. Retrying in 5s...".to_string()).await;
                         *status_clone.lock().await = None;
@@ -228,9 +291,32 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![status(), nuke(), generate()],
+            commands: vec![status(), nuke(), stats(), generate(), talk(), command()],
             event_handler: |ctx, event, _framework, data| {
                 Box::pin(async move {
+                    // Handle normal messages in specific channels (Chat/Command routing)
+                    if let serenity::FullEvent::Message { new_message } = event {
+                        // Ignore bot messages
+                        if new_message.author.id != ctx.cache.current_user().id {
+                            let channel_id = new_message.channel_id;
+                            let content = new_message.content.clone();
+
+                            if channel_id == data.chat_channel_id {
+                                info!("💬 Routing message from chat channel to Core: {}", content);
+                                let _ = data.cmd_tx.send(ControlCommand::Chat { 
+                                    message: content, 
+                                    channel_id: channel_id.get() 
+                                }).await;
+                            } else if channel_id == data.command_channel_id {
+                                info!("⚙️ Routing message from command channel to Core: {}", content);
+                                let _ = data.cmd_tx.send(ControlCommand::CommandChat { 
+                                    message: content, 
+                                    channel_id: channel_id.get() 
+                                }).await;
+                            }
+                        }
+                    }
+
                     // Handle approval buttons
                     if let serenity::FullEvent::InteractionCreate { interaction } = event {
                         if let Some(it) = interaction.as_message_component() {
@@ -287,7 +373,9 @@ async fn main() -> anyhow::Result<()> {
                 let data = Data { 
                     cmd_tx, 
                     latest_status, 
-                    log_channel_id: ChannelId::new(log_channel_id) 
+                    log_channel_id: ChannelId::new(log_channel_id),
+                    command_channel_id: ChannelId::new(command_channel_id),
+                    chat_channel_id: ChannelId::new(chat_channel_id),
                 };
                 
                 // Event Forwarder with Throttling + System Alert Channel
@@ -350,6 +438,19 @@ async fn main() -> anyhow::Result<()> {
                                             });
                                         }
                                     }
+                                    CoreEvent::ChatResponse { response, channel_id } => {
+                                        let chan = ChannelId::new(channel_id);
+                                        let _ = chan.say(&http, response).await;
+                                    }
+                                    CoreEvent::ProactiveTalk { message, channel_id } => {
+                                        // If channel_id is 0, use default command channel
+                                        let target_chan = if channel_id == 0 {
+                                            data.command_channel_id
+                                        } else {
+                                            ChannelId::new(channel_id)
+                                        };
+                                        let _ = target_chan.say(&http, message).await;
+                                    }
                                     _ => {}
                                 }
                             }
@@ -371,7 +472,8 @@ async fn main() -> anyhow::Result<()> {
         .build();
 
     let intents = serenity::GatewayIntents::non_privileged()
-        | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS;
+        | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | serenity::GatewayIntents::MESSAGE_CONTENT;
     let client = serenity::ClientBuilder::new(token, intents)
         .framework(framework)
         .await;
