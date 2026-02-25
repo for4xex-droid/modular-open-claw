@@ -56,6 +56,7 @@ pub trait MediaEditor: Send + Sync {
         video: &PathBuf,
         audio: &PathBuf,
         subtitle: Option<&PathBuf>,
+        force_style: Option<String>,
     ) -> Result<PathBuf, FactoryError>;
 
     /// 動画をショート用にリサイズ (9:16, 1080x1920)
@@ -125,6 +126,8 @@ pub struct Job {
     pub sns_platform: Option<String>,
     pub sns_video_id: Option<String>,
     pub published_at: Option<String>,
+    /// 多言語出力された動画のリスト (JSON文字列)
+    pub output_videos: Option<String>,
 }
 
 /// ジョブキュー (The Persistent Memory & Samsara)
@@ -143,7 +146,7 @@ pub trait JobQueue: Send + Sync {
     async fn dequeue(&self) -> Result<Option<Job>, FactoryError>;
 
     /// ジョブを完了状態にする
-    async fn complete_job(&self, job_id: &str) -> Result<(), FactoryError>;
+    async fn complete_job(&self, job_id: &str, output_videos: Option<&str>) -> Result<(), FactoryError>;
 
     /// ジョブを失敗状態にする
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), FactoryError>;
@@ -209,6 +212,19 @@ pub trait JobQueue: Send + Sync {
         verdict: OracleVerdict,
         soul_hash: &str,
     ) -> Result<(), FactoryError>;
+
+    /// 最近のジョブをN件取得する
+    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, FactoryError>;
+
+    // --- Phase 12: The Agent Evolution (Project Ani) ---
+    /// 育成ステータを取得
+    async fn get_agent_stats(&self) -> Result<shared::watchtower::AgentStats, FactoryError>;
+    /// 親愛度を加算 (Chat対応等)
+    async fn add_affection(&self, amount: i32) -> Result<(), FactoryError>;
+    /// 技術経験値を加算 (Samsara完了等)
+    async fn add_tech_exp(&self, amount: i32) -> Result<(), FactoryError>;
+    /// 淫乱度を加算 (R18要素)
+    async fn add_intimacy(&self, amount: i32) -> Result<(), FactoryError>;
 }
 
 /// 評価台帳（sns_metrics_history）のレコード構造体

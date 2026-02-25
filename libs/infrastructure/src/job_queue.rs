@@ -85,6 +85,7 @@ impl SqliteJobQueue {
             "ALTER TABLE jobs ADD COLUMN sns_video_id TEXT",
             "ALTER TABLE jobs ADD COLUMN published_at TEXT",
             "ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE jobs ADD COLUMN output_videos TEXT",
         ] {
             let _ = sqlx::query(migration).execute(&self.pool).await;
         }
@@ -147,6 +148,27 @@ impl SqliteJobQueue {
         ] {
             let _ = sqlx::query(migration).execute(&self.pool).await;
         }
+        
+        // --- Phase 12: Project Ani Foundation ---
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS agent_stats (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                level INTEGER NOT NULL DEFAULT 1,
+                exp INTEGER NOT NULL DEFAULT 0,
+                affection INTEGER NOT NULL DEFAULT 0,
+                intimacy INTEGER NOT NULL DEFAULT 0,
+                fatigue INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create agent_stats table: {}", e) })?;
+
+        // Seed initial data if table is empty
+        let _ = sqlx::query("INSERT OR IGNORE INTO agent_stats (id, level, exp, affection, intimacy, fatigue) VALUES (1, 1, 0, 0, 0, 0);")
+            .execute(&self.pool)
+            .await;
 
         // The Temporal Voids protection: Global Circuit Breaker State
         sqlx::query(
@@ -159,6 +181,35 @@ impl SqliteJobQueue {
         .execute(&self.pool)
         .await
         .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create system_state table: {}", e) })?;
+
+        // --- Watchtower Memory Distillation Tables ---
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS chat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                channel_id TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+                content TEXT NOT NULL,
+                is_distilled INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool).await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create chat_history: {}", e) })?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_channel ON chat_history(channel_id, created_at DESC);")
+            .execute(&self.pool).await.ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_undistilled ON chat_history(is_distilled) WHERE is_distilled = 0;")
+            .execute(&self.pool).await.ok();
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS chat_memory_summaries (
+                channel_id TEXT PRIMARY KEY,
+                summary TEXT NOT NULL,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool).await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to create chat_memory_summaries: {}", e) })?;
 
         Ok(())
     }
@@ -191,7 +242,7 @@ impl JobQueue for SqliteJobQueue {
 
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, FactoryError> {
         let row = sqlx::query(
-            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs WHERE id = ?"
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at, output_videos FROM jobs WHERE id = ?"
         )
         .bind(job_id)
         .fetch_optional(&self.pool)
@@ -210,6 +261,7 @@ impl JobQueue for SqliteJobQueue {
             let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
             let sns_video_id: Option<String> = try_get_optional_string(&r, "sns_video_id");
             let published_at: Option<String> = try_get_optional_string(&r, "published_at");
+            let output_videos: Option<String> = try_get_optional_string(&r, "output_videos");
             let status_str: String = r.get("status");
             let status = JobStatus::from_string(&status_str);
 
@@ -228,6 +280,7 @@ impl JobQueue for SqliteJobQueue {
                 sns_platform,
                 sns_video_id,
                 published_at,
+                output_videos,
             }))
         } else {
             Ok(None)
@@ -239,7 +292,7 @@ impl JobQueue for SqliteJobQueue {
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to start transaction: {}", e) })?;
 
         let row = sqlx::query(
-            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at, output_videos FROM jobs WHERE status = ? ORDER BY created_at ASC LIMIT 1"
         )
         .bind(JobStatus::Pending.to_string())
         .fetch_optional(&mut *tx)
@@ -258,6 +311,7 @@ impl JobQueue for SqliteJobQueue {
             let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
             let sns_video_id: Option<String> = try_get_optional_string(&r, "sns_video_id");
             let published_at: Option<String> = try_get_optional_string(&r, "published_at");
+            let output_videos: Option<String> = try_get_optional_string(&r, "output_videos");
 
             let now = Utc::now().to_rfc3339();
             // Set status to Processing, record started_at AND first heartbeat
@@ -289,16 +343,18 @@ impl JobQueue for SqliteJobQueue {
                 sns_platform,
                 sns_video_id,
                 published_at,
+                output_videos,
             }))
         } else {
             Ok(None)
         }
     }
 
-    async fn complete_job(&self, job_id: &str) -> Result<(), FactoryError> {
+    async fn complete_job(&self, job_id: &str, output_videos: Option<&str>) -> Result<(), FactoryError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE jobs SET status = ?, output_videos = ?, updated_at = ? WHERE id = ?")
             .bind(JobStatus::Completed.to_string())
+            .bind(output_videos)
             .bind(&now)
             .bind(job_id)
             .execute(&self.pool)
@@ -465,7 +521,7 @@ impl JobQueue for SqliteJobQueue {
         let rows = sqlx::query(
             "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
-                     sns_platform, sns_video_id, published_at 
+                     sns_platform, sns_video_id, published_at, output_videos 
               FROM jobs 
               WHERE execution_log IS NOT NULL 
               AND tech_karma_extracted = 0 
@@ -499,6 +555,7 @@ impl JobQueue for SqliteJobQueue {
                 sns_platform: try_get_optional_string(&r, "sns_platform"),
                 sns_video_id: try_get_optional_string(&r, "sns_video_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
+                output_videos: try_get_optional_string(&r, "output_videos"),
             });
         }
         Ok(jobs)
@@ -555,7 +612,7 @@ impl JobQueue for SqliteJobQueue {
         let rows = sqlx::query(
             "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
-                     sns_platform, sns_video_id, published_at 
+                     sns_platform, sns_video_id, published_at, output_videos 
               FROM jobs 
               WHERE sns_platform IS NOT NULL 
               AND sns_video_id IS NOT NULL 
@@ -593,6 +650,7 @@ impl JobQueue for SqliteJobQueue {
                 sns_platform: try_get_optional_string(&r, "sns_platform"),
                 sns_video_id: try_get_optional_string(&r, "sns_video_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
+                output_videos: try_get_optional_string(&r, "output_videos"),
             });
         }
         Ok(jobs)
@@ -737,6 +795,86 @@ impl JobQueue for SqliteJobQueue {
         tx.commit().await
             .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to commit transaction: {}", e) })?;
 
+        Ok(())
+    }
+
+    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
+                     tech_karma_extracted, creative_rating, execution_log, error_message,
+                     sns_platform, sns_video_id, published_at, output_videos 
+              FROM jobs 
+              ORDER BY created_at DESC LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch recent jobs: {}", e) })?;
+
+        let mut jobs = Vec::new();
+        for r in rows {
+            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            jobs.push(Job {
+                id: r.get("id"),
+                topic: r.get("topic"),
+                style: r.get("style_name"),
+                karma_directives: try_get_optional_string(&r, "karma_directives"),
+                status: JobStatus::from_string(r.get::<String, _>("status").as_str()),
+                started_at: try_get_optional_string(&r, "started_at"),
+                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
+                tech_karma_extracted: tech_karma_extracted != 0,
+                creative_rating: r.try_get("creative_rating").ok(),
+                execution_log: try_get_optional_string(&r, "execution_log"),
+                error_message: try_get_optional_string(&r, "error_message"),
+                sns_platform: try_get_optional_string(&r, "sns_platform"),
+                sns_video_id: try_get_optional_string(&r, "sns_video_id"),
+                published_at: try_get_optional_string(&r, "published_at"),
+                output_videos: try_get_optional_string(&r, "output_videos"),
+            });
+        }
+        Ok(jobs)
+    }
+
+    async fn get_agent_stats(&self) -> Result<shared::watchtower::AgentStats, FactoryError> {
+        let row = sqlx::query("SELECT level, exp, affection, intimacy, fatigue FROM agent_stats WHERE id = 1")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch agent stats: {}", e) })?;
+
+        use sqlx::Row;
+        Ok(shared::watchtower::AgentStats {
+            level: row.get("level"),
+            exp: row.get("exp"),
+            affection: row.get("affection"),
+            intimacy: row.get("intimacy"),
+            fatigue: row.get("fatigue"),
+        })
+    }
+
+    async fn add_affection(&self, amount: i32) -> Result<(), FactoryError> {
+        sqlx::query("UPDATE agent_stats SET affection = affection + ?, updated_at = datetime('now') WHERE id = 1")
+            .bind(amount)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update affection: {}", e) })?;
+        Ok(())
+    }
+
+    async fn add_tech_exp(&self, amount: i32) -> Result<(), FactoryError> {
+        sqlx::query("UPDATE agent_stats SET exp = exp + ?, updated_at = datetime('now') WHERE id = 1")
+            .bind(amount)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update exp: {}", e) })?;
+        Ok(())
+    }
+
+    async fn add_intimacy(&self, amount: i32) -> Result<(), FactoryError> {
+        sqlx::query("UPDATE agent_stats SET intimacy = intimacy + ?, updated_at = datetime('now') WHERE id = 1")
+            .bind(amount)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update intimacy: {}", e) })?;
         Ok(())
     }
 }
@@ -886,43 +1024,11 @@ impl SqliteJobQueue {
         
         Ok(())
     }
-    pub async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<factory_core::traits::Job>, FactoryError> {
-        let rows = sqlx::query(
-            "SELECT id, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_video_id, published_at FROM jobs ORDER BY created_at DESC LIMIT ?"
-        )
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch recent jobs: {}", e) })?;
+}
 
-        let mut jobs = Vec::new();
-        for r in rows {
-            use sqlx::Row;
-            let status_str: String = r.get("status");
-            let status = factory_core::traits::JobStatus::from_string(&status_str);
-            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-
-            jobs.push(factory_core::traits::Job {
-                id: r.get("id"),
-                topic: r.get("topic"),
-                style: r.get("style_name"),
-                karma_directives: try_get_optional_string(&r, "karma_directives"),
-                status,
-                started_at: try_get_optional_string(&r, "started_at"),
-                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
-                tech_karma_extracted: tech_karma_extracted != 0,
-                creative_rating: r.try_get("creative_rating").ok(),
-                execution_log: try_get_optional_string(&r, "execution_log"),
-                error_message: try_get_optional_string(&r, "error_message"),
-                sns_platform: try_get_optional_string(&r, "sns_platform"),
-                sns_video_id: try_get_optional_string(&r, "sns_video_id"),
-                published_at: try_get_optional_string(&r, "published_at"),
-            });
-        }
-        Ok(jobs)
-    }
-
+impl SqliteJobQueue {
     pub async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, FactoryError> {
+        // (Existing fetch_all_karma code omitted for brevity; this block replaces the whole method)
         let rows = sqlx::query(
             "SELECT * FROM karma_logs ORDER BY created_at DESC LIMIT ?"
         )
@@ -947,6 +1053,120 @@ impl SqliteJobQueue {
             }));
         }
         Ok(karmas)
+    }
+
+    // --- Watchtower Memory Distillation Methods ---
+
+    pub async fn insert_chat_message(&self, channel_id: &str, role: &str, content: &str) -> Result<(), FactoryError> {
+        sqlx::query("INSERT INTO chat_history (channel_id, role, content) VALUES (?, ?, ?)")
+            .bind(channel_id)
+            .bind(role)
+            .bind(content)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to insert chat history: {}", e) })?;
+        Ok(())
+    }
+
+    pub async fn fetch_chat_history(&self, channel_id: &str, limit: i64) -> Result<Vec<serde_json::Value>, FactoryError> {
+        // Fetch the newest `limit` messages, but we need them in chronological order
+        // So we order by id DESC, limit, and then reverse the result in memory.
+        let rows = sqlx::query(
+            "SELECT role, content FROM chat_history WHERE channel_id = ? ORDER BY id DESC LIMIT ?"
+        )
+        .bind(channel_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch chat history: {}", e) })?;
+
+        let mut messages = Vec::new();
+        for row in rows {
+            use sqlx::Row;
+            let role: String = row.get("role");
+            let content: String = row.get("content");
+            messages.push(serde_json::json!({
+                "role": role,
+                "content": content
+            }));
+        }
+        
+        // Output needs to be chronological (oldest first)
+        messages.reverse();
+        Ok(messages)
+    }
+
+    pub async fn get_chat_memory_summary(&self, channel_id: &str) -> Result<Option<String>, FactoryError> {
+        let row = sqlx::query("SELECT summary FROM chat_memory_summaries WHERE channel_id = ?")
+            .bind(channel_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to get chat memory summary: {}", e) })?;
+
+        if let Some(r) = row {
+            use sqlx::Row;
+            Ok(Some(r.get("summary")))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn update_chat_memory_summary(&self, channel_id: &str, summary: &str) -> Result<(), FactoryError> {
+        sqlx::query(
+            "INSERT INTO chat_memory_summaries (channel_id, summary, updated_at) 
+             VALUES (?, ?, datetime('now'))
+             ON CONFLICT(channel_id) DO UPDATE SET summary = excluded.summary, updated_at = excluded.updated_at"
+        )
+        .bind(channel_id)
+        .bind(summary)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to update chat memory summary: {}", e) })?;
+        Ok(())
+    }
+
+    /// Fetches all undistilled chats spanning all channels. 
+    /// Returns a map of channel_id to a list of (id, role, content)
+    pub async fn fetch_undistilled_chats_by_channel(&self) -> Result<std::collections::HashMap<String, Vec<(i64, String, String)>>, FactoryError> {
+        let rows = sqlx::query(
+            "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to fetch undistilled chats: {}", e) })?;
+
+        let mut map = std::collections::HashMap::new();
+        for row in rows {
+            use sqlx::Row;
+            let id: i64 = row.get("id");
+            let channel_id: String = row.get("channel_id");
+            let role: String = row.get("role");
+            let content: String = row.get("content");
+            map.entry(channel_id).or_insert_with(Vec::new).push((id, role, content));
+        }
+        Ok(map)
+    }
+
+    pub async fn mark_chats_as_distilled(&self, channel_id: &str, up_to_id: i64) -> Result<(), FactoryError> {
+        sqlx::query("UPDATE chat_history SET is_distilled = 1 WHERE channel_id = ? AND id <= ?")
+            .bind(channel_id)
+            .bind(up_to_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to mark chats as distilled: {}", e) })?;
+        Ok(())
+    }
+
+    pub async fn purge_old_distilled_chats(&self, days: i64) -> Result<u64, FactoryError> {
+        let result = sqlx::query(
+            "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < datetime('now', ? || ' days')"
+        )
+        .bind(format!("-{}", days))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| FactoryError::Infrastructure { reason: format!("Failed to purge old distilled chats: {}", e) })?;
+
+        Ok(result.rows_affected())
     }
 }
 

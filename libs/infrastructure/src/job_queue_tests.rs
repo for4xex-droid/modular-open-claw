@@ -53,7 +53,7 @@ mod tests {
         let _ = jq.dequeue().await.unwrap(); // id1 -> Processing
         let _ = jq.dequeue().await.unwrap(); // id2 -> Processing
 
-        jq.complete_job(&id1).await.unwrap();
+        jq.complete_job(&id1, None).await.unwrap();
         jq.fail_job(&id2, "Test failure reason").await.unwrap();
 
         // Verify no more Pending jobs
@@ -104,7 +104,7 @@ mod tests {
 
         let id = jq.enqueue("Rating Test", "rated", Some("{}")).await.unwrap();
         let _ = jq.dequeue().await.unwrap();
-        jq.complete_job(&id).await.unwrap();
+        jq.complete_job(&id, None).await.unwrap();
 
         // Completed job should accept rating
         jq.set_creative_rating(&id, 1).await.unwrap();
@@ -155,7 +155,7 @@ mod tests {
         let id = jq.enqueue("Undistilled", "raw", Some("{}")).await.unwrap();
         let _ = jq.dequeue().await.unwrap();
         jq.store_execution_log(&id, "Some log output").await.unwrap();
-        jq.complete_job(&id).await.unwrap();
+        jq.complete_job(&id, None).await.unwrap();
 
         let undistilled = jq.fetch_undistilled_jobs(10).await.unwrap();
         assert_eq!(undistilled.len(), 1);
@@ -169,7 +169,7 @@ mod tests {
         let id = jq.enqueue("Extract Test", "extract", Some("{}")).await.unwrap();
         let _ = jq.dequeue().await.unwrap();
         jq.store_execution_log(&id, "log").await.unwrap();
-        jq.complete_job(&id).await.unwrap();
+        jq.complete_job(&id, None).await.unwrap();
 
         jq.mark_karma_extracted(&id).await.unwrap();
 
@@ -200,7 +200,7 @@ mod tests {
 
         let id = jq.enqueue("Old Job", "ancient", Some("{}")).await.unwrap();
         let _ = jq.dequeue().await.unwrap();
-        jq.complete_job(&id).await.unwrap();
+        jq.complete_job(&id, None).await.unwrap();
 
         // Manually age the job by 60 days
         sqlx::query("UPDATE jobs SET created_at = datetime('now', '-60 days') WHERE id = ?")
@@ -223,7 +223,7 @@ mod tests {
 
         let id = jq.enqueue("Fresh Job", "new", Some("{}")).await.unwrap();
         let _ = jq.dequeue().await.unwrap();
-        jq.complete_job(&id).await.unwrap();
+        jq.complete_job(&id, None).await.unwrap();
 
         // Don't age — should NOT be purged
         let purged = jq.purge_old_jobs(30).await.unwrap();

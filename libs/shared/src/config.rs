@@ -31,6 +31,8 @@ pub struct FactoryConfig {
     pub gemini_api_key: String,
     /// TikTok API Key for Phase 11 Sentinel (Placeholder)
     pub tiktok_api_key: String,
+    /// Unleashed Mode (Platinum Edition): Bypass all level requirements
+    pub unleashed_mode: bool,
 }
 
 impl std::fmt::Debug for FactoryConfig {
@@ -49,6 +51,7 @@ impl std::fmt::Debug for FactoryConfig {
             .field("youtube_api_key", if self.youtube_api_key.is_empty() { &"" } else { &"***" })
             .field("gemini_api_key", if self.gemini_api_key.is_empty() { &"" } else { &"***" })
             .field("tiktok_api_key", if self.tiktok_api_key.is_empty() { &"" } else { &"***" })
+            .field("unleashed_mode", &self.unleashed_mode)
             .finish()
     }
 }
@@ -72,6 +75,7 @@ impl FactoryConfig {
             .set_default("youtube_api_key", std::env::var("YOUTUBE_API_KEY").unwrap_or_else(|_| "".to_string()))?
             .set_default("gemini_api_key", std::env::var("GEMINI_API_KEY").unwrap_or_else(|_| "".to_string()))?
             .set_default("tiktok_api_key", std::env::var("TIKTOK_API_KEY").unwrap_or_else(|_| "".to_string()))?
+            .set_default("unleashed_mode", std::env::var("UNLEASHED_MODE").map(|v| v.to_lowercase() == "true").unwrap_or(false))?
             // config.toml があれば読み込む
             .add_source(config::File::with_name("config").required(false))
             // 環境変数 (SHORTS_FACTORY_*) があれば上書き
@@ -100,6 +104,7 @@ impl Default for FactoryConfig {
                 youtube_api_key: std::env::var("YOUTUBE_API_KEY").unwrap_or_else(|_| "".to_string()),
                 gemini_api_key: std::env::var("GEMINI_API_KEY").unwrap_or_else(|_| "".to_string()),
                 tiktok_api_key: std::env::var("TIKTOK_API_KEY").unwrap_or_else(|_| "".to_string()),
+                unleashed_mode: std::env::var("UNLEASHED_MODE").map(|v| v.to_lowercase() == "true").unwrap_or(false),
             }
         })
     }

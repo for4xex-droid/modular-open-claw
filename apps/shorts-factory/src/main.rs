@@ -205,10 +205,6 @@ async fn main() -> Result<(), anyhow::Error> {
     let db_filepath = format!("sqlite://{}", db_dir.join("shorts_factory.db").display());
     let job_queue = Arc::new(infrastructure::job_queue::SqliteJobQueue::new(&db_filepath).await?);
 
-    // 0.2. Start Watchtower UDS Server (deferred — needs job_queue Arc)
-    let wt_server = server::watchtower::WatchtowerServer::new(log_rx, job_tx, job_queue.clone());
-    tokio::spawn(wt_server.start());
-
     // 5.2 The Soul of the World (Load Soul.md for Oracle)
     let soul_md_path = std::env::current_dir()?.join("SOUL.md");
     let soul_md = std::fs::read_to_string(&soul_md_path).unwrap_or_else(|_| {
@@ -216,8 +212,23 @@ async fn main() -> Result<(), anyhow::Error> {
         "## Default Soul\n- Be creative.\n- Stay true to the mission.".to_string()
     });
 
+    // 0.2. Start Watchtower UDS Server (deferred — needs job_queue Arc)
+    let wt_server = server::watchtower::WatchtowerServer::new(
+        log_rx, 
+        log_tx.clone(), 
+        job_tx, 
+        job_queue.clone(),
+        config.gemini_api_key.clone(),
+        soul_md.clone(),
+        config.ollama_url.clone(),
+        "huihui_ai/mistral-small-abliterated:latest".to_string(), // 規制解除版 Mistral-Small
+        config.unleashed_mode,
+    );
+    tokio::spawn(wt_server.start());
+
     let _cron_scheduler = server::cron::start_cron_scheduler(
         job_queue.clone(),
+        log_tx.clone(),
         config.ollama_url.clone(),
         config.model_name.clone(),
         config.brave_api_key.clone(),
@@ -228,6 +239,7 @@ async fn main() -> Result<(), anyhow::Error> {
         config.comfyui_base_dir.clone(),
         config.clean_after_hours,
     ).await.map_err(|e| factory_core::error::FactoryError::Infrastructure { reason: format!("Cron failed to start: {}", e) })?;
+    info!("🌙 Samsara Protocol is now ACTIVE (Proactive Watchtower enabled)");
 
     // Sidecar Manager ("The Reaper")
     let sidecar_manager = Arc::new(SidecarManager::new(vec![
@@ -414,6 +426,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 skip_to_step: step.clone(),
                 style_name: String::new(), 
                 custom_style: None,
+                target_langs: vec!["ja".to_string(), "en".to_string()],
             };
         
             info!("🚀 Launching Production Pipeline...");
@@ -425,7 +438,9 @@ async fn main() -> Result<(), anyhow::Error> {
                             println!("\n🎬 動画生成完了！");
                             println!("   📝 タイトル: {}", res.concept.title);
                             println!("   🎨 スタイル: {}", res.concept.style_profile);
-                            println!("   🎥 ファイル: {}", res.final_video_path);
+                            for v in res.output_videos {
+                                println!("   🎥 [{}] ファイル: {}", v.lang, v.path);
+                            }
                         }
                         Err(e) => {
                             error!("❌ 生成パイプラインが失敗: {}", e);

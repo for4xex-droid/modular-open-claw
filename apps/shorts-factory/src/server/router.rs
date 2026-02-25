@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use crate::server::telemetry::TelemetryHub;
 use crate::orchestrator::ProductionOrchestrator;
 use factory_core::contracts::WorkflowRequest;
-use factory_core::traits::AgentAct; // Trait import needed for .execute()
+use factory_core::traits::{AgentAct, JobQueue}; // Trait import needed 
 use tuning::StyleManager;
 use bastion::fs_guard::Jail;
 use tower_http::services::ServeDir;
@@ -126,7 +126,8 @@ async fn remix_handler(
         // Execute the heavy task
         match orchestrator.execute(payload.clone(), &jail).await {
             Ok(res) => {
-                let msg = format!("Job Completed: {} -> {}", job_id_clone, res.final_video_path);
+                let video_count = res.output_videos.len();
+                let msg = format!("Job Completed: {} -> {} videos generated ({})", job_id_clone, video_count, res.final_video_path);
                 println!("{}", msg);
                 telemetry.broadcast_log("INFO", &msg);
             }

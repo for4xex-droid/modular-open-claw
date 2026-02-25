@@ -20,6 +20,7 @@ bytes = "1.0"
 nix = { workspace = true }
 tokio-util = { workspace = true }
 anyhow = { workspace = true }
+reqwest = { workspace = true }
 async-trait = "0.1"
 chrono = "0.4"
 clap = { version = "4.4", features = ["derive"] }

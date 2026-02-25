@@ -50,7 +50,13 @@ cargo run -p shorts-factory -- serve
 # 別ターミナルで起動 (.env にトークンが必要)
 cargo run -p watchtower
 ```
-- コマンド: `/status`, `/nuke`, `/generate`
+- コマンド: `/status`, `/stats`, `/nuke`, `/generate`
+- 詳細: [docs/WATCHTOWER_USER_GUIDE.md](docs/WATCHTOWER_USER_GUIDE.md)
+
+### 3. エージェント育成・進化 (Evolution System)
+- **Project Ani**: 交流と成功体験による AI の人格成長。
+- **Unleashed Mode**: 全ての制限を解除する Platinum Edition フラグ。
+- 詳細: [docs/EVOLUTION_STRATEGY.md](docs/EVOLUTION_STRATEGY.md)
 
 ### 🛠 サービス永続化 (macOS launchd)
 

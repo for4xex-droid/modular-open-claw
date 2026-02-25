@@ -105,23 +105,28 @@ impl JobWorker {
             skip_to_step: None,
             style_name: job.style.clone(),
             custom_style: None,
+            target_langs: vec!["ja".to_string(), "en".to_string()],
         };
 
         match self.orchestrator.execute(req, &self.jail).await {
             Ok(res) => {
-                info!("✅ JobWorker: Job {} completed successfully: {}", job_id, res.final_video_path);
+                info!("✅ JobWorker: Job {} completed successfully: {} videos generated", job_id, res.output_videos.len());
                 
                 // Store success log for Distillation
                 let success_log = format!(
-                    "SUCCESS_LOG: {}\nVideo: {}\nConcept: {}", 
+                    "SUCCESS_LOG: {}\nVideos: {:?}\nConcept: {}", 
                     Utc::now().to_rfc3339(), 
-                    res.final_video_path,
+                    res.output_videos,
                     res.concept.title
                 );
                 let _ = self.job_queue.store_execution_log(&job_id, &success_log).await;
 
-                if let Err(e) = self.job_queue.complete_job(&job_id).await {
+                let output_json = serde_json::to_string(&res.output_videos).unwrap_or_default();
+                if let Err(e) = self.job_queue.complete_job(&job_id, Some(&output_json)).await {
                     error!("❌ JobWorker: Failed to mark job as completed: {}", e);
+                } else {
+                    // Phase 12: The Agent Evolution (Technical Advancement)
+                    let _ = self.job_queue.add_tech_exp(10).await;
                 }
             }
             Err(e) => {

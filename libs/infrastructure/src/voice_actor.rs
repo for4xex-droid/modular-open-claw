@@ -100,6 +100,15 @@ impl VoiceActor {
 
         sentences
     }
+
+    /// 言語別のデフォルトスピード設定
+    fn default_speed_for_lang(lang: &str) -> f32 {
+        match lang {
+            "ja" => 1.1, // 日本語は少し早めが聞きやすい
+            "en" => 1.0, // 英語はQwen3の滑舌維持のため標準
+            _ => 1.0,
+        }
+    }
 }
 
 #[async_trait]
@@ -119,31 +128,38 @@ impl AgentAct for VoiceActor {
             });
         }
 
-        let voice = if input.voice.is_empty() {
-            self.default_voice.clone()
-        } else {
+        let lang = input.lang.as_deref().unwrap_or("ja");
+        
+        // 言語別ボイスマッピング (将来的に設定ファイル出しも検討)
+        let voice = if !input.voice.is_empty() {
             input.voice.clone()
+        } else {
+            match lang {
+                "en" => "aiome_en".to_string(), // 英語用モデル
+                "ja" => self.default_voice.clone(),
+                _ => self.default_voice.clone(),
+            }
         };
 
+        // 言語別デフォルトスピード
+        let speed = input.speed.unwrap_or_else(|| Self::default_speed_for_lang(lang));
+
         info!(
-            "🗣️ VoiceActor: Synthesizing full text with voice '{}' for: '{}'",
+            "🗣️ VoiceActor: Synthesizing full text [{}] with voice '{}' at speed {} for: '{}'",
+            lang,
             voice,
+            speed,
             sanitized_text.chars().take(80).collect::<String>()
         );
 
         let url = format!("{}/v1/audio/speech", self.server_url);
 
-        let mut body = serde_json::json!({
+        let body = serde_json::json!({
             "input": sanitized_text,
             "voice": voice,
             "response_format": "wav",
+            "speed": speed,
         });
-
-        if let Some(s) = input.speed {
-            if let Some(obj) = body.as_object_mut() {
-                obj.insert("speed".into(), serde_json::json!(s));
-            }
-        }
 
         let response = self.client.post(&url).json(&body).send().await
             .map_err(|e| FactoryError::TtsFailure {

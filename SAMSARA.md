@@ -69,10 +69,11 @@ LLM はこの階層に従い、**The Absolute Contract v2 (`LlmJobResponse`)** �
 - **Node-Targeted Overrides**: `parameter_overrides` の二重 HashMap により、ComfyUI の特定ノードのパラメータ（CFG, Denoise 等）を直接上書きします。
 - **The Heartbeat Pulse**: 長時間レンダリング中のワーカーは 5分ごとに `last_heartbeat` を更新し、生存を証明します。
 
-### Phase 4: Distillation (業の抽出・死と反省)
-ジョブが完了、あるいは失敗した際、その実行ログは即座に DB に永続化されます (**Log-First Distillation**)。
-LLM が利用可能な場合、ログを LLM に渡し「次回への教訓（1〜2文）」を抽出させます。
-LLM がダウンしている場合でも、ログは DB に保存済みのため、**Deferred Distillation（遅延蒸留）** により後から非同期で Karma を抽出します。
+### Phase 4: Distillation (蒸留 - Learning)
+Action の結果（Karma）を評価し、成功体験や失敗から知識を抽出します。
+- **Karma Distillation**: ジョブが完了、あるいは失敗した際、その実行ログは即座に DB に永続化されます (**Log-First Distillation**)。LLM が利用可能な場合、ログから「次回への教訓（1〜2文）」を抽出して DB にフィードバックします。
+- **Soul Voice (Reflection)**: AI としての主観的な感想や改善への意志を `MANIFESTO.md` に独白 (Manifesto) として記録します。
+- **Deferred Distillation (遅延蒸留)**: LLM がダウンしている場合でも、ログは DB に保存済みのため、後から非同期で Karma を抽出します。
 
 ---
 
@@ -102,9 +103,9 @@ LLM がダウンしている場合でも、ログは DB に保存済みのため
 | # | 防壁 | 実装 | 対象リスク |
 |---|------|------|-----------|
 | 10 | Zombie Hunter (Heartbeat版) | 15分間隔 Cron | ゾンビジョブ |
-| 11 | Heartbeat Pulse | `last_heartbeat` カラム | 長時間処理の誤認キル |
-| 12 | Log-First Distillation | `execution_log` カラム | LLMダウン時の教訓消失 |
-| 13 | Deferred Distillation | 30分間隔 Cron | 非同期Karma蒸留 |
+| 11 | Heartbeat Pulse | 5分間隔 Update | 長時間処理の誤認キル |
+| 12 | Log-First Distillation | 即時 (Complete時) | LLMダウン時の教訓消失 |
+| 13 | Deferred Distillation | 5分間隔 Cron | 非同期Karma蒸留 |
 
 ---
 
@@ -112,9 +113,9 @@ LLM がダウンしている場合でも、ログは DB に保存済みのため
 
 | ジョブ | 頻度 | 役割 |
 |--------|------|------|
-| **Samsara Synthesis** | 毎日 19:00 | 次のジョブを LLM で合成・エンキュー |
+| **Samsara Synthesis** | 7:00, 19:00 (12h毎) | 次のジョブを LLM で合成・エンキュー |
 | **Zombie Hunter** | 15分毎 | Heartbeat が途絶えたジョブを回収 |
-| **Deferred Distillation** | 30分毎 | ログはあるが未蒸留のジョブから Karma を遅延抽出 |
+| **Deferred Distillation** | 5分毎 | Karma 蒸留および Soul Voice の記録 |
 
 ---
 

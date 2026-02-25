@@ -29,11 +29,30 @@ pub enum CoreEvent {
         style: String,
         thumbnail_url: Option<String>,
     },
+    /// コアからの対話応答
+    ChatResponse { response: String, channel_id: u64 },
+    /// 自律的な話しかけ（プッシュ通知）
+    ProactiveTalk { message: String, channel_id: u64 },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentStats {
+    pub level: i32,
+    pub exp: i32,
+    pub affection: i32,
+    pub intimacy: i32,
+    pub fatigue: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ControlCommand {
     GetStatus,
+    /// 育成ステータス取得
+    GetAgentStats,
+    /// 彼女（OpenClaw）との対話 (一般チャット)
+    Chat { message: String, channel_id: u64 },
+    /// システム操作用の対話 (コマンドチャネル)
+    CommandChat { message: String, channel_id: u64 },
     Generate {
         category: String,
         topic: String,
