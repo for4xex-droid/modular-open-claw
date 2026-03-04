@@ -1,10 +1,10 @@
-# 🦞 OpenClaw 活用マニュアル: ローカルAIエージェントの運用
+# 🦞 Aiome 活用マニュアル: ローカルAIエージェントの運用
 
-本ドキュメントでは、本プロジェクトにおける OpenClaw の活用方法について解説します。
+本ドキュメントでは、本プロジェクトにおける Aiome の活用方法について解説します。
 
 ## 1. 基本コマンド
 
-OpenClawは CLI (`npx openclaw@latest`) を通じて操作します。
+Aiomeは CLI (`npx openclaw@latest`) を通じて操作します。
 
 ### エージェントとの対話
 ```bash
@@ -26,7 +26,7 @@ npx openclaw@latest models list
 
 ## 2. Ollamaの管理
 
-OpenClawはローカルの Ollama に依存しています。
+Aiomeはローカルの Ollama に依存しています。
 
 ```bash
 # 現在動作中のモデルを確認

@@ -1,10 +1,10 @@
-# 🚀 プロジェクト進捗報告書: Antigravity x OpenClaw 統合
+# 🚀 プロジェクト進捗報告書: Antigravity x Aiome 統合
 
 作成日: 2026-02-17
 ステータス: 第一段階完了 (Foundation Phase)
 
 ## 1. 概要
-本プロジェクトでは、自律型AIエージェントプラットフォーム「OpenClaw」を中核に据え、ローカルLLM（Ollama）を活用した開発エコシステムを構築しました。また、エージェントが参照するためのナレッジベース（CODE Wiki）とその管理画面（Dashboard）を整備しました。
+本プロジェクトでは、自律型AIエージェントプラットフォーム「Aiome」を中核に据え、ローカルLLM（Ollama）を活用した開発エコシステムを構築しました。また、エージェントが参照するためのナレッジベース（CODE Wiki）とその管理画面（Dashboard）を整備しました。
 
 ## 2. 実装済み機能
 
@@ -23,7 +23,7 @@
 - **デザイン**: ガラスモーフィズムを採用したプレミアムなダークモードUI。
 - **ポート**: 3015 (Open WebUIとの衝突を避けるため)
 
-### 🦞 OpenClaw エージェント基盤
+### 🦞 Aiome エージェント基盤
 - **ローカルLLM連携**: Ollama上の `llama3.1:8b` および `llama4:latest` との統合。
 - **設定管理**: `~/.openclaw/openclaw.json` によるプロバイダー・モデルの詳細設定。
 - **ワークスペース**: `/Users/motista/Desktop/antigravity/modular-open-claw` をエージェントの作業領域として定義。
@@ -32,12 +32,12 @@
 ```mermaid
 graph TD
     User((ユーザー)) --> Dashboard[api-server: Dashboard]
-    User --> CLI[OpenClaw CLI]
+    User --> CLI[Aiome CLI]
     
     subgraph Local [Local Machine]
-        CLI --> OpenClaw[OpenClaw Gateway]
-        OpenClaw --> Ollama[(Ollama)]
-        OpenClaw --> Workspace[Target Workspace]
+        CLI --> Aiome[Aiome Gateway]
+        Aiome --> Ollama[(Ollama)]
+        Aiome --> Workspace[Target Workspace]
         Workspace --> WikiScript[generate_wiki.py]
     end
     
@@ -53,4 +53,4 @@ graph TD
 | `scripts/generate_wiki.py` | Wiki自動生成スクリプト |
 | `docs/` | Wiki及びガイドライン |
 | `.github/workflows/` | CI/CD 設定ファイル |
-| `~/.openclaw/` | OpenClaw 各種設定 (Local) |
+| `~/.openclaw/` | Aiome 各種設定 (Local) |
