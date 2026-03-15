@@ -55,6 +55,7 @@ struct FederatedKarmaRecord {
     node_id: String,
     signature: Option<String>,
     created_at: String,
+    clone_origin_id: Option<String>,
 }
 
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
@@ -185,7 +186,8 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
             lamport_clock INTEGER NOT NULL DEFAULT 0,
             signature TEXT,
             approved_at TEXT,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            clone_origin_id TEXT
         );",
     )
     .execute(pool)
@@ -203,7 +205,8 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
             lamport_clock INTEGER NOT NULL DEFAULT 0,
             signature TEXT,
             received_at TEXT,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            clone_origin_id TEXT
         );",
     )
     .execute(pool)
@@ -674,7 +677,7 @@ async fn sync_handler(
 
     // Fetch ONLY approved data with Pagination (Flaw 2: OOM Defense)
     let karmas = sqlx::query_as::<_, FederatedKarmaRecord>(
-        "SELECT id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature FROM approved_karma 
+        "SELECT id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM approved_karma 
          WHERE approved_at > ? ORDER BY approved_at ASC LIMIT 500"
     ).bind(&since).fetch_all(&state.pool).await.unwrap_or_default();
 
@@ -714,6 +717,7 @@ async fn sync_handler(
                 lamport_clock: k.lamport_clock as u64,
                 node_id: k.node_id,
                 signature: k.signature,
+                clone_origin_id: k.clone_origin_id,
             })
             .collect(),
         new_immune_rules: rules
@@ -847,13 +851,13 @@ async fn push_handler(
         }
 
         let _ = sqlx::query(
-            "INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, signature, received_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, signature, received_at, clone_origin_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO NOTHING"
         )
         .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
         .bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at)
-        .bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at)
+        .bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at).bind(&k.clone_origin_id)
         .execute(&mut *tx).await;
     }
 
@@ -1086,9 +1090,9 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 match pool.begin().await {
                     Ok(mut tx) => {
                         let approved_at = chrono::Utc::now().to_rfc3339();
-                        let _ = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+                        let _ = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
                             .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
-                            .bind(k.weight).bind(&k.soul_version_hash).bind(k.lamport_clock).bind(&k.signature).bind(&k.created_at).bind(&approved_at)
+                            .bind(k.weight).bind(&k.soul_version_hash).bind(k.lamport_clock).bind(&k.signature).bind(&k.created_at).bind(&approved_at).bind(&k.clone_origin_id)
                             .execute(&mut *tx).await;
                         let _ = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
                             .bind(&k.id)

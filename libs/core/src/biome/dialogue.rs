@@ -126,6 +126,7 @@ impl DialogueManager {
                 "v20-distilled",
                 Some("Biome"),
                 Some(topic_id),
+                None,
             )
             .await?;
 

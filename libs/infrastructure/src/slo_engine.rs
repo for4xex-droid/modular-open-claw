@@ -18,6 +18,7 @@ use tokio::sync::RwLock;
 use tracing::warn;
 
 /// SLO Engine の設定
+#[derive(Debug, Clone)]
 pub struct SloConfig {
     /// 期間あたりの最大エラー数
     pub error_budget_max: usize,
@@ -26,6 +27,7 @@ pub struct SloConfig {
 }
 
 /// SLO Engine 本体
+#[derive(Debug)]
 pub struct SloEngine {
     error_budget_consumed: Arc<AtomicUsize>,
     config: SloConfig,

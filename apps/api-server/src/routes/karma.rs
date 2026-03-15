@@ -65,6 +65,7 @@ pub async fn trigger_failure_demo(
             "genesis_soul",
             None,
             None,
+            None,
         )
         .await
     {

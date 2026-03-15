@@ -77,6 +77,8 @@ pub struct AppState {
     pub docker_failures: Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>,
     pub security_policy: shared::security::SecurityPolicy,
     pub commerce_engine: Option<Arc<dyn aiome_core::commerce::CommerceEngine>>,
+    pub circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
+    pub slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
 }
 
 #[tokio::main]
@@ -119,6 +121,8 @@ async fn main() {
         client: reqwest::Client,
         fallback_host: String,
         fallback_model: String,
+        circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
+        slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
     }
 
     #[async_trait]
@@ -144,7 +148,13 @@ async fn main() {
                 self.fallback_model.clone()
             };
 
-            match provider_type.as_str() {
+            if let Err(e) = self.circuit_breaker.check_state().await {
+                return Err(aiome_core::error::AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                });
+            }
+
+            let result = match provider_type.as_str() {
                 "gemini" => {
                     let api_key = if let Ok(key) = std::env::var("GEMINI_API_KEY") {
                         key
@@ -229,6 +239,18 @@ async fn main() {
                     aiome_core::llm_provider::OllamaProvider::new(host, model)
                         .complete(prompt, system)
                         .await
+                }
+            };
+
+            match result {
+                Ok(res) => {
+                    self.circuit_breaker.record_success().await;
+                    Ok(res)
+                }
+                Err(e) => {
+                    self.circuit_breaker.record_failure().await;
+                    self.slo_engine.record_error().await;
+                    Err(e)
                 }
             }
         }
@@ -429,6 +451,21 @@ async fn main() {
     let fallback_host =
         std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string());
 
+    let circuit_breaker = Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+        infrastructure::circuit_breaker::CircuitBreakerConfig {
+            failure_threshold: 5,
+            reset_timeout: std::time::Duration::from_secs(60),
+        },
+    ));
+
+    let slo_engine = Arc::new(infrastructure::slo_engine::SloEngine::new(
+        infrastructure::slo_engine::SloConfig {
+            error_budget_max: 100,
+            warning_threshold: 80,
+        },
+        chrono::Duration::hours(24),
+    ));
+
     let shared_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(120))
         .build()
@@ -439,6 +476,8 @@ async fn main() {
         client: shared_client.clone(),
         fallback_host,
         fallback_model,
+        circuit_breaker: circuit_breaker.clone(),
+        slo_engine: slo_engine.clone(),
     });
 
     // === Background LLM Provider (for autonomous tasks) ===
@@ -784,7 +823,10 @@ async fn main() {
         commerce_engine = Some(
             Arc::new(nurture_infra::economy::bridge::NurtureCommerceBridge::new(
                 ns.ledger.clone(),
+                ns.settlement.clone(),
+                ns.marketplace.clone(),
                 ns.interceptor.clone(),
+                ns.policy.clone(),
             )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
         );
         ns
@@ -819,6 +861,8 @@ async fn main() {
             docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
             security_policy: shared::security::SecurityPolicy::default(),
             commerce_engine,
+            circuit_breaker,
+            slo_engine,
         },
         cors_layer,
         static_path,

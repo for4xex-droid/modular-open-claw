@@ -29,6 +29,7 @@ pub enum CircuitState {
 }
 
 /// Circuit Breaker の設定
+#[derive(Debug, Clone)]
 pub struct CircuitBreakerConfig {
     /// Open 状態に遷移するまでの連続失敗数
     pub failure_threshold: usize,
@@ -37,6 +38,7 @@ pub struct CircuitBreakerConfig {
 }
 
 /// Circuit Breaker 本体
+#[derive(Debug)]
 pub struct CircuitBreaker {
     state: Arc<RwLock<CircuitState>>,
     failures: Arc<AtomicUsize>,

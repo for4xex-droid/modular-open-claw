@@ -474,6 +474,7 @@ pub async fn trigger_agent_chat(
                                             "v1_genesis",
                                             None,
                                             None,
+                                            None,
                                         )
                                         .await;
                                 }

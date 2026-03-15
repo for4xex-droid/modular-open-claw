@@ -36,6 +36,7 @@ pub trait KarmaOps {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn do_fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
     async fn do_mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError>;
@@ -214,6 +215,7 @@ impl KarmaOps for SqliteJobQueue {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
@@ -239,7 +241,7 @@ impl KarmaOps for SqliteJobQueue {
         let domain = domain.unwrap_or("general");
 
         sqlx::query(
-            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(job_id)
@@ -254,6 +256,7 @@ impl KarmaOps for SqliteJobQueue {
         .bind(signature)
         .bind(domain)
         .bind(subtopic)
+        .bind(clone_origin_id)
         .execute(&self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to store karma for job {}: {}", job_id, e) })?;

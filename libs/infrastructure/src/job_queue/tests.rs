@@ -102,6 +102,7 @@ async fn test_sqlite_job_queue_karma_storage() {
         "hash1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -239,6 +240,7 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
         "hash-old",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -261,6 +263,7 @@ async fn test_sqlite_job_queue_incorporate_karma() {
         "Distilled Lesson",
         "Technical",
         "hash-old",
+        None,
         None,
         None,
     )
@@ -352,6 +355,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
         soul_v1,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -378,6 +382,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
         "[V2 KARMA]",
         "Synthesized",
         soul_v2,
+        None,
         None,
         None,
     )
@@ -467,6 +472,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
         "hash1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -501,6 +507,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
         "Lesson",
         "Technical",
         "hash1",
+        None,
         None,
         None,
     )
@@ -547,6 +554,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         "hash1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -559,6 +567,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         "Old Lesson",
         "Technical",
         "hash1",
+        None,
         None,
         None,
     )
@@ -575,6 +584,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         "hash1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -586,6 +596,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         "Old Strong Lesson",
         "Technical",
         "hash1",
+        None,
         None,
         None,
     )
@@ -622,6 +633,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
         "hash1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -632,6 +644,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
         "Security Best Practices for bakers",
         "Technical",
         "hash1",
+        None,
         None,
         None,
     )

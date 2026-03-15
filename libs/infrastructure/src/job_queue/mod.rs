@@ -182,9 +182,10 @@ impl JobQueue for SqliteJobQueue {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         self.do_store_karma(
-            job_id, skill_id, lesson, karma_type, soul_hash, domain, subtopic,
+            job_id, skill_id, lesson, karma_type, soul_hash, domain, subtopic, clone_origin_id,
         )
         .await
     }
@@ -679,6 +680,7 @@ impl SqliteJobQueue {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         self.do_apply_distilled_karma(
             skill,
@@ -687,6 +689,7 @@ impl SqliteJobQueue {
             soul_hash,
             domain,
             subtopic,
+            clone_origin_id,
         )
         .await
     }

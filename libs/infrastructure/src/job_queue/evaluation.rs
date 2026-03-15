@@ -238,8 +238,8 @@ impl EvaluationOps for SqliteJobQueue {
             };
 
             sqlx::query(
-                "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)"
             )
             .bind(&karma_id)
             .bind(&job_id)

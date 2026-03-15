@@ -60,6 +60,7 @@ pub trait WatchtowerOps {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn do_adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError>;
     async fn do_karma_decay_sweep(&self) -> Result<u64, AiomeError>;
@@ -269,6 +270,7 @@ impl WatchtowerOps for SqliteJobQueue {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         let mut tx = self
             .pool
@@ -292,8 +294,8 @@ impl WatchtowerOps for SqliteJobQueue {
         let new_id = uuid::Uuid::new_v4().to_string();
         let domain = domain.unwrap_or("general");
         sqlx::query(
-            "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic)
-             VALUES (?, 'Synthesized', ?, ?, 100, ?, datetime('now'), ?, ?)"
+            "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id)
+             VALUES (?, 'Synthesized', ?, ?, 100, ?, datetime('now'), ?, ?, ?)"
         )
             .bind(&new_id)
             .bind(skill)
@@ -301,6 +303,7 @@ impl WatchtowerOps for SqliteJobQueue {
             .bind(soul_hash)
             .bind(domain)
             .bind(subtopic)
+            .bind(clone_origin_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to insert synthesized karma: {}", e) })?;

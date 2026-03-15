@@ -51,7 +51,7 @@ impl FederationOps for SqliteJobQueue {
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> {
         let since_ts = since.unwrap_or("1970-01-01T00:00:00");
 
-        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature FROM karma_logs WHERE created_at > ?")
+        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE created_at > ?")
             .bind(since_ts)
             .fetch_all(&self.pool)
             .await
@@ -83,6 +83,7 @@ impl FederationOps for SqliteJobQueue {
                 lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),
+                clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
             });
         }
 
@@ -187,8 +188,8 @@ impl FederationOps for SqliteJobQueue {
             let _ = self.sync_local_clock(k.lamport_clock).await;
 
             if let Err(e) = sqlx::query(
-                "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, is_federated, lamport_clock, node_id, signature) 
-                 VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, is_federated, lamport_clock, node_id, signature, clone_origin_id) 
+                 VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET 
                     lesson = excluded.lesson, 
                     weight = excluded.weight,
@@ -200,7 +201,7 @@ impl FederationOps for SqliteJobQueue {
             )
             .bind(&k.id).bind(&k.karma_type).bind(&k.related_skill).bind(&clean_lesson)
             .bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at)
-            .bind(k.lamport_clock as i64).bind(&k.node_id).bind(&k.signature)
+            .bind(k.lamport_clock as i64).bind(&k.node_id).bind(&k.signature).bind(&k.clone_origin_id)
             .execute(&mut *tx).await {
                 warn!("🛡️ [Federation] SQL Error importing karma {}: {:?}", k.id, e);
             }
@@ -294,7 +295,7 @@ impl FederationOps for SqliteJobQueue {
     async fn do_fetch_unfederated_data(
         &self,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>), AiomeError> {
-        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature FROM karma_logs WHERE is_federated = 0")
+        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE is_federated = 0")
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AiomeError::Infrastructure { reason: format!("Fetch unfederated karma failed: {}", e) })?;
@@ -318,6 +319,7 @@ impl FederationOps for SqliteJobQueue {
                 lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),
+                clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
             });
         }
 

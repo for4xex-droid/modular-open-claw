@@ -399,6 +399,10 @@ pub struct FederatedKarma {
     pub node_id: String,
     #[serde(default)]
     pub signature: Option<String>,
+    
+    // --- Phase SC-MB: Clone Tracking ---
+    #[serde(default)]
+    pub clone_origin_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

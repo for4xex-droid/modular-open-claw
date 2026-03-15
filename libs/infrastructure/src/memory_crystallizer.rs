@@ -71,6 +71,7 @@ impl MemoryCrystallizer {
                                 soul_hash,
                                 Some("global"),
                                 None,
+                                None,
                             )
                             .await?;
                         info!("✅ [MemoryCrystallizer] Karma crystallized for {}", skill);

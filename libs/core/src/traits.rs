@@ -196,6 +196,7 @@ pub trait JobQueue: Send + Sync {
         soul_hash: &str,
         domain: Option<&str>,
         subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError>;
 
     /// 指定したKarmaの重みを調整する (Self-Editing)
