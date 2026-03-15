@@ -7,6 +7,7 @@
  * Change License: Apache License 2.0
  */
 
+use crate::error::BudgetExhaustedError;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// 予算管理 (JobBudget):
@@ -56,9 +57,3 @@ impl JobBudget {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("🚨 [JobBudget] 予算上限超過: limit=${limit:.4}, actual=${actual:.4}")]
-pub struct BudgetExhaustedError {
-    pub limit: f64,
-    pub actual: f64,
-}

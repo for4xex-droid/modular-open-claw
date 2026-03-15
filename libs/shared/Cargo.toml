@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+aiome-interface = { path = "../aiome-interface" }
 serde.workspace = true
 serde_json = { workspace = true }
 uuid = { workspace = true }

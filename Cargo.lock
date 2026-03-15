@@ -54,6 +54,7 @@ dependencies = [
 name = "aiome-core"
 version = "0.1.0"
 dependencies = [
+ "aiome-interface",
  "anyhow",
  "async-stream",
  "async-trait",
@@ -78,6 +79,21 @@ dependencies = [
  "uuid 1.21.0",
  "wiremock",
  "x25519-dalek",
+]
+
+[[package]]
+name = "aiome-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.7.9",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+ "uuid 1.21.0",
 ]
 
 [[package]]
@@ -177,6 +193,7 @@ name = "api-server"
 version = "0.1.0"
 dependencies = [
  "aiome-core",
+ "aiome-interface",
  "anyhow",
  "async-stream",
  "async-trait",
@@ -4862,6 +4879,7 @@ name = "nurture-api"
 version = "0.1.0"
 dependencies = [
  "aiome-core",
+ "aiome-interface",
  "anyhow",
  "async-trait",
  "axum 0.7.9",
@@ -4875,8 +4893,10 @@ dependencies = [
  "oauth2",
  "serde",
  "serde_json",
+ "shared",
  "sqlx",
  "tokio",
+ "tokio-util",
  "tower 0.4.13",
  "tracing",
  "tracing-subscriber",
@@ -7254,6 +7274,7 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "aiome-interface",
  "anyhow",
  "bastion-core",
  "chrono",

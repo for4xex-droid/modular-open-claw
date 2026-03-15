@@ -37,17 +37,21 @@ graph TD
         terminal_exec(terminal_exec)
         fs_writer(fs_writer)
         napi-bridge(napi-bridge)
+        aiome-interface(aiome-interface)
     end
 
     api-server --> infrastructure
     api-server --> shared
+    api-server --> aiome-interface
     samsara-hub --> aiome-core
     samsara-hub --> shared
     samsara-hub --> infrastructure
     key-proxy --> aiome-core
     key-proxy --> shared
     aiome-core --> shared
+    aiome-core --> aiome-interface
     infrastructure --> shared
+    shared --> aiome-interface
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
@@ -72,6 +76,7 @@ graph TD
 | `napi-bridge` | `libs/napi-bridge` | (Core Module) |
 | `management-console` | `apps/management-console/src-tauri` | A Tauri App |
 | `watchtower` | `apps/watchtower` | (Core Module) |
+| `aiome-interface` | `libs/aiome-interface` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
@@ -80,4 +85,4 @@ DISCORD_TOKEN, DISCORD_LOG_CHANNEL_ID, DISCORD_COMMAND_CHANNEL_ID, DISCORD_CHAT_
 ```
 
 ---
-*Last Auto-Generated: 2026-03-16 03:11:25 UTC*
+*Last Auto-Generated: 2026-03-16 03:38:37 UTC*

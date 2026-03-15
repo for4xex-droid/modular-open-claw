@@ -36,6 +36,7 @@ mod error;
 mod logging;
 mod mcp;
 mod routes;
+mod plugin_loader;
 mod skill_handler;
 mod stream;
 
@@ -43,10 +44,6 @@ mod stream;
 use commerce_protocol;
 #[cfg(feature = "nurture")]
 use nurture_api;
-#[cfg(feature = "nurture")]
-use nurture_core;
-#[cfg(feature = "nurture")]
-use nurture_infra;
 
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
@@ -95,6 +92,9 @@ async fn main() {
     if !std::path::Path::new("workspace").exists() {
         std::fs::create_dir_all("workspace").expect("Failed to create workspace");
     }
+
+    let cancel_token = tokio_util::sync::CancellationToken::new();
+    let mut plugin_registry = plugin_loader::PluginRegistry::new();
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
@@ -809,28 +809,34 @@ async fn main() {
         .unwrap_or_default();
     let client_bg_clone = http_client.clone();
 
-    let mut commerce_engine = None;
     #[cfg(feature = "nurture")]
-    let nurture_state = {
-        info!("💰 [NURTURE] Initializing Economy Engine...");
-        let nurture_policy = nurture_core::policy::EconomyPolicy::default();
+    let (nurture_state, commerce_engine) = {
+        info!("💰 [NURTURE] Initializing Economy Engine via Plugin Architecture...");
         let system_id = uuid::Uuid::nil();
+        let nurture_plugin = nurture_api::plugin::create_plugin(
+            job_queue.get_pool().clone(),
+            system_id,
+            event_sender.clone(),
+            job_queue.clone(),
+            cancel_token.clone(),
+        ).await;
+        
+        plugin_registry.register(nurture_plugin.clone());
+        let ce = nurture_plugin.commerce_engine();
+        
         let ns = nurture_api::state::AppState::init(
             job_queue.get_pool().clone(),
-            nurture_policy,
+            job_queue.clone(),
+            nurture_api::state::EconomyPolicy::default(),
             commerce_protocol::identity::ActorId(system_id),
-        );
-        commerce_engine = Some(
-            Arc::new(nurture_infra::economy::bridge::NurtureCommerceBridge::new(
-                ns.ledger.clone(),
-                ns.settlement.clone(),
-                ns.marketplace.clone(),
-                ns.interceptor.clone(),
-                ns.policy.clone(),
-            )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
-        );
-        ns
+            cancel_token.clone(),
+        ).await.expect("Failed to initialize nurture_state");
+        
+        (ns, ce)
     };
+    
+    #[cfg(not(feature = "nurture"))]
+    let commerce_engine = None;
 
     let app = build_app(
         AppState {
@@ -857,17 +863,35 @@ async fn main() {
             provider: provider.clone(),
             autonomous_running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             autonomous_config: Arc::new(tokio::sync::RwLock::new(None)),
-            http_client: http_client,
+            http_client,
             docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-            security_policy: shared::security::SecurityPolicy::default(),
+            security_policy: {
+                let mut policy = shared::security::SecurityPolicy::default();
+                for tool in plugin_registry.registered_tools() {
+                    policy.register_tool(&tool);
+                }
+                policy
+            },
             commerce_engine,
-            circuit_breaker,
-            slo_engine,
+            circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+                infrastructure::circuit_breaker::CircuitBreakerConfig {
+                    failure_threshold: 5,
+                    reset_timeout: std::time::Duration::from_secs(60),
+                }
+            )),
+            slo_engine: Arc::new(infrastructure::slo_engine::SloEngine::new(
+                infrastructure::slo_engine::SloConfig {
+                    error_budget_max: 100,
+                    warning_threshold: 80,
+                },
+                chrono::Duration::hours(24),
+            )),
         },
         cors_layer,
         static_path,
         #[cfg(feature = "nurture")]
         nurture_state,
+        plugin_registry,
     );
 
     // Initial Security Check (C1)
@@ -890,7 +914,7 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("🌌 Aiome Management Console listening on {}", addr);
 
-    let token = CancellationToken::new();
+    let token = cancel_token;
     let jq_clone = job_queue.clone();
     let token_bg = token.clone();
     tokio::spawn(async move {
@@ -1583,8 +1607,9 @@ pub fn build_app(
     cors_layer: CorsLayer,
     static_path: &str,
     #[cfg(feature = "nurture")] nurture_state: nurture_api::state::SharedState,
+    plugin_registry: plugin_loader::PluginRegistry,
 ) -> Router {
-    let mut router = Router::new()
+    let internal_router: Router<AppState> = Router::new()
         // --- Protected Routes (Require Authentication) ---
         .route("/api/wiki", get(routes::general::list_wiki_files))
         .route(
@@ -1712,22 +1737,25 @@ pub fn build_app(
             axum::routing::post(routes::skill::spawn_mcp_server),
         )
         .route("/api/health", get(routes::general::get_health_status))
-        .nest("/api/v1/mcp", mcp::router());
+        .nest("/api/v1/mcp", mcp::router())
+        .route("/api/system/vitality", get(stream::trigger_system_vitality_stream))
+        .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
+
+    let mut router = internal_router.with_state(state);
 
     #[cfg(feature = "nurture")]
     {
         router = router.merge(nurture_api::routes::nurture_routes(nurture_state));
     }
 
+    // Dynamic Route Merging from PluginRegistry (Phase A-2)
+    router = plugin_registry.merge_routes(router);
+
     router
         .route_layer(axum::middleware::from_extractor::<auth::Authenticated>())
 
         // --- Public Routes (Internal Monitoring / SSE / WS) ---
         .merge(utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api::ApiDoc::openapi()))
-        .route("/api/system/vitality", get(stream::trigger_system_vitality_stream))
-        .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler))
-
-        .with_state(state) // state
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
         // --- Layer 3: Security Headers (Defense in Depth) ---
         .layer(SetResponseHeaderLayer::if_not_present(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")))
