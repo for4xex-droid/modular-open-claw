@@ -44,7 +44,7 @@ impl LlmProvider for MockLlmProvider {
 
 /// テスト用のユニーク一時ファイル JobQueue を作成
 /// 各テストが独自のDBファイルを持ち、ロック競合を回避する
-async fn create_test_queue() -> (SqliteJobQueue, tempfile::TempDir) {
+pub(crate) async fn create_test_queue() -> (SqliteJobQueue, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
@@ -307,14 +307,34 @@ async fn test_sqlite_job_queue_immune_rules() {
         severity: 100,
         action: "Block".into(),
         created_at: Utc::now().to_rfc3339(),
+        approval_status: aiome_core::contracts::ApprovalState::Approved,
         node_id: "".into(),
         lamport_clock: 0,
         signature: None,
     };
     jq.store_immune_rule(&rule).await.unwrap();
+    
+    let pending_rule = aiome_core::contracts::ImmuneRule {
+        id: "rule-pending".into(),
+        pattern: "pending-pattern".into(),
+        severity: 50,
+        action: "Block".into(),
+        created_at: Utc::now().to_rfc3339(),
+        approval_status: aiome_core::contracts::ApprovalState::Pending,
+        node_id: "".into(),
+        lamport_clock: 0,
+        signature: None,
+    };
+    jq.store_immune_rule(&pending_rule).await.unwrap();
+
     let rules = jq.fetch_active_immune_rules().await.unwrap();
+    // Only Approved rule should be in "active" list
     assert_eq!(rules.len(), 1);
     assert_eq!(rules[0].pattern, "rm -rf");
+
+    // All rules should be in "get_immune_rules" list
+    let all_rules = jq.get_immune_rules().await.unwrap();
+    assert_eq!(all_rules.len(), 2);
 }
 
 #[tokio::test]

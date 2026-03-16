@@ -8,8 +8,8 @@
  */
 
 use aiome_core::contracts::{
-    FederatedKarma, FederationPushRequest, FederationPushResponse, FederationSyncRequest,
-    FederationSyncResponse, HubMessage, ImmuneRule,
+    ApprovalState, ArenaMatch, FederatedKarma, FederationPushRequest, FederationPushResponse,
+    FederationSyncRequest, FederationSyncResponse, HubMessage, ImmuneRule,
 };
 use axum::{
     error_handling::HandleErrorLayer,
@@ -724,6 +724,7 @@ async fn sync_handler(
                 severity: r.severity as u8,
                 action: r.action,
                 created_at: r.created_at,
+                approval_status: ApprovalState::Approved,
                 lamport_clock: r.lamport_clock as u64,
                 node_id: r.node_id,
                 signature: r.signature,

@@ -173,12 +173,12 @@ pub async fn update_setting(
     security(("api_key" = []))
 )]
 pub async fn test_connection(
-    _state: State<AppState>,
+    state: State<AppState>,
     _auth: Authenticated,
     Json(payload): Json<TestConnectionRequest>,
 ) -> Result<Json<TestConnectionResponse>, AppError> {
-    // SSRF Protection
-    if let Err(e) = validate_safe_url(&payload.url) {
+    // SSRF Protection: Use unified SecurityPolicy from State
+    if let Err(e) = state.security_policy.validate_url(&payload.url).await {
         return Ok(Json(TestConnectionResponse {
             success: false,
             message: format!("SSRF Blocked: {}", e),
@@ -300,55 +300,6 @@ async fn test_cloud_connection(
     }
 }
 
-fn validate_safe_url(url_str: &str) -> Result<(), String> {
-    let parsed = Url::parse(url_str).map_err(|e| e.to_string())?;
-    let host = parsed.host_str().ok_or("No host segment")?;
-
-    // Allow loopback for local AI services (Ollama etc.)
-    if host == "localhost" || host == "127.0.0.1" || host == "::1" {
-        return Ok(());
-    }
-
-    // Explicitly block Cloud Metadata IP (AWS/GCP/Azure)
-    if host == "169.254.169.254" {
-        return Err("Access to cloud metadata is forbidden".to_string());
-    }
-
-    // Resolve and check for private IPs
-    if let Ok(addrs) = (host, 0).to_socket_addrs() {
-        for addr in addrs {
-            let ip = addr.ip();
-            if is_private_ip(ip) {
-                return Err(format!(
-                    "Access to private network address is forbidden: {}",
-                    ip
-                ));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn is_private_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => {
-            v4.is_private()
-                || v4.is_link_local()
-                || v4.is_loopback()
-                || v4.is_unspecified()
-                || v4.octets() == [169, 254, 169, 254]
-        }
-        IpAddr::V6(v6) => {
-            // Check for Link-Local (fe80::/10), Unique Local (fc00::/7), etc.
-            let segments = v6.segments();
-            let is_link_local = (segments[0] & 0xffc0) == 0xfe80;
-            let is_unique_local = (segments[0] & 0xfe00) == 0xfc00;
-            is_link_local || is_unique_local || v6.is_loopback() || v6.is_unspecified()
-        }
-    }
-}
-
 async fn test_ollama(host: &str, model: Option<&str>) -> Json<TestConnectionResponse> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
@@ -440,6 +391,7 @@ pub async fn get_ollama_models(
             std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string())
         });
     let url = format!("{}/api/tags", host.trim_end_matches('/'));
+    state.security_policy.validate_url(&url).await?;
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))

@@ -65,5 +65,22 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-05*
+*Last Mutated: 2026-03-16*
 *Managed by: Aiome Sovereign Task Force*
+
+## 6. Deep Dive: The Abyss Vault (Key Proxy)
+
+Aiome's most critical defense Layer 2 is the **Abyss Vault**. This mechanism ensures that the AI agent *never* touches a physical API key string.
+
+### 6.1 Logical Isolation
+The main AI process holds no secrets in its environment or memory. All LLM/API requests are forwarded to the `key-proxy` process. If the AI core is compromised, the attacker only gains "permission to request the proxy," not the keys themselves.
+
+### 6.2 Physical Memory Security
+- **mlockall**: The vault locks its process memory into physical RAM, preventing the OS from swapping secrets to disk (SSD/HDD) where they could be recovered from dumps.
+- **zeroize**: All buffers containing sensitive strings are actively overwritten with zeros (0x00) immediately after use, rather than waiting for garbage collection.
+
+### 6.3 Self-Wiping Environment
+Within milliseconds of startup, the vault reads the API keys from environment variables and then physically wipes those env-vars from its process space, neutralizing `/proc` peering or secondary process inspection.
+
+### 6.4 SSRF & Routing Lockdown
+Endpoints are hardcoded in the vault's source code. The proxy ignores arbitrary URLs from the agent and only routes to official provider endpoints (e.g., Google, OpenAI), making SSRF (Server-Side Request Forgery) structurally impossible.

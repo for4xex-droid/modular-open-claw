@@ -50,7 +50,7 @@ impl MemoryCrystallizer {
 
                 let lessons = raw_karma
                     .iter()
-                    .map(|(l, _)| format!("- {}", l))
+                    .map(|(_, l)| format!("- {}", l))
                     .collect::<Vec<_>>()
                     .join("\n");
 
@@ -62,7 +62,7 @@ impl MemoryCrystallizer {
                 match self.provider.complete(&prompt, None).await {
                     Ok(distilled) => {
                         let soul_hash = "v1_crystallized";
-                        let ids: Vec<String> = raw_karma.into_iter().map(|(_, id)| id).collect();
+                        let ids: Vec<String> = raw_karma.into_iter().map(|(id, _)| id).collect();
                         self.job_queue
                             .apply_distilled_karma(
                                 &skill,
@@ -87,5 +87,72 @@ impl MemoryCrystallizer {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::job_queue::tests::create_test_queue;
+    use crate::job_queue::SqliteJobQueue;
+    use aiome_core::error::AiomeError;
+    use aiome_core::llm_provider::LlmProvider;
+    use async_trait::async_trait;
+    use sqlx::sqlite::SqliteRow;
+    use sqlx::Row;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        reply: String,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
+            Ok(self.reply.clone())
+        }
+        async fn stream_complete(&self, _prompt: &str, _system: Option<&str>) -> Result<std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
+            Err(AiomeError::Infrastructure { reason: "Not implemented".into() })
+        }
+        fn name(&self) -> &str { "mock" }
+        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+    }
+
+    #[tokio::test]
+    async fn test_distillation_cycle() {
+        let (jq, _tmp): (SqliteJobQueue, _) = create_test_queue().await;
+        let pool = jq.get_pool();
+        
+        // Insert some raw karma for a skill
+        for i in 0..15 {
+            sqlx::query::<sqlx::Sqlite>("INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, created_at, domain) VALUES (?, 'Technical', 'test-skill', ?, 10, datetime('now'), 'global')")
+                .bind(format!("id-{}", i))
+                .bind(format!("lesson-{}", i))
+                .execute(pool)
+                .await.unwrap();
+        }
+
+        let crystallizer = MemoryCrystallizer::new(
+            Arc::new(MockLlm { reply: "distilled wisdom".into() }),
+            Arc::new(jq.clone()),
+            Arc::new(Semaphore::new(1)),
+        );
+
+        crystallizer.run_distillation_cycle().await.unwrap();
+
+        // Check if synthesized karma was created
+        let all_karma: Vec<SqliteRow> = sqlx::query::<sqlx::Sqlite>("SELECT id, karma_type, lesson FROM karma_logs WHERE related_skill = 'test-skill' AND karma_type = 'Synthesized'")
+            .fetch_all(pool)
+            .await.unwrap();
+        
+        assert_eq!(all_karma.len(), 1);
+        let lesson: String = all_karma[0].get("lesson");
+        assert_eq!(lesson, "distilled wisdom");
+
+        // Check if raw karma was archived
+        let archived_count: i64 = sqlx::query_scalar::<sqlx::Sqlite, i64>("SELECT COUNT(*) FROM karma_logs WHERE related_skill = 'test-skill' AND is_archived = 1")
+            .fetch_one(pool)
+            .await.unwrap();
+        assert_eq!(archived_count, 15);
     }
 }

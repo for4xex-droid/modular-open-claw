@@ -73,6 +73,7 @@ pub async fn list_topics(
     let hub_url =
         std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| "http://localhost:3016".to_string());
     let url = format!("{}/api/v1/hub/topics", hub_url);
+    state.security_policy.validate_url(&hub_url).await?;
 
     let res = state
         .http_client
@@ -117,6 +118,7 @@ pub async fn create_topic(
     let client = state.http_client.clone();
 
     info!("🌟 [Biome] Requesting new topic creation on Hub: {:?}", req);
+    state.security_policy.validate_url(&hub_url).await?;
     let res = client
         .post(format!("{}/api/v1/biome/topics", hub_url))
         .header("Authorization", format!("Bearer {}", hub_secret))
@@ -322,6 +324,7 @@ pub async fn send_message(
         }
     })?;
     let client = state.http_client.clone();
+    state.security_policy.validate_url(&hub_url).await?;
 
     info!(
         "🚀 [Biome] Sending message to Hub for relay (Topic: {})",

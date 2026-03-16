@@ -322,6 +322,15 @@ pub struct KarmaClassification {
 
 // --- Phase 12-C: Adaptive Immune System & Skill Arena ---
 
+/// 自己防衛フェーズの状態
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, utoipa::ToSchema, Default)]
+pub enum ApprovalState {
+    #[default]
+    Pending,
+    Approved,
+    Rejected,
+}
+
 /// 自己防衛のための免疫ルール
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ImmuneRule {
@@ -333,6 +342,10 @@ pub struct ImmuneRule {
     /// 適用するアクション (Block, Warn, Quarantine, Revoke)
     pub action: String,
     pub created_at: String,
+
+    /// 承認状態 (Phase 22: M-3)
+    #[serde(default)]
+    pub approval_status: ApprovalState,
 
     // --- Phase 10-B: Swarm Sync & CRDT ---
     #[serde(default)]

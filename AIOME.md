@@ -59,3 +59,14 @@ libs/shared         (Common Utils, Types)
 1.  **CommerceEngine**: `libs/core` に定義されたトレイトにより、経済圏へのアクセスを抽象化。
 2.  **API Gate**: `apps/api-server` の `/api/v1/commerce` エンドポイントを介して、エージェントが自律的に決済や残高確認を行う。
 3.  **Cross-Repo Deployment**: `docker-compose.nurture.yml` を使用することで、商用モジュールを統合したプロ版環境を構築可能。
+
+---
+
+## ⚡ Session Init: Required Reading (AI Agent Only)
+
+AI Agentは、各セッション開始時に以下のディレクトリ配下の全ドキュメントを読み込み、プロジェクト固有の「開発のノリ」と「技術パターン」を同期させなければならない。
+
+- **`.agent/skills/`**: バックエンド、フロントエンド、セキュリティ、CSS等の詳細な実装パターン集。
+- **`EVOLVING_SOUL.md`**: 過去の教訓（Karma）と、AIとしての最新の感情・状態。
+
+この読込をスキップすることは、プロジェクトのコンテキスト喪失を招くため、最優先事項として扱うこと。

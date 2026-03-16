@@ -95,6 +95,11 @@ impl FederationOps for SqliteJobQueue {
                 severity: r.get::<i64, _>("severity") as u8,
                 action: r.get("action"),
                 created_at: r.get("created_at"),
+                approval_status: match r.get::<String, _>("status").as_str() {
+                    "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                    "Rejected" | "Quarantined" => aiome_core::contracts::ApprovalState::Rejected,
+                    _ => aiome_core::contracts::ApprovalState::Pending,
+                },
                 lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),
@@ -331,6 +336,11 @@ impl FederationOps for SqliteJobQueue {
                 severity: r.get::<i64, _>("severity") as u8,
                 action: r.get("action"),
                 created_at: r.get("created_at"),
+                approval_status: match r.get::<String, _>("status").as_str() {
+                    "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                    "Rejected" | "Quarantined" => aiome_core::contracts::ApprovalState::Rejected,
+                    _ => aiome_core::contracts::ApprovalState::Pending,
+                },
                 lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),

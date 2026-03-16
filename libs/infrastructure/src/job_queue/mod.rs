@@ -23,7 +23,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 mod core_ops;
 pub mod crdt;

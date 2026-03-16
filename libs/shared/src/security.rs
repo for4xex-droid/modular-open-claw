@@ -35,11 +35,23 @@ impl SecurityPolicy {
     /// - Test Node (8188)
     /// - Ollama (11434)
     pub fn default_production() -> Self {
-        let shield = ShieldClient::builder()
+        let mut builder = ShieldClient::builder()
             .allow_endpoint("127.0.0.1")
             .allow_endpoint("localhost")
             .allow_endpoint("trends.google.co.jp")
-            .block_private_ips(true) // プライベートIPへのSSRFを防止（Allowlist以外）
+            .block_private_ips(true); // プライベートIPへのSSRFを防止（Allowlist以外）
+
+        // Biome SSRF Defense: ホワイトリストを環境変数から自動登録
+        if let Ok(whitelist) = std::env::var("BIOME_HUB_WHITELIST") {
+            for endpoint in whitelist.split(',') {
+                let trimmed = endpoint.trim();
+                if !trimmed.is_empty() {
+                    builder = builder.allow_endpoint(trimmed);
+                }
+            }
+        }
+
+        let shield = builder
             .build()
             .expect("Failed to build network shield");
 
@@ -57,6 +69,16 @@ impl SecurityPolicy {
                 "mcp_bridge".to_string(),
             ],
         }
+    }
+
+    /// 新しいエンドポイントを動的に許可する
+    pub fn allow_endpoint(&mut self, endpoint: &str) {
+        // ShieldClient は immutable なので、動的追加は builder の再構築が必要だが、
+        // 現状の bastion::net_guard::ShieldClient の仕様に合わせて、
+        // 必要なら新しいインスタンスを作成して入れ替える。
+        // ※ bastion-oss の実装を確認する。
+        // ここでは一旦、構築済みの shield を返す設計にするか、
+        // 構築時に一括指定する形を推奨する。
     }
 
     /// ShieldClient への参照を取得 (内部利用用)

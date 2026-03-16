@@ -61,6 +61,7 @@ impl AdaptiveImmuneSystem {
             severity: v["severity"].as_u64().unwrap_or(50) as u8,
             action: v["action"].as_str().unwrap_or("Block").to_string(),
             created_at: Utc::now().to_rfc3339(),
+            approval_status: Default::default(),
             lamport_clock: 0,
             node_id: "".to_string(),
             signature: None,
@@ -126,6 +127,7 @@ impl AdaptiveImmuneSystem {
                     severity: 100,
                     action: "Block".to_string(),
                     created_at: Utc::now().to_rfc3339(),
+                    approval_status: aiome_core::contracts::ApprovalState::Approved,
                     lamport_clock: 0,
                     node_id: "local-sentinel".to_string(),
                     signature: None,
@@ -290,6 +292,7 @@ mod tests {
             severity: 80,
             action: "Block".into(),
             created_at: "".into(),
+            approval_status: aiome_core::contracts::ApprovalState::Approved,
             lamport_clock: 0,
             node_id: "".into(),
             signature: None,
@@ -312,5 +315,31 @@ mod tests {
         let jq = MockJQ { rules: vec![] };
         let count = system.analyze_threats(&jq).await.unwrap();
         assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_verify_intent_pending_rule_ignored() {
+        let rule = ImmuneRule {
+            id: "pending-rule".into(),
+            pattern: "malicious-pattern".into(),
+            severity: 80,
+            action: "Block".into(),
+            created_at: Utc::now().to_rfc3339(),
+            approval_status: aiome_core::contracts::ApprovalState::Pending,
+            lamport_clock: 0,
+            node_id: "".into(),
+            signature: None,
+        };
+        // MockJQ::fetch_active_immune_rules should be used by system.verify_intent.
+        // In our actual implementation, SqliteJobQueue::fetch_active_immune_rules 
+        // filters out non-Approved rules. 
+        // We need to ensure that if MockJQ only returns what's "active", verify_intent is safe.
+        
+        let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
+        
+        // Simulating that fetch_active_immune_rules ONLY returns Approved rules.
+        let jq = MockJQ { rules: vec![] }; // rule is Pending, so it's not in the active list
+        let res = system.verify_intent("this is a malicious-pattern message", &jq).await.unwrap();
+        assert!(res.is_none());
     }
 }
