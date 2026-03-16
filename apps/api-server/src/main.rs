@@ -2,10 +2,10 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
+
+#![forbid(unsafe_code)]
 
 use aiome_core::llm_provider::EmbeddingProvider;
 
@@ -92,7 +92,10 @@ async fn main() {
     let db_url = std::env::var("AIOME_DB_PATH")
         .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
     if !std::path::Path::new("workspace").exists() {
-        std::fs::create_dir_all("workspace").expect("Failed to create workspace");
+        std::fs::create_dir_all("workspace").unwrap_or_else(|e| {
+            error!("🚨 [CRITICAL] Failed to create workspace directory: {}", e);
+            std::process::exit(1);
+        });
     }
 
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -102,7 +105,10 @@ async fn main() {
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
         .connect(&db_url.replace("sqlite://", "sqlite:"))
         .await
-        .expect("Failed to connect to SQLite for logging");
+        .unwrap_or_else(|e| {
+            eprintln!("🚨 Failed to connect to SQLite for logging: {}", e);
+            std::process::exit(1);
+        });
     let logger_layer = logging::DbLoggerLayer::new(pool);
 
     tracing_subscriber::registry()
@@ -111,347 +117,18 @@ async fn main() {
         .with(tracing_subscriber::filter::LevelFilter::INFO)
         .init();
 
-    let job_queue = infrastructure::job_queue::SqliteJobQueue::new(&db_url)
+    let config = shared::config::AiomeConfig::load().unwrap_or_else(|e| {
+        error!("🚨 Failed to load config: {}", e);
+        std::process::exit(1);
+    });
+
+    let job_queue = infrastructure::job_queue::SqliteJobQueue::new(&config.db_path)
         .await
-        .expect("Failed to init DB");
+        .unwrap_or_else(|e| {
+            error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
+            std::process::exit(1);
+        });
     let job_queue = Arc::new(job_queue);
-
-    // Dynamic Provider that reads from DB settings
-    #[derive(Debug)]
-    struct DynamicLlmProvider {
-        jq: Arc<infrastructure::job_queue::SqliteJobQueue>,
-        client: reqwest::Client,
-        fallback_host: String,
-        fallback_model: String,
-        circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
-        slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
-    }
-
-    #[async_trait]
-    impl aiome_core::llm_provider::LlmProvider for DynamicLlmProvider {
-        async fn complete(
-            &self,
-            prompt: &str,
-            system: Option<&str>,
-        ) -> Result<String, aiome_core::error::AiomeError> {
-            let provider_type = self
-                .jq
-                .get_setting_value("llm_provider")
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "ollama".to_string());
-            let model_setting = self.jq.get_setting_value("llm_model").await.ok().flatten();
-            let model = if let Some(m) = model_setting {
-                m
-            } else if let Ok(Some(m)) = self.jq.get_setting_value("ollama_model").await {
-                m
-            } else {
-                self.fallback_model.clone()
-            };
-
-            if let Err(e) = self.circuit_breaker.check_state().await {
-                return Err(aiome_core::error::AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                });
-            }
-
-            let result = match provider_type.as_str() {
-                "gemini" => {
-                    let api_key = if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::GeminiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "openai" => {
-                    let api_key = if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::OpenAiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "claude" => {
-                    let api_key = if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::ClaudeProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "lmstudio" => {
-                    let host = self
-                        .jq
-                        .get_setting_value("lm_studio_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:1234".to_string());
-                    aiome_core::llm_provider::LmStudioProvider::new(
-                        self.client.clone(),
-                        host,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                _ => {
-                    let host = self
-                        .jq
-                        .get_setting_value("ollama_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| self.fallback_host.clone());
-                    aiome_core::llm_provider::OllamaProvider::new(host, model)
-                        .complete(prompt, system)
-                        .await
-                }
-            };
-
-            match result {
-                Ok(res) => {
-                    self.circuit_breaker.record_success().await;
-                    Ok(res)
-                }
-                Err(e) => {
-                    self.circuit_breaker.record_failure().await;
-                    self.slo_engine.record_error().await;
-                    Err(e)
-                }
-            }
-        }
-        async fn stream_complete(
-            &self,
-            prompt: &str,
-            system: Option<&str>,
-        ) -> Result<
-            std::pin::Pin<
-                Box<
-                    dyn tokio_stream::Stream<Item = Result<String, aiome_core::error::AiomeError>>
-                        + Send,
-                >,
-            >,
-            aiome_core::error::AiomeError,
-        > {
-            let provider_type = self
-                .jq
-                .get_setting_value("llm_provider")
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "ollama".to_string());
-            let model_setting = self.jq.get_setting_value("llm_model").await.ok().flatten();
-            let model = if let Some(m) = model_setting {
-                m
-            } else if let Ok(Some(m)) = self.jq.get_setting_value("ollama_model").await {
-                m
-            } else {
-                self.fallback_model.clone()
-            };
-
-            match provider_type.as_str() {
-                "gemini" => {
-                    let api_key = if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::GeminiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .stream_complete(prompt, system)
-                    .await
-                }
-                "openai" => {
-                    let api_key = if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::OpenAiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .stream_complete(prompt, system)
-                    .await
-                }
-                "claude" => {
-                    let api_key = if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::ClaudeProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .stream_complete(prompt, system)
-                    .await
-                }
-                "lmstudio" => {
-                    let host = self
-                        .jq
-                        .get_setting_value("lm_studio_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:1234".to_string());
-                    aiome_core::llm_provider::LmStudioProvider::new(
-                        self.client.clone(),
-                        host,
-                        model,
-                    )
-                    .stream_complete(prompt, system)
-                    .await
-                }
-                _ => {
-                    let host = self
-                        .jq
-                        .get_setting_value("ollama_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| self.fallback_host.clone());
-                    aiome_core::llm_provider::OllamaProvider::new(host, model)
-                        .stream_complete(prompt, system)
-                        .await
-                }
-            }
-        }
-        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
-            // Delegate to the underlying provider's test_connection
-            self.complete("ping", None).await?;
-            Ok(())
-        }
-        fn name(&self) -> &str {
-            "DynamicLlm"
-        }
-    }
-
-    #[async_trait]
-    impl aiome_core::llm_provider::EmbeddingProvider for DynamicLlmProvider {
-        async fn embed(
-            &self,
-            text: &str,
-            is_query: bool,
-        ) -> Result<Vec<f32>, aiome_core::error::AiomeError> {
-            let provider_type = self
-                .jq
-                .get_setting_value("llm_provider")
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "ollama".to_string());
-            let model_setting = self.jq.get_setting_value("llm_model").await.ok().flatten();
-            let model = if let Some(m) = model_setting {
-                m
-            } else if let Ok(Some(m)) = self.jq.get_setting_value("ollama_model").await {
-                m
-            } else {
-                self.fallback_model.clone()
-            };
-
-            match provider_type.as_str() {
-                "gemini" => {
-                    let api_key = if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-                        key
-                    } else {
-                        self.jq
-                            .get_setting_value("llm_api_key")
-                            .await
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default()
-                    };
-                    aiome_core::llm_provider::GeminiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .embed(text, is_query)
-                    .await
-                }
-                _ => {
-                    let host = self
-                        .jq
-                        .get_setting_value("ollama_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| self.fallback_host.clone());
-                    aiome_core::llm_provider::OllamaProvider::new(host, model)
-                        .embed(text, is_query)
-                        .await
-                }
-            }
-        }
-        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
-            self.embed("ping", false).await?;
-            Ok(())
-        }
-        fn name(&self) -> &str {
-            "DynamicEmbedding"
-        }
-    }
-
-    let fallback_model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3.5:9b".to_string());
-    let fallback_host =
-        std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string());
 
     let circuit_breaker = Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
         infrastructure::circuit_breaker::CircuitBreakerConfig {
@@ -473,254 +150,20 @@ async fn main() {
         .build()
         .unwrap_or_default();
 
-    let provider = Arc::new(DynamicLlmProvider {
+    let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
         jq: job_queue.clone(),
         client: shared_client.clone(),
-        fallback_host,
-        fallback_model,
+        fallback_host: config.ollama_host.clone(),
+        fallback_model: config.ollama_model.clone(),
         circuit_breaker: circuit_breaker.clone(),
         slo_engine: slo_engine.clone(),
     });
 
-    // === Background LLM Provider (for autonomous tasks) ===
-    // Uses a SEPARATE provider (default: Gemini Cloud) to avoid competing with Ollama
-    #[derive(Debug)]
-    struct BackgroundLlmProvider {
-        jq: Arc<infrastructure::job_queue::SqliteJobQueue>,
-        client: reqwest::Client,
-    }
-
-    #[async_trait]
-    impl aiome_core::llm_provider::LlmProvider for BackgroundLlmProvider {
-        async fn complete(
-            &self,
-            prompt: &str,
-            system: Option<&str>,
-        ) -> Result<String, aiome_core::error::AiomeError> {
-            // Priority: DB setting > env var > fallback "ollama" (Pattern B: background uses local LLM)
-            let provider_type = self
-                .jq
-                .get_setting_value("bg_llm_provider")
-                .await
-                .ok()
-                .flatten()
-                .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
-                .unwrap_or_else(|| "ollama".to_string());
-
-            let model = self
-                .jq
-                .get_setting_value("bg_llm_model")
-                .await
-                .ok()
-                .flatten()
-                .or_else(|| std::env::var("BG_LLM_MODEL").ok())
-                .unwrap_or_else(|| "qwen3.5:9b".to_string());
-
-            let api_key = self
-                .jq
-                .get_setting_value("bg_llm_api_key")
-                .await
-                .ok()
-                .flatten()
-                .or_else(|| std::env::var("GEMINI_API_KEY").ok())
-                .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-                .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
-                .unwrap_or_default();
-
-            match provider_type.as_str() {
-                "gemini" => {
-                    aiome_core::llm_provider::GeminiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "openai" => {
-                    aiome_core::llm_provider::OpenAiProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "claude" => {
-                    aiome_core::llm_provider::ClaudeProvider::new(
-                        self.client.clone(),
-                        api_key,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                "lmstudio" => {
-                    let host = self
-                        .jq
-                        .get_setting_value("lm_studio_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:1234".to_string());
-                    aiome_core::llm_provider::LmStudioProvider::new(
-                        self.client.clone(),
-                        host,
-                        model,
-                    )
-                    .complete(prompt, system)
-                    .await
-                }
-                _ => {
-                    // Fallback to Ollama (not recommended for background)
-                    let host = self
-                        .jq
-                        .get_setting_value("ollama_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
-                    aiome_core::llm_provider::OllamaProvider::new(host, model)
-                        .complete(prompt, system)
-                        .await
-                }
-            }
-        }
-
-        async fn stream_complete(
-            &self,
-            prompt: &str,
-            system: Option<&str>,
-        ) -> Result<
-            std::pin::Pin<
-                Box<
-                    dyn tokio_stream::Stream<Item = Result<String, aiome_core::error::AiomeError>>
-                        + Send,
-                >,
-            >,
-            aiome_core::error::AiomeError,
-        > {
-            // Background tasks don't need streaming. Wrap complete() into a single-item stream.
-            let text = self.complete(prompt, system).await?;
-            let s = async_stream::stream! { yield Ok(text); };
-            Ok(Box::pin(s))
-        }
-
-        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
-            self.complete("ping", None).await?;
-            Ok(())
-        }
-        fn name(&self) -> &str {
-            "BackgroundLlm"
-        }
-    }
-
-    #[async_trait]
-    impl aiome_core::llm_provider::EmbeddingProvider for BackgroundLlmProvider {
-        async fn embed(
-            &self,
-            text: &str,
-            is_query: bool,
-        ) -> Result<Vec<f32>, aiome_core::error::AiomeError> {
-            let embed_provider =
-                std::env::var("EMBEDDING_PROVIDER").unwrap_or_else(|_| "ruri".to_string());
-
-            match embed_provider.as_str() {
-                "ruri" => {
-                    // Primary: ruri-v3 local embedding (free, Japanese-optimized)
-                    let ruri_url = std::env::var("RURI_EMBED_URL")
-                        .unwrap_or_else(|_| "http://localhost:8100".to_string());
-                    let ruri = aiome_core::llm_provider::RuriProvider::new(
-                        self.client.clone(),
-                        ruri_url.clone(),
-                    );
-                    match ruri.embed(text, is_query).await {
-                        Ok(vec) => Ok(vec),
-                        Err(e) => {
-                            warn!(
-                                "⚠️ Ruri embedding failed ({}), falling back to Gemini: {}",
-                                ruri_url, e
-                            );
-                            self.gemini_embed_fallback(text, is_query).await
-                        }
-                    }
-                }
-                "gemini" => self.gemini_embed_fallback(text, is_query).await,
-                _ => {
-                    // Ollama embedding (requires nomic-embed-text or similar)
-                    let host = self
-                        .jq
-                        .get_setting_value("ollama_host")
-                        .await
-                        .ok()
-                        .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
-                    let model = self
-                        .jq
-                        .get_setting_value("bg_llm_model")
-                        .await
-                        .ok()
-                        .flatten()
-                        .or_else(|| std::env::var("BG_LLM_MODEL").ok())
-                        .unwrap_or_else(|| "qwen3.5:9b".to_string());
-                    aiome_core::llm_provider::OllamaProvider::new(host, model)
-                        .embed(text, is_query)
-                        .await
-                }
-            }
-        }
-        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
-            self.embed("ping", false).await?;
-            Ok(())
-        }
-        fn name(&self) -> &str {
-            "BackgroundEmbedding"
-        }
-    }
-
-    impl BackgroundLlmProvider {
-        async fn gemini_embed_fallback(
-            &self,
-            text: &str,
-            is_query: bool,
-        ) -> Result<Vec<f32>, aiome_core::error::AiomeError> {
-            let mut api_key = self
-                .jq
-                .get_setting_value("bg_llm_api_key")
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_default();
-            if api_key.is_empty() {
-                api_key = self
-                    .jq
-                    .get_setting_value("llm_api_key")
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default();
-            }
-            if api_key.is_empty() {
-                api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
-            }
-            if api_key.is_empty() {
-                return Err(aiome_core::error::AiomeError::Infrastructure {
-                    reason: "No embedding provider available: ruri-embed-server not running and no Gemini API key configured".into()
-                });
-            }
-            aiome_core::llm_provider::GeminiProvider::new(
-                self.client.clone(),
-                api_key,
-                "gemini-embedding-001".to_string(),
-            )
-            .embed(text, is_query)
-            .await
-        }
-    }
-
-    let bg_instance = Arc::new(BackgroundLlmProvider {
+    let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
         jq: job_queue.clone(),
         client: shared_client.clone(),
+        fallback_host: config.ollama_host.clone(),
+        fallback_model: config.ollama_model.clone(),
     });
 
     let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
@@ -749,7 +192,10 @@ async fn main() {
 
     let wasm_skill_manager = Arc::new(
         infrastructure::skills::WasmSkillManager::new("workspace/skills", "workspace")
-            .expect("Skills directory not found"),
+            .unwrap_or_else(|e| {
+                error!("🚨 Failed to initialize WasmSkillManager: {}", e);
+                std::process::exit(1);
+            }),
     );
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
         "workspace/forge",
@@ -762,35 +208,18 @@ async fn main() {
 
     skill_forge
         .ensure_forge_workspace()
-        .expect("Failed to initialize skill_forge workspace");
+        .unwrap_or_else(|e| {
+            error!("🚨 Failed to initialize skill_forge workspace: {}", e);
+            std::process::exit(1);
+        });
 
-    let origins_str = std::env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| 
-        "http://127.0.0.1:3015,http://127.0.0.1:3016,http://localhost:1420,http://localhost:1421,http://localhost:5173,http://localhost:3016".to_string()
-    );
-    let mut all_origins: Vec<String> = origins_str
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    // Merge DB-stored origins (requires server restart to take effect)
-    if let Ok(Some(db_origins)) = job_queue.get_setting_value("allowed_origins").await {
-        for origin in db_origins.split(',') {
-            let trimmed = origin.trim().to_string();
-            if !trimmed.is_empty() && !all_origins.contains(&trimmed) {
-                info!("🌐 [CORS] Adding DB-managed origin: {}", trimmed);
-                all_origins.push(trimmed);
-            }
-        }
-    }
-
-    let allowed_origins: Vec<HeaderValue> = all_origins
+    let allowed_origins: Vec<HeaderValue> = config.allowed_origins
         .iter()
         .filter_map(|s| s.parse::<HeaderValue>().ok())
         .collect();
-    info!("🌐 [CORS] Active origins: {:?}", all_origins);
+    info!("🌐 [CORS] Active origins: {:?}", config.allowed_origins);
 
-    info!("🌐 [CORS] Effective Allowed Origins: {:?}", all_origins);
+    info!("🌐 [CORS] Effective Allowed Origins: {:?}", config.allowed_origins);
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([
@@ -875,19 +304,8 @@ async fn main() {
                 policy
             },
             commerce_engine,
-            circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
-                infrastructure::circuit_breaker::CircuitBreakerConfig {
-                    failure_threshold: 5,
-                    reset_timeout: std::time::Duration::from_secs(60),
-                }
-            )),
-            slo_engine: Arc::new(infrastructure::slo_engine::SloEngine::new(
-                infrastructure::slo_engine::SloConfig {
-                    error_budget_max: 100,
-                    warning_threshold: 80,
-                },
-                chrono::Duration::hours(24),
-            )),
+            circuit_breaker: circuit_breaker.clone(),
+            slo_engine: slo_engine.clone(),
         },
         cors_layer,
         static_path,
@@ -912,7 +330,10 @@ async fn main() {
     let port: u16 = std::env::var("PORT")
         .unwrap_or_else(|_| "3015".to_string())
         .parse()
-        .expect("Invalid PORT");
+        .unwrap_or_else(|_| {
+            error!("🚨 [CRITICAL] Invalid PORT format in environment");
+            std::process::exit(1);
+        });
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     info!("🌌 Aiome Management Console listening on {}", addr);
 
@@ -948,8 +369,11 @@ async fn main() {
 
         // 🌐 2. Federation Sync: Connect to Samsara Hub WebSocket for real-time updates
         let hub_ws_url = std::env::var("SAMSARA_HUB_WS")
-            .unwrap_or_else(|_| "ws://127.0.0.1:3016/api/v1/federation/ws".to_string());
-        let hub_secret = std::env::var("FEDERATION_SECRET").expect("FEDERATION_SECRET must be set");
+            .unwrap_or_else(|_| config.samsara_hub_url.replace("http://", "ws://").replace("https://", "wss://") + "/api/v1/federation/ws");
+        let hub_secret = std::env::var("FEDERATION_SECRET").unwrap_or_default();
+        if hub_secret.is_empty() {
+             warn!("⚠️ [BackgroundWorker] FEDERATION_SECRET is empty. Federation might fail.");
+        }
         let jq_ws = jq_clone.clone();
         let provider_ws = provider.clone();
 
@@ -1054,24 +478,24 @@ async fn main() {
                                                     base64::engine::general_purpose::STANDARD
                                                         .decode(&msg.signature),
                                                 ) {
-                                                    let pubkey_arr: [u8; 32] = pubkey_bytes
-                                                        .as_slice()
-                                                        .try_into()
-                                                        .unwrap_or([0; 32]);
-                                                    if let (Ok(pubkey), Ok(sig)) = (
-                                                        ed25519_dalek::VerifyingKey::from_bytes(
-                                                            &pubkey_arr,
-                                                        ),
-                                                        ed25519_dalek::Signature::from_slice(
-                                                            &sig_bytes,
-                                                        ),
-                                                    ) {
-                                                        use ed25519_dalek::Verifier;
-                                                        if pubkey
-                                                            .verify(payload.as_bytes(), &sig)
-                                                            .is_ok()
-                                                        {
-                                                            valid = true;
+                                                    let pubkey_res: Result<[u8; 32], _> =
+                                                        pubkey_bytes.as_slice().try_into();
+                                                    if let Ok(pubkey_arr) = pubkey_res {
+                                                        if let (Ok(pubkey), Ok(sig)) = (
+                                                            ed25519_dalek::VerifyingKey::from_bytes(
+                                                                &pubkey_arr,
+                                                            ),
+                                                            ed25519_dalek::Signature::from_slice(
+                                                                &sig_bytes,
+                                                            ),
+                                                        ) {
+                                                            use ed25519_dalek::Verifier;
+                                                            if pubkey
+                                                                .verify(payload.as_bytes(), &sig)
+                                                                .is_ok()
+                                                            {
+                                                                valid = true;
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1256,8 +680,7 @@ async fn main() {
 
             // 🌐 2. Swarm Sync: Push local data and Sync remote data via REST API
             info!("🌐 [BackgroundWorker] Starting Swarm Sync cycle...");
-            let hub_base = std::env::var("SAMSARA_HUB_REST")
-                .unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+            let hub_base = config.samsara_hub_url.clone();
             let hub_secret = match std::env::var("FEDERATION_SECRET") {
                 Ok(s) => s,
                 Err(_) => {
@@ -1505,7 +928,7 @@ async fn main() {
                 {
                     let query = format!(
                         "VACUUM INTO '{}'",
-                        abs_backup_path.to_str().unwrap_or_default()
+                        abs_backup_path.to_str().unwrap_or_default().replace("'", "''")
                     );
                     match sqlx::query(&query).execute(pool).await {
                         Ok(_) => info!(
@@ -1517,7 +940,7 @@ async fn main() {
                 } else {
                     // Fallback to relative if canonicalize fails (e.g. dir just created)
                     let query =
-                        format!("VACUUM INTO '{}'", backup_path.to_str().unwrap_or_default());
+                        format!("VACUUM INTO '{}'", backup_path.to_str().unwrap_or_default().replace("'", "''"));
                     match sqlx::query(&query).execute(pool).await {
                         Ok(_) => info!(
                             "💾 [BackgroundWorker] Backup successful (relative): {:?}",
@@ -1563,11 +986,15 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .expect("Failed to bind to port 3015");
-    axum::serve(listener, app)
+        .unwrap_or_else(|e| {
+            error!("🚨 Failed to bind to addr {}: {}", addr, e);
+            std::process::exit(1);
+        });
+    if let Err(e) = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(token))
-        .await
-        .expect("Server error");
+        .await {
+            error!("🚨 Server error: {}", e);
+        }
 }
 
 async fn shutdown_signal(token: CancellationToken) {

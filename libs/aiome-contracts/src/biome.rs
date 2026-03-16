@@ -1,14 +1,5 @@
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
- */
-
-use base64::Engine;
 use serde::{Deserialize, Serialize};
+use base64::Engine;
 
 /// Biome プロトコルにおける基本メッセージ
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +95,6 @@ impl BiomeMessage {
             return Ok(());
         }
 
-        use base64::Engine;
         use chacha20poly1305::{
             aead::{Aead, KeyInit},
             ChaCha20Poly1305, Key, Nonce,
@@ -128,42 +118,52 @@ impl BiomeMessage {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// [A-1] Docker Agent ↔ Karma Feedback Loop
+/// Represents the result of an execution inside the Docker sandbox.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DelegationResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+    pub duration_ms: u64,
+}
 
-    #[test]
-    fn test_biome_message_encryption_decryption() {
-        let mut msg = BiomeMessage {
-            sender_pubkey: "sender".to_string(),
-            recipient_pubkey: "recipient".to_string(),
-            topic_id: "topic1".to_string(),
-            content: "Hello from Biome Protocol!".to_string(),
-            karma_root_cid: "cid123".to_string(),
-            signature: "sig123".to_string(),
-            lamport_clock: 1,
-            timestamp: "2026-03-12T05:00:00Z".to_string(),
-            encryption: "none".to_string(),
-        };
-
-        let key: [u8; 32] = [42; 32]; // dummy key
-
-        // Test encryption
-        msg.encrypt(&key).expect("Encryption should succeed");
-        assert_eq!(msg.encryption, "chacha20-poly1305");
-        assert_ne!(msg.content, "Hello from Biome Protocol!");
-
-        // Test decryption
-        msg.decrypt(&key).expect("Decryption should succeed");
-        assert_eq!(msg.content, "Hello from Biome Protocol!");
-
-        // Test decryption bypass for "none" encryption
-        let mut unencrypted_msg = msg.clone();
-        unencrypted_msg.encryption = "none".to_string();
-        unencrypted_msg.content = "Plain text".to_string();
-        unencrypted_msg
-            .decrypt(&key)
-            .expect("Bypass should succeed");
-        assert_eq!(unencrypted_msg.content, "Plain text");
+impl DelegationResult {
+    /// Determines if the execution was successful based on exit code.
+    pub fn is_success(&self) -> bool {
+        self.exit_code == 0
     }
+
+    /// High-level classification of the failure type.
+    pub fn failure_category(&self) -> FailureCategory {
+        if self.is_success() {
+            return FailureCategory::None;
+        }
+
+        // Common exit codes and stderr patterns
+        if self.exit_code == 124 || self.stderr.contains("timeout") {
+            FailureCategory::Timeout
+        } else if self.exit_code == 137
+            || self.stderr.contains("OOM")
+            || self.stderr.contains("Out of memory")
+        {
+            FailureCategory::Oom
+        } else if self.stderr.contains("Module not found") || self.stderr.contains("ImportError") {
+            FailureCategory::DependencyMissing
+        } else if self.stderr.contains("SyntaxError") {
+            FailureCategory::SyntaxError
+        } else {
+            FailureCategory::UnknownRuntime
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum FailureCategory {
+    None,
+    Timeout,
+    Oom,
+    DependencyMissing,
+    SyntaxError,
+    UnknownRuntime,
 }

@@ -5,6 +5,8 @@ Welcome to the Aiome project documentation. This wiki is automatically generated
 
 - **[Lex AI Constitution](./architecture/ARCHITECTURE_LAW.md)**: AI 都市建築基準法。アクターの境界、契約、統治を規定。
 - **[Security Design](./architecture/SECURITY_DESIGN.md)**: 多層防御、Abyss Vault、ゼロトラスト設計。
+- **[LLM Provider Architecture](./architecture/LLM_PROVIDER_ARCHITECTURE.md)**: 動的LLMプロバイダーのアーキテクチャとフォールバック設計。
+- **[Infrastructure Modules](./architecture/INFRASTRUCTURE_MODULES.md)**: 各モジュールの責務と実装状況の概説。
 - **[Evolution Strategy](./architecture/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
 - **[Layout Architecture](./architecture/LAYOUT_ARCHITECTURE.md)**: CSS Custom Properties によるレイアウト一元管理。
 

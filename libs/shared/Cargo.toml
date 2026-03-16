@@ -1,11 +1,11 @@
 [package]
-license = "BUSL-1.1"
+license = "Apache-2.0"
 name = "shared"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aiome-interface = { path = "../aiome-interface" }
+aiome-contracts = { path = "../aiome-contracts" }
 serde.workspace = true
 serde_json = { workspace = true }
 uuid = { workspace = true }

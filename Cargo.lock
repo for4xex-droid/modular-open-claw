@@ -51,10 +51,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "aiome-contracts"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.22.1",
+ "bastion-core",
+ "chacha20poly1305",
+ "chrono",
+ "rand 0.8.5",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "utoipa",
+ "uuid 1.22.0",
+]
+
+[[package]]
 name = "aiome-core"
 version = "0.1.0"
 dependencies = [
- "aiome-interface",
+ "aiome-contracts",
  "anyhow",
  "async-stream",
  "async-trait",
@@ -79,21 +102,6 @@ dependencies = [
  "uuid 1.22.0",
  "wiremock",
  "x25519-dalek",
-]
-
-[[package]]
-name = "aiome-interface"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum 0.7.9",
- "chrono",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tracing",
- "uuid 1.22.0",
 ]
 
 [[package]]
@@ -192,8 +200,8 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "api-server"
 version = "0.1.0"
 dependencies = [
+ "aiome-contracts",
  "aiome-core",
- "aiome-interface",
  "anyhow",
  "async-stream",
  "async-trait",
@@ -3975,6 +3983,7 @@ checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
 name = "infrastructure"
 version = "0.1.0"
 dependencies = [
+ "aiome-contracts",
  "aiome-core",
  "anyhow",
  "async-recursion",
@@ -4007,6 +4016,7 @@ dependencies = [
  "teloxide",
  "tempfile",
  "tokio",
+ "tokio-stream",
  "tokio-util",
  "tracing",
  "unicode-normalization",
@@ -5073,8 +5083,8 @@ dependencies = [
 name = "nurture-api"
 version = "0.1.0"
 dependencies = [
+ "aiome-contracts",
  "aiome-core",
- "aiome-interface",
  "anyhow",
  "async-trait",
  "axum 0.7.9",
@@ -5082,6 +5092,7 @@ dependencies = [
  "chrono",
  "commerce-protocol",
  "dotenvy",
+ "infrastructure",
  "jsonwebtoken",
  "nurture-core",
  "nurture-infra",
@@ -7556,7 +7567,7 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "aiome-interface",
+ "aiome-contracts",
  "anyhow",
  "bastion-core",
  "chrono",

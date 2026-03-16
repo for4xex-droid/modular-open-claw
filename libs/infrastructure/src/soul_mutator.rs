@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::llm_provider::LlmProvider;
@@ -427,7 +425,7 @@ mod tests {
 
     #[async_trait]
     impl JobQueue for MockJobQueue {
-        async fn enqueue(&self, _topic: &str, _category: &str, _params: &str, _job_ref: Option<&str>) -> Result<String, AiomeError> { 
+        async fn enqueue(&self, _topic: &str, _category: &str, _params: &str, _job_ref: Option<&str>, _manifest: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { 
             Ok(Uuid::new_v4().to_string()) 
         }
         async fn dequeue(&self, _categories: &[&str]) -> Result<Option<Job>, AiomeError> { Ok(None) }

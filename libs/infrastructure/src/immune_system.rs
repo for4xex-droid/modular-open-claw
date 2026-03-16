@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::contracts::ImmuneRule;
@@ -104,14 +102,22 @@ impl AdaptiveImmuneSystem {
         static BASELINE_REGEXES: Lazy<Vec<Regex>> = Lazy::new(|| {
             [
                 r"rm -rf\s+/",
-                r"curl\s+.*\|.*sh",
-                r"wget\s+.*\|.*sh",
+                r"curl\s+.*\|.*(sh|bash|python|php|perl)",
+                r"wget\s+.*\|.*(sh|bash|python|php|perl)",
                 r"cat\s+~/\.ssh/id_rsa",
+                r"cat\s+/etc/passwd",
+                r"cat\s+/etc/shadow",
+                r"nc\s+-e\s+/(bin/)?(ba)?sh",
+                r"python\s+-c\s+.*import\s+socket",
                 r"chmod\s+777",
                 r"hidden-backdoor\.com",
+                r"DROP\s+TABLE\s+",
+                r"env\s+>\s+",
+                r"export\s+.*=.*",
+                r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
             ]
             .iter()
-            .map(|p| Regex::new(p).expect("Invalid baseline regex"))
+            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").unwrap()))
             .collect()
         });
 
@@ -212,7 +218,7 @@ mod tests {
 
         // Rest are stubs
         async fn get_pending_job_count(&self) -> Result<i64, AiomeError> { Ok(0) }
-        async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>) -> Result<String, AiomeError> { Ok("id".into()) }
+        async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { Ok("id".into()) }
         async fn fetch_all_karma(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
         async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
         async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> { Ok(AgentStats { level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 }) }

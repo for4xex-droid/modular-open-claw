@@ -1,12 +1,12 @@
 [package]
-license = "BUSL-1.1"
+license = "Apache-2.0"
 name = "aiome-core"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 shared = { path = "../shared" }
-aiome-interface = { path = "../aiome-interface" }
+aiome-contracts = { path = "../aiome-contracts" }
 async-trait = "0.1"
 anyhow = { workspace = true }
 thiserror = { workspace = true }

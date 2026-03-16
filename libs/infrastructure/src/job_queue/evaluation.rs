@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use super::try_get_optional_string;
@@ -54,7 +52,7 @@ impl EvaluationOps for SqliteJobQueue {
         limit: i64,
     ) -> Result<Vec<Job>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
                      sns_platform, sns_content_id, published_at, output_artifacts 
               FROM jobs 
@@ -75,6 +73,10 @@ impl EvaluationOps for SqliteJobQueue {
         let mut jobs = Vec::new();
         for r in rows {
             let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            let permission_manifest = r
+                .try_get::<String, _>("permission_manifest")
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
             jobs.push(Job {
                 id: r.get("id"),
                 category: r.get("category"),
@@ -92,6 +94,7 @@ impl EvaluationOps for SqliteJobQueue {
                 sns_content_id: try_get_optional_string(&r, "sns_content_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
+                permission_manifest,
             });
         }
         Ok(jobs)
@@ -286,6 +289,10 @@ impl EvaluationOps for SqliteJobQueue {
         let mut jobs = Vec::new();
         for r in rows {
             let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+            let permission_manifest = r
+                .try_get::<String, _>("permission_manifest")
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
             jobs.push(Job {
                 id: r.get("id"),
                 category: r.get("category"),
@@ -303,6 +310,7 @@ impl EvaluationOps for SqliteJobQueue {
                 sns_content_id: try_get_optional_string(&r, "sns_content_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
+                permission_manifest,
             });
         }
         Ok(jobs)

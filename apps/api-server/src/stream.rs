@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::llm_provider::LlmProvider;
@@ -248,7 +246,7 @@ pub async fn trigger_agent_chat_stream(
                             skill_results.push(out.clone());
                             yield Ok(Event::default().event("tool_result").data(format!("{}: metadata returned", skill_name)));
                         } else {
-                            let out = skill_handler::execute_wasm_skill(&skill_name, &skill_input, &state).await;
+                            let out = skill_handler::execute_wasm_skill(&skill_name, &skill_input, &state, None, 0).await;
 
                             // Phase 2B: Record skill execution
                             let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();

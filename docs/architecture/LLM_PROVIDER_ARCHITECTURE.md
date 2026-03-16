@@ -1,0 +1,192 @@
+# LLM Provider Architecture — 動的プロバイダー設計書
+
+**Version:** 1.0  
+**Last Updated:** 2026-03-17  
+**Author:** Antigraivty Agent / motivationstudio
+
+---
+
+## 1. 概要
+
+Aiome の LLM プロバイダーは、**Infrastructure Layer** (`libs/infrastructure/src/llm/`) に集約されています。
+これにより、`api-server` だけでなく将来の CLI ツールや他のバイナリからも、
+一貫したインターフェースでLLMを利用できます。
+
+```
+libs/infrastructure/src/llm/
+├── mod.rs           ← モジュール宣言
+├── proxy.rs         ← ProxyLlmProvider (Abyss Vault 経由)
+└── dynamic.rs       ← DynamicLlmProvider / BackgroundLlmProvider (★ 本ドキュメント)
+```
+
+---
+
+## 2. 設計原則
+
+### 2.1 Single Point of Configuration
+すべての LLM 設定は `AiomeConfig`（`libs/shared/src/config.rs`）で一元管理されます。
+
+```
+環境変数 → AiomeConfig::load() → DynamicLlmProvider / BackgroundLlmProvider
+```
+
+### 2.2 設定優先順位（3層フォールバック）
+
+LLM の接続先は以下の優先順位で解決されます：
+
+```
+1. DB 設定 (system_settings テーブル)    ← ダッシュボードから動的変更可能
+2. 環境変数 (BG_LLM_PROVIDER 等)        ← デプロイ時に固定
+3. AiomeConfig デフォルト値              ← コード内のフォールバック
+```
+
+### 2.3 Zero-Panic Policy
+プロバイダーの初期化と設定読み込みでは `expect()` / `unwrap()` を使用せず、
+すべてのエラーは `unwrap_or_else` + ログ出力 + 適切なデフォルト値で処理されます。
+
+---
+
+## 3. DynamicLlmProvider（フロントエンド用）
+
+ユーザーからのリアルタイム対話に使用されるプロバイダーです。
+
+### 3.1 対応プロバイダー
+
+| プロバイダー | 設定値 | API キー環境変数 | ホスト設定 |
+|---|---|---|---|
+| Gemini | `gemini` | `GEMINI_API_KEY` | API直接 |
+| OpenAI | `openai` | `OPENAI_API_KEY` | API直接 |
+| Claude | `claude` | `ANTHROPIC_API_KEY` | API直接 |
+| LM Studio | `lmstudio` | 不要 | `lm_studio_host` / `http://127.0.0.1:1234` |
+| Ollama | `ollama` (default) | 不要 | `ollama_host` / `AiomeConfig.ollama_host` |
+
+### 3.2 回復力機能
+
+- **Circuit Breaker**: 連続 5 回の失敗で回路を開き、60 秒後にハーフオープンで再試行。
+- **SLO Engine**: 24時間ウィンドウでエラーバジェットを管理。80% 超過で警告。
+- **ストリーミング**: `stream_complete()` で SSE 経由のリアルタイムトークン配信。
+
+### 3.3 Embedding 対応
+
+`DynamicLlmProvider` は `EmbeddingProvider` も実装しています。
+- Gemini: `gemini-embedding-001` モデルを使用
+- Ollama: ローカルモデルのエンベディング機能を利用
+
+---
+
+## 4. BackgroundLlmProvider（バックグラウンド用）
+
+自律タスク（Soul Mutation、Karma蒸留、免疫分析等）で使用されるプロバイダーです。
+
+### 4.1 設定キー
+
+| 設定 | DB キー | 環境変数 | デフォルト |
+|---|---|---|---|
+| プロバイダー | `bg_llm_provider` | `BG_LLM_PROVIDER` | `ollama` |
+| モデル | `bg_llm_model` | `BG_LLM_MODEL` | `AiomeConfig.ollama_model` |
+| API キー | `bg_llm_api_key` | `GEMINI_API_KEY` → `OPENAI_API_KEY` → `ANTHROPIC_API_KEY` | — |
+
+### 4.2 Embedding フォールバックチェーン
+
+`BackgroundLlmProvider` の `EmbeddingProvider` 実装は以下の順序でフォールバックします：
+
+```
+EMBEDDING_PROVIDER 環境変数で分岐:
+
+"ruri"（デフォルト）:
+  Ruri (RURI_EMBED_URL) → Gemini Embedding (fallback) → エラー
+
+"gemini":
+  Gemini Embedding (gemini-embedding-001)
+
+それ以外:
+  Ollama Embedding (ローカル)
+```
+
+---
+
+## 5. ProxyLlmProvider（Abyss Vault 経由）
+
+Key Proxy を経由する特殊なプロバイダーです。API キーを直接保持せず、
+すべてのリクエストを `KEY_PROXY_URL` に転送します。
+
+```
+アプリ → ProxyLlmProvider → Key Proxy (Abyss Vault) → 外部API
+         API キー不保持         API キー物理隔離        Gemini/OpenAI
+```
+
+---
+
+## 6. アーキテクチャ図
+
+```mermaid
+graph TB
+    subgraph "API Server (main.rs)"
+        MC[Management Console]
+        BW[Background Worker]
+    end
+
+    subgraph "Infrastructure Layer"
+        DP[DynamicLlmProvider]
+        BP[BackgroundLlmProvider]
+        PP[ProxyLlmProvider]
+    end
+
+    subgraph "Core Layer (Traits)"
+        LT[LlmProvider trait]
+        ET[EmbeddingProvider trait]
+    end
+
+    subgraph "Config"
+        AC[AiomeConfig]
+        DB[(system_settings)]
+        ENV[環境変数]
+    end
+
+    subgraph "External"
+        Gemini[Gemini Cloud]
+        OpenAI[OpenAI]
+        Claude[Claude]
+        Ollama[Ollama Local]
+        LMS[LM Studio]
+        Ruri[Ruri Embed Server]
+    end
+
+    MC --> DP
+    BW --> BP
+    DP --> LT
+    DP --> ET
+    BP --> LT
+    BP --> ET
+    PP --> LT
+
+    AC --> DP
+    AC --> BP
+    DB --> DP
+    DB --> BP
+    ENV --> AC
+
+    DP --> Gemini
+    DP --> OpenAI
+    DP --> Claude
+    DP --> Ollama
+    DP --> LMS
+    BP --> Gemini
+    BP --> Ollama
+    BP --> Ruri
+    PP --> Gemini
+```
+
+---
+
+## 7. 設定変更の影響範囲
+
+| 変更箇所 | 影響 | 再起動必要 |
+|---|---|---|
+| DB (`system_settings`) | 次のリクエストから即反映 | ❌ 不要 |
+| 環境変数 (`.env`) | プロセス起動時に読み込み | ✅ 必要 |
+| `AiomeConfig` コード | コンパイル時に確定 | ✅ 必要 (ビルド) |
+
+---
+
+*Document managed by Aiome Infrastructure Team*

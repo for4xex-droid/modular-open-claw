@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::error::AiomeError;
@@ -40,6 +38,8 @@ impl DbInitializer for SqliteJobQueue {
                 sns_platform TEXT,
                 sns_content_id TEXT,
                 published_at TEXT,
+                output_artifacts TEXT,
+                permission_manifest TEXT,
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             );"
@@ -57,6 +57,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE jobs ADD COLUMN published_at TEXT",
             "ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE jobs ADD COLUMN output_artifacts TEXT",
+            "ALTER TABLE jobs ADD COLUMN permission_manifest TEXT",
         ] {
             let _ = sqlx::query(migration).execute(&self.pool).await;
         }
@@ -83,14 +84,18 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to create karma_logs table: {}", e) })?;
 
         // Indices
-        sqlx::query(
+        if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_jobs_status_started ON jobs(status, started_at);",
         )
         .execute(&self.pool)
-        .await
-        .ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_skill_weight ON karma_logs(related_skill, weight DESC);")
-            .execute(&self.pool).await.ok();
+        .await {
+            info!("💡 [DbInitializer] Index idx_jobs_status_started setup (might already exist): {}", e);
+        }
+
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_skill_weight ON karma_logs(related_skill, weight DESC);")
+            .execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_karma_logs_skill_weight setup (might already exist): {}", e);
+        }
 
         // The Metrics Ledger
         sqlx::query(
@@ -119,8 +124,10 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create sns_metrics_history: {}", e),
         })?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_sns_metrics_job ON sns_metrics_history(job_id, milestone_days);")
-            .execute(&self.pool).await.ok();
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_sns_metrics_job ON sns_metrics_history(job_id, milestone_days);")
+            .execute(&self.pool).await {
+             info!("💡 [DbInitializer] Index idx_sns_metrics_job setup (might already exist): {}", e);
+        }
 
         for migration in [
             "ALTER TABLE jobs ADD COLUMN category TEXT NOT NULL DEFAULT 'default'",
@@ -211,10 +218,14 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create chat_history: {}", e),
         })?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_channel ON chat_history(channel_id, created_at DESC);")
-            .execute(&self.pool).await.ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_undistilled ON chat_history(is_distilled) WHERE is_distilled = 0;")
-            .execute(&self.pool).await.ok();
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_channel ON chat_history(channel_id, created_at DESC);")
+            .execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_chat_history_channel setup: {}", e);
+        }
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_undistilled ON chat_history(is_distilled) WHERE is_distilled = 0;")
+            .execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_chat_history_undistilled setup: {}", e);
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS chat_memory_summaries (
@@ -297,15 +308,22 @@ impl DbInitializer for SqliteJobQueue {
         })?;
 
         // Federated Indices (Phase 15 Hardening)
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_federated ON karma_logs(is_federated) WHERE is_federated = 0;").execute(&self.pool).await.ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_rules_federated ON immune_rules(is_federated) WHERE is_federated = 0;").execute(&self.pool).await.ok();
-        sqlx::query(
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_federated ON karma_logs(is_federated) WHERE is_federated = 0;").execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_karma_logs_federated setup: {}", e);
+        }
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_rules_federated ON immune_rules(is_federated) WHERE is_federated = 0;").execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_immune_rules_federated setup: {}", e);
+        }
+        if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_karma_lamport ON karma_logs(lamport_clock, node_id);",
         )
         .execute(&self.pool)
-        .await
-        .ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_lamport ON immune_rules(lamport_clock, node_id);").execute(&self.pool).await.ok();
+        .await {
+            info!("💡 [DbInitializer] Index idx_karma_lamport setup: {}", e);
+        }
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_lamport ON immune_rules(lamport_clock, node_id);").execute(&self.pool).await {
+            info!("💡 [DbInitializer] Index idx_immune_lamport setup: {}", e);
+        }
 
         // Biome Protocol (Phase 20)
         sqlx::query(
@@ -407,20 +425,23 @@ impl DbInitializer for SqliteJobQueue {
         sqlx::query("CREATE TRIGGER IF NOT EXISTS karma_fts_au AFTER UPDATE OF lesson ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); INSERT INTO karma_fts(rowid, lesson) VALUES(new.rowid, new.lesson); END;").execute(&self.pool).await.ok();
 
         // Sprint 3-B: Taxonomy (Hierarchical Classification)
-        sqlx::query("ALTER TABLE karma_logs ADD COLUMN domain TEXT DEFAULT 'general';")
+        if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN domain TEXT DEFAULT 'general';")
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query("ALTER TABLE karma_logs ADD COLUMN subtopic TEXT;")
+            .await {
+             info!("💡 [DbInitializer] Migration domain setup: {}", e);
+        }
+        if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN subtopic TEXT;")
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query(
+            .await {
+             info!("💡 [DbInitializer] Migration subtopic setup: {}", e);
+        }
+        if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_karma_taxonomy ON karma_logs(domain, related_skill);",
         )
         .execute(&self.pool)
-        .await
-        .ok();
+        .await {
+             info!("💡 [DbInitializer] Index idx_karma_taxonomy setup: {}", e);
+        }
 
         // AI Artifacts Storage System
         sqlx::query(
@@ -511,6 +532,48 @@ impl DbInitializer for SqliteJobQueue {
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create expressions table: {}", e),
+        })?;
+
+        // v5: AgentRx Diagnostics (Trajectory Tracking)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS trajectory_steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL,
+                step_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                tool_name TEXT,
+                input_json TEXT,
+                output_json TEXT,
+                timestamp TEXT NOT NULL,
+                constraint_violations TEXT,  -- JSON array
+                is_critical_failure INTEGER DEFAULT 0,
+                failure_category TEXT,
+                FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create trajectory_steps table: {}", e),
+        })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS agent_diagnoses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL UNIQUE,
+                critical_failure_step INTEGER,
+                failure_category TEXT,
+                root_cause TEXT,
+                evidence TEXT,           -- JSON: 制約違反の証拠
+                self_repair_hint TEXT,   -- 自己修復のためのヒント
+                diagnosed_at TEXT NOT NULL,
+                FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create agent_diagnoses table: {}", e),
         })?;
 
         info!("✅ [SqliteJobQueue] Database and migrations initialized successfully.");

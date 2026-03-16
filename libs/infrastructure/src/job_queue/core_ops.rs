@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use super::try_get_optional_string;
@@ -24,6 +22,7 @@ pub trait CoreOps {
         topic: &str,
         style: &str,
         karma_directives: Option<&str>,
+        permission_manifest: Option<aiome_core::security::PermissionManifest>,
     ) -> Result<String, AiomeError>;
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
     async fn do_dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError>;
@@ -58,19 +57,24 @@ impl CoreOps for SqliteJobQueue {
         topic: &str,
         style: &str,
         karma_directives: Option<&str>,
+        permission_manifest: Option<aiome_core::security::PermissionManifest>,
     ) -> Result<String, AiomeError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         let directives = karma_directives.unwrap_or("{}");
+        let manifest_json = permission_manifest
+            .map(|m| serde_json::to_string(&m).unwrap_or_else(|_| "{}".to_string()))
+            .unwrap_or_else(|| "{}".to_string());
 
         sqlx::query(
-            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(category)
         .bind(topic)
         .bind(style)
         .bind(directives)
+        .bind(manifest_json)
         .bind(JobStatus::Pending.to_string())
         .bind(&now)
         .bind(&now)
@@ -83,7 +87,7 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
         let row = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE id = ?"
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE id = ?"
         )
         .bind(job_id)
         .fetch_optional(&self.pool)
@@ -107,6 +111,11 @@ impl CoreOps for SqliteJobQueue {
             let status_str: String = r.get("status");
             let status = JobStatus::from_string(&status_str);
 
+            let permission_manifest = r
+                .try_get::<String, _>("permission_manifest")
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
+
             Ok(Some(Job {
                 id,
                 category,
@@ -124,6 +133,7 @@ impl CoreOps for SqliteJobQueue {
                 sns_content_id,
                 published_at,
                 output_artifacts,
+                permission_manifest,
             }))
         } else {
             Ok(None)
@@ -145,7 +155,7 @@ impl CoreOps for SqliteJobQueue {
             .collect::<Vec<_>>()
             .join(", ");
         let query_str = format!(
-            "SELECT id, category, topic, style_name, karma_directives, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE status = ? AND category IN ({}) ORDER BY created_at ASC LIMIT 1",
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE status = ? AND category IN ({}) ORDER BY created_at ASC LIMIT 1",
             placeholders
         );
         let mut query = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
@@ -173,6 +183,11 @@ impl CoreOps for SqliteJobQueue {
             let sns_content_id: Option<String> = try_get_optional_string(&r, "sns_content_id");
             let published_at: Option<String> = try_get_optional_string(&r, "published_at");
             let output_artifacts: Option<String> = try_get_optional_string(&r, "output_artifacts");
+
+            let permission_manifest = r
+                .try_get::<String, _>("permission_manifest")
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
 
             let now = Utc::now().to_rfc3339();
             sqlx::query("UPDATE jobs SET status = ?, started_at = ?, last_heartbeat = ?, updated_at = ? WHERE id = ?")
@@ -206,6 +221,7 @@ impl CoreOps for SqliteJobQueue {
                 sns_content_id,
                 published_at,
                 output_artifacts,
+                permission_manifest,
             }))
         } else {
             Ok(None)
@@ -336,7 +352,7 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, status, started_at, last_heartbeat, 
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
                      sns_platform, sns_content_id, published_at, output_artifacts 
               FROM jobs 
@@ -367,6 +383,10 @@ impl CoreOps for SqliteJobQueue {
                 sns_content_id: try_get_optional_string(&r, "sns_content_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
+                permission_manifest: r
+                    .try_get::<String, _>("permission_manifest")
+                    .ok()
+                    .and_then(|s| serde_json::from_str(&s).ok()),
             });
         }
         Ok(jobs)

@@ -2,13 +2,11 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use crate::biome::dialogue::DialogueManager;
-use crate::biome::protocol::BiomeMessage;
+use crate::biome::BiomeMessage;
 use crate::error::AiomeError;
 use crate::llm_provider::LlmProvider;
 use crate::traits::JobQueue;

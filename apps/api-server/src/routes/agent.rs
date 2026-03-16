@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use crate::docker;
@@ -366,6 +364,10 @@ pub async fn trigger_agent_chat(
     let max_turns = 15;
     let mut final_reply = String::from("...");
 
+    // 🛡️ AgentRx: Virtual Job ID for Chat Trajectory
+    let chat_execution_id = format!("chat_exec_{}", uuid::Uuid::new_v4());
+    let mut total_steps = 0;
+
     while turn < max_turns {
         let full_prompt = format!(
             "{}\n{}\nUSER: {}\nAI: ",
@@ -390,6 +392,7 @@ pub async fn trigger_agent_chat(
                 let calls = parse_tool_calls(&reply);
                 for (skill_name, skill_input) in calls {
                     info!("🛠️ [AgentLoop] Executing skill: {}", skill_name);
+                    total_steps += 1;
 
                     if skill_name == "describe_skill" {
                         #[derive(serde::Deserialize)]
@@ -412,9 +415,16 @@ pub async fn trigger_agent_chat(
                             Err(e) => skill_results.push(format!("[{} Error: {}]", skill_name, e)),
                         }
                     } else {
+                        // 🛡️ AgentRx Integrated Call
                         let res =
-                            skill_handler::execute_wasm_skill(&skill_name, &skill_input, &state)
-                                .await;
+                            skill_handler::execute_wasm_skill(
+                                &skill_name,
+                                &skill_input,
+                                &state,
+                                Some(&chat_execution_id),
+                                total_steps
+                            )
+                            .await;
                         skill_results.push(res);
                     }
                 }
@@ -523,6 +533,53 @@ pub async fn trigger_agent_chat(
     tokio::spawn(async move {
         let _ = ce.maintain_context(&cid, 8000).await; // 文字数基準 (≒4000トークン)
     });
+
+    // 🛡️ AgentRx: Post-Execution Diagnostics
+    if total_steps > 0 {
+        let jq = state.job_queue.clone();
+        let provider = state.provider.clone();
+        let diag_exec_id = chat_execution_id.clone();
+        let prompt_clone = payload.prompt.clone();
+        
+        tokio::spawn(async move {
+            use aiome_core::trajectory::TrajectoryStore;
+            if let Ok(trajectory) = jq.fetch_trajectory(&diag_exec_id).await {
+                if trajectory.iter().any(|s| s.is_critical_failure || !s.constraint_violations.is_empty()) {
+                    info!("🔍 [AgentRx] Failure or violation detected. Starting diagnostics for {}...", diag_exec_id);
+                    let diagnostics = infrastructure::diagnostics::AgentRxDiagnostics::new(provider);
+                    
+                    // Create a virtual job for context
+                    let virtual_job = aiome_core::traits::Job {
+                        id: diag_exec_id.clone(),
+                        category: "AgentRxDiagnostics".into(),
+                        topic: prompt_clone,
+                        style: "chat".into(),
+                        karma_directives: None,
+                        status: aiome_core::traits::JobStatus::Failed,
+                        started_at: Some(chrono::Utc::now().to_rfc3339()),
+                        last_heartbeat: None,
+                        tech_karma_extracted: false,
+                        creative_rating: None,
+                        execution_log: None,
+                        error_message: None,
+                        sns_platform: None,
+                        sns_content_id: None,
+                        published_at: None,
+                        output_artifacts: None,
+                        permission_manifest: None,
+                    };
+
+                    match diagnostics.diagnose(&trajectory, &virtual_job).await {
+                        Ok(diagnosis) => {
+                            info!("✅ [AgentRx] Diagnosis complete: {}", diagnosis.root_cause);
+                            let _ = jq.store_diagnosis(&diag_exec_id, diagnosis).await;
+                        },
+                        Err(e) => tracing::error!("❌ [AgentRx] Diagnostic failed: {}", e),
+                    }
+                }
+            }
+        });
+    }
 
     Ok(Json(serde_json::json!({
         "status": "success",

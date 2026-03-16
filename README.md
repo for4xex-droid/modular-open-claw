@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-ELv2-blue.svg" alt="License: ELv2">
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0">
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/TLA%2B-Verified-0052cc.svg" alt="TLA+ Verified">
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome">
@@ -29,7 +29,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 **「野生の知能」から「規律ある自律性」へ。**
 エージェントにそのままシステムを委ねることは、無限ループやAPIキー漏洩などのリスクを孕む「脆弱な自由」です。Aiome は、エージェントが人間による24時間の監視なしで、長期連続稼働し続けるための強固な規律（ガードレール）、堅牢なバックエンド、そして進化のための「免疫システム」を提供します。
 
-現在の Aiome は、かつての OpenClaw が持っていた「柔軟な認知アーキテクチャ」を Rust による堅牢なコアへと完全吸収・統合した、**スタンドアロン・システム** です。
+Aiome は、「柔軟な認知アーキテクチャ」を Rust による堅牢なコアへと完全統合した、**スタンドアロン・エージェンティック AI オペレーティングシステム** です。
 
 ### 🤖 開発の哲学：エージェントによる、エージェントのためのOS (Built by Agents)
 
@@ -74,9 +74,9 @@ apps/watchtower      ← 外部チャネル連携 (The Soul / Discord & Telegram
       ↓
 libs/core            ← ドメインロジック (Open)
       ↓
-libs/infrastructure  ← I/O実装 (SQLite / Open)
+libs/infrastructure  ← I/O実装 (SQLite / LLM動的プロバイダー / Open)
       ↓
-libs/shared          ← 共通型, Guardrails (Open)
+libs/shared          ← 共通型, Guardrails, AiomeConfig (Open)
 ```
 
 ### 3. 初期起動と Synergy Experience (創世記)
@@ -208,17 +208,22 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - `GEMINI_API_KEY`: Gemini Cloud LLM 接続用（フロントエンド推論）。
 - `BG_LLM_PROVIDER`: バックグラウンドLLMプロバイダー (デフォルト: `ollama`)。
 - `BG_LLM_MODEL`: バックグラウンドLLMモデル (デフォルト: `qwen3.5:9b`)。
-- `OLLAMA_BASE_URL`: ローカルLLM接続用 (デフォルト: `http://127.0.0.1:11434`)。
+- `OLLAMA_HOST`: ローカルLLM接続用 (デフォルト: `http://127.0.0.1:11434`)。
+- `EMBEDDING_PROVIDER`: 埋め込みプロバイダー (`ruri` / `gemini` / `ollama`。デフォルト: `ruri`)。
+- `ALLOWED_ORIGINS`: CORS許可オリジン (カンマ区切り)。
 - `EXTERNAL_SERVICE_URL`: ComfyUI など外部生成エンジン連携用。
 - `VAULT_SECRET`: Abyss Vault (Key Proxy) 認証用。
 - `FEDERATION_SECRET`: Samsara Hub 通信の認証用。
 - `API_SERVER_SECRET`: API Server への全リクエストの認証用。
+
+> ℹ️ すべての環境変数は `AiomeConfig` (`libs/shared/src/config.rs`) で一元管理されています。詳細は [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md) を参照。
 
 ---
 
 ## 📚 ドキュメント (Documentation)
 
 - **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
+- **[LLMプロバイダー設計 (LLM Provider Architecture)](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md)**: 動的LLMプロバイダーのアーキテクチャとフォールバック設計。
 - **[運用マニュアル (Operations Guide)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
 - **[進化戦略 (Evolution Strategy)](docs/architecture/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
 - **[人格のカスタマイズ (Soul Customization)](docs/guides/CUSTOMIZING_SOUL.md)**: AIの性格や反応の調整方法。
@@ -237,7 +242,8 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 
 ## 🛡️ ライセンス (License)
 
-**Aiome Core** は **Elastic License 2.0 (ELv2)** の下で提供されています。社内利用や独自プロダクトへの組み込みは無料で自由に行えます。
+**Aiome Core** は **Apache License 2.0** の下で提供されています。商用利用、改変、再配布などが無料で自由に行えます。
+ただし、分散学習ハブ機能である **Samsara Hub** に関しては **Business Source License 1.1 (BSL 1.1)** が適用され、マネージドサービスとしての提供に制限を設けています。詳しくは各ディレクトリの `LICENSE` を参照してください。
 コアエンジンのマネージドサービス（SaaS/PaaS）としての直接的な再販のみ制限されます。
 
 ---

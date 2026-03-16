@@ -27,6 +27,10 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 4 | Supply Chain Vulnerability | Dependencies | 🟡 Mid | `cargo audit` + Sentinel |
 | 5 | Resource Exhaustion | Infinite Loop / Spams | 🟡 Mid | Rate Limiting + WASM Timeout & Circuit Breaker |
 | 6 | **Karma Poisoning** | **Malicious Federation Sync** | 🔴 High | **Bearer Auth + Node Reputation System** |
+| 7 | Reverse Shell Exploit | WASM Skill → host_exec | 🔴 High | **Immune System Baseline (14 signatures) + BastionGuard** |
+| 8 | Env Var Exfiltration | Skill reads API_KEY env | 🔴 High | **Baseline regex detection + WASM isolation** |
+| 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Baseline regex + parameterized queries** |
+| 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
 
 ## 3. Defense Architecture
 
@@ -54,6 +58,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **PathSandbox**: Prevents directory traversal by enforcing canonical path prefix checks.
 - **ZombieKiller**: Monitors and terminates hung external processes/subprocesses.
 - **Karma Federation**: Synchronizes "learned lessons" across nodes using signed and authenticated payloads.
+- **Dynamic LLM Provider**: Centralized in `libs/infrastructure/src/llm/dynamic.rs` with automatic fallback chains (DB settings → env vars → defaults) and Circuit Breaker / SLO Engine integration.
+- **Panic-Free Initialization**: All startup-critical operations use `unwrap_or_else` with error logging and `std::process::exit(1)` instead of `expect()`, preventing uncontrolled crashes.
+- **Silent Error Elimination**: Database migration `.ok()` calls replaced with informational logging to surface potential schema issues during initialization.
 
 ## 5. Comparison with Traditional Systems
 
@@ -65,7 +72,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-16*
+*Last Mutated: 2026-03-17*
 *Managed by: Aiome Sovereign Task Force*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)

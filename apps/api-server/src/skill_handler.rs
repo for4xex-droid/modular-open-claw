@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use crate::AppState;
@@ -169,7 +167,13 @@ pub async fn execute_forge_command(
     }
 }
 
-pub async fn execute_wasm_skill(skill_name: &str, skill_input: &str, state: &AppState) -> String {
+pub async fn execute_wasm_skill(
+    skill_name: &str,
+    skill_input: &str,
+    state: &AppState,
+    job_id: Option<&str>,
+    step_id: u32,
+) -> String {
     let test_payload = state
         .wasm_skill_manager
         .get_metadata(skill_name)
@@ -181,7 +185,19 @@ pub async fn execute_wasm_skill(skill_name: &str, skill_input: &str, state: &App
         input_test_payload: test_payload,
     };
 
-    match unverified.verify(&state.wasm_skill_manager).await {
+    let mut step = aiome_core::trajectory::TrajectoryStep {
+        step_id,
+        action: "execute_wasm_skill".into(),
+        tool_name: Some(skill_name.into()),
+        input: serde_json::from_str(skill_input).unwrap_or(serde_json::Value::String(skill_input.to_string())),
+        output: serde_json::Value::Null,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        constraint_violations: vec![],
+        is_critical_failure: false,
+        failure_category: None,
+    };
+
+    let result_str = match unverified.verify(&state.wasm_skill_manager).await {
         Ok(v) => {
             match state
                 .wasm_skill_manager
@@ -189,6 +205,7 @@ pub async fn execute_wasm_skill(skill_name: &str, skill_input: &str, state: &App
                 .await
             {
                 Ok(res) => {
+                    step.output = serde_json::from_str(&res).unwrap_or(serde_json::Value::String(res.clone()));
                     let limited_res = if res.len() > 3000 {
                         format!("{}... [Truncated for brevity]", &res[..3000])
                     } else {
@@ -197,17 +214,41 @@ pub async fn execute_wasm_skill(skill_name: &str, skill_input: &str, state: &App
                     format!("[{} Result: {}]", skill_name, limited_res)
                 }
                 Err(e) => {
+                    step.is_critical_failure = true;
+                    step.output = serde_json::json!({ "error": e.to_string() });
+                    step.failure_category = Some(aiome_core::trajectory::FailureCategory::SystemFailure);
                     format!("[{} Error: {}]", skill_name, e)
                 }
             }
         }
         Err(e) => {
+            step.is_critical_failure = true;
+            step.output = serde_json::json!({ "error": format!("Verification failed: {}", e) });
+            step.failure_category = Some(aiome_core::trajectory::FailureCategory::InvalidInvocation);
             format!(
                 "[{} Error: Verification failed or Skill not found: {}]",
                 skill_name, e
             )
         }
+    };
+
+    // 🛡️ AgentRx: Record Step if job_id is present
+    if let Some(id) = job_id {
+        // Evaluate constraints
+        let checker = infrastructure::constraint_checker::ConstraintChecker::new(
+            state.job_queue.fetch_active_immune_rules().await.unwrap_or_default(),
+            state.wasm_skill_manager.get_metadata(skill_name).map(|m| m.permissions).unwrap_or_default()
+        );
+        step.constraint_violations = checker.evaluate_step(&step);
+        if !step.constraint_violations.is_empty() && step.failure_category.is_none() {
+            step.failure_category = Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
+        }
+
+        use aiome_core::trajectory::TrajectoryStore;
+        let _ = state.job_queue.record_step(id, step).await;
     }
+
+    result_str
 }
 
 pub async fn describe_skill(skill_name: &str, state: &AppState) -> String {

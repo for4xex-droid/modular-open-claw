@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use super::try_get_optional_string;
@@ -157,17 +155,19 @@ impl FederationOps for SqliteJobQueue {
                     BASE64_STANDARD.decode(&k.node_id),
                     BASE64_STANDARD.decode(sig_b64),
                 ) {
-                    if let (Ok(pubkey), Ok(sig)) = (
-                        VerifyingKey::from_bytes(&pubkey_bytes.try_into().unwrap_or([0; 32])),
+                    if let (Ok(pubkey_arr), Ok(sig)) = (
+                        pubkey_bytes.try_into() as Result<[u8; 32], _>,
                         Signature::from_slice(&sig_bytes),
                     ) {
-                        if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
-                            valid = true;
-                        } else {
-                            warn!(
-                                "🛡️ [Federation] Signature verification failed for Karma {}.",
-                                k.id
-                            );
+                        if let Ok(pubkey) = VerifyingKey::from_bytes(&pubkey_arr) {
+                            if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
+                                valid = true;
+                            } else {
+                                warn!(
+                                    "🛡️ [Federation] Signature verification failed for Karma {}.",
+                                    k.id
+                                );
+                            }
                         }
                     }
                 }
@@ -221,12 +221,14 @@ impl FederationOps for SqliteJobQueue {
                     BASE64_STANDARD.decode(&r.node_id),
                     BASE64_STANDARD.decode(sig_b64),
                 ) {
-                    if let (Ok(pubkey), Ok(sig)) = (
-                        VerifyingKey::from_bytes(&pubkey_bytes.try_into().unwrap_or([0; 32])),
+                    if let (Ok(pubkey_arr), Ok(sig)) = (
+                        pubkey_bytes.try_into() as Result<[u8; 32], _>,
                         Signature::from_slice(&sig_bytes),
                     ) {
-                        if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
-                            valid = true;
+                        if let Ok(pubkey) = VerifyingKey::from_bytes(&pubkey_arr) {
+                            if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
+                                valid = true;
+                            }
                         }
                     }
                 }

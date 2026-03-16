@@ -2,12 +2,11 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::error::AiomeError;
+pub use aiome_core::security::{PermissionManifest, RuntimeJail};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
@@ -68,24 +67,6 @@ impl SecurityConfig {
 pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
     once_cell::sync::Lazy::new(SecurityConfig::load_or_default);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PermissionManifest {
-    pub allow_network: bool,
-    pub allow_filesystem_write: bool,
-    pub allow_shell_execution: bool,
-    pub allowed_domains: Vec<String>,
-}
-
-impl Default for PermissionManifest {
-    fn default() -> Self {
-        Self {
-            allow_network: false,
-            allow_filesystem_write: false,
-            allow_shell_execution: false,
-            allowed_domains: vec![],
-        }
-    }
-}
 
 /// Phase 2: Runtime Enforcement (The Bastion Guard)
 ///
@@ -95,13 +76,9 @@ pub struct BastionGuard {
     manifest: PermissionManifest,
 }
 
-impl BastionGuard {
-    pub fn new(manifest: PermissionManifest) -> Self {
-        Self { manifest }
-    }
-
-    /// シェルコマンドの実行を検証し、許可されていれば実行する (同期版)
-    pub fn safe_exec(&self, cmd_str: &str) -> Result<String, AiomeError> {
+impl RuntimeJail for BastionGuard {
+    /// シェルコマンドの実行を検証し、許可されていれば実行する
+    fn safe_exec(&self, cmd_str: &str) -> Result<String, AiomeError> {
         info!("🛡️ [BastionGuard] 検証中: {}", cmd_str);
 
         // 1. マニフェスト・チェック
@@ -125,7 +102,7 @@ impl BastionGuard {
         }
 
         // 3. センシティブなパス
-        if cmd_str.contains("/etc/") || cmd_str.contains("~/.ssh") || cmd_str.contains(".env") {
+        if cmd_str.contains("/etc/") || cmd_str.contains(".ssh") || cmd_str.contains(".env") || cmd_str.contains("../") {
             return Err(AiomeError::Infrastructure {
                 reason: "Security Violation: Sensitive access.".to_string(),
             });
@@ -156,6 +133,42 @@ impl BastionGuard {
             });
         }
 
+        // 5. Script Engine and Command Constraints (Red Team fix)
+        if binary == "python3" || binary == "python" {
+            if args.contains(&"-c") || args.contains(&"-m") {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: python -c/-m is forbidden.".into(),
+                });
+            }
+        }
+        if binary == "node" {
+            if args.contains(&"-e") || args.contains(&"--eval") {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: node -e is forbidden.".into(),
+                });
+            }
+        }
+        if binary == "find" || binary == "xargs" {
+            if args.contains(&"-exec") || args.contains(&"-I") {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: find -exec or xargs -I is forbidden.".into(),
+                });
+            }
+        }
+
+        // 6. Path Canonicalization & Strict traversal check
+        for arg in &args {
+            let path = std::path::Path::new(arg);
+            if let Ok(canon) = std::fs::canonicalize(path) {
+                let canon_str = canon.to_string_lossy();
+                if canon_str.contains("/etc/") || canon_str.contains("/.ssh") || canon_str.contains(".env") {
+                    return Err(AiomeError::Infrastructure {
+                        reason: "Security Violation: Directory traversal resolving to sensitive path detected.".into(),
+                    });
+                }
+            }
+        }
+
         use std::process::Command;
 
         let output =
@@ -174,6 +187,49 @@ impl BastionGuard {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    /// ファイルパスへの書き込み権限をチェック
+    fn check_fs_write(&self, _path: &std::path::Path) -> Result<(), AiomeError> {
+        if !self.manifest.allow_filesystem_write {
+            return Err(AiomeError::Infrastructure {
+                reason: "Security Violation: Filesystem write disabled.".into(),
+            });
+        }
+        Ok(())
+    }
+
+    /// ネットワーク接続をチェック
+    fn check_network(&self, url: &str) -> Result<(), AiomeError> {
+        if !self.manifest.allow_network {
+            return Err(AiomeError::Infrastructure {
+                reason: "Security Violation: Network access disabled.".into(),
+            });
+        }
+
+        // ドメイン・フィルタ
+        if !self.manifest.allowed_domains.is_empty() {
+            let mut allowed = false;
+            for domain in &self.manifest.allowed_domains {
+                if url.contains(domain) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if !allowed {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Security Violation: Domain '{}' not in allowed list.", url),
+                });
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl BastionGuard {
+    pub fn new(manifest: PermissionManifest) -> Self {
+        Self { manifest }
     }
 
     /// SEC-5: Quote-aware command splitting for paths with spaces

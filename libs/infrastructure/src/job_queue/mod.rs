@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::contracts::{ArenaMatch, FederatedKarma, ImmuneRule, OracleVerdict};
@@ -38,6 +36,7 @@ mod migrations;
 pub mod settings;
 mod swarm;
 mod taxonomy;
+mod trajectory_store;
 mod watchtower;
 
 use core_ops::CoreOps;
@@ -50,6 +49,7 @@ use guardrails::GuardrailOps;
 use karma::KarmaOps;
 use migrations::DbInitializer;
 use settings::SettingsOps;
+use trajectory_store::TrajectoryOps;
 use swarm::SwarmOps;
 use watchtower::WatchtowerOps;
 
@@ -121,8 +121,9 @@ impl JobQueue for SqliteJobQueue {
         topic: &str,
         style: &str,
         karma_directives: Option<&str>,
+        permission_manifest: Option<aiome_core::security::PermissionManifest>,
     ) -> Result<String, AiomeError> {
-        self.do_enqueue(category, topic, style, karma_directives)
+        self.do_enqueue(category, topic, style, karma_directives, permission_manifest)
             .await
     }
 

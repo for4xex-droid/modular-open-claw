@@ -23,7 +23,7 @@
 | **`WasmSkillManager`** | WASM プラグインの実行寿命、サンドボックス（WASI）、リソース制限を管理。 |
 | **`SkillForge`** | LLM による Rust コード生成と `cargo` を用いたコンパイルプロセスを制御。 |
 | **`McpProcessManager`** | 外部プロセスとして提供される MCP サーバーのライフサイクル（PGID ゾンビキル）と標準入出力を管理。 |
-| **`DockerDelegator`** | WASM の制限を超える重い依存関係や信頼できない複雑なタスクを、使い捨ての Docker Agent コンテナ（Shadow Worker）へ安全に委譲（Delegation）する。 |
+| **`DockerDelegator`** | `api-server` 内で動作し、WASM の制限を超える重い依存関係や信頼できない複雑なタスクを、使い捨ての Docker Agent コンテナ（Shadow Worker）へ安全に委譲（Delegation）する。 |
 | **`SKILL_FORGE_PROMPT.md`** | 高品質で安全なプラグインを生成するための「鉄の掟」を定めたシステム構成済プロンプト。 |
 
 ---
@@ -50,10 +50,10 @@
 
 ## 🛠️ トラブルシューティングと自己修復
 
-- **Compilation Error**: ビルド失敗時、`SkillForge` は最大 3 回まで、エラー内容を LLM にフィードバックしてコードの自動修正（Self-Healing）を試みる。
-- **Execution Fail**: 実行エラー（タイムアウト等）が発生した場合、Watchtower はユーザーに対し、現在機能が不安定であることを丁寧に報告し、次の鍛造サイクルでの修正を期す。
+- **Compilation Error**: ビルド失敗時、`SkillForge` は最大 3 回まで、エラー内容を LLM にフィードバックしてコードの自動修正（Self-Healing）を試みます。
+- **Execution Fail**: 実行エラー（タイムアウト等）が発生した場合、Watchtower はユーザーに対し、現在機能が不安定であることを丁寧に報告し、次の鍛造サイクルでの修正を期します。 `dry_run_skill` 機能により、本番投入前にサンドボックス内での動作確認が強制されます。
 
 ---
 
-更新日: 2026-03-03
+更新日: 2026-03-17
 管理者: Aiome / Watchtower Evolution Unit

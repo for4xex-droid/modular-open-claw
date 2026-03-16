@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **LLM Provider Infrastructure Layer**: Moved `DynamicLlmProvider` and `BackgroundLlmProvider` from `api-server/main.rs` to `libs/infrastructure/src/llm/dynamic.rs`, making them reusable across all crates.
+- **Centralized Configuration (`AiomeConfig`)**: Introduced `libs/shared/src/config.rs` with `AiomeConfig` struct that consolidates all environment variable loading (DB path, LLM hosts/models, API keys, CORS origins, Hub URLs) into a single source of truth.
+- **Immune System Hardening**: Expanded baseline threat detection signatures from 6 to 14 patterns, including reverse shells (`nc -e`), environment variable exfiltration (`API_KEY` patterns), SQL injection (`DROP TABLE`), and Python socket-based attacks.
+- **Streaming LLM Support**: Added `tokio-stream` dependency to infrastructure layer, enabling `stream_complete()` for real-time token-by-token LLM responses via SSE.
+- **Embedding Provider Fallback**: `BackgroundLlmProvider` now implements `EmbeddingProvider` trait with automatic fallback: Ruri → Gemini → Ollama.
+
+### Changed
+- **Panic-Free Startup**: Replaced all `expect()` / `unwrap()` calls in `api-server/main.rs` startup path with `unwrap_or_else` + `error!` + `std::process::exit(1)` for graceful error reporting.
+- **CORS Configuration**: Migrated from hardcoded origin strings to `AiomeConfig.allowed_origins`, loaded dynamically from `ALLOWED_ORIGINS` env var.
+- **Hub URL Resolution**: `SAMSARA_HUB_REST` and `SAMSARA_HUB_WS` now resolved from `AiomeConfig` instead of scattered `env::var()` calls.
+- **Federation Secret**: `FEDERATION_SECRET` no longer panics when unset; instead logs a warning and defaults to empty string.
+- **DB Migration Logging**: Replaced silent `.ok()` error suppression in `migrations.rs` with `info!` logging for index creation and ALTER TABLE operations.
+- **Server Bind Error**: TCP listener bind failure now shows the actual address and exits gracefully instead of panicking.
 - **API Server Modularization**: Extracted massive monolithic routing into `routes/` (karma, agent, biome, expression, general) to prepare for Biome integration.
 - **Samsara Engine (Evolution)**: AI self-leveling based on cumulative Technical Karma weights (`do_sync_samsara_level`).
 - **Meta-Control Security**: Introduced `ConstitutionalValidator` trait for Heterogeneous Dual-LLM validation. The `SoulMutator` now securely verifies `SOUL.md` mutations using a prosecutor LLM.

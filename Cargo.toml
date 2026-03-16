@@ -11,11 +11,12 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "apps/watchtower",
-    "libs/aiome-interface",
+    "libs/aiome-contracts",
 ]
 resolver = "2"
 
 [workspace.dependencies]
+aiome-contracts = { path = "libs/aiome-contracts" }
 tokio = { version = "1.35", features = ["full"] }
 axum = { version = "0.7", features = ["ws", "macros"] }
 serde = { version = "1.0", features = ["derive"] }

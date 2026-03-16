@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use crate::error::AiomeError;
@@ -65,7 +63,7 @@ impl DialogueManager {
         queue: &dyn JobQueue,
         llm: &dyn crate::llm_provider::LlmProvider,
         topic_id: &str,
-    ) -> Result<crate::biome::protocol::DialogueDistillation, AiomeError> {
+    ) -> Result<crate::biome::DialogueDistillation, AiomeError> {
         info!(
             "🔮 [Biome] Starting dialogue distillation for topic: {}",
             topic_id
@@ -108,7 +106,7 @@ impl DialogueManager {
         let signature = queue.sign_swarm_payload(&payload_to_sign).await?;
 
         // 4. Distillation オブジェクトの構築
-        let distillation = crate::biome::protocol::DialogueDistillation {
+        let distillation = crate::biome::DialogueDistillation {
             topic_id: topic_id.to_string(),
             summary: summary.clone(),
             participants: vec![node_id.clone()], // MVP: 自分自身の署名をまず入れる。将来的に Peer と交換。

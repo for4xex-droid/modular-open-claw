@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 //! # Job Queue Tests — The Immortal Proof
@@ -59,7 +57,7 @@ pub(crate) async fn create_test_queue() -> (SqliteJobQueue, tempfile::TempDir) {
 async fn test_sqlite_job_queue_basic_ops() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Test Topic", "Style", None)
+        .enqueue("Task", "Test Topic", "Style", None, None)
         .await
         .expect("Enqueue failed");
     let job = jq
@@ -74,7 +72,7 @@ async fn test_sqlite_job_queue_basic_ops() {
 #[tokio::test]
 async fn test_sqlite_job_queue_dequeue_lifecycle() {
     let (jq, _tmp) = create_test_queue().await;
-    jq.enqueue("Task", "Topic 1", "Style", None).await.unwrap();
+    jq.enqueue("Task", "Topic 1", "Style", None, None).await.unwrap();
     let job = jq
         .dequeue(&["Task"])
         .await
@@ -93,7 +91,7 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_storage() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -117,7 +115,7 @@ async fn test_sqlite_job_queue_karma_storage() {
 #[tokio::test]
 async fn test_sqlite_job_queue_zombie_reclamation() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Zombies", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Zombies", "Style", None, None).await.unwrap();
     jq.dequeue(&["Task"]).await.unwrap();
 
     // Simulate heartbeat timeout
@@ -137,7 +135,7 @@ async fn test_sqlite_job_queue_zombie_reclamation() {
 #[tokio::test]
 async fn test_sqlite_job_queue_creative_rating_guard() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Rating", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Rating", "Style", None, None).await.unwrap();
 
     // Cannot rate pending job (Atomic Guard)
     let res = jq.set_creative_rating(&job_id, 1).await;
@@ -154,7 +152,7 @@ async fn test_sqlite_job_queue_creative_rating_guard() {
 #[tokio::test]
 async fn test_sqlite_job_queue_db_purge() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Old Job", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Old Job", "Style", None, None).await.unwrap();
     let job = jq
         .dequeue(&["Task"])
         .await
@@ -176,7 +174,7 @@ async fn test_sqlite_job_queue_db_purge() {
 #[tokio::test]
 async fn test_sqlite_job_queue_concurrent_dequeue() {
     let (jq, _tmp) = create_test_queue().await;
-    jq.enqueue("Task", "Job 1", "Style", None).await.unwrap();
+    jq.enqueue("Task", "Job 1", "Style", None, None).await.unwrap();
 
     // Parallel dequeue
     let mut tasks = Vec::new();
@@ -206,7 +204,7 @@ async fn test_sqlite_job_queue_concurrent_dequeue() {
 #[tokio::test]
 async fn test_sqlite_job_queue_heartbeat() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Heart", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Heart", "Style", None, None).await.unwrap();
     jq.dequeue(&["Task"]).await.unwrap();
 
     let first = jq.fetch_job(&job_id).await.unwrap().unwrap().last_heartbeat;
@@ -220,7 +218,7 @@ async fn test_sqlite_job_queue_heartbeat() {
 #[tokio::test]
 async fn test_sqlite_job_queue_execution_logs() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Log", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Log", "Style", None, None).await.unwrap();
     jq.store_execution_log(&job_id, "WASM STDOUT: Hello")
         .await
         .unwrap();
@@ -231,7 +229,7 @@ async fn test_sqlite_job_queue_execution_logs() {
 #[tokio::test]
 async fn test_sqlite_job_queue_unincorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -256,7 +254,7 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
 #[tokio::test]
 async fn test_sqlite_job_queue_incorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -286,7 +284,7 @@ async fn test_sqlite_job_queue_incorporate_karma() {
 #[tokio::test]
 async fn test_sqlite_job_queue_retry_poison_pill() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Retry", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Retry", "Style", None, None).await.unwrap();
 
     jq.increment_job_retry_count(&job_id).await.unwrap();
     jq.increment_job_retry_count(&job_id).await.unwrap();
@@ -363,7 +361,7 @@ async fn test_sqlite_job_queue_soul_history() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_soul_coherence() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
     let soul_v1 = "550e8400-e29b-41d4-a716-446655440000";
     let soul_v2 = "660e8400-e29b-41d4-a716-446655440001";
 
@@ -395,7 +393,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     assert_eq!(result_v2_legacy.entries.len(), 1);
     assert!(result_v2_legacy.entries[0].lesson.contains("[LEGACY KARMA"));
 
-    let job_id2 = jq.enqueue("Task", "Topic 2", "Style", None).await.unwrap();
+    let job_id2 = jq.enqueue("Task", "Topic 2", "Style", None, None).await.unwrap();
     jq.store_karma(
         &job_id2,
         "soul_skill",
@@ -450,7 +448,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
     jq = jq.with_embeddings(Arc::new(MockEmbedProvider));
 
     let job_id = jq
-        .enqueue("Task", "Real Topic", "Style", None)
+        .enqueue("Task", "Real Topic", "Style", None, None)
         .await
         .unwrap();
     // Use manual SQL to insert embedding matched to MockEmbedProvider's output
@@ -481,7 +479,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
 async fn test_sqlite_job_queue_karma_cache_hit() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Cache Test", "Style", None)
+        .enqueue("Task", "Cache Test", "Style", None, None)
         .await
         .unwrap();
     jq.store_karma(
@@ -520,7 +518,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_weight_clamp() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -563,7 +561,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
 
     // 1. Weak memory (low weight) + unused
     jq.store_karma(
@@ -642,7 +640,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_fts_match() {
     let (jq, _tmp) = create_test_queue().await;
-    let job_id = jq.enqueue("Task", "Topic", "Style", None).await.unwrap();
+    let job_id = jq.enqueue("Task", "Topic", "Style", None, None).await.unwrap();
 
     // 1. Generic lesson
     jq.store_karma(
@@ -755,7 +753,69 @@ async fn test_sqlite_settings_secret_masking() {
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].key, "telegram_token");
     assert!(all[0].is_secret);
-    // Since this is the direct test of SqliteJobQueue, we might just be testing if `is_secret` is respected, not necessarily evaluating presentation masking here.
+// Since this is the direct test of SqliteJobQueue, we might just be testing if `is_secret` is respected, not necessarily evaluating presentation masking here.
     // In our `api-server`, get_settings does `if s.is_secret { s.value = "********" }`.
     // If we want DB-level masking, we'd need to update `fetch_all_settings`. Let's just assert `is_secret` flag.
 }
+
+#[tokio::test]
+async fn test_sqlite_trajectory_store() {
+    use aiome_core::trajectory::{TrajectoryStore, TrajectoryStep, AgentDiagnosis, FailureCategory};
+    let (jq, _tmp) = create_test_queue().await;
+    
+    // Create a dummy job first
+    let job_id = jq
+        .enqueue("Testing", "Trajectory Test", "Standard", None, None)
+        .await
+        .expect("Failed to enqueue dummy job");
+
+    // 1. Record Step
+    let step = TrajectoryStep {
+        step_id: 1,
+        action: "test_action".into(),
+        tool_name: Some("test_tool".into()),
+        input: serde_json::json!({ "arg": 1 }),
+        output: serde_json::json!({ "res": 1 }),
+        timestamp: "2026-03-17T00:00:00Z".into(),
+        constraint_violations: vec![],
+        is_critical_failure: false,
+        failure_category: None,
+    };
+    
+    jq.record_step(&job_id, step.clone())
+        .await
+        .expect("Failed to record trajectory step");
+
+    // 2. Fetch Trajectory
+    let trajectory = jq.fetch_trajectory(&job_id)
+        .await
+        .expect("Failed to fetch trajectory");
+    
+    assert_eq!(trajectory.len(), 1);
+    assert_eq!(trajectory[0].action, "test_action");
+    assert_eq!(trajectory[0].tool_name, Some("test_tool".into()));
+
+    // 3. Store Diagnosis
+    let diagnosis = AgentDiagnosis {
+        critical_failure_step: 1,
+        category: FailureCategory::InvalidInvocation,
+        root_cause: "Missing argument".into(),
+        evidence: vec![],
+        self_repair_hint: "Add argument".into(),
+        diagnosed_at: "now".into(),
+    };
+
+    jq.store_diagnosis(&job_id, diagnosis)
+        .await
+        .expect("Failed to store diagnosis");
+
+    // 4. Fetch Diagnosis
+    let fetched = jq.fetch_diagnosis(&job_id)
+        .await
+        .expect("Failed to fetch diagnosis")
+        .expect("Diagnosis should exist");
+
+    assert_eq!(fetched.root_cause, "Missing argument");
+    assert_eq!(fetched.self_repair_hint, "Add argument");
+}
+

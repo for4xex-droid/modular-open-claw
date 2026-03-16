@@ -1,0 +1,24 @@
+[package]
+name = "aiome-contracts"
+version = "0.1.0"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+utoipa = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["sync", "time"] }
+tokio-stream = { workspace = true }
+reqwest = { workspace = true }
+base64 = { workspace = true }
+chacha20poly1305 = { workspace = true }
+rand = { workspace = true }
+async-stream = { workspace = true }
+bastion = { package = "bastion-core", git = "https://github.com/for4xex-droid/bastion.git", branch = "main", features = ["fs"] }

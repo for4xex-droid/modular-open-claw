@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use aiome_core::error::AiomeError;

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use axum::Router;
-use aiome_interface::plugin::AiomePlugin;
+use aiome_contracts::plugin::AiomePlugin;
 use tracing::{info, warn};
 
 pub struct PluginRegistry {
@@ -19,9 +19,13 @@ impl PluginRegistry {
 
     pub fn merge_routes(&self, mut router: Router) -> Router {
         for plugin in &self.plugins {
-            if let Some(plugin_router) = plugin.routes() {
-                info!("🛣️  Merging routes from plugin: {}", plugin.name());
-                router = router.merge(plugin_router);
+            if let Some(opaque_router) = plugin.routes() {
+                if let Some(plugin_router) = opaque_router.downcast_ref::<Router>() {
+                    info!("🛣️  Merging routes from plugin: {}", plugin.name());
+                    router = router.merge(plugin_router.clone());
+                } else {
+                    warn!("⚠️  Plugin {} returned a router that is not an axum::Router", plugin.name());
+                }
             }
         }
         router

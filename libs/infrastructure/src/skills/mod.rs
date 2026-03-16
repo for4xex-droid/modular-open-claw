@@ -2,12 +2,10 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::security::BastionGuard;
+use crate::security::{BastionGuard, RuntimeJail};
 use extism::{Function, Manifest, Plugin, UserData, Val, ValType};
 use jsonschema::JSONSchema;
 use std::collections::HashMap;
@@ -251,22 +249,26 @@ impl WasmSkillManager {
                 extism::Wasm::data(wasm_data)
             };
 
+            let host_exec_permissions = metadata.as_ref().map(|m| m.permissions.clone()).unwrap_or_default();
+            let init_guard = BastionGuard::new(host_exec_permissions.clone());
+
             let mut manifest = Manifest::new([wasm])
                 .with_timeout(timeout);
 
             // Apply Sandbox Roots
             if let Some(parent) = skills_dir_parent {
                 if let Ok(jail_root) = std::fs::canonicalize(parent) {
-                    manifest = manifest.with_allowed_path(jail_root.to_string_lossy().to_string(), "/mnt");
+                    if init_guard.check_fs_write(&jail_root).is_ok() {
+                        manifest = manifest.with_allowed_path(jail_root.to_string_lossy().to_string(), "/mnt");
+                    }
                 }
             }
 
             // Apply Network Whitelist
-            if let Some(meta) = metadata.as_ref() {
-                for host in &meta.allowed_hosts {
-                    // Wildcard check is done here again for depth safety
-                    if host != "*" {
-                        manifest = manifest.with_allowed_host(host);
+            if host_exec_permissions.allow_network {
+                for domain in &host_exec_permissions.allowed_domains {
+                    if domain != "*" && init_guard.check_network(domain).is_ok() {
+                        manifest = manifest.with_allowed_host(domain);
                     }
                 }
             }
@@ -279,7 +281,6 @@ impl WasmSkillManager {
             }
 
             // 2. Build Host Functions
-            let host_exec_permissions = metadata.as_ref().map(|m| m.permissions.clone()).unwrap_or_default();
             let host_exec_fn = Function::new(
                 "host_exec",
                 [ValType::I64],
@@ -291,9 +292,10 @@ impl WasmSkillManager {
                     let cmd_str: String = plugin.memory_str(handle).map_err(|e: extism::Error| e)?.to_string();
                     let guard = BastionGuard::new(host_exec_permissions.clone());
                     match guard.safe_exec(&cmd_str) {
-                        Ok(stdout) => {
-                            let mem = plugin.memory_alloc(stdout.len() as u64)?;
-                            plugin.memory_bytes_mut(mem)?.copy_from_slice(stdout.as_bytes());
+                        Ok(stdout_str) => {
+                            let stdout_bytes = stdout_str.as_bytes();
+                            let mem = plugin.memory_alloc(stdout_bytes.len() as u64)?;
+                            plugin.memory_bytes_mut(mem)?.copy_from_slice(stdout_bytes);
                             outputs[0] = Val::I64(mem.offset() as i64);
                         },
                         Err(e) => {

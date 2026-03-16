@@ -37,21 +37,22 @@ graph TD
         terminal_exec(terminal_exec)
         fs_writer(fs_writer)
         napi-bridge(napi-bridge)
-        aiome-interface(aiome-interface)
+        aiome-contracts(aiome-contracts)
     end
 
     api-server --> infrastructure
     api-server --> shared
-    api-server --> aiome-interface
+    api-server --> aiome-contracts
     samsara-hub --> aiome-core
     samsara-hub --> shared
     samsara-hub --> infrastructure
     key-proxy --> aiome-core
     key-proxy --> shared
     aiome-core --> shared
-    aiome-core --> aiome-interface
+    aiome-core --> aiome-contracts
+    infrastructure --> aiome-contracts
     infrastructure --> shared
-    shared --> aiome-interface
+    shared --> aiome-contracts
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
@@ -76,13 +77,13 @@ graph TD
 | `napi-bridge` | `libs/napi-bridge` | (Core Module) |
 | `management-console` | `apps/management-console/src-tauri` | A Tauri App |
 | `watchtower` | `apps/watchtower` | (Core Module) |
-| `aiome-interface` | `libs/aiome-interface` | (Core Module) |
+| `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
 ```text
-DISCORD_TOKEN, DISCORD_LOG_CHANNEL_ID, DISCORD_COMMAND_CHANNEL_ID, DISCORD_CHAT_CHANNEL_ID, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, LLM_PROVIDER, OLLAMA_BASE_URL, OLLAMA_MODEL, LM_STUDIO_HOST, GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, RURI_EMBED_URL, NODE_ID, FEDERATION_SECRET, SAMSARA_HUB_REST, SAMSARA_HUB_WS, API_WS_URL, ADVANCED_EXPERIENCE_MODE, LOG_LEVEL, JSON_LOGS, PORT, ENFORCE_GUARDRAIL, API_SERVER_SECRET, AIOME_DB_PATH, MCP_CONFIG_PATH, SEARCH_API_KEY, BRAVE_SEARCH_API_KEY, VAULT_SECRET, KEY_PROXY_URL, KEY_PROXY_PORT
+AIOME_DB_PATH, LOG_LEVEL, PORT, OLLAMA_HOST, OLLAMA_MODEL, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, RURI_EMBED_URL, GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, SEARCH_API_KEY, API_SERVER_SECRET, VAULT_SECRET, ALLOWED_ORIGINS, DISCORD_TOKEN, TELEGRAM_TOKEN, DISCORD_CHAT_CHANNEL_ID, DISCORD_COMMAND_CHANNEL_ID, API_WS_URL, FEDERATION_SECRET, SAMSARA_HUB_REST, SAMSARA_HUB_WS, WORKSPACE_DIR, KEY_PROXY_URL, ENFORCE_GUARDRAIL, KEY_PROXY_PORT
 ```
 
 ---
-*Last Auto-Generated: 2026-03-16 23:42:22 UTC*
+*Last Auto-Generated: 2026-03-17 03:18:49 UTC*

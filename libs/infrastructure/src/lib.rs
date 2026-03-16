@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 #![forbid(unsafe_code)]
 
@@ -20,7 +18,9 @@ pub mod channel_bridge;
 pub mod circuit_breaker;
 pub mod commerce_mock;
 pub mod concept_manager;
+pub mod constraint_checker;
 pub mod context_engine;
+pub mod diagnostics;
 pub mod dream_state;
 pub mod heartbeat_wakeup;
 pub mod immune_system;

@@ -163,6 +163,17 @@ When you receive a heartbeat poll, don't just reply `HEARTBEAT_OK` every time. U
 - Commit and push your own changes
 - **Review and update MEMORY.md** (see below)
 
+### 📚 Documentation Sync Rule
+
+実装タスクを完了した際は、以下のチェックを必ず実行せよ：
+
+1. **CHANGELOG.md** — 変更内容が [Unreleased] に追記されているか？
+2. **README_en.md** — README.md に変更があった場合、英語版も同期されているか？
+3. **.env.example** — 環境変数が追加/変更された場合、テンプレートが更新されているか？
+4. **/docs-sync** — 必要に応じて `/docs-sync` ワークフローを実行し、仕様書を更新せよ。
+
+ドキュメントの鮮度は、AIシステム全体の信頼性に直結する。
+
 ### 🔄 Memory Maintenance (During Heartbeats)
 
 Periodically (every few days), use a heartbeat to:

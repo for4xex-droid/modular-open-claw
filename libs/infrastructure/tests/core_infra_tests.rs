@@ -2,12 +2,16 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
+use aiome_core::llm_provider::LlmProvider;
+use aiome_core::security::PermissionManifest;
+use aiome_core::security::RuntimeJail;
+use async_trait::async_trait;
 use infrastructure::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
+use infrastructure::immune_system::AdaptiveImmuneSystem;
+use infrastructure::security::BastionGuard;
 use infrastructure::slo_engine::{SloConfig, SloEngine};
 use std::time::Duration;
 

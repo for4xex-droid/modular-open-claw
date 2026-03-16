@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use crate::error::AppError;
@@ -46,12 +44,12 @@ pub async fn trigger_failure_demo(
 
     let _ = state
         .job_queue
-        .enqueue("Demo", "WASM Bridge Failure", "Standard", None)
+        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None)
         .await;
     let job_id = "demo-job-123";
     let real_job_id = state
         .job_queue
-        .enqueue("Demo", "WASM Bridge Failure", "Standard", None)
+        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None)
         .await
         .unwrap_or_else(|_| job_id.to_string());
 

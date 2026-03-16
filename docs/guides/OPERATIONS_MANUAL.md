@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 2.0  
-**Last Updated:** 2026-03-13
+**Version:** 3.0  
+**Last Updated:** 2026-03-17
 
 ---
 
@@ -50,7 +50,21 @@ BG_LLM_MODEL=qwen3.5:9b
 API_SERVER_SECRET=your_random_secret_here
 VAULT_SECRET=your_vault_secret
 FEDERATION_SECRET=your_hub_secret
+
+# --- オプション (デフォルト値あり) ---
+AIOME_DB_PATH=sqlite://workspace/aiome.db       # DBパス
+OLLAMA_HOST=http://127.0.0.1:11434              # Ollamaホスト
+OLLAMA_MODEL=qwen3.5:9b                          # Ollamaモデル
+PORT=3015                                        # APIサーバーポート
+KEY_PROXY_URL=http://127.0.0.1:3017             # Abyss Vault URL
+SAMSARA_HUB_REST=http://127.0.0.1:3016          # Samsara Hub REST URL
+SAMSARA_HUB_WS=ws://127.0.0.1:3016/api/v1/federation/ws  # Hub WebSocket
+ALLOWED_ORIGINS=http://localhost:1420,http://localhost:5173  # CORS許可オリジン
+EMBEDDING_PROVIDER=ruri                          # 埋め込みプロバイダー (ruri/gemini/ollama)
+RURI_EMBED_URL=http://localhost:8100             # RuriサーバーURL
 ```
+
+> **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。
 
 ### 2.2 ビルドと初期検証
 
@@ -105,9 +119,20 @@ AIの性格や話し方を定義するファイルです。オンボーディン
 
 ### 5.1 スキーマ概要
 - `jobs`: 全ジョブの履歴
-- `karma_logs`: 学習した教訓の蓄積
+- `karma_logs`: 学習した教訓の蓄積 (ティア制: HOT/WARM/COLD, FTS5検索対応)
 - `system_settings`: LLM設定、AI名などのシステム設定
-- `chat_messages`: Agent Consoleのチャット履歴
+- `chat_history`: Agent Consoleのチャット履歴
+- `chat_memory_summaries`: チャット記憶の蒸留サマリー
+- `soul_mutation_history`: 魂の変異履歴
+- `evolution_chronicle`: 進化ハッシュチェーン記録
+- `agent_stats`: エージェントステータス (レベル/経験値/共鳴)
+- `biome_messages` / `biome_peers` / `biome_topics`: Biomeプロトコル
+- `immune_rules`: 免疫ルール (フェデレーション対応)
+- `ai_artifacts` / `artifact_edges`: アーティファクトストア
+- `expressions`: Expression Engine (自律表現)
+- `sns_metrics_history`: SNSメトリクスレコード
+- `federation_peers`: フェデレーションピア
+- `arena_history`: スキルアリーナ対戦履歴
 
 ### 5.2 DB ファイルの場所
 SQLite DB は `workspace/aiome.db` に自動作成されます。
@@ -142,8 +167,10 @@ RUST_LOG=info cargo run -p api-server
 - [ ] `.env` に `FEDERATION_SECRET` を設定 (Samsara Hub用)
 - [ ] `SOUL.md` を確認・カスタマイズ
 - [ ] Ollama でモデルをダウンロード (`ollama pull qwen3.5:9b`)
+- [ ] `ALLOWED_ORIGINS` にフロントエンドURLを追加
 - [ ] `cargo run -p api-server` でテスト起動
 - [ ] ブラウザで `http://localhost:3015` にアクセスし動作確認
+- [ ] 起動ログに 🚨 エラーがないことを確認
 
 ### 9. local Embedding Server (ruri-v3) の起動
 1. `tools/ruri-embed-server` に移動。

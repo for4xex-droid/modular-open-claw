@@ -54,7 +54,7 @@ libs/shared         (Common Utils, Types)
 
 ## 💰 NURTURE Integration (Commercial Bridge)
 
-本作はオープンソースの `modular-open-claw` と、商用版 `Project-Nurture` のハイブリッド構成をサポートする。
+本作はオープンソースの `Aiome` と、商用版 `Project-Nurture` のハイブリッド構成をサポートする。
 
 1.  **CommerceEngine**: `libs/core` に定義されたトレイトにより、経済圏へのアクセスを抽象化。
 2.  **API Gate**: `apps/api-server` の `/api/v1/commerce` エンドポイントを介して、エージェントが自律的に決済や残高確認を行う。

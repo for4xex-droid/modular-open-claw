@@ -2,10 +2,10 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
+
+#![forbid(unsafe_code)]
 
 use futures_util::{SinkExt, StreamExt};
 use infrastructure::channel_bridge::{ChannelBridge, DiscordBridge, TelegramBridge};
@@ -23,8 +23,10 @@ async fn main() -> anyhow::Result<()> {
 
     let discord_token = std::env::var("DISCORD_TOKEN").ok();
     let telegram_token = std::env::var("TELEGRAM_TOKEN").ok();
-    let api_secret =
-        std::env::var("API_SERVER_SECRET").expect("🚨 API_SERVER_SECRET must be set for security!");
+    let api_secret = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
+        error!("🚨 [CRITICAL] API_SERVER_SECRET must be set for security!");
+        std::process::exit(1);
+    });
     let api_ws_url = std::env::var("API_WS_URL")
         .unwrap_or_else(|_| "ws://127.0.0.1:3015/api/v1/watchtower/ws".to_string());
 

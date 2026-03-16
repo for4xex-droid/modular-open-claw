@@ -2,10 +2,10 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
+
+#![forbid(unsafe_code)]
 
 use aiome_core::contracts::{
     ApprovalState, ArenaMatch, FederatedKarma, FederationPushRequest, FederationPushResponse,
@@ -77,10 +77,11 @@ async fn main() -> anyhow::Result<()> {
 
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite:samsara_hub.db?mode=rwc".to_string());
-    let secret = secrecy::SecretString::new(
-        std::env::var("FEDERATION_SECRET")
-            .expect("FEDERATION_SECRET must be set for Samsara Hub security"),
-    );
+    let secret_val = std::env::var("FEDERATION_SECRET").unwrap_or_else(|_| {
+        tracing::error!("🚨 [CRITICAL] FEDERATION_SECRET must be set for Samsara Hub security!");
+        std::process::exit(1);
+    });
+    let secret = secrecy::SecretString::new(secret_val);
     let port = std::env::var("PORT").unwrap_or_else(|_| "3016".to_string());
 
     // Configure SQLite with Performance & Reliability Options for Large-Scale Sync
@@ -521,12 +522,14 @@ async fn biome_relay_handler(
         BASE64_STANDARD.decode(&msg.sender_pubkey),
         BASE64_STANDARD.decode(&msg.signature),
     ) {
-        if let (Ok(pubkey), Ok(sig)) = (
-            VerifyingKey::from_bytes(&pubkey_bytes.try_into().unwrap_or([0; 32])),
+        if let (Ok(pubkey_arr), Ok(sig)) = (
+            pubkey_bytes.try_into() as Result<[u8; 32], _>,
             Signature::from_slice(&sig_bytes),
         ) {
-            if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
-                valid = true;
+            if let Ok(pubkey) = VerifyingKey::from_bytes(&pubkey_arr) {
+                if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
+                    valid = true;
+                }
             }
         }
     }
@@ -1057,12 +1060,14 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                     BASE64_STANDARD.decode(&k.node_id),
                     BASE64_STANDARD.decode(sig_b64),
                 ) {
-                    if let (Ok(pubkey), Ok(sig)) = (
-                        VerifyingKey::from_bytes(&pubkey_bytes.try_into().unwrap_or([0; 32])),
+                    if let (Ok(pubkey_arr), Ok(sig)) = (
+                        pubkey_bytes.try_into() as Result<[u8; 32], _>,
                         Signature::from_slice(&sig_bytes),
                     ) {
-                        if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
-                            valid = true;
+                        if let Ok(pubkey) = VerifyingKey::from_bytes(&pubkey_arr) {
+                            if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
+                                valid = true;
+                            }
                         }
                     }
                 }
@@ -1116,12 +1121,14 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                     BASE64_STANDARD.decode(&r.node_id),
                     BASE64_STANDARD.decode(sig_b64),
                 ) {
-                    if let (Ok(pubkey), Ok(sig)) = (
-                        VerifyingKey::from_bytes(&pubkey_bytes.try_into().unwrap_or([0; 32])),
+                    if let (Ok(pubkey_arr), Ok(sig)) = (
+                        pubkey_bytes.try_into() as Result<[u8; 32], _>,
                         Signature::from_slice(&sig_bytes),
                     ) {
-                        if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
-                            valid = true;
+                        if let Ok(pubkey) = VerifyingKey::from_bytes(&pubkey_arr) {
+                            if pubkey.verify(payload.as_bytes(), &sig).is_ok() {
+                                valid = true;
+                            }
                         }
                     }
                 }

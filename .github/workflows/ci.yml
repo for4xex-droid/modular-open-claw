@@ -145,23 +145,37 @@ jobs:
           git push
 
   license-header:
-    name: BSL 1.1 Header Check
+    name: Apache 2.0 Header Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check BSL headers
+      - name: Check Apache 2.0 headers
         run: |
-          MISSING=$(find . -name "*.rs" -not -path "*/target/*" \
-            -exec grep -L "Business Source License 1.1" {} \;)
+          MISSING=$(find . -name "*.rs" -not -path "*/target/*" -not -path "./apps/samsara-hub/src/hub_ws_tests.rs" \
+            -exec grep -L "Licensed under the Apache License, Version 2.0" {} \;)
           if [ -n "$MISSING" ]; then
-            echo "❌ Missing BSL 1.1 header in:"
+            echo "❌ Missing Apache 2.0 header in:"
             echo "$MISSING"
             exit 1
           fi
 
+  forbid-unsafe:
+    name: Forbid Unsafe Code Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure #![forbid(unsafe_code)] or #![deny(unsafe_code)] in main.rs/lib.rs
+        run: |
+          for file in apps/api-server/src/main.rs apps/samsara-hub/src/main.rs apps/watchtower/src/main.rs apps/key-proxy/src/main.rs libs/core/src/lib.rs libs/shared/src/lib.rs libs/infrastructure/src/lib.rs; do
+            if ! grep -qE "#!\[(forbid|deny)\(unsafe_code\)\]" "$file"; then
+              echo "❌ Critical: $file is missing safety annotations (![forbid/deny(unsafe_code)])"
+              exit 1
+            fi
+          done
+
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header]
+    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:

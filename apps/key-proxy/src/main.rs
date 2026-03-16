@@ -2,10 +2,10 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
+
+#![deny(unsafe_code)]
 
 use axum::{
     Json, Router,
@@ -93,15 +93,21 @@ async fn main() -> anyhow::Result<()> {
 
     // 2. Load keys and SELF-WIPE ENV
     dotenvy::dotenv().ok();
-    let gemini_key =
-        env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set in key-proxy/.env");
+    let gemini_key = env::var("GEMINI_API_KEY").unwrap_or_else(|_| {
+        error!("🚨 [CRITICAL] GEMINI_API_KEY must be set in key-proxy/.env");
+        std::process::exit(1);
+    });
 
     // Self-Wipe: Remove from environment immediately
     // SAFETY: This is called at startup before any other threads are spawned, 
     // satisfying the safety requirement of the current Rust env implementation.
-    unsafe {
-        env::remove_var("GEMINI_API_KEY");
+    #[allow(unsafe_code)]
+    fn wipe_env(key: &str) {
+        unsafe {
+            env::remove_var(key);
+        }
     }
+    wipe_env("GEMINI_API_KEY");
     info!("🧹 [KeyProxy] Environment wiped. Gemini key is now only in memory.");
 
     let mut quotas = HashMap::new();
@@ -196,8 +202,10 @@ async fn auth_middleware(
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok());
 
-    let expected_secret =
-        env::var("VAULT_SECRET").expect("🚨 VAULT_SECRET must be set for Abyss Vault access!");
+    let expected_secret = env::var("VAULT_SECRET").unwrap_or_else(|_| {
+        error!("🚨 [CRITICAL] VAULT_SECRET must be set for Abyss Vault access!");
+        std::process::exit(1);
+    });
     let expected = format!("Bearer {}", expected_secret);
 
     if auth_header

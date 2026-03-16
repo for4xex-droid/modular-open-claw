@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-ELv2-blue.svg" alt="License: ELv2">
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0">
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome">
   <a href="https://github.com/google/antigravity"><img src="https://img.shields.io/badge/Built%20by-Agents-blueviolet" alt="Built by Agents"></a>
@@ -66,15 +66,14 @@ We provide the OS for free and create value through the ecosystem running on top
 - **SAMSARA Hub (Managed Service)**: Managed, high-speed federated learning hubs hosted for enterprises.
 - **Enterprise Support**: SLAs and technical support for corporate deployments.
 
-```text
 apps/api-server      ← Main Execution Hub (The Body / Management Engine)
 apps/watchtower      ← External Channel Integration (The Soul / Discord & Telegram Bridge)
       ↓
 libs/core            ← Domain Logic (Open)
       ↓
-libs/infrastructure ← I/O Impl (SQLite, Network / Open)
+libs/infrastructure ← I/O Impl (SQLite, LLM Dynamic Providers / Open)
       ↓
-libs/shared        ← Common Types, Guardrails (Open)
+libs/shared        ← Common Types, Guardrails, AiomeConfig (Open)
 ```
 
 ---
@@ -185,17 +184,22 @@ cargo run --bin samsara-hub
 - `GEMINI_API_KEY`: For Gemini Cloud LLM (front-end inference).
 - `BG_LLM_PROVIDER`: Background LLM provider (default: `ollama`).
 - `BG_LLM_MODEL`: Background LLM model (default: `qwen3.5:9b`).
-- `OLLAMA_BASE_URL`: For local LLM connections (default: `http://localhost:11434`).
+- `OLLAMA_HOST`: For local LLM connections (default: `http://localhost:11434`).
+- `EMBEDDING_PROVIDER`: Embedding provider (`ruri` / `gemini` / `ollama`). Default: `ruri`.
+- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins.
 - `EXTERNAL_SERVICE_URL`: For integration with external generation engines like ComfyUI.
 - `VAULT_SECRET`: Authentication for Abyss Vault (Key Proxy).
 - `FEDERATION_SECRET`: Authentication for Samsara Hub communication.
 - `API_SERVER_SECRET`: Authentication for all API Server requests.
+
+> ℹ️ All environment variables are centrally managed in `AiomeConfig` (`libs/shared/src/config.rs`). For more technical details, see [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md).
 
 ---
 
 ## 📚 Documentation (Mostly JP)
 
 - **[AI Architecture Law](docs/architecture/ARCHITECTURE_LAW.md)**: Foundational principles for intellectual integrity and safety.
+- **[LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md)**: Design of dynamic LLM providers and fallback logic.
 - **[Operations Guide](docs/guides/OPERATIONS_MANUAL.md)**: Detailed setup and operational procedures.
 - **[Evolution Strategy](docs/architecture/EVOLUTION_STRATEGY.md)**: Design philosophy of self-evolution and rearing systems.
 - **[Soul Customization](docs/guides/CUSTOMIZING_SOUL.md)**: Adjusting the AI's personality and reactions.
@@ -214,6 +218,9 @@ cargo run --bin samsara-hub
 
 ## 🛡️ License
 
-**Aiome Core** is provided under the **Elastic License 2.0 (ELv2)**. For enterprise support or custom integration consulting, please contact [motivationstudio,LLC](https://github.com/motivationstudio-llc/aiome).
+**Aiome Core** is provided under the **Apache License 2.0**. You can freely use, modify, and distribute the core engine even for commercial purposes.
+However, the federated learning component, **Samsara Hub**, is provided under the **Business Source License 1.1 (BSL 1.1)** to restrict managed service offerings. Please refer to the respective `LICENSE` files for details.
+
+For enterprise support or custom integration consulting, please contact [motivationstudio,LLC](https://github.com/motivationstudio-llc/aiome).
 
 *Built by [motivationstudio,LLC](https://github.com/motivationstudio-llc) — Powering the Future of AI Autonomy.*

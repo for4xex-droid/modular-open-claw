@@ -2,9 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Business Source License 1.1 (BSL 1.1).
- * Change Date: 2030-01-01
- * Change License: Apache License 2.0
+ * Licensed under the Apache License, Version 2.0.
  */
 
 use super::types::*;
@@ -166,7 +164,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
             info!("🛠️ [MCP] Tool invocation: {}", name);
             // Re-use logic from skill_handler
             let result =
-                crate::skill_handler::execute_wasm_skill(name, &arguments.to_string(), state).await;
+                crate::skill_handler::execute_wasm_skill(name, &arguments.to_string(), state, None, 0).await;
 
             JsonRpcResponse {
                 jsonrpc: "2.0".into(),
