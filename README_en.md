@@ -133,7 +133,7 @@ Aiome's true power lies in its **extreme extensibility leveraging WASM (WebAssem
 Watchtower is the gateway for a master to interact with Aiome's "Personality." Through Discord, it reports system status, awaits instructions, and offers autonomous suggestions.
 
 - **Details**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md) *(JP)*
-- **Personality Manifest**: [WATCHTOWER_MANIFEST.md](WATCHTOWER_MANIFEST.md) 🐾
+- **Personality Manifest**: [SOUL.md](SOUL.md) 🐾
 
 ### 2. api-server (Demonstration Hub)
 A reference implementation of a management hub using Aiome Core, providing SSE-based Agent Console and security monitoring.

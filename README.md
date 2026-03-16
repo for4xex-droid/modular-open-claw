@@ -145,7 +145,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 Watchtower は、Aiome の「人格」がユーザーと触れ合うための窓口です。Discord を通じて、システムの稼働状態を報告したり、ユーザーの指示を待機したり、自律的な提案を行います。
 
 - **詳細**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md)
-- **人格定義**: [WATCHTOWER_MANIFEST.md](WATCHTOWER_MANIFEST.md) 🐾
+- **人格定義**: [SOUL.md](SOUL.md) 🐾
 
 ### 2. 工場 / スキル (Skills & Modules)
 Aiome Core 上で動作する具体的なアプリケーションです。
