@@ -53,7 +53,7 @@ Aiome employs **Formal Verification**, **Model-Based Testing (MBT)**, and **Desi
 
 
 ---
-For technical details on our security architecture, see [docs/SECURITY_DESIGN.md](docs/SECURITY_DESIGN.md).
-技術的な詳細については、[docs/SECURITY_DESIGN.md](docs/SECURITY_DESIGN.md) を参照してください。
+For technical details on our security architecture, see [docs/architecture/SECURITY_DESIGN.md](docs/architecture/SECURITY_DESIGN.md).
+技術的な詳細については、[docs/architecture/SECURITY_DESIGN.md](docs/architecture/SECURITY_DESIGN.md) を参照してください。
 
 *Maintenance: Aiome Security Team*

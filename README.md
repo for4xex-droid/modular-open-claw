@@ -144,7 +144,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 ### 1. 監視所 (Watchtower) — The Manifestation of SOUL
 Watchtower は、Aiome の「人格」がユーザーと触れ合うための窓口です。Discord を通じて、システムの稼働状態を報告したり、ユーザーの指示を待機したり、自律的な提案を行います。
 
-- **詳細**: [docs/WATCHTOWER_USER_GUIDE.md](docs/WATCHTOWER_USER_GUIDE.md)
+- **詳細**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md)
 - **人格定義**: [WATCHTOWER_MANIFEST.md](WATCHTOWER_MANIFEST.md) 🐾
 
 ### 2. 工場 / スキル (Skills & Modules)
@@ -218,11 +218,11 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 
 ## 📚 ドキュメント (Documentation)
 
-- **[AI憲法 (Architecture Law)](docs/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
-- **[運用マニュアル (Operations Guide)](docs/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
-- **[進化戦略 (Evolution Strategy)](docs/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
-- **[人格のカスタマイズ (Soul Customization)](docs/CUSTOMIZING_SOUL.md)**: AIの性格や反応の調整方法。
-- **[セキュリティ設計 (Security Design)](docs/SECURITY_DESIGN.md)**: 多層防御の詳細。
+- **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
+- **[運用マニュアル (Operations Guide)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
+- **[進化戦略 (Evolution Strategy)](docs/architecture/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
+- **[人格のカスタマイズ (Soul Customization)](docs/guides/CUSTOMIZING_SOUL.md)**: AIの性格や反応の調整方法。
+- **[セキュリティ設計 (Security Design)](docs/architecture/SECURITY_DESIGN.md)**: 多層防御の詳細。
 
 ---
 

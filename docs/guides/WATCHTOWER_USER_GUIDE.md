@@ -62,7 +62,7 @@ Watchtowerは、ユーザーとの対話や仕事を通じて個別の「魂（S
 *   **アンロック**: 成長に応じてより自律的な提案や高度な操作権限が解放されます。
 *   **Advanced Experience Mode**: 設定により、最初から全ての機能を解放し、自律性を最大化することも可能です。
 
-詳細: [docs/EVOLUTION_STRATEGY.md](EVOLUTION_STRATEGY.md)
+詳細: [docs/architecture/EVOLUTION_STRATEGY.md](../architecture/EVOLUTION_STRATEGY.md)
 
 ---
 

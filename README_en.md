@@ -132,7 +132,7 @@ Aiome's true power lies in its **extreme extensibility leveraging WASM (WebAssem
 ### 1. Watchtower — The Manifestation of SOUL
 Watchtower is the gateway for a master to interact with Aiome's "Personality." Through Discord, it reports system status, awaits instructions, and offers autonomous suggestions.
 
-- **Details**: [docs/WATCHTOWER_USER_GUIDE.md](docs/WATCHTOWER_USER_GUIDE.md) *(JP)*
+- **Details**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md) *(JP)*
 - **Personality Manifest**: [WATCHTOWER_MANIFEST.md](WATCHTOWER_MANIFEST.md) 🐾
 
 ### 2. api-server (Demonstration Hub)
@@ -195,11 +195,11 @@ cargo run --bin samsara-hub
 
 ## 📚 Documentation (Mostly JP)
 
-- **[AI Architecture Law](docs/ARCHITECTURE_LAW.md)**: Foundational principles for intellectual integrity and safety.
-- **[Operations Guide](docs/OPERATIONS_MANUAL.md)**: Detailed setup and operational procedures.
-- **[Evolution Strategy](docs/EVOLUTION_STRATEGY.md)**: Design philosophy of self-evolution and rearing systems.
-- **[Soul Customization](docs/CUSTOMIZING_SOUL.md)**: Adjusting the AI's personality and reactions.
-- **[Security Design](docs/SECURITY_DESIGN.md)**: Deep dive into the multi-layered defense.
+- **[AI Architecture Law](docs/architecture/ARCHITECTURE_LAW.md)**: Foundational principles for intellectual integrity and safety.
+- **[Operations Guide](docs/guides/OPERATIONS_MANUAL.md)**: Detailed setup and operational procedures.
+- **[Evolution Strategy](docs/architecture/EVOLUTION_STRATEGY.md)**: Design philosophy of self-evolution and rearing systems.
+- **[Soul Customization](docs/guides/CUSTOMIZING_SOUL.md)**: Adjusting the AI's personality and reactions.
+- **[Security Design](docs/architecture/SECURITY_DESIGN.md)**: Deep dive into the multi-layered defense.
 
 ---
 
