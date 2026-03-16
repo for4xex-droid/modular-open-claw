@@ -23,6 +23,8 @@ chrono.workspace = true
 regex = "1.12.3"
 async-recursion = "1.1.1"
 unicode-normalization = { workspace = true }
+wasmtime = { workspace = true }
+wasmtime-wasi = { workspace = true }
 extism = "1.13.0"
 extism-convert = "1.13.0"
 wasi = "0.14.7"
@@ -44,4 +46,5 @@ once_cell = { workspace = true }
 tempfile = "3"
 filetime = "0.2"
 futures = "0.3"
+proptest.workspace = true
 

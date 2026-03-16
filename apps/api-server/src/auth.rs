@@ -48,13 +48,33 @@ where
         });
         let expected_bearer = format!("Bearer {}", expected_secret);
 
-        let is_valid = if auth_header.len() == expected_bearer.len() {
-            bool::from(auth_header.as_bytes().ct_eq(expected_bearer.as_bytes()))
-        } else if let Some(token) = query_token {
-            bool::from(token.as_bytes().ct_eq(expected_secret.as_bytes()))
-        } else {
-            false
+        // SEC: Always perform constant-time comparison regardless of length to prevent timing leaks
+        // Sub-clause: We check lengths first but only inside a combined constant-time check logic
+        let bearer_match = {
+            let a = auth_header.as_bytes();
+            let b = expected_bearer.as_bytes();
+            let max_len = std::cmp::max(a.len(), b.len());
+            let mut a_padded = vec![0u8; max_len];
+            let mut b_padded = vec![0u8; max_len];
+            a_padded[..a.len()].copy_from_slice(a);
+            b_padded[..b.len()].copy_from_slice(b);
+            // Length check is combined with ct_eq results
+            a.len() == b.len() && bool::from(a_padded.ct_eq(&b_padded))
         };
+
+        let query_match = query_token
+        .as_ref()
+        .map(|t| {
+            let max_len = std::cmp::max(t.len(), expected_secret.len());
+            let mut a = vec![0u8; max_len];
+            let mut b = vec![0u8; max_len];
+            a[..t.len()].copy_from_slice(t.as_bytes());
+            b[..expected_secret.len()].copy_from_slice(expected_secret.as_bytes());
+            t.len() == expected_secret.len() && bool::from(a.ct_eq(&b))
+        })
+        .unwrap_or(false);
+
+        let is_valid = bearer_match || query_match;
 
         if is_valid {
             Ok(Authenticated)

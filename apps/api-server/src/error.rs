@@ -17,6 +17,15 @@ use serde_json::json;
 
 pub struct AppError(pub AiomeError);
 
+impl AppError {
+    /// SEC-2: IDOR/ Authorization error (403 Forbidden)
+    pub fn forbidden(reason: impl Into<String>) -> Self {
+        Self(AiomeError::SecurityViolation {
+            reason: reason.into(),
+        })
+    }
+}
+
 impl From<AiomeError> for AppError {
     fn from(err: AiomeError) -> Self {
         Self(err)

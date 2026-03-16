@@ -15,7 +15,7 @@ use axum::{
     error_handling::HandleErrorLayer,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        DefaultBodyLimit, State,
+        DefaultBodyLimit, Query, State,
     },
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
@@ -390,24 +390,32 @@ async fn list_topics_handler(
     (StatusCode::OK, Json(serde_json::json!(topics)))
 }
 
+fn verify_bearer(auth_header: &str, secret: &secrecy::SecretString) -> bool {
+    use secrecy::ExposeSecret;
+    use subtle::ConstantTimeEq;
+    let expected = format!("Bearer {}", secret.expose_secret());
+    // SEC: Always perform constant-time comparison regardless of length to prevent timing leaks
+    let max_len = std::cmp::max(auth_header.len(), expected.len());
+    let mut a = vec![0u8; max_len];
+    let mut b = vec![0u8; max_len];
+    a[..auth_header.len()].copy_from_slice(auth_header.as_bytes());
+    b[..expected.len()].copy_from_slice(expected.as_bytes());
+    auth_header.len() == expected.len() && bool::from(a.ct_eq(&b))
+}
+
 async fn create_topic_handler(
     State(state): State<Arc<HubState>>,
     headers: HeaderMap,
     Json(req): Json<CreateTopicRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    // 1. Auth Check (Same as relay/sync)
-    use subtle::ConstantTimeEq;
-    let auth = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
-    if !is_auth_valid {
+    // 1. Auth Check (Consolidated and timing-leak proof)
+    if !verify_bearer(
+        headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or(""),
+        &state.secret,
+    ) {
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
@@ -458,9 +466,9 @@ async fn create_topic_handler(
                 Json(serde_json::json!({"status": "created", "topic_id": req.topic_id})),
             )
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": format!("Topic creation failed: {}", e)})),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "Failed to create topic due to internal server error"})),
         ),
     }
 }
@@ -471,18 +479,13 @@ async fn biome_relay_handler(
     Json(msg): Json<aiome_core::biome::BiomeMessage>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     // 1. Auth Check
-    use subtle::ConstantTimeEq;
-    let auth = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
-    if !is_auth_valid {
+    if !verify_bearer(
+        headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or(""),
+        &state.secret,
+    ) {
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
@@ -563,43 +566,44 @@ async fn biome_relay_handler(
     )
 }
 
+#[derive(serde::Deserialize)]
+pub struct BiomeWsQuery {
+    pub node_id: String,
+}
+
 async fn biome_ws_handler(
-    ws: WebSocketUpgrade,
-    headers: HeaderMap,
     State(state): State<Arc<HubState>>,
+    headers: HeaderMap,
+    Query(query): Query<BiomeWsQuery>,
+    ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    use subtle::ConstantTimeEq;
-    let auth = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
-    if !is_auth_valid {
+    // 1. Auth Check (Consolidated and timing-leak proof)
+    if !verify_bearer(
+        headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or(""),
+        &state.secret,
+    ) {
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    ws.on_upgrade(|socket| async move {
-        handle_biome_ws(socket, state).await;
-    })
+    ws.on_upgrade(move |socket| handle_biome_ws(socket, state, query.node_id))
 }
 
-async fn handle_biome_ws(mut socket: WebSocket, state: Arc<HubState>) {
+async fn handle_biome_ws(mut socket: WebSocket, state: Arc<HubState>, node_id: String) {
     let mut rx = state.tx.subscribe();
 
-    // Initial fetch of buffered messages for this node (would need node_id to be provided during handshake)
-    // For MVP, just relay new messages in real-time.
+    info!("📪 [BiomeWS] Node {} connected for real-time relay.", node_id);
 
     loop {
         tokio::select! {
             Ok(msg) = rx.recv() => {
                 if let HubMessage::BiomeRelay(biome_msg) = msg {
-                    // Filter: Only send if it's for this recipient (requires WS handshake to provide recipient_pubkey)
-                    // For now, relay all but node should filter locally.
+                    // SEC: Only send if it's for this recipient
+                    if biome_msg.recipient_pubkey != node_id {
+                        continue;
+                    }
                     let text = serde_json::to_string(&HubMessage::BiomeRelay(biome_msg)).unwrap_or_default();
                     if socket.send(Message::Text(text)).await.is_err() {
                         break;
@@ -620,20 +624,12 @@ async fn sync_handler(
     headers: HeaderMap,
     Json(payload): Json<FederationSyncRequest>,
 ) -> impl IntoResponse {
-    use subtle::ConstantTimeEq;
+    // 1. Auth Check (Consolidated and timing-leak proof)
     let auth = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        // Technically, length checks can leak length, but tokens are usually fixed length.
-        // A full HMAC setup would be better, but this mitigates basic string-comparison timing attacks.
-        false
-    };
+    let is_auth_valid = verify_bearer(auth, &state.secret);
 
     if !is_auth_valid {
         warn!(
@@ -759,18 +755,11 @@ async fn push_handler(
     Json(payload): Json<FederationPushRequest>,
 ) -> impl IntoResponse {
     // Auth Wall
-    use subtle::ConstantTimeEq;
     let auth = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
+    let is_auth_valid = verify_bearer(auth, &state.secret);
 
     if !is_auth_valid {
         warn!(
@@ -815,7 +804,7 @@ async fn push_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": e.to_string()})),
+                Json(serde_json::json!({"error": "Internal error"})),
             )
                 .into_response()
         }
@@ -913,7 +902,7 @@ async fn push_handler(
         error!("❌ Push commit failed: {}", e);
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": e.to_string()})),
+            Json(serde_json::json!({"error": "Internal error"})),
         )
             .into_response();
     }
@@ -949,20 +938,12 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<HubState>>,
 ) -> impl IntoResponse {
-    use subtle::ConstantTimeEq;
     let auth = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
-
-    if !is_auth_valid {
+ 
+    if !verify_bearer(auth, &state.secret) {
         warn!("🔒 Unauthorized WS upgrade attempt");
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }

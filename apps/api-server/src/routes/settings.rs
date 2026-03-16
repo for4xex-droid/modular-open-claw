@@ -229,11 +229,13 @@ async fn test_cloud_connection(
 
     match service {
         "gemini" => {
-            let url = format!(
-                "https://generativelanguage.googleapis.com/v1beta/models?key={}",
-                token
-            );
-            match client.get(url).send().await {
+            let url = "https://generativelanguage.googleapis.com/v1beta/models";
+            match client
+                .get(url)
+                .header("x-goog-api-key", token)
+                .send()
+                .await
+            {
                 Ok(res) if res.status().is_success() => Json(TestConnectionResponse {
                     success: true,
                     message: "Gemini connection verified.".to_string(),

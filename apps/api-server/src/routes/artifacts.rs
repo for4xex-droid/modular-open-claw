@@ -134,11 +134,17 @@ pub async fn download_artifact_file_handler(
             let mime_type = mime_guess::from_path(&filename)
                 .first_or_octet_stream()
                 .to_string();
+            // SEC: Strip control characters from filename for Content-Disposition
+            let safe_filename: String = filename
+                .chars()
+                .filter(|c| !c.is_control() && *c != '"' && *c != '\\')
+                .collect();
+
             Response::builder()
                 .header(header::CONTENT_TYPE, mime_type)
                 .header(
                     header::CONTENT_DISPOSITION,
-                    format!("inline; filename=\"{}\"", filename),
+                    format!("inline; filename=\"{}\"", safe_filename),
                 )
                 .body(axum::body::Body::from(content))
                 .unwrap_or_else(|e| {

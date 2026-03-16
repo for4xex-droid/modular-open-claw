@@ -1,0 +1,276 @@
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 950 security advisories (from /Users/motista/.cargo/advisory-db)
+    Updating crates.io index
+    Scanning /Users/motista/Desktop/antigravity/ProjectーNurture/Cargo.lock for vulnerabilities (717 crate dependencies)
+Crate:     idna
+Version:   0.4.0
+Title:     `idna` accepts Punycode labels that do not produce any non-ASCII when decoded
+Date:      2024-12-09
+ID:        RUSTSEC-2024-0421
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0421
+Solution:  Upgrade to >=1.0.0
+Dependency tree:
+idna 0.4.0
+└── trust-dns-proto 0.23.2
+    └── trust-dns-resolver 0.23.2
+        └── bastion-core 1.0.0
+            ├── shared 0.1.0
+            │   ├── nurture-infra 0.1.0
+            │   │   └── nurture-api 0.1.0
+            │   ├── infrastructure 0.1.0
+            │   │   └── nurture-infra 0.1.0
+            │   └── aiome-core 0.1.0
+            │       ├── nurture-infra 0.1.0
+            │       ├── nurture-api 0.1.0
+            │       └── infrastructure 0.1.0
+            ├── infrastructure 0.1.0
+            └── aiome-core 0.1.0
+
+Crate:     pyo3
+Version:   0.23.5
+Title:     Risk of buffer overflow in `PyString::from_object`
+Date:      2025-04-01
+ID:        RUSTSEC-2025-0020
+URL:       https://rustsec.org/advisories/RUSTSEC-2025-0020
+Solution:  Upgrade to >=0.24.1
+Dependency tree:
+pyo3 0.23.5
+└── nurture-infra 0.1.0
+    └── nurture-api 0.1.0
+
+Crate:     rsa
+Version:   0.9.10
+Title:     Marvin Attack: potential key recovery through timing sidechannels
+Date:      2023-11-22
+ID:        RUSTSEC-2023-0071
+URL:       https://rustsec.org/advisories/RUSTSEC-2023-0071
+Severity:  5.9 (medium)
+Solution:  No fixed upgrade is available!
+Dependency tree:
+rsa 0.9.10
+└── sqlx-mysql 0.7.4
+    ├── sqlx-macros-core 0.7.4
+    │   └── sqlx-macros 0.7.4
+    │       └── sqlx 0.7.4
+    │           ├── nurture-infra 0.1.0
+    │           │   └── nurture-api 0.1.0
+    │           ├── nurture-api 0.1.0
+    │           └── infrastructure 0.1.0
+    │               └── nurture-infra 0.1.0
+    └── sqlx 0.7.4
+
+Crate:     sqlx
+Version:   0.7.4
+Title:     Binary Protocol Misinterpretation caused by Truncating or Overflowing Casts
+Date:      2024-08-15
+ID:        RUSTSEC-2024-0363
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0363
+Solution:  Upgrade to >=0.8.1
+Dependency tree:
+sqlx 0.7.4
+├── nurture-infra 0.1.0
+│   └── nurture-api 0.1.0
+├── nurture-api 0.1.0
+└── infrastructure 0.1.0
+    └── nurture-infra 0.1.0
+
+Crate:     wasmtime
+Version:   37.0.3
+Title:     Guest-controlled resource exhaustion in WASI implementations
+Date:      2026-02-24
+ID:        RUSTSEC-2026-0020
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0020
+Severity:  6.9 (medium)
+Solution:  Upgrade to >=24.0.6, <25.0.0 OR >=36.0.6, <37.0.0 OR >=40.0.4, <41.0.0 OR >=41.0.4
+Dependency tree:
+wasmtime 37.0.3
+├── wiggle 37.0.3
+│   ├── wasi-common 37.0.3
+│   │   └── extism 1.13.0
+│   │       └── infrastructure 0.1.0
+│   │           └── nurture-infra 0.1.0
+│   │               └── nurture-api 0.1.0
+│   └── extism 1.13.0
+├── wasi-common 37.0.3
+└── extism 1.13.0
+
+Crate:     wasmtime
+Version:   37.0.3
+Title:     Panic adding excessive fields to a `wasi:http/types.fields` instance
+Date:      2026-02-24
+ID:        RUSTSEC-2026-0021
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0021
+Severity:  6.9 (medium)
+Solution:  Upgrade to >=24.0.6, <25.0.0 OR >=36.0.6, <37.0.0 OR >=40.0.4, <41.0.0 OR >=41.0.4
+
+Crate:     wasmtime
+Version:   37.0.3
+Title:     Wasmtime segfault or unused out-of-sandbox load with `f64.copysign` operator on x86-64
+Date:      2026-01-26
+ID:        RUSTSEC-2026-0006
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0006
+Severity:  4.1 (medium)
+Solution:  Upgrade to >=41.0.1 OR >=40.0.3, <41.0.0 OR >=36.0.5, <37.0.0 OR <29.0.0
+
+Crate:     fxhash
+Version:   0.2.1
+Warning:   unmaintained
+Title:     fxhash - no longer maintained
+Date:      2025-09-05
+ID:        RUSTSEC-2025-0057
+URL:       https://rustsec.org/advisories/RUSTSEC-2025-0057
+Dependency tree:
+fxhash 0.2.1
+├── fxprof-processed-profile 0.6.0
+│   └── wasmtime 37.0.3
+│       ├── wiggle 37.0.3
+│       │   ├── wasi-common 37.0.3
+│       │   │   └── extism 1.13.0
+│       │   │       └── infrastructure 0.1.0
+│       │   │           └── nurture-infra 0.1.0
+│       │   │               └── nurture-api 0.1.0
+│       │   └── extism 1.13.0
+│       ├── wasi-common 37.0.3
+│       └── extism 1.13.0
+└── automerge 0.6.1
+    └── infrastructure 0.1.0
+
+Crate:     instant
+Version:   0.1.13
+Warning:   unmaintained
+Title:     `instant` is unmaintained
+Date:      2024-09-01
+ID:        RUSTSEC-2024-0384
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0384
+Dependency tree:
+instant 0.1.13
+└── fastrand 1.9.0
+    └── futures-lite 1.13.0
+        └── http-types 2.12.0
+            └── async-stripe 0.41.0
+                └── nurture-infra 0.1.0
+                    └── nurture-api 0.1.0
+
+Crate:     paste
+Version:   1.0.15
+Warning:   unmaintained
+Title:     paste - no longer maintained
+Date:      2024-10-07
+ID:        RUSTSEC-2024-0436
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0436
+Dependency tree:
+paste 1.0.15
+└── sqlx-core 0.7.4
+    ├── sqlx-sqlite 0.7.4
+    │   ├── sqlx-macros-core 0.7.4
+    │   │   └── sqlx-macros 0.7.4
+    │   │       └── sqlx 0.7.4
+    │   │           ├── nurture-infra 0.1.0
+    │   │           │   └── nurture-api 0.1.0
+    │   │           ├── nurture-api 0.1.0
+    │   │           └── infrastructure 0.1.0
+    │   │               └── nurture-infra 0.1.0
+    │   └── sqlx 0.7.4
+    ├── sqlx-postgres 0.7.4
+    │   ├── sqlx-macros-core 0.7.4
+    │   └── sqlx 0.7.4
+    ├── sqlx-mysql 0.7.4
+    │   ├── sqlx-macros-core 0.7.4
+    │   └── sqlx 0.7.4
+    ├── sqlx-macros-core 0.7.4
+    ├── sqlx-macros 0.7.4
+    └── sqlx 0.7.4
+
+Crate:     proc-macro-error
+Version:   1.0.4
+Warning:   unmaintained
+Title:     proc-macro-error is unmaintained
+Date:      2024-09-01
+ID:        RUSTSEC-2024-0370
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0370
+Dependency tree:
+proc-macro-error 1.0.4
+└── aquamarine 0.5.0
+    └── teloxide 0.13.0
+        └── infrastructure 0.1.0
+            └── nurture-infra 0.1.0
+                └── nurture-api 0.1.0
+
+Crate:     rustls-pemfile
+Version:   1.0.4
+Warning:   unmaintained
+Title:     rustls-pemfile is unmaintained
+Date:      2025-11-28
+ID:        RUSTSEC-2025-0134
+URL:       https://rustsec.org/advisories/RUSTSEC-2025-0134
+Dependency tree:
+rustls-pemfile 1.0.4
+├── sqlx-core 0.7.4
+│   ├── sqlx-sqlite 0.7.4
+│   │   ├── sqlx-macros-core 0.7.4
+│   │   │   └── sqlx-macros 0.7.4
+│   │   │       └── sqlx 0.7.4
+│   │   │           ├── nurture-infra 0.1.0
+│   │   │           │   └── nurture-api 0.1.0
+│   │   │           ├── nurture-api 0.1.0
+│   │   │           └── infrastructure 0.1.0
+│   │   │               └── nurture-infra 0.1.0
+│   │   └── sqlx 0.7.4
+│   ├── sqlx-postgres 0.7.4
+│   │   ├── sqlx-macros-core 0.7.4
+│   │   └── sqlx 0.7.4
+│   ├── sqlx-mysql 0.7.4
+│   │   ├── sqlx-macros-core 0.7.4
+│   │   └── sqlx 0.7.4
+│   ├── sqlx-macros-core 0.7.4
+│   ├── sqlx-macros 0.7.4
+│   └── sqlx 0.7.4
+├── rustls-native-certs 0.6.3
+│   └── hyper-rustls 0.24.2
+│       ├── reqwest 0.11.27
+│       │   ├── teloxide-core 0.10.1
+│       │   │   └── teloxide 0.13.0
+│       │   │       └── infrastructure 0.1.0
+│       │   ├── oauth2 4.4.2
+│       │   │   └── nurture-api 0.1.0
+│       │   ├── jsonschema 0.17.1
+│       │   │   └── infrastructure 0.1.0
+│       │   └── bastion-core 1.0.0
+│       │       ├── shared 0.1.0
+│       │       │   ├── nurture-infra 0.1.0
+│       │       │   ├── infrastructure 0.1.0
+│       │       │   └── aiome-core 0.1.0
+│       │       │       ├── nurture-infra 0.1.0
+│       │       │       ├── nurture-api 0.1.0
+│       │       │       └── infrastructure 0.1.0
+│       │       ├── infrastructure 0.1.0
+│       │       └── aiome-core 0.1.0
+│       └── async-stripe 0.41.0
+│           └── nurture-infra 0.1.0
+└── reqwest 0.11.27
+
+Crate:     trust-dns-proto
+Version:   0.23.2
+Warning:   unmaintained
+Title:     The `trust-dns` project has been rebranded to `hickory-dns`
+Date:      2025-03-23
+ID:        RUSTSEC-2025-0017
+URL:       https://rustsec.org/advisories/RUSTSEC-2025-0017
+Dependency tree:
+trust-dns-proto 0.23.2
+└── trust-dns-resolver 0.23.2
+    └── bastion-core 1.0.0
+        ├── shared 0.1.0
+        │   ├── nurture-infra 0.1.0
+        │   │   └── nurture-api 0.1.0
+        │   ├── infrastructure 0.1.0
+        │   │   └── nurture-infra 0.1.0
+        │   └── aiome-core 0.1.0
+        │       ├── nurture-infra 0.1.0
+        │       ├── nurture-api 0.1.0
+        │       └── infrastructure 0.1.0
+        ├── infrastructure 0.1.0
+        └── aiome-core 0.1.0
+
+error: 7 vulnerabilities found!
+warning: 6 allowed warnings found

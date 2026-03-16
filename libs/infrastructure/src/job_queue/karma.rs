@@ -114,7 +114,10 @@ impl KarmaOps for SqliteJobQueue {
                 let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
                 let stored_embedding = embedding_bytes.map(|b| {
                     b.chunks_exact(4)
-                        .map(|chunk| f32::from_le_bytes(chunk.try_into().unwrap()) as f64)
+                        .map(|chunk| {
+                            let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
+                            f32::from_le_bytes(bytes) as f64
+                        })
                         .collect()
                 });
 

@@ -103,11 +103,12 @@ impl ArtifactStore for SqliteArtifactStore {
             artifact_files.push(file_meta);
         }
 
-        let file_manifest_json =
-            serde_json::to_string(&artifact_files).expect("Failed to serialize artifact files");
-        let tags_json = serde_json::to_string(&req.tags).expect("Failed to serialize tags");
-        let karma_refs_json =
-            serde_json::to_string(&req.karma_refs).expect("Failed to serialize karma refs");
+        let file_manifest_json = serde_json::to_string(&artifact_files)
+            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize artifact files: {}", e) })?;
+        let tags_json = serde_json::to_string(&req.tags)
+            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize tags: {}", e) })?;
+        let karma_refs_json = serde_json::to_string(&req.karma_refs)
+            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize karma refs: {}", e) })?;
 
         // SEC-6: Enforce payload size limits (max 500KB total for metadata)
         if file_manifest_json.len() + tags_json.len() + karma_refs_json.len() > 500 * 1024 {
@@ -149,10 +150,14 @@ impl ArtifactStore for SqliteArtifactStore {
         )
         .bind(&id)
         .bind(&req.title)
-        .bind(serde_json::to_string(&req.category).expect("Failed to serialize category").replace("\"", ""))
+        .bind(
+            serde_json::to_string(&req.category)
+                .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize category: {}", e) })?
+                .replace("\"", ""),
+        )
         .bind(&tags_json)
         .bind(&req.created_by)
-        .bind(relative_dir.to_str().unwrap_or_default())
+        .bind(relative_dir.display().to_string())
         .bind(&file_manifest_json)
         .bind(&karma_refs_json)
         .bind(req.job_ref)
@@ -205,7 +210,9 @@ impl ArtifactStore for SqliteArtifactStore {
         if let Some(ref cat) = category {
             query = query.bind(
                 serde_json::to_string(cat)
-                    .expect("Failed to serialize category")
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to serialize category: {}", e),
+                    })?
                     .replace("\"", ""),
             );
         }
@@ -385,7 +392,7 @@ impl ArtifactStore for SqliteArtifactStore {
                 target_id: r.get("target_id"),
                 source_type: r.get("source_type"),
                 relation: r.get("relation"),
-                metadata: serde_json::from_str(r.get("metadata")).unwrap_or(serde_json::json!({})),
+                metadata: serde_json::from_str(r.get("metadata")).unwrap_or_else(|_| serde_json::json!({})),
                 created_at: r.get("created_at"),
             });
         }
@@ -434,7 +441,9 @@ impl ArtifactStore for SqliteArtifactStore {
         let mut db_query = sqlx::query(&sql);
         if let Some(ref cat) = category {
             let cat_str = serde_json::to_string(cat)
-                .expect("Failed to serialize category")
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to serialize category: {}", e),
+                })?
                 .replace("\"", "");
             db_query = db_query.bind(cat_str);
         }
@@ -453,7 +462,8 @@ impl ArtifactStore for SqliteArtifactStore {
             let emb_vec: Vec<f64> = emb_bytes
                 .chunks_exact(4)
                 .map(|c| {
-                    f32::from_le_bytes(c.try_into().expect("Invalid byte slice length")) as f64
+                    let bytes: [u8; 4] = c.try_into().unwrap_or([0, 0, 0, 0]);
+                    f32::from_le_bytes(bytes) as f64
                 })
                 .collect();
 

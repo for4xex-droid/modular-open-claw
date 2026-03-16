@@ -22,10 +22,11 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 pub async fn sse_handler(
+    _auth: crate::auth::Authenticated,
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
     let session_id = Uuid::new_v4().to_string();
-    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+    let (tx, mut rx) = mpsc::channel::<String>(1024); // Bounded channel to prevent OOM DoS
 
     {
         let mut sessions = state.mcp_sessions.write().await;
@@ -57,6 +58,7 @@ pub struct MessageQuery {
 }
 
 pub async fn message_handler(
+    _auth: crate::auth::Authenticated,
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     Json(request): Json<JsonRpcRequest>,
@@ -74,7 +76,7 @@ pub async fn message_handler(
     tokio::spawn(async move {
         let response = handle_mcp_request(request, &state).await;
         if let Ok(json_resp) = serde_json::to_string(&response) {
-            if let Err(e) = tx.send(json_resp) {
+            if let Err(e) = tx.send(json_resp).await {
                 warn!(
                     "⚠️ [MCP] Failed to send response back to client (session {}): {}",
                     session_id, e

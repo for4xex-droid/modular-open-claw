@@ -51,3 +51,11 @@ libs/shared         (Common Utils, Types)
 - **Mocking**: `mockall` を使用して `infrastructure` をモック化
 - **TDD Forge (Skill Generation)**: エージェントが新規スキルを作成する際は、必ず本番パブリッシュ前に隔離エンドポイント（`forge_test_run`）でJSON Assertを行うこと。
 - **Build Isolation**: エージェントによるローカルコンパイルは必ずOSネイティブサンドボックス（`sandbox-exec` 等）の厳格なプロファイル下で実行すること。
+
+## 💰 NURTURE Integration (Commercial Bridge)
+
+本作はオープンソースの `modular-open-claw` と、商用版 `Project-Nurture` のハイブリッド構成をサポートする。
+
+1.  **CommerceEngine**: `libs/core` に定義されたトレイトにより、経済圏へのアクセスを抽象化。
+2.  **API Gate**: `apps/api-server` の `/api/v1/commerce` エンドポイントを介して、エージェントが自律的に決済や残高確認を行う。
+3.  **Cross-Repo Deployment**: `docker-compose.nurture.yml` を使用することで、商用モジュールを統合したプロ版環境を構築可能。

@@ -4,12 +4,534 @@
     "title": "Aiome Management Console API",
     "description": "Core API for the Autonomous AI Operating System",
     "license": {
-      "name": "ELv2",
-      "identifier": "ELv2"
+      "name": "BUSL-1.1",
+      "identifier": "BUSL-1.1"
     },
     "version": "0.1.0"
   },
   "paths": {
+    "/api/agent/chat": {
+      "post": {
+        "tags": [
+          "crate::routes::agent"
+        ],
+        "operationId": "trigger_agent_chat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Agent reply",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Blocked by security guardrails"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/agent/feedback": {
+      "post": {
+        "tags": [
+          "crate::routes::agent"
+        ],
+        "operationId": "handle_karma_feedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KarmaFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback recorded"
+          },
+          "500": {
+            "description": "Internal error"
+          }
+        }
+      }
+    },
+    "/api/artifacts": {
+      "get": {
+        "tags": [
+          "crate::routes::artifacts"
+        ],
+        "operationId": "list_artifacts_handler",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by category",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Semantic search query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit results",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of artifacts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/artifacts/{id}": {
+      "get": {
+        "tags": [
+          "crate::routes::artifacts"
+        ],
+        "operationId": "get_artifact_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Artifact ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact metadata",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "Artifact not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::routes::artifacts"
+        ],
+        "operationId": "delete_artifact_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Artifact ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Artifact deleted"
+          },
+          "500": {
+            "description": "Internal error"
+          }
+        }
+      }
+    },
+    "/api/artifacts/{id}/edges": {
+      "get": {
+        "tags": [
+          "crate::routes::artifacts"
+        ],
+        "operationId": "get_artifact_edges_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Artifact ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact edges (graph)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/artifacts/{id}/files/{filename}": {
+      "get": {
+        "tags": [
+          "crate::routes::artifacts"
+        ],
+        "operationId": "download_artifact_file_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Artifact ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "File name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content stream"
+          },
+          "400": {
+            "description": "Invalid filename"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    },
+    "/api/biome/autonomous/start": {
+      "post": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "autonomous_start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartAutonomousRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Autonomous dialogue started",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "409": {
+            "description": "Dialogue already running"
+          }
+        }
+      }
+    },
+    "/api/biome/autonomous/status": {
+      "get": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "autonomous_status",
+        "responses": {
+          "200": {
+            "description": "Current autonomous status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/biome/autonomous/stop": {
+      "post": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "autonomous_stop",
+        "responses": {
+          "200": {
+            "description": "Stopping autonomous dialogue",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/biome/list": {
+      "get": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "list_messages",
+        "responses": {
+          "200": {
+            "description": "List biome messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/biome/send": {
+      "post": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "send_message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendBiomeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent/relayed",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/biome/status": {
+      "get": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "biome_status",
+        "responses": {
+          "200": {
+            "description": "Biome protocol status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/biome/topics": {
+      "get": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "list_topics",
+        "responses": {
+          "200": {
+            "description": "List topics from Hub",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::routes::biome"
+        ],
+        "operationId": "create_topic",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Topic created",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/expression/auto": {
+      "post": {
+        "tags": [
+          "crate::routes::expression"
+        ],
+        "operationId": "toggle_auto_expression",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoToggle"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Toggled auto-expression",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expression/generate": {
+      "post": {
+        "tags": [
+          "crate::routes::expression"
+        ],
+        "operationId": "generate_expression",
+        "responses": {
+          "200": {
+            "description": "Generated expression",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "No karma available"
+          }
+        }
+      }
+    },
+    "/api/expression/list": {
+      "get": {
+        "tags": [
+          "crate::routes::expression"
+        ],
+        "operationId": "list_expressions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit results",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent expressions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expression/status": {
+      "get": {
+        "tags": [
+          "crate::routes::expression"
+        ],
+        "operationId": "expression_status",
+        "responses": {
+          "200": {
+            "description": "Expression engine status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -106,17 +628,17 @@
         ]
       }
     },
-    "/api/v1/agent/chat": {
+    "/api/skills/mcp/spawn": {
       "post": {
         "tags": [
-          "crate::routes::agent"
+          "crate::routes::skill"
         ],
-        "operationId": "trigger_agent_chat",
+        "operationId": "spawn_mcp_server",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AgentChatRequest"
+                "$ref": "#/components/schemas/McpSpawnRequest"
               }
             }
           },
@@ -124,375 +646,15 @@
         },
         "responses": {
           "200": {
-            "description": "Agent reply",
+            "description": "MCP Server spawned",
             "content": {
               "application/json": {
                 "schema": {}
               }
             }
-          },
-          "403": {
-            "description": "Blocked by security guardrails"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
-    "/api/v1/artifacts": {
-      "get": {
-        "tags": [
-          "crate::routes::artifacts"
-        ],
-        "operationId": "list_artifacts_handler",
-        "parameters": [
-          {
-            "name": "category",
-            "in": "query",
-            "description": "Filter by category",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "description": "Semantic search query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Limit results",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of artifacts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/artifacts/{id}": {
-      "get": {
-        "tags": [
-          "crate::routes::artifacts"
-        ],
-        "operationId": "get_artifact_handler",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Artifact ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Artifact metadata",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "404": {
-            "description": "Artifact not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "crate::routes::artifacts"
-        ],
-        "operationId": "delete_artifact_handler",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Artifact ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Artifact deleted"
           },
           "500": {
-            "description": "Internal error"
-          }
-        }
-      }
-    },
-    "/api/v1/artifacts/{id}/edges": {
-      "get": {
-        "tags": [
-          "crate::routes::artifacts"
-        ],
-        "operationId": "get_artifact_edges_handler",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Artifact ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Artifact edges (graph)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/artifacts/{id}/files/{filename}": {
-      "get": {
-        "tags": [
-          "crate::routes::artifacts"
-        ],
-        "operationId": "download_artifact_file_handler",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Artifact ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "filename",
-            "in": "path",
-            "description": "File name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "File content stream"
-          },
-          "400": {
-            "description": "Invalid filename"
-          },
-          "404": {
-            "description": "File not found"
-          }
-        }
-      }
-    },
-    "/api/v1/biome/autonomous/start": {
-      "post": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "autonomous_start",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StartAutonomousRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Autonomous dialogue started",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "409": {
-            "description": "Dialogue already running"
-          }
-        }
-      }
-    },
-    "/api/v1/biome/autonomous/status": {
-      "get": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "autonomous_status",
-        "responses": {
-          "200": {
-            "description": "Current autonomous status",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/biome/autonomous/stop": {
-      "post": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "autonomous_stop",
-        "responses": {
-          "200": {
-            "description": "Stopping autonomous dialogue",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/biome/messages": {
-      "get": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "list_messages",
-        "responses": {
-          "200": {
-            "description": "List biome messages",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/biome/send": {
-      "post": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "send_message",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SendBiomeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Message sent/relayed",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/biome/status": {
-      "get": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "biome_status",
-        "responses": {
-          "200": {
-            "description": "Biome protocol status",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/biome/topics": {
-      "get": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "list_topics",
-        "responses": {
-          "200": {
-            "description": "List topics from Hub",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "crate::routes::biome"
-        ],
-        "operationId": "create_topic",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {}
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Topic created",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Spawn failed"
           }
         },
         "security": [
@@ -502,15 +664,35 @@
         ]
       }
     },
-    "/api/v1/evolution": {
+    "/api/synergy/graph": {
       "get": {
         "tags": [
           "crate::routes::karma"
         ],
-        "operationId": "get_evolution_history_handler",
+        "operationId": "synergy_graph_handler",
         "responses": {
           "200": {
-            "description": "Evolution history",
+            "description": "Synergy graph data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/synergy/karma": {
+      "get": {
+        "tags": [
+          "crate::routes::karma"
+        ],
+        "operationId": "get_karma_stream",
+        "responses": {
+          "200": {
+            "description": "List recent karma",
             "content": {
               "application/json": {
                 "schema": {
@@ -523,107 +705,7 @@
         }
       }
     },
-    "/api/v1/expression/auto": {
-      "post": {
-        "tags": [
-          "crate::routes::expression"
-        ],
-        "operationId": "toggle_auto_expression",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AutoToggle"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Toggled auto-expression",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/expression/generate": {
-      "post": {
-        "tags": [
-          "crate::routes::expression"
-        ],
-        "operationId": "generate_expression",
-        "responses": {
-          "200": {
-            "description": "Generated expression",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "description": "No karma available"
-          }
-        }
-      }
-    },
-    "/api/v1/expression/list": {
-      "get": {
-        "tags": [
-          "crate::routes::expression"
-        ],
-        "operationId": "list_expressions",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Limit results",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Recent expressions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/expression/status": {
-      "get": {
-        "tags": [
-          "crate::routes::expression"
-        ],
-        "operationId": "expression_status",
-        "responses": {
-          "200": {
-            "description": "Expression engine status",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/immune-rules": {
+    "/api/synergy/rules": {
       "get": {
         "tags": [
           "crate::routes::karma"
@@ -670,7 +752,7 @@
         }
       }
     },
-    "/api/v1/immune-rules/{id}": {
+    "/api/synergy/rules/{id}": {
       "delete": {
         "tags": [
           "crate::routes::karma"
@@ -699,28 +781,7 @@
         }
       }
     },
-    "/api/v1/karma": {
-      "get": {
-        "tags": [
-          "crate::routes::karma"
-        ],
-        "operationId": "get_karma_stream",
-        "responses": {
-          "200": {
-            "description": "List recent karma",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/karma/demo/failure": {
+    "/api/synergy/test/failure": {
       "post": {
         "tags": [
           "crate::routes::karma"
@@ -738,7 +799,7 @@
         }
       }
     },
-    "/api/v1/karma/demo/federation": {
+    "/api/synergy/test/federation": {
       "post": {
         "tags": [
           "crate::routes::karma"
@@ -756,7 +817,7 @@
         }
       }
     },
-    "/api/v1/karma/demo/security": {
+    "/api/synergy/test/security": {
       "post": {
         "tags": [
           "crate::routes::karma"
@@ -774,28 +835,23 @@
         }
       }
     },
-    "/api/v1/karma/feedback": {
-      "post": {
+    "/api/system/evolution": {
+      "get": {
         "tags": [
-          "crate::routes::agent"
+          "crate::routes::karma"
         ],
-        "operationId": "handle_karma_feedback",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KarmaFeedbackRequest"
-              }
-            }
-          },
-          "required": true
-        },
+        "operationId": "get_evolution_history_handler",
         "responses": {
           "200": {
-            "description": "Feedback recorded"
-          },
-          "500": {
-            "description": "Internal error"
+            "description": "Evolution history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
           }
         }
       }
@@ -833,6 +889,32 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/ollama/models": {
+      "get": {
+        "tags": [
+          "crate::routes::settings"
+        ],
+        "operationId": "get_ollama_models",
+        "responses": {
+          "200": {
+            "description": "List available Ollama models",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/v1/settings": {
@@ -936,24 +1018,71 @@
         ]
       }
     },
-    "/api/v1/synergy-graph": {
+    "/api/wiki": {
       "get": {
         "tags": [
-          "crate::routes::karma"
+          "crate::routes::general"
         ],
-        "operationId": "synergy_graph_handler",
+        "operationId": "list_wiki_files",
         "responses": {
           "200": {
-            "description": "Synergy graph data",
+            "description": "List wiki markdown files",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GraphData"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/wiki/{filename}": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_wiki_content",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "Filename with .md extension",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wiki markdown content",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     }
   },

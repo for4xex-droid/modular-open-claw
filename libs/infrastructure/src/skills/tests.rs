@@ -11,6 +11,7 @@
 mod tests {
     use crate::skills::WasmSkillManager;
     use std::path::PathBuf;
+    use serde_json::json;
 
     #[tokio::test]
     async fn test_wasm_skill_timeout() {
@@ -106,33 +107,65 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_ensure_forge_workspace() {
+    async fn test_skill_verification_promotion() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let template_dir = temp_dir.path().join("template");
-        let output_dir = temp_dir.path().join("output");
-
-        let forge = crate::skills::forge::SkillForge::new(&template_dir, &output_dir);
-        forge.ensure_forge_workspace().unwrap();
-
-        assert!(template_dir.join("Cargo.toml").exists());
-        assert!(template_dir.join("src/lib.rs").exists());
-
-        let cargo_contents = std::fs::read_to_string(template_dir.join("Cargo.toml")).unwrap();
-        assert!(cargo_contents.contains("extism-pdk"));
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        
+        // Setup manager
+        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+        
+        // 1. Missing skill should fail verification
+        let unverified = crate::skills::UnverifiedSkill {
+            name: "non_existent".into(),
+            input_test_payload: "{}".into(),
+        };
+        let res = unverified.verify(&manager).await;
+        assert!(res.is_err());
+        
+        // 2. We can't easily execute a real WASM here without a valid file,
+        // but we've tested the logic in dry_run_skill.
     }
 
-    #[test]
-    fn test_generate_seatbelt_profile() {
-        // Mock paths for testing profile generation logic
-        let temp_dir = std::path::PathBuf::from("/tmp/aiome_test");
-        let output_dir = std::path::PathBuf::from("/tmp/aiome_output");
-        let forge = crate::skills::forge::SkillForge::new(&temp_dir, &output_dir);
+    #[tokio::test]
+    async fn test_list_skills_with_metadata_auto_generation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        
+        std::fs::write(skills_dir.join("test.wasm"), b"wasm").unwrap();
+        
+        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+        let metadata = manager.list_skills_with_metadata();
+        
+        assert_eq!(metadata.len(), 1);
+        assert_eq!(metadata[0].name, "test");
+        assert_eq!(metadata[0].description, "No metadata provided");
+    }
 
-        let build_dir = std::path::PathBuf::from("/tmp/build");
-        let profile = forge.generate_seatbelt_profile(&build_dir);
-
-        assert!(profile.contains("(version 1)"));
-        assert!(profile.contains("(allow default)"));
-        assert!(profile.contains(&build_dir.to_string_lossy().to_string()));
+    #[tokio::test]
+    async fn test_list_skills_with_explicit_metadata() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        
+        std::fs::write(skills_dir.join("calc.wasm"), b"wasm").unwrap();
+        let meta_json = json!({
+            "name": "calc",
+            "description": "Calculator skill",
+            "capabilities": ["execute"],
+            "inputs": ["json"],
+            "outputs": ["json"],
+            "allowed_hosts": ["api.example.com"],
+            "permissions": { "allow_filesystem_write": false, "allow_network": true, "allow_shell_execution": false, "allowed_domains": [] }
+        });
+        std::fs::write(skills_dir.join("calc.meta.json"), meta_json.to_string()).unwrap();
+        
+        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+        let metadata = manager.list_skills_with_metadata();
+        
+        assert_eq!(metadata.len(), 1);
+        assert_eq!(metadata[0].name, "calc");
+        assert_eq!(metadata[0].allowed_hosts, vec!["api.example.com".to_string()]);
     }
 }

@@ -84,3 +84,76 @@ impl Oracle {
         Ok(verdict)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use aiome_core::llm_provider::LlmProvider;
+    use std::fmt::Debug;
+
+    #[derive(Debug)]
+    struct MockLlmProvider {
+        response: String,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlmProvider {
+        fn name(&self) -> &str {
+            "mock-llm"
+        }
+
+        async fn complete(&self, _prompt: &str, _preamble: Option<&str>) -> Result<String, AiomeError> {
+            Ok(self.response.clone())
+        }
+
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_oracle_evaluation() {
+        let mock_json = r#"{
+            "alignment_score": 0.95,
+            "growth_score": 0.8,
+            "lesson": "Continuity is key.",
+            "should_evolve": true,
+            "reasoning": "High engagement and alignment.",
+            "classification": {
+                "domain": "Creative",
+                "subtopic": "Storytelling",
+                "reasoning": "Content focus on narrative."
+            }
+        }"#;
+
+        let provider = Arc::new(MockLlmProvider {
+            response: format!("Here is the verdict:\n```json\n{}\n```", mock_json),
+        });
+
+        let oracle = Oracle::new(provider, "Be ethical.".to_string());
+        let res = oracle.evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]").await;
+
+        assert!(res.is_ok());
+        let verdict = res.unwrap();
+        assert_eq!(verdict.alignment_score, 0.95);
+        assert_eq!(verdict.growth_score, 0.8);
+        assert!(verdict.should_evolve);
+        assert_eq!(verdict.classification.as_ref().unwrap().domain, "Creative");
+    }
+
+    #[tokio::test]
+    async fn test_oracle_parse_error() {
+        let provider = Arc::new(MockLlmProvider {
+            response: "Invalid response with no JSON".to_string(),
+        });
+
+        let oracle = Oracle::new(provider, "Be ethical.".to_string());
+        let res = oracle.evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]").await;
+
+        assert!(res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(reason.contains("No JSON block detected") || reason.contains("Failed to parse Oracle JSON"));
+        }
+    }
+}

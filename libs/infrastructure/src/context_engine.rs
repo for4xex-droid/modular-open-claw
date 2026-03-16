@@ -124,3 +124,70 @@ impl ContextEngine {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aiome_core::llm_provider::LlmProvider;
+    use serde_json::json;
+    use std::sync::Arc;
+    use tokio::sync::Semaphore;
+    use crate::job_queue::SqliteJobQueue;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        reply: String,
+    }
+
+    #[async_trait::async_trait]
+    impl LlmProvider for MockLlm {
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
+            Ok(self.reply.clone())
+        }
+        fn name(&self) -> &str { "mock-llm" }
+        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+    }
+
+    #[tokio::test]
+    async fn test_get_intelligent_history() {
+        let jq = SqliteJobQueue::new(":memory:").await.unwrap();
+        jq.insert_chat_message("user-1", "user", "Hello").await.unwrap();
+        jq.update_chat_memory_summary("user-1", "Initial summary").await.unwrap();
+
+        let engine = ContextEngine::new(
+            Arc::new(MockLlm { reply: "compressed".into() }),
+            Arc::new(jq),
+            Arc::new(Semaphore::new(1)),
+        );
+
+        let (summary, history) = engine.get_intelligent_history("user-1", 10).await.unwrap();
+        assert_eq!(summary.unwrap(), "Initial summary");
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0]["content"], "Hello");
+    }
+
+    #[tokio::test]
+    async fn test_maintain_context_compression() {
+        let jq = SqliteJobQueue::new(":memory:").await.unwrap();
+        // Insert many messages to exceed threshold
+        for i in 0..10 {
+            jq.insert_chat_message("user-1", "user", &format!("Message {}", i)).await.unwrap();
+        }
+
+        let engine = ContextEngine::new(
+            Arc::new(MockLlm { reply: "New compressed summary".into() }),
+            Arc::new(jq.clone()),
+            Arc::new(Semaphore::new(1)),
+        );
+
+        // threshold = 50 chars. Each message "Message X" is ~9 chars. 10 * 9 = 90 > 50.
+        engine.maintain_context("user-1", 50).await.unwrap();
+
+        let summary = jq.get_chat_memory_summary("user-1").await.unwrap();
+        assert_eq!(summary.unwrap(), "New compressed summary");
+
+        // Old messages should be distilled? ContextEngine marks them as distilled.
+        // We can check if more than half are still considered "recent" by internal fetch?
+        // Actually ContextEngine just calls mark_chats_as_distilled.
+    }
+}

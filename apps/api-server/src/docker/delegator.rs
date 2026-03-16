@@ -62,7 +62,10 @@ pub async fn delegate_docker_worker(
     // Using --exec and --json for stable parsing (scanned from docker-agent repo)
     let output = tokio::task::spawn_blocking({
         let yaml_path = yaml_path.clone();
-        let task_prompt = task_prompt.to_string();
+        let task_prompt = {
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD.encode(task_prompt)
+        };
         move || {
             Command::new("docker")
                 .arg("agent")
@@ -70,6 +73,7 @@ pub async fn delegate_docker_worker(
                 .arg("--exec")
                 .arg("--json")
                 .arg(yaml_path.to_string_lossy().as_ref())
+                .arg("--prompt-b64")
                 .arg(task_prompt)
                 .output()
         }

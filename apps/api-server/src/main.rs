@@ -24,8 +24,10 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::timeout::TimeoutLayer;
 use tracing::{error, info, warn};
 use utoipa::OpenApi;
 
@@ -59,7 +61,7 @@ pub struct AppState {
     pub forge_semaphore: Arc<tokio::sync::Semaphore>,
     pub mcp_sessions: Arc<
         tokio::sync::RwLock<
-            std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<String>>,
+            std::collections::HashMap<String, tokio::sync::mpsc::Sender<String>>,
         >,
     >,
     pub mcp_manager: Arc<mcp::client::McpProcessManager>,
@@ -819,7 +821,7 @@ async fn main() {
             event_sender.clone(),
             job_queue.clone(),
             cancel_token.clone(),
-        ).await;
+        ).await.expect("💰 [NURTURE] Failed to create plugin");
         
         plugin_registry.register(nurture_plugin.clone());
         let ce = nurture_plugin.commerce_engine();
@@ -836,7 +838,7 @@ async fn main() {
     };
     
     #[cfg(not(feature = "nurture"))]
-    let commerce_engine = None;
+    let commerce_engine = Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine) as Arc<dyn aiome_core::commerce::CommerceEngine>);
 
     let app = build_app(
         AppState {
@@ -911,7 +913,7 @@ async fn main() {
         .unwrap_or_else(|_| "3015".to_string())
         .parse()
         .expect("Invalid PORT");
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     info!("🌌 Aiome Management Console listening on {}", addr);
 
     let token = cancel_token;
@@ -1616,7 +1618,6 @@ pub fn build_app(
             "/api/wiki/:filename",
             get(routes::general::get_wiki_content),
         )
-        .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
         .route(
             "/api/synergy/graph",
             get(routes::karma::synergy_graph_handler),
@@ -1665,10 +1666,6 @@ pub fn build_app(
             axum::routing::post(routes::agent::trigger_agent_chat),
         )
         .route(
-            "/api/agent/chat/stream",
-            axum::routing::post(stream::trigger_agent_chat_stream),
-        )
-        .route(
             "/api/agent/feedback",
             axum::routing::post(routes::agent::handle_karma_feedback),
         )
@@ -1687,6 +1684,14 @@ pub fn build_app(
         .route(
             "/api/v1/ollama/models",
             get(routes::settings::get_ollama_models),
+        )
+        .route(
+            "/api/v1/commerce/balance/:agent_id",
+            get(routes::commerce::get_balance),
+        )
+        .route(
+            "/api/v1/commerce/purchase/:agent_id",
+            axum::routing::post(routes::commerce::execute_purchase),
         )
         .route("/api/v1/logs", get(routes::general::get_logs))
         .route("/api/biome/status", get(routes::biome::biome_status))
@@ -1737,11 +1742,20 @@ pub fn build_app(
             axum::routing::post(routes::skill::spawn_mcp_server),
         )
         .route("/api/health", get(routes::general::get_health_status))
+        // Apply timeout only to standard routes (avoids killing long-lived SSE/WS)
+        .layer(TimeoutLayer::new(Duration::from_secs(30)));
+
+    let streaming_router: Router<AppState> = Router::new()
+        .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
+        .route("/api/agent/chat/stream", axum::routing::post(stream::trigger_agent_chat_stream))
         .nest("/api/v1/mcp", mcp::router())
         .route("/api/system/vitality", get(stream::trigger_system_vitality_stream))
         .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
 
-    let mut router = internal_router.with_state(state);
+    let mut router = Router::new()
+        .merge(internal_router)
+        .merge(streaming_router)
+        .with_state(state);
 
     #[cfg(feature = "nurture")]
     {
@@ -1775,6 +1789,8 @@ pub fn build_app(
                 .rate_limit(50, std::time::Duration::from_secs(1)) // Spike protection
                 .into_inner()
         )
+        // --- Layer 0: Payload Protection ---
+        .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB max request body
 }
 
 #[cfg(test)]

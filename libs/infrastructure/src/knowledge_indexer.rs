@@ -116,10 +116,12 @@ impl ProjectKnowledgeIndexer {
         );
 
         // 1. Delete old chunks
+        let escaped_tag = rel_path.replace('%', "\\%").replace('_', "\\_");
         let source_tag = format!("source:{}", rel_path);
+        let like_pattern = format!("%source:{}%", escaped_tag);
         let old_ids: Vec<String> =
-            sqlx::query_scalar("SELECT id FROM ai_artifacts WHERE tags LIKE ?")
-                .bind(format!("%{}%", source_tag))
+            sqlx::query_scalar("SELECT id FROM ai_artifacts WHERE tags LIKE ? ESCAPE '\\'")
+                .bind(like_pattern)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {

@@ -26,7 +26,9 @@ pub async fn ws_handler(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+    // SEC-3: DoS prevention — limit max message size to 64KB
+    ws.max_message_size(64 * 1024)
+        .on_upgrade(move |socket| handle_socket(socket, state))
 }
 
 async fn handle_socket(socket: WebSocket, state: AppState) {
@@ -46,9 +48,26 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         }
     });
 
-    // Task 2: Relay ControlCommands from WS to Core
+    // Task 2: Relay ControlCommands from WS to Core (with rate limiting)
     let mut command_task = tokio::spawn(async move {
+        // SEC-3: Rate limiting — max 30 messages per 10 seconds
+        let mut msg_count: u32 = 0;
+        let mut rate_window_start = tokio::time::Instant::now();
+        const MAX_MSGS_PER_WINDOW: u32 = 30;
+        const RATE_WINDOW: std::time::Duration = std::time::Duration::from_secs(10);
+
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
+            // Rate limit check
+            if rate_window_start.elapsed() > RATE_WINDOW {
+                msg_count = 0;
+                rate_window_start = tokio::time::Instant::now();
+            }
+            msg_count += 1;
+            if msg_count > MAX_MSGS_PER_WINDOW {
+                warn!("🛡️ [WatchtowerWS] Rate limit exceeded. Disconnecting client.");
+                break;
+            }
+
             if let Ok(command) = serde_json::from_str::<ControlCommand>(&text) {
                 info!("🎮 [WatchtowerWS] Received command: {:?}", command);
                 match command {

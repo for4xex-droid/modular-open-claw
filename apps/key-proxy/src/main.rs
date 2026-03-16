@@ -40,6 +40,8 @@ struct ProxyResponse {
 struct QuotaState {
     total_calls: u64,
     last_reset_day: u32, // Day of the year
+    #[serde(default)]
+    per_caller_calls: std::collections::HashMap<String, u64>,
 }
 
 impl Default for QuotaState {
@@ -47,6 +49,7 @@ impl Default for QuotaState {
         Self {
             total_calls: 0,
             last_reset_day: Utc::now().ordinal(),
+            per_caller_calls: std::collections::HashMap::new(),
         }
     }
 }
@@ -94,6 +97,8 @@ async fn main() -> anyhow::Result<()> {
         env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set in key-proxy/.env");
 
     // Self-Wipe: Remove from environment immediately
+    // SAFETY: This is called at startup before any other threads are spawned, 
+    // satisfying the safety requirement of the current Rust env implementation.
     unsafe {
         env::remove_var("GEMINI_API_KEY");
     }
@@ -136,7 +141,34 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/llm/embed", post(handle_llm_embed))
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
         .layer(axum::middleware::from_fn(auth_middleware))
-        .with_state(state);
+        .with_state(state)
+        // --- Defense Layer 3: Security Headers ---
+        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+            axum::http::header::X_CONTENT_TYPE_OPTIONS,
+            axum::http::HeaderValue::from_static("nosniff"),
+        ))
+        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+            axum::http::header::X_FRAME_OPTIONS,
+            axum::http::HeaderValue::from_static("DENY"),
+        ))
+        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+            axum::http::header::STRICT_TRANSPORT_SECURITY,
+            axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+        ))
+        // --- Defense Layer 2: Rate Limiting (30 req/min = 1 req per 2s) ---
+        .layer(
+            tower::ServiceBuilder::new()
+                .layer(axum::error_handling::HandleErrorLayer::new(|err: tower::BoxError| async move {
+                    tracing::warn!("🛡️ [KeyProxy] Rate limit / buffer error: {}", err);
+                    (StatusCode::TOO_MANY_REQUESTS, format!("Rate limit exceeded: {}", err))
+                }))
+                .buffer(256)
+                .rate_limit(30, std::time::Duration::from_secs(60))
+                .into_inner()
+        )
+        // --- Defense Layer 1: Payload & Timeout Protection ---
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max
+        .layer(tower_http::timeout::TimeoutLayer::new(std::time::Duration::from_secs(120))); // 120s for LLM calls
 
     // 4. Level 5: Unix Domain Sockets (Optional/Configurable)
     // For now, let's start with TCP but keep the design ready for UDS
@@ -200,12 +232,7 @@ async fn handle_llm_complete(
         _ => return (StatusCode::BAD_REQUEST, "Invalid endpoint").into_response(),
     };
 
-    // DEMO MOCK MODE
-    if state.gemini_key.expose_secret() == "mock_key_for_testing" {
-        return Json(ProxyResponse {
-            result: format!("I am Aiome. I hear you loud and clear. Your prompt was: '{}'. Currently operating in Mock Offline Mode inside the Aiome Abyss Vault.", payload.prompt)
-        }).into_response();
-    }
+    // NOTE: Gemini API key is managed via SecretString in state.
 
     let gemini_payload = serde_json::json!({
         "contents": [{
@@ -408,11 +435,26 @@ async fn check_and_increment_quota(
     if q.last_reset_day != today {
         info!("🗓️ [KeyProxy] New day detected. Resetting global quota.");
         q.total_calls = 0;
+        q.per_caller_calls.clear();
         q.last_reset_day = today;
     }
 
     q.total_calls += 1;
     let total = q.total_calls;
+    
+    let caller_total = {
+        let count = q.per_caller_calls.entry(caller_id.to_string()).or_insert(0);
+        *count += 1;
+        *count
+    };
+
+    // SEC: Per-caller quota enforcement
+    if let Some(&limit) = state.caller_quotas.get(caller_id) {
+        if caller_total > limit {
+            warn!("🛑 [KeyProxy] Caller {} exceeded quota ({})", caller_id, limit);
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+    }
 
     if total > 5000 {
         error!(

@@ -49,7 +49,8 @@ impl Default for SecurityConfig {
 
 impl SecurityConfig {
     pub fn load_or_default() -> Self {
-        let path = std::path::Path::new("workspace/config/security.json");
+        let workspace = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "workspace".to_string());
+        let path = std::path::Path::new(&workspace).join("config/security.json");
         if path.exists() {
             if let Ok(content) = std::fs::read_to_string(path) {
                 if let Ok(config) = serde_json::from_str::<SecurityConfig>(&content) {
@@ -112,7 +113,9 @@ impl BastionGuard {
         }
 
         // 2. インジェクション・フィルタ
-        let dangerous_parts = [";", "&&", "||", ">", "<", "|", "`", "$("];
+        let dangerous_parts = [
+            ";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r", "%0a", "%0d",
+        ];
         for part in dangerous_parts {
             if cmd_str.contains(part) {
                 return Err(AiomeError::Infrastructure {
@@ -130,15 +133,15 @@ impl BastionGuard {
 
         info!("✅ [BastionGuard] 検証完了。コマンドを実行します...");
 
-        // 4. Safer Execution: Use direct binary execution if possible to avoid terminal injection
-        let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+        // 4. Safer Execution: Parse command with quote-aware splitting for paths with spaces
+        let parts = Self::shell_split(cmd_str);
         if parts.is_empty() {
             return Err(AiomeError::Infrastructure {
                 reason: "Empty command.".into(),
             });
         }
-        let binary = parts[0];
-        let args = &parts[1..];
+        let binary = parts[0].as_str();
+        let args: Vec<&str> = parts[1..].iter().map(|s| s.as_str()).collect();
 
         // Strict Whitelist check against SecurityConfig (Global Singleton)
         if !GLOBAL_SECURITY_CONFIG
@@ -171,5 +174,138 @@ impl BastionGuard {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
+
+    /// SEC-5: Quote-aware command splitting for paths with spaces
+    /// Supports double and single quotes. Does NOT support escape sequences for security.
+    fn shell_split(input: &str) -> Vec<String> {
+        let mut parts = Vec::new();
+        let mut current = String::new();
+        let mut in_double_quote = false;
+        let mut in_single_quote = false;
+
+        for ch in input.chars() {
+            match ch {
+                '"' if !in_single_quote => {
+                    in_double_quote = !in_double_quote;
+                }
+                '\'' if !in_double_quote => {
+                    in_single_quote = !in_single_quote;
+                }
+                ' ' | '\t' if !in_double_quote && !in_single_quote => {
+                    if !current.is_empty() {
+                        parts.push(std::mem::take(&mut current));
+                    }
+                }
+                _ => {
+                    current.push(ch);
+                }
+            }
+        }
+        if !current.is_empty() {
+            parts.push(current);
+        }
+        parts
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bastion_guard_disallow_shell() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: false,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+        let res = guard.safe_exec("ls");
+        assert!(res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(reason.contains("Security Violation: Forbidden"));
+        } else {
+            panic!("Expected security violation error");
+        }
+    }
+
+    #[test]
+    fn test_bastion_guard_injection_prevention() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+        
+        // Test various injection characters
+        assert!(guard.safe_exec("ls; rm -rf /").is_err());
+        assert!(guard.safe_exec("ls && whoami").is_err());
+        assert!(guard.safe_exec("ls | grep foo").is_err());
+        assert!(guard.safe_exec("ls > out.txt").is_err());
+        assert!(guard.safe_exec("echo `whoami`").is_err());
+        assert!(guard.safe_exec("echo $(whoami)").is_err());
+    }
+
+    #[test]
+    fn test_bastion_guard_sensitive_paths() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        assert!(guard.safe_exec("cat /etc/passwd").is_err());
+        assert!(guard.safe_exec("ls ~/.ssh").is_err());
+        assert!(guard.safe_exec("grep API_KEY .env").is_err());
+    }
+
+    #[test]
+    fn test_bastion_guard_whitelist_enforcement() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // "ls" is in the default whitelist
+        let res = guard.safe_exec("ls");
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(!reason.contains("not in the whitelist"));
+        }
+
+        // "rm" is not in the default whitelist
+        let res = guard.safe_exec("rm -rf /tmp/foo");
+        assert!(res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(reason.contains("Binary 'rm' is not in the whitelist"));
+        }
+    }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_bastion_guard_avoids_forbidden_chars(s in ".*[;&|><`\\$\\n\\r].*") {
+            let manifest = PermissionManifest {
+                allow_shell_execution: true,
+                ..Default::default()
+            };
+            let guard = BastionGuard::new(manifest);
+            let res = guard.safe_exec(&s);
+            
+            // If the string contains any of the dangerous parts, it MUST be blocked
+            let dangerous_parts = [";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r"];
+            let mut should_be_blocked = false;
+            for part in dangerous_parts {
+                if s.contains(part) {
+                    should_be_blocked = true;
+                    break;
+                }
+            }
+
+            if should_be_blocked {
+                prop_assert!(res.is_err(), "Input '{}' should have been blocked", s);
+            }
+        }
     }
 }

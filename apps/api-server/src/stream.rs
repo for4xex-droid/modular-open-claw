@@ -158,7 +158,14 @@ pub async fn trigger_agent_chat_stream(
 
             yield Ok(Event::default().event("turn_start").data(turn.to_string()));
 
-            // Front-end requests bypass semaphore for immediate Ollama access
+            // Security Layer: Enforce semaphore even for SSE to prevent GPU OOM
+            let _permit = match timeout(Duration::from_secs(30), state.llm_semaphore.acquire()).await {
+                Ok(Ok(p)) => p,
+                _ => {
+                    yield Ok(Event::default().event("error").data("System busy (LLM capacity reached). Please try again later."));
+                    return;
+                }
+            };
 
             if let Ok(Ok(mut llm_stream)) = timeout(Duration::from_secs(300), provider.stream_complete(&full_prompt, None)).await {
 

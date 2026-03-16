@@ -174,6 +174,14 @@ pub async fn import_skill(
         }
     })?;
 
+    // SEC: Limit imported content size to 1MB to prevent memory exhaustion or DoS
+    if content.len() > 1_048_576 {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Imported skill content exceeds 1MB limit".into(),
+        }
+        .into());
+    }
+
     // 2. Parse using SkillImporter (Infrastructure)
     use infrastructure::skills::cleanroom::Cleanroom;
     use infrastructure::skills::importer::SkillImporter;
@@ -260,6 +268,30 @@ pub async fn spawn_mcp_server(
     State(state): State<AppState>,
     Json(payload): Json<McpSpawnRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // SEC: Command whitelist to prevent arbitrary process execution
+    const ALLOWED_MCP_COMMANDS: &[&str] = &["npx", "node", "python3", "uvx"];
+    if !ALLOWED_MCP_COMMANDS.contains(&payload.command.as_str()) {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("MCP command '{}' is not whitelisted", payload.command),
+        }
+        .into());
+    }
+
+    // SEC: Block path traversal and injection in args
+    let dangerous_parts = [
+        "..", "$(", "`", "${", ";", "&&", "||", ">", "<", "|", "\n", "\r", "%0a", "%0d",
+    ];
+    for arg in &payload.args {
+        for part in dangerous_parts {
+            if arg.contains(part) {
+                return Err(aiome_core::error::AiomeError::SecurityViolation {
+                    reason: format!("MCP arg contains prohibited sequence: {}", part),
+                }
+                .into());
+            }
+        }
+    }
+
     state
         .mcp_manager
         .spawn_stdio_server(payload.id.clone(), &payload.command, payload.args)

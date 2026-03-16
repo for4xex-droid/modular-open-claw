@@ -11,7 +11,7 @@ shared = { path = "../../libs/shared" }
 aiome-interface = { path = "../../libs/aiome-interface" }
 tokio = { workspace = true }
 axum.workspace = true
-tower-http = { version = "0.5", features = ["fs", "cors", "set-header", "limit"] }
+tower-http = { version = "0.5", features = ["fs", "cors", "set-header", "limit", "timeout"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }

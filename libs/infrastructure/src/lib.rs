@@ -17,6 +17,7 @@ pub mod aiome_log;
 pub mod artifact_store;
 pub mod channel_bridge;
 pub mod circuit_breaker;
+pub mod commerce_mock;
 pub mod concept_manager;
 pub mod context_engine;
 pub mod dream_state;

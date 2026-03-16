@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub mod commerce;
 pub mod error;
 pub mod events;

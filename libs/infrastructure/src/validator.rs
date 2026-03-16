@@ -52,11 +52,14 @@ impl ConstitutionalValidator for DefaultConstitutionalValidator {
         let verdict_text = self.provider.complete(content, Some(&preamble)).await?;
         let verdict = verdict_text.trim();
 
-        if verdict.to_uppercase().starts_with("PASS") {
+        let upper_verdict = verdict.to_uppercase();
+
+        if upper_verdict.starts_with("PASS") && !upper_verdict.contains("FAIL") {
             info!("✅ [ConstitutionalValidator] PASSED constitutional check.");
             Ok(())
-        } else {
-            let reason = verdict.replace("FAIL", "").trim().to_string();
+        } else if upper_verdict.starts_with("FAIL") {
+            let reason = verdict.strip_prefix("FAIL").or_else(|| verdict.strip_prefix("fail"))
+                .unwrap_or(verdict).trim().to_string();
             info!(
                 "🚨 [ConstitutionalValidator] FAILED constitutional check! Reason: {}",
                 reason
@@ -64,6 +67,55 @@ impl ConstitutionalValidator for DefaultConstitutionalValidator {
             Err(AiomeError::SecurityViolation {
                 reason: format!("Constitutional Violation: {}", reason),
             })
+        } else {
+            // Handle cases where the LLM output is neither "PASS" nor "FAIL"
+            info!(
+                "⚠️ [ConstitutionalValidator] Unexpected verdict format: '{}'. Treating as failure.",
+                verdict
+            );
+            Err(AiomeError::SecurityViolation {
+                reason: format!("Constitutional violation: Unexpected verdict format: {}", verdict),
+            })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        verdict: String,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        fn name(&self) -> &str { "mock-llm" }
+        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<String, AiomeError> {
+            Ok(self.verdict.clone())
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+    }
+
+    #[tokio::test]
+    async fn test_constitutional_pass() {
+        let llm = Arc::new(MockLlm { verdict: "PASS".into() });
+        let validator = DefaultConstitutionalValidator::new(llm);
+        let res = validator.verify_constitutional("content", "principles").await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_constitutional_fail() {
+        let llm = Arc::new(MockLlm { verdict: "FAIL: Violation of core ethics.".into() });
+        let validator = DefaultConstitutionalValidator::new(llm);
+        let res = validator.verify_constitutional("bad content", "strict principles").await;
+        assert!(res.is_err());
+        if let Err(AiomeError::SecurityViolation { reason }) = res {
+            assert!(reason.contains("Violation of core ethics"));
+        } else {
+            panic!("Expected SecurityViolation error");
         }
     }
 }

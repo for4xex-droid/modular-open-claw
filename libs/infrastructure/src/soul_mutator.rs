@@ -346,22 +346,209 @@ impl SoulMutator {
         base + growth
     }
 
-    /// Measure Drift via Jaccard Distance (Adaptive Intelligence v1.0)
+    /// Measure Drift via character-level N-gram Jaccard Distance
+    /// Sprint 5-A: Japanese support — split_whitespace から文字レベル N-gram に変更
     /// 0.0 = 同一, 1.0 = 全く異なる
     fn measure_drift(&self, original: &str, mutated: &str) -> f64 {
+        if original.is_empty() || mutated.is_empty() {
+            return 1.0;
+        }
+
         use std::collections::HashSet;
 
-        // 簡易的な単語抽出（将来的にセマンティック類似度へ拡張可能）
-        let orig_words: HashSet<&str> = original.split_whitespace().collect();
-        let new_words: HashSet<&str> = mutated.split_whitespace().collect();
+        // Character-level trigrams for language-agnostic comparison (supports Japanese, CJK, etc.)
+        let n = 3;
 
-        let intersection = orig_words.intersection(&new_words).count();
-        let union = orig_words.union(&new_words).count();
+        let get_ngrams = |text: &str, n: usize| -> HashSet<String> {
+            let chars: Vec<char> = text.chars().collect();
+            if chars.len() < n {
+                // For very short text, use the text itself as a single n-gram
+                let mut set = HashSet::new();
+                set.insert(text.to_string());
+                return set;
+            }
+            chars.windows(n)
+                .map(|window| window.iter().collect())
+                .collect()
+        };
 
-        if union == 0 {
+        let ngrams_a = get_ngrams(original, n);
+        let ngrams_b = get_ngrams(mutated, n);
+
+        if ngrams_a.is_empty() && ngrams_b.is_empty() {
+            return 0.0;
+        }
+        if ngrams_a.is_empty() || ngrams_b.is_empty() {
+            return 1.0;
+        }
+
+        let intersection_count = ngrams_a.intersection(&ngrams_b).count();
+        let union_count = ngrams_a.union(&ngrams_b).count();
+
+        if union_count == 0 {
             return 0.0;
         }
 
-        1.0 - (intersection as f64 / union as f64)
+        1.0 - (intersection_count as f64 / union_count as f64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use aiome_core::error::AiomeError;
+    use aiome_core::llm_provider::LlmProvider;
+    use aiome_core::traits::{JobQueue, Job, KarmaSearchResult, SnsMetricsRecord};
+    use aiome_core::contracts::{SamsaraEvent};
+    use shared::watchtower::AgentStats;
+    use aiome_core::biome::BiomeMessage;
+    use serde_json::json;
+    use uuid::Uuid;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        mutation_response: String,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        fn name(&self) -> &str { "mock-llm" }
+        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<String, AiomeError> {
+            Ok(self.mutation_response.clone())
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+    }
+
+    struct MockJobQueue {
+        karma_lessons: Vec<String>,
+        stats: AgentStats,
+    }
+
+    #[async_trait]
+    impl JobQueue for MockJobQueue {
+        async fn enqueue(&self, _topic: &str, _category: &str, _params: &str, _job_ref: Option<&str>) -> Result<String, AiomeError> { 
+            Ok(Uuid::new_v4().to_string()) 
+        }
+        async fn dequeue(&self, _categories: &[&str]) -> Result<Option<Job>, AiomeError> { Ok(None) }
+        async fn fetch_all_karma(&self, _limit: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+            Ok(self.karma_lessons.iter().map(|l| json!({"lesson": l})).collect())
+        }
+        async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> { Ok(self.stats.clone()) }
+        async fn record_evolution_event(&self, _l: i32, _t: &str, _d: &str, _k: Option<&str>, _r: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn record_soul_mutation(&self, _o: &str, _n: &str, _r: &str) -> Result<(), AiomeError> { Ok(()) }
+
+        async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> { Ok(None) }
+        async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_relevant_karma(&self, _: &str, _: &str, _: i64, _: &str) -> Result<KarmaSearchResult, AiomeError> { Ok(KarmaSearchResult { entries: vec![], is_ood: false, max_score: 0.0 }) }
+        async fn store_karma(&self, _: &str, _: &str, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<&str>, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn adjust_karma_weight(&self, _: &str, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn karma_decay_sweep(&self) -> Result<u64, AiomeError> { Ok(0) }
+        async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn set_creative_rating(&self, _: &str, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn heartbeat_pulse(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_undistilled_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn mark_karma_extracted(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+
+        async fn fetch_job_retry_count(&self, _: &str) -> Result<i64, AiomeError> { Ok(0) }
+        async fn increment_job_retry_count(&self, _: &str) -> Result<bool, AiomeError> { Ok(true) }
+        async fn reset_job_retry_count(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn store_immune_rule(&self, _: &aiome_core::contracts::ImmuneRule) -> Result<(), AiomeError> { Ok(()) }
+        async fn delete_immune_rule(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_active_immune_rules(&self) -> Result<Vec<aiome_core::contracts::ImmuneRule>, AiomeError> { Ok(vec![]) }
+        async fn record_arena_match(&self, _: &aiome_core::contracts::ArenaMatch) -> Result<(), AiomeError> { Ok(()) }
+        async fn export_federated_data(&self, _: Option<&str>) -> Result<(Vec<aiome_core::contracts::FederatedKarma>, Vec<aiome_core::contracts::ImmuneRule>, Vec<aiome_core::contracts::ArenaMatch>), AiomeError> { Ok((vec![], vec![], vec![])) }
+        async fn import_federated_data(&self, _: Vec<aiome_core::contracts::FederatedKarma>, _: Vec<aiome_core::contracts::ImmuneRule>, _: Vec<aiome_core::contracts::ArenaMatch>) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_peer_sync_time(&self, _: &str) -> Result<Option<String>, AiomeError> { Ok(None) }
+        async fn update_peer_sync_time(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_immune_rules(&self) -> Result<Vec<aiome_core::contracts::ImmuneRule>, AiomeError> { Ok(vec![]) }
+        async fn get_node_id(&self) -> Result<String, AiomeError> { Ok("mock-node".into()) }
+        async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> { Ok("mock-sig".into()) }
+        async fn tick_local_clock(&self) -> Result<u64, AiomeError> { Ok(0) }
+        async fn sync_local_clock(&self, _: u64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn storage_gc(&self, _: f64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_chat_history(&self, _: &str, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+        async fn store_expression(&self, _: &aiome_core::expression::Expression) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_expressions(&self, _: i64) -> Result<Vec<aiome_core::expression::Expression>, AiomeError> { Ok(vec![]) }
+        async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> { Ok(false) }
+        async fn set_auto_expression_enabled(&self, _: bool) -> Result<(), AiomeError> { Ok(()) }
+
+        async fn purge_old_jobs(&self, _: i64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn link_sns_data(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn record_sns_metrics(&self, _: &str, _: i64, _: i64, _: i64, _: i64, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_pending_evaluations(&self, _: i64) -> Result<Vec<SnsMetricsRecord>, AiomeError> { Ok(vec![]) }
+        async fn apply_final_verdict(&self, _: i64, _: aiome_core::contracts::OracleVerdict, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn sync_samsara_level(&self) -> Result<Option<SamsaraEvent>, AiomeError> { Ok(None) }
+        async fn get_biome_topic_status(&self, _: &str) -> Result<Option<(i32, Option<String>)>, AiomeError> { Ok(None) }
+        async fn advance_biome_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> { Ok(0) }
+        async fn fetch_biome_messages(&self, _: &str, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+        async fn store_biome_message(&self, _: &BiomeMessage) -> Result<(), AiomeError> { Ok(()) }
+        async fn update_biome_reputation(&self, _: &str, _: f64) -> Result<f64, AiomeError> { Ok(0.0) }
+        async fn archive_biome_topic(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_evolution_history(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+        async fn get_pending_job_count(&self) -> Result<i64, AiomeError> { Ok(0) }
+        async fn get_job_count_since(&self, _: chrono::DateTime<chrono::Utc>) -> Result<i64, AiomeError> { Ok(0) }
+        async fn fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn fetch_unincorporated_karma(&self, _: i64, _: &str) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+        async fn mark_karma_as_incorporated(&self, _: Vec<String>, _: &str) -> Result<(), AiomeError> { Ok(()) }
+    }
+
+    #[tokio::test]
+    async fn test_soul_transmute_success() {
+        let temp_dir = PathBuf::from("/tmp/soul_test_success");
+        let _ = fs::remove_dir_all(&temp_dir).await;
+        let _ = fs::create_dir_all(&temp_dir).await;
+        
+        let base = "one two three four five six seven eight nine ten";
+        let evolving = "one two three four five six seven eight nine ten";
+        fs::write(temp_dir.join("SOUL.md"), base).await.unwrap();
+        fs::write(temp_dir.join("EVOLVING_SOUL.md"), evolving).await.unwrap();
+        
+        let llm = Arc::new(MockLlm {
+            mutation_response: "one two three four five six seven eight nine ten eleven".to_string(),
+        });
+        let mutator = SoulMutator::new(llm, temp_dir.clone());
+        let jq = MockJobQueue {
+            karma_lessons: vec!["Learned that empathy matters.".into()],
+            stats: AgentStats { level: 1, exp: 100, resonance: 5, creativity: 5, fatigue: 0 },
+        };
+
+        let res = mutator.transmute(&jq).await;
+        assert!(res.is_ok(), "Transmute failed: {:?}", res.err());
+        assert!(res.unwrap(), "Should have mutated (drift check failed?)");
+        
+        let new_evolving = fs::read_to_string(temp_dir.join("EVOLVING_SOUL.md")).await.unwrap();
+        assert!(new_evolving.contains("eleven"));
+    }
+
+    #[tokio::test]
+    async fn test_soul_drift_protection() {
+        let temp_dir = PathBuf::from("/tmp/soul_test_drift");
+        let _ = fs::remove_dir_all(&temp_dir).await;
+        let _ = fs::create_dir_all(&temp_dir).await;
+        fs::write(temp_dir.join("SOUL.md"), "A B C D E").await.unwrap();
+        fs::write(temp_dir.join("EVOLVING_SOUL.md"), "A B C").await.unwrap();
+
+        // Mutate to something totally different to trigger drift
+        let llm = Arc::new(MockLlm {
+            mutation_response: "X Y Z W Q R S T".to_string(),
+        });
+        let mutator = SoulMutator::new(llm, temp_dir.clone());
+        let jq = MockJobQueue {
+            karma_lessons: vec!["Chaos is good.".into()],
+            stats: AgentStats { level: 1, exp: 100, resonance: 5, creativity: 5, fatigue: 0 },
+        };
+
+        let res = mutator.transmute(&jq).await;
+        assert!(res.is_ok());
+        assert!(!res.unwrap()); // Drift should block transmute
     }
 }

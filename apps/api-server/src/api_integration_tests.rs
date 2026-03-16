@@ -107,10 +107,25 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         http_client: reqwest::Client::new(),
         security_policy: shared::security::SecurityPolicy::default(),
+        commerce_engine: None,
+        circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+            infrastructure::circuit_breaker::CircuitBreakerConfig {
+                failure_threshold: 5,
+                reset_timeout: std::time::Duration::from_secs(60),
+            }
+        )),
+        slo_engine: Arc::new(infrastructure::slo_engine::SloEngine::new(
+            infrastructure::slo_engine::SloConfig {
+                error_budget_max: 100,
+                warning_threshold: 80,
+            },
+            chrono::Duration::hours(24),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
-    let app = build_app(state, cors_layer, "static");
+    let plugin_registry = plugin_loader::PluginRegistry::new();
+    let app = build_app(state, cors_layer, "static", plugin_registry);
 
     (TestServer::new(app).unwrap(), tmp_dir)
 }

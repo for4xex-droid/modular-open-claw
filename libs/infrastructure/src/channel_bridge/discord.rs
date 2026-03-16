@@ -14,6 +14,7 @@ use serenity::{
     all::GatewayIntents, all::Http, model::channel::Message as DiscordMessage,
     model::gateway::Ready, prelude::*,
 };
+use shared::guardrails::{validate_input, ValidationResult};
 use shared::watchtower::ControlCommand;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -46,13 +47,26 @@ impl EventHandler for Handler {
             msg.author.name, msg.content
         );
 
-        let cmd = ControlCommand::Chat {
-            message: msg.content.clone(),
-            channel_id: msg.channel_id.get(),
-        };
+        // SEC: Validate input from external channel (Discord)
+        match validate_input(&msg.content) {
+            ValidationResult::Valid => {
+                let cmd = ControlCommand::Chat {
+                    message: msg.content.clone(),
+                    channel_id: msg.channel_id.get(),
+                };
 
-        if let Err(e) = self.command_tx.send(cmd).await {
-            error!("❌ [Discord] Failed to send command to Core relay: {:?}", e);
+                if let Err(e) = self.command_tx.send(cmd).await {
+                    error!("❌ [Discord] Failed to send command to Core relay: {:?}", e);
+                }
+            }
+            ValidationResult::Blocked(reason) => {
+                tracing::warn!(
+                    "🛡️ [Discord] Blocked message from {}: {}",
+                    msg.author.name,
+                    reason
+                );
+                // Optional: Notify user or just ignore
+            }
         }
     }
 

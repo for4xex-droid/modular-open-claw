@@ -456,8 +456,8 @@ impl GeminiProvider {
 impl LlmProvider for GeminiProvider {
     async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-            self.model, self.api_key
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+            self.model
         );
 
         let payload = serde_json::json!({
@@ -472,6 +472,7 @@ impl LlmProvider for GeminiProvider {
         let resp = self
             .client
             .post(&url)
+            .header("x-goog-api-key", &self.api_key)
             .json(&payload)
             .send()
             .await
@@ -503,8 +504,8 @@ impl LlmProvider for GeminiProvider {
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
-            self.model, self.api_key
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?alt=sse",
+            self.model
         );
 
         let payload = serde_json::json!({
@@ -519,6 +520,7 @@ impl LlmProvider for GeminiProvider {
         let mut resp = self
             .client
             .post(&url)
+            .header("x-goog-api-key", &self.api_key)
             .json(&payload)
             .send()
             .await
@@ -589,8 +591,8 @@ impl EmbeddingProvider for GeminiProvider {
         };
 
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:embedContent?key={}",
-            embedding_model, self.api_key
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:embedContent",
+            embedding_model
         );
 
         let payload = serde_json::json!({
@@ -603,6 +605,7 @@ impl EmbeddingProvider for GeminiProvider {
         let resp = self
             .client
             .post(&url)
+            .header("x-goog-api-key", &self.api_key)
             .json(&payload)
             .send()
             .await

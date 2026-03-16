@@ -103,6 +103,7 @@ async fn test_analyze_threats_and_verify() {
         "hash-1",
         None,
         None,
+        None,
     )
     .await
     .unwrap();

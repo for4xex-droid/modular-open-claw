@@ -20,7 +20,12 @@ COPY . .
 
 # Build target
 ARG BIN_NAME=api-server
-RUN cargo build --release --bin ${BIN_NAME}
+ARG FEATURES=""
+RUN if [ -n "$FEATURES" ]; then \
+    cargo build --release --bin ${BIN_NAME} --features ${FEATURES}; \
+    else \
+    cargo build --release --bin ${BIN_NAME}; \
+    fi
 
 # --- Runtime Stage ---
 FROM debian:bookworm-slim
