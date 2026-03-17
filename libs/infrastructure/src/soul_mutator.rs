@@ -501,6 +501,7 @@ mod tests {
         async fn fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
         async fn fetch_unincorporated_karma(&self, _: i64, _: &str) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
         async fn mark_karma_as_incorporated(&self, _: Vec<String>, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> { Ok(uuid::Uuid::new_v4()) }
     }
 
     #[tokio::test]

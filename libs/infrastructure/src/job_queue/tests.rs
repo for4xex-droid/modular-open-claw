@@ -29,8 +29,11 @@ struct MockLlmProvider {
 
 #[async_trait]
 impl LlmProvider for MockLlmProvider {
-    async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
-        Ok(self.json_response.clone())
+    async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        Ok(aiome_core::llm_provider::LlmResponse {
+            content: self.json_response.clone(),
+            stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+        })
     }
     async fn test_connection(&self) -> Result<(), AiomeError> {
         Ok(())
