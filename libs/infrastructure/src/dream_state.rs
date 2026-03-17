@@ -127,7 +127,12 @@ impl DreamState {
         if let Some(fail) = failed_jobs.first() {
             info!("🩹 [DreamState] Remembering the failure of '{}'. Dreaming of a redemption version...", fail.topic);
             let redemption_topic = format!("{} (Redemption Remix)", fail.topic);
-            let directives = format!("{{\"remix_of\": \"{}\", \"dream_born\": true}}", fail.id);
+            // SEC-4: Use serde_json for safe JSON construction (prevents injection via fail.id)
+            let directives_json = serde_json::json!({
+                "remix_of": fail.id,
+                "dream_born": true
+            });
+            let directives = directives_json.to_string();
             job_queue
                 .enqueue(
                     "data_processing",
