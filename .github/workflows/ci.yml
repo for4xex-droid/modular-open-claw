@@ -144,6 +144,19 @@ jobs:
           git commit -m "docs: auto-generate CODE Wiki & Architecture Map [skip ci]"
           git push
 
+  docs-sync:
+    name: Documentation Sync Check
+    runs-on: ubuntu-latest
+    # 警告のみ — CI をブロックしない
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # HEAD~1 との比較に必要
+
+      - name: Run docs-sync check
+        run: bash scripts/docs-sync-check.sh --ci
+
   license-header:
     name: Apache 2.0 Header Check
     runs-on: ubuntu-latest
@@ -175,7 +188,7 @@ jobs:
 
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe]
+    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:
