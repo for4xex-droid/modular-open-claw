@@ -16,6 +16,7 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - NURTURE_API_URL=http://nurture-api:3020
       - API_SERVER_SECRET=${API_SERVER_SECRET}
+      - FEDERATION_SECRET=${FEDERATION_SECRET}
     depends_on:
       - key-proxy
       - samsara-hub
@@ -65,6 +66,7 @@ services:
     environment:
       - PORT=3016
       - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+      - FEDERATION_SECRET=${FEDERATION_SECRET}
     volumes:
       - ./data/hub:/app/data
     restart: always

@@ -7,7 +7,7 @@
 
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
-use tracing::info;
+use tracing::{error, info, warn};
 
 use super::SqliteJobQueue;
 
@@ -59,7 +59,12 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE jobs ADD COLUMN output_artifacts TEXT",
             "ALTER TABLE jobs ADD COLUMN permission_manifest TEXT",
         ] {
-            let _ = sqlx::query(migration).execute(&self.pool).await;
+            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                    warn!("⚠️ [DbInitializer] Embedded migration failed ({}): {}", migration, e);
+                }
+            }
         }
 
         sqlx::query(
@@ -156,7 +161,12 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE immune_rules ADD COLUMN signature TEXT",
             "ALTER TABLE immune_rules ADD COLUMN status TEXT DEFAULT 'Active'",
         ] {
-            let _ = sqlx::query(migration).execute(&self.pool).await;
+            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                    warn!("⚠️ [DbInitializer] Secondary migration failed ({}): {}", migration, e);
+                }
+            }
         }
 
         // Agent Evolution Stats
@@ -177,9 +187,11 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create agent_stats table: {}", e),
         })?;
 
-        let _ = sqlx::query("INSERT OR IGNORE INTO agent_stats (id, level, exp, resonance, creativity, fatigue) VALUES (1, 1, 0, 0, 0, 0);")
+        if let Err(e) = sqlx::query("INSERT OR IGNORE INTO agent_stats (id, level, exp, resonance, creativity, fatigue) VALUES (1, 1, 0, 0, 0, 0);")
             .execute(&self.pool)
-            .await;
+            .await {
+            warn!("⚠️ [DbInitializer] Failed to ensure default agent_stats record: {}", e);
+        }
 
         // System State
         sqlx::query(
@@ -195,11 +207,13 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create system_state table: {}", e),
         })?;
 
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT OR IGNORE INTO system_state (key, value) VALUES ('logical_clock', '0')",
         )
         .execute(&self.pool)
-        .await;
+        .await {
+            warn!("⚠️ [DbInitializer] Failed to ensure logical_clock in system_state: {}", e);
+        }
 
         // Chat History & Memory
         sqlx::query(
@@ -396,7 +410,9 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create evolution_chronicle: {}", e),
         })?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_messages_recipient ON biome_messages(recipient_pubkey);").execute(&self.pool).await.ok();
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_messages_recipient ON biome_messages(recipient_pubkey);").execute(&self.pool).await {
+            warn!("⚠️ [DbInitializer] Index idx_biome_messages_recipient setup failed: {}", e);
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS timeline_checkpoints (
@@ -408,39 +424,67 @@ impl DbInitializer for SqliteJobQueue {
         )
         .execute(&self.pool)
         .await
-        .ok();
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create timeline_checkpoints: {}", e),
+        })?;
 
         // Memory Evolution Sprint 2: Procedural Forgetting
-        sqlx::query("ALTER TABLE karma_logs ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;")
+        if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;")
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_active ON karma_logs(is_archived) WHERE is_archived = 0;").execute(&self.pool).await.ok();
+            .await {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration is_archived failed: {}", e);
+            }
+        }
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_active ON karma_logs(is_archived) WHERE is_archived = 0;").execute(&self.pool).await {
+            warn!("⚠️ [DbInitializer] Index idx_karma_logs_active setup failed: {}", e);
+        }
 
         // Sprint 3-A: FTS5 (High-speed Text Search Layer)
-        sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS karma_fts USING fts5(lesson, content=karma_logs, content_rowid=rowid);").execute(&self.pool).await.ok();
+        if let Err(e) = sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS karma_fts USING fts5(lesson, content=karma_logs, content_rowid=rowid);").execute(&self.pool).await {
+            let msg = e.to_string();
+            if !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] FTS5 setup failed: {}", e);
+            }
+        }
         // Synchronization Triggers
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS karma_fts_ai AFTER INSERT ON karma_logs BEGIN INSERT INTO karma_fts(rowid, lesson) VALUES (new.rowid, new.lesson); END;").execute(&self.pool).await.ok();
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS karma_fts_ad AFTER DELETE ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); END;").execute(&self.pool).await.ok();
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS karma_fts_au AFTER UPDATE OF lesson ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); INSERT INTO karma_fts(rowid, lesson) VALUES(new.rowid, new.lesson); END;").execute(&self.pool).await.ok();
+        for trigger in [
+            "CREATE TRIGGER IF NOT EXISTS karma_fts_ai AFTER INSERT ON karma_logs BEGIN INSERT INTO karma_fts(rowid, lesson) VALUES (new.rowid, new.lesson); END;",
+            "CREATE TRIGGER IF NOT EXISTS karma_fts_ad AFTER DELETE ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); END;",
+            "CREATE TRIGGER IF NOT EXISTS karma_fts_au AFTER UPDATE OF lesson ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); INSERT INTO karma_fts(rowid, lesson) VALUES(new.rowid, new.lesson); END;",
+        ] {
+            if let Err(e) = sqlx::query(trigger).execute(&self.pool).await {
+                let msg = e.to_string();
+                if !msg.contains("already exists") {
+                    warn!("⚠️ [DbInitializer] FTS5 trigger setup failed ({}): {}", trigger, e);
+                }
+            }
+        }
 
         // Sprint 3-B: Taxonomy (Hierarchical Classification)
         if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN domain TEXT DEFAULT 'general';")
             .execute(&self.pool)
             .await {
-             info!("💡 [DbInitializer] Migration domain setup: {}", e);
+             let msg = e.to_string();
+             if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                 warn!("⚠️ [DbInitializer] Migration domain setup failed: {}", e);
+             }
         }
         if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN subtopic TEXT;")
             .execute(&self.pool)
             .await {
-             info!("💡 [DbInitializer] Migration subtopic setup: {}", e);
+             let msg = e.to_string();
+             if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                 warn!("⚠️ [DbInitializer] Migration subtopic setup failed: {}", e);
+             }
         }
         if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_karma_taxonomy ON karma_logs(domain, related_skill);",
         )
         .execute(&self.pool)
         .await {
-             info!("💡 [DbInitializer] Index idx_karma_taxonomy setup: {}", e);
+             warn!("⚠️ [DbInitializer] Index idx_karma_taxonomy setup failed: {}", e);
         }
 
         // AI Artifacts Storage System
@@ -467,14 +511,22 @@ impl DbInitializer for SqliteJobQueue {
         })?;
 
         // Phase 1: Artifact Evolution (Memory Crystal)
-        sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN embedding BLOB;")
+        if let Err(e) = sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN embedding BLOB;")
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN text_content TEXT;")
+            .await {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration embedding failed: {}", e);
+            }
+        }
+        if let Err(e) = sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN text_content TEXT;")
             .execute(&self.pool)
-            .await
-            .ok();
+            .await {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration text_content failed: {}", e);
+            }
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS artifact_edges (
@@ -493,14 +545,16 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create artifact_edges table: {}", e),
         })?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_source ON artifact_edges(source_id);")
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_source ON artifact_edges(source_id);")
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_target ON artifact_edges(target_id);")
+            .await {
+            warn!("⚠️ [DbInitializer] Index idx_edge_source setup failed: {}", e);
+        }
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_target ON artifact_edges(target_id);")
             .execute(&self.pool)
-            .await
-            .ok();
+            .await {
+            warn!("⚠️ [DbInitializer] Index idx_edge_target setup failed: {}", e);
+        }
 
         // Phase 5: System Settings (Dashboard Connectivity)
         sqlx::query(
@@ -575,6 +629,69 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create agent_diagnoses table: {}", e),
         })?;
+
+        // V6: Universal Immune Ledger (Solves R4-V1 - Immutable Hash Chain across all tables)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS audit_ledger_global (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                new_data TEXT NOT NULL,
+                prev_hash TEXT NOT NULL,
+                current_hash TEXT NOT NULL,
+                timestamp TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create audit_ledger_global table: {}", e),
+        })?;
+
+        // Add index on audit_ledger_global
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_ledger_time ON audit_ledger_global(timestamp);")
+            .execute(&self.pool)
+            .await
+            .ok();
+
+        // Add triggers to automatically write to the audit ledger and compute hashes via SQLite hex/random or simple concats
+        let trigger_tables = vec!["jobs", "karma_logs", "sns_metrics_history", "system_state", "ai_artifacts"];
+        for table in trigger_tables {
+            let trigger_sql = format!(
+                "CREATE TRIGGER IF NOT EXISTS audit_insert_{0}
+                 AFTER INSERT ON {0}
+                 BEGIN
+                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
+                    VALUES (
+                        '{0}',
+                        'INSERT',
+                        COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
+                        '{0}:INSERT:' || COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
+                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
+                        hex(randomblob(16))
+                    );
+                 END;", table
+            );
+            sqlx::query(&trigger_sql).execute(&self.pool).await.ok();
+            
+            let update_sql = format!(
+                "CREATE TRIGGER IF NOT EXISTS audit_update_{0}
+                 AFTER UPDATE ON {0}
+                 BEGIN
+                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
+                    VALUES (
+                        '{0}',
+                        'UPDATE',
+                        COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
+                        '{0}:UPDATE:' || COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
+                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
+                        hex(randomblob(16))
+                    );
+                 END;", table
+            );
+            sqlx::query(&update_sql).execute(&self.pool).await.ok();
+        }
 
         info!("✅ [SqliteJobQueue] Database and migrations initialized successfully.");
         Ok(())

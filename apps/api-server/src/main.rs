@@ -78,6 +78,8 @@ pub struct AppState {
     pub commerce_engine: Option<Arc<dyn aiome_core::commerce::CommerceEngine>>,
     pub circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
     pub slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
+    pub api_server_secret: Arc<secrecy::SecretString>,
+    pub federation_secret: Option<Arc<secrecy::SecretString>>,
 }
 
 #[tokio::main]
@@ -155,6 +157,9 @@ async fn main() {
         client: shared_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
+        gemini_api_key: config.gemini_api_key.clone(),
+        openai_api_key: config.openai_api_key.clone(),
+        anthropic_api_key: config.anthropic_api_key.clone(),
         circuit_breaker: circuit_breaker.clone(),
         slo_engine: slo_engine.clone(),
     });
@@ -164,6 +169,9 @@ async fn main() {
         client: shared_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
+        gemini_api_key: config.gemini_api_key.clone(),
+        openai_api_key: config.openai_api_key.clone(),
+        anthropic_api_key: config.anthropic_api_key.clone(),
     });
 
     let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
@@ -243,14 +251,20 @@ async fn main() {
     #[cfg(feature = "nurture")]
     let (nurture_state, commerce_engine) = {
         info!("💰 [NURTURE] Initializing Economy Engine via Plugin Architecture...");
-        let system_id = uuid::Uuid::nil();
+        let system_id = job_queue.get_system_agent_id().await.unwrap_or_else(|e| {
+            error!("🚨 [NURTURE] Failed to get system agent ID: {}", e);
+            uuid::Uuid::nil()
+        });
         let nurture_plugin = nurture_api::plugin::create_plugin(
             job_queue.get_pool().clone(),
             system_id,
             event_sender.clone(),
             job_queue.clone(),
             cancel_token.clone(),
-        ).await.expect("💰 [NURTURE] Failed to create plugin");
+        ).await.unwrap_or_else(|e| {
+            error!("💰 [NURTURE] Failed to create plugin: {}", e);
+            std::process::exit(1);
+        });
         
         plugin_registry.register(nurture_plugin.clone());
         let ce = nurture_plugin.commerce_engine();
@@ -261,7 +275,10 @@ async fn main() {
             nurture_api::state::EconomyPolicy::default(),
             commerce_protocol::identity::ActorId(system_id),
             cancel_token.clone(),
-        ).await.expect("Failed to initialize nurture_state");
+        ).await.unwrap_or_else(|e| {
+            error!("🚨 [NURTURE] Failed to initialize state: {}", e);
+            std::process::exit(1);
+        });
         
         (ns, ce)
     };
@@ -269,44 +286,61 @@ async fn main() {
     #[cfg(not(feature = "nurture"))]
     let commerce_engine = Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine) as Arc<dyn aiome_core::commerce::CommerceEngine>);
 
-    let app = build_app(
-        AppState {
-            health_monitor,
-            job_queue: job_queue.clone(),
-            wasm_skill_manager,
-            skill_forge,
-            docs_path: docs_path.to_string(),
-            llm_semaphore: llm_semaphore.clone(),
-            forge_semaphore: forge_semaphore.clone(),
-            mcp_sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-            mcp_manager: Arc::new(mcp::client::McpProcessManager::new()),
-            artifact_store: artifact_store.clone(),
-            event_sender: event_sender.clone(),
-            context_engine: Arc::new(infrastructure::context_engine::ContextEngine::new(
-                provider.clone(),
-                job_queue.clone(),
-                llm_semaphore.clone(),
-            )),
-            soul_mutator: Arc::new(infrastructure::soul_mutator::SoulMutator::new(
-                provider.clone(),
-                std::path::PathBuf::from("workspace"),
-            )),
-            provider: provider.clone(),
-            autonomous_running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            autonomous_config: Arc::new(tokio::sync::RwLock::new(None)),
-            http_client,
-            docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-            security_policy: {
-                let mut policy = shared::security::SecurityPolicy::default();
-                for tool in plugin_registry.registered_tools() {
-                    policy.register_tool(&tool);
-                }
-                policy
-            },
-            commerce_engine,
-            circuit_breaker: circuit_breaker.clone(),
-            slo_engine: slo_engine.clone(),
+    let api_server_secret_raw = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
+        warn!("⚠️ API_SERVER_SECRET not set, using insecure default!");
+        "dev_secret".to_string()
+    });
+    let federation_secret_raw = std::env::var("FEDERATION_SECRET").ok();
+
+    // SEC: Wipe sensitive environment variables immediately after loading
+    std::env::remove_var("API_SERVER_SECRET");
+    std::env::remove_var("FEDERATION_SECRET");
+
+    let api_server_secret = Arc::new(secrecy::SecretString::from(api_server_secret_raw.clone()));
+    let federation_secret = federation_secret_raw.map(|s| Arc::new(secrecy::SecretString::from(s)));
+
+    let state = AppState {
+        health_monitor,
+        job_queue: job_queue.clone(),
+        wasm_skill_manager,
+        skill_forge,
+        docs_path: docs_path.to_string(),
+        llm_semaphore: llm_semaphore.clone(),
+        forge_semaphore: forge_semaphore.clone(),
+        mcp_sessions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        mcp_manager: Arc::new(mcp::client::McpProcessManager::new()),
+        artifact_store: artifact_store.clone(),
+        event_sender: event_sender.clone(),
+        context_engine: Arc::new(infrastructure::context_engine::ContextEngine::new(
+            provider.clone(),
+            job_queue.clone(),
+            llm_semaphore.clone(),
+        )),
+        soul_mutator: Arc::new(infrastructure::soul_mutator::SoulMutator::new(
+            provider.clone(),
+            std::path::PathBuf::from("workspace"),
+        )),
+        provider: provider.clone(),
+        autonomous_running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        autonomous_config: Arc::new(tokio::sync::RwLock::new(None)),
+        http_client,
+        docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        security_policy: {
+            let mut policy = shared::security::SecurityPolicy::default();
+            for tool in plugin_registry.registered_tools() {
+                policy.register_tool(&tool);
+            }
+            policy
         },
+        commerce_engine,
+        circuit_breaker: circuit_breaker.clone(),
+        slo_engine: slo_engine.clone(),
+        api_server_secret,
+        federation_secret: federation_secret.clone(),
+    };
+
+    let app = build_app(
+        state.clone(),
         cors_layer,
         static_path,
         #[cfg(feature = "nurture")]
@@ -315,8 +349,7 @@ async fn main() {
     );
 
     // Initial Security Check (C1)
-    let secret_key = std::env::var("API_SERVER_SECRET").unwrap_or_default();
-    if secret_key == "dev_secret" || secret_key.is_empty() {
+    if api_server_secret_raw == "dev_secret" || api_server_secret_raw.is_empty() {
         if cfg!(debug_assertions) {
             warn!("🚨 [SECURITY CRITICAL] API_SERVER_SECRET is set to fallback value or empty.");
             warn!("🚨 Please set a strong random secret in your .env file immediately.");
@@ -340,9 +373,11 @@ async fn main() {
     let token = cancel_token;
     let jq_clone = job_queue.clone();
     let token_bg = token.clone();
+    let federation_secret_bg = federation_secret.clone();
     tokio::spawn(async move {
         let token = token_bg;
         let token_ws = token.clone();
+        let fed_secret = federation_secret_bg;
         // Initialize LLM for background tasks (using bg_provider to avoid Ollama competition)
         let immune_system =
             infrastructure::immune_system::AdaptiveImmuneSystem::new(bg_provider.clone());
@@ -370,8 +405,10 @@ async fn main() {
         // 🌐 2. Federation Sync: Connect to Samsara Hub WebSocket for real-time updates
         let hub_ws_url = std::env::var("SAMSARA_HUB_WS")
             .unwrap_or_else(|_| config.samsara_hub_url.replace("http://", "ws://").replace("https://", "wss://") + "/api/v1/federation/ws");
-        let hub_secret = std::env::var("FEDERATION_SECRET").unwrap_or_default();
-        if hub_secret.is_empty() {
+        
+        use secrecy::ExposeSecret;
+        let hub_secret_val = fed_secret.as_ref().map(|s| s.expose_secret().to_string()).unwrap_or_default();
+        if hub_secret_val.is_empty() {
              warn!("⚠️ [BackgroundWorker] FEDERATION_SECRET is empty. Federation might fail.");
         }
         let jq_ws = jq_clone.clone();
@@ -410,7 +447,7 @@ async fn main() {
                     }
                 };
 
-                let auth_val = format!("Bearer {}", hub_secret).parse();
+                let auth_val = format!("Bearer {}", hub_secret_val).parse();
                 match auth_val {
                     Ok(val) => {
                         request.headers_mut().insert("Authorization", val);
@@ -681,14 +718,15 @@ async fn main() {
             // 🌐 2. Swarm Sync: Push local data and Sync remote data via REST API
             info!("🌐 [BackgroundWorker] Starting Swarm Sync cycle...");
             let hub_base = config.samsara_hub_url.clone();
-            let hub_secret = match std::env::var("FEDERATION_SECRET") {
-                Ok(s) => s,
-                Err(_) => {
+            let hub_secret_val = match fed_secret.as_ref() {
+                Some(s) => s.expose_secret().to_string(),
+                None => {
                     error!("🛑 [BackgroundWorker] FEDERATION_SECRET missing. Skipping Swarm Sync.");
                     tokio::time::sleep(Duration::from_secs(60)).await;
                     continue;
                 }
             };
+            let hub_secret = hub_secret_val;
             let client = client_bg_clone.clone();
 
             use aiome_core::contracts::{
@@ -999,17 +1037,22 @@ async fn main() {
 
 async fn shutdown_signal(token: CancellationToken) {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            error!("🚨 Failed to install Ctrl+C handler: {}", e);
+        }
     };
 
     #[cfg(unix)]
     let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => {
+                s.recv().await;
+            }
+            Err(e) => {
+                error!("🚨 Failed to install signal handler: {}", e);
+                std::future::pending::<()>().await;
+            }
+        }
     };
 
     #[cfg(not(unix))]
@@ -1179,21 +1222,28 @@ pub fn build_app(
         .route("/api/system/vitality", get(stream::trigger_system_vitality_stream))
         .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
 
-    let mut router = Router::new()
+    let mut router: Router<AppState> = Router::new()
         .merge(internal_router)
-        .merge(streaming_router)
-        .with_state(state);
+        .merge(streaming_router);
 
     #[cfg(feature = "nurture")]
     {
-        router = router.merge(nurture_api::routes::nurture_routes(nurture_state));
+        // nurture routes are merged after with_state, so handle separately
     }
 
+    // Apply auth middleware BEFORE with_state, using from_fn_with_state
+    let state_for_auth = state.clone();
+    let router = router
+        .with_state(state);
+
+    #[cfg(feature = "nurture")]
+    let router = router.merge(nurture_api::routes::nurture_routes(nurture_state));
+
     // Dynamic Route Merging from PluginRegistry (Phase A-2)
-    router = plugin_registry.merge_routes(router);
+    let router = plugin_registry.merge_routes(router);
 
     router
-        .route_layer(axum::middleware::from_extractor::<auth::Authenticated>())
+        .route_layer(axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware))
 
         // --- Public Routes (Internal Monitoring / SSE / WS) ---
         .merge(utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api::ApiDoc::openapi()))

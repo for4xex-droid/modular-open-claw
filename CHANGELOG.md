@@ -8,14 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **LLM Provider Infrastructure Layer**: Moved `DynamicLlmProvider` and `BackgroundLlmProvider` from `api-server/main.rs` to `libs/infrastructure/src/llm/dynamic.rs`, making them reusable across all crates.
-- **Centralized Configuration (`AiomeConfig`)**: Introduced `libs/shared/src/config.rs` with `AiomeConfig` struct that consolidates all environment variable loading (DB path, LLM hosts/models, API keys, CORS origins, Hub URLs) into a single source of truth.
-- **Immune System Hardening**: Expanded baseline threat detection signatures from 6 to 14 patterns, including reverse shells (`nc -e`), environment variable exfiltration (`API_KEY` patterns), SQL injection (`DROP TABLE`), and Python socket-based attacks.
-- **Streaming LLM Support**: Added `tokio-stream` dependency to infrastructure layer, enabling `stream_complete()` for real-time token-by-token LLM responses via SSE.
-- **Embedding Provider Fallback**: `BackgroundLlmProvider` now implements `EmbeddingProvider` trait with automatic fallback: Ruri → Gemini → Ollama.
+- **AgentRx Framework Integration**: Implemented a comprehensive agentic diagnostic and recovery system including `TrajectoryStore` (SQLite), `ConstraintChecker` (rule-based validation), and `AgentRxDiagnostics` (LLM-based self-review). Added full integration into `skill_handler.rs` and the main chat loop for autonomous failure recovery.
+- **WASM `fs_reader` Security Fix (P0)**: Corrected a path traversal vulnerability in the `fs_reader` WASM skill by replacing string-based prefix checks with component-aware `Path::starts_with`.
+- **Enhanced BastionGuard Whitelisting & Flag Validation**: Strengthened `safe_exec` to recursively validate paths within command-line flags (e.g., `--file=path`) and explicitly blacklisted access to sensitive internal files like `.env`, `.git`, and `security.json` even within the allowed workspace.
+- **AgentRx Schema Migration**: Added `trajectory_steps` and `agent_diagnoses` tables to the core database to enable persistent storage of agent execution paths and recovery hints.
+- **Security Whitelist Optimization**: Removed `mv` from the default `BastionGuard` whitelist to prevent uncontrolled file movement and maintain consistency with other restricted destructive commands.
+- **FTS5 Synchronization Triggers**: Implemented robust error handling for Search Index (FTS5) triggers in `migrations.rs`, replacing silent ignores with structured warnings and idempotent creation checks.
+- **Duplicate Safety Directive Removal**: Cleaned up code across `infrastructure` and `core` crates by removing redundant `![forbid(unsafe_code)]` attributes.
 
 ### Changed
 - **Panic-Free Startup**: Replaced all `expect()` / `unwrap()` calls in `api-server/main.rs` startup path with `unwrap_or_else` + `error!` + `std::process::exit(1)` for graceful error reporting.
+- **Guardrail Test Safety (B6)**: Removed unsafe and redundant `std::env::set_var` calls from `guardrails.rs` unit tests, relying on the secure default of `true` for `ENFORCE_GUARDRAIL`.
+- **API Server Secret in Tests**: Updated `api_integration_tests.rs` to pass secrets via type-safe `AppState` instead of environment variables, aligning with the new centralized secret management.
 - **CORS Configuration**: Migrated from hardcoded origin strings to `AiomeConfig.allowed_origins`, loaded dynamically from `ALLOWED_ORIGINS` env var.
 - **Hub URL Resolution**: `SAMSARA_HUB_REST` and `SAMSARA_HUB_WS` now resolved from `AiomeConfig` instead of scattered `env::var()` calls.
 - **Federation Secret**: `FEDERATION_SECRET` no longer panics when unset; instead logs a warning and defaults to empty string.

@@ -4,7 +4,7 @@ import { Shield, AlertTriangle, CheckCircle, Search, Filter } from 'lucide-react
 import { API_BASE } from "../config";
 
 import { ImmuneRule } from "../types";
-import { getAuthHeaders } from "../lib/auth";
+import { authenticatedFetch } from "../lib/auth";
 
 const ImmuneSystem: React.FC = () => {
     const [rules, setRules] = useState<ImmuneRule[]>([]);
@@ -13,9 +13,7 @@ const ImmuneSystem: React.FC = () => {
 
     const fetchRules = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/synergy/rules`, {
-                headers: getAuthHeaders()
-            });
+            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules`);
             if (res.ok) {
                 const data: ImmuneRule[] = await res.json();
 
@@ -38,12 +36,8 @@ const ImmuneSystem: React.FC = () => {
 
     const handleAddRule = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/synergy/rules`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules`, {
                 method: 'POST',
-                headers: {
-                    ...getAuthHeaders(),
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     id: '',
                     pattern: newRule.pattern,
@@ -73,12 +67,8 @@ const ImmuneSystem: React.FC = () => {
     const handleUpdateRule = async () => {
         if (!editingId) return;
         try {
-            const res = await fetch(`${API_BASE}/api/synergy/rules`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules`, {
                 method: 'PUT',
-                headers: {
-                    ...getAuthHeaders(),
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     id: editingId,
                     pattern: newRule.pattern,
@@ -101,9 +91,8 @@ const ImmuneSystem: React.FC = () => {
     const handleDeleteRule = async (id: string) => {
         if (!confirm("Are you sure you want to delete this immune rule?")) return;
         try {
-            const res = await fetch(`${API_BASE}/api/synergy/rules/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
+            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules/${id}`, {
+                method: 'DELETE'
             });
             if (res.ok) {
                 fetchRules();

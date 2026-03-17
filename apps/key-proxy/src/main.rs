@@ -59,6 +59,7 @@ use std::collections::HashMap;
 #[derive(Clone)]
 struct AppState {
     gemini_key: Arc<SecretString>,
+    vault_secret: Arc<SecretString>,
     client: reqwest::Client,
     state: Arc<RwLock<QuotaState>>,
     persistence_path: PathBuf,
@@ -98,17 +99,25 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     });
 
+    let vault_secret = env::var("VAULT_SECRET").unwrap_or_else(|_| {
+        error!("🚨 [CRITICAL] VAULT_SECRET must be set for Abyss Vault access!");
+        std::process::exit(1);
+    });
+
     // Self-Wipe: Remove from environment immediately
-    // SAFETY: This is called at startup before any other threads are spawned, 
-    // satisfying the safety requirement of the current Rust env implementation.
     #[allow(unsafe_code)]
     fn wipe_env(key: &str) {
+        // SAFETY: This is called during the single-threaded initialization phase.
+        // Rust 1.66+ made env::set_var/remove_var unsafe due to potential thread-safety
+        // issues if called concurrently with other threads reading the environment.
+        // Since this is the main setup before any other threads are spawned, it is safe.
         unsafe {
             env::remove_var(key);
         }
     }
     wipe_env("GEMINI_API_KEY");
-    info!("🧹 [KeyProxy] Environment wiped. Gemini key is now only in memory.");
+    wipe_env("VAULT_SECRET");
+    info!("🧹 [KeyProxy] Environment wiped. Keys are now only in memory.");
 
     let mut quotas = HashMap::new();
     quotas.insert("daemon".to_string(), 1000);
@@ -133,6 +142,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState {
         gemini_key: Arc::new(SecretString::from(gemini_key)),
+        vault_secret: Arc::new(SecretString::from(vault_secret)),
         client: reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()?,
@@ -146,7 +156,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/llm/stream", post(handle_llm_stream))
         .route("/api/v1/llm/embed", post(handle_llm_embed))
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
-        .layer(axum::middleware::from_fn(auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
         .with_state(state)
         // --- Defense Layer 3: Security Headers ---
         .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
@@ -176,8 +186,6 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::limit::RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max
         .layer(tower_http::timeout::TimeoutLayer::new(std::time::Duration::from_secs(120))); // 120s for LLM calls
 
-    // 4. Level 5: Unix Domain Sockets (Optional/Configurable)
-    // For now, let's start with TCP but keep the design ready for UDS
     let port = env::var("KEY_PROXY_PORT").unwrap_or_else(|_| "3010".to_string());
     let bind_addr = if env::var("BIND_ALL").map(|v| v == "true").unwrap_or(false) {
         "0.0.0.0"
@@ -194,6 +202,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn auth_middleware(
+    State(state): State<AppState>,
     req: axum::http::Request<axum::body::Body>,
     next: axum::middleware::Next,
 ) -> Result<Response, StatusCode> {
@@ -202,11 +211,7 @@ async fn auth_middleware(
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok());
 
-    let expected_secret = env::var("VAULT_SECRET").unwrap_or_else(|_| {
-        error!("🚨 [CRITICAL] VAULT_SECRET must be set for Abyss Vault access!");
-        std::process::exit(1);
-    });
-    let expected = format!("Bearer {}", expected_secret);
+    let expected = format!("Bearer {}", state.vault_secret.expose_secret());
 
     if auth_header
         .filter(|a| subtle::ConstantTimeEq::ct_eq(a.as_bytes(), expected.as_bytes()).into())
@@ -225,12 +230,10 @@ async fn handle_llm_complete(
 ) -> impl IntoResponse {
     info!("📩 [KeyProxy] Request from caller: {}", payload.caller_id);
 
-    // 8. Zero-Trust: Caller & Quota Check
     if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
         return status.into_response();
     }
 
-    // 5. SSRF Defense: Hardcoded Endpoints
     let gemini_model = env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
     let url = match payload.endpoint.as_str() {
         "gemini" => format!(
@@ -239,8 +242,6 @@ async fn handle_llm_complete(
         ),
         _ => return (StatusCode::BAD_REQUEST, "Invalid endpoint").into_response(),
     };
-
-    // NOTE: Gemini API key is managed via SecretString in state.
 
     let gemini_payload = serde_json::json!({
         "contents": [{
@@ -268,7 +269,6 @@ async fn handle_llm_complete(
                 let body_res: Result<serde_json::Value, _> = resp.json().await;
                 match body_res {
                     Ok(body) => {
-                        // Extract text from Gemini structure
                         let text = body["candidates"][0]["content"]["parts"][0]["text"]
                             .as_str()
                             .unwrap_or("")
@@ -282,13 +282,11 @@ async fn handle_llm_complete(
             } else {
                 let status = resp.status();
                 error!("❌ [KeyProxy] Upstream error: {}", status);
-                // 7. Ex-Machina: ERROR MASKING
                 (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
             }
         }
         Err(e) => {
             error!("❌ [KeyProxy] Request failed: {:?}", e);
-            // 7. Ex-Machina: ERROR MASKING (Zeroize URL from error str in production if needed)
             (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
         }
     }
@@ -456,7 +454,6 @@ async fn check_and_increment_quota(
         *count
     };
 
-    // SEC: Per-caller quota enforcement
     if let Some(&limit) = state.caller_quotas.get(caller_id) {
         if caller_total > limit {
             warn!("🛑 [KeyProxy] Caller {} exceeded quota ({})", caller_id, limit);
@@ -472,7 +469,6 @@ async fn check_and_increment_quota(
         return Err(StatusCode::TOO_MANY_REQUESTS);
     }
 
-    // Occasional save
     if total % 10 == 0 {
         let path = state.persistence_path.clone();
         let state_clone = q.clone();

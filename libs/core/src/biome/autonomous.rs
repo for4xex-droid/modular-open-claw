@@ -150,7 +150,8 @@ impl AutonomousBiomeEngine {
 
         let user_prompt = format!("Context:\n{}\n\nYour reply:", context);
 
-        llm.complete(&user_prompt, Some(&system_prompt)).await
+        let resp = llm.complete(&user_prompt, Some(&system_prompt)).await?;
+        Ok(resp.content)
     }
 
     async fn send_autonomous_message(

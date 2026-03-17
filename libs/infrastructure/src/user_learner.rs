@@ -45,8 +45,8 @@ impl UserLearner {
             );
 
             match self.provider.complete(&prompt, None).await {
-                Ok(reply) => {
-                    let reply = reply.trim();
+                Ok(resp) => {
+                    let reply = resp.content.trim();
                     if reply != "NO_UPDATE" && !reply.is_empty() {
                         // 異常サイズ・内容検知 (短すぎる、またはMarkdown構造を成していない場合はブロック)
                         if reply.len() < 50 || (!reply.contains('#') && !reply.contains("- ")) {

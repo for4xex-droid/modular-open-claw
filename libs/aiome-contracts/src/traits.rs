@@ -435,6 +435,9 @@ pub trait JobQueue: Send + Sync {
     /// Update local clock based on a received remote clock value
     async fn sync_local_clock(&self, remote_clock: u64) -> Result<u64, AiomeError>;
 
+    /// Get a stable UUID for the system's primary agent. Creates one if missing.
+    async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
+
     /// The Scavenger: Storage GC (Remove old artifact files if total size > threshold_gb)
     async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError>;
 

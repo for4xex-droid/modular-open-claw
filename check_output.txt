@@ -1,0 +1,2129 @@
+warning: ambiguous glob re-exports
+  --> libs/aiome-contracts/src/lib.rs:16:9
+   |
+16 | pub use biome::*;
+   |         ^^^^^^^^ the name `FailureCategory` in the type namespace is first re-exported here
+...
+26 | pub use trajectory::*;
+   |         ------------- but the name `FailureCategory` in the type namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: `aiome-contracts` (lib) generated 1 warning
+warning: unused import: `Context`
+ --> libs/shared/src/config.rs:1:14
+  |
+1 | use anyhow::{Context, Result};
+  |              ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `endpoint`
+  --> libs/shared/src/security.rs:73:38
+   |
+73 |     pub fn allow_endpoint(&mut self, endpoint: &str) {
+   |                                      ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_endpoint`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: missing documentation for the crate
+  --> libs/shared/src/lib.rs:7:1
+   |
+ 7 | / #![forbid(unsafe_code)]
+ 8 | | #![warn(missing_docs)]
+ 9 | |
+10 | | pub mod cleaner;
+...  |
+19 | | pub mod watchtower;
+20 | | pub mod zombie_killer;
+   | |______________________^
+   |
+note: the lint level is defined here
+  --> libs/shared/src/lib.rs:8:9
+   |
+ 8 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/shared/src/lib.rs:11:1
+   |
+11 | pub mod config;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/shared/src/lib.rs:14:1
+   |
+14 | pub mod health;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/shared/src/lib.rs:18:1
+   |
+18 | pub mod security;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/cleaner.rs:19:5
+   |
+19 |     pub path: PathBuf,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/cleaner.rs:20:5
+   |
+20 |     pub recursive: bool,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> libs/shared/src/config.rs:8:5
+  |
+8 |     pub db_path: String,
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> libs/shared/src/config.rs:9:5
+  |
+9 |     pub log_level: String,
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:10:5
+   |
+10 |     pub ollama_host: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:11:5
+   |
+11 |     pub ollama_model: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:12:5
+   |
+12 |     pub gemini_api_key: Option<SecretString>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:13:5
+   |
+13 |     pub openai_api_key: Option<SecretString>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:14:5
+   |
+14 |     pub anthropic_api_key: Option<SecretString>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:15:5
+   |
+15 |     pub api_server_port: u16,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:16:5
+   |
+16 |     pub key_proxy_url: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:17:5
+   |
+17 |     pub samsara_hub_url: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/config.rs:18:5
+   |
+18 |     pub allowed_origins: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/shared/src/config.rs:22:5
+   |
+22 |     pub fn load() -> Result<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/shared/src/health.rs:17:5
+   |
+17 |     pub fn new(val: T) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/shared/src/health.rs:21:5
+   |
+21 |     pub fn expose(&self) -> &T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:42:5
+   |
+42 |     pub memory_usage_mb: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:43:5
+   |
+43 |     pub total_memory_mb: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:44:5
+   |
+44 |     pub cpu_usage_percent: f32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:45:5
+   |
+45 |     pub vram_usage_mb: Option<u64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:46:5
+   |
+46 |     pub disk_free_gb: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:47:5
+   |
+47 |     pub total_disk_gb: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:48:5
+   |
+48 |     pub open_files: Option<u64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:50:5
+   |
+50 |     pub level: i32,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:51:5
+   |
+51 |     pub exp: i32,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:52:5
+   |
+52 |     pub resonance: i32,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:53:5
+   |
+53 |     pub creativity: i32,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/health.rs:54:5
+   |
+54 |     pub fatigue: i32,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/shared/src/health.rs:65:5
+   |
+65 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/shared/src/health.rs:81:5
+   |
+81 |     pub fn check(&mut self) -> ResourceStatus {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/output_validator.rs:23:9
+   |
+23 |         raw_output: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/output_validator.rs:24:9
+   |
+24 |         error_message: String,
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/output_validator.rs:25:9
+   |
+25 |         repair_prompt: String,
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/shared/src/security.rs:118:5
+    |
+118 |     pub timestamp: chrono::DateTime<chrono::Utc>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/shared/src/security.rs:119:5
+    |
+119 |     pub action: AuditAction,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/shared/src/security.rs:120:5
+    |
+120 |     pub tool_name: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/shared/src/security.rs:121:5
+    |
+121 |     pub detail: String,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/shared/src/security.rs:122:5
+    |
+122 |     pub allowed: bool,
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/zombie_killer.rs:23:16
+   |
+23 |     TimedOut { command: String, timeout_secs: u64 },
+   |                ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/zombie_killer.rs:23:33
+   |
+23 |     TimedOut { command: String, timeout_secs: u64 },
+   |                                 ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/zombie_killer.rs:26:9
+   |
+26 |         command: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/zombie_killer.rs:27:9
+   |
+27 |         exit_code: i32,
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/shared/src/zombie_killer.rs:28:9
+   |
+28 |         stderr: String,
+   |         ^^^^^^^^^^^^^^
+
+warning: `shared` (lib) generated 49 warnings (run `cargo fix --lib -p shared` to apply 2 suggestions)
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:16:1
+   |
+16 | pub mod biome;
+   | ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> libs/core/src/lib.rs:14:9
+   |
+14 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:17:1
+   |
+17 | pub mod budget;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:19:1
+   |
+19 | pub mod contracts;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:21:1
+   |
+21 | pub mod expression;
+   | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:22:1
+   |
+22 | pub mod llm_provider;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:23:1
+   |
+23 | pub mod security;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:24:1
+   |
+24 | pub mod traits;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/lib.rs:26:1
+   |
+26 | pub mod trajectory {
+   | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/biome/mod.rs:10:1
+   |
+10 | pub mod autonomous;
+   | ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/biome/mod.rs:11:1
+   |
+11 | pub mod dialogue;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/core/src/biome/autonomous.rs:21:1
+   |
+21 | pub struct AutonomousConfig {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/core/src/biome/autonomous.rs:22:5
+   |
+22 |     pub interval_secs: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/core/src/biome/autonomous.rs:23:5
+   |
+23 |     pub max_rounds: u32,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/core/src/biome/autonomous.rs:24:5
+   |
+24 |     pub topic_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/core/src/biome/autonomous.rs:25:5
+   |
+25 |     pub peer_pubkey: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/core/src/biome/autonomous.rs:28:1
+   |
+28 | pub struct AutonomousBiomeEngine;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/core/src/biome/autonomous.rs:31:5
+   |
+31 | /     pub async fn start_loop(
+32 | |         config: AutonomousConfig,
+33 | |         queue: Arc<dyn JobQueue>,
+34 | |         llm: Arc<dyn LlmProvider>,
+35 | |         running: Arc<AtomicBool>,
+36 | |         llm_semaphore: Arc<Semaphore>,
+37 | |     ) {
+   | |_____^
+
+warning: missing documentation for a struct
+  --> libs/core/src/biome/dialogue.rs:18:1
+   |
+18 | pub struct DialogueManager;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+   --> libs/core/src/biome/dialogue.rs:160:1
+    |
+160 | pub enum PenaltyCategory {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> libs/core/src/biome/dialogue.rs:161:5
+    |
+161 |     InvalidSignature,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> libs/core/src/biome/dialogue.rs:162:5
+    |
+162 |     Timeout,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> libs/core/src/biome/dialogue.rs:163:5
+    |
+163 |     Spam,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> libs/core/src/biome/dialogue.rs:164:5
+    |
+164 |     MaliciousIntent,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/core/src/expression/mod.rs:10:1
+   |
+10 | pub mod engine;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/core/src/expression/engine.rs:16:1
+   |
+16 | pub struct ExpressionEngine;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/core/src/llm_provider.rs:31:5
+   |
+31 |     pub fn new(host: String, model: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/core/src/llm_provider.rs:281:5
+    |
+281 |     pub fn new(proxy_url: String, caller_id: String) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/core/src/llm_provider.rs:420:5
+    |
+420 |     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/core/src/llm_provider.rs:647:5
+    |
+647 |     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/core/src/llm_provider.rs:810:5
+    |
+810 |     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/core/src/llm_provider.rs:968:5
+    |
+968 |     pub fn new(client: reqwest::Client, host: String, model: String) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+    --> libs/core/src/llm_provider.rs:1131:5
+     |
+1131 |     pub fn new(client: reqwest::Client, base_url: String) -> Self {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `aiome-core` (lib) generated 32 warnings
+warning: unused import: `error`
+  --> libs/infrastructure/src/channel_bridge/telegram.rs:13:15
+   |
+13 | use tracing::{error, info};
+   |               ^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `EconomicContext`
+ --> libs/infrastructure/src/commerce_mock.rs:9:44
+  |
+9 | use aiome_core::commerce::{CommerceEngine, EconomicContext};
+  |                                            ^^^^^^^^^^^^^^^
+
+warning: unused imports: `error` and `info`
+  --> libs/infrastructure/src/job_queue/crdt.rs:13:15
+   |
+13 | use tracing::{error, info};
+   |               ^^^^^  ^^^^
+
+warning: unused import: `aiome_core::traits::JobQueue`
+  --> libs/infrastructure/src/job_queue/expression.rs:11:5
+   |
+11 | use aiome_core::traits::JobQueue;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `error`
+  --> libs/infrastructure/src/job_queue/migrations.rs:10:15
+   |
+10 | use tracing::{error, info, warn};
+   |               ^^^^^
+
+warning: unused import: `crdt::CrdtOps`
+  --> libs/infrastructure/src/job_queue/mod.rs:43:5
+   |
+43 | use crdt::CrdtOps;
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `trajectory_store::TrajectoryOps`
+  --> libs/infrastructure/src/job_queue/mod.rs:52:5
+   |
+52 | use trajectory_store::TrajectoryOps;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `async_trait::async_trait`
+  --> libs/infrastructure/src/publisher/mod.rs:10:5
+   |
+10 | use async_trait::async_trait;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ReadDoc`
+  --> libs/infrastructure/src/job_queue/crdt.rs:11:56
+   |
+11 | use automerge::{transaction::Transactable, AutoCommit, ReadDoc};
+   |                                                        ^^^^^^^
+
+warning: unused variable: `cat`
+   --> libs/infrastructure/src/artifact_store.rs:195:31
+    |
+195 |         let sql = if let Some(ref cat) = category {
+    |                               ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cat`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> libs/infrastructure/src/job_queue/core_ops.rs:504:13
+    |
+504 | ...   let mut target_reduction = current_total_size - threshol...
+    |           ----^^^^^^^^^^^^^^^^
+    |           |
+    |           help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `input_json`
+  --> libs/infrastructure/src/job_queue/trajectory_store.rs:80:17
+   |
+80 |             let input_json: String = row.get(2);
+   |                 ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_input_json`
+
+warning: unused variable: `output_json`
+  --> libs/infrastructure/src/job_queue/trajectory_store.rs:81:17
+   |
+81 |             let output_json: String = row.get(3); // Wait, inde...
+   |                 ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_output_json`
+
+warning: field `base_dir` is never read
+  --> libs/infrastructure/src/artifact_store.rs:24:5
+   |
+22 | pub struct SqliteArtifactStore {
+   |            ------------------- field in this struct
+23 |     pool: SqlitePool,
+24 |     base_dir: PathBuf, // workspace/artifacts
+   |     ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `token` is never read
+  --> libs/infrastructure/src/channel_bridge/telegram.rs:16:5
+   |
+15 | pub struct TelegramBridge {
+   |            -------------- field in this struct
+16 |     token: String,
+   |     ^^^^^
+
+warning: struct `KarmaTaxonomy` is never constructed
+  --> libs/infrastructure/src/job_queue/taxonomy.rs:14:12
+   |
+14 | pub struct KarmaTaxonomy;
+   |            ^^^^^^^^^^^^^
+
+warning: associated functions `classify` and `fallback` are never used
+  --> libs/infrastructure/src/job_queue/taxonomy.rs:18:18
+   |
+16 | impl KarmaTaxonomy {
+   | ------------------ associated functions in this implementation
+17 |     /// 指定された教訓（lesson）をLLMを用いて分類する。
+18 |     pub async fn classify(
+   |                  ^^^^^^^^
+...
+65 |     pub fn fallback() -> KarmaClassification {
+   |            ^^^^^^^^
+
+warning: field `steps` is never read
+  --> libs/infrastructure/src/skills/actions_importer.rs:24:5
+   |
+21 | struct GitHubActionRuns {
+   |        ---------------- field in this struct
+...
+24 |     steps: Option<serde_yaml::Value>,
+   |     ^^^^^
+   |
+   = note: `GitHubActionRuns` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: field `workspace` is never read
+  --> libs/infrastructure/src/skills/cleanroom.rs:18:5
+   |
+16 | pub struct Cleanroom {
+   |            --------- field in this struct
+17 |     forge: SkillForge,
+18 |     workspace: PathBuf,
+   |     ^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:15:1
+   |
+15 | pub mod artifact_store;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> libs/infrastructure/src/lib.rs:12:9
+   |
+12 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:16:1
+   |
+16 | pub mod channel_bridge;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:18:1
+   |
+18 | pub mod commerce_mock;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:19:1
+   |
+19 | pub mod concept_manager;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:20:1
+   |
+20 | pub mod constraint_checker;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:21:1
+   |
+21 | pub mod context_engine;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:22:1
+   |
+22 | pub mod diagnostics;
+   | ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:23:1
+   |
+23 | pub mod dream_state;
+   | ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:24:1
+   |
+24 | pub mod heartbeat_wakeup;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:25:1
+   |
+25 | pub mod immune_system;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:26:1
+   |
+26 | pub mod job_queue;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:27:1
+   |
+27 | pub mod knowledge_indexer;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:28:1
+   |
+28 | pub mod llm;
+   | ^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:29:1
+   |
+29 | pub mod memory_crystallizer;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:30:1
+   |
+30 | pub mod oracle;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:31:1
+   |
+31 | pub mod publisher;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:32:1
+   |
+32 | pub mod security;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:33:1
+   |
+33 | pub mod skill_arena;
+   | ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:34:1
+   |
+34 | pub mod skills;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:36:1
+   |
+36 | pub mod soul_mutator;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:38:1
+   |
+38 | pub mod user_learner;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/lib.rs:39:1
+   |
+39 | pub mod validator;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/aiome_log.rs:22:5
+   |
+22 |     pub db: SqlitePool,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/aiome_log.rs:26:5
+   |
+26 |     pub async fn new(db_path: &str) -> Result<Self, AiomeError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/artifact_store.rs:22:1
+   |
+22 | pub struct SqliteArtifactStore {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/artifact_store.rs:29:5
+   |
+29 |     pub fn new(pool: SqlitePool, base_dir: PathBuf) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/artifact_store.rs:37:5
+   |
+37 |     pub fn with_embeddings(mut self, provider: Arc<dyn EmbeddingProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> libs/infrastructure/src/channel_bridge/mod.rs:8:1
+  |
+8 | pub mod bridge_trait;
+  | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> libs/infrastructure/src/channel_bridge/mod.rs:9:1
+  |
+9 | pub mod discord;
+  | ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/channel_bridge/mod.rs:10:1
+   |
+10 | pub mod telegram;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+  --> libs/infrastructure/src/channel_bridge/bridge_trait.rs:12:1
+   |
+12 | pub trait ChannelBridge: Send + Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/channel_bridge/discord.rs:20:1
+   |
+20 | pub struct DiscordBridge {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/channel_bridge/discord.rs:26:5
+   |
+26 |     pub fn new(token: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/channel_bridge/telegram.rs:15:1
+   |
+15 | pub struct TelegramBridge {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/channel_bridge/telegram.rs:21:5
+   |
+21 |     pub fn new(token: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/concept_manager.rs:24:5
+   |
+24 |     pub fn new(main_provider: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/concept_manager.rs:32:5
+   |
+32 | /     pub fn with_constitutional_layer(
+33 | |         mut self,
+34 | |         prosecutor: Arc<dyn LlmProvider>,
+35 | |         soul_md: &str,
+36 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a function
+   --> libs/infrastructure/src/concept_manager.rs:162:1
+    |
+162 | pub fn extract_json(text: &str) -> Result<String, AiomeError> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/constraint_checker.rs:13:1
+   |
+13 | pub struct ConstraintChecker {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/constraint_checker.rs:19:5
+   |
+19 |     pub fn new(immune_rules: Vec<ImmuneRule>, permission_manifest: PermissionManifest) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/context_engine.rs:15:1
+   |
+15 | pub struct ContextEngine {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/context_engine.rs:22:5
+   |
+22 | /     pub fn new(
+23 | |         provider: Arc<dyn LlmProvider + Send + Sync>,
+24 | |         job_queue: Arc<SqliteJobQueue>,
+25 | |         semaphore: Arc<Semaphore>,
+26 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/diagnostics.rs:15:1
+   |
+15 | pub struct AgentRxDiagnostics {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/diagnostics.rs:20:5
+   |
+20 |     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/dream_state.rs:14:1
+   |
+14 | pub struct DreamState {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/dream_state.rs:17:5
+   |
+17 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/heartbeat_wakeup.rs:14:1
+   |
+14 | pub struct HeartbeatWakeupService {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/heartbeat_wakeup.rs:21:5
+   |
+21 | /     pub fn new(
+22 | |         provider: Arc<dyn LlmProvider + Send + Sync>,
+23 | |         semaphore: Arc<Semaphore>,
+24 | |         workspace_dir: std::path::PathBuf,
+25 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/heartbeat_wakeup.rs:33:5
+   |
+33 |     pub async fn run_wakeup_ping(&self) -> Option<String> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/immune_system.rs:17:1
+   |
+17 | pub struct AdaptiveImmuneSystem {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/immune_system.rs:22:5
+   |
+22 |     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/job_queue/mod.rs:27:1
+   |
+27 | pub mod crdt;
+   | ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/job_queue/mod.rs:36:1
+   |
+36 | pub mod settings;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/mod.rs:65:5
+   |
+65 |     pub fn get_pool(&self) -> &sqlx::SqlitePool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/mod.rs:69:5
+   |
+69 |     pub async fn get_embedding_provider(&self) -> Option<Arc<dyn EmbeddingProvider>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:102:5
+    |
+102 |     pub async fn set_embedding_provider(&self, provider: Arc<dyn EmbeddingProvider>) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:107:5
+    |
+107 |     pub fn with_embeddings(self, provider: Arc<dyn EmbeddingProvider>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:615:5
+    |
+615 | /     pub async fn insert_chat_message(
+616 | |         &self,
+617 | |         channel_id: &str,
+618 | |         role: &str,
+619 | |         content: &str,
+620 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:624:5
+    |
+624 | /     pub async fn fetch_chat_history(
+625 | |         &self,
+626 | |         channel_id: &str,
+627 | |         limit: i64,
+628 | |     ) -> Result<Vec<serde_json::Value>, AiomeError> {
+    | |___________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:632:5
+    |
+632 | /     pub async fn get_chat_memory_summary(
+633 | |         &self,
+634 | |         channel_id: &str,
+635 | |     ) -> Result<Option<String>, AiomeError> {
+    | |___________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:639:5
+    |
+639 | /     pub async fn update_chat_memory_summary(
+640 | |         &self,
+641 | |         channel_id: &str,
+642 | |         summary: &str,
+643 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:648:5
+    |
+648 | /     pub async fn fetch_undistilled_chats_by_channel(
+649 | |         &self,
+650 | |     ) -> Result<std::collections::HashMap<String, Vec<(i64, String, String)>>, AiomeError> {
+    | |__________________________________________________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:654:5
+    |
+654 | /     pub async fn mark_chats_as_distilled(
+655 | |         &self,
+656 | |         channel_id: &str,
+657 | |         up_to_id: i64,
+658 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:662:5
+    |
+662 |     pub async fn purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:666:5
+    |
+666 | /     pub async fn fetch_skills_for_distillation(
+667 | |         &self,
+668 | |         threshold: i64,
+669 | |     ) -> Result<Vec<String>, AiomeError> {
+    | |________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:673:5
+    |
+673 | /     pub async fn fetch_raw_karma_for_skill(
+674 | |         &self,
+675 | |         skill: &str,
+676 | |     ) -> Result<Vec<(String, String)>, AiomeError> {
+    | |__________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:680:5
+    |
+680 | /     pub async fn apply_distilled_karma(
+681 | |         &self,
+682 | |         skill: &str,
+683 | |         distilled_lesson: &str,
+...   |
+688 | |         clone_origin_id: Option<&str>,
+689 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:702:5
+    |
+702 |     pub async fn increment_oracle_retry_count(&self, record_id: i64) -> Result<bool, AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:706:5
+    |
+706 |     pub async fn get_global_api_failures(&self) -> Result<i64, AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:710:5
+    |
+710 |     pub async fn record_global_api_failure(&self) -> Result<i64, AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:714:5
+    |
+714 |     pub async fn record_global_api_success(&self) -> Result<(), AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:718:5
+    |
+718 | /     pub async fn fetch_unfederated_data(
+719 | |         &self,
+720 | |     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>), AiomeError> {
+    | |___________________________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:724:5
+    |
+724 | /     pub async fn mark_as_federated(
+725 | |         &self,
+726 | |         karma_ids: Vec<String>,
+727 | |         rule_ids: Vec<String>,
+728 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:733:5
+    |
+733 |     pub async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:737:5
+    |
+737 | /     pub async fn update_setting(
+738 | |         &self,
+739 | |         key: &str,
+740 | |         value: &str,
+741 | |         category: &str,
+742 | |         is_secret: bool,
+743 | |     ) -> Result<(), AiomeError> {
+    | |_______________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:747:5
+    |
+747 | /     pub async fn fetch_all_settings(
+748 | |         &self,
+749 | |     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError> {
+    | |______________________________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/job_queue/mod.rs:753:5
+    |
+753 |     pub async fn run_karma_tier_maintenance(&self) -> Result<(), AiomeError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+  --> libs/infrastructure/src/job_queue/crdt.rs:16:1
+   |
+16 | pub trait CrdtOps {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/crdt.rs:17:5
+   |
+17 | /     async fn sync_timeline(
+18 | |         &self,
+19 | |         hub_id: &str,
+20 | |         remote_blob: Option<&[u8]>,
+21 | |     ) -> Result<Vec<u8>, AiomeError>;
+   | |_____________________________________^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/crdt.rs:22:5
+   |
+22 |     async fn get_timeline_blob(&self, hub_id: &str) -> Result<Option<Vec<u8>>, AiomeError>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+  --> libs/infrastructure/src/job_queue/settings.rs:14:1
+   |
+14 | pub trait SettingsOps {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/settings.rs:15:5
+   |
+15 |     async fn get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/settings.rs:16:5
+   |
+16 | /     async fn set_setting(
+17 | |         &self,
+18 | |         key: &str,
+19 | |         value: &str,
+20 | |         category: &str,
+21 | |         is_secret: bool,
+22 | |     ) -> Result<(), AiomeError>;
+   | |________________________________^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/job_queue/settings.rs:23:5
+   |
+23 | /     async fn get_all_settings(
+24 | |         &self,
+25 | |     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError>;
+   | |_______________________________________________________________________^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/knowledge_indexer.rs:28:5
+   |
+28 | /     pub fn new(
+29 | |         artifact_store: Arc<dyn ArtifactStore>,
+30 | |         pool: SqlitePool,
+31 | |         workspace_root: PathBuf,
+32 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/knowledge_indexer.rs:40:5
+   |
+40 |     pub async fn run_indexing(&self) -> Result<(), AiomeError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> libs/infrastructure/src/llm/mod.rs:8:1
+  |
+8 | pub mod proxy;
+  | ^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> libs/infrastructure/src/llm/mod.rs:9:1
+  |
+9 | pub mod dynamic;
+  | ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/llm/proxy.rs:14:1
+   |
+14 | pub struct ProxyLlmProvider {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/proxy.rs:15:5
+   |
+15 |     pub proxy_url: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/proxy.rs:16:5
+   |
+16 |     pub endpoint_tag: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/proxy.rs:17:5
+   |
+17 |     pub caller_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/llm/proxy.rs:35:5
+   |
+35 |     pub fn new(proxy_url: String, endpoint_tag: String, caller_id: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/llm/dynamic.rs:19:1
+   |
+19 | pub struct DynamicLlmProvider {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:20:5
+   |
+20 |     pub jq: Arc<SqliteJobQueue>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:21:5
+   |
+21 |     pub client: reqwest::Client,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:22:5
+   |
+22 |     pub fallback_host: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:23:5
+   |
+23 |     pub fallback_model: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:24:5
+   |
+24 |     pub circuit_breaker: Arc<CircuitBreaker>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/llm/dynamic.rs:25:5
+   |
+25 |     pub slo_engine: Arc<SloEngine>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+   --> libs/infrastructure/src/llm/dynamic.rs:204:1
+    |
+204 | pub struct BackgroundLlmProvider {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/llm/dynamic.rs:205:5
+    |
+205 |     pub jq: Arc<SqliteJobQueue>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/llm/dynamic.rs:206:5
+    |
+206 |     pub client: reqwest::Client,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/llm/dynamic.rs:207:5
+    |
+207 |     pub fallback_model: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/llm/dynamic.rs:208:5
+    |
+208 |     pub fallback_host: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/memory_crystallizer.rs:14:1
+   |
+14 | pub struct MemoryCrystallizer {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/memory_crystallizer.rs:21:5
+   |
+21 | /     pub fn new(
+22 | |         provider: Arc<dyn LlmProvider + Send + Sync>,
+23 | |         job_queue: Arc<SqliteJobQueue>,
+24 | |         semaphore: Arc<Semaphore>,
+25 | |     ) -> Self {
+   | |_____________^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/memory_crystallizer.rs:33:5
+   |
+33 |     pub async fn run_distillation_cycle(&self) -> Result<(), Box<dyn std::error::Error>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/oracle.rs:21:5
+   |
+21 |     pub fn new(provider: Arc<dyn LlmProvider>, soul_md: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/publisher/mod.rs:14:1
+   |
+14 | pub mod mock_x;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/publisher/mod.rs:23:5
+   |
+23 |     pub fn new(publishers: Vec<Box<dyn Publisher>>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/publisher/mod.rs:27:5
+   |
+27 | /     pub async fn run_job(
+28 | |         &self,
+29 | |         platform: &str,
+30 | |         content: &str,
+31 | |         media_paths: &[PathBuf],
+32 | |         metadata: &serde_json::Value,
+33 | |     ) -> Result<String, AiomeError> {
+   | |___________________________________^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/security.rs:14:1
+   |
+14 | pub struct SecurityConfig {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/security.rs:15:5
+   |
+15 |     pub allowed_binaries: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/security.rs:16:5
+   |
+16 |     pub workspace_root: std::path::PathBuf,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/security.rs:51:5
+   |
+51 |     pub fn load_or_default() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a static
+  --> libs/infrastructure/src/security.rs:72:1
+   |
+72 | pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> libs/infrastructure/src/security.rs:255:5
+    |
+255 |     pub fn new(manifest: PermissionManifest) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skill_arena.rs:17:1
+   |
+17 | pub struct SkillArena {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/skill_arena.rs:22:5
+   |
+22 |     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/skills/mod.rs:15:1
+   |
+15 | pub mod actions_importer;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/skills/mod.rs:16:1
+   |
+16 | pub mod cleanroom;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/skills/mod.rs:17:1
+   |
+17 | pub mod forge;
+   | ^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/skills/mod.rs:18:1
+   |
+18 | pub mod importer;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+  --> libs/infrastructure/src/skills/mod.rs:19:1
+   |
+19 | pub mod skill_arena;
+   | ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:25:5
+   |
+25 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:26:5
+   |
+26 |     pub input_test_payload: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/skills/mod.rs:42:5
+   |
+42 |     pub fn name(&self) -> &str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/mod.rs:71:1
+   |
+71 | pub struct SkillMetadata {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:72:5
+   |
+72 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:73:5
+   |
+73 |     pub description: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:74:5
+   |
+74 |     pub capabilities: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:75:5
+   |
+75 |     pub inputs: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:76:5
+   |
+76 |     pub outputs: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:78:5
+   |
+78 |     pub allowed_hosts: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/mod.rs:80:5
+   |
+80 |     pub permissions: crate::security::PermissionManifest,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/mod.rs:83:1
+   |
+83 | pub struct WasmSkillManager {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/skills/mod.rs:92:5
+   |
+92 | /     pub fn new<P: AsRef<Path>>(
+93 | |         skills_dir: P,
+94 | |         allowed_root: P,
+95 | |     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+   | |_______________________________________________________________^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/skills/mod.rs:110:5
+    |
+110 |     pub fn with_limits(mut self, memory_bytes: u64, timeout: Duration) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> libs/infrastructure/src/skills/mod.rs:398:5
+    |
+398 |     pub fn get_metadata(&self, skill_name: &str) -> Option<SkillMetadata> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/actions_importer.rs:27:1
+   |
+27 | pub struct ActionsImporter;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/skills/cleanroom.rs:22:5
+   |
+22 |     pub fn new(forge: SkillForge, workspace: PathBuf) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/forge.rs:13:1
+   |
+13 | pub struct SkillForge {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/skills/forge.rs:19:5
+   |
+19 |     pub fn new<P: AsRef<Path>>(template_dir: P, skills_output_dir: P) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:14:5
+   |
+14 |     pub l1: L1Metadata, // Trigger level (Minimal)
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:15:5
+   |
+15 |     pub l2: L2Metadata, // Description level (Context)
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:16:5
+   |
+16 |     pub l3: L3Metadata, // Execution level (Code/Wasm)
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/importer.rs:20:1
+   |
+20 | pub struct L1Metadata {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:21:5
+   |
+21 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:22:5
+   |
+22 |     pub trigger_description: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/importer.rs:26:1
+   |
+26 | pub struct L2Metadata {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:27:5
+   |
+27 |     pub extended_description: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:28:5
+   |
+28 |     pub inputs_schema: serde_json::Value,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:29:5
+   |
+29 |     pub examples: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/importer.rs:33:1
+   |
+33 | pub struct L3Metadata {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:34:5
+   |
+34 |     pub engine: String, // "wasm", "docker", "mcp"
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:35:5
+   |
+35 |     pub entry_point: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/importer.rs:36:5
+   |
+36 |     pub source_code: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/importer.rs:39:1
+   |
+39 | pub struct SkillImporter;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/skill_arena.rs:15:1
+   |
+15 | pub struct SkillPerformance {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/skill_arena.rs:16:5
+   |
+16 |     pub success_count: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/skill_arena.rs:17:5
+   |
+17 |     pub failure_count: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/skill_arena.rs:18:5
+   |
+18 |     pub average_latency_ms: u64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> libs/infrastructure/src/skills/skill_arena.rs:19:5
+   |
+19 |     pub total_karma_weight: f64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/skills/skill_arena.rs:22:1
+   |
+22 | pub struct SkillArena {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/skills/skill_arena.rs:28:5
+   |
+28 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/skills/skill_arena.rs:77:5
+   |
+77 |     pub async fn get_stats(&self, skill_name: &str) -> Option<SkillPerformance> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/soul_mutator.rs:15:1
+   |
+15 | pub struct SoulMutator {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/soul_mutator.rs:26:5
+   |
+26 |     pub fn new(provider: Arc<dyn LlmProvider>, workspace_dir: PathBuf) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/soul_mutator.rs:34:5
+   |
+34 |     pub fn with_prosecutor(mut self, prosecutor: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/trend_sonar.rs:44:1
+   |
+44 | pub struct ExternalTrendSonar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/trend_sonar.rs:50:5
+   |
+50 |     pub fn new(api_key: String) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+   --> libs/infrastructure/src/trend_sonar.rs:150:1
+    |
+150 | pub struct TrendArgs {
+    | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/trend_sonar.rs:151:5
+    |
+151 |     pub category: String,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+   --> libs/infrastructure/src/trend_sonar.rs:155:1
+    |
+155 | pub struct TrendOutput {
+    | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> libs/infrastructure/src/trend_sonar.rs:156:5
+    |
+156 |     pub trends: Vec<TrendItem>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/user_learner.rs:14:1
+   |
+14 | pub struct UserLearner {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/user_learner.rs:20:5
+   |
+20 |     pub fn new(provider: Arc<dyn LlmProvider + Send + Sync>, semaphore: Arc<Semaphore>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> libs/infrastructure/src/user_learner.rs:27:5
+   |
+27 | /     pub async fn learn_from_session(
+28 | |         &self,
+29 | |         conversation_summary: &str,
+30 | |     ) -> Result<bool, Box<dyn std::error::Error>> {
+   | |_________________________________________________^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/validator.rs:15:1
+   |
+15 | pub struct DefaultConstitutionalValidator {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> libs/infrastructure/src/validator.rs:20:5
+   |
+20 |     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> libs/infrastructure/src/workspace_manager.rs:24:1
+   |
+24 | pub struct WorkspaceManager;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `infrastructure` (lib) generated 201 warnings (run `cargo fix --lib -p infrastructure` to apply 12 suggestions)
+    Checking api-server v0.1.0 (/Users/motista/Desktop/antigravity/aiome/apps/api-server)
+warning: unused import: `aiome_core::llm_provider::EmbeddingProvider`
+  --> apps/api-server/src/main.rs:10:5
+   |
+10 | use aiome_core::llm_provider::EmbeddingProvider;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `async_trait::async_trait`
+  --> apps/api-server/src/main.rs:12:5
+   |
+12 | use async_trait::async_trait;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `CACHE_CONTROL`
+  --> apps/api-server/src/main.rs:14:5
+   |
+14 |     CACHE_CONTROL, CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SE...
+   |     ^^^^^^^^^^^^^
+
+warning: unused imports: `response::IntoResponse` and `response::Json`
+  --> apps/api-server/src/main.rs:18:30
+   |
+18 | ...tatusCode, response::IntoResponse, response::Json, routing::...
+   |               ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+warning: unused imports: `Deserialize` and `Serialize`
+  --> apps/api-server/src/main.rs:20:13
+   |
+20 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+  --> apps/api-server/src/mcp/server.rs:17:5
+   |
+17 | use std::collections::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `http::HeaderMap`, `http::StatusCode`, and `response::IntoResponse`
+  --> apps/api-server/src/routes/agent.rs:15:21
+   |
+15 | ...e, http::HeaderMap, http::StatusCode, response::IntoResponse, r...
+   |       ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> apps/api-server/src/routes/agent.rs:18:5
+   |
+18 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused import: `Serialize`
+  --> apps/api-server/src/routes/artifacts.rs:17:26
+   |
+17 | use serde::{Deserialize, Serialize};
+   |                          ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> apps/api-server/src/routes/artifacts.rs:18:5
+   |
+18 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `AutonomousConfig`, `BiomeDialogue`, and `DialogueStatus`
+  --> apps/api-server/src/routes/biome.rs:12:28
+   |
+12 | ...e, AutonomousConfig, BiomeDialogue, BiomeMessage, DialogueStatus,
+   |       ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^                ^^^^^^^^^^^^^^
+
+warning: unused import: `http::StatusCode`
+  --> apps/api-server/src/routes/biome.rs:15:28
+   |
+15 | use axum::{extract::State, http::StatusCode, response::Json};
+   |                            ^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> apps/api-server/src/routes/biome.rs:18:5
+   |
+18 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused import: `error`
+  --> apps/api-server/src/routes/biome.rs:19:15
+   |
+19 | use tracing::{error, info, warn};
+   |               ^^^^^
+
+warning: unused import: `Path`
+ --> apps/api-server/src/routes/commerce.rs:9:15
+  |
+9 |     extract::{Path, State},
+  |               ^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> apps/api-server/src/routes/commerce.rs:15:5
+   |
+15 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused import: `http::StatusCode`
+  --> apps/api-server/src/routes/expression.rs:14:5
+   |
+14 |     http::StatusCode,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused imports: `http::StatusCode`, `response::IntoResponse`, and `routing::get`
+  --> apps/api-server/src/routes/general.rs:12:36
+   |
+12 |     extract::Path, extract::State, http::StatusCode, response::IntoResponse, r...
+   |                                    ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+13 |     routing::get,
+   |     ^^^^^^^^^^^^
+
+warning: unused import: `HealthMonitor`
+  --> apps/api-server/src/routes/general.rs:15:22
+   |
+15 | use shared::health::{HealthMonitor, ResourceStatus};
+   |                      ^^^^^^^^^^^^^
+
+warning: unused imports: `IntoResponse` and `http::StatusCode`
+  --> apps/api-server/src/routes/karma.rs:14:5
+   |
+14 |     http::StatusCode,
+   |     ^^^^^^^^^^^^^^^^
+15 |     response::{IntoResponse, Json},
+   |                ^^^^^^^^^^^^
+
+warning: unused import: `http::StatusCode`
+  --> apps/api-server/src/routes/settings.rs:12:5
+   |
+12 |     http::StatusCode,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused imports: `IpAddr` and `ToSocketAddrs`
+  --> apps/api-server/src/routes/settings.rs:15:16
+   |
+15 | use std::net::{IpAddr, ToSocketAddrs};
+   |                ^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `error`
+  --> apps/api-server/src/routes/settings.rs:16:15
+   |
+16 | use tracing::{error, info, warn};
+   |               ^^^^^
+
+warning: unused import: `url::Url`
+  --> apps/api-server/src/routes/settings.rs:17:5
+   |
+17 | use url::Url;
+   |     ^^^^^^^^
+
+warning: unused import: `http::StatusCode`
+  --> apps/api-server/src/routes/skill.rs:10:28
+   |
+10 | use axum::{extract::State, http::StatusCode, response::Json};
+   |                            ^^^^^^^^^^^^^^^^
+
+warning: unused import: `warn`
+  --> apps/api-server/src/routes/skill.rs:12:28
+   |
+12 | use tracing::{error, info, warn};
+   |                            ^^^^
+
+warning: unused import: `read_workspace_file`
+   --> apps/api-server/src/routes/watchtower.rs:119:59
+    |
+119 | ...ystem_instructions, read_workspace_file};
+    |                        ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> apps/api-server/src/stream.rs:20:5
+   |
+20 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+error[E0599]: no method named `get_system_agent_id` found for struct `Arc<SqliteJobQueue>` in the current scope
+  --> apps/api-server/src/routes/commerce.rs:46:37
+   |
+46 |     let system_id = state.job_queue.get_system_agent_id().await?;
+   |                                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `JobQueue` which provides `get_system_agent_id` is implemented but not in scope; perhaps you want to import it
+   |
+ 8 + use aiome_contracts::JobQueue;
+   |
+help: there is a method `do_get_system_agent_id` with a similar name
+   |
+46 |     let system_id = state.job_queue.do_get_system_agent_id().await?;
+   |                                     +++
+
+error[E0599]: no method named `get_system_agent_id` found for struct `Arc<SqliteJobQueue>` in the current scope
+  --> apps/api-server/src/routes/commerce.rs:72:37
+   |
+72 |     let system_id = state.job_queue.get_system_agent_id().await?;
+   |                                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `JobQueue` which provides `get_system_agent_id` is implemented but not in scope; perhaps you want to import it
+   |
+ 8 + use aiome_contracts::JobQueue;
+   |
+help: there is a method `do_get_system_agent_id` with a similar name
+   |
+72 |     let system_id = state.job_queue.do_get_system_agent_id().await?;
+   |                                     +++
+
+error[E0063]: missing field `daily_limit` in initializer of `EconomicContext`
+   --> apps/api-server/src/routes/watchtower.rs:163:37
+    |
+163 | ...t = Some(aiome_core::commerce::EconomicContext {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `daily_limit`
+
+warning: unused import: `aiome_core::llm_provider::LlmProvider`
+  --> apps/api-server/src/routes/agent.rs:12:5
+   |
+12 | use aiome_core::llm_provider::LlmProvider;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ArtifactStore`
+  --> apps/api-server/src/routes/artifacts.rs:10:58
+   |
+10 | ...ategory, ArtifactMeta, ArtifactStore};
+   |                           ^^^^^^^^^^^^^
+
+warning: unused import: `aiome_core::llm_provider::LlmProvider`
+ --> apps/api-server/src/stream.rs:8:5
+  |
+8 | use aiome_core::llm_provider::LlmProvider;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> apps/api-server/src/mcp/client.rs:52:13
+   |
+52 |         let mut stderr = child
+   |             ----^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `pending_requests_clone`
+  --> apps/api-server/src/mcp/client.rs:60:13
+   |
+60 |         let pending_requests_clone = pending_requests.clone();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_pending_requests_clone`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ks`
+   --> apps/api-server/src/stream.rs:104:21
+    |
+104 |         if let Some(ref ks) = knowledge_str {
+    |                     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_ks`
+
+warning: variable does not need to be mutable
+   --> apps/api-server/src/main.rs:104:9
+    |
+104 |     let mut plugin_registry = plugin_loader::PluginRegistry::n...
+    |         ----^^^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+Some errors have detailed explanations: E0063, E0599.
+For more information about an error, try `rustc --explain E0063`.
+warning: `api-server` (bin "api-server") generated 35 warnings
+error: could not compile `api-server` (bin "api-server") due to 3 previous errors; 35 warnings emitted

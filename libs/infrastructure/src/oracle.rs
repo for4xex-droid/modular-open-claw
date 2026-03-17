@@ -65,9 +65,9 @@ impl Oracle {
   }
 }"#;
 
-        let response = self.provider.complete(prompt_text, Some(&preamble)).await?;
+        let resp = self.provider.complete(prompt_text, Some(&preamble)).await?;
 
-        let json_str = crate::concept_manager::extract_json(&response)?;
+        let json_str = crate::concept_manager::extract_json(&resp.content)?;
         let verdict = serde_json::from_str::<OracleVerdict>(json_str.as_str()).map_err(|e| {
             AiomeError::Infrastructure {
                 reason: format!("Failed to parse Oracle JSON: {}", e),
@@ -101,8 +101,11 @@ mod tests {
             "mock-llm"
         }
 
-        async fn complete(&self, _prompt: &str, _preamble: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.response.clone())
+        async fn complete(&self, _prompt: &str, _preamble: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.response.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
 
         async fn test_connection(&self) -> Result<(), AiomeError> {

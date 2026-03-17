@@ -32,6 +32,13 @@ impl McpClient {
             cmd, id
         );
 
+        if !infrastructure::security::GLOBAL_SECURITY_CONFIG
+            .allowed_binaries
+            .contains(&cmd.to_string())
+        {
+            return Err(anyhow!("🚨 [SECURITY VIOLATION] MCP Client command '{}' bypasses BastionGuard whitelist.", cmd));
+        }
+
         // Use tokio::process::Command for async I/O
         let mut child = Command::new(cmd)
             .args(args)

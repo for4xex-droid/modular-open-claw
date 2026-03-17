@@ -61,8 +61,8 @@ impl HeartbeatWakeupService {
             );
 
             match self.provider.complete(&prompt, None).await {
-                Ok(reply) => {
-                    let reply = reply.trim();
+                Ok(resp) => {
+                    let reply = resp.content.trim();
                     if reply == "HEARTBEAT_OK" || reply.is_empty() {
                         info!("💓 [Heartbeat] System state: OK");
                         None

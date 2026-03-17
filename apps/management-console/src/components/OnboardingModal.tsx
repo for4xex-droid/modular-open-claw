@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, Sparkles, Shield, User, UserCheck } from 'lucide-react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { API_BASE } from '../config';
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -20,9 +20,8 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
         setIsSaving(true);
         try {
             // Save AI Name to DB
-            await fetch(`${API_BASE}/api/v1/settings`, {
+            await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
                 method: 'PUT',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'ai_name', value: aiName, category: 'identity' })
             });
             // Avatar settings are already handled by context (localStorage)

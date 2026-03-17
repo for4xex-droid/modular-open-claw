@@ -441,6 +441,10 @@ impl JobQueue for SqliteJobQueue {
         self.do_sync_local_clock(remote_clock).await
     }
 
+    async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
+        self.do_get_system_agent_id().await
+    }
+
     async fn tick_local_clock(&self) -> Result<u64, AiomeError> {
         self.do_tick_local_clock().await
     }

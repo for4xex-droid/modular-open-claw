@@ -23,6 +23,7 @@ pub trait SwarmOps {
     async fn do_get_global_api_failures(&self) -> Result<i64, AiomeError>;
     async fn do_record_global_api_failure(&self) -> Result<i64, AiomeError>;
     async fn do_record_global_api_success(&self) -> Result<(), AiomeError>;
+    async fn do_get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
 }
 
 #[async_trait]
@@ -198,5 +199,32 @@ impl SwarmOps for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to reset system_state: {}", e) })?;
 
         Ok(())
+    }
+
+    async fn do_get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
+        let row = sqlx::query("SELECT value FROM system_state WHERE key = 'system_agent_id'")
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
+        if let Some(r) = row {
+            let val: String = r.get("value");
+            uuid::Uuid::parse_str(&val).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Corrupt system_agent_id: {}", e),
+            })
+        } else {
+            let new_id = uuid::Uuid::new_v4();
+            let val = new_id.to_string();
+            sqlx::query("INSERT INTO system_state (key, value) VALUES ('system_agent_id', ?)")
+                .bind(&val)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+            Ok(new_id)
+        }
     }
 }

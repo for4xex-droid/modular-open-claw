@@ -16,6 +16,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use crate::error::AppError;
 use crate::AppState;
+use aiome_core::traits::JobQueue;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommerceBalanceResponse {
@@ -42,7 +43,12 @@ pub async fn get_balance(
     axum::extract::Path(agent_id): axum::extract::Path<uuid::Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     // SEC-2: Authentication is enforced by the Authenticated extractor.
-    // TODO: When RBAC is implemented, add agent_id ownership check here.
+    // RBAC: Check agent_id ownership (currently only primary system agent is allowed)
+    let system_id = state.job_queue.get_system_agent_id().await?;
+    if agent_id != system_id {
+        return Err(AppError::forbidden("Unauthorized access to commerce data for this agent"));
+    }
+
     tracing::info!("💰 [Commerce] Balance query for agent: {}", agent_id);
 
     let engine = state.commerce_engine.as_ref().ok_or_else(|| {
@@ -63,7 +69,12 @@ pub async fn execute_purchase(
     Json(req): Json<PurchaseRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // SEC-2: Authentication is enforced by the Authenticated extractor.
-    // TODO: When RBAC is implemented, add agent_id ownership check here.
+    // RBAC: Check agent_id ownership
+    let system_id = state.job_queue.get_system_agent_id().await?;
+    if agent_id != system_id {
+        return Err(AppError::forbidden("Unauthorized purchase request for this agent"));
+    }
+
     tracing::info!("🛒 [Commerce] Purchase request for agent: {}, item: {}", agent_id, req.item_id);
 
     let engine = state.commerce_engine.as_ref().ok_or_else(|| {

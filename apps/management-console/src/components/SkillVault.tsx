@@ -13,7 +13,7 @@ import {
     Terminal
 } from 'lucide-react';
 import { API_BASE } from '../config';
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 interface Skill {
     name: string;
@@ -37,9 +37,7 @@ const SkillVault: React.FC = () => {
     const fetchSkills = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/skills`, {
-                headers: getAuthHeaders()
-            });
+            const res = await authenticatedFetch(`${API_BASE}/api/skills`);
             if (res.ok) {
                 const data = await res.json();
                 setSkills(data);

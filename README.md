@@ -83,7 +83,7 @@ libs/shared          ← 共通型, Guardrails, AiomeConfig (Open)
 Aiomeを初めて起動する際、システムは「創世（Genesis）」フェーズである **Synergy Experience** を開始します。
 
 ```bash
-cargo run -p aiome-synergy
+cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 * **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。

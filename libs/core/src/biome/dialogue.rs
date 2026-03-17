@@ -97,7 +97,8 @@ impl DialogueManager {
                              This summary will be stored as permanent Karma for the AI soul. Output ONLY the summary text.";
 
         let user_prompt = format!("Topic: {}\n\nTranscript:\n{}", topic_id, transcript);
-        let summary = llm.complete(&user_prompt, Some(system_prompt)).await?;
+        let resp = llm.complete(&user_prompt, Some(system_prompt)).await?;
+        let summary = resp.content;
 
         // 3. 署名の付与 (自分自身の署名)
         let node_id = queue.get_node_id().await?;
@@ -105,7 +106,7 @@ impl DialogueManager {
         let payload_to_sign = format!("{}:{}:{}", topic_id, summary, timestamp);
         let signature = queue.sign_swarm_payload(&payload_to_sign).await?;
 
-        // 4. Distillation オブジェクトの構築
+        // 4. Distillation オブジェクト教構築
         let distillation = crate::biome::DialogueDistillation {
             topic_id: topic_id.to_string(),
             summary: summary.clone(),

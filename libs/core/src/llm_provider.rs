@@ -15,7 +15,7 @@ use serde_json;
 use std::pin::Pin;
 use tokio_stream::Stream;
 
-pub use aiome_contracts::llm::{LlmProvider, EmbeddingProvider};
+pub use aiome_contracts::llm::{LlmProvider, EmbeddingProvider, LlmResponse, StopReason};
 
 // --- 実装 ---
 
@@ -42,7 +42,7 @@ impl OllamaProvider {
 
 #[async_trait]
 impl LlmProvider for OllamaProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/api/chat", self.host);
         let mut messages = Vec::new();
 
@@ -84,10 +84,19 @@ impl LlmProvider for OllamaProvider {
                 reason: format!("Ollama response parse failed: {}", e),
             })?;
 
-        Ok(body["message"]["content"]
+        let content = body["message"]["content"]
             .as_str()
             .unwrap_or("")
-            .to_string())
+            .to_string();
+
+        let stop_reason = match body["done_reason"].as_str() {
+            Some("stop") => StopReason::EndTurn,
+            Some("length") => StopReason::MaxTokens,
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse { content, stop_reason })
     }
 
     async fn stream_complete(
@@ -280,7 +289,7 @@ impl AbyssVaultProvider {
 
 #[async_trait]
 impl LlmProvider for AbyssVaultProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let payload = serde_json::json!({
             "caller_id": self.caller_id,
             "prompt": prompt,
@@ -309,7 +318,11 @@ impl LlmProvider for AbyssVaultProvider {
                 reason: format!("VaultProxy response parse failed: {}", e),
             })?;
 
-        Ok(body["result"].as_str().unwrap_or("").to_string())
+        let content = body["result"].as_str().unwrap_or("").to_string();
+        // Proxy might not return stop_reason yet, assume EndTurn
+        let stop_reason = StopReason::EndTurn;
+
+        Ok(LlmResponse { content, stop_reason })
     }
 
     async fn stream_complete(
@@ -415,7 +428,7 @@ impl GeminiProvider {
 
 #[async_trait]
 impl LlmProvider for GeminiProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
             self.model
@@ -453,10 +466,24 @@ impl LlmProvider for GeminiProvider {
                 reason: format!("Gemini parse failed: {}", e),
             })?;
 
-        Ok(body["candidates"][0]["content"]["parts"][0]["text"]
+        let candidate = &body["candidates"][0];
+        let content = candidate["content"]["parts"][0]["text"]
             .as_str()
             .unwrap_or("")
-            .to_string())
+            .to_string();
+
+        let stop_reason = match candidate["finishReason"].as_str() {
+            Some("STOP") => StopReason::EndTurn,
+            Some("MAX_TOKENS") => StopReason::MaxTokens,
+            Some("SAFETY") => StopReason::Other("safety".to_string()),
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -628,7 +655,7 @@ impl OpenAiProvider {
 
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let url = "https://api.openai.com/v1/chat/completions";
         let mut messages = Vec::new();
 
@@ -666,10 +693,24 @@ impl LlmProvider for OpenAiProvider {
                 reason: format!("OpenAI parse failed: {}", e),
             })?;
 
-        Ok(body["choices"][0]["message"]["content"]
+        let choice = &body["choices"][0];
+        let content = choice["message"]["content"]
             .as_str()
             .unwrap_or("")
-            .to_string())
+            .to_string();
+
+        let stop_reason = match choice["finish_reason"].as_str() {
+            Some("stop") => StopReason::EndTurn,
+            Some("length") => StopReason::MaxTokens,
+            Some("tool_calls") | Some("function_call") => StopReason::ToolUse,
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -777,7 +818,7 @@ impl ClaudeProvider {
 
 #[async_trait]
 impl LlmProvider for ClaudeProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let url = "https://api.anthropic.com/v1/messages";
 
         let payload = serde_json::json!({
@@ -813,10 +854,24 @@ impl LlmProvider for ClaudeProvider {
                 reason: format!("Claude parse failed: {}", e),
             })?;
 
-        Ok(body["content"][0]["text"]
+        let content = body["content"][0]["text"]
             .as_str()
             .unwrap_or("")
-            .to_string())
+            .to_string();
+
+        let stop_reason = match body["stop_reason"].as_str() {
+            Some("end_turn") => StopReason::EndTurn,
+            Some("tool_use") => StopReason::ToolUse,
+            Some("max_tokens") => StopReason::MaxTokens,
+            Some("stop_sequence") => StopReason::StopSequence,
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -921,7 +976,7 @@ impl LmStudioProvider {
 
 #[async_trait]
 impl LlmProvider for LmStudioProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/v1/chat/completions", self.host.trim_end_matches('/'));
         let mut messages = Vec::new();
 
@@ -959,10 +1014,23 @@ impl LlmProvider for LmStudioProvider {
                 reason: format!("LM Studio parse failed: {}", e),
             })?;
 
-        Ok(body["choices"][0]["message"]["content"]
+        let choice = &body["choices"][0];
+        let content = choice["message"]["content"]
             .as_str()
             .unwrap_or("")
-            .to_string())
+            .to_string();
+
+        let stop_reason = match choice["finish_reason"].as_str() {
+            Some("stop") => StopReason::EndTurn,
+            Some("length") => StopReason::MaxTokens,
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -1198,6 +1266,6 @@ mod tests {
 
         let result = provider.complete("Say hello", Some("System prompt")).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Hello from mock LM Studio");
+        assert_eq!(result.unwrap().content, "Hello from mock LM Studio");
     }
 }

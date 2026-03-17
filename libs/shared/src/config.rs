@@ -1,17 +1,17 @@
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use secrecy::SecretString;
 use std::env;
 
 /// Aiome Core Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct AiomeConfig {
     pub db_path: String,
     pub log_level: String,
     pub ollama_host: String,
     pub ollama_model: String,
-    pub gemini_api_key: Option<String>,
-    pub openai_api_key: Option<String>,
-    pub anthropic_api_key: Option<String>,
+    pub gemini_api_key: Option<SecretString>,
+    pub openai_api_key: Option<SecretString>,
+    pub anthropic_api_key: Option<SecretString>,
     pub api_server_port: u16,
     pub key_proxy_url: String,
     pub samsara_hub_url: String,
@@ -48,14 +48,36 @@ impl AiomeConfig {
             .map(|s| s.trim().to_string())
             .collect();
 
+        // Load and immediately remove sensitive API keys
+        let gemini_api_key = env::var("GEMINI_API_KEY")
+            .ok()
+            .map(|key| {
+                env::remove_var("GEMINI_API_KEY");
+                SecretString::from(key)
+            });
+            
+        let openai_api_key = env::var("OPENAI_API_KEY")
+            .ok()
+            .map(|key| {
+                env::remove_var("OPENAI_API_KEY");
+                SecretString::from(key)
+            });
+            
+        let anthropic_api_key = env::var("ANTHROPIC_API_KEY")
+            .ok()
+            .map(|key| {
+                env::remove_var("ANTHROPIC_API_KEY");
+                SecretString::from(key)
+            });
+
         Ok(Self {
             db_path,
             log_level,
             ollama_host,
             ollama_model,
-            gemini_api_key: env::var("GEMINI_API_KEY").ok(),
-            openai_api_key: env::var("OPENAI_API_KEY").ok(),
-            anthropic_api_key: env::var("ANTHROPIC_API_KEY").ok(),
+            gemini_api_key,
+            openai_api_key,
+            anthropic_api_key,
             api_server_port,
             key_proxy_url,
             samsara_hub_url,

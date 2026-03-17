@@ -120,11 +120,11 @@ impl ConceptManager {
             input.topic, input.trend_items, input.relevant_karma
         );
 
-        let response = self
+        let resp = self
             .main_provider
             .complete(&prompt_text, Some(preamble))
             .await?;
-        let json_str = extract_json(&response)?;
+        let json_str = extract_json(&resp.content)?;
 
         let concept: ConceptResponse =
             serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
@@ -141,11 +141,11 @@ impl ConceptManager {
         let preamble = "Translate the content into natural Japanese. Return ONLY JSON.";
         let prompt_text = format!("EN Content: {:?}", concept);
 
-        let response = self
+        let resp = self
             .main_provider
             .complete(&prompt_text, Some(preamble))
             .await?;
-        let json_str = extract_json(&response)?;
+        let json_str = extract_json(&resp.content)?;
 
         let mut script: LocalizedScript =
             serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {

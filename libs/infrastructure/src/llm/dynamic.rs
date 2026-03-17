@@ -6,7 +6,7 @@
  */
 
 use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
+use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider, LlmResponse};
 use crate::circuit_breaker::CircuitBreaker;
 use crate::job_queue::SqliteJobQueue;
 use crate::slo_engine::SloEngine;
@@ -21,6 +21,9 @@ pub struct DynamicLlmProvider {
     pub client: reqwest::Client,
     pub fallback_host: String,
     pub fallback_model: String,
+    pub gemini_api_key: Option<secrecy::SecretString>,
+    pub openai_api_key: Option<secrecy::SecretString>,
+    pub anthropic_api_key: Option<secrecy::SecretString>,
     pub circuit_breaker: Arc<CircuitBreaker>,
     pub slo_engine: Arc<SloEngine>,
 }
@@ -31,7 +34,7 @@ impl LlmProvider for DynamicLlmProvider {
         &self,
         prompt: &str,
         system: Option<&str>,
-    ) -> Result<String, AiomeError> {
+    ) -> Result<LlmResponse, AiomeError> {
         let (provider_type, model) = self.resolve_config(false).await;
 
         if let Err(e) = self.circuit_breaker.check_state().await {
@@ -42,19 +45,19 @@ impl LlmProvider for DynamicLlmProvider {
 
         let result = match provider_type.as_str() {
             "gemini" => {
-                let api_key = self.get_api_key("llm_api_key", "GEMINI_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "gemini").await;
                 aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
                     .complete(prompt, system)
                     .await
             }
             "openai" => {
-                let api_key = self.get_api_key("llm_api_key", "OPENAI_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "openai").await;
                 aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model)
                     .complete(prompt, system)
                     .await
             }
             "claude" => {
-                let api_key = self.get_api_key("llm_api_key", "ANTHROPIC_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "claude").await;
                 aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model)
                     .complete(prompt, system)
                     .await
@@ -85,19 +88,19 @@ impl LlmProvider for DynamicLlmProvider {
 
         match provider_type.as_str() {
             "gemini" => {
-                let api_key = self.get_api_key("llm_api_key", "GEMINI_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "gemini").await;
                 aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
                     .stream_complete(prompt, system)
                     .await
             }
             "openai" => {
-                let api_key = self.get_api_key("llm_api_key", "OPENAI_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "openai").await;
                 aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model)
                     .stream_complete(prompt, system)
                     .await
             }
             "claude" => {
-                let api_key = self.get_api_key("llm_api_key", "ANTHROPIC_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "claude").await;
                 aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model)
                     .stream_complete(prompt, system)
                     .await
@@ -134,7 +137,7 @@ impl EmbeddingProvider for DynamicLlmProvider {
 
         match provider_type.as_str() {
             "gemini" => {
-                let api_key = self.get_api_key("llm_api_key", "GEMINI_API_KEY").await;
+                let api_key = self.get_api_key("llm_api_key", "gemini").await;
                 aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
                     .embed(text, is_query)
                     .await
@@ -173,12 +176,15 @@ impl DynamicLlmProvider {
         (provider, model)
     }
 
-    async fn get_api_key(&self, setting_name: &str, env_name: &str) -> String {
-        if let Ok(key) = std::env::var(env_name) {
-            key
-        } else {
-            self.jq.get_setting_value(setting_name).await.ok().flatten().unwrap_or_default()
-        }
+    async fn get_api_key(&self, setting_name: &str, provider_name: &str) -> String {
+        self.jq.get_setting_value(setting_name).await.ok().flatten()
+            .or_else(|| match provider_name {
+                "gemini" => self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "openai" => self.openai_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "claude" => self.anthropic_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                _ => None,
+            })
+            .unwrap_or_default()
     }
 
     async fn get_host(&self, setting_name: &str, default: &str) -> String {
@@ -206,11 +212,14 @@ pub struct BackgroundLlmProvider {
     pub client: reqwest::Client,
     pub fallback_model: String,
     pub fallback_host: String,
+    pub gemini_api_key: Option<secrecy::SecretString>,
+    pub openai_api_key: Option<secrecy::SecretString>,
+    pub anthropic_api_key: Option<secrecy::SecretString>,
 }
 
 #[async_trait]
 impl LlmProvider for BackgroundLlmProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
         let provider_type = self.jq.get_setting_value("bg_llm_provider").await.ok().flatten()
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
@@ -308,9 +317,9 @@ impl EmbeddingProvider for BackgroundLlmProvider {
 impl BackgroundLlmProvider {
     async fn resolve_bg_api_key(&self) -> String {
         self.jq.get_setting_value("bg_llm_api_key").await.ok().flatten()
-            .or_else(|| std::env::var("GEMINI_API_KEY").ok())
-            .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-            .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
+            .or_else(|| self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
+            .or_else(|| self.openai_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
+            .or_else(|| self.anthropic_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
             .unwrap_or_default()
     }
 
@@ -324,7 +333,7 @@ impl BackgroundLlmProvider {
             api_key = self.jq.get_setting_value("llm_api_key").await.ok().flatten().unwrap_or_default();
         }
         if api_key.is_empty() {
-            api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+            api_key = self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()).unwrap_or_default();
         }
         if api_key.is_empty() {
             return Err(AiomeError::Infrastructure {

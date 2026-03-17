@@ -144,7 +144,7 @@ serde_json = "1.0"
                 "--release".to_string(),
             ];
 
-            let output = shared::zombie_killer::run_with_timeout_vec(
+            let output = crate::security_zombie::run_with_timeout_vec(
                 "sandbox-exec",
                 args,
                 std::time::Duration::from_secs(120),

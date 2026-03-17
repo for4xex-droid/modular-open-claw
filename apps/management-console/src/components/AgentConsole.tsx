@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Bot, Send, Cpu, Brain, Sparkles, ThumbsUp, ThumbsDown, BookOpen } from 'lucide-react';
 import { API_BASE } from "../config";
 import { ChatMessage } from '../types';
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 const AgentConsole: React.FC = () => {
     const [input, setInput] = useState("");
@@ -44,12 +44,8 @@ const AgentConsole: React.FC = () => {
         setActiveKnowledge(null);
 
         try {
-            const response = await fetch(`${API_BASE}/api/agent/chat/stream`, {
+            const response = await authenticatedFetch(`${API_BASE}/api/agent/chat/stream`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders()
-                },
                 body: JSON.stringify({
                     prompt: currentPrompt,
                     history: history,
@@ -127,12 +123,8 @@ const AgentConsole: React.FC = () => {
         const primaryKarmaId = relevantKarmaData.entries[0].id;
 
         try {
-            await fetch(`${API_BASE}/api/agent/feedback`, {
+            await authenticatedFetch(`${API_BASE}/api/agent/feedback`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders()
-                },
                 body: JSON.stringify({
                     karma_id: primaryKarmaId,
                     is_positive: type === 'positive'

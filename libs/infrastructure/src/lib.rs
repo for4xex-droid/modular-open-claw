@@ -9,7 +9,6 @@
 //! # Infrastructure — I/O実装層
 //!
 //! `core` で定義されたトレイトの具体実装を提供する。
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 pub mod aiome_log;
@@ -31,6 +30,7 @@ pub mod memory_crystallizer;
 pub mod oracle;
 pub mod publisher;
 pub mod security;
+pub mod security_zombie;
 pub mod skill_arena;
 pub mod skills;
 pub mod slo_engine;

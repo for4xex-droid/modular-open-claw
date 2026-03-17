@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE } from '../config';
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 interface TokenHealthState {
     isExpired: boolean;
@@ -17,9 +17,7 @@ export const useTokenHealth = (intervalMs: number = 5 * 60 * 1000) => {
 
     const checkHealth = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/health`, {
-                headers: getAuthHeaders(),
-            });
+            const res = await authenticatedFetch(`${API_BASE}/api/health`);
 
             if (res.status === 401) {
                 const expired = res.headers.get('X-Token-Expired') === 'true';

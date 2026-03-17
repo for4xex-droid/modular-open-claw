@@ -57,7 +57,7 @@ impl ExpressionEngine {
         let response = llm.complete(&user_prompt, Some(&system_prompt)).await?;
 
         // 4. Parse emotion and content
-        let mut lines: Vec<&str> = response.lines().collect();
+        let mut lines: Vec<&str> = response.content.lines().collect();
         let mut emotion = "reflective".to_string();
 
         if let Some(last_line) = lines.last() {

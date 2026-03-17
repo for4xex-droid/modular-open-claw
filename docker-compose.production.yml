@@ -10,7 +10,6 @@ services:
       args:
         BIN_NAME: key-proxy
     environment:
-      - BIND_ALL=true
       - KEY_PROXY_PORT=9999
       - VAULT_SECRET=${VAULT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}

@@ -11,7 +11,6 @@
 //! Framework のビジネスロジックを定義する。
 //! 具体的なI/O実装は `infrastructure` クレートに委譲する（依存性逆転의原則）。
 
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 pub mod biome;

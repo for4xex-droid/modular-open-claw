@@ -21,12 +21,19 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     info!("👁️ Starting Aiome Watchtower (Soul Bridge)...");
 
-    let discord_token = std::env::var("DISCORD_TOKEN").ok();
-    let telegram_token = std::env::var("TELEGRAM_TOKEN").ok();
+    let discord_token = std::env::var("DISCORD_TOKEN").ok().map(|t| {
+        std::env::remove_var("DISCORD_TOKEN");
+        t
+    });
+    let telegram_token = std::env::var("TELEGRAM_TOKEN").ok().map(|t| {
+        std::env::remove_var("TELEGRAM_TOKEN");
+        t
+    });
     let api_secret = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
         error!("🚨 [CRITICAL] API_SERVER_SECRET must be set for security!");
         std::process::exit(1);
     });
+    std::env::remove_var("API_SERVER_SECRET");
     let api_ws_url = std::env::var("API_WS_URL")
         .unwrap_or_else(|_| "ws://127.0.0.1:3015/api/v1/watchtower/ws".to_string());
 

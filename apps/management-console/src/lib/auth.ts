@@ -13,10 +13,18 @@ export const getAuthToken = (): string | null => {
  */
 export const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const token = getAuthToken();
-    const headers = {
-        ...options.headers,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    const headers: Record<string, string> = {
+        ...(options.headers as Record<string, string>),
     };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Handle JSON content type as default for body-bearing requests
+    if (options.body && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
 
     return fetch(url, { ...options, headers });
 };

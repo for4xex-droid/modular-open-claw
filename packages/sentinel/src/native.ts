@@ -38,7 +38,9 @@ try {
     const arch = os.arch();
     native = require(`../../index.${platform}-${arch}.node`) as AiomeNativeBridge;
 } catch (e) {
+    console.warn("⚠️ [SENTINEL] Native bridge binary not found. Falling back to No-Op implementation. Security checks will be bypassed!");
     native = {
+        error: e,
         async karmaBootstrap() { },
         async karmaIngest() { },
         async karmaDistillTurn() { },

@@ -6,7 +6,7 @@ import {
     MessageSquare, Globe, Shield, Check, X, Loader2, Cpu, Plus
 } from 'lucide-react';
 import { API_BASE } from '../config';
-import { getAuthHeaders, setAuthToken, authenticatedFetch } from '../lib/auth';
+import { setAuthToken, authenticatedFetch } from '../lib/auth';
 import { useTokenHealth } from '../hooks/useTokenHealth';
 
 interface SettingEntry {
@@ -31,7 +31,7 @@ const SettingsPage: React.FC = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/v1/settings`, { headers: getAuthHeaders() });
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/settings`);
             if (res.ok) {
                 const data = await res.json();
                 setSettings(data);
@@ -46,9 +46,8 @@ const SettingsPage: React.FC = () => {
     const updateSetting = async (key: string, value: string, category: string) => {
         setSaving(key);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/settings`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
                 method: 'PUT',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key, value, category })
             });
             if (res.ok) {
@@ -74,9 +73,8 @@ const SettingsPage: React.FC = () => {
         }
         setTestResults(prev => ({ ...prev, [service]: { success: false, message: '', loading: true } }));
         try {
-            const res = await fetch(`${API_BASE}/api/v1/settings/test`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/settings/test`, {
                 method: 'POST',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ service, url, model })
             });
             const data = await res.json();
@@ -538,7 +536,8 @@ const SecretUpdater: React.FC = () => {
         setTesting(true);
         setAuthToken(newSecret.trim());
         try {
-            const res = await fetch(`${API_BASE}/api/health`, {
+            // Special case: verifying a *new* secret, so we manually pass it to authenticatedFetch
+            const res = await authenticatedFetch(`${API_BASE}/api/health`, {
                 headers: { 'Authorization': `Bearer ${newSecret.trim()}` },
             });
             if (res.ok) {

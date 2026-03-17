@@ -17,4 +17,3 @@ pub mod output_validator;
 pub mod sandbox;
 pub mod security;
 pub mod watchtower;
-pub mod zombie_killer;

@@ -48,9 +48,9 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match &self.0 {
             AiomeError::PromptBlocked { reason } => (StatusCode::FORBIDDEN, reason.clone()),
-            AiomeError::ArtifactNotFound { path } => (
+            AiomeError::ArtifactNotFound { path: _ } => (
                 StatusCode::NOT_FOUND,
-                format!("Artifact not found: {}", path),
+                "Artifact not found".to_string(),
             ),
             AiomeError::SecurityViolation { reason } => (
                 StatusCode::FORBIDDEN,
@@ -68,31 +68,31 @@ impl IntoResponse for AppError {
                 StatusCode::INSUFFICIENT_STORAGE,
                 format!("Storage is full (leveled at {}%)", threshold),
             ),
-            AiomeError::ContextFetch { source }
-            | AiomeError::LlmResponse { source }
-            | AiomeError::OsError { source } => (
+            AiomeError::ContextFetch { source: _ }
+            | AiomeError::LlmResponse { source: _ }
+            | AiomeError::OsError { source: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Internal error: {}", source),
+                "Internal server error".to_string(),
             ),
-            AiomeError::ConfigLoad { source } => (
+            AiomeError::ConfigLoad { source: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Configuration error: {}", source),
+                "Configuration error".to_string(),
             ),
-            AiomeError::Infrastructure { reason } => (
+            AiomeError::Infrastructure { reason: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Infrastructure error: {}", reason),
+                "Infrastructure error".to_string(),
             ),
-            AiomeError::RemoteServiceError { url, source } => (
+            AiomeError::RemoteServiceError { url: _, source: _ } => (
                 StatusCode::BAD_GATEWAY,
-                format!("Remote service error ({}): {}", url, source),
+                "Remote service error".to_string(),
             ),
-            AiomeError::RemoteServiceExecutionFailed { reason } => (
+            AiomeError::RemoteServiceExecutionFailed { reason: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Execution failed: {}", reason),
+                "Execution failed".to_string(),
             ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("An unexpected error occurred: {}", self.0),
+                "An unexpected error occurred".to_string(),
             ),
         };
 

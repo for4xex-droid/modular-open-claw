@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Terminal, BrainCircuit, Clock, Sparkles } from 'lucide-react';
 import { API_BASE } from "../config";
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 const Timeline: React.FC = () => {
     const [events, setEvents] = useState<any[]>([]);
@@ -10,22 +10,20 @@ const Timeline: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const authHeader = getAuthHeaders();
-
         const fetchData = async () => {
             setLoading(true);
             try {
                 // Fetch node id
-                const healthRes = await fetch(`${API_BASE}/api/health`, { headers: authHeader });
+                const healthRes = await authenticatedFetch(`${API_BASE}/api/health`);
                 const health = await healthRes.json();
                 setSelfNodeId(health.node_id);
 
                 // Fetch Karma
-                const karmaRes = await fetch(`${API_BASE}/api/synergy/karma`, { headers: authHeader });
+                const karmaRes = await authenticatedFetch(`${API_BASE}/api/synergy/karma`);
                 const karmas = await karmaRes.json();
 
                 // Fetch Evolution
-                const evoRes = await fetch(`${API_BASE}/api/system/evolution`, { headers: authHeader });
+                const evoRes = await authenticatedFetch(`${API_BASE}/api/system/evolution`);
                 const evos = await evoRes.json();
 
                 // Merge and sort

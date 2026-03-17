@@ -46,10 +46,10 @@ impl AgentRxDiagnostics {
             job_json, trajectory_json
         );
 
-        let response = self.provider.complete(&prompt, Some("厳格なJSON形式で応答してください。")).await?;
+        let resp = self.provider.complete(&prompt, Some("厳格なJSON形式で応答してください。")).await?;
         
         // JSON抽出（既存のロジックを想定、あるいはシンプルにパース）
-        let json_str = crate::concept_manager::extract_json(&response)?;
+        let json_str = crate::concept_manager::extract_json(&resp.content)?;
         let v: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to parse diagnostic JSON: {}", e),
         })?;

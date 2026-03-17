@@ -163,7 +163,10 @@ cp .env.example .env
 # 3. Start Abyss Vault (Key Proxy)
 # ⚠️ ALL API requests pass through this proxy. Be sure to start this first.
 export VAULT_SECRET=your_vault_secret
-GEMINI_API_KEY=your_key_here cargo run --bin key-proxy &
+GEMINI_API_KEY=your_key_here cargo run --bin key-proxy
+
+# (Optional: Genesis Experience)
+# cargo run -p aiome-synergy # (Coming Soon)
 
 # 4. Start API Server (The Body)
 export API_SERVER_SECRET=your_api_secret

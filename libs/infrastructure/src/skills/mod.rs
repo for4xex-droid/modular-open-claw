@@ -346,8 +346,11 @@ impl WasmSkillManager {
                                         return Ok(());
                                     };
                                     let final_path = canon_parent.join(file_name);
-                                    if !final_path.to_string_lossy().starts_with(allowed_root_for_write.to_string_lossy().as_ref()) {
+                                    let p_str = final_path.to_string_lossy().to_lowercase();
+                                    if !final_path.starts_with(&allowed_root_for_write) {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Path traversal blocked." }).to_string()
+                                    } else if p_str.contains(".env") || p_str.contains(".git") || p_str.contains("config/security.json") {
+                                        serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Access to sensitive internal file is forbidden." }).to_string()
                                     } else {
                                         if let Some(parent) = final_path.parent() { let _ = std::fs::create_dir_all(parent); }
                                         match std::fs::write(&final_path, req.content) {

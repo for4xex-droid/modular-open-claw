@@ -92,13 +92,13 @@ impl SoulMutator {
 
         let prompt_text = format!("現在のあなたの進化状況を反映した、最新の EVOLVING_SOUL.md を生成せよ。現状を否定せず、教訓を取り入れて拡張すること。\n\n現在の内容:\n{}", current_evolving_soul);
 
-        let response = self
+        let resp = self
             .provider
             .complete(&prompt_text, Some(&preamble))
             .await
             .map_err(|e| format!("Mutation LLM failed: {}", e))?;
 
-        let mut new_soul_content = response;
+        let mut new_soul_content = resp.content;
         if new_soul_content.starts_with("```markdown") {
             new_soul_content = new_soul_content
                 .trim_start_matches("```markdown")
@@ -245,7 +245,8 @@ impl SoulMutator {
             new_level
         );
 
-        let proposal = self.provider.complete(&prompt, Some(&preamble)).await?;
+        let resp = self.provider.complete(&prompt, Some(&preamble)).await?;
+        let proposal = resp.content;
 
         // --- Soul Drift Guard (Adaptive Intelligence v1.0) ---
         let current_evolving_soul = fs::read_to_string(&evolving_soul_path).await?;
@@ -412,8 +413,11 @@ mod tests {
     #[async_trait]
     impl LlmProvider for MockLlm {
         fn name(&self) -> &str { "mock-llm" }
-        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.mutation_response.clone())
+        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.mutation_response.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
     }

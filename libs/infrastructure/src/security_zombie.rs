@@ -75,6 +75,16 @@ pub async fn run_with_timeout(
     args: &[&str],
     timeout: Duration,
 ) -> Result<Output, ProcessError> {
+    if !crate::security::GLOBAL_SECURITY_CONFIG
+        .allowed_binaries
+        .contains(&program.to_string())
+    {
+        return Err(ProcessError::SpawnFailed(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            format!("Security Violation: Binary '{}' is not in the whitelist.", program),
+        )));
+    }
+
     let mut child = Command::new(program)
         .args(args)
         .stdout(std::process::Stdio::piped())
@@ -180,15 +190,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_timeout_kills_process() {
-        // sleep 10 を 1秒のタイムアウトで実行 → 殺される
+    async fn test_whitelist_rejection() {
+        // `sleep` is NOT in the whitelist → should be rejected at the gate
         let result = run_with_timeout("sleep", &["10"], Duration::from_secs(1)).await;
         assert!(result.is_err());
         match result.unwrap_err() {
-            ProcessError::TimedOut { timeout_secs, .. } => {
-                assert_eq!(timeout_secs, 1);
+            ProcessError::SpawnFailed(e) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::PermissionDenied);
+                assert!(e.to_string().contains("not in the whitelist"));
             }
-            other => panic!("Expected TimedOut, got: {:?}", other),
+            other => panic!("Expected SpawnFailed(PermissionDenied), got: {:?}", other),
         }
     }
 
@@ -206,7 +217,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_spawn_failed() {
+    async fn test_spawn_failed_whitelist() {
+        // Non-existent program also fails at whitelist check
         let result = run_with_timeout(
             "this_program_does_not_exist_xyz",
             &[],
@@ -215,7 +227,10 @@ mod tests {
         .await;
         assert!(result.is_err());
         match result.unwrap_err() {
-            ProcessError::SpawnFailed(_) => {} // expected
+            ProcessError::SpawnFailed(e) => {
+                // Whitelist rejection comes first
+                assert_eq!(e.kind(), std::io::ErrorKind::PermissionDenied);
+            }
             other => panic!("Expected SpawnFailed, got: {:?}", other),
         }
     }

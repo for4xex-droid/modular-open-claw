@@ -48,7 +48,7 @@ impl ProxyLlmProvider {
 
 #[async_trait]
 impl LlmProvider for ProxyLlmProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<String, AiomeError> {
+    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
         let url = format!("{}/api/v1/llm/complete", self.proxy_url);
 
         let payload = ProxyRequest {
@@ -78,7 +78,10 @@ impl LlmProvider for ProxyLlmProvider {
             reason: e.to_string(),
         })?;
 
-        Ok(body.result)
+        Ok(aiome_core::llm_provider::LlmResponse {
+            content: body.result,
+            stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+        })
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {

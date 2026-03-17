@@ -103,8 +103,8 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
         )
         .await
     {
-        Ok(lesson) => {
-            let lesson = lesson.trim();
+        Ok(resp) => {
+            let lesson = resp.content.trim();
             if !lesson.is_empty() {
                 tracing::info!("🔮 [Karma] Distilled lesson: {}", lesson);
                 let _ = db

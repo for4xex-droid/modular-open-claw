@@ -4,7 +4,7 @@ import { DataSet } from "vis-data";
 import { GitMerge, ZoomIn, ZoomOut, RefreshCw, Layers } from 'lucide-react';
 import { API_BASE } from "../config";
 import { GraphNode, GraphEdge } from '../types';
-import { getAuthHeaders } from '../lib/auth';
+import { authenticatedFetch } from '../lib/auth';
 
 const GraphView: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -16,9 +16,7 @@ const GraphView: React.FC = () => {
 
         const initGraph = async () => {
             try {
-                const res = await fetch(`${API_BASE}/api/synergy/graph`, {
-                    headers: getAuthHeaders()
-                });
+                const res = await authenticatedFetch(`${API_BASE}/api/synergy/graph`);
                 const data = await res.json();
 
                 const nodes = new DataSet<GraphNode & { color: unknown, font: unknown, shape: string, size: number, [key: string]: unknown }>(data.nodes.map((n: GraphNode) => ({

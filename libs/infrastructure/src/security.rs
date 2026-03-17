@@ -13,6 +13,7 @@ use tracing::{error, info};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
     pub allowed_binaries: Vec<String>,
+    pub workspace_root: std::path::PathBuf,
 }
 
 impl Default for SecurityConfig {
@@ -34,14 +35,14 @@ impl Default for SecurityConfig {
                 "python3".to_string(),
                 "mkdir".to_string(),
                 "cp".to_string(),
-                "mv".to_string(),
                 "head".to_string(),
                 "tail".to_string(),
                 "diff".to_string(),
                 "tree".to_string(),
                 "which".to_string(),
-                "env".to_string(),
+                "sandbox-exec".to_string(),
             ],
+            workspace_root: std::path::PathBuf::from("workspace"),
         }
     }
 }
@@ -49,18 +50,23 @@ impl Default for SecurityConfig {
 impl SecurityConfig {
     pub fn load_or_default() -> Self {
         let workspace = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "workspace".to_string());
-        let path = std::path::Path::new(&workspace).join("config/security.json");
+        let workspace_root = std::path::PathBuf::from(&workspace);
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let path = std::path::PathBuf::from(home).join(".aiome/config/security.json");
         if path.exists() {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if let Ok(config) = serde_json::from_str::<SecurityConfig>(&content) {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(mut config) = serde_json::from_str::<SecurityConfig>(&content) {
                     info!(
-                        "🛡️ [SecurityConfig] Loaded whitelist from workspace/config/security.json."
+                        "🛡️ [SecurityConfig] Loaded whitelist from ~/.aiome/config/security.json."
                     );
+                    config.workspace_root = workspace_root;
                     return config;
                 }
             }
         }
-        Self::default()
+        let mut config = Self::default();
+        config.workspace_root = workspace_root;
+        config
     }
 }
 
@@ -101,14 +107,8 @@ impl RuntimeJail for BastionGuard {
             }
         }
 
-        // 3. センシティブなパス
-        if cmd_str.contains("/etc/") || cmd_str.contains(".ssh") || cmd_str.contains(".env") || cmd_str.contains("../") {
-            return Err(AiomeError::Infrastructure {
-                reason: "Security Violation: Sensitive access.".to_string(),
-            });
-        }
-
-        info!("✅ [BastionGuard] 検証完了。コマンドを実行します...");
+        // 3. (REMOVED) Blacklist-based sensitive path check.
+        // Replaced by canonicalized whitelist below in step 6.
 
         // 4. Safer Execution: Parse command with quote-aware splitting for paths with spaces
         let parts = Self::shell_split(cmd_str);
@@ -156,18 +156,43 @@ impl RuntimeJail for BastionGuard {
             }
         }
 
-        // 6. Path Canonicalization & Strict traversal check
+        // 6. Path Canonicalization & Strict traversal check (SEC-Whitelist)
+        let sandbox = shared::sandbox::PathSandbox::new(&GLOBAL_SECURITY_CONFIG.workspace_root)
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Sandbox initialization failed: {}", e),
+            })?;
+
         for arg in &args {
-            let path = std::path::Path::new(arg);
-            if let Ok(canon) = std::fs::canonicalize(path) {
-                let canon_str = canon.to_string_lossy();
-                if canon_str.contains("/etc/") || canon_str.contains("/.ssh") || canon_str.contains(".env") {
+            // SEC: Validate all arguments. Check both standalone paths and paths hidden in flags (e.g. --file=path).
+            let potential_paths: Vec<&str> = if arg.starts_with("--") && arg.contains('=') {
+                arg.splitn(2, '=').skip(1).collect()
+            } else if !arg.starts_with('-') && !arg.is_empty() {
+                vec![arg]
+            } else {
+                vec![]
+            };
+
+            for p in potential_paths {
+                // 1. Jail traversal check
+                if let Err(e) = sandbox.validate_path(p) {
+                    error!("🛡️ [BastionGuard] Blocked access to unauthorized path: {} (Reason: {})", p, e);
                     return Err(AiomeError::Infrastructure {
-                        reason: "Security Violation: Directory traversal resolving to sensitive path detected.".into(),
+                        reason: format!("Security Violation: Path '{}' is outside sandbox jail.", p),
+                    });
+                }
+
+                // 2. Sensitive file blacklist (even within valid workspace)
+                let p_lower = p.to_lowercase();
+                if p_lower.contains(".env") || p_lower.contains(".git") || p_lower.contains("config/security.json") {
+                    error!("🛡️ [BastionGuard] Blocked access to sensitive internal file: {}", p);
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!("Security Violation: Access to sensitive file '{}' is forbidden.", p),
                     });
                 }
             }
         }
+
+        info!("✅ [BastionGuard] All checks passed. Executing: {} {}", binary, args.join(" "));
 
         use std::process::Command;
 

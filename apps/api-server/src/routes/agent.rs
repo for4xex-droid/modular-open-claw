@@ -340,8 +340,11 @@ pub async fn trigger_agent_chat(
 
     let mut economic_context = None;
     if let Some(engine) = &state.commerce_engine {
-        // TODO: ユーザー/エージェント固有の ID を使用する
-        let agent_id = uuid::Uuid::nil();
+        // Fix: Use stable system agent ID instead of nil()
+        let agent_id = state.job_queue.get_system_agent_id().await.unwrap_or_else(|err| {
+            tracing::error!("Failed to get system agent ID, falling back to nil: {:?}", err);
+            uuid::Uuid::nil()
+        });
         if let Ok(balance) = engine.get_balance(agent_id).await {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,
@@ -384,8 +387,8 @@ pub async fn trigger_agent_chat(
         )
         .await
         {
-            Ok(Ok(reply)) => {
-                let reply = reply.trim().to_string();
+            Ok(Ok(resp)) => {
+                let reply = resp.content.trim().to_string();
                 final_reply = reply.clone();
                 let mut skill_results = Vec::new();
 
@@ -501,7 +504,7 @@ pub async fn trigger_agent_chat(
                     }
                 }
 
-                if !skill_results.is_empty() {
+                if !skill_results.is_empty() || resp.stop_reason == aiome_core::llm_provider::StopReason::ToolUse {
                     current_history.push(format!("AI: {}", reply));
                     current_history
                         .push(format!("SYSTEM: [Results: {}]", skill_results.join("\n")));

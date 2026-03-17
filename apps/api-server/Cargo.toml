@@ -45,6 +45,7 @@ nurture-api = { path = "../../../ProjectーNurture/apps/nurture-api", optional =
 nurture-core = { path = "../../../ProjectーNurture/libs/nurture-core", optional = true }
 nurture-infra = { path = "../../../ProjectーNurture/libs/nurture-infra", optional = true }
 commerce-protocol = { path = "../../../ProjectーNurture/libs/commerce-protocol", optional = true }
+secrecy.workspace = true
 
 [features]
 nurture = ["dep:nurture-api", "dep:nurture-core", "dep:nurture-infra", "dep:commerce-protocol", "aiome_core/nurture"]

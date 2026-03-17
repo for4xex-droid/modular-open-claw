@@ -7,74 +7,36 @@
 
 use axum::{
     async_trait,
-    extract::FromRequestParts,
-    http::{header::AUTHORIZATION, request::Parts, StatusCode},
+    extract::{FromRequestParts, State},
+    http::{header::AUTHORIZATION, request::Parts, Request, StatusCode},
+    middleware::Next,
     response::{IntoResponse, Response},
 };
+use secrecy::ExposeSecret;
 use subtle::ConstantTimeEq;
 use tracing::warn;
 
+/// Marker type: Used as an extractor argument in handlers to enforce authentication.
+/// Requires `AppState` as the Router state type.
 pub struct Authenticated;
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Authenticated
-where
-    S: Send + Sync,
-{
+impl FromRequestParts<crate::AppState> for Authenticated {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &crate::AppState,
+    ) -> Result<Self, Self::Rejection> {
         let auth_header = parts
             .headers
             .get(AUTHORIZATION)
             .and_then(|h| h.to_str().ok())
             .unwrap_or_default();
 
-        let query_token =
-            axum::extract::Query::<std::collections::HashMap<String, String>>::try_from_uri(
-                &parts.uri,
-            )
-            .ok()
-            .and_then(|q| q.get("token").cloned());
+        let expected_bearer = format!("Bearer {}", state.api_server_secret.expose_secret());
 
-        let expected_secret = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
-            if cfg!(debug_assertions) {
-                "dev_secret".to_string()
-            } else {
-                panic!("🚨 [Auth] FATAL: API_SERVER_SECRET must be set in release builds!");
-            }
-        });
-        let expected_bearer = format!("Bearer {}", expected_secret);
-
-        // SEC: Always perform constant-time comparison regardless of length to prevent timing leaks
-        // Sub-clause: We check lengths first but only inside a combined constant-time check logic
-        let bearer_match = {
-            let a = auth_header.as_bytes();
-            let b = expected_bearer.as_bytes();
-            let max_len = std::cmp::max(a.len(), b.len());
-            let mut a_padded = vec![0u8; max_len];
-            let mut b_padded = vec![0u8; max_len];
-            a_padded[..a.len()].copy_from_slice(a);
-            b_padded[..b.len()].copy_from_slice(b);
-            // Length check is combined with ct_eq results
-            a.len() == b.len() && bool::from(a_padded.ct_eq(&b_padded))
-        };
-
-        let query_match = query_token
-        .as_ref()
-        .map(|t| {
-            let max_len = std::cmp::max(t.len(), expected_secret.len());
-            let mut a = vec![0u8; max_len];
-            let mut b = vec![0u8; max_len];
-            a[..t.len()].copy_from_slice(t.as_bytes());
-            b[..expected_secret.len()].copy_from_slice(expected_secret.as_bytes());
-            t.len() == expected_secret.len() && bool::from(a.ct_eq(&b))
-        })
-        .unwrap_or(false);
-
-        let is_valid = bearer_match || query_match;
-
-        if is_valid {
+        if verify_constant_time(auth_header.as_bytes(), expected_bearer.as_bytes()) {
             Ok(Authenticated)
         } else {
             let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
@@ -86,4 +48,40 @@ where
             Err(resp)
         }
     }
+}
+
+/// Auth middleware function: Used with `from_fn_with_state` for route_layer auth.
+/// Performs the same constant-time comparison as the Authenticated extractor.
+pub async fn auth_middleware(
+    State(state): State<crate::AppState>,
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or_default();
+
+    let expected_bearer = format!("Bearer {}", state.api_server_secret.expose_secret());
+
+    if verify_constant_time(auth_header.as_bytes(), expected_bearer.as_bytes()) {
+        Ok(next.run(req).await)
+    } else {
+        if !auth_header.is_empty() && auth_header.starts_with("Bearer ") {
+            warn!("⛔ [Auth] Invalid Bearer token received");
+        }
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+/// Constant-time comparison to prevent timing attacks.
+/// Both values are padded to the same length before comparison.
+fn verify_constant_time(a: &[u8], b: &[u8]) -> bool {
+    let max_len = std::cmp::max(a.len(), b.len());
+    let mut a_padded = vec![0u8; max_len];
+    let mut b_padded = vec![0u8; max_len];
+    a_padded[..a.len()].copy_from_slice(a);
+    b_padded[..b.len()].copy_from_slice(b);
+    a.len() == b.len() && bool::from(a_padded.ct_eq(&b_padded))
 }

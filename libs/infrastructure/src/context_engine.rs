@@ -92,9 +92,9 @@ impl ContextEngine {
                 );
 
                 match self.provider.complete(&prompt, None).await {
-                    Ok(new_summary) => {
+                    Ok(resp) => {
                         self.job_queue
-                            .update_chat_memory_summary(channel_id, new_summary.trim())
+                            .update_chat_memory_summary(channel_id, resp.content.trim())
                             .await?;
 
                         // Mark compressed messages as distilled
@@ -139,8 +139,11 @@ mod tests {
 
     #[async_trait::async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.reply.clone())
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.reply.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
         fn name(&self) -> &str { "mock-llm" }
         async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }

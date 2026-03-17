@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldAlert, Zap, Loader2 } from 'lucide-react';
 import { API_BASE } from '../config';
-import { setAuthToken } from '../lib/auth';
+import { setAuthToken, authenticatedFetch } from '../lib/auth';
 
 interface AuthOverlayProps {
     onAuthenticated: () => void;
@@ -22,7 +22,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
 
         try {
             // API Server のヘルスチェックを使用して検証 (KeyProxy も兼ねる)
-            const response = await fetch(`${API_BASE}/api/health`, {
+            const response = await authenticatedFetch(`${API_BASE}/api/health`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

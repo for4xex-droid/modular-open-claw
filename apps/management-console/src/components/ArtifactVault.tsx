@@ -19,7 +19,7 @@ import {
   Dna
 } from "lucide-react";
 import { API_BASE } from "../config";
-import { getAuthHeaders } from "../lib/auth";
+import { authenticatedFetch } from "../lib/auth";
 
 interface ArtifactFile {
   name: string;
@@ -74,7 +74,7 @@ const ArtifactVault = () => {
       if (filter) url += `&category=${filter}`;
       if (searchTerm) url += `&q=${encodeURIComponent(searchTerm)}`;
 
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await authenticatedFetch(url);
       if (res.ok) {
         const data = await res.json();
         setArtifacts(data);
@@ -103,9 +103,8 @@ const ArtifactVault = () => {
     if (!confirm("Are you sure you want to delete this artifact? This action is permanent and will purge physical files.")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/artifacts/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders()
+      const res = await authenticatedFetch(`${API_BASE}/api/artifacts/${id}`, {
+        method: "DELETE"
       });
       if (res.ok) {
         setArtifacts(prev => prev.filter(a => a.id !== id));

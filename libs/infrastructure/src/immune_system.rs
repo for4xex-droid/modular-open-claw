@@ -45,9 +45,9 @@ impl AdaptiveImmuneSystem {
             .join("\n---\n");
         let preamble = "あなたはシステムの自己防衛エンジンです。以下のログから攻撃パターンを特定し、防御ルールを1つ JSON 形式で作成してください。\nFormat: {\"pattern\": \"攻撃的な単語や正規表現\", \"severity\": 0-100, \"action\": \"Block/Alert\"}";
 
-        let response = self.provider.complete(&logs_concat, Some(preamble)).await?;
+        let resp = self.provider.complete(&logs_concat, Some(preamble)).await?;
 
-        let json_str = crate::concept_manager::extract_json(&response)?;
+        let json_str = crate::concept_manager::extract_json(&resp.content)?;
         let v: serde_json::Value =
             serde_json::from_str(json_str.as_str()).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to parse immune rule JSON: {}", e),
@@ -191,8 +191,11 @@ mod tests {
     }
     #[async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.reply.clone())
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.reply.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
         fn name(&self) -> &str { "mock-llm" }
         async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }

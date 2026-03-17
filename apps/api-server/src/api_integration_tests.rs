@@ -35,8 +35,6 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
 
-    std::env::set_var("API_SERVER_SECRET", "test_secret");
-
     let job_queue = Arc::new(
         infrastructure::job_queue::SqliteJobQueue::new(&format!(
             "sqlite://{}",
@@ -119,6 +117,8 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
             },
             chrono::Duration::hours(24),
         )),
+        api_server_secret: Arc::new(secrecy::SecretString::from("test_secret".to_string())),
+        federation_secret: Some(Arc::new(secrecy::SecretString::from("test_fed_secret".to_string()))),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

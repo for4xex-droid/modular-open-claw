@@ -81,7 +81,8 @@ async fn main() -> anyhow::Result<()> {
         tracing::error!("🚨 [CRITICAL] FEDERATION_SECRET must be set for Samsara Hub security!");
         std::process::exit(1);
     });
-    let secret = secrecy::SecretString::new(secret_val);
+    let secret = secrecy::SecretString::from(secret_val);
+    std::env::remove_var("FEDERATION_SECRET");
     let port = std::env::var("PORT").unwrap_or_else(|_| "3016".to_string());
 
     // Configure SQLite with Performance & Reliability Options for Large-Scale Sync
@@ -141,17 +142,22 @@ async fn main() -> anyhow::Result<()> {
 
 async fn shutdown_signal(token: CancellationToken) {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            error!("🚨 [Hub] Failed to install Ctrl+C handler: {}", e);
+        }
     };
 
     #[cfg(unix)]
     let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => {
+                s.recv().await;
+            }
+            Err(e) => {
+                error!("🚨 [Hub] Failed to install signal handler: {}", e);
+                std::future::pending::<()>().await;
+            }
+        }
     };
 
     #[cfg(not(unix))]

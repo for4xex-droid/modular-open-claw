@@ -58,13 +58,13 @@ impl MemoryCrystallizer {
                 );
 
                 match self.provider.complete(&prompt, None).await {
-                    Ok(distilled) => {
+                    Ok(resp) => {
                         let soul_hash = "v1_crystallized";
                         let ids: Vec<String> = raw_karma.into_iter().map(|(id, _)| id).collect();
                         self.job_queue
                             .apply_distilled_karma(
                                 &skill,
-                                &distilled,
+                                &resp.content,
                                 &ids,
                                 soul_hash,
                                 Some("global"),
@@ -106,8 +106,11 @@ mod tests {
 
     #[async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.reply.clone())
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.reply.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
         async fn stream_complete(&self, _prompt: &str, _system: Option<&str>) -> Result<std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
             Err(AiomeError::Infrastructure { reason: "Not implemented".into() })

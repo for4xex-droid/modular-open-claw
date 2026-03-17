@@ -47,8 +47,8 @@ impl ConstitutionalValidator for DefaultConstitutionalValidator {
             principles
         );
 
-        let verdict_text = self.provider.complete(content, Some(&preamble)).await?;
-        let verdict = verdict_text.trim();
+        let resp = self.provider.complete(content, Some(&preamble)).await?;
+        let verdict = resp.content.trim();
 
         let upper_verdict = verdict.to_uppercase();
 
@@ -90,8 +90,11 @@ mod tests {
     #[async_trait]
     impl LlmProvider for MockLlm {
         fn name(&self) -> &str { "mock-llm" }
-        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<String, AiomeError> {
-            Ok(self.verdict.clone())
+        async fn complete(&self, _p: &str, _pre: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.verdict.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
     }
