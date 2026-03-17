@@ -205,9 +205,114 @@ jobs:
             fi
           done
 
+  semver-check:
+    name: API Compatibility (semver)
+    runs-on: ubuntu-latest
+    # 警告のみ — 破壊的変更を検出するが CI はブロックしない
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴が必要（タグとの比較）
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks --locked
+
+      - name: Check API compatibility
+        run: |
+          # ライブラリクレートのみチェック（binは対象外）
+          for crate in libs/core libs/shared libs/aiome-contracts; do
+            if [[ -f "$crate/Cargo.toml" ]]; then
+              echo "🔍 Checking $crate..."
+              cargo semver-checks check-release \
+                --manifest-path "$crate/Cargo.toml" 2>&1 || true
+            fi
+          done
+
+  unused-deps:
+    name: Unused Dependencies
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (nightly required for udeps)
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps --locked
+
+      - name: Check unused dependencies
+        run: cargo +nightly udeps --workspace 2>&1 || true
+
+  commit-lint:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    # PR のコミットメッセージを検証
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          ERRORS=0
+          # PR 内の全コミットを検証
+          COMMITS=$(git log --pretty=%s origin/${{ github.base_ref }}..HEAD 2>/dev/null || true)
+          if [[ -z "$COMMITS" ]]; then
+            echo "ℹ️  No commits to check"
+            exit 0
+          fi
+          while IFS= read -r msg; do
+            [[ -z "$msg" ]] && continue
+            if ! bash scripts/check-commit-msg.sh "$msg" 2>/dev/null; then
+              ERRORS=$((ERRORS + 1))
+            fi
+          done <<< "$COMMITS"
+          if [[ $ERRORS -gt 0 ]]; then
+            echo ""
+            echo "❌ $ERRORS commit(s) do not follow Conventional Commits format."
+            exit 1
+          fi
+          echo "✅ All commits follow Conventional Commits."
+
+  sbom:
+    name: SBOM Generation (CycloneDX)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-cyclonedx
+        run: cargo install cargo-cyclonedx --locked
+
+      - name: Generate SBOM
+        run: |
+          cargo cyclonedx --format json --output-cdx 2>&1 || true
+          if [[ -f bom.json ]]; then
+            echo "✅ SBOM generated: bom.json"
+            echo "📊 Dependencies: $(jq '.components | length' bom.json 2>/dev/null || echo 'unknown')"
+          fi
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: "*.cdx.json"
+          retention-days: 90
+          if-no-files-found: ignore
+
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, deep-scan]
+    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, deep-scan, semver-check, unused-deps, sbom]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:

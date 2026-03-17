@@ -176,6 +176,27 @@ chmod +x "$PRE_PUSH_HOOK"
 echo "  ✅ Pre-push hook installed."
 
 # ──────────────────────────────────────
+# Commit-msg Hook (Conventional Commits)
+# ──────────────────────────────────────
+COMMIT_MSG_HOOK="$HOOKS_DIR/commit-msg"
+
+echo "📋 Installing commit-msg hook..."
+
+cat << 'COMMITMSG_EOF' > "$COMMIT_MSG_HOOK"
+#!/bin/bash
+# Aiome Commit-msg Hook
+# Validates Conventional Commits format.
+
+COMMIT_MSG_FILE="$1"
+if [[ -f "scripts/check-commit-msg.sh" ]]; then
+  bash scripts/check-commit-msg.sh --from-file "$COMMIT_MSG_FILE"
+fi
+COMMITMSG_EOF
+
+chmod +x "$COMMIT_MSG_HOOK"
+echo "  ✅ Commit-msg hook installed."
+
+# ──────────────────────────────────────
 # Summary
 # ──────────────────────────────────────
 echo ""
@@ -183,6 +204,7 @@ echo "════════════════════════�
 echo "🎉 Git hooks installed successfully!"
 echo ""
 echo "  pre-commit: fmt + patterns + secrets + critical file warnings"
+echo "  commit-msg: Conventional Commits validation"
 echo "  pre-push:   architecture auto-update + docs-sync"
 echo ""
 echo "  Bypass: git commit --no-verify / git push --no-verify"
