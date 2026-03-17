@@ -1,0 +1,5 @@
+[env]
+# SqliteJobQueue implements 60+ async trait methods, creating enormous future
+# state machines. The default thread stack size (8MB) is insufficient for tests
+# that use these methods. Increase to 64MB.
+RUST_MIN_STACK = "67108864"

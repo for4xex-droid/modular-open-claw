@@ -35,3 +35,4 @@ dist/
 # Strategic & Private documents
 PITCH_DECK.md
 scripts/update_headers.py
+check_output.txt

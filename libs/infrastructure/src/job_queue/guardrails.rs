@@ -5,11 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use super::swarm::SwarmOps;
 use super::try_get_optional_string;
 use super::SqliteJobQueue;
 use aiome_core::contracts::{ArenaMatch, ImmuneRule};
 use aiome_core::error::AiomeError;
-use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
 use sqlx::Row;
 
@@ -25,11 +25,13 @@ pub trait GuardrailOps {
 #[async_trait]
 impl GuardrailOps for SqliteJobQueue {
     async fn do_store_immune_rule(&self, rule: &ImmuneRule) -> Result<(), AiomeError> {
-        // --- Phase 10-B: Swarm Identity & Clock ---
-        let node_id = self.get_node_id().await.unwrap_or_default();
-        let clock = self.tick_local_clock().await.unwrap_or(0);
+        // SEC: Use do_* methods directly instead of trait methods (get_node_id, tick_local_clock, sign_swarm_payload)
+        // to avoid pulling in the massive `impl JobQueue for SqliteJobQueue` future (60+ async methods)
+        // which causes stack overflow.
+        let node_id = self.do_get_node_id().await.unwrap_or_default();
+        let clock = self.do_tick_local_clock().await.unwrap_or(0);
         let sign_target = format!("{}:{}:{}", rule.id, rule.pattern, clock);
-        let signature = self.sign_swarm_payload(&sign_target).await.ok();
+        let signature = self.do_sign_swarm_payload(&sign_target).await.ok();
 
         let status_str = match rule.approval_status {
             aiome_core::contracts::ApprovalState::Approved => "Approved",
