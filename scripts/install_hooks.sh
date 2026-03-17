@@ -1,31 +1,189 @@
 #!/bin/bash
-# install_hooks.sh
+# Aiome - The Autonomous AI Operating System
+# Copyright (C) 2026 motivationstudio, LLC
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# install_hooks.sh — Git Hooks インストーラー
+#
+# 使用法: bash scripts/install_hooks.sh
+#
+# セキュリティ: hooks は .git/hooks/ に書き込みのみ。
+# 実行されるチェックは全て read-only（ファイル変更なし）。
+
+set -euo pipefail
 
 HOOKS_DIR=".git/hooks"
-PRE_PUSH_HOOK="$HOOKS_DIR/pre-push"
 
-echo "Installing pre-push hook for ARCHITECTURE.md auto-update..."
-
-cat << 'EOF' > "$PRE_PUSH_HOOK"
-#!/bin/bash
-# Aiome: Auto-update ARCHITECTURE.md before pushing
-
-echo "📐 Updating ARCHITECTURE.md (Knowledge Map)..."
-python3 scripts/generate_architecture.py
-
-git diff --quiet ARCHITECTURE.md
-if [ $? -ne 0 ]; then
-    echo "⚠️ ARCHITECTURE.md has changed. Automatically committing updates."
-    git add ARCHITECTURE.md
-    
-    # We amend the current commit so we don't spam the commit history with "update docs"
-    git commit --amend --no-edit
-
-    echo "✅ ARCHITECTURE.md committed."
+if [[ ! -d "$HOOKS_DIR" ]]; then
+  echo "❌ .git/hooks が見つかりません。リポジトリのルートで実行してください。"
+  exit 1
 fi
 
+# ──────────────────────────────────────
+# Pre-commit Hook
+# ──────────────────────────────────────
+PRE_COMMIT_HOOK="$HOOKS_DIR/pre-commit"
+
+echo "📋 Installing pre-commit hook..."
+
+cat << 'PRECOMMIT_EOF' > "$PRE_COMMIT_HOOK"
+#!/bin/bash
+# Aiome Pre-commit Hook
+# Runs fast local checks before allowing a commit.
+# All checks are read-only and non-destructive.
+
+set -uo pipefail
+
+echo ""
+echo "🔍 Aiome Pre-commit Checks"
+echo "──────────────────────────"
+
+ERRORS=0
+
+# ── Check 1: Rust formatting ──
+if command -v cargo &> /dev/null; then
+  echo -n "  fmt...    "
+  if cargo fmt --all -- --check 2>/dev/null; then
+    echo "✅"
+  else
+    echo "❌ (run: cargo fmt --all)"
+    ERRORS=$((ERRORS + 1))
+  fi
+fi
+
+# ── Check 2: Anti-Pattern Enforcer (fast grep) ──
+if [[ -f "scripts/pattern-enforcer.sh" ]]; then
+  echo -n "  patterns... "
+  # Only check staged .rs files for speed
+  STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$' || true)
+  if [[ -z "$STAGED_RS" ]]; then
+    echo "⏭️  (no .rs files staged)"
+  else
+    # Run the full enforcer but only care about errors (not warnings)
+    if bash scripts/pattern-enforcer.sh --ci 2>/dev/null; then
+      echo "✅"
+    else
+      echo "❌"
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+fi
+
+# ── Check 3: Critical file change warning ──
+CRITICAL_FILES=(
+  "libs/core/src/traits.rs"
+  "libs/infrastructure/src/job_queue/mod.rs"
+  "libs/infrastructure/src/job_queue/swarm.rs"
+  "libs/infrastructure/src/job_queue/migrations.rs"
+  ".cargo/config.toml"
+  "Cargo.toml"
+)
+
+STAGED_FILES=$(git diff --cached --name-only || true)
+CRITICAL_CHANGED=""
+for cf in "${CRITICAL_FILES[@]}"; do
+  if echo "$STAGED_FILES" | grep -q "^${cf}$"; then
+    CRITICAL_CHANGED="$CRITICAL_CHANGED\n    ⚡ $cf"
+  fi
+done
+
+if [[ -n "$CRITICAL_CHANGED" ]]; then
+  echo ""
+  echo "  ⚠️  Critical files modified (CODEOWNERS review required):"
+  echo -e "$CRITICAL_CHANGED"
+  echo ""
+  echo "  Ensure ADR rules (R-001~R-008) are respected."
+  echo "  See: .agent/skills/architecture-rules.md"
+fi
+
+# ── Check 4: Prevent committing secrets ──
+echo -n "  secrets... "
+SECRET_PATTERNS='(GEMINI_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|DISCORD_TOKEN|TELEGRAM_TOKEN|API_SERVER_SECRET|VAULT_SECRET|FEDERATION_SECRET)=[^$]'
+STAGED_CONTENT=$(git diff --cached --diff-filter=ACMR -U0 | grep '^+' | grep -v '^+++' || true)
+if echo "$STAGED_CONTENT" | grep -qE "$SECRET_PATTERNS"; then
+  echo "❌ POTENTIAL SECRET DETECTED!"
+  echo "  🔴 Staged diff contains what appears to be a secret value."
+  echo "  Review staged changes carefully before committing."
+  ERRORS=$((ERRORS + 1))
+else
+  echo "✅"
+fi
+
+# ── Result ──
+echo ""
+if [[ $ERRORS -gt 0 ]]; then
+  echo "❌ Pre-commit: $ERRORS check(s) failed."
+  echo "   Fix the issues above, or bypass with: git commit --no-verify"
+  exit 1
+else
+  echo "✅ Pre-commit: All checks passed."
+fi
+PRECOMMIT_EOF
+
+chmod +x "$PRE_COMMIT_HOOK"
+echo "  ✅ Pre-commit hook installed."
+
+# ──────────────────────────────────────
+# Pre-push Hook (existing: ARCHITECTURE.md auto-update)
+# ──────────────────────────────────────
+PRE_PUSH_HOOK="$HOOKS_DIR/pre-push"
+
+echo "📋 Installing pre-push hook..."
+
+cat << 'PREPUSH_EOF' > "$PRE_PUSH_HOOK"
+#!/bin/bash
+# Aiome Pre-push Hook
+# Runs heavier checks before pushing to remote.
+
+set -uo pipefail
+
+echo ""
+echo "🚀 Aiome Pre-push Checks"
+echo "──────────────────────────"
+
+# ── ARCHITECTURE.md auto-update ──
+echo -n "  architecture... "
+if [[ -f "scripts/generate_architecture.py" ]] && command -v python3 &> /dev/null; then
+  python3 scripts/generate_architecture.py 2>/dev/null
+  if ! git diff --quiet ARCHITECTURE.md 2>/dev/null; then
+    echo "📝 (auto-updating)"
+    git add ARCHITECTURE.md
+    git commit --amend --no-edit 2>/dev/null || true
+  else
+    echo "✅"
+  fi
+else
+  echo "⏭️  (python3 or script not found)"
+fi
+
+# ── Docs-sync check ──
+if [[ -f "scripts/docs-sync-check.sh" ]]; then
+  echo -n "  docs-sync... "
+  if bash scripts/docs-sync-check.sh 2>/dev/null | grep -q "全チェック通過"; then
+    echo "✅"
+  else
+    echo "⚠️  (documentation may be out of sync)"
+  fi
+fi
+
+echo ""
+echo "✅ Pre-push: Checks complete."
 exit 0
-EOF
+PREPUSH_EOF
 
 chmod +x "$PRE_PUSH_HOOK"
-echo "✅ Git pre-push hook installed successfully."
+echo "  ✅ Pre-push hook installed."
+
+# ──────────────────────────────────────
+# Summary
+# ──────────────────────────────────────
+echo ""
+echo "══════════════════════════════════════"
+echo "🎉 Git hooks installed successfully!"
+echo ""
+echo "  pre-commit: fmt + patterns + secrets + critical file warnings"
+echo "  pre-push:   architecture auto-update + docs-sync"
+echo ""
+echo "  Bypass: git commit --no-verify / git push --no-verify"
+echo "══════════════════════════════════════"

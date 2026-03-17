@@ -15,6 +15,10 @@ Please delete options that are not relevant.
 - [ ] I have read the `CONTRIBUTING.md` document.
 - [ ] I have signed the CLA (`CLA.md`).
 - [ ] My code follows the Aiome principles (Result Type Mandatory, Actor Model, etc.).
+- [ ] My code respects the ADR rules (`R-001`~`R-008`) in `.agent/skills/architecture-rules.md`.
 - [ ] I have added tests to cover my changes.
 - [ ] `cargo test --workspace` passes locally with my changes.
 - [ ] `cargo deny check license` passes locally.
+- [ ] `bash scripts/pattern-enforcer.sh` reports no errors.
+- [ ] `bash scripts/docs-sync-check.sh` reports no documentation gaps.
+- [ ] CHANGELOG.md `[Unreleased]` section is updated (if applicable).

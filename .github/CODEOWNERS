@@ -1,0 +1,66 @@
+# Aiome Code Ownership
+#
+# GitHub uses this file to automatically assign reviewers when
+# changes are made to critical files. This prevents AI agents
+# from modifying core architecture without human review.
+#
+# Format: [pattern] [owner1] [owner2] ...
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ──────────────────────────────────────
+# Default owner (catches everything not matched below)
+# ──────────────────────────────────────
+*                                       @motivationstudio-llc/core-team
+
+# ──────────────────────────────────────
+# Critical Architecture (MUST review)
+# Trait changes cascade to all implementations
+# ──────────────────────────────────────
+/libs/core/src/traits.rs                @motista
+/libs/core/src/lib.rs                   @motista
+
+# ──────────────────────────────────────
+# JobQueue — SQLite deadlock-prone area
+# R-001, R-002, R-008 in ADR
+# ──────────────────────────────────────
+/libs/infrastructure/src/job_queue/mod.rs   @motista
+/libs/infrastructure/src/job_queue/swarm.rs @motista
+
+# ──────────────────────────────────────
+# Security-Critical Files
+# ──────────────────────────────────────
+/libs/shared/src/security.rs            @motista
+/libs/shared/src/sandbox.rs             @motista
+/apps/key-proxy/                        @motista
+/.cargo/config.toml                     @motista
+/.env.example                           @motista
+
+# ──────────────────────────────────────
+# CI / Build Pipeline
+# ──────────────────────────────────────
+/.github/workflows/                     @motista
+/Cargo.toml                             @motista
+/Cargo.lock                             @motista
+
+# ──────────────────────────────────────
+# Anti-Pattern Rules & Quality Gates
+# Modifying these weakens the safety net
+# ──────────────────────────────────────
+/.aiome/anti-patterns.yml               @motista
+/.agent/skills/architecture-rules.md    @motista
+/scripts/pattern-enforcer.sh            @motista
+/scripts/deep-scan.sh                   @motista
+/scripts/docs-sync-check.sh            @motista
+
+# ──────────────────────────────────────
+# Database Migrations
+# Schema changes are irreversible in production
+# ──────────────────────────────────────
+/libs/infrastructure/src/job_queue/migrations.rs  @motista
+
+# ──────────────────────────────────────
+# Legal & Governance
+# ──────────────────────────────────────
+/LICENSE*                               @motista
+/CLA.md                                 @motista
+/SECURITY.md                            @motista
