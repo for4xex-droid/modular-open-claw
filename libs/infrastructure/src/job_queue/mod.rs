@@ -641,7 +641,7 @@ impl SqliteJobQueue {
         channel_id: &str,
         summary: &str,
     ) -> Result<(), AiomeError> {
-        self.do_update_chat_memory_summary(channel_id, summary)
+        Box::pin(self.do_update_chat_memory_summary(channel_id, summary))
             .await
     }
 
@@ -687,7 +687,7 @@ impl SqliteJobQueue {
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
-        self.do_apply_distilled_karma(
+        Box::pin(self.do_apply_distilled_karma(
             skill,
             distilled_lesson,
             old_karma_ids,
@@ -695,7 +695,7 @@ impl SqliteJobQueue {
             domain,
             subtopic,
             clone_origin_id,
-        )
+        ))
         .await
     }
 

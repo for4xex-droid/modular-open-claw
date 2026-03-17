@@ -157,6 +157,25 @@ jobs:
       - name: Run docs-sync check
         run: bash scripts/docs-sync-check.sh --ci
 
+  pattern-check:
+    name: Anti-Pattern Enforcer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run pattern enforcer
+        run: bash scripts/pattern-enforcer.sh --ci
+
+  deep-scan:
+    name: Segmented Deep Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run segmented deep scan
+        run: bash scripts/deep-scan.sh --ci
+
   license-header:
     name: Apache 2.0 Header Check
     runs-on: ubuntu-latest
@@ -188,7 +207,7 @@ jobs:
 
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync]
+    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, deep-scan]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:
