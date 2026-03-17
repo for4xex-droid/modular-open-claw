@@ -68,6 +68,10 @@ impl SwarmOps for SqliteJobQueue {
     }
 
     async fn do_sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError> {
+        // First ensure keys exist (this may start a transaction to generate them)
+        let _ = self.do_get_node_id().await?;
+
+        // Now keys are guaranteed to exist — sign directly (no recursion)
         let row = sqlx::query("SELECT value FROM system_state WHERE key = 'node_privkey'")
             .fetch_optional(&self.pool)
             .await
@@ -89,8 +93,9 @@ impl SwarmOps for SqliteJobQueue {
             let signature = signing_key.sign(payload.as_bytes());
             Ok(BASE64_STANDARD.encode(signature.to_bytes()))
         } else {
-            let _ = self.do_get_node_id().await?; // Ensure key exists
-            Box::pin(self.do_sign_swarm_payload(payload)).await
+            Err(AiomeError::Infrastructure {
+                reason: "Node private key not found after initialization".to_string(),
+            })
         }
     }
 
