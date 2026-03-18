@@ -65,6 +65,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Swarm Ops Deadlock Prevention**: The `do_sign_swarm_payload` function uses a linear flow (ensure key existence → sign) instead of recursive calls, preventing SQLite transaction nesting deadlocks caused by the single-writer constraint. All internal swarm operations (`get_node_id`, `tick_local_clock`, `sign_swarm_payload`) are called via direct `SwarmOps::do_*` methods rather than `JobQueue` trait dispatch to avoid both deadlocks and oversized async futures.
 - **Async Future Size Control**: All 55+ delegation methods in `impl JobQueue for SqliteJobQueue` use `Box::pin` to heap-allocate individual futures, preventing the combined async state machine from exceeding thread stack limits.
 - **Context Management System**: Prevents "AI hallucination" and "cascade errors." Integrates an immutable dependency map (`RIPPLE_MAP.md`) and Architectural Decision Records (ADRs) directly synced with the API/core code. Forces AI to execute preflight checks and review impact scopes before any source code mutation.
+- **Preserve Intent Strategy**: Utilizes ADR 007 standard for compiler warning suppression (`#[allow(...)]`). This ensures that context or "half-finished" logic is never accidentally deleted by AI agents during refactoring, maintaining a stable and explainable codebase while satisfying strict CI `-D warnings` constraints.
 
 ## 5. Comparison with Traditional Systems
 

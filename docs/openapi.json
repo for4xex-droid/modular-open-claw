@@ -1172,6 +1172,113 @@
           }
         ]
       }
+    },
+    "/api/agent/chat/stream": {
+      "post": {
+        "tags": [
+          "crate::routes::agent"
+        ],
+        "operationId": "trigger_agent_chat_stream",
+        "description": "SSE stream for real-time agent responses",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "SSE Stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/soul/status": {
+      "get": {
+        "tags": [
+          "crate::routes::soul"
+        ],
+        "operationId": "get_soul_status",
+        "description": "Get real-time soul and attachment metrics",
+        "responses": {
+          "200": {
+            "description": "Soul status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SoulStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/system/vitality": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_system_vitality_stream",
+        "description": "SSE stream for system and agent health/performance metrics",
+        "responses": {
+          "200": {
+            "description": "SSE Stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/watchtower/ws": {
+      "get": {
+        "tags": [
+          "crate::routes::watchtower"
+        ],
+        "operationId": "watchtower_ws_handler",
+        "description": "WebSocket endpoint for real-time Discord/Watchtower events",
+        "responses": {
+          "101": {
+            "description": "Protocol upgrade to WebSocket"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1480,6 +1587,46 @@
           },
           "transaction_id": {
             "type": "string"
+          }
+        }
+      },
+      "SoulStatusResponse": {
+        "type": "object",
+        "required": [
+          "active",
+          "generation",
+          "attachment_style",
+          "active_defenses_count",
+          "somatic_markers_count",
+          "soul_resonance_avg",
+          "karma_resonance"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "active_defenses_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attachment_style": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "karma_resonance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "somatic_markers_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "soul_resonance_avg": {
+            "type": "number",
+            "format": "double"
           }
         }
       },

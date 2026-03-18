@@ -4,6 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
+#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::security::PermissionManifest;

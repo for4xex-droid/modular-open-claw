@@ -5,6 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 #![forbid(unsafe_code)]
+#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 //! # Core — ドメインロジック層
 //!

@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Context Management System (4-Layer Guardrails)**: Implemented an autonomous guardrail system to prevent AI agent contextual collapse and cascade errors. Includes `.context/RIPPLE_MAP.md` for deterministic dependency tracking, `preflight` workflow commands, Architecture Decision Records (ADRs `001` through `006`), and rigorous documentation synchronization rules. Added comprehensive integration sweeps matching actual source paths (`soul/*.rs` and `infrastructure/*.rs`) precisely to documentation maps.
+- **Context Management System (4-Layer Guardrails)**: Implemented an autonomous guardrail system to prevent AI agent contextual collapse and cascade errors. Includes `.context/RIPPLE_MAP.md` for deterministic dependency tracking, `preflight` workflow commands, Architecture Decision Records (ADRs `001` through `007`), and rigorous documentation synchronization rules.
+- **Comprehensive Documentation Update**: Replaced 254 instances of "自動補完" (placeholder) documentation with context-aware, inferred descriptions across 47 Rust files. Resolved all `missing_documentation` warnings workspace-wide.
+- **Preserve Intent Policy**: Established a workspace-wide policy (ADR 007) to suppress unused code/import warnings via `#[allow(...)]` instead of deletion, preserving developer context and intent for future features. Updated CI and all crate roots (`shared`, `infrastructure`, `soul`, `core`, `api-server`, `watchtower`) to enforce this policy.
 - **Soul Engine (Phase 4 - Autonomic Deepening)**:
     - **Step 0 (Soul Memory)**: Added `SoulSnapshot` cache to `SqliteSoulStore` mapping memory to the chat LLM via `build_system_instructions`, eliminating DB latency on hot paths.
     - **Step 1 (Attachment Transitions)**: Implemented dynamics for `AttachmentStyle` shifting (Secure/Anxious/Avoidant/Disorganized) based on positive/negative interaction valences.
