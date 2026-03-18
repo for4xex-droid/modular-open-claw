@@ -220,16 +220,14 @@ async fn test_cloud_connection(
         });
     }
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .unwrap_or_default();
+    let client = aiome_core::http::get_http_client();
 
     match service {
         "gemini" => {
             let url = "https://generativelanguage.googleapis.com/v1beta/models";
             match client
                 .get(url)
+                .timeout(std::time::Duration::from_secs(10))
                 .header("x-goog-api-key", token)
                 .send()
                 .await
@@ -251,6 +249,7 @@ async fn test_cloud_connection(
         "openai" => {
             match client
                 .get("https://api.openai.com/v1/models")
+                .timeout(std::time::Duration::from_secs(10))
                 .header("Authorization", format!("Bearer {}", token))
                 .send()
                 .await
@@ -272,6 +271,7 @@ async fn test_cloud_connection(
         "claude" => {
             match client
                 .get("https://api.anthropic.com/v1/models")
+                .timeout(std::time::Duration::from_secs(10))
                 .header("x-api-key", token)
                 .header("anthropic-version", "2023-06-01")
                 .send()
@@ -299,10 +299,7 @@ async fn test_cloud_connection(
 }
 
 async fn test_ollama(host: &str, model: Option<&str>) -> Json<TestConnectionResponse> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+    let client = aiome_core::http::get_http_client();
 
     let url = if host.ends_with('/') {
         format!("{}api/tags", host)
@@ -310,7 +307,12 @@ async fn test_ollama(host: &str, model: Option<&str>) -> Json<TestConnectionResp
         format!("{}/api/tags", host)
     };
 
-    match client.get(&url).send().await {
+    match client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
         Ok(res) if res.status().is_success() => {
             if let Ok(json) = res.json::<serde_json::Value>().await {
                 if let Some(model_name) = model {
@@ -391,12 +393,14 @@ pub async fn get_ollama_models(
     let url = format!("{}/api/tags", host.trim_end_matches('/'));
     state.security_policy.validate_url(&url).await?;
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-        .unwrap_or_default();
+    let client = aiome_core::http::get_http_client();
 
-    let res = client.get(&url).send().await.map_err(|e| {
+    let res = client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|e| {
         aiome_core::error::AiomeError::RemoteServiceError {
             url: url.clone(),
             source: e.into(),

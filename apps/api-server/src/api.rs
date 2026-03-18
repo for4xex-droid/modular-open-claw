@@ -48,6 +48,9 @@ use utoipa::OpenApi;
         crate::routes::expression::generate_expression,
         crate::routes::expression::list_expressions,
         crate::routes::expression::toggle_auto_expression,
+        // Commerce
+        crate::routes::commerce::get_balance,
+        crate::routes::commerce::execute_purchase,
         // Artifacts
         crate::routes::artifacts::list_artifacts_handler,
         crate::routes::artifacts::get_artifact_handler,
@@ -77,6 +80,7 @@ use utoipa::OpenApi;
             crate::routes::biome::StartAutonomousRequest,
             crate::routes::expression::ListParams,
             crate::routes::expression::AutoToggle,
+            crate::routes::commerce::PurchaseRequest,
             crate::routes::artifacts::ListArtifactsParams
         )
     ),

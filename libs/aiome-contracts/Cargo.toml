@@ -22,3 +22,8 @@ chacha20poly1305 = { workspace = true }
 rand = { workspace = true }
 async-stream = { workspace = true }
 bastion = { package = "bastion-core", git = "https://github.com/for4xex-droid/bastion.git", branch = "main", features = ["fs"] }
+axum = { workspace = true, optional = true }
+
+[features]
+axum = ["dep:axum"]
+

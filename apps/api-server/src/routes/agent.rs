@@ -340,12 +340,7 @@ pub async fn trigger_agent_chat(
 
     let mut economic_context = None;
     if let Some(engine) = &state.commerce_engine {
-        // Fix: Use stable system agent ID instead of nil()
-        let agent_id = state.job_queue.get_system_agent_id().await.unwrap_or_else(|err| {
-            tracing::error!("Failed to get system agent ID, falling back to nil: {:?}", err);
-            uuid::Uuid::nil()
-        });
-        if let Ok(balance) = engine.get_balance(agent_id).await {
+        if let Ok(balance) = engine.get_balance(_auth.agent_id).await {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,
                 spent_today: 0,
@@ -570,6 +565,7 @@ pub async fn trigger_agent_chat(
                         published_at: None,
                         output_artifacts: None,
                         permission_manifest: None,
+                        agent_id: None,
                     };
 
                     match diagnostics.diagnose(&trajectory, &virtual_job).await {

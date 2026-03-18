@@ -44,12 +44,12 @@ pub async fn trigger_failure_demo(
 
     let _ = state
         .job_queue
-        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None)
+        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None, None)
         .await;
     let job_id = "demo-job-123";
     let real_job_id = state
         .job_queue
-        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None)
+        .enqueue("Demo", "WASM Bridge Failure", "Standard", None, None, None)
         .await
         .unwrap_or_else(|_| job_id.to_string());
 

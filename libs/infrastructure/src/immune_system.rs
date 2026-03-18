@@ -221,7 +221,15 @@ mod tests {
 
         // Rest are stubs
         async fn get_pending_job_count(&self) -> Result<i64, AiomeError> { Ok(0) }
-        async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { Ok("id".into()) }
+        async fn enqueue(
+        &self,
+        _category: &str,
+        _topic: &str,
+        _style: &str,
+        _karma_directives: Option<&str>,
+        _permission_manifest: Option<aiome_core::security::PermissionManifest>,
+        _agent_id: Option<uuid::Uuid>,
+    ) -> Result<String, AiomeError> { Ok("id".into()) }
         async fn fetch_all_karma(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
         async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
         async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> { Ok(AgentStats { level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 }) }

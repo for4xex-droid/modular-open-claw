@@ -19,6 +19,7 @@ pub mod commerce;
 pub mod contracts;
 pub mod error;
 pub mod expression;
+pub mod http;
 pub mod llm_provider;
 pub mod security;
 pub mod traits;

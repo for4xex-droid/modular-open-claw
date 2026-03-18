@@ -8,7 +8,7 @@ edition = "2021"
 aiome_core = { path = "../../libs/core", package = "aiome-core" }
 infrastructure = { path = "../../libs/infrastructure" }
 shared = { path = "../../libs/shared" }
-aiome-contracts = { path = "../../libs/aiome-contracts" }
+aiome-contracts = { path = "../../libs/aiome-contracts", features = ["axum"] }
 tokio = { workspace = true }
 axum.workspace = true
 tower-http = { version = "0.5", features = ["fs", "cors", "set-header", "limit", "timeout"] }

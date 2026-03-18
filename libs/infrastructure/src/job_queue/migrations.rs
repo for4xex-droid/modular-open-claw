@@ -160,6 +160,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE immune_rules ADD COLUMN node_id TEXT DEFAULT ''",
             "ALTER TABLE immune_rules ADD COLUMN signature TEXT",
             "ALTER TABLE immune_rules ADD COLUMN status TEXT DEFAULT 'Active'",
+            "ALTER TABLE jobs ADD COLUMN agent_id TEXT",
         ] {
             if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
                 let msg = e.to_string();

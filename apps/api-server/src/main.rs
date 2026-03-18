@@ -147,14 +147,16 @@ async fn main() {
         chrono::Duration::hours(24),
     ));
 
-    let shared_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .pool_idle_timeout(std::time::Duration::from_secs(90))
+        .redirect(reqwest::redirect::Policy::none()) // C5: Harden SSRF by disabling redirects
         .build()
         .unwrap_or_default();
 
     let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
         jq: job_queue.clone(),
-        client: shared_client.clone(),
+        client: http_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
         gemini_api_key: config.gemini_api_key.clone(),
@@ -166,7 +168,7 @@ async fn main() {
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
         jq: job_queue.clone(),
-        client: shared_client.clone(),
+        client: http_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
         gemini_api_key: config.gemini_api_key.clone(),
@@ -240,13 +242,7 @@ async fn main() {
             axum::http::header::CONTENT_TYPE,
             axum::http::header::AUTHORIZATION,
         ]);
-    let http_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .pool_idle_timeout(std::time::Duration::from_secs(90))
-        .redirect(reqwest::redirect::Policy::none()) // C5: Harden SSRF by disabling redirects
-        .build()
-        .unwrap_or_default();
-    let client_bg_clone = http_client.clone();
+
 
     #[cfg(feature = "nurture")]
     let (nurture_state, commerce_engine) = {
@@ -374,6 +370,7 @@ async fn main() {
     let jq_clone = job_queue.clone();
     let token_bg = token.clone();
     let federation_secret_bg = federation_secret.clone();
+    let http_client_bg = state.http_client.clone();
     tokio::spawn(async move {
         let token = token_bg;
         let token_ws = token.clone();
@@ -727,7 +724,7 @@ async fn main() {
                 }
             };
             let hub_secret = hub_secret_val;
-            let client = client_bg_clone.clone();
+            let client = http_client_bg.clone();
 
             use aiome_core::contracts::{
                 FederationPushRequest, FederationSyncRequest, FederationSyncResponse,
@@ -1133,7 +1130,13 @@ pub fn build_app(
         )
         .route(
             "/api/agent/chat",
-            axum::routing::post(routes::agent::trigger_agent_chat),
+            axum::routing::post(routes::agent::trigger_agent_chat)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(3)) // 1 chat per 3s
+                ),
         )
         .route(
             "/api/agent/feedback",
@@ -1149,7 +1152,13 @@ pub fn build_app(
         )
         .route(
             "/api/v1/settings/test",
-            axum::routing::post(routes::settings::test_connection),
+            axum::routing::post(routes::settings::test_connection)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(5, std::time::Duration::from_secs(1)) // 5 tests per sec
+                ),
         )
         .route(
             "/api/v1/ollama/models",
@@ -1161,22 +1170,47 @@ pub fn build_app(
         )
         .route(
             "/api/v1/commerce/purchase/:agent_id",
-            axum::routing::post(routes::commerce::execute_purchase),
+            axum::routing::post(routes::commerce::execute_purchase)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(2)) // 1 purchase per 2s
+                ),
         )
         .route("/api/v1/logs", get(routes::general::get_logs))
         .route("/api/biome/status", get(routes::biome::biome_status))
         .route(
             "/api/biome/topics",
-            get(routes::biome::list_topics).post(routes::biome::create_topic),
+            get(routes::biome::list_topics)
+                .post(routes::biome::create_topic)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(5)) // 1 topic per 5s
+                ),
         )
         .route("/api/biome/list", get(routes::biome::list_messages))
         .route(
             "/api/biome/send",
-            axum::routing::post(routes::biome::send_message),
+            axum::routing::post(routes::biome::send_message)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(2, std::time::Duration::from_secs(1)) // 2 messages per sec (p2p)
+                ),
         )
         .route(
             "/api/biome/autonomous/start",
-            axum::routing::post(routes::biome::autonomous_start),
+            axum::routing::post(routes::biome::autonomous_start)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(2)) // 1 toggle per 2s
+                ),
         )
         .route(
             "/api/biome/autonomous/stop",
@@ -1192,7 +1226,13 @@ pub fn build_app(
         )
         .route(
             "/api/expression/generate",
-            axum::routing::post(routes::expression::generate_expression),
+            axum::routing::post(routes::expression::generate_expression)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(10)) // 1 generation per 10s (costly)
+                ),
         )
         .route(
             "/api/expression/list",
@@ -1272,3 +1312,11 @@ pub fn build_app(
 
 #[cfg(test)]
 mod api_integration_tests;
+
+async fn handle_rate_limit(_err: tower::BoxError) -> (axum::http::StatusCode, &'static str) {
+    (axum::http::StatusCode::TOO_MANY_REQUESTS, "Rate Limit Exceeded")
+}
+
+async fn handle_global_error(err: tower::BoxError) -> (axum::http::StatusCode, String) {
+    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Security Layer Error: {}", err))
+}

@@ -23,6 +23,7 @@ pub trait CoreOps {
         style: &str,
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
+        agent_id: Option<uuid::Uuid>,
     ) -> Result<String, AiomeError>;
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
     async fn do_dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError>;
@@ -58,6 +59,7 @@ impl CoreOps for SqliteJobQueue {
         style: &str,
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
+        agent_id: Option<uuid::Uuid>,
     ) -> Result<String, AiomeError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
@@ -65,9 +67,10 @@ impl CoreOps for SqliteJobQueue {
         let manifest_json = permission_manifest
             .map(|m| serde_json::to_string(&m).unwrap_or_else(|_| "{}".to_string()))
             .unwrap_or_else(|| "{}".to_string());
+        let agent_id_str = agent_id.map(|uid| uid.to_string());
 
         sqlx::query(
-            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(category)
@@ -75,6 +78,7 @@ impl CoreOps for SqliteJobQueue {
         .bind(style)
         .bind(directives)
         .bind(manifest_json)
+        .bind(agent_id_str)
         .bind(JobStatus::Pending.to_string())
         .bind(&now)
         .bind(&now)
@@ -87,7 +91,7 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
         let row = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE id = ?"
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE id = ?"
         )
         .bind(job_id)
         .fetch_optional(&self.pool)
@@ -108,6 +112,8 @@ impl CoreOps for SqliteJobQueue {
             let sns_content_id: Option<String> = try_get_optional_string(&r, "sns_content_id");
             let published_at: Option<String> = try_get_optional_string(&r, "published_at");
             let output_artifacts: Option<String> = try_get_optional_string(&r, "output_artifacts");
+            let agent_id_str: Option<String> = try_get_optional_string(&r, "agent_id");
+            let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
             let status_str: String = r.get("status");
             let status = JobStatus::from_string(&status_str);
 
@@ -134,6 +140,7 @@ impl CoreOps for SqliteJobQueue {
                 published_at,
                 output_artifacts,
                 permission_manifest,
+                agent_id,
             }))
         } else {
             Ok(None)
@@ -155,7 +162,7 @@ impl CoreOps for SqliteJobQueue {
             .collect::<Vec<_>>()
             .join(", ");
         let query_str = format!(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE status = ? AND category IN ({}) ORDER BY created_at ASC LIMIT 1",
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE status = ? AND category IN ({}) ORDER BY created_at ASC LIMIT 1",
             placeholders
         );
         let mut query = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
@@ -183,6 +190,8 @@ impl CoreOps for SqliteJobQueue {
             let sns_content_id: Option<String> = try_get_optional_string(&r, "sns_content_id");
             let published_at: Option<String> = try_get_optional_string(&r, "published_at");
             let output_artifacts: Option<String> = try_get_optional_string(&r, "output_artifacts");
+            let agent_id_str: Option<String> = try_get_optional_string(&r, "agent_id");
+            let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
 
             let permission_manifest = r
                 .try_get::<String, _>("permission_manifest")
@@ -222,6 +231,7 @@ impl CoreOps for SqliteJobQueue {
                 published_at,
                 output_artifacts,
                 permission_manifest,
+                agent_id,
             }))
         } else {
             Ok(None)
@@ -352,7 +362,7 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, 
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
                      sns_platform, sns_content_id, published_at, output_artifacts 
               FROM jobs 
@@ -383,6 +393,7 @@ impl CoreOps for SqliteJobQueue {
                 sns_content_id: try_get_optional_string(&r, "sns_content_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
+                agent_id: try_get_optional_string(&r, "agent_id").and_then(|s| Uuid::parse_str(&s).ok()),
                 permission_manifest: r
                     .try_get::<String, _>("permission_manifest")
                     .ok()

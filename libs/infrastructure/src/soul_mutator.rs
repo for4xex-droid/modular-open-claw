@@ -429,7 +429,15 @@ mod tests {
 
     #[async_trait]
     impl JobQueue for MockJobQueue {
-        async fn enqueue(&self, _topic: &str, _category: &str, _params: &str, _job_ref: Option<&str>, _manifest: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { 
+        async fn enqueue(
+        &self,
+        _category: &str,
+        _topic: &str,
+        _style: &str,
+        _karma_directives: Option<&str>,
+        _permission_manifest: Option<aiome_core::security::PermissionManifest>,
+        _agent_id: Option<uuid::Uuid>,
+    ) -> Result<String, AiomeError> { 
             Ok(Uuid::new_v4().to_string()) 
         }
         async fn dequeue(&self, _categories: &[&str]) -> Result<Option<Job>, AiomeError> { Ok(None) }

@@ -94,7 +94,7 @@ impl DreamState {
                 });
                 let directives = directives_json.to_string();
                 job_queue
-                    .enqueue("data_processing", &best.keyword, "auto", Some(&directives), None)
+                    .enqueue("data_processing", &best.keyword, "auto", Some(&directives), None, None)
                     .await?;
             }
             Ok(_) => warn!("💤 [DreamState] The dream was a void. No trends found."),
@@ -139,6 +139,7 @@ impl DreamState {
                     &redemption_topic,
                     &fail.style,
                     Some(&directives),
+                    None,
                     None,
                 )
                 .await?;
@@ -196,6 +197,7 @@ impl DreamState {
                     "analytic",
                     Some("{\"dream_born\": true, \"publish_intent\": true}"),
                     None,
+                    None,
                 )
                 .await?;
 
@@ -218,6 +220,7 @@ impl DreamState {
                             "AI Evolution Milestone",
                             "creative",
                             Some("{\"level_up_redemption\": true, \"publish_intent\": true}"),
+                            None,
                             None,
                         )
                         .await?;
@@ -246,7 +249,15 @@ mod tests {
     #[async_trait]
     impl JobQueue for MockJQ {
         async fn get_pending_job_count(&self) -> Result<i64, AiomeError> { Ok(0) }
-        async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { Ok("mock-id".into()) }
+        async fn enqueue(
+            &self,
+            _category: &str,
+            _topic: &str,
+            _style: &str,
+            _karma_directives: Option<&str>,
+            _permission_manifest: Option<aiome_core::security::PermissionManifest>,
+            _agent_id: Option<uuid::Uuid>,
+        ) -> Result<String, AiomeError> { Ok("mock-id".into()) }
         async fn fetch_all_karma(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![json!({"id": "1"})]) }
         async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
         async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> { Ok(AgentStats { level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 }) }
@@ -327,7 +338,15 @@ mod tests {
             async fn fetch_evolution_history(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
             async fn fetch_all_karma(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
             async fn export_federated_data(&self, _: Option<&str>) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> { Ok((vec![], vec![], vec![])) }
-            async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<aiome_core::security::PermissionManifest>) -> Result<String, AiomeError> { Ok("mock".into()) }
+            async fn enqueue(
+                &self,
+                _category: &str,
+                _topic: &str,
+                _style: &str,
+                _karma_directives: Option<&str>,
+                _permission_manifest: Option<aiome_core::security::PermissionManifest>,
+                _agent_id: Option<uuid::Uuid>,
+            ) -> Result<String, AiomeError> { Ok("mock".into()) }
             async fn dequeue(&self, _: &[&str]) -> Result<Option<Job>, AiomeError> { Ok(None) }
             async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> { Ok(None) }
             async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }

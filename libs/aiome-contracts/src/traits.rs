@@ -137,10 +137,11 @@ pub struct Job {
     pub sns_platform: Option<String>,
     pub sns_content_id: Option<String>,
     pub published_at: Option<String>,
-    /// 多言語出力された成果物のリスト (JSON文字列)
     pub output_artifacts: Option<String>,
     /// 🔒 権限マニフェスト (Phase 2: Security Sandbox Enforcement)
     pub permission_manifest: Option<crate::security::PermissionManifest>,
+    /// 👤 エージェントID (Phase A-4: User Specificity)
+    pub agent_id: Option<uuid::Uuid>,
 }
 
 /// ジョブキュー (The Persistent Memory & Samsara)
@@ -158,9 +159,8 @@ pub trait JobQueue: Send + Sync {
         style: &str,
         karma_directives: Option<&str>,
         permission_manifest: Option<crate::security::PermissionManifest>,
+        agent_id: Option<uuid::Uuid>,
     ) -> Result<String, AiomeError>;
-
-    /// 指定したIDのジョブを取得する
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
 
     /// 次に実行すべき Pending ジョブを 1件取得し、Processing に更新

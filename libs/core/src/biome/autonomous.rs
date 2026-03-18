@@ -185,7 +185,7 @@ impl AutonomousBiomeEngine {
             std::env::var("FEDERATION_SECRET").map_err(|_| AiomeError::Infrastructure {
                 reason: "FEDERATION_SECRET missing for autonomous biome communication".to_string(),
             })?;
-        let client = reqwest::Client::new();
+        let client = crate::http::get_http_client();
 
         let res = client
             .post(format!("{}/api/v1/biome/relay", hub_url))

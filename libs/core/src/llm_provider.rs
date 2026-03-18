@@ -32,10 +32,7 @@ impl OllamaProvider {
         Self {
             host,
             model,
-            client: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(45))
-                .build()
-                .unwrap_or_default(),
+            client: crate::http::get_http_client().clone(),
         }
     }
 }
@@ -130,11 +127,8 @@ impl LlmProvider for OllamaProvider {
             }
         });
 
-        // Use a longer timeout for streaming since data comes in chunks over time
-        let stream_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(300))
-            .build()
-            .unwrap_or_default();
+        // Use the shared client
+        let stream_client = crate::http::get_http_client();
         let mut resp = stream_client
             .post(&url)
             .json(&payload)
@@ -282,7 +276,7 @@ impl AbyssVaultProvider {
         Self {
             proxy_url,
             caller_id,
-            client: reqwest::Client::new(),
+            client: crate::http::get_http_client().clone(),
         }
     }
 }

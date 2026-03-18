@@ -18,7 +18,9 @@ use tracing::warn;
 
 /// Marker type: Used as an extractor argument in handlers to enforce authentication.
 /// Requires `AppState` as the Router state type.
-pub struct Authenticated;
+pub struct Authenticated {
+    pub agent_id: uuid::Uuid,
+}
 
 #[async_trait]
 impl FromRequestParts<crate::AppState> for Authenticated {
@@ -37,7 +39,21 @@ impl FromRequestParts<crate::AppState> for Authenticated {
         let expected_bearer = format!("Bearer {}", state.api_server_secret.expose_secret());
 
         if verify_constant_time(auth_header.as_bytes(), expected_bearer.as_bytes()) {
-            Ok(Authenticated)
+            // A-4: User Specificity - Check X-Agent-Id header
+            let agent_id = parts.headers.get("X-Agent-Id")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| uuid::Uuid::parse_str(s).ok());
+
+            // Fallback to system agent ID if not provided or invalid
+            let final_agent_id = match agent_id {
+                Some(id) => id,
+                None => {
+                    use aiome_core::traits::JobQueue;
+                    state.job_queue.get_system_agent_id().await.unwrap_or_else(|_| uuid::Uuid::nil())
+                }
+            };
+
+            Ok(Authenticated { agent_id: final_agent_id })
         } else {
             let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
             if !auth_header.is_empty() && auth_header.starts_with("Bearer ") {

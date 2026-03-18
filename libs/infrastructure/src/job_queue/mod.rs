@@ -122,8 +122,9 @@ impl JobQueue for SqliteJobQueue {
         style: &str,
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
+        agent_id: Option<uuid::Uuid>,
     ) -> Result<String, AiomeError> {
-        Box::pin(self.do_enqueue(category, topic, style, karma_directives, permission_manifest))
+        Box::pin(self.do_enqueue(category, topic, style, karma_directives, permission_manifest, agent_id))
             .await
     }
 

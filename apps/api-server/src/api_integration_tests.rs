@@ -101,7 +101,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         autonomous_config,
         provider,
         docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-        http_client: reqwest::Client::new(),
+        http_client: aiome_core::http::get_http_client().clone(),
         security_policy: shared::security::SecurityPolicy::default(),
         commerce_engine: None,
         circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
