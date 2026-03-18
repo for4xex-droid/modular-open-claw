@@ -36,7 +36,10 @@ impl McpClient {
             .allowed_binaries
             .contains(&cmd.to_string())
         {
-            return Err(anyhow!("🚨 [SECURITY VIOLATION] MCP Client command '{}' bypasses BastionGuard whitelist.", cmd));
+            return Err(anyhow!(
+                "🚨 [SECURITY VIOLATION] MCP Client command '{}' bypasses BastionGuard whitelist.",
+                cmd
+            ));
         }
 
         // Use tokio::process::Command for async I/O

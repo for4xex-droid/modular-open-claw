@@ -481,7 +481,9 @@ async fn create_topic_handler(
         }
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "Failed to create topic due to internal server error"})),
+            Json(
+                serde_json::json!({"error": "Failed to create topic due to internal server error"}),
+            ),
         ),
     }
 }
@@ -561,13 +563,18 @@ async fn biome_relay_handler(
 
     // Buffer in DB
     let payload_json = serde_json::to_string(&msg).unwrap_or_default();
-    if let Err(e) = sqlx::query("INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES (?, ?)")
-        .bind(&msg.recipient_pubkey)
-        .bind(&payload_json)
-        .execute(&state.pool)
-        .await {
-            error!("🛡️ [Relay] Failed to queue biome message for {}: {}", msg.recipient_pubkey, e);
-        }
+    if let Err(e) =
+        sqlx::query("INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES (?, ?)")
+            .bind(&msg.recipient_pubkey)
+            .bind(&payload_json)
+            .execute(&state.pool)
+            .await
+    {
+        error!(
+            "🛡️ [Relay] Failed to queue biome message for {}: {}",
+            msg.recipient_pubkey, e
+        );
+    }
 
     // Update Turn Count in Topic (State Channel)
     if let Err(e) = sqlx::query("UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = datetime('now') WHERE topic_id = ?")
@@ -615,7 +622,10 @@ async fn biome_ws_handler(
 async fn handle_biome_ws(mut socket: WebSocket, state: Arc<HubState>, node_id: String) {
     let mut rx = state.tx.subscribe();
 
-    info!("📪 [BiomeWS] Node {} connected for real-time relay.", node_id);
+    info!(
+        "📪 [BiomeWS] Node {} connected for real-time relay.",
+        node_id
+    );
 
     loop {
         tokio::select! {
@@ -979,7 +989,7 @@ async fn ws_handler(
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
- 
+
     if !verify_bearer(auth, &state.secret) {
         warn!("🔒 Unauthorized WS upgrade attempt");
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
@@ -1120,11 +1130,18 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                         if let Err(e) = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
                             .bind(&k.id)
                             .execute(&mut *tx)
-                            .await {
-                                warn!("🛡️ [ApprovalWorker] Failed to delete quarantined karma {}: {}", k.id, e);
-                            }
+                            .await
+                        {
+                            warn!(
+                                "🛡️ [ApprovalWorker] Failed to delete quarantined karma {}: {}",
+                                k.id, e
+                            );
+                        }
                         if let Err(e) = tx.commit().await {
-                            error!("❌ [ApprovalWorker] Failed to commit karma approval for {}: {}", k.id, e);
+                            error!(
+                                "❌ [ApprovalWorker] Failed to commit karma approval for {}: {}",
+                                k.id, e
+                            );
                         } else {
                             info!("✅ [ApprovalWorker] Approved Karma: {}", k.id);
                         }
@@ -1143,9 +1160,13 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 if let Err(e) = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
                     .bind(&k.id)
                     .execute(&pool)
-                    .await {
-                        warn!("🛡️ [ApprovalWorker] Failed to delete malformed quarantined karma {}: {}", k.id, e);
-                    }
+                    .await
+                {
+                    warn!(
+                        "🛡️ [ApprovalWorker] Failed to delete malformed quarantined karma {}: {}",
+                        k.id, e
+                    );
+                }
             }
         }
 
@@ -1189,11 +1210,18 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                         if let Err(e) = sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
                             .bind(&r.id)
                             .execute(&mut *tx)
-                            .await {
-                                warn!("🛡️ [ApprovalWorker] Failed to delete quarantined rule {}: {}", r.id, e);
-                            }
+                            .await
+                        {
+                            warn!(
+                                "🛡️ [ApprovalWorker] Failed to delete quarantined rule {}: {}",
+                                r.id, e
+                            );
+                        }
                         if let Err(e) = tx.commit().await {
-                            error!("❌ [ApprovalWorker] Failed to commit rule approval for {}: {}", r.id, e);
+                            error!(
+                                "❌ [ApprovalWorker] Failed to commit rule approval for {}: {}",
+                                r.id, e
+                            );
                         } else {
                             info!("✅ [ApprovalWorker] Approved Rule: {}", r.id);
                         }
@@ -1212,9 +1240,13 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 if let Err(e) = sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
                     .bind(&r.id)
                     .execute(&pool)
-                    .await {
-                        warn!("🛡️ [ApprovalWorker] Failed to delete malformed quarantined rule {}: {}", r.id, e);
-                    }
+                    .await
+                {
+                    warn!(
+                        "🛡️ [ApprovalWorker] Failed to delete malformed quarantined rule {}: {}",
+                        r.id, e
+                    );
+                }
             }
         }
 

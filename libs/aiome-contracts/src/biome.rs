@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use base64::Engine;
+use serde::{Deserialize, Serialize};
 
 /// Biome プロトコルにおける基本メッセージ
 #[derive(Debug, Clone, Serialize, Deserialize)]

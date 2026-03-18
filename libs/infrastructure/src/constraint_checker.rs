@@ -62,9 +62,12 @@ impl ConstraintChecker {
             // Domain check if tool_name is host
             if let Some(host) = &step.tool_name {
                 if !self.permission_manifest.allowed_domains.contains(host) {
-                     violations.push(ConstraintViolation {
+                    violations.push(ConstraintViolation {
                         constraint_name: "DomainBlocked".to_string(),
-                        expected: format!("Allowed domains: {:?}", self.permission_manifest.allowed_domains),
+                        expected: format!(
+                            "Allowed domains: {:?}",
+                            self.permission_manifest.allowed_domains
+                        ),
                         actual: host.clone(),
                         severity: 100,
                     });
@@ -73,7 +76,7 @@ impl ConstraintChecker {
         }
 
         if step.action == "fs_write" {
-             if !self.permission_manifest.allow_filesystem_write {
+            if !self.permission_manifest.allow_filesystem_write {
                 violations.push(ConstraintViolation {
                     constraint_name: "FsWriteDenied".to_string(),
                     expected: "allow_filesystem_write: true".to_string(),
@@ -115,7 +118,7 @@ mod tests {
             node_id: "node_test".into(),
             signature: None,
         }];
-        
+
         // mock basic permissions that allow all
         let manifest = PermissionManifest {
             allow_network: true,
@@ -140,7 +143,10 @@ mod tests {
 
         let violations = checker.evaluate_step(&step);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].constraint_name, "ImmuneRuleViolation: system_prompt_leak");
+        assert_eq!(
+            violations[0].constraint_name,
+            "ImmuneRuleViolation: system_prompt_leak"
+        );
     }
 
     #[test]
@@ -167,7 +173,11 @@ mod tests {
 
         let violations = checker.evaluate_step(&step);
         assert_eq!(violations.len(), 2); // NetworkAccessDenied and DomainBlocked
-        assert!(violations.iter().any(|v| v.constraint_name == "NetworkAccessDenied"));
-        assert!(violations.iter().any(|v| v.constraint_name == "DomainBlocked"));
+        assert!(violations
+            .iter()
+            .any(|v| v.constraint_name == "NetworkAccessDenied"));
+        assert!(violations
+            .iter()
+            .any(|v| v.constraint_name == "DomainBlocked"));
     }
 }

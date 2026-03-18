@@ -1,7 +1,7 @@
 use crate::error::AiomeError;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 
 /// 経済エンジン・トレイト
 ///

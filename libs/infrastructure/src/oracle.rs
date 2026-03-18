@@ -86,8 +86,8 @@ impl Oracle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use aiome_core::llm_provider::LlmProvider;
+    use async_trait::async_trait;
     use std::fmt::Debug;
 
     #[derive(Debug)]
@@ -101,7 +101,11 @@ mod tests {
             "mock-llm"
         }
 
-        async fn complete(&self, _prompt: &str, _preamble: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _preamble: Option<&str>,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.response.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
@@ -133,7 +137,9 @@ mod tests {
         });
 
         let oracle = Oracle::new(provider, "Be ethical.".to_string());
-        let res = oracle.evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]").await;
+        let res = oracle
+            .evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]")
+            .await;
 
         assert!(res.is_ok());
         let verdict = res.unwrap();
@@ -150,11 +156,16 @@ mod tests {
         });
 
         let oracle = Oracle::new(provider, "Be ethical.".to_string());
-        let res = oracle.evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]").await;
+        let res = oracle
+            .evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]")
+            .await;
 
         assert!(res.is_err());
         if let Err(AiomeError::Infrastructure { reason }) = res {
-            assert!(reason.contains("No JSON block detected") || reason.contains("Failed to parse Oracle JSON"));
+            assert!(
+                reason.contains("No JSON block detected")
+                    || reason.contains("Failed to parse Oracle JSON")
+            );
         }
     }
 }

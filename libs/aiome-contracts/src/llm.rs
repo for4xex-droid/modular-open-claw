@@ -34,7 +34,8 @@ pub struct LlmResponse {
 #[async_trait]
 pub trait LlmProvider: Send + Sync + Debug {
     /// テキスト生成リクエスト
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError>;
+    async fn complete(&self, prompt: &str, system: Option<&str>)
+        -> Result<LlmResponse, AiomeError>;
 
     /// ストリーミング生成リクエスト
     async fn stream_complete(

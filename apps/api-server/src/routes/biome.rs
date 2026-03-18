@@ -68,8 +68,8 @@ pub async fn biome_status(
 pub async fn list_topics(
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url =
-        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+    let hub_url = std::env::var("SAMSARA_HUB_URL")
+        .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
     let url = format!("{}/api/v1/hub/topics", hub_url);
     state.security_policy.validate_url(&hub_url).await?;
 
@@ -106,9 +106,11 @@ pub async fn create_topic(
     State(state): State<AppState>,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url =
-        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
-    let hub_secret = state.federation_secret.as_ref()
+    let hub_url = std::env::var("SAMSARA_HUB_URL")
+        .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+    let hub_secret = state
+        .federation_secret
+        .as_ref()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
             source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
@@ -166,11 +168,21 @@ pub async fn autonomous_start(
         .into());
     }
 
-    if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&req.topic_id) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation { reason: format!("Invalid topic_id: {}", reason) }.into());
+    if let shared::guardrails::ValidationResult::Blocked(reason) =
+        shared::guardrails::validate_input(&req.topic_id)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("Invalid topic_id: {}", reason),
+        }
+        .into());
     }
-    if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&req.peer_pubkey) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation { reason: format!("Invalid peer_pubkey: {}", reason) }.into());
+    if let shared::guardrails::ValidationResult::Blocked(reason) =
+        shared::guardrails::validate_input(&req.peer_pubkey)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("Invalid peer_pubkey: {}", reason),
+        }
+        .into());
     }
 
     state.autonomous_running.store(true, Ordering::SeqCst);
@@ -288,14 +300,29 @@ pub async fn send_message(
     let sender_pubkey = state.job_queue.get_node_id().await?;
     let clock = state.job_queue.tick_local_clock().await?;
 
-    if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&req.topic_id) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation { reason: format!("Invalid topic_id: {}", reason) }.into());
+    if let shared::guardrails::ValidationResult::Blocked(reason) =
+        shared::guardrails::validate_input(&req.topic_id)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("Invalid topic_id: {}", reason),
+        }
+        .into());
     }
-    if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&req.recipient_pubkey) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation { reason: format!("Invalid recipient_pubkey: {}", reason) }.into());
+    if let shared::guardrails::ValidationResult::Blocked(reason) =
+        shared::guardrails::validate_input(&req.recipient_pubkey)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("Invalid recipient_pubkey: {}", reason),
+        }
+        .into());
     }
-    if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&req.content) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation { reason: format!("Invalid content: {}", reason) }.into());
+    if let shared::guardrails::ValidationResult::Blocked(reason) =
+        shared::guardrails::validate_input(&req.content)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: format!("Invalid content: {}", reason),
+        }
+        .into());
     }
 
     // 0. Biome Dialogue Constraint Check
@@ -333,7 +360,9 @@ pub async fn send_message(
     // 2. Relay via Hub
     let hub_url =
         std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
-    let hub_secret = state.federation_secret.as_ref()
+    let hub_secret = state
+        .federation_secret
+        .as_ref()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
             source: anyhow::anyhow!("FEDERATION_SECRET not configured"),

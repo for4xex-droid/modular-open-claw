@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use serde::{Serialize, Deserialize};
 
 /// 予算上限超過エラー
 #[derive(Debug, Error, Serialize, Deserialize, Clone)]
@@ -111,23 +111,66 @@ impl axum::response::IntoResponse for AiomeError {
 
         let (status, error_message) = match &self {
             AiomeError::PromptBlocked { reason } => (StatusCode::FORBIDDEN, reason.clone()),
-            AiomeError::ArtifactNotFound { .. } => (StatusCode::NOT_FOUND, "Artifact not found".to_string()),
-            AiomeError::SecurityViolation { reason } => (StatusCode::FORBIDDEN, format!("Security violation: {}", reason)),
-            AiomeError::BudgetExhausted(e) => (StatusCode::TOO_MANY_REQUESTS, format!("Budget exhausted: {}", e)),
-            AiomeError::RemoteServiceTimeout { timeout_secs } => (StatusCode::GATEWAY_TIMEOUT, format!("Remote service timeout after {}s", timeout_secs)),
-            AiomeError::StorageFull { threshold } => (StatusCode::INSUFFICIENT_STORAGE, format!("Storage is full (limit: {}%)", threshold)),
-            AiomeError::RemoteServiceError { .. } => (StatusCode::BAD_GATEWAY, "Remote service error".to_string()),
-            AiomeError::ContentNotVerified { .. } => (StatusCode::UNAUTHORIZED, "Content rights not verified".to_string()),
-            AiomeError::ContextFetch { .. } | AiomeError::LlmResponse { .. } | AiomeError::OsError { .. } => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
-            AiomeError::ConfigLoad { .. } => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error".to_string()),
-            AiomeError::Infrastructure { .. } => (StatusCode::INTERNAL_SERVER_ERROR, "Infrastructure error".to_string()),
-            AiomeError::RemoteServiceExecutionFailed { .. } => (StatusCode::INTERNAL_SERVER_ERROR, "Execution failed".to_string()),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "An unexpected error occurred".to_string()),
+            AiomeError::ArtifactNotFound { .. } => {
+                (StatusCode::NOT_FOUND, "Artifact not found".to_string())
+            }
+            AiomeError::SecurityViolation { reason } => (
+                StatusCode::FORBIDDEN,
+                format!("Security violation: {}", reason),
+            ),
+            AiomeError::BudgetExhausted(e) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                format!("Budget exhausted: {}", e),
+            ),
+            AiomeError::RemoteServiceTimeout { timeout_secs } => (
+                StatusCode::GATEWAY_TIMEOUT,
+                format!("Remote service timeout after {}s", timeout_secs),
+            ),
+            AiomeError::StorageFull { threshold } => (
+                StatusCode::INSUFFICIENT_STORAGE,
+                format!("Storage is full (limit: {}%)", threshold),
+            ),
+            AiomeError::RemoteServiceError { .. } => {
+                (StatusCode::BAD_GATEWAY, "Remote service error".to_string())
+            }
+            AiomeError::ContentNotVerified { .. } => (
+                StatusCode::UNAUTHORIZED,
+                "Content rights not verified".to_string(),
+            ),
+            AiomeError::ContextFetch { .. }
+            | AiomeError::LlmResponse { .. }
+            | AiomeError::OsError { .. } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ),
+            AiomeError::ConfigLoad { .. } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Configuration error".to_string(),
+            ),
+            AiomeError::Infrastructure { .. } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Infrastructure error".to_string(),
+            ),
+            AiomeError::RemoteServiceExecutionFailed { .. } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Execution failed".to_string(),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred".to_string(),
+            ),
         };
 
         // Get variant name as code using Debug output hack (standard pattern for simple enums)
         let code = format!("{:?}", self);
-        let code = code.split('(').next().unwrap_or("Unknown").split('{').next().unwrap_or("Unknown").trim();
+        let code = code
+            .split('(')
+            .next()
+            .unwrap_or("Unknown")
+            .split('{')
+            .next()
+            .unwrap_or("Unknown")
+            .trim();
 
         let body = Json(serde_json::json!({
             "error": error_message,
@@ -137,4 +180,3 @@ impl axum::response::IntoResponse for AiomeError {
         (status, body).into_response()
     }
 }
-

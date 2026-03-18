@@ -21,30 +21,30 @@ pub struct AiomeConfig {
 pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
 pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017";
 pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016";
-pub const DEFAULT_ALLOWED_ORIGINS: &str = "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
+pub const DEFAULT_ALLOWED_ORIGINS: &str =
+    "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
 pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
 pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
 
 impl AiomeConfig {
     pub fn load() -> Result<Self> {
-        let db_path = env::var("AIOME_DB_PATH")
-            .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
-        
+        let db_path =
+            env::var("AIOME_DB_PATH").unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
+
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
-        
-        let ollama_host = env::var("OLLAMA_HOST")
-            .unwrap_or_else(|_| DEFAULT_OLLAMA_HOST.to_string());
-        
-        let ollama_model = env::var("OLLAMA_MODEL")
-            .unwrap_or_else(|_| "qwen3.5:9b".to_string());
+
+        let ollama_host =
+            env::var("OLLAMA_HOST").unwrap_or_else(|_| DEFAULT_OLLAMA_HOST.to_string());
+
+        let ollama_model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3.5:9b".to_string());
 
         let api_server_port = env::var("PORT")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(3015);
 
-        let key_proxy_url = env::var("KEY_PROXY_URL")
-            .unwrap_or_else(|_| DEFAULT_KEY_PROXY_URL.to_string());
+        let key_proxy_url =
+            env::var("KEY_PROXY_URL").unwrap_or_else(|_| DEFAULT_KEY_PROXY_URL.to_string());
 
         let samsara_hub_url = env::var("SAMSARA_HUB_URL")
             .or_else(|_| env::var("SAMSARA_HUB_REST"))
@@ -57,26 +57,20 @@ impl AiomeConfig {
             .collect();
 
         // Load and immediately remove sensitive API keys
-        let gemini_api_key = env::var("GEMINI_API_KEY")
-            .ok()
-            .map(|key| {
-                env::remove_var("GEMINI_API_KEY");
-                SecretString::from(key)
-            });
-            
-        let openai_api_key = env::var("OPENAI_API_KEY")
-            .ok()
-            .map(|key| {
-                env::remove_var("OPENAI_API_KEY");
-                SecretString::from(key)
-            });
-            
-        let anthropic_api_key = env::var("ANTHROPIC_API_KEY")
-            .ok()
-            .map(|key| {
-                env::remove_var("ANTHROPIC_API_KEY");
-                SecretString::from(key)
-            });
+        let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|key| {
+            env::remove_var("GEMINI_API_KEY");
+            SecretString::from(key)
+        });
+
+        let openai_api_key = env::var("OPENAI_API_KEY").ok().map(|key| {
+            env::remove_var("OPENAI_API_KEY");
+            SecretString::from(key)
+        });
+
+        let anthropic_api_key = env::var("ANTHROPIC_API_KEY").ok().map(|key| {
+            env::remove_var("ANTHROPIC_API_KEY");
+            SecretString::from(key)
+        });
 
         Ok(Self {
             db_path,

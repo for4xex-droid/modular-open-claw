@@ -73,7 +73,6 @@ impl SecurityConfig {
 pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
     once_cell::sync::Lazy::new(SecurityConfig::load_or_default);
 
-
 /// Phase 2: Runtime Enforcement (The Bastion Guard)
 ///
 /// エージェントが実行しようとする「アクション」を監視し、
@@ -175,24 +174,43 @@ impl RuntimeJail for BastionGuard {
             for p in potential_paths {
                 // 1. Jail traversal check
                 if let Err(e) = sandbox.validate_path(p) {
-                    error!("🛡️ [BastionGuard] Blocked access to unauthorized path: {} (Reason: {})", p, e);
+                    error!(
+                        "🛡️ [BastionGuard] Blocked access to unauthorized path: {} (Reason: {})",
+                        p, e
+                    );
                     return Err(AiomeError::Infrastructure {
-                        reason: format!("Security Violation: Path '{}' is outside sandbox jail.", p),
+                        reason: format!(
+                            "Security Violation: Path '{}' is outside sandbox jail.",
+                            p
+                        ),
                     });
                 }
 
                 // 2. Sensitive file blacklist (even within valid workspace)
                 let p_lower = p.to_lowercase();
-                if p_lower.contains(".env") || p_lower.contains(".git") || p_lower.contains("config/security.json") {
-                    error!("🛡️ [BastionGuard] Blocked access to sensitive internal file: {}", p);
+                if p_lower.contains(".env")
+                    || p_lower.contains(".git")
+                    || p_lower.contains("config/security.json")
+                {
+                    error!(
+                        "🛡️ [BastionGuard] Blocked access to sensitive internal file: {}",
+                        p
+                    );
                     return Err(AiomeError::Infrastructure {
-                        reason: format!("Security Violation: Access to sensitive file '{}' is forbidden.", p),
+                        reason: format!(
+                            "Security Violation: Access to sensitive file '{}' is forbidden.",
+                            p
+                        ),
                     });
                 }
             }
         }
 
-        info!("✅ [BastionGuard] All checks passed. Executing: {} {}", binary, args.join(" "));
+        info!(
+            "✅ [BastionGuard] All checks passed. Executing: {} {}",
+            binary,
+            args.join(" ")
+        );
 
         use std::process::Command;
 
@@ -317,7 +335,7 @@ mod tests {
             ..Default::default()
         };
         let guard = BastionGuard::new(manifest);
-        
+
         // Test various injection characters
         assert!(guard.safe_exec("ls; rm -rf /").is_err());
         assert!(guard.safe_exec("ls && whoami").is_err());
@@ -373,7 +391,7 @@ mod tests {
             };
             let guard = BastionGuard::new(manifest);
             let res = guard.safe_exec(&s);
-            
+
             // If the string contains any of the dangerous parts, it MUST be blocked
             let dangerous_parts = [";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r"];
             let mut should_be_blocked = false;

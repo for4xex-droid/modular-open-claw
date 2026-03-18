@@ -40,7 +40,9 @@ impl FromRequestParts<crate::AppState> for Authenticated {
 
         if verify_constant_time(auth_header.as_bytes(), expected_bearer.as_bytes()) {
             // A-4: User Specificity - Check X-Agent-Id header
-            let agent_id = parts.headers.get("X-Agent-Id")
+            let agent_id = parts
+                .headers
+                .get("X-Agent-Id")
                 .and_then(|h| h.to_str().ok())
                 .and_then(|s| uuid::Uuid::parse_str(s).ok());
 
@@ -49,11 +51,17 @@ impl FromRequestParts<crate::AppState> for Authenticated {
                 Some(id) => id,
                 None => {
                     use aiome_core::traits::JobQueue;
-                    state.job_queue.get_system_agent_id().await.unwrap_or_else(|_| uuid::Uuid::nil())
+                    state
+                        .job_queue
+                        .get_system_agent_id()
+                        .await
+                        .unwrap_or_else(|_| uuid::Uuid::nil())
                 }
             };
 
-            Ok(Authenticated { agent_id: final_agent_id })
+            Ok(Authenticated {
+                agent_id: final_agent_id,
+            })
         } else {
             let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
             if !auth_header.is_empty() && auth_header.starts_with("Bearer ") {

@@ -51,17 +51,19 @@ impl SwarmOps for SqliteJobQueue {
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
-            if let Err(e) = sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_id', ?)")
-                .bind(&pubkey_b64)
-                .execute(&mut *tx)
-                .await
+            if let Err(e) =
+                sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_id', ?)")
+                    .bind(&pubkey_b64)
+                    .execute(&mut *tx)
+                    .await
             {
                 warn!("Failed to insert node_id: {}", e);
             }
-            if let Err(e) = sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_privkey', ?)")
-                .bind(&privkey_b64)
-                .execute(&mut *tx)
-                .await
+            if let Err(e) =
+                sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_privkey', ?)")
+                    .bind(&privkey_b64)
+                    .execute(&mut *tx)
+                    .await
             {
                 warn!("Failed to insert node_privkey: {}", e);
             }
@@ -124,7 +126,7 @@ impl SwarmOps for SqliteJobQueue {
         if let Err(e) = sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
             .bind(next.to_string())
             .execute(&mut *tx)
-            .await 
+            .await
         {
             warn!("Failed to update local clock: {}", e);
         }
@@ -165,7 +167,7 @@ impl SwarmOps for SqliteJobQueue {
         if let Err(e) = sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
             .bind(next.to_string())
             .execute(&mut *tx)
-            .await 
+            .await
         {
             warn!("Failed to sync local clock: {}", e);
         }

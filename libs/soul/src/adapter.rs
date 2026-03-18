@@ -2,9 +2,9 @@ use std::any::Any;
 use std::future::Future;
 use std::pin::Pin;
 
+use crate::defense::DefenseAction;
 use crate::error::SoulError;
 use crate::model::{AgentSoul, Experience};
-use crate::defense::DefenseAction;
 
 /// ドメインアダプター（各アプリケーションが実装）
 pub trait SoulDomainAdapter: Send + Sync {
@@ -15,8 +15,19 @@ pub trait SoulDomainAdapter: Send + Sync {
     fn distillation_system_prompt(&self) -> &str;
 
     /// DefenseAction をドメイン固有の副作用に変換
-    fn execute_defense<'a>(&'a self, action: &'a DefenseAction) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'a>>;
+    fn execute_defense<'a>(
+        &'a self,
+        action: &'a DefenseAction,
+    ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'a>>;
 
     /// 予測モデルの予測値を算出（ドメイン固有のメトリクス）
     fn predict_outcome(&self, soul: &AgentSoul, context: &Experience) -> f64;
+
+    /// 本能に刻印する埋め込みベクトルを生成（非同期）
+    fn embed_experience<'a>(
+        &'a self,
+        _exp: &'a Experience,
+    ) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> {
+        Box::pin(async { Vec::new() })
+    }
 }

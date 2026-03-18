@@ -159,35 +159,51 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/llm/stream", post(handle_llm_stream))
         .route("/api/v1/llm/embed", post(handle_llm_embed))
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ))
         .with_state(state)
         // --- Defense Layer 3: Security Headers ---
-        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
-            axum::http::header::X_CONTENT_TYPE_OPTIONS,
-            axum::http::HeaderValue::from_static("nosniff"),
-        ))
-        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
-            axum::http::header::X_FRAME_OPTIONS,
-            axum::http::HeaderValue::from_static("DENY"),
-        ))
-        .layer(tower_http::set_header::SetResponseHeaderLayer::if_not_present(
-            axum::http::header::STRICT_TRANSPORT_SECURITY,
-            axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
-        ))
+        .layer(
+            tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+                axum::http::header::X_CONTENT_TYPE_OPTIONS,
+                axum::http::HeaderValue::from_static("nosniff"),
+            ),
+        )
+        .layer(
+            tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+                axum::http::header::X_FRAME_OPTIONS,
+                axum::http::HeaderValue::from_static("DENY"),
+            ),
+        )
+        .layer(
+            tower_http::set_header::SetResponseHeaderLayer::if_not_present(
+                axum::http::header::STRICT_TRANSPORT_SECURITY,
+                axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+            ),
+        )
         // --- Defense Layer 2: Rate Limiting (30 req/min = 1 req per 2s) ---
         .layer(
             tower::ServiceBuilder::new()
-                .layer(axum::error_handling::HandleErrorLayer::new(|err: tower::BoxError| async move {
-                    tracing::warn!("🛡️ [KeyProxy] Rate limit / buffer error: {}", err);
-                    (StatusCode::TOO_MANY_REQUESTS, format!("Rate limit exceeded: {}", err))
-                }))
+                .layer(axum::error_handling::HandleErrorLayer::new(
+                    |err: tower::BoxError| async move {
+                        tracing::warn!("🛡️ [KeyProxy] Rate limit / buffer error: {}", err);
+                        (
+                            StatusCode::TOO_MANY_REQUESTS,
+                            format!("Rate limit exceeded: {}", err),
+                        )
+                    },
+                ))
                 .buffer(256)
                 .rate_limit(30, std::time::Duration::from_secs(60))
-                .into_inner()
+                .into_inner(),
         )
         // --- Defense Layer 1: Payload & Timeout Protection ---
         .layer(tower_http::limit::RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max
-        .layer(tower_http::timeout::TimeoutLayer::new(std::time::Duration::from_secs(120))); // 120s for LLM calls
+        .layer(tower_http::timeout::TimeoutLayer::new(
+            std::time::Duration::from_secs(120),
+        )); // 120s for LLM calls
 
     let port = env::var("KEY_PROXY_PORT").unwrap_or_else(|_| "3010".to_string());
     let bind_addr = if env::var("BIND_ALL").map(|v| v == "true").unwrap_or(false) {
@@ -273,7 +289,8 @@ async fn handle_llm_complete(
                 let body_res: Result<serde_json::Value, _> = resp.json().await;
                 match body_res {
                     Ok(body) => {
-                        let text = body.get("candidates")
+                        let text = body
+                            .get("candidates")
                             .and_then(|c| c.get(0))
                             .and_then(|c| c.get("content"))
                             .and_then(|c| c.get("parts"))
@@ -427,8 +444,10 @@ async fn handle_llm_stream(
                     Err(e) => {
                         let error_json = serde_json::json!({ "error": e.to_string() });
                         Ok::<axum::response::sse::Event, std::convert::Infallible>(
-                            axum::response::sse::Event::default()
-                                .data(serde_json::to_string(&error_json).unwrap_or_else(|_| "{}".to_string())),
+                            axum::response::sse::Event::default().data(
+                                serde_json::to_string(&error_json)
+                                    .unwrap_or_else(|_| "{}".to_string()),
+                            ),
                         )
                     }
                 });
@@ -461,7 +480,7 @@ async fn check_and_increment_quota(
 
     q.total_calls += 1;
     let total = q.total_calls;
-    
+
     let caller_total = {
         let count = q.per_caller_calls.entry(caller_id.to_string()).or_insert(0);
         *count += 1;
@@ -470,7 +489,10 @@ async fn check_and_increment_quota(
 
     if let Some(&limit) = state.caller_quotas.get(caller_id) {
         if caller_total > limit {
-            warn!("🛑 [KeyProxy] Caller {} exceeded quota ({})", caller_id, limit);
+            warn!(
+                "🛑 [KeyProxy] Caller {} exceeded quota ({})",
+                caller_id, limit
+            );
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
     }

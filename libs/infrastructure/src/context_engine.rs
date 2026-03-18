@@ -126,11 +126,11 @@ impl ContextEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::job_queue::SqliteJobQueue;
     use aiome_core::llm_provider::LlmProvider;
     use serde_json::json;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
-    use crate::job_queue::SqliteJobQueue;
 
     #[derive(Debug)]
     struct MockLlm {
@@ -139,24 +139,38 @@ mod tests {
 
     #[async_trait::async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.reply.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
             })
         }
-        fn name(&self) -> &str { "mock-llm" }
-        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+        fn name(&self) -> &str {
+            "mock-llm"
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
     }
 
     #[tokio::test]
     async fn test_get_intelligent_history() {
         let jq = SqliteJobQueue::new(":memory:").await.unwrap();
-        jq.insert_chat_message("user-1", "user", "Hello").await.unwrap();
-        jq.update_chat_memory_summary("user-1", "Initial summary").await.unwrap();
+        jq.insert_chat_message("user-1", "user", "Hello")
+            .await
+            .unwrap();
+        jq.update_chat_memory_summary("user-1", "Initial summary")
+            .await
+            .unwrap();
 
         let engine = ContextEngine::new(
-            Arc::new(MockLlm { reply: "compressed".into() }),
+            Arc::new(MockLlm {
+                reply: "compressed".into(),
+            }),
             Arc::new(jq),
             Arc::new(Semaphore::new(1)),
         );
@@ -172,11 +186,15 @@ mod tests {
         let jq = SqliteJobQueue::new(":memory:").await.unwrap();
         // Insert many messages to exceed threshold
         for i in 0..10 {
-            jq.insert_chat_message("user-1", "user", &format!("Message {}", i)).await.unwrap();
+            jq.insert_chat_message("user-1", "user", &format!("Message {}", i))
+                .await
+                .unwrap();
         }
 
         let engine = ContextEngine::new(
-            Arc::new(MockLlm { reply: "New compressed summary".into() }),
+            Arc::new(MockLlm {
+                reply: "New compressed summary".into(),
+            }),
             Arc::new(jq.clone()),
             Arc::new(Semaphore::new(1)),
         );

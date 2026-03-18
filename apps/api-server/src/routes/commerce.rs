@@ -5,6 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::error::AppError;
+use crate::AppState;
+use aiome_core::traits::JobQueue;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -14,9 +17,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::error::AppError;
-use crate::AppState;
-use aiome_core::traits::JobQueue;
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct CommerceBalanceResponse {
@@ -59,7 +59,9 @@ pub async fn get_balance(
     // SEC-2: Authentication is enforced by the Authenticated extractor.
     // RBAC: Check agent_id ownership
     if agent_id != _auth.agent_id {
-        return Err(AppError::forbidden("Unauthorized access to this agent's balance"));
+        return Err(AppError::forbidden(
+            "Unauthorized access to this agent's balance",
+        ));
     }
 
     tracing::info!("💰 [Commerce] Balance query for agent: {}", agent_id);
@@ -97,10 +99,16 @@ pub async fn execute_purchase(
     // SEC-2: Authentication is enforced by the Authenticated extractor.
     // RBAC: Check agent_id ownership
     if agent_id != _auth.agent_id {
-        return Err(AppError::forbidden("Unauthorized purchase request for this agent"));
+        return Err(AppError::forbidden(
+            "Unauthorized purchase request for this agent",
+        ));
     }
 
-    tracing::info!("🛒 [Commerce] Purchase request for agent: {}, item: {}", agent_id, req.item_id);
+    tracing::info!(
+        "🛒 [Commerce] Purchase request for agent: {}, item: {}",
+        agent_id,
+        req.item_id
+    );
 
     let engine = state.commerce_engine.as_ref().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
@@ -108,15 +116,15 @@ pub async fn execute_purchase(
         }
     })?;
 
-    let tx_id = engine.execute_autonomous_purchase(
-        agent_id,
-        req.item_id,
-        req.metadata,
-    ).await?;
-    
-    Ok((StatusCode::CREATED, Json(PurchaseResponse {
-        transaction_id: tx_id,
-        status: "Completed".into(),
-    })))
-}
+    let tx_id = engine
+        .execute_autonomous_purchase(agent_id, req.item_id, req.metadata)
+        .await?;
 
+    Ok((
+        StatusCode::CREATED,
+        Json(PurchaseResponse {
+            transaction_id: tx_id,
+            status: "Completed".into(),
+        }),
+    ))
+}

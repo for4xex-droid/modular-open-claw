@@ -43,7 +43,8 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
         match provider.complete(&prompt, Some(system_prompt)).await {
             Ok(resp) => {
                 // R1 Defense: AI might still output markdown blocks
-                let clean_json = resp.content
+                let clean_json = resp
+                    .content
                     .trim()
                     .trim_start_matches("```json")
                     .trim_start_matches("```")
@@ -51,7 +52,11 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
                     .trim();
 
                 serde_json::from_str::<KarmaClassification>(clean_json).map_err(|e| {
-                    tracing::warn!("🧬 [Taxonomy] JSON Parse Error: {}. Raw: {}", e, resp.content);
+                    tracing::warn!(
+                        "🧬 [Taxonomy] JSON Parse Error: {}. Raw: {}",
+                        e,
+                        resp.content
+                    );
                     AiomeError::Infrastructure {
                         reason: format!("Invalid classification format: {}", e),
                     }

@@ -15,7 +15,7 @@ use serde_json;
 use std::pin::Pin;
 use tokio_stream::Stream;
 
-pub use aiome_contracts::llm::{LlmProvider, EmbeddingProvider, LlmResponse, StopReason};
+pub use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmResponse, StopReason};
 
 // --- 実装 ---
 
@@ -39,7 +39,11 @@ impl OllamaProvider {
 
 #[async_trait]
 impl LlmProvider for OllamaProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/api/chat", self.host);
         let mut messages = Vec::new();
 
@@ -93,7 +97,10 @@ impl LlmProvider for OllamaProvider {
             None => StopReason::EndTurn,
         };
 
-        Ok(LlmResponse { content, stop_reason })
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -283,7 +290,11 @@ impl AbyssVaultProvider {
 
 #[async_trait]
 impl LlmProvider for AbyssVaultProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let payload = serde_json::json!({
             "caller_id": self.caller_id,
             "prompt": prompt,
@@ -316,7 +327,10 @@ impl LlmProvider for AbyssVaultProvider {
         // Proxy might not return stop_reason yet, assume EndTurn
         let stop_reason = StopReason::EndTurn;
 
-        Ok(LlmResponse { content, stop_reason })
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
     }
 
     async fn stream_complete(
@@ -422,7 +436,11 @@ impl GeminiProvider {
 
 #[async_trait]
 impl LlmProvider for GeminiProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
             self.model
@@ -649,7 +667,11 @@ impl OpenAiProvider {
 
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let url = "https://api.openai.com/v1/chat/completions";
         let mut messages = Vec::new();
 
@@ -812,7 +834,11 @@ impl ClaudeProvider {
 
 #[async_trait]
 impl LlmProvider for ClaudeProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let url = "https://api.anthropic.com/v1/messages";
 
         let payload = serde_json::json!({
@@ -970,7 +996,11 @@ impl LmStudioProvider {
 
 #[async_trait]
 impl LlmProvider for LmStudioProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/v1/chat/completions", self.host.trim_end_matches('/'));
         let mut messages = Vec::new();
 

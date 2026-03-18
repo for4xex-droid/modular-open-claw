@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Soul Engine (Phase 3 - Reactive Hardening)**: 
+    - **Step 1 (R-2)**: Improved `SoulError` granularity with context-aware prefixes (`[SoulDistill]`, `[SoulAdapter]`, etc.) for better debugging.
+    - **Step 2 (Immune Feedback)**: Integrated `ImmuneSystem` threat detection into the `SoulPipeline` as negative experiences (`security.immune_response`), allowing the AI to learn from neutralized attacks.
+    - **Step 3 (Somatic Marking)**: Enabled automatic generation of `SomaticMarker` (emotional grounding) during experience processing for all experiences with valence > 0.3 or < -0.3.
+    - **Step 4 (Physical Defense)**: Connected `execute_defense` to physical actions: `DefenseAction::Reject` now dynamically injects `ImmuneRule`s, `Warn` records to the `Evolution Chronicle`, and `Hesitate` injects adaptive latency.
+    - **Step 5 (Semantic Defense)**: Upgraded `SoulPipeline` to pre-fetch text embeddings asynchronously, enabling `DefenseTrigger::Semantic` cosine similarity matching while preventing redundant API calls (DS-1/RTT=0 optimization).
+    - **Step 6 (Anamnesis Profile)**: Integrated `AnamnesisProfile` into `AgentSoul` and persistent storage, allowing narrative identity and maladaptive schemas to persist across generations via the `SamsaraEngine` rebirth cycle.
 - **Soul Engine (Phase 1)**: Initial implementation of the Three-Layer Soul Architecture. Added `libs/soul` crate containing `AgentSoul` (Core), `PredictiveModel` (L2/Plasticity), `SomaticMarker` (L1/Reactive), and `Instinct` (L3/Meta-cognitive).
 - **Soul Persistence**: Implemented `SqliteSoulStore` in `libs/infrastructure` for persisting and loading `AgentSoul` state, including a 10,000-entry experience buffer limit to prevent storage bloat.
 - **Federated Soul Metadata**: Extended `FederatedKarma` and `approved_karma` schema to include `generation` and `somatic_valence`, enabling cross-node learning of personality traits.
@@ -18,7 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security Whitelist Optimization**: Removed `mv` from the default `BastionGuard` whitelist to prevent uncontrolled file movement and maintain consistency with other restricted destructive commands.
 - **FTS5 Synchronization Triggers**: Implemented robust error handling for Search Index (FTS5) triggers in `migrations.rs`, replacing silent ignores with structured warnings and idempotent creation checks.
 - **Duplicate Safety Directive Removal**: Cleaned up code across `infrastructure` and `core` crates by removing redundant `![forbid(unsafe_code)]` attributes.
-
+- **Soul Engine Pipeline Integration (Phase 1.5)**: Implemented `DefaultSamsaraEngine` and `CoreDomainAdapter`, and integrated `SoulPipeline` and `SqliteSoulStore` directly into the `api-server` background worker loop for cyclic experience processing.
+- **Experience Buffer Bounding**: Implemented `push_experience` to enforce a 1000-item memory limit on `experience_buffer` to prevent Out-Of-Memory issues during active sessions.
+- **Soul Engine LLM Distillation (Phase 2)**: Core Samsara Engine now strictly limits distillation token context (`R-5`) and natively uses the LLM via `provider.complete` to generate real `InstinctRules` from recent experiences, replacing the static Phase 1 mock.
+- **Soul Architecture Integration (Phase 2b)**: Unified `DreamState` (L0 Contemplation) and `SamsaraEvent::LevelUp` (L0 Progression) direct into `SoulPipeline` (L2/L3) converting environmental and introspective triggers into dynamic `Experience` objects safely decoupled from the heartbeat pattern (`R-6`).
+- **Predictive Grounding**: Enabled actual `predict_outcome` capabilities inside the `CoreDomainAdapter`, activating `PredictiveModel` prediction accuracy calculations across arbitrary domains and enabling true surprise mechanics (`R-1`).
 ### Fixed
 - **Soul Engine Robustness**: Resolved 16 issues discovered during deep scans, including `AgentSoul` ID validation, `compute_hash` logic for state integrity, safety attributes, and error conversion between `SoulError` and `AiomeError`.
 - **Samsara Hub Data Integrity**: Fixed missing columns in `samsara-hub` SELECT/INSERT operations to ensure `generation` and `somatic_valence` are properly synchronized across the federation.

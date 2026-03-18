@@ -2,11 +2,11 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::somatic::SomaticMarker;
-use crate::defense::Defense;
-use crate::predictive::PredictiveModel;
 use crate::attachment::AttachmentModel;
+use crate::defense::Defense;
 use crate::instinct::Instinct;
+use crate::predictive::PredictiveModel;
+use crate::somatic::SomaticMarker;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentSoul {
@@ -24,6 +24,7 @@ pub struct AgentSoul {
 
     // L3: Meta-cognitive
     pub instinct: Instinct,
+    pub anamnesis: crate::anamnesis::AnamnesisProfile,
     pub experience_buffer: Vec<Experience>,
 }
 
@@ -38,6 +39,7 @@ impl AgentSoul {
             predictive_model: PredictiveModel::default(),
             attachment: AttachmentModel::default(),
             instinct: Instinct::default(),
+            anamnesis: crate::anamnesis::AnamnesisProfile::default(),
             experience_buffer: Vec::new(),
         };
         soul.compute_hash();
@@ -58,6 +60,19 @@ impl AgentSoul {
         let hash = format!("{:x}", hasher.finalize());
         self.soul_hash = hash.clone();
         hash
+    }
+
+    pub const MAX_EXPERIENCE_BUFFER: usize = 1000;
+
+    /// Add an experience to the buffer, ensuring a maximum bounded size
+    pub fn push_experience(&mut self, exp: Experience) {
+        self.experience_buffer.push(exp);
+        if self.experience_buffer.len() > Self::MAX_EXPERIENCE_BUFFER {
+            // Keep the latest half when rotating to avoid frequent rotation cost
+            let keep_len = Self::MAX_EXPERIENCE_BUFFER / 2;
+            let drain_count = self.experience_buffer.len() - keep_len;
+            self.experience_buffer.drain(0..drain_count);
+        }
     }
 }
 

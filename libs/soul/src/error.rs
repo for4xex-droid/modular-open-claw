@@ -20,8 +20,24 @@ pub enum SoulError {
 
 impl From<SoulError> for aiome_contracts::error::AiomeError {
     fn from(e: SoulError) -> Self {
-        aiome_contracts::error::AiomeError::Infrastructure {
-            reason: e.to_string(),
+        match e {
+            SoulError::DistillationFailed(r) => {
+                aiome_contracts::error::AiomeError::Infrastructure {
+                    reason: format!("[SoulDistill] {}", r),
+                }
+            }
+            SoulError::RebirthFailed(r) => aiome_contracts::error::AiomeError::Infrastructure {
+                reason: format!("[SoulRebirth] {}", r),
+            },
+            SoulError::AdapterError(r) => aiome_contracts::error::AiomeError::Infrastructure {
+                reason: format!("[SoulAdapter] {}", r),
+            },
+            SoulError::InvalidTransition(r) => aiome_contracts::error::AiomeError::Infrastructure {
+                reason: format!("[SoulTransition] {}", r),
+            },
+            SoulError::Internal(r) => aiome_contracts::error::AiomeError::Infrastructure {
+                reason: format!("[SoulInternal] {}", r),
+            },
         }
     }
 }

@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::error::AiomeError;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use crate::error::AiomeError;
 
 /// 🛡️ AgentRx 失敗カテゴリ (Taxonomy)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -100,20 +100,24 @@ pub struct AgentDiagnosis {
 }
 
 /// 📥 TrajectoryStore トレイト
-/// 
+///
 /// 実行時の軌跡（Trajectory）を永続化し、AgentRx診断に使用する。
 /// JobQueue とは独立させることで、既存システムへの影響を最小化する。
 #[async_trait]
 pub trait TrajectoryStore: Send + Sync {
     /// ステップを即時永続化する
     async fn record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError>;
-    
+
     /// ジョブの全軌跡を取得する
     async fn fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError>;
-    
+
     /// 特定のステップを Critical Failure としてマークし、診断情報を保存する
-    async fn store_diagnosis(&self, job_id: &str, diagnosis: AgentDiagnosis) -> Result<(), AiomeError>;
-    
+    async fn store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: AgentDiagnosis,
+    ) -> Result<(), AiomeError>;
+
     /// 診断情報を取得する
     async fn fetch_diagnosis(&self, job_id: &str) -> Result<Option<AgentDiagnosis>, AiomeError>;
 }

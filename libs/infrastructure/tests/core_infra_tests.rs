@@ -119,5 +119,9 @@ async fn test_bastion_guard_enforcement() {
     // 5. Success with allowed binary (ls)
     // Note: This actually runs 'ls' on the host, which is usually fine for tests.
     let result = guard.safe_exec("ls");
-    assert!(result.is_ok(), "safe_exec failed with: {:?}", result.unwrap_err());
+    assert!(
+        result.is_ok(),
+        "safe_exec failed with: {:?}",
+        result.unwrap_err()
+    );
 }

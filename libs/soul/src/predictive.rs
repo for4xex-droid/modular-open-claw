@@ -20,10 +20,10 @@ impl Default for PredictiveModel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainModel {
-    pub prediction_accuracy: f64,  // 0.0-1.0 (high = accurate)
+    pub prediction_accuracy: f64, // 0.0-1.0 (high = accurate)
     pub experience_count: u64,
-    pub local_plasticity: f64,     // High acc -> low plastic (stubborn), Low acc -> high plastic (flexible)
-    pub last_surprise: f64,        // Latest error
+    pub local_plasticity: f64, // High acc -> low plastic (stubborn), Low acc -> high plastic (flexible)
+    pub last_surprise: f64,    // Latest error
 }
 
 impl Default for DomainModel {
@@ -41,11 +41,12 @@ impl PredictiveModel {
     pub fn update_plasticity(&mut self, domain: &str, actual_outcome: f64, predicted: f64) {
         let surprise = (actual_outcome - predicted).abs();
         let dm = self.domains.entry(domain.to_string()).or_default();
-        
+
         // Accurate prediction means less plasticity (more stubborn)
         // Inaccurate prediction means more plasticity (more flexible)
         let alpha = self.ema_learning_rate;
-        dm.prediction_accuracy = dm.prediction_accuracy * (1.0 - alpha) + (1.0 - surprise.clamp(0.0, 1.0)) * alpha;
+        dm.prediction_accuracy =
+            dm.prediction_accuracy * (1.0 - alpha) + (1.0 - surprise.clamp(0.0, 1.0)) * alpha;
         dm.local_plasticity = 1.0 - dm.prediction_accuracy;
         dm.last_surprise = surprise;
         dm.experience_count += 1;

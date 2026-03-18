@@ -54,4 +54,3 @@ impl JobBudget {
         self.current_cost_microusds.load(Ordering::SeqCst) as f64 / 1_000_000.0
     }
 }
-

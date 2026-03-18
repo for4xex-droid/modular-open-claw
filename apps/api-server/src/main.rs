@@ -37,8 +37,8 @@ mod docker;
 mod error;
 mod logging;
 mod mcp;
-mod routes;
 mod plugin_loader;
+mod routes;
 mod skill_handler;
 mod stream;
 
@@ -60,15 +60,14 @@ pub struct AppState {
     pub llm_semaphore: Arc<tokio::sync::Semaphore>,
     pub forge_semaphore: Arc<tokio::sync::Semaphore>,
     pub mcp_sessions: Arc<
-        tokio::sync::RwLock<
-            std::collections::HashMap<String, tokio::sync::mpsc::Sender<String>>,
-        >,
+        tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<String>>>,
     >,
     pub mcp_manager: Arc<mcp::client::McpProcessManager>,
     pub artifact_store: Arc<dyn aiome_core::traits::ArtifactStore>,
     pub event_sender: tokio::sync::broadcast::Sender<shared::watchtower::CoreEvent>,
     pub context_engine: Arc<infrastructure::context_engine::ContextEngine>,
     pub soul_mutator: Arc<infrastructure::soul_mutator::SoulMutator>,
+    pub soul_store: Arc<infrastructure::soul_store::SqliteSoulStore>,
     pub provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
     pub autonomous_running: Arc<std::sync::atomic::AtomicBool>,
     pub autonomous_config: Arc<tokio::sync::RwLock<Option<aiome_core::biome::AutonomousConfig>>>,
@@ -216,20 +215,22 @@ async fn main() {
     let forge_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
     let event_sender = tokio::sync::broadcast::channel::<shared::watchtower::CoreEvent>(100).0;
 
-    skill_forge
-        .ensure_forge_workspace()
-        .unwrap_or_else(|e| {
-            error!("🚨 Failed to initialize skill_forge workspace: {}", e);
-            std::process::exit(1);
-        });
+    skill_forge.ensure_forge_workspace().unwrap_or_else(|e| {
+        error!("🚨 Failed to initialize skill_forge workspace: {}", e);
+        std::process::exit(1);
+    });
 
-    let allowed_origins: Vec<HeaderValue> = config.allowed_origins
+    let allowed_origins: Vec<HeaderValue> = config
+        .allowed_origins
         .iter()
         .filter_map(|s| s.parse::<HeaderValue>().ok())
         .collect();
     info!("🌐 [CORS] Active origins: {:?}", config.allowed_origins);
 
-    info!("🌐 [CORS] Effective Allowed Origins: {:?}", config.allowed_origins);
+    info!(
+        "🌐 [CORS] Effective Allowed Origins: {:?}",
+        config.allowed_origins
+    );
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([
@@ -242,7 +243,6 @@ async fn main() {
             axum::http::header::CONTENT_TYPE,
             axum::http::header::AUTHORIZATION,
         ]);
-
 
     #[cfg(feature = "nurture")]
     let (nurture_state, commerce_engine) = {
@@ -257,30 +257,35 @@ async fn main() {
             event_sender.clone(),
             job_queue.clone(),
             cancel_token.clone(),
-        ).await.unwrap_or_else(|e| {
+        )
+        .await
+        .unwrap_or_else(|e| {
             error!("💰 [NURTURE] Failed to create plugin: {}", e);
             std::process::exit(1);
         });
-        
+
         plugin_registry.register(nurture_plugin.clone());
         let ce = nurture_plugin.commerce_engine();
-        
+
         let ns = nurture_api::state::AppState::init(
             job_queue.get_pool().clone(),
             job_queue.clone(),
             nurture_api::state::EconomyPolicy::default(),
             commerce_protocol::identity::ActorId(system_id),
             cancel_token.clone(),
-        ).await.unwrap_or_else(|e| {
+        )
+        .await
+        .unwrap_or_else(|e| {
             error!("🚨 [NURTURE] Failed to initialize state: {}", e);
             std::process::exit(1);
         });
-        
+
         (ns, ce)
     };
-    
+
     #[cfg(not(feature = "nurture"))]
-    let commerce_engine = Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine) as Arc<dyn aiome_core::commerce::CommerceEngine>);
+    let commerce_engine = Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine)
+        as Arc<dyn aiome_core::commerce::CommerceEngine>);
 
     let api_server_secret_raw = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
         warn!("⚠️ API_SERVER_SECRET not set, using insecure default!");
@@ -316,6 +321,9 @@ async fn main() {
             provider.clone(),
             std::path::PathBuf::from("workspace"),
         )),
+        soul_store: Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
+            job_queue.get_pool().clone(),
+        ))),
         provider: provider.clone(),
         autonomous_running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         autonomous_config: Arc::new(tokio::sync::RwLock::new(None)),
@@ -400,13 +408,21 @@ async fn main() {
         let mut wakeup_counter = 0;
 
         // 🌐 2. Federation Sync: Connect to Samsara Hub WebSocket for real-time updates
-        let hub_ws_url = std::env::var("SAMSARA_HUB_WS")
-            .unwrap_or_else(|_| config.samsara_hub_url.replace("http://", "ws://").replace("https://", "wss://") + "/api/v1/federation/ws");
-        
+        let hub_ws_url = std::env::var("SAMSARA_HUB_WS").unwrap_or_else(|_| {
+            config
+                .samsara_hub_url
+                .replace("http://", "ws://")
+                .replace("https://", "wss://")
+                + "/api/v1/federation/ws"
+        });
+
         use secrecy::ExposeSecret;
-        let hub_secret_val = fed_secret.as_ref().map(|s| s.expose_secret().to_string()).unwrap_or_default();
+        let hub_secret_val = fed_secret
+            .as_ref()
+            .map(|s| s.expose_secret().to_string())
+            .unwrap_or_default();
         if hub_secret_val.is_empty() {
-             warn!("⚠️ [BackgroundWorker] FEDERATION_SECRET is empty. Federation might fail.");
+            warn!("⚠️ [BackgroundWorker] FEDERATION_SECRET is empty. Federation might fail.");
         }
         let jq_ws = jq_clone.clone();
         let provider_ws = provider.clone();
@@ -586,6 +602,24 @@ async fn main() {
             }
         });
 
+        let soul_store_bg = state.soul_store.clone();
+        let embed_provider: Arc<dyn aiome_core::llm_provider::EmbeddingProvider> =
+            bg_instance.clone();
+        let adapter = infrastructure::soul_adapter::CoreDomainAdapter::new(
+            jq_clone.clone(),
+            Some(embed_provider),
+        );
+        use soul::adapter::SoulDomainAdapter;
+        let distillation_prompt = adapter.distillation_system_prompt().to_string();
+
+        let pipeline = soul::pipeline::SoulPipeline::new(
+            adapter,
+            infrastructure::samsara_engine::DefaultSamsaraEngine::new(
+                bg_provider.clone(),
+                distillation_prompt,
+            ),
+        );
+
         loop {
             if token.is_cancelled() {
                 info!("🛑 [BackgroundWorker] Shutdown requested. Cleaning up...");
@@ -595,6 +629,7 @@ async fn main() {
             // 🌟 0. Evolution: Sync Samsara Level and handle Behavioral Shift
             let stats = jq_clone.get_agent_stats().await.unwrap_or_default();
             let current_level = stats.level;
+            let mut collected_experiences: Vec<soul::model::Experience> = Vec::new();
 
             match jq_clone.sync_samsara_level().await {
                 Ok(Some(aiome_core::contracts::SamsaraEvent::LevelUp {
@@ -617,6 +652,21 @@ async fn main() {
                     {
                         warn!("⚠️ [Evolution] Behavioral Shift failed: {:?}", e);
                     }
+
+                    collected_experiences.push(soul::model::Experience {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        domain: "evolution.level_up".to_string(),
+                        content: format!(
+                            "Agent evolved from level {} to {}. I must utilize this new power.",
+                            old_level, new_level
+                        ),
+                        outcome_valence: 0.8,
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        original_prediction: 0.0,
+                    });
+                }
+                Ok(Some(other_event)) => {
+                    info!("🌟 [Evolution] Unhandled Samsara event: {:?}", other_event);
                 }
                 Ok(None) => {}
                 Err(e) => warn!("⚠️ [Evolution] Level sync failed: {:?}", e),
@@ -631,11 +681,22 @@ async fn main() {
                 let trend_sonar =
                     infrastructure::trend_sonar::ExternalTrendSonar::new(search_api_key);
 
-                if let Err(e) = dream_state
+                match dream_state
                     .dream(jq_clone.as_ref(), &trend_sonar, current_level)
                     .await
                 {
-                    warn!("⚠️ [DreamState] Contemplation failed: {:?}", e);
+                    Ok(Some(insight)) => {
+                        collected_experiences.push(soul::model::Experience {
+                            id: uuid::Uuid::new_v4().to_string(),
+                            domain: "state.dream".to_string(),
+                            content: insight,
+                            outcome_valence: 0.5,
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                            original_prediction: 0.0,
+                        });
+                    }
+                    Ok(None) => {}
+                    Err(e) => warn!("⚠️ [DreamState] Contemplation failed: {:?}", e),
                 }
             }
 
@@ -652,7 +713,15 @@ async fn main() {
                 .await
                 {
                     Ok(Ok(n)) if n > 0 => {
-                        info!("🛡️ [BackgroundWorker] {} new immune rules generated.", n)
+                        info!("🛡️ [BackgroundWorker] {} new immune rules generated.", n);
+                        collected_experiences.push(soul::model::Experience {
+                            id: uuid::Uuid::new_v4().to_string(),
+                            domain: "security.immune_response".to_string(),
+                            content: format!("{} threats detected and neutralized via immune system feedback loop.", n),
+                            outcome_valence: -0.6,
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                            original_prediction: 0.0,
+                        });
                     }
                     Ok(Ok(_)) => info!("🛡️ [BackgroundWorker] No new threats identified."),
                     Ok(Err(e)) => warn!("⚠️ [BackgroundWorker] Threat analysis failed: {:?}", e),
@@ -687,6 +756,53 @@ async fn main() {
                 }
             } else {
                 info!("⏭️ [BackgroundWorker] LLM busy, skipping soul mutation.");
+            }
+            // 🧬 1.6 Soul Engine (v3): Process queued experience & Rebirth
+            // Pipeline and Store are initialized outside the loop (DS-2 fixed)
+
+            // For now, assume a single target AgentSoul (id: "system-soul")
+            let system_soul_id = "system-soul";
+            match soul_store_bg.load_soul(system_soul_id).await {
+                Ok(Some(mut agent_soul)) => {
+                    // Extract recent unhandled experiences (P-2 / P-3 integrations)
+                    if !collected_experiences.is_empty() {
+                        let mut trigger_save = false;
+                        for exp in collected_experiences {
+                            match pipeline.process_experience(&mut agent_soul, exp).await {
+                                Ok(Some(new_soul)) => {
+                                    info!("🌟 [SoulEngine] Samsara Triggered! Soul reborn to generation {}", new_soul.generation);
+                                    let _ = soul_store_bg.save_soul(&new_soul).await;
+                                    agent_soul = new_soul; // Update active soul object
+                                }
+                                Ok(None) => trigger_save = true,
+                                Err(e) => warn!("⚠️ [SoulEngine] Pipeline error: {:?}", e),
+                            }
+                        }
+                        if trigger_save {
+                            if let Err(e) = soul_store_bg.save_soul(&agent_soul).await {
+                                warn!("⚠️ [SoulEngine] Failed to save updated soul: {}", e);
+                            }
+                        }
+                    } else if wakeup_counter % 12 == 0 {
+                        // Periodic passive save (e.g. 1 hour = 12 * 5min)
+                        let _ = soul_store_bg.save_soul(&agent_soul).await;
+                    }
+                }
+                Ok(None) => {
+                    // Initialize if missing
+                    let mut fresh_soul = soul::model::AgentSoul::new(system_soul_id.to_string());
+                    // Apply genesis hash logic
+                    fresh_soul.compute_hash();
+                    if let Err(e) = soul_store_bg.save_soul(&fresh_soul).await {
+                        warn!("⚠️ [SoulEngine] Failed to initialize system soul: {}", e);
+                    } else {
+                        info!(
+                            "🧬 [SoulEngine] Initialized new AgentSoul for {}",
+                            system_soul_id
+                        );
+                    }
+                }
+                Err(e) => warn!("⚠️ [SoulEngine] Failed to load system soul: {:?}", e),
             }
 
             // 🎭 1.7 Autonomous Expression (Phase 4): Self-Expression based on Karma
@@ -963,7 +1079,10 @@ async fn main() {
                 {
                     let query = format!(
                         "VACUUM INTO '{}'",
-                        abs_backup_path.to_str().unwrap_or_default().replace("'", "''")
+                        abs_backup_path
+                            .to_str()
+                            .unwrap_or_default()
+                            .replace("'", "''")
                     );
                     match sqlx::query(&query).execute(pool).await {
                         Ok(_) => info!(
@@ -974,8 +1093,10 @@ async fn main() {
                     }
                 } else {
                     // Fallback to relative if canonicalize fails (e.g. dir just created)
-                    let query =
-                        format!("VACUUM INTO '{}'", backup_path.to_str().unwrap_or_default().replace("'", "''"));
+                    let query = format!(
+                        "VACUUM INTO '{}'",
+                        backup_path.to_str().unwrap_or_default().replace("'", "''")
+                    );
                     match sqlx::query(&query).execute(pool).await {
                         Ok(_) => info!(
                             "💾 [BackgroundWorker] Backup successful (relative): {:?}",
@@ -1027,9 +1148,10 @@ async fn main() {
         });
     if let Err(e) = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(token))
-        .await {
-            error!("🚨 Server error: {}", e);
-        }
+        .await
+    {
+        error!("🚨 Server error: {}", e);
+    }
 }
 
 async fn shutdown_signal(token: CancellationToken) {
@@ -1130,13 +1252,14 @@ pub fn build_app(
         )
         .route(
             "/api/agent/chat",
-            axum::routing::post(routes::agent::trigger_agent_chat)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(3)) // 1 chat per 3s
-                ),
+            axum::routing::post(routes::agent::trigger_agent_chat).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(3)), // 1 chat per 3s
+            ),
         )
         .route(
             "/api/agent/feedback",
@@ -1152,13 +1275,14 @@ pub fn build_app(
         )
         .route(
             "/api/v1/settings/test",
-            axum::routing::post(routes::settings::test_connection)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(5, std::time::Duration::from_secs(1)) // 5 tests per sec
-                ),
+            axum::routing::post(routes::settings::test_connection).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(5, std::time::Duration::from_secs(1)), // 5 tests per sec
+            ),
         )
         .route(
             "/api/v1/ollama/models",
@@ -1170,13 +1294,14 @@ pub fn build_app(
         )
         .route(
             "/api/v1/commerce/purchase/:agent_id",
-            axum::routing::post(routes::commerce::execute_purchase)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(2)) // 1 purchase per 2s
-                ),
+            axum::routing::post(routes::commerce::execute_purchase).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(2)), // 1 purchase per 2s
+            ),
         )
         .route("/api/v1/logs", get(routes::general::get_logs))
         .route("/api/biome/status", get(routes::biome::biome_status))
@@ -1186,31 +1311,35 @@ pub fn build_app(
                 .post(routes::biome::create_topic)
                 .route_layer(
                     tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .layer(axum::error_handling::HandleErrorLayer::new(
+                            handle_rate_limit,
+                        ))
                         .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(5)) // 1 topic per 5s
+                        .rate_limit(1, std::time::Duration::from_secs(5)), // 1 topic per 5s
                 ),
         )
         .route("/api/biome/list", get(routes::biome::list_messages))
         .route(
             "/api/biome/send",
-            axum::routing::post(routes::biome::send_message)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(2, std::time::Duration::from_secs(1)) // 2 messages per sec (p2p)
-                ),
+            axum::routing::post(routes::biome::send_message).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(2, std::time::Duration::from_secs(1)), // 2 messages per sec (p2p)
+            ),
         )
         .route(
             "/api/biome/autonomous/start",
-            axum::routing::post(routes::biome::autonomous_start)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(2)) // 1 toggle per 2s
-                ),
+            axum::routing::post(routes::biome::autonomous_start).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(2)), // 1 toggle per 2s
+            ),
         )
         .route(
             "/api/biome/autonomous/stop",
@@ -1226,13 +1355,14 @@ pub fn build_app(
         )
         .route(
             "/api/expression/generate",
-            axum::routing::post(routes::expression::generate_expression)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
-                        .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(10)) // 1 generation per 10s (costly)
-                ),
+            axum::routing::post(routes::expression::generate_expression).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(10)), // 1 generation per 10s (costly)
+            ),
         )
         .route(
             "/api/expression/list",
@@ -1257,14 +1387,18 @@ pub fn build_app(
 
     let streaming_router: Router<AppState> = Router::new()
         .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
-        .route("/api/agent/chat/stream", axum::routing::post(stream::trigger_agent_chat_stream))
+        .route(
+            "/api/agent/chat/stream",
+            axum::routing::post(stream::trigger_agent_chat_stream),
+        )
         .nest("/api/v1/mcp", mcp::router())
-        .route("/api/system/vitality", get(stream::trigger_system_vitality_stream))
+        .route(
+            "/api/system/vitality",
+            get(stream::trigger_system_vitality_stream),
+        )
         .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
 
-    let mut router: Router<AppState> = Router::new()
-        .merge(internal_router)
-        .merge(streaming_router);
+    let mut router: Router<AppState> = Router::new().merge(internal_router).merge(streaming_router);
 
     #[cfg(feature = "nurture")]
     {
@@ -1273,8 +1407,7 @@ pub fn build_app(
 
     // Apply auth middleware BEFORE with_state, using from_fn_with_state
     let state_for_auth = state.clone();
-    let router = router
-        .with_state(state);
+    let router = router.with_state(state);
 
     #[cfg(feature = "nurture")]
     let router = router.merge(nurture_api::routes::nurture_routes(nurture_state));
@@ -1314,9 +1447,15 @@ pub fn build_app(
 mod api_integration_tests;
 
 async fn handle_rate_limit(_err: tower::BoxError) -> (axum::http::StatusCode, &'static str) {
-    (axum::http::StatusCode::TOO_MANY_REQUESTS, "Rate Limit Exceeded")
+    (
+        axum::http::StatusCode::TOO_MANY_REQUESTS,
+        "Rate Limit Exceeded",
+    )
 }
 
 async fn handle_global_error(err: tower::BoxError) -> (axum::http::StatusCode, String) {
-    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Security Layer Error: {}", err))
+    (
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Security Layer Error: {}", err),
+    )
 }

@@ -294,18 +294,19 @@ impl KarmaOps for SqliteJobQueue {
         for r in rows {
             let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
             let permission_manifest = match r.try_get::<String, _>("permission_manifest") {
-                Ok(s) => {
-                    match serde_json::from_str(&s) {
-                        Ok(manifest) => Some(manifest),
-                        Err(e) => {
-                            tracing::warn!("Failed to parse permission_manifest JSON: {}", e);
-                            None
-                        }
+                Ok(s) => match serde_json::from_str(&s) {
+                    Ok(manifest) => Some(manifest),
+                    Err(e) => {
+                        tracing::warn!("Failed to parse permission_manifest JSON: {}", e);
+                        None
                     }
                 },
                 Err(e) => {
                     // Log the error if try_get fails, but it might be expected for older rows
-                    tracing::debug!("Failed to get permission_manifest from row (might be missing): {}", e);
+                    tracing::debug!(
+                        "Failed to get permission_manifest from row (might be missing): {}",
+                        e
+                    );
                     None
                 }
             };

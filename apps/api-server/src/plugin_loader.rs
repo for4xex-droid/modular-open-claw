@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use axum::Router;
 use aiome_contracts::plugin::AiomePlugin;
+use axum::Router;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 pub struct PluginRegistry {
@@ -9,11 +9,17 @@ pub struct PluginRegistry {
 
 impl PluginRegistry {
     pub fn new() -> Self {
-        Self { plugins: Vec::new() }
+        Self {
+            plugins: Vec::new(),
+        }
     }
 
     pub fn register(&mut self, plugin: Arc<dyn AiomePlugin>) {
-        info!("🔌 Registering plugin: {} v{}", plugin.name(), plugin.version());
+        info!(
+            "🔌 Registering plugin: {} v{}",
+            plugin.name(),
+            plugin.version()
+        );
         self.plugins.push(plugin);
     }
 
@@ -24,7 +30,10 @@ impl PluginRegistry {
                     info!("🛣️  Merging routes from plugin: {}", plugin.name());
                     router = router.merge(plugin_router.clone());
                 } else {
-                    warn!("⚠️  Plugin {} returned a router that is not an axum::Router", plugin.name());
+                    warn!(
+                        "⚠️  Plugin {} returned a router that is not an axum::Router",
+                        plugin.name()
+                    );
                 }
             }
         }
@@ -32,7 +41,10 @@ impl PluginRegistry {
     }
 
     pub fn registered_tools(&self) -> Vec<String> {
-        self.plugins.iter().flat_map(|p| p.registered_tools()).collect()
+        self.plugins
+            .iter()
+            .flat_map(|p| p.registered_tools())
+            .collect()
     }
 
     pub fn check_env_vars(&self) -> bool {
@@ -40,7 +52,11 @@ impl PluginRegistry {
         for plugin in &self.plugins {
             for var in plugin.required_env_vars() {
                 if std::env::var(&var).is_err() {
-                    warn!("⚠️  Plugin {} requires environment variable {} which is not set", plugin.name(), var);
+                    warn!(
+                        "⚠️  Plugin {} requires environment variable {} which is not set",
+                        plugin.name(),
+                        var
+                    );
                     missing = true;
                 }
             }

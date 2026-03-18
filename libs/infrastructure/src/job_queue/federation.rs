@@ -379,16 +379,24 @@ impl FederationOps for SqliteJobQueue {
             if let Err(e) = sqlx::query("UPDATE karma_logs SET is_federated = 1 WHERE id = ?")
                 .bind(id.clone())
                 .execute(&mut *tx)
-                .await {
-                warn!("🛡️ [Federation] Failed to mark karma {} as federated: {:?}", id, e);
+                .await
+            {
+                warn!(
+                    "🛡️ [Federation] Failed to mark karma {} as federated: {:?}",
+                    id, e
+                );
             }
         }
         for id in rule_ids {
             if let Err(e) = sqlx::query("UPDATE immune_rules SET is_federated = 1 WHERE id = ?")
                 .bind(id.clone())
                 .execute(&mut *tx)
-                .await {
-                warn!("🛡️ [Federation] Failed to mark rule {} as federated: {:?}", id, e);
+                .await
+            {
+                warn!(
+                    "🛡️ [Federation] Failed to mark rule {} as federated: {:?}",
+                    id, e
+                );
             }
         }
 

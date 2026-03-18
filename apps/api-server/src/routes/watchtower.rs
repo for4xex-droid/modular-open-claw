@@ -155,10 +155,17 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
     let mut economic_context = None;
     if let Some(engine) = &state.commerce_engine {
         // Fix: Use stable system agent ID
-        let agent_id = state.job_queue.get_system_agent_id().await.unwrap_or_else(|err| {
-            error!("Failed to get system agent ID, falling back to nil: {:?}", err);
-            uuid::Uuid::nil()
-        });
+        let agent_id = state
+            .job_queue
+            .get_system_agent_id()
+            .await
+            .unwrap_or_else(|err| {
+                error!(
+                    "Failed to get system agent ID, falling back to nil: {:?}",
+                    err
+                );
+                uuid::Uuid::nil()
+            });
         if let Ok(balance) = engine.get_balance(agent_id).await {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,

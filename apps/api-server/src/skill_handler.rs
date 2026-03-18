@@ -189,7 +189,8 @@ pub async fn execute_wasm_skill(
         step_id,
         action: "execute_wasm_skill".into(),
         tool_name: Some(skill_name.into()),
-        input: serde_json::from_str(skill_input).unwrap_or(serde_json::Value::String(skill_input.to_string())),
+        input: serde_json::from_str(skill_input)
+            .unwrap_or(serde_json::Value::String(skill_input.to_string())),
         output: serde_json::Value::Null,
         timestamp: chrono::Utc::now().to_rfc3339(),
         constraint_violations: vec![],
@@ -205,7 +206,8 @@ pub async fn execute_wasm_skill(
                 .await
             {
                 Ok(res) => {
-                    step.output = serde_json::from_str(&res).unwrap_or(serde_json::Value::String(res.clone()));
+                    step.output = serde_json::from_str(&res)
+                        .unwrap_or(serde_json::Value::String(res.clone()));
                     let limited_res = if res.len() > 3000 {
                         format!("{}... [Truncated for brevity]", &res[..3000])
                     } else {
@@ -216,7 +218,8 @@ pub async fn execute_wasm_skill(
                 Err(e) => {
                     step.is_critical_failure = true;
                     step.output = serde_json::json!({ "error": e.to_string() });
-                    step.failure_category = Some(aiome_core::trajectory::FailureCategory::SystemFailure);
+                    step.failure_category =
+                        Some(aiome_core::trajectory::FailureCategory::SystemFailure);
                     format!("[{} Error: {}]", skill_name, e)
                 }
             }
@@ -224,7 +227,8 @@ pub async fn execute_wasm_skill(
         Err(e) => {
             step.is_critical_failure = true;
             step.output = serde_json::json!({ "error": format!("Verification failed: {}", e) });
-            step.failure_category = Some(aiome_core::trajectory::FailureCategory::InvalidInvocation);
+            step.failure_category =
+                Some(aiome_core::trajectory::FailureCategory::InvalidInvocation);
             format!(
                 "[{} Error: Verification failed or Skill not found: {}]",
                 skill_name, e
@@ -236,12 +240,21 @@ pub async fn execute_wasm_skill(
     if let Some(id) = job_id {
         // Evaluate constraints
         let checker = infrastructure::constraint_checker::ConstraintChecker::new(
-            state.job_queue.fetch_active_immune_rules().await.unwrap_or_default(),
-            state.wasm_skill_manager.get_metadata(skill_name).map(|m| m.permissions).unwrap_or_default()
+            state
+                .job_queue
+                .fetch_active_immune_rules()
+                .await
+                .unwrap_or_default(),
+            state
+                .wasm_skill_manager
+                .get_metadata(skill_name)
+                .map(|m| m.permissions)
+                .unwrap_or_default(),
         );
         step.constraint_violations = checker.evaluate_step(&step);
         if !step.constraint_violations.is_empty() && step.failure_category.is_none() {
-            step.failure_category = Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
+            step.failure_category =
+                Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
         }
 
         use aiome_core::trajectory::TrajectoryStore;

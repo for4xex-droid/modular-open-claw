@@ -111,7 +111,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
             infrastructure::circuit_breaker::CircuitBreakerConfig {
                 failure_threshold: 5,
                 reset_timeout: std::time::Duration::from_secs(60),
-            }
+            },
         )),
         slo_engine: Arc::new(infrastructure::slo_engine::SloEngine::new(
             infrastructure::slo_engine::SloConfig {
@@ -121,7 +121,9 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
             chrono::Duration::hours(24),
         )),
         api_server_secret: Arc::new(secrecy::SecretString::from("test_secret".to_string())),
-        federation_secret: Some(Arc::new(secrecy::SecretString::from("test_fed_secret".to_string()))),
+        federation_secret: Some(Arc::new(secrecy::SecretString::from(
+            "test_fed_secret".to_string(),
+        ))),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

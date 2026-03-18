@@ -51,7 +51,10 @@ pub fn call(input: String) -> FnResult<String> {
             error: Some("Security Violation: Path traversal blocked.".into()),
         };
         return Ok(serde_json::to_string(&res)?);
-    } else if p_str.contains(".env") || p_str.contains(".git") || p_str.contains("config/security.json") {
+    } else if p_str.contains(".env")
+        || p_str.contains(".git")
+        || p_str.contains("config/security.json")
+    {
         let res = ReadResponse {
             content: String::new(),
             error: Some("Security Violation: Access to sensitive file is forbidden.".into()),

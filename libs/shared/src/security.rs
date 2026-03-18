@@ -49,9 +49,7 @@ impl SecurityPolicy {
             }
         }
 
-        let shield = builder
-            .build()
-            .expect("Failed to build network shield");
+        let shield = builder.build().expect("Failed to build network shield");
 
         Self {
             network_shield: shield,

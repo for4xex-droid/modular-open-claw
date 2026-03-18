@@ -81,7 +81,10 @@ pub async fn run_with_timeout(
     {
         return Err(ProcessError::SpawnFailed(std::io::Error::new(
             std::io::ErrorKind::PermissionDenied,
-            format!("Security Violation: Binary '{}' is not in the whitelist.", program),
+            format!(
+                "Security Violation: Binary '{}' is not in the whitelist.",
+                program
+            ),
         )));
     }
 

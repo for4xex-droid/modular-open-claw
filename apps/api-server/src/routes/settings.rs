@@ -388,7 +388,8 @@ pub async fn get_ollama_models(
         .ok()
         .flatten()
         .unwrap_or_else(|| {
-            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
+            std::env::var("OLLAMA_HOST")
+                .unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
         });
     let url = format!("{}/api/tags", host.trim_end_matches('/'));
     state.security_policy.validate_url(&url).await?;
@@ -400,12 +401,10 @@ pub async fn get_ollama_models(
         .timeout(std::time::Duration::from_secs(5))
         .send()
         .await
-        .map_err(|e| {
-        aiome_core::error::AiomeError::RemoteServiceError {
+        .map_err(|e| aiome_core::error::AiomeError::RemoteServiceError {
             url: url.clone(),
             source: e.into(),
-        }
-    })?;
+        })?;
 
     if res.status().is_success() {
         let json = res.json::<serde_json::Value>().await.map_err(|e| {

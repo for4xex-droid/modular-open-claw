@@ -49,8 +49,8 @@ use guardrails::GuardrailOps;
 use karma::KarmaOps;
 use migrations::DbInitializer;
 use settings::SettingsOps;
-use trajectory_store::TrajectoryOps;
 use swarm::SwarmOps;
+use trajectory_store::TrajectoryOps;
 use watchtower::WatchtowerOps;
 
 /// Job Queue that utilizes SQLite in WAL Mode to allow multi-threaded queue operations.
@@ -124,8 +124,15 @@ impl JobQueue for SqliteJobQueue {
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
         agent_id: Option<uuid::Uuid>,
     ) -> Result<String, AiomeError> {
-        Box::pin(self.do_enqueue(category, topic, style, karma_directives, permission_manifest, agent_id))
-            .await
+        Box::pin(self.do_enqueue(
+            category,
+            topic,
+            style,
+            karma_directives,
+            permission_manifest,
+            agent_id,
+        ))
+        .await
     }
 
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
@@ -171,8 +178,7 @@ impl JobQueue for SqliteJobQueue {
         limit: i64,
         current_soul_hash: &str,
     ) -> Result<aiome_core::traits::KarmaSearchResult, AiomeError> {
-        Box::pin(self.do_fetch_relevant_karma(topic, skill_id, limit, current_soul_hash))
-            .await
+        Box::pin(self.do_fetch_relevant_karma(topic, skill_id, limit, current_soul_hash)).await
     }
 
     async fn store_karma(
@@ -187,7 +193,14 @@ impl JobQueue for SqliteJobQueue {
         clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         Box::pin(self.do_store_karma(
-            job_id, skill_id, lesson, karma_type, soul_hash, domain, subtopic, clone_origin_id,
+            job_id,
+            skill_id,
+            lesson,
+            karma_type,
+            soul_hash,
+            domain,
+            subtopic,
+            clone_origin_id,
         ))
         .await
     }
@@ -236,8 +249,7 @@ impl JobQueue for SqliteJobQueue {
         milestone_days: i64,
         limit: i64,
     ) -> Result<Vec<Job>, AiomeError> {
-        Box::pin(self.do_fetch_jobs_for_evaluation(milestone_days, limit))
-            .await
+        Box::pin(self.do_fetch_jobs_for_evaluation(milestone_days, limit)).await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -274,8 +286,7 @@ impl JobQueue for SqliteJobQueue {
         verdict: OracleVerdict,
         soul_hash: &str,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_apply_final_verdict(record_id, verdict, soul_hash))
-            .await
+        Box::pin(self.do_apply_final_verdict(record_id, verdict, soul_hash)).await
     }
 
     async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
@@ -312,8 +323,14 @@ impl JobQueue for SqliteJobQueue {
         inspiration: Option<&str>,
         karma_json: Option<&str>,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_record_evolution_event(level, event_type, description, inspiration, karma_json))
-            .await
+        Box::pin(self.do_record_evolution_event(
+            level,
+            event_type,
+            description,
+            inspiration,
+            karma_json,
+        ))
+        .await
     }
 
     async fn fetch_evolution_history(
@@ -348,8 +365,7 @@ impl JobQueue for SqliteJobQueue {
         new_hash: &str,
         reason: &str,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_record_soul_mutation(old_hash, new_hash, reason))
-            .await
+        Box::pin(self.do_record_soul_mutation(old_hash, new_hash, reason)).await
     }
 
     async fn fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError> {
@@ -369,8 +385,7 @@ impl JobQueue for SqliteJobQueue {
         limit: i64,
         current_soul_hash: &str,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        Box::pin(self.do_fetch_unincorporated_karma(limit, current_soul_hash))
-            .await
+        Box::pin(self.do_fetch_unincorporated_karma(limit, current_soul_hash)).await
     }
 
     async fn mark_karma_as_incorporated(
@@ -378,8 +393,7 @@ impl JobQueue for SqliteJobQueue {
         karma_ids: Vec<String>,
         new_soul_hash: &str,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_mark_karma_as_incorporated(karma_ids, new_soul_hash))
-            .await
+        Box::pin(self.do_mark_karma_as_incorporated(karma_ids, new_soul_hash)).await
     }
 
     async fn store_immune_rule(&self, rule: &ImmuneRule) -> Result<(), AiomeError> {
@@ -642,8 +656,7 @@ impl SqliteJobQueue {
         channel_id: &str,
         summary: &str,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_update_chat_memory_summary(channel_id, summary))
-            .await
+        Box::pin(self.do_update_chat_memory_summary(channel_id, summary)).await
     }
 
     pub async fn fetch_undistilled_chats_by_channel(

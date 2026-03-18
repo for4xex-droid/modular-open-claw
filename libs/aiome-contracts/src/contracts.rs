@@ -410,11 +410,11 @@ pub struct FederatedKarma {
     pub node_id: String,
     #[serde(default)]
     pub signature: Option<String>,
-    
+
     // --- Phase SC-MB: Clone Tracking ---
     #[serde(default)]
     pub clone_origin_id: Option<String>,
-    
+
     // --- Phase Soul Engine v3 ---
     #[serde(default)]
     pub generation: Option<u32>,
@@ -548,7 +548,8 @@ mod tests {
         };
         let json2 = serde_json::to_string(&event2).expect("Failed to serialize Rebirth");
         assert!(json2.contains("Rebirth"));
-        let deserialized2: SamsaraEvent = serde_json::from_str(&json2).expect("Failed to deserialize");
+        let deserialized2: SamsaraEvent =
+            serde_json::from_str(&json2).expect("Failed to deserialize");
         match deserialized2 {
             SamsaraEvent::Rebirth { new_generation, .. } => assert_eq!(new_generation, 2),
             _ => panic!("Wrong variant"),

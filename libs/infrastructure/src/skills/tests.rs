@@ -8,8 +8,8 @@
 #[cfg(test)]
 mod tests {
     use crate::skills::WasmSkillManager;
-    use std::path::PathBuf;
     use serde_json::json;
+    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_wasm_skill_timeout() {
@@ -109,10 +109,11 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
-        
+
         // Setup manager
-        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
-        
+        let manager =
+            WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+
         // 1. Missing skill should fail verification
         let unverified = crate::skills::UnverifiedSkill {
             name: "non_existent".into(),
@@ -120,7 +121,7 @@ mod tests {
         };
         let res = unverified.verify(&manager).await;
         assert!(res.is_err());
-        
+
         // 2. We can't easily execute a real WASM here without a valid file,
         // but we've tested the logic in dry_run_skill.
     }
@@ -130,12 +131,13 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
-        
+
         std::fs::write(skills_dir.join("test.wasm"), b"wasm").unwrap();
-        
-        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+
+        let manager =
+            WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
         let metadata = manager.list_skills_with_metadata();
-        
+
         assert_eq!(metadata.len(), 1);
         assert_eq!(metadata[0].name, "test");
         assert_eq!(metadata[0].description, "No metadata provided");
@@ -146,7 +148,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
-        
+
         std::fs::write(skills_dir.join("calc.wasm"), b"wasm").unwrap();
         let meta_json = json!({
             "name": "calc",
@@ -158,12 +160,16 @@ mod tests {
             "permissions": { "allow_filesystem_write": false, "allow_network": true, "allow_shell_execution": false, "allowed_domains": [] }
         });
         std::fs::write(skills_dir.join("calc.meta.json"), meta_json.to_string()).unwrap();
-        
-        let manager = WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
+
+        let manager =
+            WasmSkillManager::new(skills_dir.to_path_buf(), temp_dir.path().to_path_buf()).unwrap();
         let metadata = manager.list_skills_with_metadata();
-        
+
         assert_eq!(metadata.len(), 1);
         assert_eq!(metadata[0].name, "calc");
-        assert_eq!(metadata[0].allowed_hosts, vec!["api.example.com".to_string()]);
+        assert_eq!(
+            metadata[0].allowed_hosts,
+            vec!["api.example.com".to_string()]
+        );
     }
 }

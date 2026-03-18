@@ -228,6 +228,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
+ "soul",
  "sqlx",
  "subtle",
  "sysinfo",
@@ -7754,6 +7755,7 @@ dependencies = [
  "serde",
  "sha2",
  "thiserror 1.0.69",
+ "tokio",
  "tracing",
  "uuid 1.22.0",
 ]

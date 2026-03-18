@@ -394,7 +394,8 @@ impl CoreOps for SqliteJobQueue {
                 sns_content_id: try_get_optional_string(&r, "sns_content_id"),
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
-                agent_id: try_get_optional_string(&r, "agent_id").and_then(|s| Uuid::parse_str(&s).ok()),
+                agent_id: try_get_optional_string(&r, "agent_id")
+                    .and_then(|s| Uuid::parse_str(&s).ok()),
                 permission_manifest: r
                     .try_get::<String, _>("permission_manifest")
                     .ok()

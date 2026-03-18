@@ -101,12 +101,18 @@ impl ArtifactStore for SqliteArtifactStore {
             artifact_files.push(file_meta);
         }
 
-        let file_manifest_json = serde_json::to_string(&artifact_files)
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize artifact files: {}", e) })?;
-        let tags_json = serde_json::to_string(&req.tags)
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize tags: {}", e) })?;
-        let karma_refs_json = serde_json::to_string(&req.karma_refs)
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize karma refs: {}", e) })?;
+        let file_manifest_json =
+            serde_json::to_string(&artifact_files).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize artifact files: {}", e),
+            })?;
+        let tags_json =
+            serde_json::to_string(&req.tags).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize tags: {}", e),
+            })?;
+        let karma_refs_json =
+            serde_json::to_string(&req.karma_refs).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize karma refs: {}", e),
+            })?;
 
         // SEC-6: Enforce payload size limits (max 500KB total for metadata)
         if file_manifest_json.len() + tags_json.len() + karma_refs_json.len() > 500 * 1024 {
@@ -358,16 +364,25 @@ impl ArtifactStore for SqliteArtifactStore {
         if let Err(e) = sqlx::query("DELETE FROM ai_artifacts WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
-            .await {
-                warn!("🛡️ [ArtifactStore] Failed to delete artifact metadata from DB: {}", e);
-            }
-        if let Err(e) = sqlx::query("DELETE FROM artifact_edges WHERE source_id = ? OR target_id = ?")
-            .bind(id)
-            .bind(id)
-            .execute(&self.pool)
-            .await {
-                warn!("🛡️ [ArtifactStore] Failed to delete artifact edges from DB (continuing): {}", e);
-            }
+            .await
+        {
+            warn!(
+                "🛡️ [ArtifactStore] Failed to delete artifact metadata from DB: {}",
+                e
+            );
+        }
+        if let Err(e) =
+            sqlx::query("DELETE FROM artifact_edges WHERE source_id = ? OR target_id = ?")
+                .bind(id)
+                .bind(id)
+                .execute(&self.pool)
+                .await
+        {
+            warn!(
+                "🛡️ [ArtifactStore] Failed to delete artifact edges from DB (continuing): {}",
+                e
+            );
+        }
 
         Ok(())
     }
@@ -393,7 +408,8 @@ impl ArtifactStore for SqliteArtifactStore {
                 target_id: r.get("target_id"),
                 source_type: r.get("source_type"),
                 relation: r.get("relation"),
-                metadata: serde_json::from_str(r.get("metadata")).unwrap_or_else(|_| serde_json::json!({})),
+                metadata: serde_json::from_str(r.get("metadata"))
+                    .unwrap_or_else(|_| serde_json::json!({})),
                 created_at: r.get("created_at"),
             });
         }

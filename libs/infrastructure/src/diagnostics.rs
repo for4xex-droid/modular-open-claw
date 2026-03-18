@@ -7,10 +7,10 @@
 
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep};
 use aiome_core::traits::Job;
-use std::sync::Arc;
+use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep};
 use chrono::Utc;
+use std::sync::Arc;
 
 pub struct AgentRxDiagnostics {
     provider: Arc<dyn LlmProvider>,
@@ -46,13 +46,17 @@ impl AgentRxDiagnostics {
             job_json, trajectory_json
         );
 
-        let resp = self.provider.complete(&prompt, Some("厳格なJSON形式で応答してください。")).await?;
-        
+        let resp = self
+            .provider
+            .complete(&prompt, Some("厳格なJSON形式で応答してください。"))
+            .await?;
+
         // JSON抽出（既存のロジックを想定、あるいはシンプルにパース）
         let json_str = crate::concept_manager::extract_json(&resp.content)?;
-        let v: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to parse diagnostic JSON: {}", e),
-        })?;
+        let v: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to parse diagnostic JSON: {}", e),
+            })?;
 
         let step_id = v["critical_failure_step"].as_u64().unwrap_or(0) as u32;
         let cat_str = v["failure_category"].as_str().unwrap_or("SystemFailure");
@@ -61,7 +65,8 @@ impl AgentRxDiagnostics {
         let hint = v["self_repair_hint"].as_str().unwrap_or("").to_string();
 
         // 当該ステップの違反情報を収集
-        let evidence = trajectory.iter()
+        let evidence = trajectory
+            .iter()
             .find(|s| s.step_id == step_id)
             .map(|s| s.constraint_violations.clone())
             .unwrap_or_default();

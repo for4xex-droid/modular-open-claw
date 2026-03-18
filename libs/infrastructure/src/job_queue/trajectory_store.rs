@@ -5,17 +5,21 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use super::SqliteJobQueue;
 use aiome_core::error::AiomeError;
-use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore, FailureCategory};
+use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep, TrajectoryStore};
 use async_trait::async_trait;
 use sqlx::Row;
-use super::SqliteJobQueue;
 
 #[async_trait]
 pub trait TrajectoryOps {
     async fn do_record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError>;
     async fn do_fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError>;
-    async fn do_store_diagnosis(&self, job_id: &str, diagnosis: AgentDiagnosis) -> Result<(), AiomeError>;
+    async fn do_store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: AgentDiagnosis,
+    ) -> Result<(), AiomeError>;
     async fn do_fetch_diagnosis(&self, job_id: &str) -> Result<Option<AgentDiagnosis>, AiomeError>;
 }
 
@@ -29,7 +33,11 @@ impl TrajectoryStore for SqliteJobQueue {
         self.do_fetch_trajectory(job_id).await
     }
 
-    async fn store_diagnosis(&self, job_id: &str, diagnosis: AgentDiagnosis) -> Result<(), AiomeError> {
+    async fn store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: AgentDiagnosis,
+    ) -> Result<(), AiomeError> {
         self.do_store_diagnosis(job_id, diagnosis).await
     }
 
@@ -43,7 +51,8 @@ impl TrajectoryOps for SqliteJobQueue {
     async fn do_record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError> {
         let input_json = serde_json::to_string(&step.input).unwrap_or_else(|_| "{}".to_string());
         let output_json = serde_json::to_string(&step.output).unwrap_or_else(|_| "{}".to_string());
-        let violations_json = serde_json::to_string(&step.constraint_violations).unwrap_or_else(|_| "[]".to_string());
+        let violations_json =
+            serde_json::to_string(&step.constraint_violations).unwrap_or_else(|_| "[]".to_string());
         let failure_cat = step.failure_category.map(|c| c.to_string());
         let is_critical = if step.is_critical_failure { 1 } else { 0 };
 
@@ -79,7 +88,7 @@ impl TrajectoryOps for SqliteJobQueue {
         for row in rows {
             let input_json: String = row.get(2);
             let output_json: String = row.get(3); // Wait, index might be wrong if I use get by index. Let's use name.
-            
+
             // Re-fetch using names to be safe
             let step_id: i64 = row.get("step_id");
             let action: String = row.get("action");
@@ -112,8 +121,13 @@ impl TrajectoryOps for SqliteJobQueue {
         Ok(steps)
     }
 
-    async fn do_store_diagnosis(&self, job_id: &str, diagnosis: AgentDiagnosis) -> Result<(), AiomeError> {
-        let evidence_json = serde_json::to_string(&diagnosis.evidence).unwrap_or_else(|_| "[]".to_string());
+    async fn do_store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: AgentDiagnosis,
+    ) -> Result<(), AiomeError> {
+        let evidence_json =
+            serde_json::to_string(&diagnosis.evidence).unwrap_or_else(|_| "[]".to_string());
         let category_str = diagnosis.category.to_string();
 
         sqlx::query(
@@ -149,7 +163,8 @@ impl TrajectoryOps for SqliteJobQueue {
             let hint: String = row.get("self_repair_hint");
             let diagn_at: String = row.get("diagnosed_at");
 
-            let category = FailureCategory::from_str(&cat_str).unwrap_or(FailureCategory::SystemFailure);
+            let category =
+                FailureCategory::from_str(&cat_str).unwrap_or(FailureCategory::SystemFailure);
             let evidence = serde_json::from_str(&evidence_str).unwrap_or_default();
 
             Ok(Some(AgentDiagnosis {

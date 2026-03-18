@@ -1,4 +1,4 @@
-use crate::types::{SystemStatus, LogEntry, AgentStats};
+use crate::types::{AgentStats, LogEntry, SystemStatus};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

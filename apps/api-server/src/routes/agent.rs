@@ -375,7 +375,9 @@ pub async fn trigger_agent_chat(
         );
         let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
             tracing::error!("Failed to acquire LLM permit: {}", e);
-            crate::error::AppError(aiome_core::error::AiomeError::Infrastructure { reason: "Service unavailable due to quota/shutdown".into() })
+            crate::error::AppError(aiome_core::error::AiomeError::Infrastructure {
+                reason: "Service unavailable due to quota/shutdown".into(),
+            })
         })?;
 
         match timeout(
@@ -416,15 +418,14 @@ pub async fn trigger_agent_chat(
                         }
                     } else {
                         // 🛡️ AgentRx Integrated Call
-                        let res =
-                            skill_handler::execute_wasm_skill(
-                                &skill_name,
-                                &skill_input,
-                                &state,
-                                Some(&chat_execution_id),
-                                total_steps
-                            )
-                            .await;
+                        let res = skill_handler::execute_wasm_skill(
+                            &skill_name,
+                            &skill_input,
+                            &state,
+                            Some(&chat_execution_id),
+                            total_steps,
+                        )
+                        .await;
                         skill_results.push(res);
                     }
                 }
@@ -501,7 +502,9 @@ pub async fn trigger_agent_chat(
                     }
                 }
 
-                if !skill_results.is_empty() || resp.stop_reason == aiome_core::llm_provider::StopReason::ToolUse {
+                if !skill_results.is_empty()
+                    || resp.stop_reason == aiome_core::llm_provider::StopReason::ToolUse
+                {
                     current_history.push(format!("AI: {}", reply));
                     current_history
                         .push(format!("SYSTEM: [Results: {}]", skill_results.join("\n")));
@@ -540,14 +543,18 @@ pub async fn trigger_agent_chat(
         let provider = state.provider.clone();
         let diag_exec_id = chat_execution_id.clone();
         let prompt_clone = payload.prompt.clone();
-        
+
         tokio::spawn(async move {
             use aiome_core::trajectory::TrajectoryStore;
             if let Ok(trajectory) = jq.fetch_trajectory(&diag_exec_id).await {
-                if trajectory.iter().any(|s| s.is_critical_failure || !s.constraint_violations.is_empty()) {
+                if trajectory
+                    .iter()
+                    .any(|s| s.is_critical_failure || !s.constraint_violations.is_empty())
+                {
                     info!("🔍 [AgentRx] Failure or violation detected. Starting diagnostics for {}...", diag_exec_id);
-                    let diagnostics = infrastructure::diagnostics::AgentRxDiagnostics::new(provider);
-                    
+                    let diagnostics =
+                        infrastructure::diagnostics::AgentRxDiagnostics::new(provider);
+
                     // Create a virtual job for context
                     let virtual_job = aiome_core::traits::Job {
                         id: diag_exec_id.clone(),
@@ -574,7 +581,7 @@ pub async fn trigger_agent_chat(
                         Ok(diagnosis) => {
                             info!("✅ [AgentRx] Diagnosis complete: {}", diagnosis.root_cause);
                             let _ = jq.store_diagnosis(&diag_exec_id, diagnosis).await;
-                        },
+                        }
                         Err(e) => tracing::error!("❌ [AgentRx] Diagnostic failed: {}", e),
                     }
                 }

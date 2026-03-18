@@ -15,7 +15,7 @@
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。 | **新規実装** |
 | `context_engine` | 会話履歴や環境情報をLLMに提供するコンテキスト生成。 | 実装完了 |
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。 | **新規実装** |
-| `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。 | 実装完了 |
+| `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。Phase 2b で Soul Pipeline と統合済。 | **機能強化** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。 | **強化完了** |
@@ -24,10 +24,12 @@
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
+| `samsara_engine` | Soul Engine の L3 転生ロギック実体（LLM 蒸留連携・Phase 2 実働化済）。 | **Phase 2 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。 | 実装完了 |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。 | 実装完了 |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
+| `soul_adapter` | 内部イベントから Soul Engine 用の Experience オブジェクトへの変換および予測評価（Predictive Grounding）。 | **Phase 2 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）のSQLite永続化（L1-L3用）。 | **新規実装** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
@@ -37,4 +39,4 @@
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 
 ---
-*最終更新: 2026-03-18*
+*最終更新: 2026-03-19*

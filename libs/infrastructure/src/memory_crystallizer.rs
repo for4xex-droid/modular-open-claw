@@ -106,24 +106,41 @@ mod tests {
 
     #[async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.reply.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
             })
         }
-        async fn stream_complete(&self, _prompt: &str, _system: Option<&str>) -> Result<std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-            Err(AiomeError::Infrastructure { reason: "Not implemented".into() })
+        async fn stream_complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<
+            std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>,
+            AiomeError,
+        > {
+            Err(AiomeError::Infrastructure {
+                reason: "Not implemented".into(),
+            })
         }
-        fn name(&self) -> &str { "mock" }
-        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+        fn name(&self) -> &str {
+            "mock"
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
     }
 
     #[tokio::test]
     async fn test_distillation_cycle() {
         let (jq, _tmp): (SqliteJobQueue, _) = create_test_queue().await;
         let pool = jq.get_pool();
-        
+
         // Insert some raw karma for a skill
         for i in 0..15 {
             sqlx::query::<sqlx::Sqlite>("INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, created_at, domain) VALUES (?, 'Technical', 'test-skill', ?, 10, datetime('now'), 'global')")
@@ -134,7 +151,9 @@ mod tests {
         }
 
         let crystallizer = MemoryCrystallizer::new(
-            Arc::new(MockLlm { reply: "distilled wisdom".into() }),
+            Arc::new(MockLlm {
+                reply: "distilled wisdom".into(),
+            }),
             Arc::new(jq.clone()),
             Arc::new(Semaphore::new(1)),
         );
@@ -145,7 +164,7 @@ mod tests {
         let all_karma: Vec<SqliteRow> = sqlx::query::<sqlx::Sqlite>("SELECT id, karma_type, lesson FROM karma_logs WHERE related_skill = 'test-skill' AND karma_type = 'Synthesized'")
             .fetch_all(pool)
             .await.unwrap();
-        
+
         assert_eq!(all_karma.len(), 1);
         let lesson: String = all_karma[0].get("lesson");
         assert_eq!(lesson, "distilled wisdom");

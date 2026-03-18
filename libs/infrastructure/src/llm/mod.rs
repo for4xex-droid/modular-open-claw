@@ -5,5 +5,5 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-pub mod proxy;
 pub mod dynamic;
+pub mod proxy;

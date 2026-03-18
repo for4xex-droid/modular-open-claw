@@ -5,15 +5,15 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider, LlmResponse};
 use crate::circuit_breaker::CircuitBreaker;
 use crate::job_queue::SqliteJobQueue;
 use crate::slo_engine::SloEngine;
+use aiome_core::error::AiomeError;
+use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider, LlmResponse};
 use async_trait::async_trait;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio_stream::Stream;
-use std::pin::Pin;
 
 #[derive(Debug)]
 pub struct DynamicLlmProvider {
@@ -63,7 +63,9 @@ impl LlmProvider for DynamicLlmProvider {
                     .await
             }
             "lmstudio" => {
-                let host = self.get_host("lm_studio_host", "http://127.0.0.1:1234").await;
+                let host = self
+                    .get_host("lm_studio_host", "http://127.0.0.1:1234")
+                    .await;
                 aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
                     .complete(prompt, system)
                     .await
@@ -106,7 +108,9 @@ impl LlmProvider for DynamicLlmProvider {
                     .await
             }
             "lmstudio" => {
-                let host = self.get_host("lm_studio_host", "http://127.0.0.1:1234").await;
+                let host = self
+                    .get_host("lm_studio_host", "http://127.0.0.1:1234")
+                    .await;
                 aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
                     .stream_complete(prompt, system)
                     .await
@@ -164,31 +168,71 @@ impl EmbeddingProvider for DynamicLlmProvider {
 impl DynamicLlmProvider {
     async fn resolve_config(&self, is_bg: bool) -> (String, String) {
         let prefix = if is_bg { "bg_" } else { "" };
-        
-        let provider = self.jq.get_setting_value(&format!("{}llm_provider", prefix)).await.ok().flatten()
-            .or_else(|| if is_bg { std::env::var("BG_LLM_PROVIDER").ok() } else { None })
+
+        let provider = self
+            .jq
+            .get_setting_value(&format!("{}llm_provider", prefix))
+            .await
+            .ok()
+            .flatten()
+            .or_else(|| {
+                if is_bg {
+                    std::env::var("BG_LLM_PROVIDER").ok()
+                } else {
+                    None
+                }
+            })
             .unwrap_or_else(|| "ollama".to_string());
-            
-        let model = self.jq.get_setting_value(&format!("{}llm_model", prefix)).await.ok().flatten()
-            .or_else(|| if is_bg { std::env::var("BG_LLM_MODEL").ok() } else { None })
+
+        let model = self
+            .jq
+            .get_setting_value(&format!("{}llm_model", prefix))
+            .await
+            .ok()
+            .flatten()
+            .or_else(|| {
+                if is_bg {
+                    std::env::var("BG_LLM_MODEL").ok()
+                } else {
+                    None
+                }
+            })
             .unwrap_or_else(|| self.fallback_model.clone());
 
         (provider, model)
     }
 
     async fn get_api_key(&self, setting_name: &str, provider_name: &str) -> String {
-        self.jq.get_setting_value(setting_name).await.ok().flatten()
+        self.jq
+            .get_setting_value(setting_name)
+            .await
+            .ok()
+            .flatten()
             .or_else(|| match provider_name {
-                "gemini" => self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
-                "openai" => self.openai_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
-                "claude" => self.anthropic_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "gemini" => self
+                    .gemini_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "openai" => self
+                    .openai_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "claude" => self
+                    .anthropic_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
                 _ => None,
             })
             .unwrap_or_default()
     }
 
     async fn get_host(&self, setting_name: &str, default: &str) -> String {
-        self.jq.get_setting_value(setting_name).await.ok().flatten().unwrap_or_else(|| default.to_string())
+        self.jq
+            .get_setting_value(setting_name)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| default.to_string())
     }
 
     async fn handle_result<T>(&self, result: Result<T, AiomeError>) -> Result<T, AiomeError> {
@@ -219,12 +263,26 @@ pub struct BackgroundLlmProvider {
 
 #[async_trait]
 impl LlmProvider for BackgroundLlmProvider {
-    async fn complete(&self, prompt: &str, system: Option<&str>) -> Result<LlmResponse, AiomeError> {
-        let provider_type = self.jq.get_setting_value("bg_llm_provider").await.ok().flatten()
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        let provider_type = self
+            .jq
+            .get_setting_value("bg_llm_provider")
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
-        let model = self.jq.get_setting_value("bg_llm_model").await.ok().flatten()
+        let model = self
+            .jq
+            .get_setting_value("bg_llm_model")
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
             .unwrap_or_else(|| self.fallback_model.clone());
 
@@ -233,33 +291,54 @@ impl LlmProvider for BackgroundLlmProvider {
         match provider_type.as_str() {
             "gemini" => {
                 aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system).await
+                    .complete(prompt, system)
+                    .await
             }
             "openai" => {
                 aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system).await
+                    .complete(prompt, system)
+                    .await
             }
             "claude" => {
                 aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system).await
+                    .complete(prompt, system)
+                    .await
             }
             "lmstudio" => {
-                let host = self.jq.get_setting_value("lm_studio_host").await.ok().flatten()
+                let host = self
+                    .jq
+                    .get_setting_value("lm_studio_host")
+                    .await
+                    .ok()
+                    .flatten()
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
                 aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
-                    .complete(prompt, system).await
+                    .complete(prompt, system)
+                    .await
             }
             _ => {
-                let host = self.jq.get_setting_value("ollama_host").await.ok().flatten()
+                let host = self
+                    .jq
+                    .get_setting_value("ollama_host")
+                    .await
+                    .ok()
+                    .flatten()
                     .unwrap_or_else(|| self.fallback_host.clone());
                 aiome_core::llm_provider::OllamaProvider::new(host, model)
-                    .complete(prompt, system).await
+                    .complete(prompt, system)
+                    .await
             }
         }
     }
 
-    async fn stream_complete(&self, _prompt: &str, _system: Option<&str>) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-        Err(AiomeError::Infrastructure { reason: "Streaming not implemented for BackgroundProvider yet".to_string() })
+    async fn stream_complete(
+        &self,
+        _prompt: &str,
+        _system: Option<&str>,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "Streaming not implemented for BackgroundProvider yet".to_string(),
+        })
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -275,7 +354,8 @@ impl LlmProvider for BackgroundLlmProvider {
 #[async_trait]
 impl EmbeddingProvider for BackgroundLlmProvider {
     async fn embed(&self, text: &str, is_query: bool) -> Result<Vec<f32>, AiomeError> {
-        let embed_provider = std::env::var("EMBEDDING_PROVIDER").unwrap_or_else(|_| "ruri".to_string());
+        let embed_provider =
+            std::env::var("EMBEDDING_PROVIDER").unwrap_or_else(|_| "ruri".to_string());
 
         match embed_provider.as_str() {
             "ruri" => {
@@ -287,14 +367,24 @@ impl EmbeddingProvider for BackgroundLlmProvider {
                 );
                 match ruri.embed(text, is_query).await {
                     Ok(vec) => Ok(vec),
-                    Err(_) => self.gemini_embed_fallback(text, is_query).await
+                    Err(_) => self.gemini_embed_fallback(text, is_query).await,
                 }
             }
             "gemini" => self.gemini_embed_fallback(text, is_query).await,
             _ => {
-                let host = self.jq.get_setting_value("ollama_host").await.ok().flatten()
+                let host = self
+                    .jq
+                    .get_setting_value("ollama_host")
+                    .await
+                    .ok()
+                    .flatten()
                     .unwrap_or_else(|| self.fallback_host.clone());
-                let model = self.jq.get_setting_value("bg_llm_model").await.ok().flatten()
+                let model = self
+                    .jq
+                    .get_setting_value("bg_llm_model")
+                    .await
+                    .ok()
+                    .flatten()
                     .or_else(|| std::env::var("BG_LLM_MODEL").ok())
                     .unwrap_or_else(|| self.fallback_model.clone());
                 aiome_core::llm_provider::OllamaProvider::new(host, model)
@@ -316,10 +406,26 @@ impl EmbeddingProvider for BackgroundLlmProvider {
 
 impl BackgroundLlmProvider {
     async fn resolve_bg_api_key(&self) -> String {
-        self.jq.get_setting_value("bg_llm_api_key").await.ok().flatten()
-            .or_else(|| self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
-            .or_else(|| self.openai_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
-            .or_else(|| self.anthropic_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()))
+        self.jq
+            .get_setting_value("bg_llm_api_key")
+            .await
+            .ok()
+            .flatten()
+            .or_else(|| {
+                self.gemini_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
+            })
+            .or_else(|| {
+                self.openai_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
+            })
+            .or_else(|| {
+                self.anthropic_api_key
+                    .as_ref()
+                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
+            })
             .unwrap_or_default()
     }
 
@@ -330,10 +436,20 @@ impl BackgroundLlmProvider {
     ) -> Result<Vec<f32>, AiomeError> {
         let mut api_key = self.resolve_bg_api_key().await;
         if api_key.is_empty() {
-            api_key = self.jq.get_setting_value("llm_api_key").await.ok().flatten().unwrap_or_default();
+            api_key = self
+                .jq
+                .get_setting_value("llm_api_key")
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_default();
         }
         if api_key.is_empty() {
-            api_key = self.gemini_api_key.as_ref().map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()).unwrap_or_default();
+            api_key = self
+                .gemini_api_key
+                .as_ref()
+                .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
+                .unwrap_or_default();
         }
         if api_key.is_empty() {
             return Err(AiomeError::Infrastructure {

@@ -1,6 +1,6 @@
+use crate::commerce::CommerceEngine;
 use async_trait::async_trait;
 use std::sync::Arc;
-use crate::commerce::CommerceEngine;
 
 /// プラグインが提供するルート。Axum に依存しない不透明なハンドル。
 pub type OpaqueRouter = Box<dyn std::any::Any + Send + Sync>;
