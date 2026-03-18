@@ -17,3 +17,11 @@ pub enum SoulError {
     #[error("Internal engine error: {0}")]
     Internal(String),
 }
+
+impl From<SoulError> for aiome_contracts::error::AiomeError {
+    fn from(e: SoulError) -> Self {
+        aiome_contracts::error::AiomeError::Infrastructure {
+            reason: e.to_string(),
+        }
+    }
+}

@@ -56,6 +56,8 @@ struct FederatedKarmaRecord {
     signature: Option<String>,
     created_at: String,
     clone_origin_id: Option<String>,
+    generation: Option<u32>,
+    somatic_valence: Option<f64>,
 }
 
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
@@ -194,7 +196,9 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
             signature TEXT,
             approved_at TEXT,
             created_at TEXT NOT NULL,
-            clone_origin_id TEXT
+            clone_origin_id TEXT,
+            generation INTEGER,
+            somatic_valence REAL
         );",
     )
     .execute(pool)
@@ -213,7 +217,9 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
             signature TEXT,
             received_at TEXT,
             created_at TEXT NOT NULL,
-            clone_origin_id TEXT
+            clone_origin_id TEXT,
+            generation INTEGER,
+            somatic_valence REAL
         );",
     )
     .execute(pool)
@@ -688,7 +694,7 @@ async fn sync_handler(
 
     // Fetch ONLY approved data with Pagination (Flaw 2: OOM Defense)
     let karmas = sqlx::query_as::<_, FederatedKarmaRecord>(
-        "SELECT id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM approved_karma 
+        "SELECT id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id, generation, somatic_valence FROM approved_karma 
          WHERE approved_at > ? ORDER BY approved_at ASC LIMIT 500"
     ).bind(&since).fetch_all(&state.pool).await.unwrap_or_default();
 
@@ -860,13 +866,14 @@ async fn push_handler(
         }
 
         if let Err(e) = sqlx::query(
-            "INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, signature, received_at, clone_origin_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, signature, received_at, clone_origin_id, generation, somatic_valence)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO NOTHING"
         )
         .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
         .bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at)
         .bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at).bind(&k.clone_origin_id)
+        .bind(k.generation).bind(k.somatic_valence)
         .execute(&mut *tx).await {
             warn!("🛡️ [Push] Failed to quarantine karma {}: {}", k.id, e);
         }
@@ -1103,9 +1110,10 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 match pool.begin().await {
                     Ok(mut tx) => {
                         let approved_at = chrono::Utc::now().to_rfc3339();
-                        if let Err(e) = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+                        if let Err(e) = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, clone_origin_id, generation, somatic_valence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
                             .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
                             .bind(k.weight).bind(&k.soul_version_hash).bind(k.lamport_clock).bind(&k.signature).bind(&k.created_at).bind(&approved_at).bind(&k.clone_origin_id)
+                            .bind(k.generation).bind(k.somatic_valence)
                             .execute(&mut *tx).await {
                                 warn!("🛡️ [ApprovalWorker] Failed to insert approved karma {}: {}", k.id, e);
                             }

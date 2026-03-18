@@ -28,6 +28,22 @@ pub struct AgentSoul {
 }
 
 impl AgentSoul {
+    pub fn new(id: String) -> Self {
+        let mut soul = Self {
+            id,
+            generation: 1,
+            soul_hash: String::new(),
+            somatic_markers: Vec::new(),
+            defenses: Vec::new(),
+            predictive_model: PredictiveModel::default(),
+            attachment: AttachmentModel::default(),
+            instinct: Instinct::default(),
+            experience_buffer: Vec::new(),
+        };
+        soul.compute_hash();
+        soul
+    }
+
     pub fn compute_hash(&mut self) -> String {
         let payload = format!(
             "{}:{}:{}:{}:{}",

@@ -28,7 +28,8 @@
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。 | 実装完了 |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
-| `soul_mutator` | 経験に基づく人格（SOUL）の動的な書き換え。 | 実装完了 |
+| `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
+| `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）のSQLite永続化（L1-L3用）。 | **新規実装** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
 | `trend_sonar` | 外部トレンドの収集と、それに基づく企画の提案。 | 実装完了 |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |

@@ -13,7 +13,24 @@ pub struct SomaticMarker {
 impl SomaticMarker {
     pub fn resonance(&self, input_embedding: &[f32]) -> f64 {
         let similarity = math_utils::cosine_similarity(&self.embedding, input_embedding);
-        similarity * self.intensity * self.arousal
+        
+        // R-5: Clamp bounded values just in case
+        let _v = self.valence.clamp(-1.0, 1.0);
+        let a = self.arousal.clamp(0.0, 1.0);
+        let i = self.intensity.clamp(0.0, 1.0);
+        
+        similarity * i * a
+    }
+
+    pub fn new_clamped(id: String, embedding: Vec<f32>, valence: f64, arousal: f64, intensity: f64, created_at: String) -> Self {
+        Self {
+            id,
+            embedding,
+            valence: valence.clamp(-1.0, 1.0),
+            arousal: arousal.clamp(0.0, 1.0),
+            intensity: intensity.clamp(0.0, 1.0),
+            created_at,
+        }
     }
 }
 
