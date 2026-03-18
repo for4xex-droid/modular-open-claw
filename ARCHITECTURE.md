@@ -38,6 +38,7 @@ graph TD
         fs_writer(fs_writer)
         napi-bridge(napi-bridge)
         aiome-contracts(aiome-contracts)
+        soul(soul)
     end
 
     api-server --> infrastructure
@@ -50,6 +51,7 @@ graph TD
     key-proxy --> shared
     aiome-core --> shared
     aiome-core --> aiome-contracts
+    infrastructure --> soul
     infrastructure --> aiome-contracts
     infrastructure --> shared
     shared --> aiome-contracts
@@ -59,6 +61,7 @@ graph TD
     watchtower --> aiome-core
     watchtower --> infrastructure
     watchtower --> shared
+    soul --> aiome-contracts
 ```
 
 ## 4. Directory Map (Crates)
@@ -78,12 +81,13 @@ graph TD
 | `management-console` | `apps/management-console/src-tauri` | A Tauri App |
 | `watchtower` | `apps/watchtower` | (Core Module) |
 | `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
+| `soul` | `libs/soul` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
 ```text
-AIOME_DB_PATH, LOG_LEVEL, PORT, OLLAMA_HOST, OLLAMA_MODEL, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, RURI_EMBED_URL, GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, SEARCH_API_KEY, API_SERVER_SECRET, VAULT_SECRET, ALLOWED_ORIGINS, DISCORD_TOKEN, TELEGRAM_TOKEN, DISCORD_CHAT_CHANNEL_ID, DISCORD_COMMAND_CHANNEL_ID, API_WS_URL, FEDERATION_SECRET, SAMSARA_HUB_REST, SAMSARA_HUB_WS, WORKSPACE_DIR, KEY_PROXY_URL, ENFORCE_GUARDRAIL, KEY_PROXY_PORT
+AIOME_DB_PATH, LOG_LEVEL, PORT, OLLAMA_HOST, OLLAMA_MODEL, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, RURI_EMBED_URL, GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, SEARCH_API_KEY, API_SERVER_SECRET, VAULT_SECRET, ALLOWED_ORIGINS, DISCORD_TOKEN, TELEGRAM_TOKEN, DISCORD_CHAT_CHANNEL_ID, DISCORD_COMMAND_CHANNEL_ID, API_WS_URL, FEDERATION_SECRET, SAMSARA_HUB_REST, SAMSARA_HUB_WS, WORKSPACE_DIR, KEY_PROXY_URL, ENFORCE_GUARDRAIL, KEY_PROXY_PORT, BIND_ALL, BIOME_HUB_WHITELIST, DATABASE_URL, GEMINI_EMBED_MODEL, GEMINI_MODEL, HOME, QUOTA_DB_PATH, SAMSARA_HUB_URL, SEARCH_API_ENDPOINT, SKILL_FORGE_ENABLED
 ```
 
 ---
-*Last Auto-Generated: 2026-03-18 16:48:22 UTC*
+*Last Auto-Generated: 2026-03-18 23:26:35 UTC*
