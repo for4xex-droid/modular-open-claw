@@ -102,7 +102,7 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                         .record_evolution_event(
                             0, // System level
                             "SecurityAlert",
-                            "Reactive layer triggered a warning for suspicious activity.",
+                            &format!("Reactive layer WARNING for suspicious activity: {}", context.chars().take(200).collect::<String>()),
                             None,
                             None,
                         )

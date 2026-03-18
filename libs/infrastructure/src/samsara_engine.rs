@@ -224,3 +224,74 @@ impl SamsaraEngine for DefaultSamsaraEngine {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aiome_core::llm_provider::{LlmProvider, LlmResponse};
+    use async_trait::async_trait;
+    use soul::model::{AgentSoul, Experience};
+    use aiome_core::error::AiomeError;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        response_content: String,
+        should_fail: bool,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        fn name(&self) -> &str {
+            "MockLlm"
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+            if self.should_fail {
+                Err(AiomeError::Infrastructure { reason: "mock failure".into() })
+            } else {
+                Ok(LlmResponse {
+                    content: self.response_content.clone(),
+                    stop_reason: aiome_contracts::StopReason::EndTurn,
+                })
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rebirth_narrative_generation() {
+        let mock_llm = Arc::new(MockLlm {
+            response_content: "I am a synthesized narrative.".into(),
+            should_fail: false,
+        });
+        
+        let engine = DefaultSamsaraEngine::new(mock_llm, "mock_distill".into());
+        let mut soul = AgentSoul::new("test-soul".into());
+        soul.experience_buffer.push(Experience::default());
+        
+        // Initial narrative is None
+        assert_eq!(soul.anamnesis.narrative_self, None);
+        
+        let new_soul = engine.rebirth(soul).await.unwrap();
+        assert_eq!(new_soul.anamnesis.narrative_self, Some("I am a synthesized narrative.".into()));
+    }
+
+    #[tokio::test]
+    async fn test_rebirth_narrative_fallback() {
+        let mock_llm = Arc::new(MockLlm {
+            response_content: "Will fail".into(),
+            should_fail: true,
+        });
+        
+        let engine = DefaultSamsaraEngine::new(mock_llm, "mock_distill".into());
+        let mut soul = AgentSoul::new("test-soul".into());
+        soul.anamnesis.narrative_self = Some("Old narrative.".into());
+        soul.experience_buffer.push(Experience::default());
+        
+        let new_soul = engine.rebirth(soul).await.unwrap();
+        
+        // Should fallback to old narrative because LLM failed
+        assert_eq!(new_soul.anamnesis.narrative_self, Some("Old narrative.".into()));
+    }
+}
