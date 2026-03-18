@@ -729,6 +729,8 @@ async fn sync_handler(
                 node_id: k.node_id,
                 signature: k.signature,
                 clone_origin_id: k.clone_origin_id,
+                generation: k.generation,
+                somatic_valence: k.somatic_valence,
             })
             .collect(),
         new_immune_rules: rules

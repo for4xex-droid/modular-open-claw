@@ -5,6 +5,7 @@ use std::collections::HashMap;
 pub struct PredictiveModel {
     pub domains: HashMap<String, DomainModel>,
     pub global_surprise_sensitivity: f64,
+    pub ema_learning_rate: f64,
 }
 
 impl Default for PredictiveModel {
@@ -12,6 +13,7 @@ impl Default for PredictiveModel {
         Self {
             domains: HashMap::new(),
             global_surprise_sensitivity: 0.5,
+            ema_learning_rate: 0.05,
         }
     }
 }
@@ -42,9 +44,31 @@ impl PredictiveModel {
         
         // Accurate prediction means less plasticity (more stubborn)
         // Inaccurate prediction means more plasticity (more flexible)
-        dm.prediction_accuracy = dm.prediction_accuracy * 0.95 + (1.0 - surprise.clamp(0.0, 1.0)) * 0.05;
+        let alpha = self.ema_learning_rate;
+        dm.prediction_accuracy = dm.prediction_accuracy * (1.0 - alpha) + (1.0 - surprise.clamp(0.0, 1.0)) * alpha;
         dm.local_plasticity = 1.0 - dm.prediction_accuracy;
         dm.last_surprise = surprise;
         dm.experience_count += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_predictive_model_update_plasticity() {
+        let mut p = PredictiveModel::default();
+        p.ema_learning_rate = 0.1;
+
+        // Accurate prediction
+        p.update_plasticity("test", 1.0, 1.0); // surprise = 0
+        let dm_acc = p.domains.get("test").unwrap().prediction_accuracy;
+        assert!(dm_acc > 0.5); // should increase from default 0.5
+
+        // Inaccurate prediction
+        p.update_plasticity("test", 0.0, 1.0); // surprise = 1
+        let dm2 = p.domains.get("test").unwrap();
+        assert!(dm2.prediction_accuracy < dm_acc);
     }
 }

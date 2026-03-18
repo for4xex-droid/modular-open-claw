@@ -536,6 +536,22 @@ mod tests {
                 assert_eq!(old_level, 1);
                 assert_eq!(new_level, 2);
             }
+            _ => panic!("Expected LevelUp variant"),
+        }
+
+        let event2 = SamsaraEvent::Rebirth {
+            old_generation: 1,
+            new_generation: 2,
+            instinct_hash: "hash".into(),
+            distilled_rules_count: 5,
+            attachment_style: "Secure".into(),
+        };
+        let json2 = serde_json::to_string(&event2).expect("Failed to serialize Rebirth");
+        assert!(json2.contains("Rebirth"));
+        let deserialized2: SamsaraEvent = serde_json::from_str(&json2).expect("Failed to deserialize");
+        match deserialized2 {
+            SamsaraEvent::Rebirth { new_generation, .. } => assert_eq!(new_generation, 2),
+            _ => panic!("Wrong variant"),
         }
     }
 

@@ -1,5 +1,6 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::somatic::SomaticMarker;
 use crate::defense::Defense;
@@ -24,6 +25,24 @@ pub struct AgentSoul {
     // L3: Meta-cognitive
     pub instinct: Instinct,
     pub experience_buffer: Vec<Experience>,
+}
+
+impl AgentSoul {
+    pub fn compute_hash(&mut self) -> String {
+        let payload = format!(
+            "{}:{}:{}:{}:{}",
+            self.id,
+            self.generation,
+            self.instinct.hash,
+            self.attachment.interaction_count,
+            self.predictive_model.global_surprise_sensitivity
+        );
+        let mut hasher = Sha256::new();
+        hasher.update(payload.as_bytes());
+        let hash = format!("{:x}", hasher.finalize());
+        self.soul_hash = hash.clone();
+        hash
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

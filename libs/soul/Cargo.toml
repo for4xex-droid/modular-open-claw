@@ -11,6 +11,7 @@ thiserror = { workspace = true }
 chrono = { workspace = true }
 aiome-contracts = { workspace = true }
 uuid = { workspace = true }
+sha2 = "0.10"
 
 [lints]
 workspace = true

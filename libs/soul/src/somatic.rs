@@ -31,3 +31,34 @@ pub mod math_utils {
         (dot_product / (norm_v1 * norm_v2)) as f64
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cosine_similarity() {
+        let v1 = vec![1.0, 0.0, 0.0];
+        let v2 = vec![1.0, 0.0, 0.0];
+        assert!((math_utils::cosine_similarity(&v1, &v2) - 1.0).abs() < f64::EPSILON);
+
+        let v3 = vec![0.0, 1.0, 0.0];
+        assert!((math_utils::cosine_similarity(&v1, &v3)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_somatic_resonance() {
+        let marker = SomaticMarker {
+            id: "1".into(),
+            embedding: vec![1.0, 1.0],
+            valence: 0.5,
+            arousal: 0.8,
+            intensity: 0.9,
+            created_at: "test".into(),
+        };
+
+        let resonance = marker.resonance(&[1.0, 1.0]);
+        // similarity is 1.0, so resonance = 1.0 * 0.9 * 0.8 = 0.72
+        assert!((resonance - 0.72).abs() < 1e-5);
+    }
+}

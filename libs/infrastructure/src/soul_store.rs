@@ -14,6 +14,19 @@ impl SqliteSoulStore {
     }
 
     pub async fn save_soul(&self, soul: &AgentSoul) -> Result<(), AiomeError> {
+        if soul.id.is_empty() {
+            return Err(AiomeError::Infrastructure { reason: "Soul ID cannot be empty".into() });
+        }
+
+        // I-2: Truncate experience buffer if too large (e.g., retain only the latest 10,000)
+        let buffer_limit = 10_000;
+        let mut buffer_to_save = soul.experience_buffer.clone();
+        if buffer_to_save.len() > buffer_limit {
+            let skip_count = buffer_to_save.len() - buffer_limit;
+            buffer_to_save = buffer_to_save.into_iter().skip(skip_count).collect();
+            warn!("⚠️ [SoulStore] Truncated experience_buffer for {} from {} to {}", soul.id, soul.experience_buffer.len(), buffer_limit);
+        }
+
         let somatic_json = serde_json::to_string(&soul.somatic_markers)
             .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
         let defenses_json = serde_json::to_string(&soul.defenses)
@@ -24,7 +37,7 @@ impl SqliteSoulStore {
             .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
         let instinct_json = serde_json::to_string(&soul.instinct)
             .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-        let buffer_json = serde_json::to_string(&soul.experience_buffer)
+        let buffer_json = serde_json::to_string(&buffer_to_save)
             .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
         sqlx::query(

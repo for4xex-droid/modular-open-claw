@@ -1,3 +1,8 @@
+#![forbid(unsafe_code)]
+//! # Soul Engine
+//!
+//! AIエージェントに「魂」を宿すためのフェーズ3 アーキテクチャ
+
 pub mod adapter;
 pub mod attachment;
 pub mod defense;
@@ -10,14 +15,14 @@ pub mod predictive;
 pub mod somatic;
 pub mod anamnesis;
 
-pub use adapter::*;
-pub use attachment::*;
-pub use defense::*;
-pub use engine::*;
-pub use error::*;
-pub use instinct::*;
-pub use model::*;
-pub use pipeline::*;
-pub use predictive::*;
-pub use somatic::*;
-pub use anamnesis::*;
+pub use adapter::SoulDomainAdapter;
+pub use attachment::{AttachmentModel, AttachmentStyle};
+pub use defense::{Defense, DefenseAction, DefenseTrigger};
+pub use engine::SamsaraEngine;
+pub use error::SoulError;
+pub use instinct::{Instinct, InstinctRule};
+pub use model::{AgentSoul, Experience};
+pub use pipeline::SoulPipeline;
+pub use predictive::{DomainModel, PredictiveModel};
+pub use somatic::SomaticMarker;
+pub use anamnesis::AnamnesisProfile;

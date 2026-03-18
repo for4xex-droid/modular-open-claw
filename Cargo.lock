@@ -7752,6 +7752,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "serde",
+ "sha2",
  "thiserror 1.0.69",
  "tracing",
  "uuid 1.22.0",
