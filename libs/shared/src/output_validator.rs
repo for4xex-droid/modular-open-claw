@@ -20,11 +20,11 @@ pub enum ValidationResult<T> {
     Valid(T),
     /// パース失敗 — 修正用のフィードバックメッセージを含む
     Invalid {
-        /// 自動補完ドキュメント
+        /// LLMから返された生の出力文字列
         raw_output: String,
-        /// 自動補完ドキュメント
+        /// パースエラーの詳細メッセージ
         error_message: String,
-        /// 自動補完ドキュメント
+        /// LLMに再送するための修正プロンプト
         repair_prompt: String,
     },
 }

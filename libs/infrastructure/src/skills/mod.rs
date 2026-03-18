@@ -12,24 +12,24 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tracing::{error, info};
-/// 自動補完モジュール
+/// `actions_importer` モジュール
 pub mod actions_importer;
-/// 自動補完モジュール
+/// `cleanroom` モジュール
 pub mod cleanroom;
-/// 自動補完モジュール
+/// `forge` モジュール
 pub mod forge;
-/// 自動補完モジュール
+/// `importer` モジュール
 pub mod importer;
-/// 自動補完モジュール
+/// スキルの並列実行と評価
 pub mod skill_arena;
 use contracts::requires;
 
 /// 状態: 未検証の外部Skill (TypeState Pattern)
 #[derive(Debug, Clone)]
 pub struct UnverifiedSkill {
-    /// 自動補完フィールド
+    /// name
     pub name: String,
-    /// 自動補完フィールド
+    /// input_test_payload
     pub input_test_payload: String,
 }
 
@@ -46,7 +46,7 @@ impl VerifiedSkill {
         Self { name }
     }
 
-    /// 自動補完関数
+    /// `name` を実行する
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -76,27 +76,27 @@ impl UnverifiedSkill {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-/// 自動補完構造体
+/// `SkillMetadata` 構造体
 pub struct SkillMetadata {
-    /// 自動補完フィールド
+    /// name
     pub name: String,
-    /// 自動補完フィールド
+    /// description
     pub description: String,
-    /// 自動補完フィールド
+    /// capabilities
     pub capabilities: Vec<String>,
-    /// 自動補完フィールド
+    /// inputs
     pub inputs: Vec<String>,
-    /// 自動補完フィールド
+    /// outputs
     pub outputs: Vec<String>,
     #[serde(default)]
-    /// 自動補完フィールド
+    /// allowed_hosts
     pub allowed_hosts: Vec<String>,
     #[serde(default)]
-    /// 自動補完フィールド
+    /// permissions
     pub permissions: crate::security::PermissionManifest,
 }
 
-/// 自動補完構造体
+/// `WasmSkillManager` 構造体
 pub struct WasmSkillManager {
     skills_dir: PathBuf,
     allowed_root: PathBuf,
@@ -106,7 +106,7 @@ pub struct WasmSkillManager {
 }
 
 impl WasmSkillManager {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new<P: AsRef<Path>>(
         skills_dir: P,
         allowed_root: P,
@@ -125,7 +125,7 @@ impl WasmSkillManager {
         })
     }
 
-    /// 自動補完関数
+    /// `with_limits` を実行する
     pub fn with_limits(mut self, memory_bytes: u64, timeout: Duration) -> Self {
         self.memory_limit_bytes = memory_bytes;
         self.timeout = timeout;
@@ -414,7 +414,7 @@ impl WasmSkillManager {
         Ok(result)
     }
 
-    /// 自動補完関数
+    /// `get_metadata` を実行する
     pub fn get_metadata(&self, skill_name: &str) -> Option<SkillMetadata> {
         let meta_path = self.skills_dir.join(format!("{}.meta.json", skill_name));
         if let Ok(data) = std::fs::read_to_string(meta_path) {

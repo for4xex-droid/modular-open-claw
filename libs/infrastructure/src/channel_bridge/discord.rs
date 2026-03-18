@@ -17,14 +17,14 @@ use shared::watchtower::ControlCommand;
 use std::sync::Arc;
 use tracing::{error, info};
 
-/// 自動補完構造体
+/// Discord APIとの通信ブリッジ
 pub struct DiscordBridge {
     token: String,
     http: Arc<Http>,
 }
 
 impl DiscordBridge {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(token: String) -> Self {
         let http = Arc::new(Http::new(&token));
         Self { token, http }

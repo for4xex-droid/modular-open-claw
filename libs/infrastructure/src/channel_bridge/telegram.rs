@@ -12,14 +12,14 @@ use shared::watchtower::ControlCommand;
 use teloxide::prelude::*;
 use tracing::{error, info};
 
-/// 自動補完構造体
+/// Telegram Bot APIとの通信ブリッジ
 pub struct TelegramBridge {
     token: String,
     bot: Bot,
 }
 
 impl TelegramBridge {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(token: String) -> Self {
         let bot = Bot::new(&token);
         Self { token, bot }

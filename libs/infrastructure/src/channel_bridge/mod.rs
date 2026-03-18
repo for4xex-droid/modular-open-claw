@@ -5,11 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-/// 自動補完モジュール
+/// `bridge_trait` モジュール
 pub mod bridge_trait;
-/// 自動補完モジュール
+/// `discord` モジュール
 pub mod discord;
-/// 自動補完モジュール
+/// `telegram` モジュール
 pub mod telegram;
 
 pub use bridge_trait::ChannelBridge;

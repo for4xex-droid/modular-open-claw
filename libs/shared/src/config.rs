@@ -5,46 +5,46 @@ use std::env;
 /// Aiome Core Configuration
 #[derive(Clone)]
 pub struct AiomeConfig {
-    /// 自動補完フィールド
+    /// データベースファイルのパス
     pub db_path: String,
-    /// 自動補完フィールド
+    /// ログ出力レベル（info, debug, warn等）
     pub log_level: String,
-    /// 自動補完フィールド
+    /// Ollamaサーバーの接続先URL
     pub ollama_host: String,
-    /// 自動補完フィールド
+    /// 使用するOllamaモデル名
     pub ollama_model: String,
-    /// 自動補完フィールド
+    /// Google Gemini APIキー（SecretStringで保護）
     pub gemini_api_key: Option<SecretString>,
-    /// 自動補完フィールド
+    /// OpenAI APIキー（SecretStringで保護）
     pub openai_api_key: Option<SecretString>,
-    /// 自動補完フィールド
+    /// Anthropic APIキー（SecretStringで保護）
     pub anthropic_api_key: Option<SecretString>,
-    /// 自動補完フィールド
+    /// APIサーバーのリッスンポート
     pub api_server_port: u16,
-    /// 自動補完フィールド
+    /// Key Proxy（Abyss Vault）の接続先URL
     pub key_proxy_url: String,
-    /// 自動補完フィールド
+    /// Samsara Hub の接続先URL
     pub samsara_hub_url: String,
-    /// 自動補完フィールド
+    /// CORS許可オリジンのリスト
     pub allowed_origins: Vec<String>,
 }
 
-/// 自動補完定数
+/// OllamaサーバーのデフォルトURL
 pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
-/// 自動補完定数
+/// Key ProxyのデフォルトURL
 pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017";
-/// 自動補完定数
+/// Samsara HubのデフォルトURL
 pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016";
-/// 自動補完定数
+/// CORS許可オリジンのデフォルト値
 pub const DEFAULT_ALLOWED_ORIGINS: &str =
     "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
-/// 自動補完定数
+/// LM StudioのデフォルトURL
 pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
-/// 自動補完定数
+/// Ruri埋め込みサーバーのデフォルトURL
 pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
 
 impl AiomeConfig {
-    /// 自動補完関数
+    /// 環境変数から設定を読み込む
     pub fn load() -> Result<Self> {
         let db_path =
             env::var("AIOME_DB_PATH").unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());

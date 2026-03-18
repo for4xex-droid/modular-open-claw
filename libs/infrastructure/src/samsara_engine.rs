@@ -9,14 +9,14 @@ use soul::error::SoulError;
 use soul::instinct::Instinct;
 use soul::model::AgentSoul;
 
-/// 自動補完構造体
+/// デフォルトのSamsara転生エンジン実装
 pub struct DefaultSamsaraEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     distillation_prompt: String,
 }
 
 impl DefaultSamsaraEngine {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider + Send + Sync>, distillation_prompt: String) -> Self {
         Self {
             provider,

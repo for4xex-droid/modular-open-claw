@@ -11,11 +11,11 @@ use rand::Rng;
 use std::error::Error;
 use tracing::{info, warn};
 
-/// 自動補完構造体
+/// `DreamState` 構造体
 pub struct DreamState {}
 
 impl DreamState {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new() -> Self {
         Self {}
     }

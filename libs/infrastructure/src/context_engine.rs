@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
-/// 自動補完構造体
+/// LLM向けコンテキスト生成エンジン
 pub struct ContextEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     job_queue: Arc<SqliteJobQueue>,
@@ -20,7 +20,7 @@ pub struct ContextEngine {
 }
 
 impl ContextEngine {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
         job_queue: Arc<SqliteJobQueue>,

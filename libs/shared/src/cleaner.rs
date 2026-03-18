@@ -16,9 +16,9 @@ use sysinfo::Disks;
 /// クリーニング対象のディレクトリ情報
 #[derive(Debug, Clone)]
 pub struct CleanupTarget {
-    /// 自動補完フィールド
+    /// path
     pub path: PathBuf,
-    /// 自動補完フィールド
+    /// recursive
     pub recursive: bool,
 }
 

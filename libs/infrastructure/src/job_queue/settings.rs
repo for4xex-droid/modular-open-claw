@@ -11,11 +11,11 @@ use async_trait::async_trait;
 use sqlx::Row;
 
 #[async_trait]
-/// 自動補完トレイト
+/// `SettingsOps` トレイト
 pub trait SettingsOps {
-    /// 自動補完関数
+    /// 指定キーの設定値を取得する
     async fn get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
-    /// 自動補完関数
+    /// 設定値を保存・更新する
     async fn set_setting(
         &self,
         key: &str,
@@ -23,7 +23,7 @@ pub trait SettingsOps {
         category: &str,
         is_secret: bool,
     ) -> Result<(), AiomeError>;
-    /// 自動補完関数
+    /// 全設定値を一覧取得する
     async fn get_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError>;

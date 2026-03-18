@@ -7,14 +7,14 @@ use soul::defense::DefenseAction;
 use soul::error::SoulError;
 use soul::model::{AgentSoul, Experience};
 
-/// 自動補完構造体
+/// コアドメインイベントのアダプタ実装
 pub struct CoreDomainAdapter {
     job_queue: std::sync::Arc<dyn aiome_core::traits::JobQueue>,
     embedding_provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::EmbeddingProvider>>,
 }
 
 impl CoreDomainAdapter {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(
         job_queue: std::sync::Arc<dyn aiome_core::traits::JobQueue>,
         embedding_provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::EmbeddingProvider>>,

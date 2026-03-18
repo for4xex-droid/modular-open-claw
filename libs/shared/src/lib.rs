@@ -4,21 +4,21 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-//! 自動補完クレート
+//! Aiome共有ライブラリ — 設定、ヘルス、セキュリティ等の横断的機能を提供
 #![forbid(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![warn(missing_docs)]
 
 pub mod cleaner;
-/// 自動補完モジュール
+/// アプリケーション設定の管理
 pub mod config;
 
 pub mod guardrails;
-/// 自動補完モジュール
+/// システムヘルスモニタリング
 pub mod health;
 pub mod os_utils;
 pub mod output_validator;
 pub mod sandbox;
-/// 自動補完モジュール
+/// ネットワークセキュリティポリシー
 pub mod security;
 pub mod watchtower;

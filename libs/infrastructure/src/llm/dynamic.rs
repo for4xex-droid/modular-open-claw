@@ -16,25 +16,25 @@ use std::sync::Arc;
 use tokio_stream::Stream;
 
 #[derive(Debug)]
-/// 自動補完構造体
+/// `DynamicLlmProvider` 構造体
 pub struct DynamicLlmProvider {
-    /// 自動補完フィールド
+    /// jq
     pub jq: Arc<SqliteJobQueue>,
-    /// 自動補完フィールド
+    /// client
     pub client: reqwest::Client,
-    /// 自動補完フィールド
+    /// fallback_host
     pub fallback_host: String,
-    /// 自動補完フィールド
+    /// fallback_model
     pub fallback_model: String,
-    /// 自動補完フィールド
+    /// Google Gemini APIキー（SecretStringで保護）
     pub gemini_api_key: Option<secrecy::SecretString>,
-    /// 自動補完フィールド
+    /// OpenAI APIキー（SecretStringで保護）
     pub openai_api_key: Option<secrecy::SecretString>,
-    /// 自動補完フィールド
+    /// Anthropic APIキー（SecretStringで保護）
     pub anthropic_api_key: Option<secrecy::SecretString>,
-    /// 自動補完フィールド
+    /// circuit_breaker
     pub circuit_breaker: Arc<CircuitBreaker>,
-    /// 自動補完フィールド
+    /// slo_engine
     pub slo_engine: Arc<SloEngine>,
 }
 
@@ -261,21 +261,21 @@ impl DynamicLlmProvider {
 }
 
 #[derive(Debug)]
-/// 自動補完構造体
+/// `BackgroundLlmProvider` 構造体
 pub struct BackgroundLlmProvider {
-    /// 自動補完フィールド
+    /// jq
     pub jq: Arc<SqliteJobQueue>,
-    /// 自動補完フィールド
+    /// client
     pub client: reqwest::Client,
-    /// 自動補完フィールド
+    /// fallback_model
     pub fallback_model: String,
-    /// 自動補完フィールド
+    /// fallback_host
     pub fallback_host: String,
-    /// 自動補完フィールド
+    /// Google Gemini APIキー（SecretStringで保護）
     pub gemini_api_key: Option<secrecy::SecretString>,
-    /// 自動補完フィールド
+    /// OpenAI APIキー（SecretStringで保護）
     pub openai_api_key: Option<secrecy::SecretString>,
-    /// 自動補完フィールド
+    /// Anthropic APIキー（SecretStringで保護）
     pub anthropic_api_key: Option<secrecy::SecretString>,
 }
 

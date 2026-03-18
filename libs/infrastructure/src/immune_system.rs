@@ -14,13 +14,13 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-/// 自動補完構造体
+/// `AdaptiveImmuneSystem` 構造体
 pub struct AdaptiveImmuneSystem {
     provider: Arc<dyn LlmProvider>,
 }
 
 impl AdaptiveImmuneSystem {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
         Self { provider }
     }

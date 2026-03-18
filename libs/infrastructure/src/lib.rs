@@ -13,59 +13,59 @@
 #![warn(missing_docs)]
 
 pub mod aiome_log;
-/// 自動補完モジュール
+/// 成果物の永続化・管理
 pub mod artifact_store;
-/// 自動補完モジュール
+/// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
-/// 自動補完モジュール
+/// 決済フローのモック実装
 pub mod commerce_mock;
-/// 自動補完モジュール
+/// コンセプト（概念）のベクター管理
 pub mod concept_manager;
-/// 自動補完モジュール
+/// AgentRx 行動制約チェッカー
 pub mod constraint_checker;
-/// 自動補完モジュール
+/// LLM向けコンテキスト生成エンジン
 pub mod context_engine;
-/// 自動補完モジュール
+/// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;
-/// 自動補完モジュール
+/// アイドル時の自律思考管理
 pub mod dream_state;
-/// 自動補完モジュール
+/// 定期診断・プロアクティブ発火
 pub mod heartbeat_wakeup;
-/// 自動補完モジュール
+/// 脅威シグネチャ監視・遮断
 pub mod immune_system;
-/// 自動補完モジュール
+/// タスクキュー・非同期実行・リトライ
 pub mod job_queue;
-/// 自動補完モジュール
+/// ドキュメント・Karma検索インデックス
 pub mod knowledge_indexer;
-/// 自動補完モジュール
+/// LLMプロバイダの動的選択・プロキシ
 pub mod llm;
-/// 自動補完モジュール
+/// 短期記憶→長期Karma結晶化
 pub mod memory_crystallizer;
-/// 自動補完モジュール
+/// 高度な論理推論エンジン
 pub mod oracle;
-/// 自動補完モジュール
+/// 成果物のSNS自動投稿
 pub mod publisher;
-/// 自動補完モジュール
+/// Soul転生（L3）ロジック
 pub mod samsara_engine;
-/// 自動補完モジュール
+/// ネットワークセキュリティポリシー
 pub mod security;
 pub mod security_zombie;
-/// 自動補完モジュール
+/// スキルの並列実行と評価
 pub mod skill_arena;
-/// 自動補完モジュール
+/// WASMスキルのロード・サンドボックス管理
 pub mod skills;
 pub mod slo_engine;
-/// 自動補完モジュール
+/// イベント→Experience変換アダプタ
 pub mod soul_adapter;
-/// 自動補完モジュール
+/// 経験に基づくSOUL.md動的書換え
 pub mod soul_mutator;
-/// 自動補完モジュール
+/// AgentSoulのSQLite永続化
 pub mod soul_store;
 pub mod trend_sonar;
-/// 自動補完モジュール
+/// ユーザー行動パターン学習
 pub mod user_learner;
-/// 自動補完モジュール
+/// 入出力データの検証
 pub mod validator;
 pub mod workspace_manager;
 mod workspace_manager_tests;

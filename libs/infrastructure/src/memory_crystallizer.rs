@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
-/// 自動補完構造体
+/// 短期記憶から長期Karmaへの結晶化エンジン
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     job_queue: Arc<SqliteJobQueue>,
@@ -19,7 +19,7 @@ pub struct MemoryCrystallizer {
 }
 
 impl MemoryCrystallizer {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
         job_queue: Arc<SqliteJobQueue>,
@@ -32,7 +32,7 @@ impl MemoryCrystallizer {
         }
     }
 
-    /// 自動補完関数
+    /// `run_distillation_cycle` を実行する
     pub async fn run_distillation_cycle(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 1. Skill-based Karma Distillation (Consolidating raw experiences)
         // Fetch skills that have 10+ raw karma entries

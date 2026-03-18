@@ -14,12 +14,12 @@ use sysinfo::{Pid, System};
 pub struct Secret<T>(T);
 
 impl<T> Secret<T> {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(val: T) -> Self {
         Self(val)
     }
 
-    /// 自動補完関数
+    /// 内部の値への参照を返す
     pub fn expose(&self) -> &T {
         &self.0
     }
@@ -41,30 +41,30 @@ impl<T> fmt::Display for Secret<T> {
 /// リソースの使用状況
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ResourceStatus {
-    /// 自動補完フィールド
+    /// 現在のメモリ使用量（MB）
     pub memory_usage_mb: u64,
-    /// 自動補完フィールド
+    /// システム全体のメモリ容量（MB）
     pub total_memory_mb: u64,
-    /// 自動補完フィールド
+    /// CPU使用率（%）
     pub cpu_usage_percent: f32,
-    /// 自動補完フィールド
+    /// VRAM使用量（MB、取得可能な場合）
     pub vram_usage_mb: Option<u64>,
-    /// 自動補完フィールド
+    /// ディスク空き容量（GB）
     pub disk_free_gb: u64,
-    /// 自動補完フィールド
+    /// ディスク総容量（GB）
     pub total_disk_gb: u64,
-    /// 自動補完フィールド
+    /// オープンファイル数（取得可能な場合）
     pub open_files: Option<u64>,
     // AI Stats (Evolvable)
-    /// 自動補完フィールド
+    /// AIのレベル
     pub level: i32,
-    /// 自動補完フィールド
+    /// 累計経験値
     pub exp: i32,
-    /// 自動補完フィールド
+    /// 共鳴度（対話品質スコア）
     pub resonance: i32,
-    /// 自動補完フィールド
+    /// 創造性スコア
     pub creativity: i32,
-    /// 自動補完フィールド
+    /// 疲労度
     pub fatigue: i32,
 }
 
@@ -76,7 +76,7 @@ pub struct HealthMonitor {
 }
 
 impl HealthMonitor {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new() -> Self {
         let mut sys = System::new_all();
         sys.refresh_all();
@@ -93,7 +93,7 @@ impl Default for HealthMonitor {
 }
 
 impl HealthMonitor {
-    /// 自動補完関数
+    /// 現在のリソース使用状況を計測して返す
     pub fn check(&mut self) -> ResourceStatus {
         // 全体のメモリと特定のプロセスをリフレッシュ
         self.sys.refresh_memory();

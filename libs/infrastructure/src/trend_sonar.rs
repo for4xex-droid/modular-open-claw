@@ -41,14 +41,14 @@ struct WebResultItem {
 }
 
 #[derive(Clone)]
-/// 自動補完構造体
+/// `ExternalTrendSonar` 構造体
 pub struct ExternalTrendSonar {
     api_key: String,
     client: reqwest::Client,
 }
 
 impl ExternalTrendSonar {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(api_key: String) -> Self {
         Self {
             api_key,
@@ -149,16 +149,16 @@ impl TrendSource for ExternalTrendSonar {
 }
 
 #[derive(Deserialize, JsonSchema)]
-/// 自動補完構造体
+/// `TrendArgs` 構造体
 pub struct TrendArgs {
-    /// 自動補完フィールド
+    /// category
     pub category: String,
 }
 
 #[derive(Serialize)]
-/// 自動補完構造体
+/// `TrendOutput` 構造体
 pub struct TrendOutput {
-    /// 自動補完フィールド
+    /// trends
     pub trends: Vec<TrendItem>,
 }
 

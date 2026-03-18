@@ -19,7 +19,7 @@ pub struct Cleanroom {
 }
 
 impl Cleanroom {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(forge: SkillForge, workspace: PathBuf) -> Self {
         Self { forge, workspace }
     }

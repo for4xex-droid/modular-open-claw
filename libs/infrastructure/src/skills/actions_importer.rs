@@ -24,7 +24,7 @@ struct GitHubActionRuns {
     steps: Option<serde_yaml::Value>,
 }
 
-/// 自動補完構造体
+/// `ActionsImporter` 構造体
 pub struct ActionsImporter;
 
 impl ActionsImporter {

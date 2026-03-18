@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-/// 自動補完モジュール
+/// `dynamic` モジュール
 pub mod dynamic;
-/// 自動補完モジュール
+/// `proxy` モジュール
 pub mod proxy;

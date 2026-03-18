@@ -25,7 +25,7 @@ pub struct ProjectKnowledgeIndexer {
 }
 
 impl ProjectKnowledgeIndexer {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(
         artifact_store: Arc<dyn ArtifactStore>,
         pool: SqlitePool,
@@ -38,7 +38,7 @@ impl ProjectKnowledgeIndexer {
         }
     }
 
-    /// 自動補完関数
+    /// `run_indexing` を実行する
     pub async fn run_indexing(&self) -> Result<(), AiomeError> {
         info!("📚 [KnowledgeIndexer] Starting project knowledge indexing...");
 

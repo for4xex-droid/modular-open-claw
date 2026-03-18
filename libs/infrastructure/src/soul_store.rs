@@ -7,26 +7,26 @@ use tracing::{info, warn};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
-/// 自動補完構造体
+/// AgentSoulの読み取り専用スナップショット
 pub struct SoulSnapshot {
-    /// 自動補完フィールド
+    /// attachment_style
     pub attachment_style: soul::attachment::AttachmentStyle,
-    /// 自動補完フィールド
+    /// narrative_self
     pub narrative_self: Option<String>,
-    /// 自動補完フィールド
+    /// prompt_fragment
     pub prompt_fragment: String,
-    /// 自動補完フィールド
+    /// generation
     pub generation: u32,
 }
 
-/// 自動補完構造体
+/// AgentSoulのSQLite永続化ストア
 pub struct SqliteSoulStore {
     pool: Arc<SqlitePool>,
     cache: Arc<RwLock<Option<SoulSnapshot>>>,
 }
 
 impl SqliteSoulStore {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(pool: Arc<SqlitePool>) -> Self {
         Self {
             pool,
@@ -34,7 +34,7 @@ impl SqliteSoulStore {
         }
     }
 
-    /// 自動補完関数
+    /// AgentSoulの状態をSQLiteに永続化する
     pub async fn save_soul(&self, soul: &AgentSoul) -> Result<(), AiomeError> {
         if soul.id.is_empty() {
             return Err(AiomeError::Infrastructure {
@@ -141,12 +141,12 @@ impl SqliteSoulStore {
         Ok(())
     }
 
-    /// 自動補完関数
+    /// AgentSoulの読み取り専用スナップショットを取得する
     pub async fn get_snapshot(&self) -> Option<SoulSnapshot> {
         self.cache.read().await.clone()
     }
 
-    /// 自動補完関数
+    /// AgentSoulをインメモリキャッシュに読み込む
     pub async fn load_into_cache(&self, id: &str) -> Result<bool, AiomeError> {
         if let Some(soul) = self.load_soul(id).await? {
             let mut cache = self.cache.write().await;
@@ -162,7 +162,7 @@ impl SqliteSoulStore {
         }
     }
 
-    /// 自動補完関数
+    /// SQLiteからAgentSoulの状態を復元する
     pub async fn load_soul(&self, id: &str) -> Result<Option<AgentSoul>, AiomeError> {
         use sqlx::Row;
         let record = sqlx::query(

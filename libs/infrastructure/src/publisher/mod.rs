@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use tracing::info;
 
-/// 自動補完モジュール
+/// `mock_x` モジュール
 pub mod mock_x;
 
 /// [B-2] Publish Pipeline Orchestrator
@@ -21,12 +21,12 @@ pub struct PublishPipeline {
 }
 
 impl PublishPipeline {
-    /// 自動補完関数
+    /// 新しいインスタンスを生成する
     pub fn new(publishers: Vec<Box<dyn Publisher>>) -> Self {
         Self { publishers }
     }
 
-    /// 自動補完関数
+    /// `run_job` を実行する
     pub async fn run_job(
         &self,
         platform: &str,
