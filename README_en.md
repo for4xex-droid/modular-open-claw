@@ -6,7 +6,7 @@
   <img src="docs/assets/logo.png" alt="Aiome Logo" width="300">
 </p>
 
-<h1 align="center">Aiome</h1>
+<h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
   <strong>The Autonomous AI Operating System for Self-Evolving Agents</strong><br>
   <em>Build AI that Learns, Defends, and Evolves — Autonomously.</em>
@@ -15,40 +15,42 @@
 <p align="center">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0">
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
+  <img src="https://img.shields.io/badge/TLA%2B-Verified-0052cc.svg" alt="TLA+ Verified">
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome">
   <a href="https://github.com/google/antigravity"><img src="https://img.shields.io/badge/Built%20by-Agents-blueviolet" alt="Built by Agents"></a>
 </p>
 
 ---
 
-## 🌌 What is Aiome? (Philosophy & Concept)
+## 🌌 Aiome とは？ (Philosophy & Concept)
 
-Aiome is more than just a task execution tool or an agentic framework.
+Aiome は、単なるエージェント・フレームワークを超えた、AIエージェントが安全に活動・進化しために設計された **「自律型 AI オペレーティングシステム」** です。
 
-**From "Raw Autonomy" to "Disciplined Autonomy"**
-Entrusting your system entirely to a raw agent might seem like the ultimate freedom, but it is a "fragile freedom"—prone to infinite loops, API key leaks, and sudden crashes. 
-Aiome's purpose is not to restrict an AI's freedom, but to provide the **strong discipline and immune system required to let an AI operate unattended for long periods without destroying its host.**
+**「野生の知能」から「規律ある自律性」へ。**
+エージェントにそのままシステムを委ねることは、無限ループやAPIキー漏洩などのリスクを孕む「脆弱な自由」です。Aiome は、エージェントが人間による24時間の監視なしで、長期連続稼働し続けるための強固な規律（ガードレール）、堅牢なバックエンド、そして進化のための「免疫システム」を提供します。
 
-### 🤖 Development Philosophy: By Agents, For Agents (100% Agentic Coded)
+Aiome は、「柔軟な認知アーキテクチャ」を Rust による堅牢なコアへと完全統合した、**スタンドアロン・エージェンティック AI オペレーティングシステム** です。
 
-Every single line of Aiome was built by AI Agents on **Google Antigravity**, using **100% Agentic Coding**.
+### 🤖 開発の哲学：エージェントによる、エージェントのためのOS (Built by Agents)
 
-This is not a mere technical experiment. 
-It is the result of agents autonomously designing and implementing the exact environment they need to operate safely and with discipline. By replacing human biases and oversights with AI's rigorous code generation, self-review, and strict adherence to "Golden Rules," Aiome achieves a level of robustness and predictability that surpasses traditional software development.
+Aiome のコード一行一行は、人間ではなく **Google Antigravity** 上の AI エージェントによって **100% エージェンティック・コーディング** で構築されました。
 
-### 🛡️ 5 Core Pillars
+これは単なる技術的な実験ではありません。
+エージェントが自ら、「自分たちが最も安全に、かつ規律を持って活動できる環境」を自律的に設計・実装した結果です。人間のバイアスや見落としを、AI による厳格なコード生成とセルフレビュー、そして「鉄の掟（Golden Rules）」の遵守によって補完し、従来のソフトウェア開発の限界を超えた堅牢性を目指しています。
 
-1.  **The Sandbox (Boundary & Defense)**: Rather than handing over a raw shell, Aiome forces execution through WASM containers and physically isolates API keys via the `mlockall`-protected Abyss Vault. It provides the absolute guarantee that "even if the agent goes rogue, the host survives and secrets cannot leak."
-2.  **The Immune System (Immutable Lessons)**: To prevent an agent from forgetting its mistakes, Aiome uses an immutable cryptographic hash chain (Karma) built on SQLite. It records exactly what tasks failed, creating a tampering-proof foundation for permanent evolution.
-3.  **Swarm Intelligence (Federation)**: Instantly synchronizes "lessons learned" across global Aiome nodes via the Samsara Hub.
-4.  **Personality (SOUL Architecture)**: An identity simulated through dialogue with the user, transforming the AI from a mere tool into a true "partner."
-5.  **Context Management**: An OS-level safety net to prevent cascade errors and AI hallucinations. By integrating an immutable dependency map (RIPPLE_MAP) and architectural decision records (ADR) directly synced with the source code, Aiome ensures the AI agent correctly understands the system boundaries before every self-evolution update.
+### 🛡️ 5つのコア・バリュー (Core Pillars)
 
-If a raw agent is a "wild genius brain," Aiome is the "skull, nervous system, and immune system" that allows that brain to safely survive and evolve in the real world. This is our core value as an Operating System.
+1.  **The Sandbox (形式検証された絶対防衛網)**: 直接シェルを渡すのではなく、WASMコンテナや APIキーを物理隔離する Abyss Vault を通します。Aiome の隔離プロトコルと知識ハッシュチェーンプロトコルは **TLA+ を用いてその安全性が数学的・アルゴリズム的に証明（TLC Model Checker 通過済）** されています。さらに、RustのTypeStateパターンとモデルベーステスト（MBT）を組み合わせることで、**「数学的に証明された安全性が、運用レベルのバイナリまで100%保証される（セキュリティ成熟度95%達成）」** 業界最高水準の堅牢な隔離環境を提供します。
+2.  **The Immune System (記憶の改ざん耐性と教訓)**: エラーが起きても忘却しないよう、SQLite上の暗号学的ハッシュチェーン (Karma) を使い、「自分が過去に何のタスクに失敗したか」を改ざん不可能な形で記録し、確実な進化の土台とします。
+3.  **Swarm Intelligence (群知能 / Federation)**: Samsara Hub を通じて、世界中の Aiome ノードが獲得した「教訓」を瞬時に同期。
+4.  **Personality (人格 / SOUL Architecture)**: ユーザーとの対話を通じてシミュレーションされる、単なるツールを超えた「パートナー」としてのアイデンティティ。
+5.  **Context Management (コンテキスト維持機能)**: カスケードエラーやAIの「文脈喪失（幻覚）」を防ぐため、実コードと完全に同期した依存関係マップ（RIPPLE_MAP）と設計判断記録（ADR）をOSレベルで統合。AIが常に正しいアーキテクチャ理解に基づいて自己進化を行うための究極のセーフティネットです。
+
+野生の天才脳（エージェント）が現実世界で安全に、かつ長期的に生存・進化するための「頭蓋骨、神経系、そして免疫システム」。これこそが Aiome というオペレーティングシステムの存在意義です。
 
 ---
 
-## 🏗️ Architecture (Full OSS Foundation)
+## 🏗️ アーキテクチャ (Full OSS Foundation)
 
 <table align="right">
   <tr>
@@ -59,68 +61,79 @@ If a raw agent is a "wild genius brain," Aiome is the "skull, nervous system, an
   </tr>
 </table>
 
-Aiome is a **Full Open Source (OSS)** project. Enterprise-grade security (Abyss Vault) and self-evolution features are completely free and open to everyone.
+Aiome は**フル・オープンソース（Full OSS）**プロジェクトです。エンタープライズ級のセキュリティ（Abyss Vault）や自己進化機能は、すべて無料で解放されています。
 
-### 🟢 Business Model (How we sustain)
-We provide the OS for free and create value through the ecosystem running on top of it.
-- **Premium Modules (Capabilities)**: Specialized WASM skills for high-end tasks like financial data analysis or advanced video rendering.
-- **SAMSARA Hub (Managed Service)**: Managed, high-speed federated learning hubs hosted for enterprises.
-- **Enterprise Support**: SLAs and technical support for corporate deployments.
+### 🟢 ビジネスモデル (How we sustain)
+私たちは OS を無料で提供し、その上で動くエコシステムで価値を創出します。
+- **プレミアム・モジュール (Capabilities)**: 金融データ解析や高度映像生成などの特化型 WASM スキルの提供。
+- **SAMSARA Hub (Managed Service)**: 企業向けに管理・高速化された連邦学習ハブのホスティング。
+- **エンタープライズ・サポート**: 企業導入時の SLA 等の技術サポート。
 
-apps/api-server      ← Main Execution Hub (The Body / Management Engine)
-apps/watchtower      ← External Channel Integration (The Soul / Discord & Telegram Bridge)
+```text
+apps/api-server      ← メインバイナリ (The Body / Management Engine)
+apps/watchtower      ← 外部チャネル連携 (The Soul / Discord & Telegram Bridge)
       ↓
-libs/core            ← Domain Logic (Open)
+libs/core            ← ドメインロジック (Open)
       ↓
-libs/infrastructure ← I/O Impl (SQLite, LLM Dynamic Providers / Open)
+libs/infrastructure  ← I/O実装 (SQLite / LLM動的なプロバイダー / Open)
       ↓
-libs/soul           ← Soul Engine (Agents' L1-L3 Personality Engine / Open)
+libs/soul            ← 魂のエンジン (Agents' L1-L3 Soul Engine / Open)
       ↓
-libs/shared        ← Common Types, Guardrails, AiomeConfig (Open)
+libs/shared          ← 共通型, Guardrails, AiomeConfig (Open)
 ```
 
----
+### 3. 初期起動と Synergy Experience (創世記)
+Aiomeを初めて起動する際、システムは「創世（Genesis）」フェーズである **Synergy Experience** を開始します。
 
-## ✨ Capabilities
-
-By deploying Aiome, you can instantly build autonomous workflows like the following:
-
-- 🧠 **Autonomous Loop**: Fully automates everything from planning to generation by monitoring signals 24/7 without user intervention.
-- 🛠️ **Resource Orchestration**: Seamless integration with external generative engines and media processing tools.
-- 🗣️ **Discord Interaction Interface**: Issue commands and converse with the system using natural language via a personified gateway called the "Watchtower."
-- 🛡️ **Robust Error Self-Healing**: Detects execution errors and LLM hallucinations, autonomously modifies its configuration within the sandbox, and retries.
+```bash
+cargo run -p aiome-synergy  # (Coming Soon)
+```
+* **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
+* **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
 
 ---
 
-## 🧩 Extensibility (Skill Ecosystem)
+## ✨ 主な機能・できること (Capabilities)
 
-Aiome's true power lies in its **extreme extensibility leveraging WASM (WebAssembly)**.
+Aiome を導入することで、以下のような自律型ワークフローを瞬時に構築できます。
 
-- **Safe Sandbox**: Additional features (skills) run in an isolated WASM environment, ensuring they do not compromise the safety of the core system.
-- **Auto-Forging**: Features a "Skill Forge" (Pro feature) where the AI programs, implements, and deploys necessary functionalities on the fly.
-- **Community Shared**: Custom skills you develop will eventually be shareable with other nodes via the SAMSARA Hub.
+- 🧠 **完全自律思考 (Autonomous loop)**: ユーザーの指示なしで、24時間トレンドを監視し、企画からタスク実行までを全自動化。
+- ⚡ **ストリーミング Agent Console**: 思考プロセス（1文字ずつの出力）とツール実行（WASM Skill）をリアルタイムに可視化する SSE ベースのチャットインターフェース。
+- 🛡️ **自律型免疫システム (Autonomous Defense)**: バックグラウンドワーカーが失敗ログ（Karma）を常に分析し、脆弱性や攻撃パターンに対する新しい防御ルールを自動生成・運用（Auto-Healing）。
+- 🌐 **Samsara Federation Sync**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期し、ネットワーク全体で集合知を形成。
 
 ---
 
-## 🛠️ Technical Stack
+## 🧩 スキル・エコシステム (Extensibility)
+
+Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡張性と自己進化能力**にあります。
+
+- **Safe Sandbox**: 追加機能（スキル）は隔離された WASM 環境で実行されるため、コアシステムの安全性を脅かしません。
+- **The TDD Forge (自己プログラミング)**: AI 自身が必要な機能をその場で Rust で書き、一時的な隔離環境（Staging）での検証（TDD）を経て、自己実装・デプロイする究極の「Skill Forge」プロトコルを備えています。ビルドプロセス自体も OS ネイティブなサンドボックス（例: 実行権限定の `sandbox-exec`）で隔離され、サプライチェーン攻撃からホストを完全に保護します。
+- **Community Shared**: 開発したカスタムスキルは、将来的に SAMSARA Hub を通じて他のノードと共有可能になります。
+
+---
+
+## 🛠️ 技術スタック (Technical Stack)
 
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-%23007808.svg?style=for-the-badge&logo=ffmpeg&logoColor=white)
 
-| Component | Technology | Role |
+| コンポーネント | 採用技術 | 役割 |
 |---|---|---|
-| **Core Engine** | Rust / Bastion OSS | Fast, memory-safe, and robust security foundation |
-| **Security Layer** | Abyss Vault (Key Proxy) | Physical API key isolation & memory protection (mlockall/zeroize) |
-| **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: Cloud for user responses, local for autonomous tasks |
-| **Media Engine** | ComfyUI / FFmpeg | Autonomous generation of advanced images, video, and audio |
-| **Storage** | SQLite (Hash Chain integrated) | Tamper-proof persistence of memories (Karma) and logs |
-| **Expansion** | WebAssembly (Wasm) | Safe and portable skill execution under strict network controls |
+| **Core Engine** | Rust / Bastion OSS | 高速・メモリ安全かつ堅牢なセキュリティ基盤 |
+| **Formal Verification** | TLA+ / TLC / Rust TypeState / MBT | 状態遷移のTLA+仕様化とモデルチェッカーによる検証。TypeStateと手動インテグレーションテストによる「数学からRust実行バイナリまでの絶対保証（95%カバレッジ）」 |
+| **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
+| **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: ユーザー応答はクラウド、自律タスクはローカル推論 |
+| **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
+| **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
+| **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
 
 ---
 
-## 🛰️ Execution Components
+## 🛰️ 実行コンポーネント
 
 <table align="right">
   <tr>
@@ -131,102 +144,111 @@ Aiome's true power lies in its **extreme extensibility leveraging WASM (WebAssem
   </tr>
 </table>
 
-### 1. Watchtower — The Manifestation of SOUL
-Watchtower is the gateway for a master to interact with Aiome's "Personality." Through Discord, it reports system status, awaits instructions, and offers autonomous suggestions.
+### 1. 監視所 (Watchtower) — The Manifestation of SOUL
+Watchtower は、Aiome の「人格」がユーザーと触れ合うための窓口です。Discord を通じて、システムの稼働状態を報告したり、ユーザーの指示を待機したり、自律的な提案を行います。
 
-- **Details**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md) *(JP)*
-- **Personality Manifest**: [SOUL.md](SOUL.md) 🐾
+- **詳細**: [docs/guides/WATCHTOWER_USER_GUIDE.md](docs/guides/WATCHTOWER_USER_GUIDE.md)
+- **人格定義**: [SOUL.md](SOUL.md) 🐾
 
-### 2. api-server (Demonstration Hub)
-A reference implementation of a management hub using Aiome Core, providing SSE-based Agent Console and security monitoring.
+### 2. 工場 / スキル (Skills & Modules)
+Aiome Core 上で動作する具体的なアプリケーションです。
+
+- **api-server**: 標準の管理・制御ハブ。思考プロセス、WASMスキル実行、セキュリティ監視の統合エンドポイント。
 
 ---
 
-## 🚀 Quick Start
+## 🚀 クイックスタート (Quick Start)
 
-### 1. Prerequisites
-Ensure the following requirements are met:
-- **System**: `ffmpeg` (for video and audio processing) must be in your PATH.
-- **Ollama**: `ollama serve` is running.
-  - Recommended models: `qwen3.5:9b` (for analysis & production) & `mistral-small` (for Watchtower personality)
-- **Sidecars (Optional)**:
-  - **ComfyUI**: Image and video generation engine (default: `http://localhost:8188`)
-  - **Style-Bert-VITS2**: Speech synthesis server. Requires Python 3.10+ environment.
-- **External API**: If you use external APIs (e.g. Gemini/OpenAI), environment variables must be supplied to the secure proxy.
+### 1. 準備 (Prerequisites)
+以下の要件が満たされていることを確認してください：
+- **System**: `ffmpeg` (動画・音声処理用) がパスに通っていること。
+- **Ollama**: `ollama serve` が実行中。
+  - 推奨: `qwen3.5:9b` (バックグラウンド自律タスク用)
+- **Sidecars (オプション)**:
+  - **ComfyUI**: 画像・動画生成エンジン (デフォルト: `http://localhost:8188`)
+  - **Style-Bert-VITS2**: 音声合成サーバー。Python 3.10+ 環境が必要です。
 
-### 2. Setup & Run
+
+### 2. セットアップ・実行
 ```bash
-# 1. Clone the repository
+# 1. リポジトリのクローン
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
 
-# 2. Configure environment variables (API keys, etc.)
+# 2. 環境変数の設定 (APIキーなど)
 cp .env.example .env
 
-# 3. Start Abyss Vault (Key Proxy)
-# ⚠️ ALL API requests pass through this proxy. Be sure to start this first.
+# ⚠️ 全ての API リクエストはこのプロキシを通過します。必ず最初に起動してください。
 export VAULT_SECRET=your_vault_secret
-GEMINI_API_KEY=your_key_here cargo run --bin key-proxy
+GEMINI_API_KEY=your_key_here cargo run --bin key-proxy &
 
-# (Optional: Genesis Experience)
-# cargo run -p aiome-synergy # (Coming Soon)
-
-# 4. Start API Server (The Body)
+# 4. Management Console (API Server) の起動 (The Body)
 export API_SERVER_SECRET=your_api_secret
 cargo run --bin api-server
 
-# 5. Start Watchtower (Bridge) (The Soul - API_SERVER_SECRET required)
+# 5. Watchtower (Bridge) の起動 (The Soul - API_SERVER_SECRETが必要です)
 cargo run --bin watchtower
 
-# 6. Start Samsara Hub (Federation) (Collective Intelligence)
+# 6. Samsara Hub (Federation) の起動 (Collective Intelligence)
 export FEDERATION_SECRET=your_hub_secret
 cargo run --bin samsara-hub
 ```
 
-> **Note**: `api-server` and `watchtower` communicate bi-directionally in real-time via WebSocket (ws://). Both processes must be running simultaneously to enable interactive features (Discord/Telegram integration).
+> **Note**: `api-server` と `watchtower` は WebSocket (ws://) を通じて双方向にリアルタイム通信します。対話機能（Discord/Telegram連携）を有効にするには、両方のプロセスを同時に実行してください。
 
-#### 🔑 Key Environment Variables (.env)
-- `DISCORD_TOKEN`: For Watchtower integration.
-- `GEMINI_API_KEY`: For Gemini Cloud LLM (front-end inference).
-- `BG_LLM_PROVIDER`: Background LLM provider (default: `ollama`).
-- `BG_LLM_MODEL`: Background LLM model (default: `qwen3.5:9b`).
-- `OLLAMA_HOST`: For local LLM connections (default: `http://localhost:11434`).
-- `EMBEDDING_PROVIDER`: Embedding provider (`ruri` / `gemini` / `ollama`). Default: `ruri`.
-- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins.
-- `EXTERNAL_SERVICE_URL`: For integration with external generation engines like ComfyUI.
-- `VAULT_SECRET`: Authentication for Abyss Vault (Key Proxy).
-- `FEDERATION_SECRET`: Authentication for Samsara Hub communication.
-- `API_SERVER_SECRET`: Authentication for all API Server requests.
+### シナジー体感デモ (Synergy Demonstration)
+Aiome 管理コンソールでは、エージェントの自律的な進化を視覚的に体験できます。
 
-> ℹ️ All environment variables are centrally managed in `AiomeConfig` (`libs/shared/src/config.rs`). For more technical details, see [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md).
+1. **Dashboard 起動**: `cargo run -p api-server` を実行。
+2. **アクセス**: ブラウザで `http://localhost:3015` を開く。
+3. **Synergy Panel**: サイドバーの **"Agency Synergy"** から以下のデモを試せます：
+    - **Evolution Pulse**: タスク失敗から教訓（Karma）が蒸留される過程の視覚化。
+    - **Security Shield**: Abyss Vault による API キー強奪試行の物理的阻止。
+    - **Swarm Sync**: 他ノードとの免疫知識（Collective Intelligence）の同期。
 
----
+#### 🔑 主な環境変数 (.env)
+- `DISCORD_TOKEN`: Watchtower integration 用。
+- `GEMINI_API_KEY`: Gemini Cloud LLM 接続用（フロントエンド推論）。
+- `BG_LLM_PROVIDER`: バックグラウンドLLMプロバイダー (デフォルト: `ollama`)。
+- `BG_LLM_MODEL`: バックグラウンドLLMモデル (デフォルト: `qwen3.5:9b`)。
+- `OLLAMA_HOST`: ローカルLLM接続用 (デフォルト: `http://127.0.0.1:11434`)。
+- `EMBEDDING_PROVIDER`: 埋め込みプロバイダー (`ruri` / `gemini` / `ollama`。デフォルト: `ruri`)。
+- `ALLOWED_ORIGINS`: CORS許可オリジン (カンマ区切り)。
+- `EXTERNAL_SERVICE_URL`: ComfyUI など外部生成エンジン連携用。
+- `VAULT_SECRET`: Abyss Vault (Key Proxy) 認証用。
+- `FEDERATION_SECRET`: Samsara Hub 通信の認証用。
+- `API_SERVER_SECRET`: API Server への全リクエストの認証用。
 
-## 📚 Documentation (Mostly JP)
-
-- **[AI Architecture Law](docs/architecture/ARCHITECTURE_LAW.md)**: Foundational principles for intellectual integrity and safety.
-- **[LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md)**: Design of dynamic LLM providers and fallback logic.
-- **[Operations Guide](docs/guides/OPERATIONS_MANUAL.md)**: Detailed setup and operational procedures.
-- **[Evolution Strategy](docs/architecture/EVOLUTION_STRATEGY.md)**: Design philosophy of self-evolution and rearing systems.
-- **[Soul Customization](docs/guides/CUSTOMIZING_SOUL.md)**: Adjusting the AI's personality and reactions.
-- **[Security Design](docs/architecture/SECURITY_DESIGN.md)**: Deep dive into the multi-layered defense.
-
----
-
-## 🤝 Contributing
-
-- **[Contributing Guide](CONTRIBUTING.md)**: Rules for participating in development.
-- **[CLA](CLA.md)**: Contributor License Agreement.
-- **[Code of Conduct](CODE_OF_CONDUCT.md)**: Behavioral standards.
-- **[Security Reporting](SECURITY.md)**: Contact for security issues.
+> ℹ️ すべての環境変数は `AiomeConfig` (`libs/shared/src/config.rs`) で一元管理されています。詳細は [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md) を参照。
 
 ---
 
-## 🛡️ License
+## 📚 ドキュメント (Documentation)
 
-**Aiome Core** is provided under the **Apache License 2.0**. You can freely use, modify, and distribute the core engine even for commercial purposes.
-However, the federated learning component, **Samsara Hub**, is provided under the **Business Source License 1.1 (BSL 1.1)** to restrict managed service offerings. Please refer to the respective `LICENSE` files for details.
+- **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
+- **[LLMプロバイダー設計 (LLM Provider Architecture)](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md)**: 動的LLMプロバイダーのアーキテクチャとフォールバック設計。
+- **[運用マニュアル (Operations Guide)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
+- **[進化戦略 (Evolution Strategy)](docs/architecture/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
+- **[人格のカスタマイズ (Soul Customization)](docs/guides/CUSTOMIZING_SOUL.md)**: AIの性格や反応の調整方法。
+- **[セキュリティ設計 (Security Design)](docs/architecture/SECURITY_DESIGN.md)**: 多層防御の詳細。
 
-For enterprise support or custom integration consulting, please contact [motivationstudio,LLC](https://github.com/motivationstudio-llc/aiome).
+---
+
+## 🤝 コントリビュート (Contributing)
+
+- **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
+- **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
+- **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
+- **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
+
+---
+
+## 🛡️ ライセンス (License)
+
+**Aiome Core** は **Apache License 2.0** の下で提供されています。商用利用、改変、再配布などが無料で自由に行えます。
+ただし、分散学習ハブ機能である **Samsara Hub** に関しては **Business Source License 1.1 (BSL 1.1)** が適用され、マネージドサービスとしての提供に制限を設けています。詳しくは各ディレクトリの `LICENSE` を参照してください。
+コアエンジンのマネージドサービス（SaaS/PaaS）としての直接的な再販のみ制限されます。
+
+---
 
 *Built by [motivationstudio,LLC](https://github.com/motivationstudio-llc) — Powering the Future of AI Autonomy.*

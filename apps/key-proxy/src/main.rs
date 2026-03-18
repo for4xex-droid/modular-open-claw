@@ -488,13 +488,14 @@ async fn check_and_increment_quota(
     };
 
     if let Some(&limit) = state.caller_quotas.get(caller_id)
-        && caller_total > limit {
-            warn!(
-                "🛑 [KeyProxy] Caller {} exceeded quota ({})",
-                caller_id, limit
-            );
-            return Err(StatusCode::TOO_MANY_REQUESTS);
-        }
+        && caller_total > limit
+    {
+        warn!(
+            "🛑 [KeyProxy] Caller {} exceeded quota ({})",
+            caller_id, limit
+        );
+        return Err(StatusCode::TOO_MANY_REQUESTS);
+    }
 
     if total > 5000 {
         error!(
