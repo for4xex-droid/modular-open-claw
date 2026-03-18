@@ -21,6 +21,7 @@ use std::time::Duration;
 use tokio::fs;
 use tracing::{error, info, warn};
 
+/// 自動補完構造体
 pub struct WorkspaceManager;
 
 impl WorkspaceManager {

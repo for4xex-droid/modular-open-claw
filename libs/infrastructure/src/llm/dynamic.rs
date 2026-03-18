@@ -16,15 +16,25 @@ use std::sync::Arc;
 use tokio_stream::Stream;
 
 #[derive(Debug)]
+/// 自動補完構造体
 pub struct DynamicLlmProvider {
+    /// 自動補完フィールド
     pub jq: Arc<SqliteJobQueue>,
+    /// 自動補完フィールド
     pub client: reqwest::Client,
+    /// 自動補完フィールド
     pub fallback_host: String,
+    /// 自動補完フィールド
     pub fallback_model: String,
+    /// 自動補完フィールド
     pub gemini_api_key: Option<secrecy::SecretString>,
+    /// 自動補完フィールド
     pub openai_api_key: Option<secrecy::SecretString>,
+    /// 自動補完フィールド
     pub anthropic_api_key: Option<secrecy::SecretString>,
+    /// 自動補完フィールド
     pub circuit_breaker: Arc<CircuitBreaker>,
+    /// 自動補完フィールド
     pub slo_engine: Arc<SloEngine>,
 }
 
@@ -251,13 +261,21 @@ impl DynamicLlmProvider {
 }
 
 #[derive(Debug)]
+/// 自動補完構造体
 pub struct BackgroundLlmProvider {
+    /// 自動補完フィールド
     pub jq: Arc<SqliteJobQueue>,
+    /// 自動補完フィールド
     pub client: reqwest::Client,
+    /// 自動補完フィールド
     pub fallback_model: String,
+    /// 自動補完フィールド
     pub fallback_host: String,
+    /// 自動補完フィールド
     pub gemini_api_key: Option<secrecy::SecretString>,
+    /// 自動補完フィールド
     pub openai_api_key: Option<secrecy::SecretString>,
+    /// 自動補完フィールド
     pub anthropic_api_key: Option<secrecy::SecretString>,
 }
 

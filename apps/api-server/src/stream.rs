@@ -101,7 +101,7 @@ pub async fn trigger_agent_chat_stream(
                 .join("\n\n"))
         };
 
-        if let Some(ref ks) = knowledge_str {
+        if let Some(ref _ks) = knowledge_str {
             // Notify client about relevant knowledge being used
             let titles = knowledge_result.iter().map(|a| a.title.as_str()).collect::<Vec<_>>().join(", ");
             yield Ok::<Event, Infallible>(Event::default().event("knowledge").data(&titles));

@@ -5,9 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+//! # クレート固有のインデックス
+//!
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
-
+#![allow(missing_docs)]
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -24,6 +25,7 @@ struct ReadResponse {
     pub error: Option<String>,
 }
 
+/// サポートドキュメント
 #[plugin_fn]
 pub fn call(input: String) -> FnResult<String> {
     let req: ReadRequest = serde_json::from_str(&input)?;

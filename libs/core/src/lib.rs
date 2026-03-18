@@ -13,17 +13,26 @@
 
 #![warn(missing_docs)]
 
+/// Biome Protocol関連のデータ型およびエンジン
 pub mod biome;
+/// LLM予算・コスト計算モジュール
 pub mod budget;
 pub mod commerce;
+/// コアシステム全体で共有するデータ形式の定義
 pub mod contracts;
 pub mod error;
+/// 表情・感情表現などに関するモジュール
 pub mod expression;
+/// 内部HTTPリクエストおよびクライアントに関するヘルパー
 pub mod http;
+/// 外部LLMAPI(Gemini, OpenAI等)とのインターフェース
 pub mod llm_provider;
+/// 権限検証・セキュリティ機能
 pub mod security;
+/// JobQueue等、インフラ層に実装を依存させるためのTrait
 pub mod traits;
 
+/// 行動履歴やプラン（Trajectory）の管理
 pub mod trajectory {
     pub use aiome_contracts::trajectory::*;
 }

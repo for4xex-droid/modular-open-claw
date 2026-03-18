@@ -247,7 +247,7 @@ async fn handle_llm_complete(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
+    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
     info!("📩 [KeyProxy] Request from caller: {}", safe_caller_id);
 
     if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
@@ -326,7 +326,7 @@ async fn handle_llm_embed(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
+    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
     info!(
         "🧬 [KeyProxy] Embedding request from caller: {}",
         safe_caller_id
@@ -391,7 +391,7 @@ async fn handle_llm_stream(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
+    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
     info!(
         "🌊 [KeyProxy] Streaming request from caller: {}",
         safe_caller_id
@@ -487,15 +487,14 @@ async fn check_and_increment_quota(
         *count
     };
 
-    if let Some(&limit) = state.caller_quotas.get(caller_id) {
-        if caller_total > limit {
+    if let Some(&limit) = state.caller_quotas.get(caller_id)
+        && caller_total > limit {
             warn!(
                 "🛑 [KeyProxy] Caller {} exceeded quota ({})",
                 caller_id, limit
             );
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
-    }
 
     if total > 5000 {
         error!(

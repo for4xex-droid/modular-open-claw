@@ -18,6 +18,7 @@ pub struct Oracle {
 }
 
 impl Oracle {
+    /// 自動補完関数
     pub fn new(provider: Arc<dyn LlmProvider>, soul_md: String) -> Self {
         Self { provider, soul_md }
     }

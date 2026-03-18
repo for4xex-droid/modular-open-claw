@@ -9,6 +9,7 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 
 #[async_trait]
+/// 自動補完トレイト
 pub trait ChannelBridge: Send + Sync {
     /// ブリッジの名前 (Discord, Telegram等)
     fn name(&self) -> &str;

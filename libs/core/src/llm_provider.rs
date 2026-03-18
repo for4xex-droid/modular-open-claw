@@ -28,6 +28,7 @@ pub struct OllamaProvider {
 }
 
 impl OllamaProvider {
+    /// ローカルOllama環境接続用の新しいクライアントインスタンスを作成します
     pub fn new(host: String, model: String) -> Self {
         Self {
             host,
@@ -279,6 +280,7 @@ pub struct AbyssVaultProvider {
 }
 
 impl AbyssVaultProvider {
+    /// Abyss Vault(APIキー隔離プロセス)経由での安全なリクエストを送信するクライアントを作成します
     pub fn new(proxy_url: String, caller_id: String) -> Self {
         Self {
             proxy_url,
@@ -425,6 +427,7 @@ pub struct GeminiProvider {
 }
 
 impl GeminiProvider {
+    /// Google Gemini互換のLLMプロバイダを初期化します
     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
         Self {
             client,
@@ -656,6 +659,7 @@ pub struct OpenAiProvider {
 }
 
 impl OpenAiProvider {
+    /// OpenAI API互換のプロバイダを初期化します
     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
         Self {
             client,
@@ -823,6 +827,7 @@ pub struct ClaudeProvider {
 }
 
 impl ClaudeProvider {
+    /// Anthropic Claude APIを利用するためのプロバイダを初期化します
     pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
         Self {
             client,
@@ -985,6 +990,7 @@ pub struct LmStudioProvider {
 }
 
 impl LmStudioProvider {
+    /// LM StudioやvLLM等のローカル推論サーバーにアクセスするためのプロバイダを初期化します
     pub fn new(client: reqwest::Client, host: String, model: String) -> Self {
         Self {
             client,
@@ -1152,6 +1158,7 @@ pub struct RuriProvider {
 }
 
 impl RuriProvider {
+    /// 埋め込みベクトルの生成専用の推論サーバー(Ruri等)クライアントを作成します
     pub fn new(client: reqwest::Client, base_url: String) -> Self {
         Self { client, base_url }
     }

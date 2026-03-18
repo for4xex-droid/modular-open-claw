@@ -13,6 +13,7 @@ use serde_json::Value;
 use tracing::info;
 use uuid::Uuid;
 
+/// LLMを通じてAgentの過去の経験(Karma)から現状の「感情的表現」を構築するエンジン
 pub struct ExpressionEngine;
 
 impl ExpressionEngine {

@@ -19,6 +19,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+/// 自動補完構造体
 pub struct SqliteArtifactStore {
     pool: SqlitePool,
     base_dir: PathBuf, // workspace/artifacts
@@ -26,6 +27,7 @@ pub struct SqliteArtifactStore {
 }
 
 impl SqliteArtifactStore {
+    /// 自動補完関数
     pub fn new(pool: SqlitePool, base_dir: PathBuf) -> Self {
         Self {
             pool,
@@ -34,6 +36,7 @@ impl SqliteArtifactStore {
         }
     }
 
+    /// 自動補完関数
     pub fn with_embeddings(mut self, provider: Arc<dyn EmbeddingProvider>) -> Self {
         self.embed_provider = Some(provider);
         self

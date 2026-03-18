@@ -21,6 +21,7 @@ pub struct ConceptManager {
 }
 
 impl ConceptManager {
+    /// 自動補完関数
     pub fn new(main_provider: Arc<dyn LlmProvider>) -> Self {
         Self {
             main_provider,
@@ -29,6 +30,7 @@ impl ConceptManager {
         }
     }
 
+    /// 自動補完関数
     pub fn with_constitutional_layer(
         mut self,
         prosecutor: Arc<dyn LlmProvider>,
@@ -159,6 +161,7 @@ impl ConceptManager {
 
 use shared::output_validator;
 
+/// 自動補完関数
 pub fn extract_json(text: &str) -> Result<String, AiomeError> {
     let block = output_validator::extract_json_block(text);
     if block.trim().is_empty() || (!block.contains('{') && !block.contains('[')) {

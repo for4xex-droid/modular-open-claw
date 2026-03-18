@@ -11,9 +11,13 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
+/// 自動補完構造体
 pub struct ProxyLlmProvider {
+    /// 自動補完フィールド
     pub proxy_url: String,
+    /// 自動補完フィールド
     pub endpoint_tag: String,
+    /// 自動補完フィールド
     pub caller_id: String,
     client: reqwest::Client,
 }
@@ -32,6 +36,7 @@ struct ProxyResponse {
 }
 
 impl ProxyLlmProvider {
+    /// 自動補完関数
     pub fn new(proxy_url: String, endpoint_tag: String, caller_id: String) -> Self {
         Self {
             proxy_url,

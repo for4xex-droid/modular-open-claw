@@ -15,6 +15,7 @@ use tracing::info;
 /// - 往復終了後に LLM による要約を行い、アーカイブ化
 pub const MAX_DIALOGUE_TURNS: i32 = 10;
 
+/// Dialogueの各ターン進行や制約(Cooldown等)を管理するマネージャー構造体
 pub struct DialogueManager;
 
 impl DialogueManager {
@@ -157,9 +158,14 @@ impl DialogueManager {
     }
 }
 
+/// P2P通信における不正行為・プロトコル違反のカテゴリ
 pub enum PenaltyCategory {
+    /// ペイロードの暗号署名が不正または検証失敗
     InvalidSignature,
+    /// 相手ターンのタイムアウト（放置）
     Timeout,
+    /// 連続した不要なメッセージ送信
     Spam,
+    /// バンパイア攻撃やDDosなど、悪意のある利用
     MaliciousIntent,
 }

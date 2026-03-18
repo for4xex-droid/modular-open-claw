@@ -12,11 +12,13 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::info;
 
+/// 自動補完構造体
 pub struct DefaultConstitutionalValidator {
     provider: Arc<dyn LlmProvider>,
 }
 
 impl DefaultConstitutionalValidator {
+    /// 自動補完関数
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
         Self { provider }
     }

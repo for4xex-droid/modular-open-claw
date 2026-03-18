@@ -14,10 +14,12 @@ use sysinfo::{Pid, System};
 pub struct Secret<T>(T);
 
 impl<T> Secret<T> {
+    /// 自動補完関数
     pub fn new(val: T) -> Self {
         Self(val)
     }
 
+    /// 自動補完関数
     pub fn expose(&self) -> &T {
         &self.0
     }
@@ -39,18 +41,30 @@ impl<T> fmt::Display for Secret<T> {
 /// リソースの使用状況
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ResourceStatus {
+    /// 自動補完フィールド
     pub memory_usage_mb: u64,
+    /// 自動補完フィールド
     pub total_memory_mb: u64,
+    /// 自動補完フィールド
     pub cpu_usage_percent: f32,
+    /// 自動補完フィールド
     pub vram_usage_mb: Option<u64>,
+    /// 自動補完フィールド
     pub disk_free_gb: u64,
+    /// 自動補完フィールド
     pub total_disk_gb: u64,
+    /// 自動補完フィールド
     pub open_files: Option<u64>,
     // AI Stats (Evolvable)
+    /// 自動補完フィールド
     pub level: i32,
+    /// 自動補完フィールド
     pub exp: i32,
+    /// 自動補完フィールド
     pub resonance: i32,
+    /// 自動補完フィールド
     pub creativity: i32,
+    /// 自動補完フィールド
     pub fatigue: i32,
 }
 
@@ -62,6 +76,7 @@ pub struct HealthMonitor {
 }
 
 impl HealthMonitor {
+    /// 自動補完関数
     pub fn new() -> Self {
         let mut sys = System::new_all();
         sys.refresh_all();
@@ -78,6 +93,7 @@ impl Default for HealthMonitor {
 }
 
 impl HealthMonitor {
+    /// 自動補完関数
     pub fn check(&mut self) -> ResourceStatus {
         // 全体のメモリと特定のプロセスをリフレッシュ
         self.sys.refresh_memory();

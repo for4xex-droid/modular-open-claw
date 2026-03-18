@@ -16,6 +16,7 @@ static LLM: OnceCell<Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync
 static IMMUNE: OnceCell<Arc<infrastructure::immune_system::AdaptiveImmuneSystem>> =
     OnceCell::const_new();
 
+/// `get_db` 関数
 pub async fn get_db() -> Result<&'static Arc<SqliteJobQueue>, AiomeError> {
     DB.get_or_try_init(|| async {
         let db_path = std::env::var("AIOME_DB_PATH")
@@ -26,6 +27,7 @@ pub async fn get_db() -> Result<&'static Arc<SqliteJobQueue>, AiomeError> {
     .await
 }
 
+/// `get_llm_provider` 関数
 pub async fn get_llm_provider(
 ) -> Result<&'static Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>, AiomeError> {
     LLM.get_or_try_init(|| async {
@@ -127,6 +129,7 @@ pub async fn get_llm_provider(
     .await
 }
 
+/// `get_immune` 関数
 pub async fn get_immune(
 ) -> Result<&'static Arc<infrastructure::immune_system::AdaptiveImmuneSystem>, AiomeError> {
     IMMUNE

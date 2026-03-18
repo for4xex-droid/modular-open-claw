@@ -12,19 +12,26 @@ use tokio::sync::RwLock;
 use tracing::warn;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// 自動補完構造体
 pub struct SkillPerformance {
+    /// 自動補完フィールド
     pub success_count: u64,
+    /// 自動補完フィールド
     pub failure_count: u64,
+    /// 自動補完フィールド
     pub average_latency_ms: u64,
+    /// 自動補完フィールド
     pub total_karma_weight: f64,
 }
 
+/// 自動補完構造体
 pub struct SkillArena {
     performance_map: Arc<RwLock<HashMap<String, SkillPerformance>>>,
     culling_threshold: f64, // e.g. 0.3 (failure rate)
 }
 
 impl SkillArena {
+    /// 自動補完関数
     pub fn new() -> Self {
         Self {
             performance_map: Arc::new(RwLock::new(HashMap::new())),
@@ -74,6 +81,7 @@ impl SkillArena {
         }
     }
 
+    /// 自動補完関数
     pub async fn get_stats(&self, skill_name: &str) -> Option<SkillPerformance> {
         let map = self.performance_map.read().await;
         map.get(skill_name).cloned()

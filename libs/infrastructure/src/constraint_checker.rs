@@ -10,12 +10,14 @@ use aiome_core::security::PermissionManifest;
 use aiome_core::trajectory::{ConstraintViolation, TrajectoryStep};
 use regex::Regex;
 
+/// 自動補完構造体
 pub struct ConstraintChecker {
     immune_rules: Vec<ImmuneRule>,
     permission_manifest: PermissionManifest,
 }
 
 impl ConstraintChecker {
+    /// 自動補完関数
     pub fn new(immune_rules: Vec<ImmuneRule>, permission_manifest: PermissionManifest) -> Self {
         Self {
             immune_rules,

@@ -11,8 +11,11 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// 自動補完構造体
 pub struct SecurityConfig {
+    /// 自動補完フィールド
     pub allowed_binaries: Vec<String>,
+    /// 自動補完フィールド
     pub workspace_root: std::path::PathBuf,
 }
 
@@ -48,6 +51,7 @@ impl Default for SecurityConfig {
 }
 
 impl SecurityConfig {
+    /// 自動補完関数
     pub fn load_or_default() -> Self {
         let workspace = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "workspace".to_string());
         let workspace_root = std::path::PathBuf::from(&workspace);
@@ -70,6 +74,7 @@ impl SecurityConfig {
     }
 }
 
+/// 自動補完フィールド
 pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
     once_cell::sync::Lazy::new(SecurityConfig::load_or_default);
 
@@ -271,6 +276,7 @@ impl RuntimeJail for BastionGuard {
 }
 
 impl BastionGuard {
+    /// 自動補完関数
     pub fn new(manifest: PermissionManifest) -> Self {
         Self { manifest }
     }

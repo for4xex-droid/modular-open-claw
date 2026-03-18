@@ -6,6 +6,7 @@
  */
 
 #![forbid(unsafe_code)]
+#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 use aiome_core::llm_provider::EmbeddingProvider;
 
@@ -100,7 +101,7 @@ async fn main() {
     }
 
     let cancel_token = tokio_util::sync::CancellationToken::new();
-    let mut plugin_registry = plugin_loader::PluginRegistry::new();
+    let plugin_registry = plugin_loader::PluginRegistry::new();
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
@@ -1422,7 +1423,7 @@ pub fn build_app(
         )
         .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
 
-    let mut router: Router<AppState> = Router::new().merge(internal_router).merge(streaming_router);
+    let router: Router<AppState> = Router::new().merge(internal_router).merge(streaming_router);
 
     #[cfg(feature = "nurture")]
     {

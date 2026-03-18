@@ -4,6 +4,8 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
+//! # クレート固有のインデックス
+//!
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -13,6 +15,7 @@ fn greet(name: &str) -> String {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// `run` 関数
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

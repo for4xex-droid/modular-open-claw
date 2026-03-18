@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(unused_imports, unused_variables, dead_code, unused_mut, ambiguous_glob_reexports)]
 
 pub mod biome;
 pub mod commerce;

@@ -177,6 +177,16 @@ When you receive a heartbeat poll, don't just reply `HEARTBEAT_OK` every time. U
 
 ドキュメントの鮮度は、AIシステム全体の信頼性に直結する。
 
+### 🛡️ Code Consistency & Warning Policy
+
+Rustのコンパイラ警告（`unused_imports`, `unused_variables`, `dead_code` 等）に対処する際、**安全第一で意図を保存（Preserve Intent）**するアプローチを原則とする。
+
+1. **未使用のコードの削除は避ける**: 「将来使うかもしれない」「デバッグ用に用意した」等の理由で書かれた可能性があるため、安易に削除しないこと。
+2. **安全な警告抑制**: 
+   - ファイル全体の警告を消す場合は、クレートのルート（`lib.rs` / `main.rs`）に `#![allow(unused_imports, unused_variables, dead_code, unused_mut)]` を追記する。
+   - 個別に対処する場合は、変数名に `_` のプレフィックスを付ける。
+3. **目的**: コンテキスト喪失や将来の実装時の再インポート・再定義の手間、他ブランチとのコンフリクトを回避しながら、「警告ゼロ」のクリーンなCI/ビルド状態を維持するため。
+
 ### 🔄 Memory Maintenance (During Heartbeats)
 
 Periodically (every few days), use a heartbeat to:

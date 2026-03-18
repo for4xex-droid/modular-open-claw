@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
+/// 自動補完構造体
 pub struct HeartbeatWakeupService {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
@@ -18,6 +19,7 @@ pub struct HeartbeatWakeupService {
 }
 
 impl HeartbeatWakeupService {
+    /// 自動補完関数
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
         semaphore: Arc<Semaphore>,
@@ -30,6 +32,7 @@ impl HeartbeatWakeupService {
         }
     }
 
+    /// 自動補完関数
     pub async fn run_wakeup_ping(&self) -> Option<String> {
         let filename = "HEARTBEAT.md";
         let target_path = self.workspace_dir.join(filename);

@@ -6,6 +6,7 @@
  */
 
 #![forbid(unsafe_code)]
+#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 use futures_util::{SinkExt, StreamExt};
 use infrastructure::channel_bridge::{ChannelBridge, DiscordBridge, TelegramBridge};
@@ -21,13 +22,11 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     info!("👁️ Starting Aiome Watchtower (Soul Bridge)...");
 
-    let discord_token = std::env::var("DISCORD_TOKEN").ok().map(|t| {
+    let discord_token = std::env::var("DISCORD_TOKEN").ok().inspect(|_t| {
         std::env::remove_var("DISCORD_TOKEN");
-        t
     });
-    let telegram_token = std::env::var("TELEGRAM_TOKEN").ok().map(|t| {
+    let telegram_token = std::env::var("TELEGRAM_TOKEN").ok().inspect(|_t| {
         std::env::remove_var("TELEGRAM_TOKEN");
-        t
     });
     let api_secret = std::env::var("API_SERVER_SECRET").unwrap_or_else(|_| {
         error!("🚨 [CRITICAL] API_SERVER_SECRET must be set for security!");

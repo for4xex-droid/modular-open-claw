@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 /// エージェントやプラグインに許可される「物理的操作」の宣言。
 /// Contracts 層に定義することで、AIが勝手に権限を昇格できないように「物理ロック」をかける。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub struct PermissionManifest {
     pub allow_network: bool,
     pub allow_filesystem_write: bool,
@@ -19,16 +20,6 @@ pub struct PermissionManifest {
     pub allowed_domains: Vec<String>,
 }
 
-impl Default for PermissionManifest {
-    fn default() -> Self {
-        Self {
-            allow_network: false,
-            allow_filesystem_write: false,
-            allow_shell_execution: false,
-            allowed_domains: vec![],
-        }
-    }
-}
 
 /// ⛓️ RuntimeJail
 ///

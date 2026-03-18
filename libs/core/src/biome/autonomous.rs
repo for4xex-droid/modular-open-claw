@@ -17,17 +17,24 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
 
+/// 自律対話エンジンの動作設定
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutonomousConfig {
+    /// ターンの最短待ち時間（秒）
     pub interval_secs: u64,
+    /// セッションの最大往復数
     pub max_rounds: u32,
+    /// 会話が属するトピックのID
     pub topic_id: String,
+    /// 会話相手の公開鍵
     pub peer_pubkey: String,
 }
 
+/// 自律的なP2P対話ループを実行・管理するエンジン
 pub struct AutonomousBiomeEngine;
 
 impl AutonomousBiomeEngine {
+    /// 指定された設定に基づいてバックグラウンドで対話ループを開始する
     pub async fn start_loop(
         config: AutonomousConfig,
         queue: Arc<dyn JobQueue>,

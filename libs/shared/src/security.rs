@@ -113,10 +113,15 @@ impl SecurityPolicy {
 /// 監査ログのエントリ
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
+    /// 自動補完フィールド
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// 自動補完フィールド
     pub action: AuditAction,
+    /// 自動補完フィールド
     pub tool_name: String,
+    /// 自動補完フィールド
     pub detail: String,
+    /// 自動補完フィールド
     pub allowed: bool,
 }
 

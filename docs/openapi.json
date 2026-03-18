@@ -1501,32 +1501,39 @@
         "properties": {
           "cpu_usage_percent": {
             "type": "number",
-            "format": "float"
+            "format": "float",
+            "description": "CPU使用率（%）"
           },
           "creativity": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "創造性（Creativity）"
           },
           "disk_free_gb": {
             "type": "integer",
             "format": "int64",
+            "description": "ディスク空き容量（GB）",
             "minimum": 0
           },
           "exp": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "経験値"
           },
           "fatigue": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "疲労度（Fatigue）"
           },
           "level": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "AIのレベル"
           },
           "memory_usage_mb": {
             "type": "integer",
             "format": "int64",
+            "description": "使用中のメモリ量（MB）",
             "minimum": 0
           },
           "open_files": {
@@ -1535,20 +1542,24 @@
               "null"
             ],
             "format": "int64",
+            "description": "オープンされているファイル数",
             "minimum": 0
           },
           "resonance": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "共鳴度（Resonance）"
           },
           "total_disk_gb": {
             "type": "integer",
             "format": "int64",
+            "description": "全ディスク容量（GB）",
             "minimum": 0
           },
           "total_memory_mb": {
             "type": "integer",
             "format": "int64",
+            "description": "全体のメモリ量（MB）",
             "minimum": 0
           },
           "vram_usage_mb": {
@@ -1557,6 +1568,7 @@
               "null"
             ],
             "format": "int64",
+            "description": "VRAM使用量（MB）",
             "minimum": 0
           }
         }

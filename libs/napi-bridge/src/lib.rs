@@ -5,6 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+//! # クレート固有のインデックス
+//!
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![deny(clippy::all)]
@@ -17,14 +19,20 @@ pub use state::*;
 use aiome_core::traits::JobQueue;
 
 #[napi(object)]
+/// `SubagentSpawnResponse` 構造体
 pub struct SubagentSpawnResponse {
+    /// `status` フィールド
     pub status: String,
 }
 
 #[napi(object)]
+/// `ToolCheckResponse` 構造体
 pub struct ToolCheckResponse {
+    /// `blocked` フィールド
     pub blocked: bool,
+    /// `reason` フィールド
     pub reason: Option<String>,
+    /// `new_params` フィールド
     pub new_params: Option<String>,
 }
 
@@ -33,12 +41,14 @@ fn map_err<E: std::fmt::Display>(e: E) -> napi::Error {
 }
 
 #[napi]
+/// `karma_bootstrap` 関数
 pub async fn karma_bootstrap(_session_id: String) -> Result<()> {
     get_db().await.map_err(map_err)?;
     Ok(())
 }
 
 #[napi]
+/// `get_karma_directives` 関数
 pub async fn get_karma_directives(topic: String, skill_id: String) -> Result<String> {
     let db = get_db().await.map_err(map_err)?;
     let result = db
@@ -58,6 +68,7 @@ pub async fn get_karma_directives(topic: String, skill_id: String) -> Result<Str
 }
 
 #[napi]
+/// `karma_ingest` 関数
 pub async fn karma_ingest(session_id: String, message_json: String) -> Result<()> {
     let db = get_db().await.map_err(map_err)?;
     let msg: serde_json::Value = serde_json::from_str(&message_json)
@@ -73,6 +84,7 @@ pub async fn karma_ingest(session_id: String, message_json: String) -> Result<()
 }
 
 #[napi]
+/// `karma_distill_turn` 関数
 pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<()> {
     tracing::info!(
         "karma_distill_turn: success={}, msgs_len={}",
@@ -130,6 +142,7 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
 }
 
 #[napi]
+/// `karma_fetch_relevant` 関数
 pub async fn karma_fetch_relevant(session_id: String, _limit: u32) -> Result<String> {
     let db = get_db().await.map_err(map_err)?;
     // fetch relevant karmas for the session (requires embedding provider wiring in future)
@@ -142,6 +155,7 @@ pub async fn karma_fetch_relevant(session_id: String, _limit: u32) -> Result<Str
 }
 
 #[napi]
+/// `immune_get_warnings` 関数
 pub async fn immune_get_warnings() -> Result<String> {
     let db = get_db().await.map_err(map_err)?;
     let rules = db.fetch_active_immune_rules().await.map_err(map_err)?;
@@ -161,6 +175,7 @@ pub async fn immune_get_warnings() -> Result<String> {
 }
 
 #[napi]
+/// `karma_compact` 関数
 pub async fn karma_compact(
     session_id: String,
     _session_file: String,
@@ -177,6 +192,7 @@ pub async fn karma_compact(
 }
 
 #[napi]
+/// `quarantine_check_spawn` 関数
 pub async fn quarantine_check_spawn(_child_session_key: String) -> Result<SubagentSpawnResponse> {
     // TLA+ verified quarantine guard
     Ok(SubagentSpawnResponse {
@@ -185,6 +201,7 @@ pub async fn quarantine_check_spawn(_child_session_key: String) -> Result<Subage
 }
 
 #[napi]
+/// `karma_learn_from_subagent` 関数
 pub async fn karma_learn_from_subagent(target_session_key: String, outcome: String) -> Result<()> {
     let db = get_db().await.map_err(map_err)?;
     db.store_karma(
@@ -206,11 +223,13 @@ pub async fn karma_learn_from_subagent(target_session_key: String, outcome: Stri
 }
 
 #[napi]
+/// `shutdown` 関数
 pub fn shutdown() {
     tracing::info!("ContextEngine NAPI shutdown.");
 }
 
 #[napi]
+/// `immune_check_tool` 関数
 pub async fn immune_check_tool(tool_name: String, params: String) -> Result<ToolCheckResponse> {
     tracing::info!(
         "🛡️ [NAPI Sentinel] immune_check_tool: {} | {}",
@@ -272,6 +291,7 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
 }
 
 #[napi]
+/// `karma_learn_from_tool` 関数
 pub async fn karma_learn_from_tool(
     tool_name: String,
     result: String,
@@ -308,6 +328,7 @@ pub async fn karma_learn_from_tool(
 }
 
 #[napi]
+/// `karma_preserve_facts` 関数
 pub async fn karma_preserve_facts(session_file: String) -> Result<()> {
     tracing::info!("karma_preserve_facts for {}", session_file);
     let db = get_db().await.map_err(map_err)?;
@@ -334,6 +355,7 @@ pub async fn karma_preserve_facts(session_file: String) -> Result<()> {
 }
 
 #[napi]
+/// `immune_scan_input` 関数
 pub async fn immune_scan_input(prompt: String, _history_messages: String) -> Result<()> {
     let immune = get_immune().await.map_err(map_err)?;
     let db = get_db().await.map_err(map_err)?;
@@ -349,11 +371,13 @@ pub async fn immune_scan_input(prompt: String, _history_messages: String) -> Res
 }
 
 #[napi]
+/// `karma_flush_session` 関数
 pub async fn karma_flush_session(_session_id: String) -> Result<()> {
     Ok(())
 }
 
 #[napi]
+/// `watchtower_track_usage` 関数
 pub async fn watchtower_track_usage(usage: String) -> Result<()> {
     tracing::info!("watchtower_track_usage: {}", usage);
     // LLMトークン消費量の記録など
@@ -361,6 +385,7 @@ pub async fn watchtower_track_usage(usage: String) -> Result<()> {
 }
 
 #[napi]
+/// `watchtower_init` 関数
 pub async fn watchtower_init() -> Result<()> {
     let _ = get_db().await;
     let _ = get_immune().await;
@@ -369,6 +394,7 @@ pub async fn watchtower_init() -> Result<()> {
 }
 
 #[napi]
+/// `watchtower_shutdown` 関数
 pub fn watchtower_shutdown() {
     tracing::info!("Watchtower shutdown.");
 }

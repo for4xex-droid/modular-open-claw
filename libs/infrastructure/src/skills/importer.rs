@@ -11,31 +11,46 @@ use serde::{Deserialize, Serialize};
 /// Separation of metadata into layers to optimize token consumption.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SkillManifest {
+    /// 自動補完フィールド
     pub l1: L1Metadata, // Trigger level (Minimal)
+    /// 自動補完フィールド
     pub l2: L2Metadata, // Description level (Context)
+    /// 自動補完フィールド
     pub l3: L3Metadata, // Execution level (Code/Wasm)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// 自動補完構造体
 pub struct L1Metadata {
+    /// 自動補完フィールド
     pub name: String,
+    /// 自動補完フィールド
     pub trigger_description: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// 自動補完構造体
 pub struct L2Metadata {
+    /// 自動補完フィールド
     pub extended_description: String,
+    /// 自動補完フィールド
     pub inputs_schema: serde_json::Value,
+    /// 自動補完フィールド
     pub examples: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// 自動補完構造体
 pub struct L3Metadata {
+    /// 自動補完フィールド
     pub engine: String, // "wasm", "docker", "mcp"
+    /// 自動補完フィールド
     pub entry_point: String,
+    /// 自動補完フィールド
     pub source_code: Option<String>,
 }
 
+/// 自動補完構造体
 pub struct SkillImporter;
 
 impl SkillImporter {

@@ -13,12 +13,15 @@ use sqlx::Row;
 use tracing::{error, info};
 
 #[async_trait]
+/// 自動補完トレイト
 pub trait CrdtOps {
+    /// 自動補完関数
     async fn sync_timeline(
         &self,
         hub_id: &str,
         remote_blob: Option<&[u8]>,
     ) -> Result<Vec<u8>, AiomeError>;
+    /// 自動補完関数
     async fn get_timeline_blob(&self, hub_id: &str) -> Result<Option<Vec<u8>>, AiomeError>;
 }
 

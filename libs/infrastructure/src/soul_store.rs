@@ -7,19 +7,26 @@ use tracing::{info, warn};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
+/// 自動補完構造体
 pub struct SoulSnapshot {
+    /// 自動補完フィールド
     pub attachment_style: soul::attachment::AttachmentStyle,
+    /// 自動補完フィールド
     pub narrative_self: Option<String>,
+    /// 自動補完フィールド
     pub prompt_fragment: String,
+    /// 自動補完フィールド
     pub generation: u32,
 }
 
+/// 自動補完構造体
 pub struct SqliteSoulStore {
     pool: Arc<SqlitePool>,
     cache: Arc<RwLock<Option<SoulSnapshot>>>,
 }
 
 impl SqliteSoulStore {
+    /// 自動補完関数
     pub fn new(pool: Arc<SqlitePool>) -> Self {
         Self {
             pool,
@@ -27,6 +34,7 @@ impl SqliteSoulStore {
         }
     }
 
+    /// 自動補完関数
     pub async fn save_soul(&self, soul: &AgentSoul) -> Result<(), AiomeError> {
         if soul.id.is_empty() {
             return Err(AiomeError::Infrastructure {
@@ -133,10 +141,12 @@ impl SqliteSoulStore {
         Ok(())
     }
 
+    /// 自動補完関数
     pub async fn get_snapshot(&self) -> Option<SoulSnapshot> {
         self.cache.read().await.clone()
     }
 
+    /// 自動補完関数
     pub async fn load_into_cache(&self, id: &str) -> Result<bool, AiomeError> {
         if let Some(soul) = self.load_soul(id).await? {
             let mut cache = self.cache.write().await;
@@ -152,6 +162,7 @@ impl SqliteSoulStore {
         }
     }
 
+    /// 自動補完関数
     pub async fn load_soul(&self, id: &str) -> Result<Option<AgentSoul>, AiomeError> {
         use sqlx::Row;
         let record = sqlx::query(

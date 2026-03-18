@@ -20,11 +20,19 @@ pub enum ProcessError {
     /// プロセスの起動に失敗
     SpawnFailed(std::io::Error),
     /// タイムアウトにより強制終了
-    TimedOut { command: String, timeout_secs: u64 },
+    TimedOut {
+        /// 実行しようとしたコマンド
+        command: String,
+        /// 設定されたタイムアウト秒数
+        timeout_secs: u64,
+    },
     /// プロセスが非ゼロの終了コードで終了
     NonZeroExit {
+        /// 実行しようとしたコマンド
         command: String,
+        /// 返された終了コード
         exit_code: i32,
+        /// パースされた標準エラー出力
         stderr: String,
     },
 }

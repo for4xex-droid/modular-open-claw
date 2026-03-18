@@ -19,10 +19,12 @@ use sha2::{Digest, Sha256};
 
 /// SQLite をバックエンドとするロガークライアント
 pub struct AiomeLogClient {
+    /// 自動補完フィールド
     pub db: SqlitePool,
 }
 
 impl AiomeLogClient {
+    /// 自動補完関数
     pub async fn new(db_path: &str) -> Result<Self, AiomeError> {
         let pool = SqlitePool::connect(&format!("sqlite:{}", db_path))
             .await

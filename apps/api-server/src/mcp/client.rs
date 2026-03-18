@@ -59,7 +59,7 @@ impl McpClient {
             .stdout
             .take()
             .ok_or_else(|| anyhow!("Failed to open stdout"))?;
-        let mut stderr = child
+        let stderr = child
             .stderr
             .take()
             .ok_or_else(|| anyhow!("Failed to open stderr"))?;
@@ -67,7 +67,7 @@ impl McpClient {
         let pending_requests = Arc::new(Mutex::new(
             HashMap::<i64, oneshot::Sender<JsonRpcResponse>>::new(),
         ));
-        let pending_requests_clone = pending_requests.clone();
+        let _pending_requests_clone = pending_requests.clone();
         let client_id = id.clone();
 
         // Stderr logging task

@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use aiome_core::contracts::{
-    ApprovalState, ArenaMatch, FederatedKarma, FederationPushRequest, FederationPushResponse,
+    ApprovalState, FederatedKarma, FederationPushRequest, FederationPushResponse,
     FederationSyncRequest, FederationSyncResponse, HubMessage, ImmuneRule,
 };
 use axum::{
@@ -835,7 +835,7 @@ async fn push_handler(
 
     let mut tx = match state.pool.begin().await {
         Ok(t) => t,
-        Err(e) => {
+        Err(_e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "Internal error"})),

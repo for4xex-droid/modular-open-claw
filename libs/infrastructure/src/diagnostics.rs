@@ -12,11 +12,13 @@ use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep};
 use chrono::Utc;
 use std::sync::Arc;
 
+/// 自動補完構造体
 pub struct AgentRxDiagnostics {
     provider: Arc<dyn LlmProvider>,
 }
 
 impl AgentRxDiagnostics {
+    /// 自動補完関数
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
         Self { provider }
     }

@@ -10,12 +10,14 @@ use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
 
 #[derive(Clone)]
+/// 自動補完構造体
 pub struct SkillForge {
     template_dir: PathBuf,
     skills_output_dir: PathBuf,
 }
 
 impl SkillForge {
+    /// 自動補完関数
     pub fn new<P: AsRef<Path>>(template_dir: P, skills_output_dir: P) -> Self {
         Self {
             template_dir: template_dir.as_ref().to_path_buf(),

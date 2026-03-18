@@ -7,4 +7,5 @@
 
 pub use aiome_contracts::expression::Expression;
 
+/// 感情テキストとメタデータを生成する推論アルゴリズム
 pub mod engine;

@@ -24,6 +24,7 @@ use std::time::Instant;
 pub(crate) mod tests;
 
 mod core_ops;
+/// 自動補完モジュール
 pub mod crdt;
 mod evaluation;
 mod evolution;
@@ -33,6 +34,7 @@ mod guardrails;
 mod karma;
 mod karma_maintenance;
 mod migrations;
+/// 自動補完モジュール
 pub mod settings;
 mod swarm;
 mod taxonomy;
@@ -62,10 +64,12 @@ pub struct SqliteJobQueue {
 }
 
 impl SqliteJobQueue {
+    /// 自動補完関数
     pub fn get_pool(&self) -> &sqlx::SqlitePool {
         &self.pool
     }
 
+    /// 自動補完関数
     pub async fn get_embedding_provider(&self) -> Option<Arc<dyn EmbeddingProvider>> {
         self.embed_provider.read().await.clone()
     }
@@ -99,11 +103,13 @@ impl SqliteJobQueue {
         Ok(instance)
     }
 
+    /// 自動補完関数
     pub async fn set_embedding_provider(&self, provider: Arc<dyn EmbeddingProvider>) {
         let mut w = self.embed_provider.write().await;
         *w = Some(provider);
     }
 
+    /// 自動補完関数
     pub fn with_embeddings(self, provider: Arc<dyn EmbeddingProvider>) -> Self {
         Self {
             pool: self.pool,
@@ -627,6 +633,7 @@ impl JobQueue for SqliteJobQueue {
 
 // Inherent methods (Watchtower / Chat extension)
 impl SqliteJobQueue {
+    /// 自動補完関数
     pub async fn insert_chat_message(
         &self,
         channel_id: &str,
@@ -636,6 +643,7 @@ impl SqliteJobQueue {
         Box::pin(self.do_insert_chat_message(channel_id, role, content)).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_chat_history(
         &self,
         channel_id: &str,
@@ -644,6 +652,7 @@ impl SqliteJobQueue {
         Box::pin(self.do_fetch_chat_history(channel_id, limit)).await
     }
 
+    /// 自動補完関数
     pub async fn get_chat_memory_summary(
         &self,
         channel_id: &str,
@@ -651,6 +660,7 @@ impl SqliteJobQueue {
         Box::pin(self.do_get_chat_memory_summary(channel_id)).await
     }
 
+    /// 自動補完関数
     pub async fn update_chat_memory_summary(
         &self,
         channel_id: &str,
@@ -659,12 +669,14 @@ impl SqliteJobQueue {
         Box::pin(self.do_update_chat_memory_summary(channel_id, summary)).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_undistilled_chats_by_channel(
         &self,
     ) -> Result<std::collections::HashMap<String, Vec<(i64, String, String)>>, AiomeError> {
         Box::pin(self.do_fetch_undistilled_chats_by_channel()).await
     }
 
+    /// 自動補完関数
     pub async fn mark_chats_as_distilled(
         &self,
         channel_id: &str,
@@ -673,10 +685,12 @@ impl SqliteJobQueue {
         Box::pin(self.do_mark_chats_as_distilled(channel_id, up_to_id)).await
     }
 
+    /// 自動補完関数
     pub async fn purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError> {
         Box::pin(self.do_purge_old_distilled_chats(days)).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_skills_for_distillation(
         &self,
         threshold: i64,
@@ -684,6 +698,7 @@ impl SqliteJobQueue {
         Box::pin(self.do_fetch_skills_for_distillation(threshold)).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_raw_karma_for_skill(
         &self,
         skill: &str,
@@ -691,6 +706,7 @@ impl SqliteJobQueue {
         Box::pin(self.do_fetch_raw_karma_for_skill(skill)).await
     }
 
+    /// 自動補完関数
     pub async fn apply_distilled_karma(
         &self,
         skill: &str,
@@ -713,28 +729,34 @@ impl SqliteJobQueue {
         .await
     }
 
+    /// 自動補完関数
     pub async fn increment_oracle_retry_count(&self, record_id: i64) -> Result<bool, AiomeError> {
         Box::pin(self.do_increment_oracle_retry_count(record_id)).await
     }
 
+    /// 自動補完関数
     pub async fn get_global_api_failures(&self) -> Result<i64, AiomeError> {
         Box::pin(self.do_get_global_api_failures()).await
     }
 
+    /// 自動補完関数
     pub async fn record_global_api_failure(&self) -> Result<i64, AiomeError> {
         Box::pin(self.do_record_global_api_failure()).await
     }
 
+    /// 自動補完関数
     pub async fn record_global_api_success(&self) -> Result<(), AiomeError> {
         Box::pin(self.do_record_global_api_success()).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_unfederated_data(
         &self,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>), AiomeError> {
         Box::pin(self.do_fetch_unfederated_data()).await
     }
 
+    /// 自動補完関数
     pub async fn mark_as_federated(
         &self,
         karma_ids: Vec<String>,
@@ -744,10 +766,12 @@ impl SqliteJobQueue {
     }
 
     // Settings
+    /// 自動補完関数
     pub async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
         self.get_setting(key).await
     }
 
+    /// 自動補完関数
     pub async fn update_setting(
         &self,
         key: &str,
@@ -758,12 +782,14 @@ impl SqliteJobQueue {
         self.set_setting(key, value, category, is_secret).await
     }
 
+    /// 自動補完関数
     pub async fn fetch_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError> {
         self.get_all_settings().await
     }
 
+    /// 自動補完関数
     pub async fn run_karma_tier_maintenance(&self) -> Result<(), AiomeError> {
         karma_maintenance::run_karma_tier_maintenance(&self.pool).await
     }

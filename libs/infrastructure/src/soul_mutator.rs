@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tokio::fs;
 use tracing::info;
 
+/// 自動補完構造体
 pub struct SoulMutator {
     provider: Arc<dyn LlmProvider>,
     prosecutor_provider: Option<Arc<dyn LlmProvider>>,
@@ -23,6 +24,7 @@ impl SoulMutator {
     const MIN_DRIFT_THRESHOLD: f64 = 0.30;
     /// 最大 Drift 閾値 (経験を積んだエージェント)
     const MAX_DRIFT_THRESHOLD: f64 = 0.55;
+    /// 自動補完関数
     pub fn new(provider: Arc<dyn LlmProvider>, workspace_dir: PathBuf) -> Self {
         Self {
             provider,
@@ -31,6 +33,7 @@ impl SoulMutator {
         }
     }
 
+    /// 自動補完関数
     pub fn with_prosecutor(mut self, prosecutor: Arc<dyn LlmProvider>) -> Self {
         self.prosecutor_provider = Some(prosecutor);
         self

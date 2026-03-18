@@ -11,12 +11,14 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
+/// 自動補完構造体
 pub struct UserLearner {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
 }
 
 impl UserLearner {
+    /// 自動補完関数
     pub fn new(provider: Arc<dyn LlmProvider + Send + Sync>, semaphore: Arc<Semaphore>) -> Self {
         Self {
             provider,
@@ -24,6 +26,7 @@ impl UserLearner {
         }
     }
 
+    /// 自動補完関数
     pub async fn learn_from_session(
         &self,
         conversation_summary: &str,

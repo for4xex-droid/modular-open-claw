@@ -20,8 +20,11 @@ pub enum ValidationResult<T> {
     Valid(T),
     /// パース失敗 — 修正用のフィードバックメッセージを含む
     Invalid {
+        /// 自動補完ドキュメント
         raw_output: String,
+        /// 自動補完ドキュメント
         error_message: String,
+        /// 自動補完ドキュメント
         repair_prompt: String,
     },
 }

@@ -12,17 +12,24 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tracing::{error, info};
+/// 自動補完モジュール
 pub mod actions_importer;
+/// 自動補完モジュール
 pub mod cleanroom;
+/// 自動補完モジュール
 pub mod forge;
+/// 自動補完モジュール
 pub mod importer;
+/// 自動補完モジュール
 pub mod skill_arena;
 use contracts::requires;
 
 /// 状態: 未検証の外部Skill (TypeState Pattern)
 #[derive(Debug, Clone)]
 pub struct UnverifiedSkill {
+    /// 自動補完フィールド
     pub name: String,
+    /// 自動補完フィールド
     pub input_test_payload: String,
 }
 
@@ -39,6 +46,7 @@ impl VerifiedSkill {
         Self { name }
     }
 
+    /// 自動補完関数
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -68,18 +76,27 @@ impl UnverifiedSkill {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// 自動補完構造体
 pub struct SkillMetadata {
+    /// 自動補完フィールド
     pub name: String,
+    /// 自動補完フィールド
     pub description: String,
+    /// 自動補完フィールド
     pub capabilities: Vec<String>,
+    /// 自動補完フィールド
     pub inputs: Vec<String>,
+    /// 自動補完フィールド
     pub outputs: Vec<String>,
     #[serde(default)]
+    /// 自動補完フィールド
     pub allowed_hosts: Vec<String>,
     #[serde(default)]
+    /// 自動補完フィールド
     pub permissions: crate::security::PermissionManifest,
 }
 
+/// 自動補完構造体
 pub struct WasmSkillManager {
     skills_dir: PathBuf,
     allowed_root: PathBuf,
@@ -89,6 +106,7 @@ pub struct WasmSkillManager {
 }
 
 impl WasmSkillManager {
+    /// 自動補完関数
     pub fn new<P: AsRef<Path>>(
         skills_dir: P,
         allowed_root: P,
@@ -107,6 +125,7 @@ impl WasmSkillManager {
         })
     }
 
+    /// 自動補完関数
     pub fn with_limits(mut self, memory_bytes: u64, timeout: Duration) -> Self {
         self.memory_limit_bytes = memory_bytes;
         self.timeout = timeout;
@@ -395,6 +414,7 @@ impl WasmSkillManager {
         Ok(result)
     }
 
+    /// 自動補完関数
     pub fn get_metadata(&self, skill_name: &str) -> Option<SkillMetadata> {
         let meta_path = self.skills_dir.join(format!("{}.meta.json", skill_name));
         if let Ok(data) = std::fs::read_to_string(meta_path) {
