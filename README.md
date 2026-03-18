@@ -74,7 +74,9 @@ apps/watchtower      ← 外部チャネル連携 (The Soul / Discord & Telegram
       ↓
 libs/core            ← ドメインロジック (Open)
       ↓
-libs/infrastructure  ← I/O実装 (SQLite / LLM動的プロバイダー / Open)
+libs/infrastructure  ← I/O実装 (SQLite / LLM動적プロバイダー / Open)
+      ↓
+libs/soul            ← 魂のエンジン (Agents' L1-L3 Soul Engine / Open)
       ↓
 libs/shared          ← 共通型, Guardrails, AiomeConfig (Open)
 ```

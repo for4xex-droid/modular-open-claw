@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Soul Engine (Phase 1)**: Initial implementation of the Three-Layer Soul Architecture. Added `libs/soul` crate containing `AgentSoul` (Core), `PredictiveModel` (L2/Plasticity), `SomaticMarker` (L1/Reactive), and `Instinct` (L3/Meta-cognitive).
+- **Soul Persistence**: Implemented `SqliteSoulStore` in `libs/infrastructure` for persisting and loading `AgentSoul` state, including a 10,000-entry experience buffer limit to prevent storage bloat.
+- **Federated Soul Metadata**: Extended `FederatedKarma` and `approved_karma` schema to include `generation` and `somatic_valence`, enabling cross-node learning of personality traits.
 - **AgentRx Framework Integration**: Implemented a comprehensive agentic diagnostic and recovery system including `TrajectoryStore` (SQLite), `ConstraintChecker` (rule-based validation), and `AgentRxDiagnostics` (LLM-based self-review). Added full integration into `skill_handler.rs` and the main chat loop for autonomous failure recovery.
 - **WASM `fs_reader` Security Fix (P0)**: Corrected a path traversal vulnerability in the `fs_reader` WASM skill by replacing string-based prefix checks with component-aware `Path::starts_with`.
 - **Enhanced BastionGuard Whitelisting & Flag Validation**: Strengthened `safe_exec` to recursively validate paths within command-line flags (e.g., `--file=path`) and explicitly blacklisted access to sensitive internal files like `.env`, `.git`, and `security.json` even within the allowed workspace.
@@ -17,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duplicate Safety Directive Removal**: Cleaned up code across `infrastructure` and `core` crates by removing redundant `![forbid(unsafe_code)]` attributes.
 
 ### Fixed
+- **Soul Engine Robustness**: Resolved 16 issues discovered during deep scans, including `AgentSoul` ID validation, `compute_hash` logic for state integrity, safety attributes, and error conversion between `SoulError` and `AiomeError`.
+- **Samsara Hub Data Integrity**: Fixed missing columns in `samsara-hub` SELECT/INSERT operations to ensure `generation` and `somatic_valence` are properly synchronized across the federation.
 - **SQLite Deadlock in Swarm Ops (Critical)**: Resolved a deadlock in `do_sign_swarm_payload` where recursive calls to `do_get_node_id` created nested SQLite transactions, hitting the single-writer constraint and causing 8 karma tests to hang indefinitely. Refactored to a linear flow: ensure keys exist first, then sign without recursion.
 - **Stack Overflow in JobQueue Trait Methods**: Applied `Box::pin` to all 55 delegation methods in `impl JobQueue for SqliteJobQueue` to heap-allocate async futures, preventing the 60+ method async state machine from overflowing the thread stack.
 - **SwarmOps Direct Call Pattern**: Replaced `JobQueue` trait method calls (`get_node_id`, `tick_local_clock`, `sign_swarm_payload`) with direct `SwarmOps::do_*` calls in `guardrails.rs` and `karma.rs` to avoid pulling in the entire trait's massive async future.

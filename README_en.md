@@ -73,6 +73,8 @@ libs/core            ← Domain Logic (Open)
       ↓
 libs/infrastructure ← I/O Impl (SQLite, LLM Dynamic Providers / Open)
       ↓
+libs/soul           ← Soul Engine (Agents' L1-L3 Personality Engine / Open)
+      ↓
 libs/shared        ← Common Types, Guardrails, AiomeConfig (Open)
 ```
 
