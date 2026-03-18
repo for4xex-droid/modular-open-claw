@@ -77,7 +77,8 @@ async fn main() -> anyhow::Result<()> {
         use nix::sys::mman::{MlockAllFlags, mlockall};
         if let Err(e) = mlockall(MlockAllFlags::MCL_CURRENT | MlockAllFlags::MCL_FUTURE) {
             error!("❌ [KeyProxy] mlockall failed: {}. ABORTING for safety.", e);
-            panic!("SECURITY VIOLATION: Could not lock memory to RAM.");
+            eprintln!("SECURITY VIOLATION: Could not lock memory to RAM.");
+            std::process::exit(1);
         }
         info!("🧠 [KeyProxy] Memory locked to RAM (no swap).");
     }
@@ -88,7 +89,8 @@ async fn main() -> anyhow::Result<()> {
         use nix::sys::ptrace;
         if ptrace::traceme().is_err() {
             error!("🚨 [KeyProxy] Debugger detected! Panic for safety.");
-            panic!("SECURITY VIOLATION: Debugger attached.");
+            eprintln!("SECURITY VIOLATION: Debugger attached.");
+            std::process::exit(1);
         }
     }
 
@@ -144,6 +146,7 @@ async fn main() -> anyhow::Result<()> {
         gemini_key: Arc::new(SecretString::from(gemini_key)),
         vault_secret: Arc::new(SecretString::from(vault_secret)),
         client: reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
             .redirect(reqwest::redirect::Policy::none())
             .build()?,
         state: Arc::new(RwLock::new(quota_state)),
@@ -228,7 +231,8 @@ async fn handle_llm_complete(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    info!("📩 [KeyProxy] Request from caller: {}", payload.caller_id);
+    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
+    info!("📩 [KeyProxy] Request from caller: {}", safe_caller_id);
 
     if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
         return status.into_response();
@@ -269,8 +273,13 @@ async fn handle_llm_complete(
                 let body_res: Result<serde_json::Value, _> = resp.json().await;
                 match body_res {
                     Ok(body) => {
-                        let text = body["candidates"][0]["content"]["parts"][0]["text"]
-                            .as_str()
+                        let text = body.get("candidates")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c| c.get("content"))
+                            .and_then(|c| c.get("parts"))
+                            .and_then(|p| p.get(0))
+                            .and_then(|p| p.get("text"))
+                            .and_then(|t| t.as_str())
                             .unwrap_or("")
                             .to_string();
 
@@ -300,9 +309,10 @@ async fn handle_llm_embed(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
+    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
     info!(
         "🧬 [KeyProxy] Embedding request from caller: {}",
-        payload.caller_id
+        safe_caller_id
     );
 
     if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
@@ -364,9 +374,10 @@ async fn handle_llm_stream(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
+    let safe_caller_id = payload.caller_id.replace('\n', "_").replace('\r', "_");
     info!(
         "🌊 [KeyProxy] Streaming request from caller: {}",
-        payload.caller_id
+        safe_caller_id
     );
 
     if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
@@ -413,10 +424,13 @@ async fn handle_llm_stream(
                             axum::response::sse::Event::default().data(text),
                         )
                     }
-                    Err(e) => Ok::<axum::response::sse::Event, std::convert::Infallible>(
-                        axum::response::sse::Event::default()
-                            .data(format!("{{\"error\": \"{}\"}}", e)),
-                    ),
+                    Err(e) => {
+                        let error_json = serde_json::json!({ "error": e.to_string() });
+                        Ok::<axum::response::sse::Event, std::convert::Infallible>(
+                            axum::response::sse::Event::default()
+                                .data(serde_json::to_string(&error_json).unwrap_or_else(|_| "{}".to_string())),
+                        )
+                    }
                 });
                 axum::response::sse::Sse::new(stream).into_response()
             } else {

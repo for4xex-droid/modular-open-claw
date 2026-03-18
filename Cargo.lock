@@ -4014,6 +4014,7 @@ dependencies = [
  "serenity",
  "sha2",
  "shared",
+ "soul",
  "sqlx",
  "teloxide",
  "tempfile",
@@ -7741,6 +7742,19 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "soul"
+version = "0.1.0"
+dependencies = [
+ "aiome-contracts",
+ "anyhow",
+ "chrono",
+ "serde",
+ "thiserror 1.0.69",
+ "tracing",
+ "uuid 1.22.0",
 ]
 
 [[package]]

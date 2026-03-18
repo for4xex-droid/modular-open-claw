@@ -102,22 +102,39 @@ check_readme_sync() {
 check_env_example_sync() {
   info "Check 3: .env.example 同期チェック"
 
-  # .cargo/config.toml が変更されているか
-  local cargo_config_changed
-  cargo_config_changed=$(git diff HEAD~1 --name-only 2>/dev/null | grep '\.cargo/config\.toml$' || true)
+  # .cargo/config.toml や .rs ファイルが変更されているか
+  local relevant_files
+  relevant_files=$(git diff HEAD~1 --name-only --diff-filter=ACMR 2>/dev/null | grep -E '(\.cargo/config\.toml|\.rs)$' || true)
 
-  if [[ -z "$cargo_config_changed" ]]; then
-    pass ".cargo/config.toml の変更なし — スキップ"
+  if [[ -z "$relevant_files" ]]; then
+    pass "環境変数に関連するファイルの変更なし — スキップ"
     return
   fi
+
+  # コード内に新しい env::var("VAR") が追加されたかチェック
+  local new_envs
+  new_envs=$(echo "$relevant_files" | tr '\n' '\0' | xargs -0 git diff HEAD~1 -U0 --diff-filter=ACMR -- 2>/dev/null | grep '^\+' | grep -oE 'env::var\("([A-Z_]+)"\)' | sed 's/env::var("//;s/")//' | sort -u || true)
 
   local env_example_changed
   env_example_changed=$(git diff HEAD~1 --name-only 2>/dev/null | grep '^\.env\.example$' || true)
 
-  if [[ -z "$env_example_changed" ]]; then
-    warn ".cargo/config.toml が変更されていますが .env.example が更新されていません"
+  if [[ -n "$new_envs" && -z "$env_example_changed" ]]; then
+    # 追加された環境変数が .env.example にすでにあるか確認
+    local missing_in_example=""
+    while IFS= read -r var; do
+      [[ -z "$var" ]] && continue
+      if ! grep -q "$var" .env.example 2>/dev/null; then
+        missing_in_example="$missing_in_example $var"
+      fi
+    done <<< "$new_envs"
+
+    if [[ -n "${missing_in_example// /}" ]]; then
+      warn "コード内に新しい環境変数が追加されましたが .env.example が更新されていません: $missing_in_example"
+    else
+      pass "新しい環境変数はすでに .env.example に記載されています"
+    fi
   else
-    pass ".env.example が更新されています"
+    pass ".env.example の同期に問題ありません"
   fi
 }
 

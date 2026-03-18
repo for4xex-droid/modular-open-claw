@@ -169,7 +169,7 @@ impl ArtifactStore for SqliteArtifactStore {
         // Phase 1: Store Edges (Provenance DAG)
         for edge_req in req.parent_refs {
             let edge_id = Uuid::new_v4().to_string();
-            sqlx::query(
+            if let Err(e) = sqlx::query(
                 "INSERT INTO artifact_edges (id, source_id, target_id, source_type, relation, metadata) VALUES (?, ?, ?, ?, ?, ?)"
             )
             .bind(&edge_id)
@@ -179,8 +179,9 @@ impl ArtifactStore for SqliteArtifactStore {
             .bind(&edge_req.relation)
             .bind(serde_json::to_string(&edge_req.metadata.unwrap_or(serde_json::json!({}))).unwrap_or_default())
             .execute(&self.pool)
-            .await
-            .ok();
+            .await {
+                warn!("🛡️ [ArtifactStore] Failed to store artifact edge (continuing): {}", e);
+            }
         }
 
         info!("📦 Artifact saved: {} (ID: {})", req.title, id);
@@ -354,17 +355,19 @@ impl ArtifactStore for SqliteArtifactStore {
         let _ = std::fs::remove_dir(full_dir);
 
         // 3. Delete from DB
-        sqlx::query("DELETE FROM ai_artifacts WHERE id = ?")
+        if let Err(e) = sqlx::query("DELETE FROM ai_artifacts WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
-            .await
-            .ok();
-        sqlx::query("DELETE FROM artifact_edges WHERE source_id = ? OR target_id = ?")
+            .await {
+                warn!("🛡️ [ArtifactStore] Failed to delete artifact metadata from DB: {}", e);
+            }
+        if let Err(e) = sqlx::query("DELETE FROM artifact_edges WHERE source_id = ? OR target_id = ?")
             .bind(id)
             .bind(id)
             .execute(&self.pool)
-            .await
-            .ok();
+            .await {
+                warn!("🛡️ [ArtifactStore] Failed to delete artifact edges from DB (continuing): {}", e);
+            }
 
         Ok(())
     }

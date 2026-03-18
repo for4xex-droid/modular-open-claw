@@ -97,6 +97,7 @@ async fn test_slo_engine_reset() {
 #[tokio::test]
 async fn test_bastion_guard_enforcement() {
     use infrastructure::security::{BastionGuard, PermissionManifest};
+    let _ = std::fs::create_dir_all("workspace");
 
     // 1. Blocked by default manifest
     let manifest = PermissionManifest::default();
@@ -118,5 +119,5 @@ async fn test_bastion_guard_enforcement() {
     // 5. Success with allowed binary (ls)
     // Note: This actually runs 'ls' on the host, which is usually fine for tests.
     let result = guard.safe_exec("ls");
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "safe_exec failed with: {:?}", result.unwrap_err());
 }

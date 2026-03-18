@@ -414,6 +414,12 @@ pub struct FederatedKarma {
     // --- Phase SC-MB: Clone Tracking ---
     #[serde(default)]
     pub clone_origin_id: Option<String>,
+    
+    // --- Phase Soul Engine v3 ---
+    #[serde(default)]
+    pub generation: Option<u32>,
+    #[serde(default)]
+    pub somatic_valence: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -474,6 +480,36 @@ pub struct SystemSetting {
 pub enum SamsaraEvent {
     /// レベルアップイベント
     LevelUp { old_level: i32, new_level: i32 },
+    /// 転生イベント
+    Rebirth {
+        old_generation: u32,
+        new_generation: u32,
+        instinct_hash: String,
+        distilled_rules_count: usize,
+        attachment_style: String,
+    },
+    /// 可塑性フェーズ変化
+    PhaseShift {
+        domain: String,
+        old_plasticity: f64,
+        new_plasticity: f64,
+    },
+    /// 衝撃による若返り
+    ShockRejuvenation {
+        domain: String,
+        surprise_magnitude: f64,
+    },
+    /// トラウマ形成
+    TraumaFormed {
+        marker_id: String,
+        valence: f64,
+        arousal: f64,
+    },
+    /// 愛着スタイルの変化
+    AttachmentShift {
+        old_style: String,
+        new_style: String,
+    },
 }
 
 #[cfg(test)]

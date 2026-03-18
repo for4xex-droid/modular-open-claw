@@ -35,6 +35,7 @@ pub mod skill_arena;
 pub mod skills;
 pub mod slo_engine;
 pub mod soul_mutator;
+pub mod soul_store;
 pub mod trend_sonar;
 pub mod user_learner;
 pub mod validator;

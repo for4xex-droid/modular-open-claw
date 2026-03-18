@@ -429,6 +429,27 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create timeline_checkpoints: {}", e),
         })?;
 
+        // Soul Engine Storage (v3)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS agent_souls (
+                id TEXT PRIMARY KEY,
+                generation INTEGER NOT NULL,
+                soul_hash TEXT NOT NULL,
+                somatic_markers_json TEXT NOT NULL,
+                defenses_json TEXT NOT NULL,
+                predictive_model_json TEXT NOT NULL,
+                attachment_json TEXT NOT NULL,
+                instinct_json TEXT NOT NULL,
+                experience_buffer_json TEXT NOT NULL,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create agent_souls table: {}", e),
+        })?;
+
         // Memory Evolution Sprint 2: Procedural Forgetting
         if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;")
             .execute(&self.pool)
@@ -651,10 +672,12 @@ impl DbInitializer for SqliteJobQueue {
         })?;
 
         // Add index on audit_ledger_global
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_ledger_time ON audit_ledger_global(timestamp);")
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_ledger_time ON audit_ledger_global(timestamp);")
             .execute(&self.pool)
             .await
-            .ok();
+        {
+            warn!("⚠️ [DbInitializer] Failed to create idx_audit_ledger_time: {}", e);
+        }
 
         // Add triggers to automatically write to the audit ledger and compute hashes via SQLite hex/random or simple concats
         let trigger_tables = vec!["jobs", "karma_logs", "sns_metrics_history", "system_state", "ai_artifacts"];
@@ -674,7 +697,9 @@ impl DbInitializer for SqliteJobQueue {
                     );
                  END;", table
             );
-            sqlx::query(&trigger_sql).execute(&self.pool).await.ok();
+            if let Err(e) = sqlx::query(&trigger_sql).execute(&self.pool).await {
+                warn!("⚠️ [DbInitializer] Failed to create audit_insert trigger for {}: {}", table, e);
+            }
             
             let update_sql = format!(
                 "CREATE TRIGGER IF NOT EXISTS audit_update_{0}
@@ -691,7 +716,9 @@ impl DbInitializer for SqliteJobQueue {
                     );
                  END;", table
             );
-            sqlx::query(&update_sql).execute(&self.pool).await.ok();
+            if let Err(e) = sqlx::query(&update_sql).execute(&self.pool).await {
+                warn!("⚠️ [DbInitializer] Failed to create audit_update trigger for {}: {}", table, e);
+            }
         }
 
         info!("✅ [SqliteJobQueue] Database and migrations initialized successfully.");

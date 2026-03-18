@@ -388,7 +388,7 @@ pub async fn get_ollama_models(
         .ok()
         .flatten()
         .unwrap_or_else(|| {
-            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://127.0.0.1:11434".to_string())
+            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
         });
     let url = format!("{}/api/tags", host.trim_end_matches('/'));
     state.security_policy.validate_url(&url).await?;

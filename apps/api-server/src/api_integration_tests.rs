@@ -20,8 +20,11 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         &self,
         _prompt: &str,
         _sys: Option<&str>,
-    ) -> Result<String, aiome_core::error::AiomeError> {
-        Ok("Dummy Output".to_string())
+    ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
+        Ok(aiome_contracts::LlmResponse {
+            content: "Dummy Output".to_string(),
+            stop_reason: aiome_contracts::StopReason::EndTurn,
+        })
     }
     async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())

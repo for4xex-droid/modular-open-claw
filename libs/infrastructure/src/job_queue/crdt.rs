@@ -51,7 +51,9 @@ impl CrdtOps for SqliteJobQueue {
 
         // Add local marker if needed
         let now = chrono::Utc::now().to_rfc3339();
-        local_doc.put(automerge::ROOT, "last_sync", now).ok();
+        if let Err(e) = local_doc.put(automerge::ROOT, "last_sync", now) {
+            error!("Failed to update CRDT last_sync: {}", e);
+        }
 
         let finalized_blob = local_doc.save();
 

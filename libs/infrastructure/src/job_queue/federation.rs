@@ -12,6 +12,7 @@ use aiome_core::error::AiomeError;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
 use sqlx::Row;
+use tracing::warn;
 
 #[async_trait]
 pub trait FederationOps {
@@ -82,6 +83,8 @@ impl FederationOps for SqliteJobQueue {
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),
                 clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
+                generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
+                somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
             });
         }
 
@@ -144,7 +147,8 @@ impl FederationOps for SqliteJobQueue {
 
         use base64::{prelude::BASE64_STANDARD, Engine};
         use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-        use tracing::{info, warn};
+        use std::time::Duration;
+        use tracing::{debug, info};
 
         for k in karmas {
             // Verify Ed25519 Signature
@@ -244,7 +248,7 @@ impl FederationOps for SqliteJobQueue {
 
             let _ = self.sync_local_clock(r.lamport_clock).await;
 
-            sqlx::query(
+            if let Err(e) = sqlx::query(
                 "INSERT INTO immune_rules (id, pattern, severity, action, created_at, is_federated, lamport_clock, node_id, signature, status) 
                  VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, 'Quarantined')
                  ON CONFLICT(id) DO UPDATE SET 
@@ -258,13 +262,17 @@ impl FederationOps for SqliteJobQueue {
             )
             .bind(&r.id).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.created_at)
             .bind(r.lamport_clock as i64).bind(&r.node_id).bind(&r.signature)
-            .execute(&mut *tx).await.ok();
+            .execute(&mut *tx).await {
+                warn!("🛡️ [Federation] SQL Error importing rule {}: {:?}", r.id, e);
+            }
         }
 
         for m in matches {
-            sqlx::query("INSERT INTO arena_history (id, skill_a, skill_b, topic, winner, reasoning, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+            if let Err(e) = sqlx::query("INSERT INTO arena_history (id, skill_a, skill_b, topic, winner, reasoning, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
                 .bind(&m.id).bind(&m.skill_a).bind(&m.skill_b).bind(&m.topic).bind(&m.winner).bind(&m.reasoning).bind(&m.created_at)
-                .execute(&mut *tx).await.ok();
+                .execute(&mut *tx).await {
+                warn!("🛡️ [Federation] SQL Error importing arena history {}: {:?}", m.id, e);
+            }
         }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
@@ -327,6 +335,8 @@ impl FederationOps for SqliteJobQueue {
                 node_id: r.get("node_id"),
                 signature: try_get_optional_string(&r, "signature"),
                 clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
+                generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
+                somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
             });
         }
 
@@ -366,18 +376,20 @@ impl FederationOps for SqliteJobQueue {
             })?;
 
         for id in karma_ids {
-            sqlx::query("UPDATE karma_logs SET is_federated = 1 WHERE id = ?")
-                .bind(id)
+            if let Err(e) = sqlx::query("UPDATE karma_logs SET is_federated = 1 WHERE id = ?")
+                .bind(id.clone())
                 .execute(&mut *tx)
-                .await
-                .ok();
+                .await {
+                warn!("🛡️ [Federation] Failed to mark karma {} as federated: {:?}", id, e);
+            }
         }
         for id in rule_ids {
-            sqlx::query("UPDATE immune_rules SET is_federated = 1 WHERE id = ?")
-                .bind(id)
+            if let Err(e) = sqlx::query("UPDATE immune_rules SET is_federated = 1 WHERE id = ?")
+                .bind(id.clone())
                 .execute(&mut *tx)
-                .await
-                .ok();
+                .await {
+                warn!("🛡️ [Federation] Failed to mark rule {} as federated: {:?}", id, e);
+            }
         }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {

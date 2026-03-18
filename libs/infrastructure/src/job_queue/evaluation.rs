@@ -13,6 +13,7 @@ use aiome_core::traits::{Job, JobStatus, SnsMetricsRecord};
 use async_trait::async_trait;
 use chrono::Utc;
 use sqlx::Row;
+use tracing::warn;
 use uuid::Uuid;
 
 #[async_trait]
@@ -262,8 +263,10 @@ impl EvaluationOps for SqliteJobQueue {
 
         // 4. Update Agent Stats (Growth - optional heuristic)
         if verdict.should_evolve {
-            sqlx::query("UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = datetime('now') WHERE id = 1")
-                .execute(&mut *tx).await.ok();
+            if let Err(e) = sqlx::query("UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = datetime('now') WHERE id = 1")
+                .execute(&mut *tx).await {
+                warn!("⚠️ [Evaluation] Failed to update agent_stats: {}", e);
+            }
         }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {

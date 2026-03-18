@@ -59,7 +59,7 @@ impl AdaptiveImmuneSystem {
             severity: v["severity"].as_u64().unwrap_or(50) as u8,
             action: v["action"].as_str().unwrap_or("Block").to_string(),
             created_at: Utc::now().to_rfc3339(),
-            approval_status: Default::default(),
+            approval_status: aiome_core::contracts::ApprovalState::Approved,
             lamport_clock: 0,
             node_id: "".to_string(),
             signature: None,

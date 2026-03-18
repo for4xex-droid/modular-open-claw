@@ -172,8 +172,10 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         build_system_instructions(&state, karma_str, summary, ai_name, None, economic_context);
     let full_prompt = format!("{}\nUSER: {}\nAI: ", system_instructions, payload.prompt);
 
-    // 4. LLM Call
-    let _llm_permit = state.llm_semaphore.acquire().await.ok();
+    let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
+        tracing::error!("Failed to acquire LLM permit for Watchtower: {}", e);
+        anyhow::anyhow!("Service unavailable due to quota/shutdown")
+    })?;
     match timeout(
         Duration::from_secs(120),
         state.provider.complete(&full_prompt, None),

@@ -555,19 +555,25 @@ async fn biome_relay_handler(
 
     // Buffer in DB
     let payload_json = serde_json::to_string(&msg).unwrap_or_default();
-    let _ = sqlx::query("INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES (?, ?)")
+    if let Err(e) = sqlx::query("INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES (?, ?)")
         .bind(&msg.recipient_pubkey)
         .bind(&payload_json)
         .execute(&state.pool)
-        .await;
+        .await {
+            error!("🛡️ [Relay] Failed to queue biome message for {}: {}", msg.recipient_pubkey, e);
+        }
 
     // Update Turn Count in Topic (State Channel)
-    let _ = sqlx::query("UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = datetime('now') WHERE topic_id = ?")
+    if let Err(e) = sqlx::query("UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = datetime('now') WHERE topic_id = ?")
         .bind(&msg.topic_id)
-        .execute(&state.pool).await;
+        .execute(&state.pool).await {
+            warn!("🛡️ [Relay] Failed to increment turn_count for {}: {}", msg.topic_id, e);
+        }
 
     // Broadcast to real-time subscribers
-    let _ = state.tx.send(HubMessage::BiomeRelay(msg));
+    if let Err(e) = state.tx.send(HubMessage::BiomeRelay(msg)) {
+        warn!("🛡️ [Relay] Failed to broadcast biome relay: {}", e);
+    }
 
     (
         StatusCode::ACCEPTED,
@@ -840,8 +846,10 @@ async fn push_handler(
                 "🛡️ [BFT] EQUIVOCATION detected from node: {}. Slashing node.",
                 k.node_id
             );
-            let _ = sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = ?")
-                .bind(&k.node_id).execute(&state.pool).await;
+            if let Err(e) = sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = ?")
+                .bind(&k.node_id).execute(&state.pool).await {
+                    error!("🛡️ [BFT] Failed to slash node {}: {}", k.node_id, e);
+                }
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -849,7 +857,7 @@ async fn push_handler(
                 .into_response();
         }
 
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, signature, received_at, clone_origin_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO NOTHING"
@@ -857,7 +865,9 @@ async fn push_handler(
         .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
         .bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at)
         .bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at).bind(&k.clone_origin_id)
-        .execute(&mut *tx).await;
+        .execute(&mut *tx).await {
+            warn!("🛡️ [Push] Failed to quarantine karma {}: {}", k.id, e);
+        }
     }
 
     for r in &payload.rules {
@@ -878,8 +888,10 @@ async fn push_handler(
                 "🛡️ [BFT] EQUIVOCATION detected in RULE from node: {}. Slashing node.",
                 r.node_id
             );
-            let _ = sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = ?")
-                .bind(&r.node_id).execute(&state.pool).await;
+            if let Err(e) = sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = ?")
+                .bind(&r.node_id).execute(&state.pool).await {
+                    error!("🛡️ [BFT] Failed to slash node (Rule Equivocation) {}: {}", r.node_id, e);
+                }
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -887,25 +899,29 @@ async fn push_handler(
                 .into_response();
         }
 
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT INTO quarantined_rules (id, node_id, pattern, severity, action, created_at, lamport_clock, signature, received_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO NOTHING"
         )
         .bind(&r.id).bind(&r.node_id).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.created_at)
         .bind(r.lamport_clock as i64).bind(&r.signature).bind(&received_at)
-        .execute(&mut *tx).await;
+        .execute(&mut *tx).await {
+            warn!("🛡️ [Push] Failed to quarantine rule {}: {}", r.id, e);
+        }
     }
 
     for a in &payload.arena_matches {
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT INTO quarantined_arena_matches (id, skill_a, skill_b, topic, winner, reasoning, created_at, received_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO NOTHING"
         )
         .bind(&a.id).bind(&a.skill_a).bind(&a.skill_b).bind(&a.topic).bind(&a.winner)
         .bind(&a.reasoning).bind(&a.created_at).bind(&received_at)
-        .execute(&mut *tx).await;
+        .execute(&mut *tx).await {
+            warn!("🛡️ [Push] Failed to quarantine arena match {}: {}", a.id, e);
+        }
     }
 
     if let Err(e) = tx.commit().await {
@@ -920,10 +936,12 @@ async fn push_handler(
     let arenas_count = payload.arena_matches.len();
 
     // BFT: Update reputation / last_seen
-    let _ = sqlx::query(
+    if let Err(e) = sqlx::query(
         "INSERT INTO node_reputation (node_id, last_seen_at) VALUES (?, ?)
          ON CONFLICT(node_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, reputation_score = reputation_score + 1"
-    ).bind(&payload.node_id).bind(&received_at).execute(&state.pool).await;
+    ).bind(&payload.node_id).bind(&received_at).execute(&state.pool).await {
+        warn!("🛡️ [Push] Failed to update node reputation for {}: {}", payload.node_id, e);
+    }
 
     // 📣 Real-time Broadcast to all connected nodes (Relay Sync)
     for r in &payload.rules {
@@ -1083,15 +1101,21 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 match pool.begin().await {
                     Ok(mut tx) => {
                         let approved_at = chrono::Utc::now().to_rfc3339();
-                        let _ = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+                        if let Err(e) = sqlx::query("INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
                             .bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson)
                             .bind(k.weight).bind(&k.soul_version_hash).bind(k.lamport_clock).bind(&k.signature).bind(&k.created_at).bind(&approved_at).bind(&k.clone_origin_id)
-                            .execute(&mut *tx).await;
-                        let _ = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
+                            .execute(&mut *tx).await {
+                                warn!("🛡️ [ApprovalWorker] Failed to insert approved karma {}: {}", k.id, e);
+                            }
+                        if let Err(e) = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
                             .bind(&k.id)
                             .execute(&mut *tx)
-                            .await;
-                        if tx.commit().await.is_ok() {
+                            .await {
+                                warn!("🛡️ [ApprovalWorker] Failed to delete quarantined karma {}: {}", k.id, e);
+                            }
+                        if let Err(e) = tx.commit().await {
+                            error!("❌ [ApprovalWorker] Failed to commit karma approval for {}: {}", k.id, e);
+                        } else {
                             info!("✅ [ApprovalWorker] Approved Karma: {}", k.id);
                         }
                     }
@@ -1103,12 +1127,15 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                     k.id
                 );
                 // BFT Slashing: Penalize node reputation for invalid signatures
-                let _ = sqlx::query("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = ?").bind(&k.node_id).execute(&pool).await;
-                sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
+                if let Err(e) = sqlx::query("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = ?").bind(&k.node_id).execute(&pool).await {
+                    warn!("🛡️ [ApprovalWorker] Failed to slash karma node {}: {}", k.node_id, e);
+                }
+                if let Err(e) = sqlx::query("DELETE FROM quarantined_karma WHERE id = ?")
                     .bind(&k.id)
                     .execute(&pool)
-                    .await
-                    .ok();
+                    .await {
+                        warn!("🛡️ [ApprovalWorker] Failed to delete malformed quarantined karma {}: {}", k.id, e);
+                    }
             }
         }
 
@@ -1144,14 +1171,20 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                 match pool.begin().await {
                     Ok(mut tx) => {
                         let approved_at = chrono::Utc::now().to_rfc3339();
-                        let _ = sqlx::query("INSERT INTO approved_rules (id, pattern, severity, action, node_id, lamport_clock, signature, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
+                        if let Err(e) = sqlx::query("INSERT INTO approved_rules (id, pattern, severity, action, node_id, lamport_clock, signature, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
                             .bind(&r.id).bind(&r.pattern).bind(r.severity).bind(&r.action).bind(&r.node_id).bind(r.lamport_clock).bind(&r.signature).bind(&r.created_at).bind(&approved_at)
-                            .execute(&mut *tx).await;
-                        let _ = sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
+                            .execute(&mut *tx).await {
+                                warn!("🛡️ [ApprovalWorker] Failed to insert approved rule {}: {}", r.id, e);
+                            }
+                        if let Err(e) = sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
                             .bind(&r.id)
                             .execute(&mut *tx)
-                            .await;
-                        if tx.commit().await.is_ok() {
+                            .await {
+                                warn!("🛡️ [ApprovalWorker] Failed to delete quarantined rule {}: {}", r.id, e);
+                            }
+                        if let Err(e) = tx.commit().await {
+                            error!("❌ [ApprovalWorker] Failed to commit rule approval for {}: {}", r.id, e);
+                        } else {
                             info!("✅ [ApprovalWorker] Approved Rule: {}", r.id);
                         }
                     }
@@ -1163,19 +1196,26 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
                     r.id
                 );
                 // BFT Slashing: Penalize node reputation for invalid signatures
-                let _ = sqlx::query("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = ?").bind(&r.node_id).execute(&pool).await;
-                sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
+                if let Err(e) = sqlx::query("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = ?").bind(&r.node_id).execute(&pool).await {
+                    warn!("🛡️ [ApprovalWorker] Failed to slash rule node {}: {}", r.node_id, e);
+                }
+                if let Err(e) = sqlx::query("DELETE FROM quarantined_rules WHERE id = ?")
                     .bind(&r.id)
                     .execute(&pool)
-                    .await
-                    .ok();
+                    .await {
+                        warn!("🛡️ [ApprovalWorker] Failed to delete malformed quarantined rule {}: {}", r.id, e);
+                    }
             }
         }
 
         // 3. Data Eviction (Flaw 3: Disk Exhaustion Defense)
         // Keep ONLY the last 1,000,000 Records
-        let _ = sqlx::query("DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)").execute(&pool).await;
-        let _ = sqlx::query("DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)").execute(&pool).await;
+        if let Err(e) = sqlx::query("DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)").execute(&pool).await {
+            warn!("⚠️ [SamsaraHub] Karma eviction failed: {}", e);
+        }
+        if let Err(e) = sqlx::query("DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)").execute(&pool).await {
+            warn!("⚠️ [SamsaraHub] Rule eviction failed: {}", e);
+        }
 
         // Dynamic Polling (Component 2: Backpressure Tuning)
         let total_processed = karmas.len() + rules.len();
@@ -1238,8 +1278,10 @@ async fn timeline_sync_handler(
     let finalized_blob = hub_doc.save();
 
     // Persist Hub Master Doc
-    let _ = sqlx::query("INSERT INTO hub_timeline (id, automerge_blob) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET automerge_blob = ?, updated_at = datetime('now')")
-        .bind(&payload.hub_id).bind(&finalized_blob).bind(&finalized_blob).execute(&state.pool).await;
+    if let Err(e) = sqlx::query("INSERT INTO hub_timeline (id, automerge_blob) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET automerge_blob = ?, updated_at = datetime('now')")
+        .bind(&payload.hub_id).bind(&finalized_blob).bind(&finalized_blob).execute(&state.pool).await {
+            error!("🛡️ [Timeline] Failed to persist hub timeline: {}", e);
+        }
 
     (
         StatusCode::OK,
@@ -1261,6 +1303,7 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         "http://127.0.0.1:3000",
         "http://localhost:3015",
         "http://localhost:3016",
+        "http://localhost:1420",
     ];
     for d in defaults {
         if let Ok(parsed) = d.parse() {

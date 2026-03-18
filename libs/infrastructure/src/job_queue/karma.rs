@@ -229,7 +229,13 @@ impl KarmaOps for SqliteJobQueue {
         let node_id = self.do_get_node_id().await.unwrap_or_default();
         let clock = self.do_tick_local_clock().await.unwrap_or(0);
         let sign_target = format!("{}:{}:{}", id, lesson, clock);
-        let signature = self.do_sign_swarm_payload(&sign_target).await.ok();
+        let signature = match self.do_sign_swarm_payload(&sign_target).await {
+            Ok(s) => Some(s),
+            Err(e) => {
+                tracing::warn!("Failed to sign karma payload: {}", e);
+                None
+            }
+        };
 
         let mut embedding: Option<Vec<u8>> = None;
         if let Some(provider) = self.get_embedding_provider().await {
@@ -287,10 +293,22 @@ impl KarmaOps for SqliteJobQueue {
         let mut jobs = Vec::new();
         for r in rows {
             let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-            let permission_manifest = r
-                .try_get::<String, _>("permission_manifest")
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok());
+            let permission_manifest = match r.try_get::<String, _>("permission_manifest") {
+                Ok(s) => {
+                    match serde_json::from_str(&s) {
+                        Ok(manifest) => Some(manifest),
+                        Err(e) => {
+                            tracing::warn!("Failed to parse permission_manifest JSON: {}", e);
+                            None
+                        }
+                    }
+                },
+                Err(e) => {
+                    // Log the error if try_get fails, but it might be expected for older rows
+                    tracing::debug!("Failed to get permission_manifest from row (might be missing): {}", e);
+                    None
+                }
+            };
 
             jobs.push(Job {
                 id: r.get("id"),

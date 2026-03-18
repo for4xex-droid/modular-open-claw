@@ -104,7 +104,7 @@ pub async fn get_llm_provider(
                         .await
                         .ok()
                         .flatten()
-                        .unwrap_or_else(|| "http://127.0.0.1:1234".to_string());
+                        .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
                     Arc::new(aiome_core::llm_provider::LmStudioProvider::new(
                         client, host, model,
                     ))
@@ -117,7 +117,7 @@ pub async fn get_llm_provider(
                         .flatten()
                         .unwrap_or_else(|| {
                             std::env::var("OLLAMA_HOST")
-                                .unwrap_or_else(|_| "http://127.0.0.1:11434".to_string())
+                                .unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
                         });
                     Arc::new(aiome_core::llm_provider::OllamaProvider::new(host, model))
                 }

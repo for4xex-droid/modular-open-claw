@@ -4,8 +4,8 @@
     "title": "Aiome Management Console API",
     "description": "Core API for the Autonomous AI Operating System",
     "license": {
-      "name": "BUSL-1.1",
-      "identifier": "BUSL-1.1"
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
     },
     "version": "0.1.0"
   },
@@ -856,6 +856,94 @@
         }
       }
     },
+    "/api/v1/commerce/balance/{agent_id}": {
+      "get": {
+        "tags": [
+          "crate::routes::commerce"
+        ],
+        "summary": "[GET] /api/v1/commerce/balance/:agent_id",
+        "operationId": "get_balance",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance as simple JSON",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/commerce/purchase/{agent_id}": {
+      "post": {
+        "tags": [
+          "crate::routes::commerce"
+        ],
+        "summary": "[POST] /api/v1/commerce/purchase/:agent_id",
+        "operationId": "execute_purchase",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Purchase completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "tags": [
@@ -1112,6 +1200,15 @@
           }
         }
       },
+      "ApprovalState": {
+        "type": "string",
+        "description": "自己防衛フェーズの状態",
+        "enum": [
+          "Pending",
+          "Approved",
+          "Rejected"
+        ]
+      },
       "AutoToggle": {
         "type": "object",
         "required": [
@@ -1207,6 +1304,10 @@
           "action": {
             "type": "string",
             "description": "適用するアクション (Block, Warn, Quarantine, Revoke)"
+          },
+          "approval_status": {
+            "$ref": "#/components/schemas/ApprovalState",
+            "description": "承認状態 (Phase 22: M-3)"
           },
           "created_at": {
             "type": "string"
@@ -1350,6 +1451,34 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          }
+        }
+      },
+      "PurchaseRequest": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "metadata"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "metadata": {}
+        }
+      },
+      "PurchaseResponse": {
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "transaction_id": {
             "type": "string"
           }
         }

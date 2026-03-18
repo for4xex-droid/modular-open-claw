@@ -179,8 +179,9 @@ impl AutonomousBiomeEngine {
         };
 
         // Try Hub relay, fallback to local if Hub fails (or if configured to bypass)
-        let hub_url = std::env::var("SAMSARA_HUB_REST")
-            .unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+        let hub_url = std::env::var("SAMSARA_HUB_URL")
+            .or_else(|_| std::env::var("SAMSARA_HUB_REST"))
+            .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
         let hub_secret =
             std::env::var("FEDERATION_SECRET").map_err(|_| AiomeError::Infrastructure {
                 reason: "FEDERATION_SECRET missing for autonomous biome communication".to_string(),

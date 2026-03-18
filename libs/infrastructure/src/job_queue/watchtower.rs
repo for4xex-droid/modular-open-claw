@@ -10,6 +10,7 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
 use std::collections::HashMap;
+use tracing::warn;
 
 #[async_trait]
 pub trait WatchtowerOps {
@@ -322,9 +323,11 @@ impl WatchtowerOps for SqliteJobQueue {
 
         let count: i64 = row.get("retry_count");
         if count >= 3 {
-            sqlx::query("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?")
+            if let Err(e) = sqlx::query("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?")
                 .bind(record_id)
-                .execute(&self.pool).await.ok();
+                .execute(&self.pool).await {
+                warn!("⚠️ [Watchtower] Failed to execute oracle poison pill: {}", e);
+            }
             Ok(true)
         } else {
             Ok(false)

@@ -51,17 +51,23 @@ impl SwarmOps for SqliteJobQueue {
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
-            sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_id', ?)")
+            if let Err(e) = sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_id', ?)")
                 .bind(&pubkey_b64)
                 .execute(&mut *tx)
                 .await
-                .ok();
-            sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_privkey', ?)")
+            {
+                warn!("Failed to insert node_id: {}", e);
+            }
+            if let Err(e) = sqlx::query("INSERT INTO system_state (key, value) VALUES ('node_privkey', ?)")
                 .bind(&privkey_b64)
                 .execute(&mut *tx)
                 .await
-                .ok();
-            tx.commit().await.ok();
+            {
+                warn!("Failed to insert node_privkey: {}", e);
+            }
+            if let Err(e) = tx.commit().await {
+                warn!("Failed to commit node identity keys: {}", e);
+            }
 
             Ok(pubkey_b64)
         }
@@ -115,12 +121,16 @@ impl SwarmOps for SqliteJobQueue {
                 .unwrap_or(0);
 
         let next = current + 1;
-        sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
+        if let Err(e) = sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
             .bind(next.to_string())
             .execute(&mut *tx)
-            .await
-            .ok();
-        tx.commit().await.ok();
+            .await 
+        {
+            warn!("Failed to update local clock: {}", e);
+        }
+        if let Err(e) = tx.commit().await {
+            warn!("Failed to commit local clock tick: {}", e);
+        }
         Ok(next as u64)
     }
 
@@ -145,17 +155,23 @@ impl SwarmOps for SqliteJobQueue {
                 "⚠️ Potential Clock Poisoning attempt or severe skew detected: {} vs {}",
                 remote_clock, current
             );
-            tx.rollback().await.ok();
+            if let Err(e) = tx.rollback().await {
+                warn!("Failed to rollback clock poison attempt: {}", e);
+            }
             return Ok(current as u64);
         }
 
         let next = std::cmp::max(current as u64, remote_clock) + 1;
-        sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
+        if let Err(e) = sqlx::query("UPDATE system_state SET value = ? WHERE key = 'logical_clock'")
             .bind(next.to_string())
             .execute(&mut *tx)
-            .await
-            .ok();
-        tx.commit().await.ok();
+            .await 
+        {
+            warn!("Failed to sync local clock: {}", e);
+        }
+        if let Err(e) = tx.commit().await {
+            warn!("Failed to commit local clock sync: {}", e);
+        }
         Ok(next)
     }
 

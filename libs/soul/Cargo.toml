@@ -1,0 +1,16 @@
+[package]
+name = "soul"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+aiome-contracts = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

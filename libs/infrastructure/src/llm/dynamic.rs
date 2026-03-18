@@ -245,7 +245,7 @@ impl LlmProvider for BackgroundLlmProvider {
             }
             "lmstudio" => {
                 let host = self.jq.get_setting_value("lm_studio_host").await.ok().flatten()
-                    .unwrap_or_else(|| "http://127.0.0.1:1234".to_string());
+                    .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
                 aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
                     .complete(prompt, system).await
             }
@@ -280,7 +280,7 @@ impl EmbeddingProvider for BackgroundLlmProvider {
         match embed_provider.as_str() {
             "ruri" => {
                 let ruri_url = std::env::var("RURI_EMBED_URL")
-                    .unwrap_or_else(|_| "http://localhost:8100".to_string());
+                    .unwrap_or_else(|_| shared::config::DEFAULT_RURI_EMBED_URL.to_string());
                 let ruri = aiome_core::llm_provider::RuriProvider::new(
                     self.client.clone(),
                     ruri_url.clone(),

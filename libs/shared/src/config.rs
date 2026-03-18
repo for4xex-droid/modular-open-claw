@@ -18,6 +18,13 @@ pub struct AiomeConfig {
     pub allowed_origins: Vec<String>,
 }
 
+pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017";
+pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016";
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
+pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
+pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
+
 impl AiomeConfig {
     pub fn load() -> Result<Self> {
         let db_path = env::var("AIOME_DB_PATH")
@@ -26,7 +33,7 @@ impl AiomeConfig {
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
         
         let ollama_host = env::var("OLLAMA_HOST")
-            .unwrap_or_else(|_| "http://127.0.0.1:11434".to_string());
+            .unwrap_or_else(|_| DEFAULT_OLLAMA_HOST.to_string());
         
         let ollama_model = env::var("OLLAMA_MODEL")
             .unwrap_or_else(|_| "qwen3.5:9b".to_string());
@@ -37,13 +44,14 @@ impl AiomeConfig {
             .unwrap_or(3015);
 
         let key_proxy_url = env::var("KEY_PROXY_URL")
-            .unwrap_or_else(|_| "http://127.0.0.1:3017".to_string());
+            .unwrap_or_else(|_| DEFAULT_KEY_PROXY_URL.to_string());
 
-        let samsara_hub_url = env::var("SAMSARA_HUB_REST")
-            .unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+        let samsara_hub_url = env::var("SAMSARA_HUB_URL")
+            .or_else(|_| env::var("SAMSARA_HUB_REST"))
+            .unwrap_or_else(|_| DEFAULT_SAMSARA_HUB_URL.to_string());
 
         let allowed_origins = env::var("ALLOWED_ORIGINS")
-            .unwrap_or_else(|_| "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015".to_string())
+            .unwrap_or_else(|_| DEFAULT_ALLOWED_ORIGINS.to_string())
             .split(',')
             .map(|s| s.trim().to_string())
             .collect();

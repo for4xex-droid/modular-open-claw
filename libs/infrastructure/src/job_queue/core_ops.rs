@@ -12,6 +12,7 @@ use aiome_core::traits::{Job, JobStatus};
 use async_trait::async_trait;
 use chrono::Utc;
 use sqlx::Row;
+use tracing::warn;
 use uuid::Uuid;
 
 #[async_trait]
@@ -469,9 +470,11 @@ impl CoreOps for SqliteJobQueue {
 
         let count: i64 = row.get("retry_count");
         if count >= 3 {
-            sqlx::query("UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill Activated: API continually fails.' WHERE id = ?")
+            if let Err(e) = sqlx::query("UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill Activated: API continually fails.' WHERE id = ?")
                 .bind(job_id)
-                .execute(&self.pool).await.ok();
+                .execute(&self.pool).await {
+                warn!("⚠️ [CoreOps] Failed to execute poison pill for job {}: {}", job_id, e);
+            }
             Ok(true)
         } else {
             Ok(false)

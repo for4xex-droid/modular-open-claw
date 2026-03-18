@@ -373,8 +373,10 @@ pub async fn trigger_agent_chat(
             current_history.join("\n"),
             payload.prompt
         );
-
-        let _llm_permit = state.llm_semaphore.acquire().await.ok();
+        let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
+            tracing::error!("Failed to acquire LLM permit: {}", e);
+            crate::error::AppError(aiome_core::error::AiomeError::Infrastructure { reason: "Service unavailable due to quota/shutdown".into() })
+        })?;
 
         match timeout(
             Duration::from_secs(300),

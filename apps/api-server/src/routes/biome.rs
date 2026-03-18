@@ -69,7 +69,7 @@ pub async fn list_topics(
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let hub_url =
-        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| "http://localhost:3016".to_string());
+        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
     let url = format!("{}/api/v1/hub/topics", hub_url);
     state.security_policy.validate_url(&hub_url).await?;
 
@@ -107,7 +107,7 @@ pub async fn create_topic(
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let hub_url =
-        std::env::var("SAMSARA_HUB_REST").unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
     let hub_secret = state.federation_secret.as_ref()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
@@ -332,7 +332,7 @@ pub async fn send_message(
 
     // 2. Relay via Hub
     let hub_url =
-        std::env::var("SAMSARA_HUB_REST").unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
     let hub_secret = state.federation_secret.as_ref()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
