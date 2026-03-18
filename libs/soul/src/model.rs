@@ -74,6 +74,23 @@ impl AgentSoul {
             self.experience_buffer.drain(0..drain_count);
         }
     }
+
+    /// RS-3: Temporal decay mechanism for old memories and defenses
+    pub fn apply_temporal_decay(&mut self) {
+        let decay_rate = 0.995;
+        let death_threshold = 0.2;
+
+        self.defenses.iter_mut().for_each(|d| {
+            d.intensity *= decay_rate;
+        });
+        self.defenses.retain(|d| d.intensity > death_threshold);
+
+        self.somatic_markers.iter_mut().for_each(|m| {
+            m.intensity *= decay_rate;
+        });
+        self.somatic_markers
+            .retain(|m| m.intensity > death_threshold);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,5 +113,38 @@ impl Default for Experience {
             timestamp: Utc::now().to_rfc3339(),
             original_prediction: 0.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::defense::{Defense, DefenseAction, DefenseTrigger};
+    use crate::somatic::SomaticMarker;
+
+    #[test]
+    fn test_temporal_decay() {
+        let mut soul = AgentSoul::new("test-decay".to_string());
+
+        let mut d1 = Defense {
+            id: "d1".to_string(),
+            trigger: DefenseTrigger::Tag("foo".to_string()),
+            action: DefenseAction::Hesitate(1.0),
+            origin_experience_id: "e1".to_string(),
+            intensity: 1.0,
+            created_at: Utc::now().to_rfc3339(),
+        };
+
+        let mut d2 = d1.clone();
+        d2.id = "d2".to_string();
+        d2.intensity = 0.201; // barely above threshold
+
+        soul.defenses.push(d1);
+        soul.defenses.push(d2);
+
+        soul.apply_temporal_decay();
+
+        assert_eq!(soul.defenses.len(), 1); // d2 should be removed (0.201 * 0.995 < 0.2)
+        assert!(soul.defenses[0].intensity < 1.0); // d1 should be decayed
     }
 }

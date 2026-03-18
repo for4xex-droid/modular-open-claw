@@ -111,6 +111,7 @@ pub fn build_system_instructions(
     ai_name: Option<String>,
     knowledge_str: Option<&str>,
     economic_context: Option<aiome_core::commerce::EconomicContext>,
+    soul_snapshot: Option<infrastructure::soul_store::SoulSnapshot>,
 ) -> String {
     let skill_list = state
         .wasm_skill_manager
@@ -127,13 +128,33 @@ pub fn build_system_instructions(
         .join("\n");
 
     // Core Identity (High Priority)
-    let soul = safe_truncate(&read_workspace_file("SOUL.md"), 20000);
-    let evolving_soul = safe_truncate(&read_workspace_file("EVOLVING_SOUL.md"), 20000);
+    let soul_md = safe_truncate(&read_workspace_file("SOUL.md"), 20000);
+    let evolving_soul_md = safe_truncate(&read_workspace_file("EVOLVING_SOUL.md"), 20000);
     // This one is deeper in the workspace
     let forge_prompt = safe_truncate(
         &read_workspace_file("workspace/config/SKILL_FORGE_PROMPT.md"),
         20000,
     );
+
+    // RS-5: Augmented Identity from Soul Memory (Dynamic Evolution)
+    let soul_dynamic = if let Some(sn) = soul_snapshot {
+        let narrative = sn
+            .narrative_self
+            .as_deref()
+            .unwrap_or("安定したアイデンティティを維持しています。");
+        let instinct = if sn.prompt_fragment.is_empty() {
+            ""
+        } else {
+            &format!("\n[潜在的な行動指針 (Instincts)]\n{}\n", sn.prompt_fragment)
+        };
+        format!(
+            "\n[Anamnesis (内省的な自己認識)]\n{}\n\
+             [愛着スタイル: {:?}]\n{}",
+            narrative, sn.attachment_style, instinct
+        )
+    } else {
+        "".to_string()
+    };
 
     // Supplemental Context (Lower Priority / Reference Only)
     let user_md = safe_truncate(&read_workspace_file("USER.md"), 20000);
@@ -145,10 +166,14 @@ pub fn build_system_instructions(
         "".to_string()
     };
 
-    let identity_prefix = if !soul.is_empty() || !evolving_soul.is_empty() {
-        format!("# IDENTITY: \n{}{}{}\n\
-                ルール: 簡潔に答え、[CallSkill]以外は自然な文章で話してください。私的な情報は守秘してください。\n\
-                もし以下の参考ファイルと現在のアイデンティティ(SOUL)が矛盾する場合、SOULを優先してください。\n\n", name_prompt, soul, evolving_soul)
+    let identity_prefix = if !soul_md.is_empty()
+        || !evolving_soul_md.is_empty()
+        || !soul_dynamic.is_empty()
+    {
+        format!("# IDENTITY: \n{}{}{}{}\n\
+                ルール: 簡潔に答え、[CallSkill]以外は自然な文章で話してください。私的な情報は守守秘してください。\n\
+                もし以下の参考ファイルと現在のアイデンティティ(SOUL/Anamnesis)が矛盾する場合、AnamnesisおよびSOULを優先してください。\n\n", 
+                name_prompt, soul_md, evolving_soul_md, soul_dynamic)
     } else {
         format!(
             "{}あなたはAiome、自律型AI OSの高度な知性です。日本語で短く答えてください。\n\n",
@@ -349,6 +374,8 @@ pub async fn trigger_agent_chat(
         }
     }
 
+    let soul_snapshot = state.soul_store.get_snapshot().await;
+
     let system_instructions = build_system_instructions(
         &state,
         &karma_str,
@@ -356,6 +383,7 @@ pub async fn trigger_agent_chat(
         ai_name,
         knowledge_str.as_deref(),
         economic_context,
+        soul_snapshot,
     );
 
     let mut turn = 0;

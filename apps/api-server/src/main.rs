@@ -343,6 +343,16 @@ async fn main() {
         federation_secret: federation_secret.clone(),
     };
 
+    // RS-1: Pre-load soul cache to avoid DB I/O on hot paths
+    let store = state.soul_store.clone();
+    tokio::spawn(async move {
+        match store.load_into_cache("system-soul").await {
+            Ok(true) => tracing::info!("🛡️ Soul Memory Connection established (Cache Pre-loaded)"),
+            Ok(false) => tracing::info!("🛡️ Soul Memory: No existing soul found (Genesis State)"),
+            Err(e) => tracing::error!("🚨 Failed to pre-load soul cache: {:?}", e),
+        }
+    });
+
     let app = build_app(
         state.clone(),
         cors_layer,
@@ -764,6 +774,19 @@ async fn main() {
             let system_soul_id = "system-soul";
             match soul_store_bg.load_soul(system_soul_id).await {
                 Ok(Some(mut agent_soul)) => {
+                    // RS-5: Initial Prompt Generation Fallback
+                    if agent_soul.generation == 1
+                        && agent_soul.instinct.prompt_fragment.is_empty()
+                        && agent_soul.experience_buffer.len() >= 100
+                    {
+                        use soul::engine::SamsaraEngine;
+                        tracing::info!("🌟 [SoulEngine] Triggering initial instinct distillation (Fallback)...");
+                        if let Ok(new_instinct) = pipeline.engine.distill(&agent_soul).await {
+                            agent_soul.instinct = new_instinct;
+                            let _ = soul_store_bg.save_soul(&agent_soul).await;
+                        }
+                    }
+
                     // Extract recent unhandled experiences (P-2 / P-3 integrations)
                     if !collected_experiences.is_empty() {
                         let mut trigger_save = false;
@@ -1269,6 +1292,7 @@ pub fn build_app(
             "/api/system/evolution",
             get(routes::karma::get_evolution_history_handler),
         )
+        .route("/api/soul/status", get(routes::soul::get_soul_status))
         .route(
             "/api/v1/settings",
             get(routes::settings::get_settings).put(routes::settings::update_setting),

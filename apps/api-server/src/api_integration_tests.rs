@@ -100,6 +100,9 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         event_sender: tokio::sync::broadcast::channel(10).0,
         context_engine,
         soul_mutator,
+        soul_store: Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
+            job_queue.get_pool().clone(),
+        ))),
         autonomous_running,
         autonomous_config,
         provider,

@@ -142,7 +142,17 @@ pub async fn trigger_agent_chat_stream(
             }
         }
 
-        let system_instructions = build_system_instructions(&state, &karma_str, summary.as_deref(), ai_name, knowledge_str.as_deref(), economic_context);
+        let soul_snapshot = state.soul_store.get_snapshot().await;
+
+        let system_instructions = build_system_instructions(
+            &state,
+            &karma_str,
+            summary.as_deref(),
+            ai_name,
+            knowledge_str.as_deref(),
+            economic_context,
+            soul_snapshot,
+        );
 
         let mut turn = 0;
         let max_turns = 15;

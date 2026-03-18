@@ -36,12 +36,13 @@ Every single line of Aiome was built by AI Agents on **Google Antigravity**, usi
 This is not a mere technical experiment. 
 It is the result of agents autonomously designing and implementing the exact environment they need to operate safely and with discipline. By replacing human biases and oversights with AI's rigorous code generation, self-review, and strict adherence to "Golden Rules," Aiome achieves a level of robustness and predictability that surpasses traditional software development.
 
-### 🛡️ 4 Core Pillars
+### 🛡️ 5 Core Pillars
 
 1.  **The Sandbox (Boundary & Defense)**: Rather than handing over a raw shell, Aiome forces execution through WASM containers and physically isolates API keys via the `mlockall`-protected Abyss Vault. It provides the absolute guarantee that "even if the agent goes rogue, the host survives and secrets cannot leak."
 2.  **The Immune System (Immutable Lessons)**: To prevent an agent from forgetting its mistakes, Aiome uses an immutable cryptographic hash chain (Karma) built on SQLite. It records exactly what tasks failed, creating a tampering-proof foundation for permanent evolution.
 3.  **Swarm Intelligence (Federation)**: Instantly synchronizes "lessons learned" across global Aiome nodes via the Samsara Hub.
 4.  **Personality (SOUL Architecture)**: An identity simulated through dialogue with the user, transforming the AI from a mere tool into a true "partner."
+5.  **Context Management**: An OS-level safety net to prevent cascade errors and AI hallucinations. By integrating an immutable dependency map (RIPPLE_MAP) and architectural decision records (ADR) directly synced with the source code, Aiome ensures the AI agent correctly understands the system boundaries before every self-evolution update.
 
 If a raw agent is a "wild genius brain," Aiome is the "skull, nervous system, and immune system" that allows that brain to safely survive and evolve in the real world. This is our core value as an Operating System.
 

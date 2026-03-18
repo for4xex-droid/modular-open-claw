@@ -14,4 +14,5 @@ pub mod general;
 pub mod karma;
 pub mod settings;
 pub mod skill;
+pub mod soul;
 pub mod watchtower;

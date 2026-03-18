@@ -102,7 +102,10 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                         .record_evolution_event(
                             0, // System level
                             "SecurityAlert",
-                            &format!("Reactive layer WARNING for suspicious activity: {}", context.chars().take(200).collect::<String>()),
+                            &format!(
+                                "Reactive layer WARNING for suspicious activity: {}",
+                                context.chars().take(200).collect::<String>()
+                            ),
                             None,
                             None,
                         )
@@ -112,8 +115,51 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                     // Inject latency to thwart rapid automated attacks
                     tokio::time::sleep(tokio::time::Duration::from_secs_f64(*secs)).await;
                 }
-                _ => {
-                    // Deflect/Custom not yet physically mapped
+                DefenseAction::RequireEscrow => {
+                    let _ = self
+                        .job_queue
+                        .record_evolution_event(
+                            0,
+                            "SecurityAlert",
+                            &format!(
+                                "Reactive layer REQUIRE_ESCROW triggered for: {}",
+                                context.chars().take(200).collect::<String>()
+                            ),
+                            None,
+                            None,
+                        )
+                        .await;
+                }
+                DefenseAction::Deflect => {
+                    let _ = self
+                        .job_queue
+                        .record_evolution_event(
+                            0,
+                            "SecurityAlert",
+                            &format!(
+                                "Reactive layer DEFLECT triggered for: {}",
+                                context.chars().take(200).collect::<String>()
+                            ),
+                            None,
+                            None,
+                        )
+                        .await;
+                }
+                DefenseAction::Custom(reason) => {
+                    let _ = self
+                        .job_queue
+                        .record_evolution_event(
+                            0,
+                            "SecurityAlert",
+                            &format!(
+                                "Reactive layer CUSTOM ({}) triggered for: {}",
+                                reason,
+                                context.chars().take(200).collect::<String>()
+                            ),
+                            None,
+                            None,
+                        )
+                        .await;
                 }
             }
             Ok(())

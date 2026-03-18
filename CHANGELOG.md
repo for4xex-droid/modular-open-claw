@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Context Management System (4-Layer Guardrails)**: Implemented an autonomous guardrail system to prevent AI agent contextual collapse and cascade errors. Includes `.context/RIPPLE_MAP.md` for deterministic dependency tracking, `preflight` workflow commands, Architecture Decision Records (ADRs `001` through `006`), and rigorous documentation synchronization rules. Added comprehensive integration sweeps matching actual source paths (`soul/*.rs` and `infrastructure/*.rs`) precisely to documentation maps.
+- **Soul Engine (Phase 4 - Autonomic Deepening)**:
+    - **Step 0 (Soul Memory)**: Added `SoulSnapshot` cache to `SqliteSoulStore` mapping memory to the chat LLM via `build_system_instructions`, eliminating DB latency on hot paths.
+    - **Step 1 (Attachment Transitions)**: Implemented dynamics for `AttachmentStyle` shifting (Secure/Anxious/Avoidant/Disorganized) based on positive/negative interaction valences.
+    - **Step 2 (Compound Triggers)**: Added true evaluation logic for `DefenseTrigger::Compound` in the internal `SoulPipeline`.
+    - **Step 3 & 4 (Somatic Resonance & Reflex)**: Integrated Somatic Bias into predictions (incorporating intuitive emotion) and implemented fallback reflex defense generation for heavily negative experiences.
+    - **Step 5 & 6 (Physical Execution & Temporal Decay)**: Mapped `RequireEscrow`, `Deflect`, and `Custom` defense actions to `Evolution Chronicle` audit trails, and added temporal intensity decay (death threshold 0.2) to prevent memory saturation over infinite rebirth cycles.
+    - **Step 7 (Observability API)**: Added `GET /api/soul/status` to expose real-time internal state metrics (attachment style, active defenses count, soul resonance avg).
 - **Soul Engine (Phase 3 - Reactive Hardening)**: 
     - **Step 1 (R-2)**: Improved `SoulError` granularity with context-aware prefixes (`[SoulDistill]`, `[SoulAdapter]`, etc.) for better debugging.
     - **Step 2 (Immune Feedback)**: Integrated `ImmuneSystem` threat detection into the `SoulPipeline` as negative experiences (`security.immune_response`), allowing the AI to learn from neutralized attacks.

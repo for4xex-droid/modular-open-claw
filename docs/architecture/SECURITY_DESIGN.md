@@ -31,6 +31,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 8 | Env Var Exfiltration | Skill reads API_KEY env | 🔴 High | **Baseline regex detection + WASM isolation** |
 | 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Baseline regex + parameterized queries** |
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
+| 11 | **Cascade Error / AI Hallucination** | **Loss of Context during Self-Evolution** | 🔴 High | **Context Management System (`RIPPLE_MAP.md` + ADRs)** |
 
 ## 3. Defense Architecture
 
@@ -63,6 +64,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Silent Error Elimination**: Database migration `.ok()` calls replaced with informational logging to surface potential schema issues during initialization.
 - **Swarm Ops Deadlock Prevention**: The `do_sign_swarm_payload` function uses a linear flow (ensure key existence → sign) instead of recursive calls, preventing SQLite transaction nesting deadlocks caused by the single-writer constraint. All internal swarm operations (`get_node_id`, `tick_local_clock`, `sign_swarm_payload`) are called via direct `SwarmOps::do_*` methods rather than `JobQueue` trait dispatch to avoid both deadlocks and oversized async futures.
 - **Async Future Size Control**: All 55+ delegation methods in `impl JobQueue for SqliteJobQueue` use `Box::pin` to heap-allocate individual futures, preventing the combined async state machine from exceeding thread stack limits.
+- **Context Management System**: Prevents "AI hallucination" and "cascade errors." Integrates an immutable dependency map (`RIPPLE_MAP.md`) and Architectural Decision Records (ADRs) directly synced with the API/core code. Forces AI to execute preflight checks and review impact scopes before any source code mutation.
 
 ## 5. Comparison with Traditional Systems
 

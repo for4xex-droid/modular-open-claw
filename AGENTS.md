@@ -171,6 +171,9 @@ When you receive a heartbeat poll, don't just reply `HEARTBEAT_OK` every time. U
 2. **README_en.md** — README.md に変更があった場合、英語版も同期されているか？
 3. **.env.example** — 環境変数が追加/変更された場合、テンプレートが更新されているか？
 4. **/docs-sync** — 必要に応じて `/docs-sync` ワークフローを実行し、仕様書を更新せよ。
+5. **RIPPLE_MAP.md** — 新規ファイル/構造体追加時、`.context/RIPPLE_MAP.md` に影響範囲を追記したか？
+6. **ADR** — 重要な設計判断を行った場合、`docs/decisions/` に記録したか？
+7. **cargo test** — 変更後にワークスペース全体のテスト (`cargo check --workspace --tests && cargo test --workspace`) がPASSしたか？
 
 ドキュメントの鮮度は、AIシステム全体の信頼性に直結する。
 

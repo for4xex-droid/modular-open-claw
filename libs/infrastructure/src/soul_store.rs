@@ -4,13 +4,27 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tracing::{info, warn};
 
+use tokio::sync::RwLock;
+
+#[derive(Debug, Clone)]
+pub struct SoulSnapshot {
+    pub attachment_style: soul::attachment::AttachmentStyle,
+    pub narrative_self: Option<String>,
+    pub prompt_fragment: String,
+    pub generation: u32,
+}
+
 pub struct SqliteSoulStore {
     pool: Arc<SqlitePool>,
+    cache: Arc<RwLock<Option<SoulSnapshot>>>,
 }
 
 impl SqliteSoulStore {
     pub fn new(pool: Arc<SqlitePool>) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            cache: Arc::new(RwLock::new(None)),
+        }
     }
 
     pub async fn save_soul(&self, soul: &AgentSoul) -> Result<(), AiomeError> {
@@ -101,11 +115,41 @@ impl SqliteSoulStore {
             reason: e.to_string(),
         })?;
 
+        // Update cache (RS-1)
+        {
+            let mut cache = self.cache.write().await;
+            *cache = Some(SoulSnapshot {
+                attachment_style: soul.attachment.style.clone(),
+                narrative_self: soul.anamnesis.narrative_self.clone(),
+                prompt_fragment: soul.instinct.prompt_fragment.clone(),
+                generation: soul.generation,
+            });
+        }
+
         info!(
-            "🛡️ [SoulStore] AgentSoul {} (gen {}) persisted.",
+            "🛡️ [SoulStore] AgentSoul {} (gen {}) persisted and cached.",
             soul.id, soul.generation
         );
         Ok(())
+    }
+
+    pub async fn get_snapshot(&self) -> Option<SoulSnapshot> {
+        self.cache.read().await.clone()
+    }
+
+    pub async fn load_into_cache(&self, id: &str) -> Result<bool, AiomeError> {
+        if let Some(soul) = self.load_soul(id).await? {
+            let mut cache = self.cache.write().await;
+            *cache = Some(SoulSnapshot {
+                attachment_style: soul.attachment.style.clone(),
+                narrative_self: soul.anamnesis.narrative_self.clone(),
+                prompt_fragment: soul.instinct.prompt_fragment.clone(),
+                generation: soul.generation,
+            });
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     pub async fn load_soul(&self, id: &str) -> Result<Option<AgentSoul>, AiomeError> {
@@ -142,13 +186,17 @@ impl SqliteSoulStore {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-            let parsed_attachment = serde_json::from_str(&r.get::<String, _>("attachment_json"))
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
+            let parsed_attachment: soul::attachment::AttachmentModel =
+                serde_json::from_str(&r.get::<String, _>("attachment_json")).map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
                 })?;
-            let parsed_instinct = serde_json::from_str(&r.get::<String, _>("instinct_json"))
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
+            let parsed_instinct: soul::instinct::Instinct =
+                serde_json::from_str(&r.get::<String, _>("instinct_json")).map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
                 })?;
             let parsed_anamnesis = serde_json::from_str(&r.get::<String, _>("anamnesis_json"))
                 .map_err(|e| AiomeError::Infrastructure {
@@ -159,7 +207,7 @@ impl SqliteSoulStore {
                     reason: e.to_string(),
                 })?;
 
-            Ok(Some(AgentSoul {
+            let agent_soul = AgentSoul {
                 id: id.to_string(),
                 generation: r.get::<i64, _>("generation") as u32,
                 soul_hash: r.get("soul_hash"),
@@ -170,7 +218,22 @@ impl SqliteSoulStore {
                 instinct: parsed_instinct,
                 anamnesis: parsed_anamnesis,
                 experience_buffer: parsed_buffer,
-            }))
+            };
+
+            // RS-1: Update cache on explicit load
+            {
+                let mut cache = self.cache.write().await;
+                if cache.is_none() {
+                    *cache = Some(SoulSnapshot {
+                        attachment_style: agent_soul.attachment.style.clone(),
+                        narrative_self: agent_soul.anamnesis.narrative_self.clone(),
+                        prompt_fragment: agent_soul.instinct.prompt_fragment.clone(),
+                        generation: agent_soul.generation,
+                    });
+                }
+            }
+
+            Ok(Some(agent_soul))
         } else {
             Ok(None)
         }

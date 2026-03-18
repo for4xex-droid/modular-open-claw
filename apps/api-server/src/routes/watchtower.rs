@@ -175,8 +175,15 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         }
     }
 
-    let system_instructions =
-        build_system_instructions(&state, karma_str, summary, ai_name, None, economic_context);
+    let system_instructions = build_system_instructions(
+        &state,
+        karma_str,
+        summary,
+        ai_name,
+        None,
+        economic_context,
+        None,
+    );
     let full_prompt = format!("{}\nUSER: {}\nAI: ", system_instructions, payload.prompt);
 
     let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {

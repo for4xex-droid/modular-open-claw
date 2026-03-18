@@ -121,6 +121,15 @@ impl SamsaraEngine for DefaultSamsaraEngine {
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
             new_instinct.rules.truncate(10);
+
+            // Step 3: Generate the prompt_fragment for system injection
+            new_instinct.prompt_fragment = new_instinct
+                .rules
+                .iter()
+                .map(|r| format!("- {} (Confidence: {:.2})", r.rule, r.confidence))
+                .collect::<Vec<_>>()
+                .join("\n");
+
             new_instinct.hash = new_hash;
 
             Ok(new_instinct)
@@ -159,7 +168,8 @@ impl SamsaraEngine for DefaultSamsaraEngine {
 
             let mut inherited_defenses = Vec::new();
             for def in &soul.defenses {
-                if def.intensity > 0.7 {
+                // RS-3: Lowered inheritance threshold to 0.5 to harmonize with new 0.2 death decay threshold
+                if def.intensity > 0.5 {
                     let mut inherited = def.clone();
                     inherited.intensity *= 0.9; // Slight decay upon rebirth
                     inherited_defenses.push(inherited);
@@ -228,10 +238,10 @@ impl SamsaraEngine for DefaultSamsaraEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core::error::AiomeError;
     use aiome_core::llm_provider::{LlmProvider, LlmResponse};
     use async_trait::async_trait;
     use soul::model::{AgentSoul, Experience};
-    use aiome_core::error::AiomeError;
 
     #[derive(Debug)]
     struct MockLlm {
@@ -247,9 +257,15 @@ mod tests {
         async fn test_connection(&self) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
             if self.should_fail {
-                Err(AiomeError::Infrastructure { reason: "mock failure".into() })
+                Err(AiomeError::Infrastructure {
+                    reason: "mock failure".into(),
+                })
             } else {
                 Ok(LlmResponse {
                     content: self.response_content.clone(),
@@ -265,16 +281,19 @@ mod tests {
             response_content: "I am a synthesized narrative.".into(),
             should_fail: false,
         });
-        
+
         let engine = DefaultSamsaraEngine::new(mock_llm, "mock_distill".into());
         let mut soul = AgentSoul::new("test-soul".into());
         soul.experience_buffer.push(Experience::default());
-        
+
         // Initial narrative is None
         assert_eq!(soul.anamnesis.narrative_self, None);
-        
+
         let new_soul = engine.rebirth(soul).await.unwrap();
-        assert_eq!(new_soul.anamnesis.narrative_self, Some("I am a synthesized narrative.".into()));
+        assert_eq!(
+            new_soul.anamnesis.narrative_self,
+            Some("I am a synthesized narrative.".into())
+        );
     }
 
     #[tokio::test]
@@ -283,15 +302,18 @@ mod tests {
             response_content: "Will fail".into(),
             should_fail: true,
         });
-        
+
         let engine = DefaultSamsaraEngine::new(mock_llm, "mock_distill".into());
         let mut soul = AgentSoul::new("test-soul".into());
         soul.anamnesis.narrative_self = Some("Old narrative.".into());
         soul.experience_buffer.push(Experience::default());
-        
+
         let new_soul = engine.rebirth(soul).await.unwrap();
-        
+
         // Should fallback to old narrative because LLM failed
-        assert_eq!(new_soul.anamnesis.narrative_self, Some("Old narrative.".into()));
+        assert_eq!(
+            new_soul.anamnesis.narrative_self,
+            Some("Old narrative.".into())
+        );
     }
 }
