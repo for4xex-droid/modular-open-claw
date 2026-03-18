@@ -24,14 +24,14 @@
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
-| `samsara_engine` | Soul Engine の L3 転生ロギック実体（LLM 蒸留連携・Phase 2 実働化済）。 | **Phase 2 完了** |
+| `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。 | 実装完了 |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。 | 実装完了 |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
-| `soul_adapter` | 内部イベントから Soul Engine 用の Experience オブジェクトへの変換および予測評価（Predictive Grounding）。 | **Phase 2 完了** |
+| `soul_adapter` | 内部イベントから Experience への変換、予測評価、および Phase 3 で物理防衛層（Semantic 判定/Reject/Warn アクション）を実行。 | **Phase 3 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
-| `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）のSQLite永続化（L1-L3用）。 | **新規実装** |
+| `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。 | **Phase 3 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
 | `trend_sonar` | 外部トレンドの収集と、それに基づく企画の提案。 | 実装完了 |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |

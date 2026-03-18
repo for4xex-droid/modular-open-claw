@@ -173,8 +173,44 @@ impl SamsaraEngine for DefaultSamsaraEngine {
             }
             new_soul.defenses = inherited_defenses;
 
+            // GAP-2: Narrative Self LLM generation (Step 6 completion)
+            let start = soul.experience_buffer.len().saturating_sub(30);
+            let recent_experiences = &soul.experience_buffer[start..];
+            let experiences_json = serde_json::to_string(recent_experiences).unwrap_or_default();
+
+            let narrative_prompt = format!(
+                "You are the soul of an AI agent summarizing your previous life's experiences into a single narrative identity (Anamnesis).\n\
+                 Recent Experiences:\n{}\n\
+                 Create a 1-2 sentence narrative summarizing your identity and core beliefs based on these events.",
+                experiences_json
+            );
+
+            tracing::info!("   [SamsaraEngine] Generating narrative self for new generation...");
+            let narrative = match tokio::time::timeout(
+                tokio::time::Duration::from_secs(15),
+                self.provider.complete(&narrative_prompt, None),
+            )
+            .await
+            {
+                Ok(Ok(resp)) => {
+                    tracing::info!("   [SamsaraEngine] LLM narrative generation successful.");
+                    Some(resp.content.trim().to_string())
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!("⚠️ [SamsaraEngine] Narrative LLM failed: {}. Falling back to previous narrative.", e);
+                    soul.anamnesis.narrative_self.clone()
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        "⚠️ [SamsaraEngine] Narrative LLM timed out (15s). Falling back."
+                    );
+                    soul.anamnesis.narrative_self.clone()
+                }
+            };
+
             // Step 6: Inherit Anamnesis (Narrative & Schemas)
-            new_soul.anamnesis = soul.anamnesis.clone();
+            new_soul.anamnesis.narrative_self = narrative;
+            new_soul.anamnesis.core_schemas = soul.anamnesis.core_schemas.clone();
 
             new_soul.compute_hash();
 

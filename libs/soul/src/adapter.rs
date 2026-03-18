@@ -18,6 +18,7 @@ pub trait SoulDomainAdapter: Send + Sync {
     fn execute_defense<'a>(
         &'a self,
         action: &'a DefenseAction,
+        context: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'a>>;
 
     /// 予測モデルの予測値を算出（ドメイン固有のメトリクス）

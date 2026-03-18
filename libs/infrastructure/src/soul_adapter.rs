@@ -71,6 +71,7 @@ impl SoulDomainAdapter for CoreDomainAdapter {
     fn execute_defense<'a>(
         &'a self,
         action: &'a DefenseAction,
+        context: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'a>> {
         Box::pin(async move {
             tracing::info!(
@@ -83,7 +84,7 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                     // Create a dynamic ImmuneRule to block similar patterns in the future
                     let rule = aiome_core::contracts::ImmuneRule {
                         id: format!("auto-reject-{}", uuid::Uuid::new_v4()),
-                        pattern: "malicious_pattern_placeholder".to_string(), // In Step 5, we'll use actual content
+                        pattern: context.chars().take(200).collect::<String>(),
                         severity: 100,
                         action: "Block".to_string(),
                         created_at: chrono::Utc::now().to_rfc3339(),

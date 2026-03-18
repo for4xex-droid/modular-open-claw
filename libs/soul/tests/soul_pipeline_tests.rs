@@ -6,7 +6,7 @@ use soul::adapter::SoulDomainAdapter;
 use soul::defense::{Defense, DefenseAction, DefenseTrigger};
 use soul::engine::SamsaraEngine;
 use soul::error::SoulError;
-use soul::instinct::{Instinct, InstinctRule};
+use soul::instinct::Instinct;
 use soul::model::{AgentSoul, Experience};
 use soul::pipeline::SoulPipeline;
 
@@ -31,8 +31,16 @@ impl SoulDomainAdapter for MockAdapter {
     fn execute_defense<'a>(
         &'a self,
         _action: &'a DefenseAction,
+        _context: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'a>> {
         Box::pin(async { Ok(()) })
+    }
+    fn embed_experience<'a>(
+        &'a self,
+        _exp: &'a Experience,
+    ) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> {
+        // Return dummy embedding for semantic tests
+        Box::pin(async { vec![1.0, 0.0] })
     }
 }
 
@@ -203,4 +211,83 @@ async fn test_somatic_marker_generation() {
     assert_eq!(soul.somatic_markers.len(), 1);
     assert_eq!(soul.somatic_markers[0].valence, -0.8);
     assert_eq!(soul.somatic_markers[0].arousal, 0.8);
+}
+
+#[tokio::test]
+async fn test_l1_semantic_rejection() {
+    let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
+    let mut soul = AgentSoul::new("test".into());
+
+    // Add semantic defense with identical dummy embedding
+    soul.defenses.push(Defense {
+        id: "d2".into(),
+        trigger: DefenseTrigger::Semantic {
+            embedding: vec![1.0, 0.0],
+            threshold: 0.9,
+        },
+        action: DefenseAction::Reject,
+        origin_experience_id: "e1".into(),
+        intensity: 1.0,
+        created_at: "now".into(),
+    });
+
+    let exp = Experience {
+        content: "test payload".into(),
+        domain: "chat".into(),
+        ..Default::default()
+    };
+
+    let result = pipeline.process_experience(&mut soul, exp).await.unwrap();
+    // Similarity will be 1.0 > 0.9, should be rejected
+    assert!(result.is_none());
+    assert_eq!(soul.experience_buffer.len(), 0);
+}
+
+#[tokio::test]
+async fn test_execute_defense_hesitate() {
+    let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
+    let mut soul = AgentSoul::new("test".into());
+
+    soul.defenses.push(Defense {
+        id: "d3".into(),
+        trigger: DefenseTrigger::Tag("hesitate_me".into()),
+        action: DefenseAction::Hesitate(1.0),
+        origin_experience_id: "e1".into(),
+        intensity: 1.0,
+        created_at: "now".into(),
+    });
+
+    let exp = Experience {
+        content: "hesitate_me".into(),
+        domain: "chat".into(),
+        ..Default::default()
+    };
+
+    // Make sure process_experience completes successfully but returns None (bypassed)
+    let result = pipeline.process_experience(&mut soul, exp).await.unwrap();
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_anamnesis_persists_across_rebirth() {
+    let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
+    let mut soul = AgentSoul::new("test".into());
+    soul.anamnesis.narrative_self = Some("I am a test soul.".into());
+
+    let exp = Experience {
+        domain: "chat".into(),
+        outcome_valence: 2.0, // Induce shock -> rebirth
+        original_prediction: -1.0,
+        ..Default::default()
+    };
+
+    let new_soul_opt = pipeline.process_experience(&mut soul, exp).await.unwrap();
+    assert!(new_soul_opt.is_some());
+    let new_soul = new_soul_opt.unwrap();
+
+    // Anamnesis should be inherited
+    assert_eq!(
+        new_soul.anamnesis.narrative_self.as_deref(),
+        Some("I am a test soul.")
+    );
 }

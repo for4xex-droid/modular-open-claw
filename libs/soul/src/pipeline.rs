@@ -30,20 +30,15 @@ impl<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> SoulPipeline<A, E> {
         for defense in &soul.defenses {
             let matched = match &defense.trigger {
                 DefenseTrigger::Tag(tag) => exp.content.contains(tag) || exp.domain.contains(tag),
-                DefenseTrigger::Semantic { threshold, .. } => {
+                DefenseTrigger::Semantic {
+                    embedding,
+                    threshold,
+                } => {
                     if exp_embedding.is_empty() {
                         false
                     } else {
-                        // We use the weight (embedding) from the trigger in a future iteration,
-                        // for now we assume the trigger has its own embedding to compare with.
-                        // Assuming trigger has 'embedding' field based on implementation plan.
-                        // Based on defense.rs discovery: DefenseTrigger::Semantic { embedding: Vec<f32>, threshold: f32 }
-                        if let DefenseTrigger::Semantic { embedding, .. } = &defense.trigger {
-                            crate::somatic::math_utils::cosine_similarity(embedding, exp_embedding)
-                                > *threshold as f64
-                        } else {
-                            false
-                        }
+                        crate::somatic::math_utils::cosine_similarity(embedding, exp_embedding)
+                            > *threshold
                     }
                 }
                 DefenseTrigger::Compound(_) => {
@@ -78,7 +73,7 @@ impl<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> SoulPipeline<A, E> {
             // L1: Reactive Layer Check
             if let Some(action) = self.is_rejected_by_reactive_layer(soul, &exp, &exp_embedding) {
                 // Execute defense action (DS-1 fixed)
-                if let Err(e) = self.adapter.execute_defense(&action).await {
+                if let Err(e) = self.adapter.execute_defense(&action, &exp.content).await {
                     tracing::warn!("⚠️ [SoulPipeline] Failed to execute defense action: {}", e);
                 }
                 return Ok(None);
