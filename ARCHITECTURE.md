@@ -41,6 +41,7 @@ graph TD
         soul(soul)
     end
 
+    api-server --> soul
     api-server --> infrastructure
     api-server --> shared
     api-server --> aiome-contracts
@@ -90,4 +91,4 @@ AIOME_DB_PATH, LOG_LEVEL, PORT, OLLAMA_HOST, OLLAMA_MODEL, BG_LLM_PROVIDER, BG_L
 ```
 
 ---
-*Last Auto-Generated: 2026-03-18 23:27:18 UTC*
+*Last Auto-Generated: 2026-03-19 00:57:26 UTC*
