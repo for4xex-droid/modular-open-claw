@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-20T00:28:15.941422
+> Generated at: 2026-03-20T01:04:46.859266
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -20,10 +20,11 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/logs`
 - `/api/v1/watchtower/ws`
 - `/api/wiki`
+- `/ekyc-status`
 - `/messages`
 - `/sse`
 **Key Structs**
-- AgentChatRequest, ApiDoc, AppError, AppState, Authenticated, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, DbLoggerLayer, GraphData, GraphEdge, GraphNode, ImportRequest, ImportSkillRequest, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, UpdateSettingsRequest
+- AgentChatRequest, ApiDoc, AppError, AppState, Authenticated, AuthenticatedUser, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, DbLoggerLayer, GraphData, GraphEdge, GraphNode, ImportRequest, ImportSkillRequest, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, UpdateSettingsRequest
 
 ### `samsara-hub`
 **REST / Websocket Routes**
@@ -57,7 +58,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `shared`
 **Domain Structs**
-- AiomeConfig, AuditEntry, BeggingSupervisor, CleanupTarget, HealthMonitor, ImageHasher, PathSandbox, ProportionsChecker, ResourceStatus, Secret, SecurityPolicy, StorageCleaner
+- AiomeConfig, AiomeCustomClaims, AuditEntry, BeggingSupervisor, CleanupTarget, HealthMonitor, ImageHasher, PathSandbox, ProportionsChecker, ResourceStatus, Secret, SecurityPolicy, StorageCleaner
 
 ### `avatar-engine`
 **Domain Structs**
@@ -77,7 +78,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `infrastructure`
 **Traits (Interfaces)**
-- ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
+- AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
 **Domain Structs**
-- ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, ExternalTrendSonar, HeartbeatWakeupService, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockCommerceEngine, MockEkycEngine, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteJobQueue, SqliteQuarantineStore, SqliteSoulStore, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, WasmSkillManager, WorkspaceManager
+- ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, ExternalTrendSonar, HeartbeatWakeupService, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteJobQueue, SqliteQuarantineStore, SqliteSoulStore, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, WasmSkillManager, WorkspaceManager
 

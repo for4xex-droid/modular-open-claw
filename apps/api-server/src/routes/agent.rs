@@ -669,6 +669,7 @@ pub struct KarmaFeedbackRequest {
 )]
 pub async fn handle_karma_feedback(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<KarmaFeedbackRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let delta = if payload.is_positive { 5 } else { -10 };

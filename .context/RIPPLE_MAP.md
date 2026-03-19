@@ -222,3 +222,4 @@
 | AppState フィールド追加 | api_integration_tests.rs | テストの初期化ブロックを先に確認 |
 | `build_system_instructions` 引数変更 | agent.rs, stream.rs, watchtower.rs | 3箇所を grep で確認してから変更 |
 | Defense/Instinct 構造体変更 | JSON永続化 (serde) | `#[serde(default)]` の有無を確認 |
+| ルートハンドラ(`pub async fn`) 追加 | `deep-scan.sh (CC-6)` | 全てのAPIハンドラに `_auth: crate::auth::Authenticated` を必須とする |

@@ -37,6 +37,7 @@ pub struct ImportSkillRequest {
 )]
 pub async fn list_skills(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<SkillSummary>>, AppError> {
     let mut skills = Vec::new();
 
@@ -139,6 +140,7 @@ pub struct McpSpawnRequest {
 )]
 pub async fn import_skill(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<ImportRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     info!(
@@ -264,6 +266,7 @@ pub async fn import_skill(
 )]
 pub async fn spawn_mcp_server(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<McpSpawnRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // SEC: Command whitelist to prevent arbitrary process execution

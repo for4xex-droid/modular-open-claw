@@ -49,14 +49,7 @@ impl FromRequestParts<crate::AppState> for Authenticated {
             // Fallback to system agent ID if not provided or invalid
             let final_agent_id = match agent_id {
                 Some(id) => id,
-                None => {
-                    use aiome_core::traits::JobQueue;
-                    state
-                        .job_queue
-                        .get_system_agent_id()
-                        .await
-                        .unwrap_or_else(|_| uuid::Uuid::nil())
-                }
+                None => state.system_agent_id,
             };
 
             Ok(Authenticated {

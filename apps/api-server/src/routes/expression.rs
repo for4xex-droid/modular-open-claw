@@ -35,6 +35,7 @@ pub struct AutoToggle {
 )]
 pub async fn expression_status(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let pending_count = state.job_queue.get_pending_job_count().await.unwrap_or(0);
     let auto_enabled = state
@@ -74,6 +75,7 @@ pub async fn expression_status(
 )]
 pub async fn generate_expression(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // 1. Fetch latest Karma
     let karma = state.job_queue.fetch_all_karma(5).await?;
@@ -151,6 +153,7 @@ pub async fn generate_expression(
 )]
 pub async fn list_expressions(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Query(params): Query<ListParams>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let limit = params.limit.unwrap_or(20);
@@ -169,6 +172,7 @@ pub async fn list_expressions(
 )]
 pub async fn toggle_auto_expression(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<AutoToggle>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     state

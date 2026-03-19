@@ -85,6 +85,7 @@ pub struct AppState {
     pub ekyc_engine: Arc<dyn infrastructure::compliance::ekyc::EkycEngine>,
     pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
     pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
+    pub system_agent_id: uuid::Uuid,
 }
 
 #[tokio::main]
@@ -136,6 +137,11 @@ async fn main() {
             std::process::exit(1);
         });
     let job_queue = Arc::new(job_queue);
+
+    let system_agent_id = job_queue
+        .get_system_agent_id()
+        .await
+        .unwrap_or_else(|_| uuid::Uuid::nil());
 
     let circuit_breaker = Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
         "api-server",
@@ -379,6 +385,7 @@ async fn main() {
             Arc::new(store)
         },
         auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
+        system_agent_id,
     };
 
     // RS-1: Pre-load soul cache to avoid DB I/O on hot paths

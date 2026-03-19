@@ -23,7 +23,7 @@ use std::fs;
     ),
     security(("api_key" = []))
 )]
-pub async fn list_wiki_files(State(state): State<AppState>) -> Result<Json<Vec<String>>, AppError> {
+pub async fn list_wiki_files(State(state): State<AppState>, _auth: crate::auth::Authenticated) -> Result<Json<Vec<String>>, AppError> {
     let mut files = Vec::new();
     if let Ok(entries) = fs::read_dir(&state.docs_path) {
         for entry in entries.flatten() {
@@ -52,6 +52,7 @@ pub async fn list_wiki_files(State(state): State<AppState>) -> Result<Json<Vec<S
 )]
 pub async fn get_wiki_content(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(filename): Path<String>,
 ) -> Result<String, AppError> {
     if filename.contains("..") || filename.contains('/') || filename.contains('\\') {

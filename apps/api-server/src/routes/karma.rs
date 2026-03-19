@@ -25,6 +25,7 @@ use tracing::{info, warn};
 )]
 pub async fn get_karma_stream(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let karmas = state.job_queue.fetch_all_karma(10).await?;
     Ok(Json(karmas))
@@ -39,6 +40,7 @@ pub async fn get_karma_stream(
 )]
 pub async fn trigger_failure_demo(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     info!("🧪 [DemoHandler] Triggering failure demo and storing karma...");
 
@@ -94,7 +96,7 @@ pub async fn trigger_failure_demo(
         (status = 200, description = "Demo security triggered", body = serde_json::Value)
     )
 )]
-pub async fn trigger_security_demo() -> Result<Json<serde_json::Value>, AppError> {
+pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",
         "steps": [
@@ -114,7 +116,7 @@ pub async fn trigger_security_demo() -> Result<Json<serde_json::Value>, AppError
         (status = 200, description = "Demo federation triggered", body = serde_json::Value)
     )
 )]
-pub async fn trigger_federation_demo() -> Result<Json<serde_json::Value>, AppError> {
+pub async fn trigger_federation_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",
         "steps": [
@@ -155,6 +157,7 @@ pub struct GraphData {
 )]
 pub async fn synergy_graph_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<GraphData>, AppError> {
     let local_node_id = state.job_queue.get_node_id().await.unwrap_or_default();
     let karmas: Vec<serde_json::Value> = state.job_queue.fetch_all_karma(250).await?;
@@ -227,6 +230,7 @@ pub async fn synergy_graph_handler(
 )]
 pub async fn get_immune_rules_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<aiome_core::contracts::ImmuneRule>>, AppError> {
     let rules = state.job_queue.get_immune_rules().await?;
     Ok(Json(rules))
@@ -242,6 +246,7 @@ pub async fn get_immune_rules_handler(
 )]
 pub async fn add_immune_rule_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(mut rule): Json<ImmuneRule>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Phase 20 MVP: Generate ID and timestamp if empty
@@ -271,6 +276,7 @@ pub async fn add_immune_rule_handler(
 )]
 pub async fn delete_immune_rule_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     state.job_queue.delete_immune_rule(&id).await?;
@@ -287,6 +293,7 @@ pub async fn delete_immune_rule_handler(
 )]
 pub async fn get_evolution_history_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let history = state.job_queue.fetch_evolution_history(50).await?;
     Ok(Json(history))

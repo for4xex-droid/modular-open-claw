@@ -38,6 +38,7 @@ pub struct ListArtifactsParams {
 )]
 pub async fn list_artifacts_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Query(params): Query<ListArtifactsParams>,
 ) -> Result<Json<Vec<ArtifactMeta>>, AppError> {
     let category = params
@@ -80,6 +81,7 @@ pub async fn list_artifacts_handler(
 )]
 pub async fn get_artifact_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let artifact = state.artifact_store.fetch_artifact(&id).await?;
@@ -104,6 +106,7 @@ pub async fn get_artifact_handler(
 )]
 pub async fn download_artifact_file_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path((id, filename)): Path<(String, String)>,
 ) -> impl IntoResponse {
     // SEC-3: Santize filename input to prevent path traversal at route level
@@ -178,6 +181,7 @@ pub async fn download_artifact_file_handler(
 )]
 pub async fn delete_artifact_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
     let jail = Jail::new("workspace")
@@ -198,6 +202,7 @@ pub async fn delete_artifact_handler(
 )]
 pub async fn get_artifact_edges_handler(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<aiome_core::traits::ArtifactEdge>>, AppError> {
     let edges = state.artifact_store.get_artifact_edges(&id).await?;

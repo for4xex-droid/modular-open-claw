@@ -42,6 +42,7 @@ pub struct StartAutonomousRequest {
 )]
 pub async fn biome_status(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let peer_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM biome_peers")
         .fetch_one(state.job_queue.get_pool())
@@ -67,6 +68,7 @@ pub async fn biome_status(
 )]
 pub async fn list_topics(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let hub_url = std::env::var("SAMSARA_HUB_URL")
         .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
@@ -104,6 +106,7 @@ pub async fn list_topics(
 )]
 pub async fn create_topic(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let hub_url = std::env::var("SAMSARA_HUB_URL")
@@ -159,6 +162,7 @@ pub async fn create_topic(
 )]
 pub async fn autonomous_start(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(req): Json<StartAutonomousRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     if state.autonomous_running.load(Ordering::SeqCst) {
@@ -235,6 +239,7 @@ pub async fn autonomous_start(
 )]
 pub async fn autonomous_stop(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     state.autonomous_running.store(false, Ordering::SeqCst);
     Ok(Json(serde_json::json!({"status": "stopping"})))
@@ -249,6 +254,7 @@ pub async fn autonomous_stop(
 )]
 pub async fn autonomous_status(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let running = state.autonomous_running.load(Ordering::SeqCst);
     let config = state.autonomous_config.read().await;
@@ -268,6 +274,7 @@ pub async fn autonomous_status(
 )]
 pub async fn list_messages(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let rows = sqlx::query("SELECT * FROM biome_messages ORDER BY created_at DESC LIMIT 100")
         .fetch_all(state.job_queue.get_pool())
@@ -332,6 +339,7 @@ pub async fn list_messages(
 )]
 pub async fn send_message(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(req): Json<SendBiomeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let sender_pubkey = state.job_queue.get_node_id().await?;

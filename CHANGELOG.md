@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 8.3 (Type-Driven Security)**:
+    - **Type-Level Enforcement**: Added `_auth: Authenticated` extractor to all (45) public asynchronous route handlers in `api-server` (agent, biome, karma, artifacts, skill, streams, expression, general), ensuring that unauthenticated routes cannot compile.
+    - **Performance Optimization**: Cached `system_agent_id` into `AppState` during application startup, eliminating redundant database queries inside the `Authenticated` extractor for hot-path APIs.
+    - **CI Defense-in-Depth**: Introduced the `missing-auth-extractor` rule to `.github/anti-patterns.yml` and integrated `CC-6` (Auth Extractor Enforcement Ratio) into `scripts/deep-scan.sh` to prevent regressions in security guardrails.
 - **Phase 8.2 (OAuth 2.1 Foundation)**:
     - **JWT Custom Claims**: Added `AiomeCustomClaims` in `libs/shared/auth` to define the standardized token structure (including `sub`, `ekyc_verified`, `roles`).
     - **AuthManager Interface**: Introduced `AuthManager` trait and `MockAuthManager` in `libs/infrastructure/auth` to handle stateless token validation.

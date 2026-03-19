@@ -306,6 +306,7 @@ pub async fn trigger_agent_chat_stream(
 
 pub async fn trigger_system_vitality_stream(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let stream = async_stream::stream! {
         let mut interval = interval(Duration::from_secs(5));
