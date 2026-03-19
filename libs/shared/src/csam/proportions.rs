@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, utoipa::ToSchema)]
 pub enum LegalStatus {
     /// 全年齢対象 (5.5頭身以上)
     General,

@@ -169,6 +169,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
             "".to_string(),
             true,
         )),
+        ekyc_engine: Arc::new(infrastructure::compliance::ekyc::MockEkycEngine),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

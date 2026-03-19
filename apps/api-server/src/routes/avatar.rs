@@ -11,6 +11,7 @@ use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use shared::csam::{ImageHasher, LegalStatus, ProportionsChecker};
 use tracing::{info, warn};
@@ -61,12 +62,18 @@ pub async fn upload_avatar_handler(
     // 2. 画像知覚ハッシュの検証 (CSAM)
     let content_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.content_base64)
-        .map_err(|_| AppError::Generic("Invalid base64 encoding".to_string()))?;
+        .map_err(|_| {
+            AppError(aiome_contracts::error::AiomeError::Infrastructure {
+                reason: "Invalid base64 encoding".to_string(),
+            })
+        })?;
 
     let hasher = ImageHasher::new();
-    let hash = hasher
-        .compute_hash(&content_bytes)
-        .map_err(|e| AppError::Generic(format!("Hash processing error: {}", e)))?;
+    let hash = hasher.compute_hash(&content_bytes).map_err(|e| {
+        AppError(aiome_contracts::error::AiomeError::Infrastructure {
+            reason: format!("Hash processing error: {}", e),
+        })
+    })?;
 
     let is_csam_hit = hasher.is_blacklisted(&hash);
     let image_status = if is_csam_hit {
