@@ -80,7 +80,7 @@ impl ExpressionEngine {
             content,
             emotion,
             karma_refs: karma_ids,
-            audio_path: None, // DP-9: Initially None, set when TTS is processed
+            audio_path: None,  // DP-9: Initially None, set when TTS is processed
             duration_ms: None, // DP-9: Initially None
             created_at: Utc::now().to_rfc3339(),
         })

@@ -6,11 +6,11 @@
  */
 
 use super::SqliteJobQueue;
+use aiome_contracts::expression::ResourceUsageLog;
 use aiome_core::error::AiomeError;
 use aiome_core::expression::Expression;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
-use aiome_contracts::expression::ResourceUsageLog;
 use sqlx::Row;
 use tracing::{error, info, warn};
 

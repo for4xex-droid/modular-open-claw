@@ -7,8 +7,8 @@
 
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
-use tracing::{error, info, warn};
 use sqlx::Row;
+use tracing::{error, info, warn};
 
 use super::SqliteJobQueue;
 
@@ -683,12 +683,26 @@ impl DbInitializer for SqliteJobQueue {
         let columns = sqlx::query("PRAGMA table_info(expressions)")
             .fetch_all(&self.pool)
             .await
-            .unwrap_or_default();
-        
-        let has_audio_path = columns.iter().any(|c| c.get::<String, _>("name") == "audio_path");
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to read expressions table info: {}", e),
+            })?;
+
+        let has_audio_path = columns
+            .iter()
+            .any(|c| c.get::<String, _>("name") == "audio_path");
         if !has_audio_path {
-            let _ = sqlx::query("ALTER TABLE expressions ADD COLUMN audio_path TEXT").execute(&self.pool).await;
-            let _ = sqlx::query("ALTER TABLE expressions ADD COLUMN duration_ms INTEGER").execute(&self.pool).await;
+            sqlx::query("ALTER TABLE expressions ADD COLUMN audio_path TEXT")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to alter expressions table (audio_path): {}", e),
+                })?;
+            sqlx::query("ALTER TABLE expressions ADD COLUMN duration_ms INTEGER")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to alter expressions table (duration_ms): {}", e),
+                })?;
         }
 
         // v5: AgentRx Diagnostics (Trajectory Tracking)
