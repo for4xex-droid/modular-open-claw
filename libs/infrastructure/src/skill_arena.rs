@@ -10,6 +10,7 @@ use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::JobQueue;
 use chrono::Utc;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -17,12 +18,36 @@ use uuid::Uuid;
 /// スキルの並列実行と評価を行うアリーナ
 pub struct SkillArena {
     provider: Arc<dyn LlmProvider>,
+    /// 淘汰から保護されるスキル名のセット (G-25)
+    pub protected_skills: HashSet<String>,
+}
+
+impl Default for SkillArena {
+    fn default() -> Self {
+        Self {
+            provider: Arc::new(aiome_core::llm_provider::MockLlmProvider::default()),
+            protected_skills: Self::default_protected_skills(),
+        }
+    }
 }
 
 impl SkillArena {
     /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
-        Self { provider }
+        Self {
+            provider,
+            protected_skills: Self::default_protected_skills(),
+        }
+    }
+
+    /// デフォルトの保護スキルリストを取得 (G-25)
+    fn default_protected_skills() -> HashSet<String> {
+        let mut set = HashSet::new();
+        set.insert("essential_core".to_string());
+        set.insert("immune_system".to_string());
+        set.insert("skill_arena".to_string());
+        set.insert("commerce_engine".to_string());
+        set
     }
 
     /// 二つの異なるスキル（WASM）の出力を比較し、勝利スキルを決定する
@@ -144,14 +169,36 @@ impl SkillArena {
         use rand::Rng;
         let mut rng = rand::thread_rng();
 
-        // 簡易実装: DBから勝率を集計するためのインターフェースが現状JobQueueにないため、ランダム淘汰（10%の確率）
-        // 完全実装には `fetch_arena_stats()` のようなトレイト追加が必要なため、今回は競合を避けて既存の枠で完結させる
+        // G-25: 保護されているスキルは淘汰候補から除外する
         if rng.gen_bool(0.1) {
-            let victim = &all_skills[rng.gen_range(0..all_skills.len())];
+            let candidates: Vec<&String> = all_skills
+                .iter()
+                .filter(|s| !self.protected_skills.contains(*s))
+                .collect();
+
+            if candidates.is_empty() {
+                return Ok(Vec::new());
+            }
+
+            let victim = candidates[rng.gen_range(0..candidates.len())];
             warn!("⚠️ 競技の歴史を無視したランダム淘汰により、'{}' がアンインストールの候補に挙がりました。", victim);
             return Ok(vec![victim.clone()]);
         }
 
         Ok(Vec::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_skill_arena_default_protection() {
+        let arena = SkillArena::default();
+        assert!(arena.protected_skills.contains("essential_core"));
+        assert!(arena.protected_skills.contains("immune_system"));
+        assert!(arena.protected_skills.contains("skill_arena"));
+        assert!(arena.protected_skills.contains("commerce_engine"));
     }
 }

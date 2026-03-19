@@ -36,34 +36,32 @@ impl HeartbeatWakeupService {
     pub async fn run_wakeup_ping(&self) -> Option<String> {
         let filename = "HEARTBEAT.md";
         let target_path = self.workspace_dir.join(filename);
-        let content = if let Ok(c) = fs::read_to_string(&target_path) {
-            c
-        } else {
-            String::new()
-        };
+        let content = fs::read_to_string(&target_path).unwrap_or_default();
 
-        if self.is_effectively_empty(&content) {
+        // G-24: もしコンテンツが空、または実効性のない場合は早期リターン
+        if content.trim().is_empty() || self.is_effectively_empty(&content) {
             return None;
         }
 
-        // Phase 1 Flaw 4 Defense: Use try_acquire to avoid blocking background worker if busy
+        // Phase 1 Flaw 4 Defense: Use try_acquire to avoid blocking
         if let Ok(_permit) = self.semaphore.try_acquire() {
-            info!("💓 [Heartbeat] Triggering Wakeup Ping...");
+            info!(
+                "💓 [Heartbeat] Triggering Wakeup Ping with context (len: {})...",
+                content.len()
+            );
 
-            // Phase 1 Flaw 7 Defense: Strict instructions & Last Run context (simulated in prompt for now)
+            // Phase 1 Flaw 7 Defense: Optimized prompt for strict token usage
+            let preamble = "あなたは自律OSのHeartbeat監視役です。
+HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項があるか判断してください。
+【超重要】緊急性が低い、または保留中のタスクのみの場合は、必ず 'HEARTBEAT_OK' とだけ答えること。
+冗長な挨拶や確認は不要です。";
+
             let prompt = format!(
-                "[System: Wakeup Ping]\n\
-                 Read HEARTBEAT.md and check for pending tasks.\n\
-                 もし現在やるべきことがなければ、絶対に何もしないで 'HEARTBEAT_OK' とだけ答えよ。\n\n\
-                 HEARTBEAT.md:\n{}\n\n\
-                 RULES:\n\
-                 1. If nothing needs attention, reply exactly 'HEARTBEAT_OK'.\n\
-                 2. If there are tasks (marked with [ ]), execute them or notify the user.\n\
-                 3. Never repeat information unless specifically asked.",
+                "Current Workspace Heartbeat Context:\n---\n{}\n---\nIs there any immediate action required? Reply either 'HEARTBEAT_OK' or the specific proactive recommendation.",
                 content
             );
 
-            match self.provider.complete(&prompt, None).await {
+            match self.provider.complete(&prompt, Some(preamble)).await {
                 Ok(resp) => {
                     let reply = resp.content.trim();
                     if reply == "HEARTBEAT_OK" || reply.is_empty() {
@@ -92,8 +90,7 @@ impl HeartbeatWakeupService {
                 continue;
             }
             // Skip markdown header lines (# followed by space or EOL, ## etc)
-            if trimmed.starts_with('#') {
-                let after_hash = &trimmed[1..];
+            if let Some(after_hash) = trimmed.strip_prefix('#') {
                 if after_hash.is_empty()
                     || after_hash
                         .chars()

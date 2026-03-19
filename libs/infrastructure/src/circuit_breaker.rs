@@ -38,6 +38,7 @@ pub struct CircuitBreakerConfig {
 /// Circuit Breaker 本体
 #[derive(Debug)]
 pub struct CircuitBreaker {
+    name: String, // G-29: 識別用のサービス名
     state: Arc<RwLock<CircuitState>>,
     failures: Arc<AtomicUsize>,
     config: CircuitBreakerConfig,
@@ -46,8 +47,9 @@ pub struct CircuitBreaker {
 
 impl CircuitBreaker {
     /// 新しい CircuitBreaker を生成する
-    pub fn new(config: CircuitBreakerConfig) -> Self {
+    pub fn new(name: &str, config: CircuitBreakerConfig) -> Self {
         Self {
+            name: name.to_string(),
             state: Arc::new(RwLock::new(CircuitState::Closed)),
             failures: Arc::new(AtomicUsize::new(0)),
             config,
@@ -63,7 +65,10 @@ impl CircuitBreaker {
             let last_fail = *self.last_failure_time.read().await;
             if let Some(time) = last_fail {
                 if time.elapsed() > self.config.reset_timeout {
-                    tracing::info!("CircuitBreaker: Half-Open state entered. Testing service.");
+                    tracing::info!(
+                        "CircuitBreaker[{}]: Half-Open state entered. Testing service.",
+                        self.name
+                    );
                     *state = CircuitState::HalfOpen;
                     return Ok(());
                 }
@@ -77,7 +82,10 @@ impl CircuitBreaker {
     pub async fn record_success(&self) {
         let mut state = self.state.write().await;
         if *state == CircuitState::HalfOpen {
-            tracing::info!("CircuitBreaker: Service recovered. State -> Closed.");
+            tracing::info!(
+                "CircuitBreaker[{}]: Service recovered. State -> Closed.",
+                self.name
+            );
             *state = CircuitState::Closed;
             self.failures.store(0, Ordering::Relaxed);
         } else {
@@ -92,11 +100,56 @@ impl CircuitBreaker {
 
         if *state == CircuitState::HalfOpen || fails >= self.config.failure_threshold {
             if *state != CircuitState::Open {
-                tracing::warn!("CircuitBreaker: Threshold reached. State -> Open.");
+                tracing::warn!(
+                    "CircuitBreaker[{}]: Threshold reached. State -> Open.",
+                    self.name
+                );
                 *state = CircuitState::Open;
             }
             let mut last_fail = self.last_failure_time.write().await;
             *last_fail = Some(std::time::Instant::now());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_circuit_breaker_threshold() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            reset_timeout: Duration::from_millis(100),
+        };
+        let cb = CircuitBreaker::new("test-service", config);
+
+        assert!(cb.check_state().await.is_ok());
+
+        cb.record_failure().await;
+        assert!(cb.check_state().await.is_ok());
+
+        cb.record_failure().await; // Threshold reached
+        assert!(cb.check_state().await.is_err());
+        assert_eq!(cb.name, "test-service");
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_reset() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 1,
+            reset_timeout: Duration::from_millis(10),
+        };
+        let cb = CircuitBreaker::new("reset-service", config);
+
+        cb.record_failure().await;
+        assert!(cb.check_state().await.is_err());
+
+        tokio::time::sleep(Duration::from_millis(20)).await;
+
+        assert!(cb.check_state().await.is_ok()); // Half-Open
+        cb.record_success().await;
+        assert!(cb.check_state().await.is_ok()); // Closed
     }
 }

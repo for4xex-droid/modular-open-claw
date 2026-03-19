@@ -1244,6 +1244,46 @@ impl EmbeddingProvider for RuriProvider {
     }
 }
 
+/// Infrastructure テスト用のモックLLM
+#[derive(Debug, Clone, Default)]
+pub struct MockLlmProvider {
+    pub response: String,
+}
+
+#[async_trait]
+impl LlmProvider for MockLlmProvider {
+    async fn complete(
+        &self,
+        _prompt: &str,
+        _system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        Ok(LlmResponse {
+            content: if self.response.is_empty() {
+                "{\"winner\": \"Skill A\", \"reasoning\": \"Mock victory\"}".to_string()
+            } else {
+                self.response.clone()
+            },
+            stop_reason: StopReason::EndTurn,
+        })
+    }
+    async fn stream_complete(
+        &self,
+        _prompt: &str,
+        _system: Option<&str>,
+    ) -> Result<
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
+        AiomeError,
+    > {
+        unimplemented!()
+    }
+    async fn test_connection(&self) -> Result<(), AiomeError> {
+        Ok(())
+    }
+    fn name(&self) -> &str {
+        "MockLLM"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

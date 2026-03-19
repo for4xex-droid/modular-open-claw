@@ -63,6 +63,13 @@ impl SecurityPolicy {
                 "terminal_exec".to_string(),
                 "skill_tester".to_string(),
                 "mcp_bridge".to_string(),
+                "lora_trainer".to_string(),
+                "lora_inspector".to_string(),
+                "tts_generator".to_string(),
+                "voice_profile_manager".to_string(),
+                "voice_commercial_escrow".to_string(),
+                "cci_journalist".to_string(),
+                "cci_editor_ai".to_string(),
             ],
         }
     }

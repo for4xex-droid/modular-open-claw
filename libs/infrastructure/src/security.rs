@@ -44,6 +44,8 @@ impl Default for SecurityConfig {
                 "tree".to_string(),
                 "which".to_string(),
                 "sandbox-exec".to_string(),
+                "ollama".to_string(),
+                "docker".to_string(),
             ],
             workspace_root: std::path::PathBuf::from("workspace"),
         }
@@ -84,6 +86,8 @@ pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
 /// 権限マニフェストおよびOSレベルの制限（seccomp等）と照合する。
 pub struct BastionGuard {
     manifest: PermissionManifest,
+    /// システム内部のバイパスフラグ (G-26)
+    pub is_system_internal: bool,
 }
 
 impl RuntimeJail for BastionGuard {
@@ -92,7 +96,8 @@ impl RuntimeJail for BastionGuard {
         info!("🛡️ [BastionGuard] 検証中: {}", cmd_str);
 
         // 1. マニフェスト・チェック
-        if !self.manifest.allow_shell_execution {
+        // G-26: もし is_system_internal が true ならマニフェストをバイパスする
+        if !self.is_system_internal && !self.manifest.allow_shell_execution {
             error!("🚨 [SECURITY VIOLATION] Shell execution is disabled.");
             return Err(AiomeError::Infrastructure {
                 reason: "Security Violation: Forbidden.".to_string(),
@@ -138,26 +143,24 @@ impl RuntimeJail for BastionGuard {
         }
 
         // 5. Script Engine and Command Constraints (Red Team fix)
-        if binary == "python3" || binary == "python" {
-            if args.contains(&"-c") || args.contains(&"-m") {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Security Violation: python -c/-m is forbidden.".into(),
-                });
-            }
+        if (binary == "python3" || binary == "python")
+            && (args.contains(&"-c") || args.contains(&"-m"))
+        {
+            return Err(AiomeError::Infrastructure {
+                reason: "Security Violation: python -c/-m is forbidden.".into(),
+            });
         }
-        if binary == "node" {
-            if args.contains(&"-e") || args.contains(&"--eval") {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Security Violation: node -e is forbidden.".into(),
-                });
-            }
+        if binary == "node" && (args.contains(&"-e") || args.contains(&"--eval")) {
+            return Err(AiomeError::Infrastructure {
+                reason: "Security Violation: node -e is forbidden.".into(),
+            });
         }
-        if binary == "find" || binary == "xargs" {
-            if args.contains(&"-exec") || args.contains(&"-I") {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Security Violation: find -exec or xargs -I is forbidden.".into(),
-                });
-            }
+        if (binary == "find" || binary == "xargs")
+            && (args.contains(&"-exec") || args.contains(&"-I"))
+        {
+            return Err(AiomeError::Infrastructure {
+                reason: "Security Violation: find -exec or xargs -I is forbidden.".into(),
+            });
         }
 
         // 6. Path Canonicalization & Strict traversal check (SEC-Whitelist)
@@ -239,7 +242,7 @@ impl RuntimeJail for BastionGuard {
 
     /// ファイルパスへの書き込み権限をチェック
     fn check_fs_write(&self, _path: &std::path::Path) -> Result<(), AiomeError> {
-        if !self.manifest.allow_filesystem_write {
+        if !self.is_system_internal && !self.manifest.allow_filesystem_write {
             return Err(AiomeError::Infrastructure {
                 reason: "Security Violation: Filesystem write disabled.".into(),
             });
@@ -249,7 +252,7 @@ impl RuntimeJail for BastionGuard {
 
     /// ネットワーク接続をチェック
     fn check_network(&self, url: &str) -> Result<(), AiomeError> {
-        if !self.manifest.allow_network {
+        if !self.is_system_internal && !self.manifest.allow_network {
             return Err(AiomeError::Infrastructure {
                 reason: "Security Violation: Network access disabled.".into(),
             });
@@ -278,7 +281,18 @@ impl RuntimeJail for BastionGuard {
 impl BastionGuard {
     /// 新しいインスタンスを生成する
     pub fn new(manifest: PermissionManifest) -> Self {
-        Self { manifest }
+        Self {
+            manifest,
+            is_system_internal: false,
+        }
+    }
+
+    /// システム内部用インスタンスを生成する (G-26)
+    pub fn new_internal(manifest: PermissionManifest) -> Self {
+        Self {
+            manifest,
+            is_system_internal: true,
+        }
     }
 
     /// SEC-5: Quote-aware command splitting for paths with spaces
@@ -317,6 +331,44 @@ impl BastionGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core::security::PermissionManifest;
+
+    #[test]
+    fn test_bastion_guard_internal_bypass() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: false,
+            ..Default::default()
+        };
+        // 通常のガードは拒否
+        let guard = BastionGuard::new(manifest.clone());
+        assert!(guard.safe_exec("ls").is_err());
+
+        // システム内部用ガードは許可 (Manifestをバイパス)
+        let guard_internal = BastionGuard::new_internal(manifest);
+        assert!(guard_internal.safe_exec("ls").is_ok());
+    }
+
+    #[test]
+    fn test_bastion_guard_whitelist_ollama_docker() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // 新しく追加されたバイナリが許可されることを確認 (実行は環境に依存するが、whitelistチェックまでは通るはず)
+        // ここでは、バイナリが存在しなくても "execution failed" なら whitelist はパスしている。
+        // "Binary 'xxx' is not in the whitelist" が出ないことを確認する。
+        let res = guard.safe_exec("ollama --version");
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(!reason.contains("not in the whitelist"));
+        }
+
+        let res = guard.safe_exec("docker ps");
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(!reason.contains("not in the whitelist"));
+        }
+    }
 
     #[test]
     fn test_bastion_guard_disallow_shell() {
