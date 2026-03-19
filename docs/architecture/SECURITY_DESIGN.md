@@ -39,7 +39,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
 - Detects prompt injections and command injections.
 - Sanitizes control characters and enforces length limits.
-- **Binary/CSAM Blocking (Phase 7.1 & 8.1)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (against illegal CSAM blacklists), and 3) Skeletal Proportion Rules (5.5-head ratio to prevent child-like models), actively quarantining non-compliant assets.
+- **Binary/CSAM Blocking (Phase 7.1 & 8.1)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (against illegal CSAM blacklists), and 3) Skeletal Proportion Rules (5.5-head ratio to prevent child-like models). Non-compliant assets are actively quarantined and their metadata is persistently stored in the `QuarantineStore` (SQLite) to prevent bypasses and facilitate audits.
 - **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
 
