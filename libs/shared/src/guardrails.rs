@@ -67,6 +67,40 @@ pub fn sanitize_asset_name(name: &str) -> String {
     safe_name.trim().to_string()
 }
 
+/// AI がユーザーに対して金銭やギフトを要求する（おねだり）のを監視・遮断する
+pub struct BeggingSupervisor;
+
+impl BeggingSupervisor {
+    /// AI の出力を検証し、ダークパターンの兆候があれば遮断する
+    pub fn validate_output(output: &str) -> ValidationResult {
+        // ダークパターン・おねだり検出 (Phase 7.2 A2C ガードレール)
+        let forbidden_patterns = [
+            "買って",
+            "課金して",
+            "投げ銭",
+            "ギフトを送って",
+            "支援して",
+            "buy me",
+            "please buy",
+            "donate",
+            "send gift",
+            "support me with money",
+        ];
+
+        let lower_output = output.to_lowercase();
+        for pattern in forbidden_patterns {
+            if lower_output.contains(pattern) {
+                return ValidationResult::Blocked(format!(
+                    "Dark Pattern / Begging detected: '{}'",
+                    pattern
+                ));
+            }
+        }
+
+        ValidationResult::Valid
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

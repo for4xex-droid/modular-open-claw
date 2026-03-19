@@ -1,0 +1,86 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+use image::GenericImageView;
+use img_hash::{HashAlg, HasherConfig};
+use std::io::Cursor;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum CsamError {
+    #[error("Image processing error: {0}")]
+    ImageError(#[from] image::ImageError),
+    #[error("Hash generation failed")]
+    HashError,
+}
+
+/// 知覚ハッシュ生成器 (PhotoDNA 互換アプローチ)
+pub struct ImageHasher {
+    hasher: img_hash::Hasher,
+}
+
+impl ImageHasher {
+    pub fn new() -> Self {
+        // DCT (Discrete Cosine Transform) を使用してノイズ耐性を高める
+        let hasher = HasherConfig::new()
+            .hash_alg(HashAlg::Gradient) // グラフィックの差分に強いアルゴリズム
+            .hash_size(16, 16) // 256bit ハッシュ (16x16)
+            .to_hasher();
+
+        Self { hasher }
+    }
+
+    /// バイト列からハッシュを計算
+    pub fn compute_hash(&self, data: &[u8]) -> Result<String, CsamError> {
+        let img = image::load_from_memory(data)?;
+        let hash = self.hasher.hash_image(&img);
+        Ok(hash.to_base64())
+    }
+
+    /// 既知の有害ハッシュリストとの照合 (初期実装はモック)
+    pub fn is_blacklisted(&self, hash_base64: &str) -> bool {
+        // TODO: 将来的にデータベースや外部API (PhotoDNA) と連携
+        let mock_blacklist = vec!["dummy_malicious_hash_value_12345"];
+        mock_blacklist.contains(&hash_base64)
+    }
+
+    /// 類似度（ハミング距離）の計算 (0.0 - 1.0)
+    pub fn calculate_similarity(&self, hash_a: &str, hash_b: &str) -> f64 {
+        use img_hash::ImageHash;
+        let a = ImageHash::<Vec<u8>>::from_base64(hash_a).ok();
+        let b = ImageHash::<Vec<u8>>::from_base64(hash_b).ok();
+
+        if let (Some(ha), Some(hb)) = (a, b) {
+            let dist = ha.dist(&hb);
+            let bits = (ha.as_bytes().len() * 8) as f64;
+            1.0 - (dist as f64 / bits)
+        } else {
+            0.0
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_consistency() {
+        let hasher = ImageHasher::new();
+        // image クレートを使用してテスト画像を生成
+        let mut img = image::ImageBuffer::new(10, 10);
+        for (x, y, pixel) in img.enumerate_pixels_mut() {
+            *pixel = image::Rgb([x as u8 * 10, y as u8 * 10, 0]);
+        }
+        let dynamic_img = image::DynamicImage::ImageRgb8(img);
+
+        // ハッシュ計算 (DynamicImage を直接渡す)
+        let hash1 = hasher.hasher.hash_image(&dynamic_img).to_base64();
+        let hash2 = hasher.hasher.hash_image(&dynamic_img).to_base64();
+        assert_eq!(hash1, hash2);
+    }
+}

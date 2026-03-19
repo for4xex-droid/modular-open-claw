@@ -7,6 +7,7 @@
 
 pub mod agent;
 pub mod artifacts;
+pub mod avatar;
 pub mod biome;
 pub mod commerce;
 pub mod expression;

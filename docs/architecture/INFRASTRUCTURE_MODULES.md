@@ -10,7 +10,9 @@
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
+| `commerce` | 外部決済・ギフトAPI（Tremendous等）との自律的な商用連携基盤。 | 実装完了 |
 | `commerce_mock` | 決済フローのシミュレーション（テスト用途）。 | 実装完了 |
+| `compliance` | eKYC (Stripe Identity) など法規制準拠機能の統合。 | **新規実装 (Phase 8.1)** |
 | `concept_manager` | AIが獲得した概念（Concepts）をベクターDBで管理。 | 実装完了 |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。 | **新規実装** |
 | `context_engine` | 会話履歴や環境情報をLLMに提供するコンテキスト生成。 | 実装完了 |
@@ -39,4 +41,4 @@
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 
 ---
-*最終更新: 2026-03-19*
+*最終更新: 2026-03-20*

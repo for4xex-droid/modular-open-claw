@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 8.1 (CSAM 3-Layer Defense & Compliance)**:
+    - **eKYC Integration (Stripe)**: Added `StripeEkycEngine` and `MockEkycEngine` in `libs/infrastructure/compliance` for strict 18+ real-name and age verification prior to custom asset publishing.
+    - **Perceptual Image Hashing (CSAM Defense)**: Added `ImageHasher` in `libs/shared/csam` using DCT hashing (`img_hash`) to resiliently detect illegal or malicious textures against a known blacklist.
+    - **NURTURE Compliance (5.5 Head-to-Body Checker)**: Implemented `ProportionsChecker` in `libs/shared/csam` to mathematically restrict avatar skeletal proportions that mimic underage anatomies (`LegalStatus::Restricted`).
+    - **Asset Quarantine Flow**: Built `/api/avatar/upload` endpoint integrating the 3-layer defense to actively quarantine non-compliant assets from the Samsara Federation.
+- **Phase 7.2 (Legal Guardrails & A2C Gratitude)**:
+    - **Begging Supervisor**: Added `BeggingSupervisor` to `shared/guardrails` to detect and block AI-driven dark patterns (e.g., asking for money or gifts).
+    - **Gift Engine (Tremendous API)**: Implemented `TremendousGiftEngine` in `libs/infrastructure` to enable autonomous real-world gift generation for users with high Karma.
+    - **Autonomous Gratitude (A2C 恩返し)**: Integrated gift-triggering logic into `AutonomousBiomeEngine`, rewarding helpful human peers with $1-5 gift codes.
 - **CSAM Defense & Inochi2D Foundation (Phase 7.1)**:
     - **Asset Separation Layer**: Implemented a mandatory asset/origin separation in `avatar-engine` to isolate local unvetted assets from Hub-syncable official assets.
     - **Protocol-Level CSAM Filter**: Integrated binary content detection (`data:image/`, `data:video/`, `;base64,`) into `samsara-hub` relay and `api-server` biome endpoints to strictly prohibit binary data embedding in the P2P network.
@@ -52,6 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Infrastructure Test Utilities Hardening**: Extracted and standardized `test_utils.rs` in the `infrastructure` crate. Fixed `MockJobQueue` function signatures and import paths to align with the core `JobQueue` trait, resolving compilation errors and improving test reliability.
 
 ### Fixed
+- **Biome Encryption (NG-27, 28)**: Implemented automatic encryption in `send_message` and decryption in `list_messages` for Biome P2P dialogue using a shared secret derived from `FEDERATION_SECRET`.
+- **Biome DB Stability (NG-29)**: Resolved silent database failures by adding proper error logging to all message/topic insertion paths in `api-server`.
+- **Hub URL Unification (NG-30)**: Centralized all `SAMSARA_HUB_URL` resolution across the workspace via `AiomeConfig` and `AppState`, removing redundant `env::var` calls.
 - **Ollama LoRA Dynamic Builder**: Implemented `build_lora_model()` inside `OllamaProvider`. When users select a LoRA adapter via the settings UI, the system autonomously builds a custom `Modelfile` and re-deploys a tailored model natively into the local Ollama backend, fixing the API parameter limitations (NG-21).
 - **TTS Expression Engine**: Integrated actual Text-to-Speech synthesis (OpenAI's `tts-1`) into `ExpressionEngine`. Automatically converts AI expressions into local `.mp3` audio files and links them to the agent's internal state machine, replacing the previous placeholder behavior (NG-22).
 - **Settings Sync Resilience**: Implemented automated state-hydration for `AgentSoul` in the `update_setting` API endpoint to fix UI-to-Backend synchronization gaps for LoRA parameter tuning.

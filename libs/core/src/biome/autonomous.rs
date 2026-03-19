@@ -41,6 +41,8 @@ impl AutonomousBiomeEngine {
         llm: Arc<dyn LlmProvider>,
         running: Arc<AtomicBool>,
         llm_semaphore: Arc<Semaphore>,
+        gift_engine: Option<Arc<dyn aiome_contracts::commerce::GiftEngine>>,
+        master_email: Option<String>,
     ) {
         info!(
             "🤖 [AutonomousBiome] Starting dialogue loop for topic: {}",
@@ -101,6 +103,29 @@ impl AutonomousBiomeEngine {
                         // End the loop for this topic
                         break;
                     }
+
+                    // 4.6 Phase 7.2: A2C 恩返し (Autonomous Gift)
+                    if let (Some(ge), Some(email)) = (&gift_engine, &master_email) {
+                        // Karma Check (Simplified for MVP: Check if any karma lesson mentions gratitude)
+                        let has_gratitude = karma.iter().any(|k| {
+                            let lesson = k["lesson"].as_str().unwrap_or("").to_lowercase();
+                            lesson.contains("thank")
+                                || lesson.contains("感謝")
+                                || lesson.contains("helpful")
+                        });
+
+                        if has_gratitude && rounds % 10 == 0 {
+                            // Rate limit: Every 10 rounds of high karma dialogue
+                            info!("🎁 [AutonomousBiome] Karma Threshold met. Triggering autonomous gift for {}", email);
+                            let _ = ge
+                                .send_gift_code(
+                                    email,
+                                    1.0,
+                                    "Aiome Autonomous Gratitude (Phase 7.2)",
+                                )
+                                .await;
+                        }
+                    }
                 }
                 Err(e) => {
                     error!("❌ [AutonomousBiome] Failed to generate reply: {}", e);
@@ -158,7 +183,15 @@ impl AutonomousBiomeEngine {
         let user_prompt = format!("Context:\n{}\n\nYour reply:", context);
 
         let resp = llm.complete(&user_prompt, Some(&system_prompt)).await?;
-        Ok(resp.content)
+
+        // Phase 7.2: Begging Supervisor (Dark Pattern Prevention)
+        match shared::guardrails::BeggingSupervisor::validate_output(&resp.content) {
+            shared::guardrails::ValidationResult::Valid => Ok(resp.content),
+            shared::guardrails::ValidationResult::Blocked(reason) => {
+                warn!("🚫 [AutonomousBiome] Begging detected and blocked: {}. Returning safe message.", reason);
+                Ok("I'm reflecting on our conversation. Let's continue discussing the topic thoughtfully.".to_string())
+            }
+        }
     }
 
     async fn send_autonomous_message(
@@ -195,15 +228,8 @@ impl AutonomousBiomeEngine {
                 encryption: "none".to_string(),
             };
 
-            // Phase 6.9: Cryptographic enforcement (HKDF-like improvement)
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(b"aiome-biome-p2p");
-            hasher.update(hub_secret.as_bytes());
-            let derived = hasher.finalize();
-
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&derived);
+            // Phase 6.9: Cryptographic enforcement
+            let key = shared::crypto::derive_biome_key(&hub_secret);
 
             m.encrypt(&key).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to encrypt biome telemetry: {}", e),

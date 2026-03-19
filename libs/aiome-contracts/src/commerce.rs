@@ -57,3 +57,32 @@ pub struct EconomicContext {
     /// 1日の使用上限
     pub daily_limit: u64,
 }
+
+/// ギフトエンジン・トレイト (A2C 恩返し / Tremendous 連携)
+///
+/// AI が自律的にユーザーへ実世界価値（ギフトカード等）を還元するための基盤。
+#[async_trait]
+pub trait GiftEngine: Send + Sync {
+    /// ギフト（Tremendous等）を生成・送信する
+    /// `recipient_email`: 受取人のメールアドレス
+    /// `amount_usd`: ギフトの金額 (USD)
+    /// `reason`: 送信理由 (Karma 蓄積、恩返し等)
+    async fn send_gift_code(
+        &self,
+        recipient_email: &str,
+        amount_usd: f64,
+        reason: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// ギフト送信が許可されているか検証する (日次上限、エージェント信頼度)
+    async fn validate_gift_policy(&self, agent_id: Uuid, amount_usd: f64)
+        -> Result<(), AiomeError>;
+}
+
+/// ギフトリクエスト
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiftRequest {
+    pub recipient_email: String,
+    pub amount_usd: f64,
+    pub reason: String,
+}

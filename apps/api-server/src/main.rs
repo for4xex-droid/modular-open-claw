@@ -80,6 +80,9 @@ pub struct AppState {
     pub slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
     pub api_server_secret: Arc<secrecy::SecretString>,
     pub federation_secret: Option<Arc<secrecy::SecretString>>,
+    pub config: Arc<shared::config::AiomeConfig>,
+    pub gift_engine: Arc<dyn aiome_contracts::commerce::GiftEngine>,
+    pub ekyc_engine: Arc<dyn infrastructure::compliance::ekyc::EkycEngine>,
 }
 
 #[tokio::main]
@@ -338,6 +341,34 @@ async fn main() {
         slo_engine: slo_engine.clone(),
         api_server_secret,
         federation_secret: federation_secret.clone(),
+        config: Arc::new(config.clone()),
+        gift_engine: {
+            use secrecy::ExposeSecret;
+            let key = config
+                .tremendous_api_key
+                .as_ref()
+                .map(|s| s.expose_secret().to_string())
+                .unwrap_or_default();
+            Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
+                key,
+                cfg!(debug_assertions),
+            ))
+        },
+        ekyc_engine: {
+            use secrecy::ExposeSecret;
+            let stripe_key = std::env::var("STRIPE_API_KEY")
+                .ok()
+                .map(secrecy::SecretString::from);
+            if let Some(key) = stripe_key {
+                Arc::new(infrastructure::compliance::ekyc::StripeEkycEngine::new(
+                    key,
+                    "http://localhost:1420/verify-callback".to_string(),
+                ))
+            } else {
+                warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified).");
+                Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)
+            }
+        },
     };
 
     // RS-1: Pre-load soul cache to avoid DB I/O on hot paths
@@ -1388,6 +1419,14 @@ pub fn build_app(
         .route(
             "/api/expression/list",
             get(routes::expression::list_expressions),
+        )
+        .route(
+            "/api/avatar/upload",
+            axum::routing::post(routes::avatar::upload_avatar_handler),
+        )
+        .route(
+            "/api/avatar/ekyc-status",
+            get(routes::avatar::get_ekyc_status_handler),
         )
         .route(
             "/api/expression/auto",

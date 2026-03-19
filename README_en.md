@@ -104,6 +104,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🗣️ **TTS Expression Engine**: Connects AI's inner emotional states to speech synthesis APIs to autonomously generate local `.mp3` voice expressions.
 - ⚙️ **Dynamic Ollama LoRA Builder**: AI can decide on optimal fine-tuned layers and issue automated rebuilds via Ollama backend to perfectly inject persona traits on-the-fly.
 - 🌐 **Samsara Federation Sync (Secure P2P)**: Synchronizes lessons (Karma) and immune rules. Features **protocol-level CSAM filtering** that rejects binary/base64 data, ensuring a clean P2P network with symmetric encryption for privacy.
+- 🎁 **Phase 7.2: A2C Gratitude & Legal Guardrails**: Features "Autonomous Gratitude" where AI can autonomously send real-world gift codes (via Tremendous) to high-Karma users. Includes **Begging Supervisor** to detect and block AI-driven dark patterns, ensuring legal and ethical transparency.
+- 🛡️ **Phase 8.1: CSAM 3-Layer Defense (Child Safety & Compliance)**: Integrates ① **eKYC Real-name/Age Verification** via Stripe Identity, ② **CSAM Image Filtering** via perceptual hashing (DCT), and ③ a **5.5 Head-to-Body Ratio Checker** (NURTURE Compliance) into the server to safely publish avatar assets. Non-compliant assets are immediately quarantined to physically protect network integrity.
 
 ---
 

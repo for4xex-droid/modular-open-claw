@@ -207,8 +207,20 @@ pub async fn autonomous_start(
     let running = state.autonomous_running.clone();
     let semaphore = state.llm_semaphore.clone();
 
+    let gift_engine = state.gift_engine.clone();
+    let master_email = state.config.master_email.clone();
+
     tokio::spawn(async move {
-        AutonomousBiomeEngine::start_loop(config, queue, llm, running, semaphore).await;
+        AutonomousBiomeEngine::start_loop(
+            config,
+            queue,
+            llm,
+            running,
+            semaphore,
+            Some(gift_engine),
+            master_email,
+        )
+        .await;
     });
 
     Ok(Json(serde_json::json!({"status": "started"})))
@@ -264,19 +276,44 @@ pub async fn list_messages(
             reason: format!("DB Error: {}", e),
         })?;
 
+    let hub_secret_opt = state
+        .federation_secret
+        .as_ref()
+        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string());
+
     let messages = rows
         .into_iter()
         .map(|row| {
+            let mut msg = BiomeMessage {
+                sender_pubkey: row.get::<String, _>("sender_pubkey"),
+                recipient_pubkey: row.get::<String, _>("recipient_pubkey"),
+                topic_id: row.get::<String, _>("topic_id"),
+                content: row.get::<String, _>("content"),
+                karma_root_cid: row.get::<String, _>("karma_root_cid"),
+                signature: row.get::<String, _>("signature"),
+                lamport_clock: row.get::<i64, _>("lamport_clock") as u64,
+                timestamp: "".to_string(), // Not in DB or not needed for UI yet
+                encryption: row.get::<String, _>("encryption"),
+            };
+
+            // Attempt decryption if encrypted and secret available
+            if msg.encryption != "none" {
+                if let Some(hub_secret) = &hub_secret_opt {
+                    let key = shared::crypto::derive_biome_key(hub_secret);
+                    let _ = msg.decrypt(&key);
+                }
+            }
+
             serde_json::json!({
                 "id": row.get::<i64, _>("id"),
-                "sender_pubkey": row.get::<String, _>("sender_pubkey"),
-                "recipient_pubkey": row.get::<String, _>("recipient_pubkey"),
-                "topic_id": row.get::<String, _>("topic_id"),
-                "content": row.get::<String, _>("content"),
-                "karma_root_cid": row.get::<String, _>("karma_root_cid"),
-                "signature": row.get::<String, _>("signature"),
-                "lamport_clock": row.get::<i64, _>("lamport_clock"),
-                "encryption": row.get::<String, _>("encryption"),
+                "sender_pubkey": msg.sender_pubkey,
+                "recipient_pubkey": msg.recipient_pubkey,
+                "topic_id": msg.topic_id,
+                "content": msg.content,
+                "karma_root_cid": msg.karma_root_cid,
+                "signature": msg.signature,
+                "lamport_clock": msg.lamport_clock,
+                "encryption": msg.encryption,
                 "created_at": row.get::<Option<String>, _>("created_at"),
             })
         })
@@ -357,7 +394,7 @@ pub async fn send_message(
     // Phase 20: Karma Root is derived from the signature of the turn
     let karma_root = format!("biom:{}", signature);
 
-    let msg = BiomeMessage {
+    let mut msg = BiomeMessage {
         sender_pubkey,
         recipient_pubkey: req.recipient_pubkey,
         topic_id: req.topic_id,
@@ -369,16 +406,23 @@ pub async fn send_message(
         encryption: "none".to_string(),
     };
 
-    // 2. Relay via Hub
-    let hub_url =
-        std::env::var("SAMSARA_HUB_URL").unwrap_or_else(|_| "http://127.0.0.1:3016".to_string());
+    // NG-28: Apply encryption if FEDERATION_SECRET is set
     let hub_secret = state
         .federation_secret
         .as_ref()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
-            source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
+            source: anyhow::anyhow!("FEDERATION_SECRET not configured for biome encryption"),
         })?;
+
+    let key = shared::crypto::derive_biome_key(&hub_secret);
+    msg.encrypt(&key)
+        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+            reason: format!("Failed to encrypt biome message: {}", e),
+        })?;
+
+    // 2. Relay via Hub
+    let hub_url = state.config.samsara_hub_url.clone();
     let client = state.http_client.clone();
     state.security_policy.validate_url(&hub_url).await?;
 
@@ -396,18 +440,22 @@ pub async fn send_message(
     let sent_status = match res {
         Ok(r) if r.status().is_success() => {
             // Store a copy in local history
-            let _ = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
                 .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(msg.lamport_clock as i64).bind(&msg.encryption)
-                .execute(state.job_queue.get_pool()).await;
+                .execute(state.job_queue.get_pool()).await {
+                error!("🚨 [Biome] Failed to store sent message in local history: {}", e);
+            }
 
             "sent"
         }
         _ => {
             // Hub unavailable or failed: Fallback to local
             warn!("⚠️ [Biome] Hub relay failed. Saving message locally as fallback.");
-            let _ = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
                 .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(msg.lamport_clock as i64).bind(&msg.encryption)
-                .execute(state.job_queue.get_pool()).await;
+                .execute(state.job_queue.get_pool()).await {
+                error!("🚨 [Biome] Failed to store sent message locally (fallback): {}", e);
+            }
 
             "sent_local_only"
         }

@@ -12,6 +12,9 @@
 pub mod cleaner;
 /// アプリケーション設定の管理
 pub mod config;
+pub mod crypto;
+/// CSAM (Child Safety & Compliance)
+pub mod csam;
 
 pub mod guardrails;
 /// システムヘルスモニタリング

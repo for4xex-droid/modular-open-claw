@@ -147,6 +147,28 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         federation_secret: Some(Arc::new(secrecy::SecretString::from(
             "test_fed_secret".to_string(),
         ))),
+        config: Arc::new(shared::config::AiomeConfig::load().unwrap_or_else(|_| {
+            shared::config::AiomeConfig {
+                db_path: db_path.to_str().unwrap().to_string(),
+                log_level: "info".to_string(),
+                ollama_host: "".to_string(),
+                ollama_model: "".to_string(),
+                gemini_api_key: None,
+                openai_api_key: None,
+                anthropic_api_key: None,
+                api_server_port: 0,
+                key_proxy_url: "".to_string(),
+                samsara_hub_url: "".to_string(),
+                allowed_origins: vec![],
+                abyss_vault_path: "".to_string(),
+                tremendous_api_key: None,
+                master_email: None,
+            }
+        })),
+        gift_engine: Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
+            "".to_string(),
+            true,
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

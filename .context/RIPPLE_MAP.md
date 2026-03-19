@@ -8,7 +8,45 @@
 > 現在、未使用コードやインポートによる警告を `#![allow(...)]` で抑制している。
 > モジュールの削除や大規模なリファクタリング時、これらの属性が「隠れた依存関係」となってコンテキストの喪失を招かないよう注意すること。詳細は `AGENTS.md` および `ADR 007` を参照。
 
-*最終更新: 2026-03-19*
+*最終更新: 2026-03-20*
+
+---
+
+## libs/shared（共通基盤 — 全レイヤーが依存）
+
+### crypto.rs — `derive_biome_key`
+| 影響先 | 理由 |
+|---|---|
+| `api-server` (biome.rs) | `send_message` / `list_messages` での暗号化・復号 |
+| `libs/core` (autonomous.rs) | `BiomeMessage` の P2P 通信保護 |
+
+### guardrails.rs — `BeggingSupervisor`
+| 影響先 | 理由 |
+|---|---|
+| `libs/core` (autonomous.rs) | AI 出力（おねだり・ダークパターン）の検証・遮断 |
+| `api-server` (main.rs) | AppState 経由での利用（将来層） |
+
+---
+
+## libs/aiome-contracts（インターフェース定義）
+
+### commerce.rs — `GiftEngine`, `GiftRequest`
+| 影響先 | 理由 |
+|---|---|
+| `libs/infrastructure` (commerce/gift.rs) | `TremendousGiftEngine` の具象実装 |
+| `api-server` (main.rs) | `AppState` フィールド定義 |
+| `api-server` (biome.rs) | `AutonomousBiomeEngine` への依存注入 |
+| `libs/core` (autonomous.rs) | `AutonomousBiomeEngine` でのギフト送信実行 |
+
+---
+
+## libs/infrastructure（I/O実装層）
+
+### commerce/gift.rs — `TremendousGiftEngine`
+| 影響先 | 理由 |
+|---|---|
+| `api-server` (main.rs) | `AppState` でのインスタンス化 |
+| `api_integration_tests.rs` | テスト用 Dummy/Mock 構築 |
 
 ---
 

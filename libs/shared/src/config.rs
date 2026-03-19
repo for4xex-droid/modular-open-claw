@@ -29,6 +29,10 @@ pub struct AiomeConfig {
     pub allowed_origins: Vec<String>,
     /// DRM保護（Abyss Vault）の物理パス
     pub abyss_vault_path: String,
+    /// Tremendous APIキー
+    pub tremendous_api_key: Option<SecretString>,
+    /// 管理者・ギフト受取用メールアドレス
+    pub master_email: Option<String>,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -110,6 +114,11 @@ impl AiomeConfig {
             samsara_hub_url,
             allowed_origins,
             abyss_vault_path,
+            tremendous_api_key: env::var("TREMENDOUS_API_KEY").ok().map(|key| {
+                env::remove_var("TREMENDOUS_API_KEY");
+                SecretString::from(key)
+            }),
+            master_email: env::var("MASTER_EMAIL").ok(),
         })
     }
 

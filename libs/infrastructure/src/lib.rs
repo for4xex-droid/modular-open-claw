@@ -18,8 +18,12 @@ pub mod artifact_store;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
+/// 商用連携実装（ギフト送信等）
+pub mod commerce;
 /// 決済フローのモック実装
 pub mod commerce_mock;
+/// コンプライアンス・eKYC
+pub mod compliance;
 /// コンセプト（概念）のベクター管理
 pub mod concept_manager;
 /// AgentRx 行動制約チェッカー
