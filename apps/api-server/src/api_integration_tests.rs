@@ -111,6 +111,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         security_policy: shared::security::SecurityPolicy::default(),
         commerce_engine: None,
         circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+            "integration-test",
             infrastructure::circuit_breaker::CircuitBreakerConfig {
                 failure_threshold: 5,
                 reset_timeout: std::time::Duration::from_secs(60),
