@@ -32,12 +32,15 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Baseline regex + parameterized queries** |
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
 | 11 | **Cascade Error / AI Hallucination** | **Loss of Context during Self-Evolution** | 🔴 High | **Context Management System (`RIPPLE_MAP.md` + ADRs)** |
+| 12 | **CSAM / Binary Contamination** | **Malicious Binary Embedding in CRDT/P2P** | 🔴 High | **Protocol Asset Filter + 1MB Sync Limit (Plan D)** |
 
 ## 3. Defense Architecture
 
-### Layer 1: Guardrails (Input Validation)
+### Layer 1: Guardrails (Input Validation & Content Filtering)
 - Detects prompt injections and command injections.
 - Sanitizes control characters and enforces length limits.
+- **Binary/CSAM Blocking (Plan D)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol at both the Hub and API Server levels to prevent illegal content hosting/relay.
+- **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.

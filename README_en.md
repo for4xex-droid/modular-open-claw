@@ -97,12 +97,13 @@ cargo run -p aiome-synergy  # (Coming Soon)
 
 Aiome を導入することで、以下のような自律型ワークフローを瞬時に構築できます。
 
-- 🧠 **完全自律思考 (Autonomous loop)**: ユーザーの指示なしで、24時間トレンドを監視し、企画からタスク実行までを全自動化。
-- ⚡ **ストリーミング Agent Console**: 思考プロセス（1文字ずつの出力）とツール実行（WASM Skill）をリアルタイムに可視化する SSE ベースのチャットインターフェース。
-- 🛡️ **自律型免疫システム (Autonomous Defense)**: バックグラウンドワーカーが失敗ログ（Karma）を常に分析し、脆弱性や攻撃パターンに対する新しい防御ルールを自動生成・運用（Auto-Healing）。
-- 🗣️ **TTS Expression Engine**: Connects AI's inner emotional states to speech synthesis APIs (like OpenAI `tts-1`) to autonomously generate local `.mp3` voice expressions.
+- 🧠 **Autonomous loop**: Runs tasks 24/7 without user intervention, from planning to execution based on real-time trends.
+- ⚡ **Streaming Agent Console**: Real-time SSE-based interface visualizing thinking processes and WASM skill executions.
+- 🛡️ **Autonomous Defense**: Background workers analyze failure logs (Karma) and auto-generate new defense rules (Auto-Healing).
+- 🎭 **Avatar Expression Engine (Next-Gen AI Identity)**: Maps AI emotions to blendshape parameters (`avatar_params`) for Inochi2D/VRM in real-time, pushed to the frontend via SSE.
+- 🗣️ **TTS Expression Engine**: Connects AI's inner emotional states to speech synthesis APIs to autonomously generate local `.mp3` voice expressions.
 - ⚙️ **Dynamic Ollama LoRA Builder**: AI can decide on optimal fine-tuned layers and issue automated rebuilds via Ollama backend to perfectly inject persona traits on-the-fly.
-- 🌐 **Samsara Federation Sync**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期し、ネットワーク全体で集合知を形成。Biome P2P telemetry traffic is further secured with robust symmetric encryption passing through the central hubs to prevent eavesdropping and data manipulation.
+- 🌐 **Samsara Federation Sync (Secure P2P)**: Synchronizes lessons (Karma) and immune rules. Features **protocol-level CSAM filtering** that rejects binary/base64 data, ensuring a clean P2P network with symmetric encryption for privacy.
 
 ---
 

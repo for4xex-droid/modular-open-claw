@@ -100,9 +100,10 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🧠 **完全自律思考 (Autonomous loop)**: ユーザーの指示なしで、24時間トレンドを監視し、企画からタスク実行までを全自動化。
 - ⚡ **ストリーミング Agent Console**: 思考プロセス（1文字ずつの出力）とツール実行（WASM Skill）をリアルタイムに可視化する SSE ベースのチャットインターフェース。
 - 🛡️ **自律型免疫システム (Autonomous Defense)**: バックグラウンドワーカーが失敗ログ（Karma）を常に分析し、脆弱性や攻撃パターンに対する新しい防御ルールを自動生成・運用（Auto-Healing）。
+- 🎭 **Avatar Expression Engine (Next-Gen AI Identity)**: AI の感情状態を Inochi2D や VRM のブレンドシェイプ・パラメータ（`avatar_params`）へリアルタイム変換。SSE 経由でフロントエンドへプッシュすることで、AI の「生きた表情」を表現します。
 - 🗣️ **TTS 表現エンジン (Expression Engine)**: AI が生成した内的感情を、OpenAI tts-1 などの API と連動し、ローカルに音声ファイル (.mp3) として自律生成・同期します。
 - ⚙️ **Ollama LoRA 動的ビルダー**: AI 自身が外部要因に応じて最適な LoRA を判断し、バックグラウンドの Ollama インスタンスに再構築リクエストを飛ばすことでパーソナライゼーションを即座に反映します。
-- 🌐 **Samsara Federation Sync**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期し、ネットワーク全体で集合知を形成。さらに、Biomeノード間通信は `FEDERATION_SECRET` より派生した対称鍵によって、Hub上でも平文が露出しない堅牢な暗号化が施されます。
+- 🌐 **Samsara Federation Sync (Secure P2P)**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期。**バイナリ送信を拒絶するプロトコルレベルの CSAM フィルタ**により、P2P ネットワークの安全性を担保しつつ、`FEDERATION_SECRET` 由来の対称鍵による秘匿通信を実現しています。
 
 ---
 
