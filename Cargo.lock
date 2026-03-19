@@ -82,6 +82,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
+ "avatar-engine",
  "base64 0.22.1",
  "bastion-core",
  "chacha20poly1305",
@@ -568,6 +569,18 @@ dependencies = [
  "tinyvec",
  "tracing",
  "unicode-segmentation",
+ "uuid 1.22.0",
+]
+
+[[package]]
+name = "avatar-engine"
+version = "0.1.0"
+dependencies = [
+ "aiome-contracts",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
  "uuid 1.22.0",
 ]
 

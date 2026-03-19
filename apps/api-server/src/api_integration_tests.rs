@@ -39,7 +39,10 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         _sys: Option<&str>,
     ) -> Result<
         std::pin::Pin<
-            Box<dyn tokio_stream::Stream<Item = Result<String, aiome_core::error::AiomeError>> + Send>,
+            Box<
+                dyn tokio_stream::Stream<Item = Result<String, aiome_core::error::AiomeError>>
+                    + Send,
+            >,
         >,
         aiome_core::error::AiomeError,
     > {

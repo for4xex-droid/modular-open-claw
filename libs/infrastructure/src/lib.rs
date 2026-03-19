@@ -69,7 +69,7 @@ pub mod user_learner;
 pub mod validator;
 pub mod workspace_manager;
 
+mod soul_store_tests;
 #[cfg(test)]
 pub mod test_utils;
-mod soul_store_tests;
 mod workspace_manager_tests;

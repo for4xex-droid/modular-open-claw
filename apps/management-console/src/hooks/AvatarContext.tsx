@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type AvatarCharacter = 'female' | 'male';
 export type AvatarProportion = 'taller' | 'chibi';
-export type AvatarMode = 'vrm' | 'lite' | 'off';
+export type AvatarMode = 'vrm' | 'lite' | 'off' | 'inx';
 
 /**
  * Avatar Asset Specification
@@ -17,6 +17,10 @@ export const AVATAR_ASSETS = {
         vrm: {
             chibi: '/avatar/aiome-chibi-nobg.png',
             taller: '/avatar/aiome-main-female-taller.png',
+        },
+        inx: {
+            chibi: '/avatar/aiome-chibi.inx',
+            taller: '/avatar/aiome-taller.inx',
         }
     },
     male: {
@@ -27,6 +31,10 @@ export const AVATAR_ASSETS = {
         vrm: {
             chibi: '/avatar/aiome-male-chibi-nobg.png',
             taller: '/avatar/aiome-main-male-taller.png',
+        },
+        inx: {
+            chibi: '/avatar/aiome-chibi.inx',
+            taller: '/avatar/aiome-taller.inx',
         }
     }
 } as const;
@@ -36,7 +44,7 @@ interface AvatarCharacterContextType {
     setCharacter: (char: AvatarCharacter) => void;
     proportion: AvatarProportion;
     setProportion: (prop: AvatarProportion) => void;
-    getAssetPath: (mode: 'lite' | 'vrm') => string;
+    getAssetPath: (mode: 'lite' | 'vrm' | 'inx') => string;
 }
 
 const AvatarCharacterContext = createContext<AvatarCharacterContextType | undefined>(undefined);
@@ -67,7 +75,7 @@ export const AvatarCharacterProvider: React.FC<{ children: React.ReactNode }> = 
     }, [proportion]);
 
     // Central logic to retrieve asset paths
-    const getAssetPath = (mode: 'lite' | 'vrm') => {
+    const getAssetPath = (mode: 'lite' | 'vrm' | 'inx') => {
         return AVATAR_ASSETS[character][mode][proportion];
     };
 

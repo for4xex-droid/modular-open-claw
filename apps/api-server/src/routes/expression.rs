@@ -95,25 +95,40 @@ pub async fn generate_expression(
     // 4. NG-22: Trigger TTS if configured
     if let Ok(Some(tts_prov)) = state.job_queue.get_setting_value("tts_provider").await {
         if tts_prov == "openai" {
-            let voice = state.job_queue.get_setting_value("tts_voice").await.unwrap_or(None).unwrap_or_else(|| "alloy".to_string());
+            let voice = state
+                .job_queue
+                .get_setting_value("tts_voice")
+                .await
+                .unwrap_or(None)
+                .unwrap_or_else(|| "alloy".to_string());
             if let Ok(Some(api_key)) = state.job_queue.get_setting_value("llm_api_key").await {
-                 tracing::info!("🗣️ [TTS] Synthesizing audio for Expression {} with voice '{}'", expression.id, voice);
-                 match ExpressionEngine::synthesize_audio_openai(&expression.content, &voice, &api_key).await {
-                      Ok((audio_bytes, dur)) => {
-                           let path = format!("workspace/audio/{}.mp3", expression.id);
-                           let _ = std::fs::create_dir_all("workspace/audio");
-                           if let Err(e) = std::fs::write(&path, audio_bytes) {
-                                tracing::error!("Failed to write audio file {}: {}", path, e);
-                           } else {
-                                expression.audio_path = Some(path.clone());
-                                expression.duration_ms = Some(dur as i32);
-                                tracing::info!("✅ [TTS] Audio saved to {}", path);
-                           }
-                      },
-                      Err(e) => tracing::warn!("❌ [TTS] Failed to synthesize audio: {}", e),
-                 }
+                tracing::info!(
+                    "🗣️ [TTS] Synthesizing audio for Expression {} with voice '{}'",
+                    expression.id,
+                    voice
+                );
+                match ExpressionEngine::synthesize_audio_openai(
+                    &expression.content,
+                    &voice,
+                    &api_key,
+                )
+                .await
+                {
+                    Ok((audio_bytes, dur)) => {
+                        let path = format!("workspace/audio/{}.mp3", expression.id);
+                        let _ = std::fs::create_dir_all("workspace/audio");
+                        if let Err(e) = std::fs::write(&path, audio_bytes) {
+                            tracing::error!("Failed to write audio file {}: {}", path, e);
+                        } else {
+                            expression.audio_path = Some(path.clone());
+                            expression.duration_ms = Some(dur as i32);
+                            tracing::info!("✅ [TTS] Audio saved to {}", path);
+                        }
+                    }
+                    Err(e) => tracing::warn!("❌ [TTS] Failed to synthesize audio: {}", e),
+                }
             } else {
-                 tracing::warn!("⚠️ [TTS] OpenAI TTS selected but no API key configured.");
+                tracing::warn!("⚠️ [TTS] OpenAI TTS selected but no API key configured.");
             }
         }
     }

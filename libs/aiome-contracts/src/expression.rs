@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expression {
     pub id: String,
-    pub content: String,            // 生成されたテキスト
-    pub emotion: String,            // 推定された感情 ("curious", "reflective", "excited", etc.)
-    pub karma_refs: Vec<String>,    // 参照したKarmaのID (JSON array serialized in DB)
+    pub content: String,                          // 生成されたテキスト
+    pub emotion: String, // 推定された感情 ("curious", "reflective", "excited", etc.)
+    pub karma_refs: Vec<String>, // 参照したKarmaのID (JSON array serialized in DB)
     pub audio_path: Option<String>, // DP-9: 音声ファイルのパス
-    pub duration_ms: Option<i32>,   // DP-9: 音声の長さ(ms)
+    pub duration_ms: Option<i32>, // DP-9: 音声の長さ(ms)
+    pub avatar_params: Option<serde_json::Value>, // Phase 7: Inochi2D/VRM 感情パラメータ
     pub created_at: String,
 }
 

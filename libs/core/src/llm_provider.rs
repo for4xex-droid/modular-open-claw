@@ -44,8 +44,13 @@ impl OllamaProvider {
         adapter_path: &str,
         new_model_name: &str,
     ) -> Result<(), AiomeError> {
-        tracing::info!("🛠️ [Ollama] Building LoRA model: {} (Base: {}, Adapter: {})", new_model_name, base_model, adapter_path);
-        
+        tracing::info!(
+            "🛠️ [Ollama] Building LoRA model: {} (Base: {}, Adapter: {})",
+            new_model_name,
+            base_model,
+            adapter_path
+        );
+
         let client = crate::http::get_http_client();
         let modelfile = format!("FROM {}\nADAPTER \"{}\"\n", base_model, adapter_path);
 
@@ -56,14 +61,11 @@ impl OllamaProvider {
             "stream": false
         });
 
-        let resp = client
-            .post(&url)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
+        let resp = client.post(&url).json(&payload).send().await.map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Failed to request Ollama model build: {}", e),
-            })?;
+            }
+        })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -73,8 +75,11 @@ impl OllamaProvider {
                 reason: format!("Ollama model build failed [{}]: {}", status, err_text),
             });
         }
-        
-        tracing::info!("✅ [Ollama] Successfully built LoRA model: {}", new_model_name);
+
+        tracing::info!(
+            "✅ [Ollama] Successfully built LoRA model: {}",
+            new_model_name
+        );
         Ok(())
     }
 }

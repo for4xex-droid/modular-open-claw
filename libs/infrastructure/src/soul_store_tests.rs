@@ -14,7 +14,9 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_db() -> SqlitePool {
-        let jq = crate::job_queue::SqliteJobQueue::new("sqlite::memory:").await.expect("Failed to create in-memory job queue");
+        let jq = crate::job_queue::SqliteJobQueue::new("sqlite::memory:")
+            .await
+            .expect("Failed to create in-memory job queue");
         jq.get_pool().clone()
     }
 
@@ -31,16 +33,25 @@ mod tests {
         store.save_soul(&soul).await?;
 
         // Load
-        let loaded = store.load_soul("test-agent-1").await?.expect("Soul not found");
+        let loaded = store
+            .load_soul("test-agent-1")
+            .await?
+            .expect("Soul not found");
 
-        assert_eq!(loaded.lora_adapter_path, Some("/path/to/adapter".to_string()));
+        assert_eq!(
+            loaded.lora_adapter_path,
+            Some("/path/to/adapter".to_string())
+        );
         assert_eq!(loaded.lora_base_model, Some("llama-3-8b".to_string()));
 
         // Update to None
         soul.lora_adapter_path = None;
         store.save_soul(&soul).await?;
 
-        let loaded2 = store.load_soul("test-agent-1").await?.expect("Soul not found");
+        let loaded2 = store
+            .load_soul("test-agent-1")
+            .await?
+            .expect("Soul not found");
         assert_eq!(loaded2.lora_adapter_path, None);
         assert_eq!(loaded2.lora_base_model, Some("llama-3-8b".to_string()));
 

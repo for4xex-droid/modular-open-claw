@@ -653,6 +653,7 @@ impl DbInitializer for SqliteJobQueue {
                 karma_refs TEXT DEFAULT '[]',
                 audio_path TEXT,        -- DP-9: TTS音声ファイルパス
                 duration_ms INTEGER,    -- DP-9: 音声の長さ(ms)
+                avatar_params TEXT,     -- Phase 7: Inochi2D/VRM 感情パラメータ
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
@@ -705,6 +706,19 @@ impl DbInitializer for SqliteJobQueue {
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (duration_ms): {}", e),
+                })?;
+        }
+
+        // Add avatar_params if not exists
+        let has_avatar_params = columns
+            .iter()
+            .any(|c| c.get::<String, _>("name") == "avatar_params");
+        if !has_avatar_params {
+            sqlx::query("ALTER TABLE expressions ADD COLUMN avatar_params TEXT")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to alter expressions table (avatar_params): {}", e),
                 })?;
         }
 

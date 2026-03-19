@@ -63,17 +63,25 @@ impl ExpressionEngine {
 
         if let Some(last_line) = lines.last() {
             if last_line.to_uppercase().starts_with("EMOTION:") {
-                emotion = last_line
+                let em_str = last_line
                     .split(':')
                     .nth(1)
                     .unwrap_or("reflective")
                     .trim()
                     .to_lowercase();
+
+                // Allow only a subset or clean it up if necessary.
+                emotion = em_str;
                 lines.pop(); // Remove the emotion line from content
             }
         }
 
         let content = lines.join("\n").trim().to_string();
+
+        // Phase 7: Generate avatar parameters based on the emotion
+        let mapper = avatar_engine::EmotionToParameterMapper::new();
+        let params = mapper.map_emotion(&emotion);
+        let params_json = serde_json::to_value(&params).ok();
 
         Ok(Expression {
             id: Uuid::new_v4().to_string(),
@@ -82,6 +90,7 @@ impl ExpressionEngine {
             karma_refs: karma_ids,
             audio_path: None,  // DP-9: Initially None, set when TTS is processed
             duration_ms: None, // DP-9: Initially None
+            avatar_params: params_json,
             created_at: Utc::now().to_rfc3339(),
         })
     }
@@ -98,25 +107,32 @@ impl ExpressionEngine {
             "input": text,
             "voice": voice
         });
-        
-        let resp = client.post("https://api.openai.com/v1/audio/speech")
+
+        let resp = client
+            .post("https://api.openai.com/v1/audio/speech")
             .header("Authorization", format!("Bearer {}", api_key))
             .json(&payload)
             .send()
             .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("TTS request failed: {}", e) })?;
-            
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("TTS request failed: {}", e),
+            })?;
+
         if !resp.status().is_success() {
-             let status = resp.status();
-             let err = resp.text().await.unwrap_or_default();
-             return Err(AiomeError::Infrastructure { reason: format!("TTS api failed [{}]: {}", status, err) });
+            let status = resp.status();
+            let err = resp.text().await.unwrap_or_default();
+            return Err(AiomeError::Infrastructure {
+                reason: format!("TTS api failed [{}]: {}", status, err),
+            });
         }
-        
-        let audio_bytes = resp.bytes().await.map_err(|_| AiomeError::Infrastructure { reason: "Failed to read audio bytes".into() })?;
-        
+
+        let audio_bytes = resp.bytes().await.map_err(|_| AiomeError::Infrastructure {
+            reason: "Failed to read audio bytes".into(),
+        })?;
+
         // Approximate duration: ~75ms per character (generic heuristic)
         let duration_ms = (text.chars().count() as u64) * 75;
-        
+
         Ok((audio_bytes.to_vec(), duration_ms))
     }
 }

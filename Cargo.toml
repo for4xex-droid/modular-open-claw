@@ -6,6 +6,7 @@ members = [
     "libs/core",
     "libs/infrastructure",
     "libs/shared",
+    "libs/avatar-engine",
     "libs/wasm-skills/fs_reader",
     "libs/wasm-skills/terminal_exec",
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",

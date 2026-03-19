@@ -314,6 +314,7 @@ pub async fn trigger_system_vitality_stream(
         let mut last_level = 0;
         let mut last_is_thinking = false;
         let mut last_stats: Option<shared::watchtower::AgentStats> = None;
+        let mut last_expression_id: Option<String> = None;
 
         // Initialize state
         if let Ok(stats) = state.job_queue.get_agent_stats().await {
@@ -322,6 +323,11 @@ pub async fn trigger_system_vitality_stream(
             last_evolution_count = state.job_queue.fetch_evolution_history(100).await.unwrap_or_default().len();
             last_is_thinking = state.job_queue.get_pending_job_count().await.unwrap_or(0) > 0;
             last_stats = Some(stats);
+            if let Ok(exprs) = state.job_queue.fetch_expressions(1).await {
+                if let Some(first) = exprs.first() {
+                    last_expression_id = Some(first.id.clone());
+                }
+            }
         }
 
         let mut rx = state.event_sender.subscribe();
@@ -390,6 +396,24 @@ pub async fn trigger_system_vitality_stream(
                                 yield Ok(Event::default().event(sse_event).data(serde_json::to_string(new_evo).unwrap_or_default()));
                             }
                             last_evolution_count = current_evos.len();
+                        }
+
+                        // 4. Expression Check (Avatar Parameters)
+                        if let Ok(exprs) = state.job_queue.fetch_expressions(1).await {
+                            if let Some(latest) = exprs.first() {
+                                if Some(latest.id.clone()) != last_expression_id {
+                                    let mut payload = serde_json::json!({
+                                        "id": latest.id,
+                                        "emotion": latest.emotion,
+                                        "content": latest.content,
+                                    });
+                                    if let Some(ref params) = latest.avatar_params {
+                                        payload["avatar_params"] = params.clone();
+                                    }
+                                    yield Ok(Event::default().event("avatar_expression").data(serde_json::to_string(&payload).unwrap_or_default()));
+                                    last_expression_id = Some(latest.id.clone());
+                                }
+                            }
                         }
                     }
                 },

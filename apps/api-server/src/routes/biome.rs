@@ -316,6 +316,18 @@ pub async fn send_message(
         }
         .into());
     }
+    if req.content.contains("data:image/")
+        || req.content.contains("data:video/")
+        || req.content.contains(";base64,")
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason:
+                "Binary data and inline assets are strictly prohibited by protocol (CSAM Defense)"
+                    .to_string(),
+        }
+        .into());
+    }
+
     if let shared::guardrails::ValidationResult::Blocked(reason) =
         shared::guardrails::validate_input(&req.content)
     {

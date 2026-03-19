@@ -407,10 +407,13 @@ pub async fn trigger_agent_chat(
 
         // Phase 6.9: Prevent API abuse & Bind Economy (NG-25 Fix)
         if let Some(engine) = &state.commerce_engine {
-             if let Err(e) = engine.validate_activity(_auth.agent_id, "inference", 1).await {
-                  tracing::warn!("💰 [Economy] Activity blocked by Commerce Engine: {}", e);
-                  return Err(crate::error::AppError(e));
-             }
+            if let Err(e) = engine
+                .validate_activity(_auth.agent_id, "inference", 1)
+                .await
+            {
+                tracing::warn!("💰 [Economy] Activity blocked by Commerce Engine: {}", e);
+                return Err(crate::error::AppError(e));
+            }
         }
         let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
             tracing::error!("Failed to acquire LLM permit: {}", e);
@@ -433,11 +436,14 @@ pub async fn trigger_agent_chat(
                 // Phase 6.9: Charge Economy Engine for LLM Usage (NG-25 Fix)
                 if let Some(engine) = &state.commerce_engine {
                     let inference_id = uuid::Uuid::new_v4();
-                    if let Err(e) = engine.execute_autonomous_purchase(
-                        _auth.agent_id, 
-                        inference_id, 
-                        serde_json::json!({"action": "inference", "tokens": full_prompt.len()})
-                    ).await {
+                    if let Err(e) = engine
+                        .execute_autonomous_purchase(
+                            _auth.agent_id,
+                            inference_id,
+                            serde_json::json!({"action": "inference", "tokens": full_prompt.len()}),
+                        )
+                        .await
+                    {
                         tracing::warn!("💰 [Economy] Failed to record token consumption: {}", e);
                     }
                 }

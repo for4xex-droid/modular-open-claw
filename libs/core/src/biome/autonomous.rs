@@ -176,7 +176,7 @@ impl AutonomousBiomeEngine {
         let hub_url = std::env::var("SAMSARA_HUB_URL")
             .or_else(|_| std::env::var("SAMSARA_HUB_REST"))
             .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
-        
+
         let hub_secret =
             std::env::var("FEDERATION_SECRET").map_err(|_| AiomeError::Infrastructure {
                 reason: "FEDERATION_SECRET missing for autonomous biome communication".to_string(),
@@ -194,7 +194,7 @@ impl AutonomousBiomeEngine {
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 encryption: "none".to_string(),
             };
-            
+
             // Phase 6.9: Cryptographic enforcement (HKDF-like improvement)
             use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();

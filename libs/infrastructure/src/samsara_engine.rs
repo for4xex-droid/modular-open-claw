@@ -156,7 +156,7 @@ impl SamsaraEngine for DefaultSamsaraEngine {
             // Inherit key identity elements (e.g. attachment, LoRA configs)
             new_soul.attachment = soul.attachment.clone();
             new_soul.lora_adapter_path = soul.lora_adapter_path.clone(); // NG-3 FIX
-            new_soul.lora_base_model = soul.lora_base_model.clone();     // NG-3 FIX
+            new_soul.lora_base_model = soul.lora_base_model.clone(); // NG-3 FIX
 
             // GAP-4 Design Intent Clarification:
             // The `predictive_model` is intentionally left as `PredictiveModel::default()`.

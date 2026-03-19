@@ -555,7 +555,25 @@ async fn biome_relay_handler(
         );
     }
 
-    // 3. Relay Logic
+    // 3. CSAM Binary Filter (Plan D: Protocol-Level Enforcement)
+    // 決してバイナリやカスタム画像をHubに流さない
+    if msg.content.contains("data:image/")
+        || msg.content.contains("data:video/")
+        || msg.content.contains(";base64,")
+    {
+        warn!(
+            "🚨 [CSAM Filter] Blocked Biome relay containing binary/base64 data from {}",
+            msg.sender_pubkey
+        );
+        return (
+            StatusCode::FORBIDDEN,
+            Json(
+                serde_json::json!({"status": "blocked", "message": "Binary data and inline assets are strictly prohibited by protocol"}),
+            ),
+        );
+    }
+
+    // 4. Relay Logic
     info!(
         "📫 [Hub] Relaying Biome Message from {} to topic {}",
         msg.sender_pubkey, msg.topic_id
@@ -1311,6 +1329,21 @@ async fn timeline_sync_handler(
         Ok(Some(blob)) => AutoCommit::load(&blob).unwrap_or_else(|_| AutoCommit::new()),
         _ => AutoCommit::new(),
     };
+
+    // CSAM Binary Filter: Decline oversized CRDT syncs which implies binary embedding
+    if payload.automerge_blob.len() > 1024 * 1024 {
+        // 1MB Hard Limit
+        warn!(
+            "🚨 [CSAM Filter] Blocked oversized CRDT timeline sync ({} bytes) from hub {}",
+            payload.automerge_blob.len(),
+            payload.hub_id
+        );
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "CRDT Timeline Sync exceeds maximum allowed size (binary embedding suspected)",
+        )
+            .into_response();
+    }
 
     // Load and Merge Node's Doc
     if let Ok(mut node_doc) = AutoCommit::load(&payload.automerge_blob) {

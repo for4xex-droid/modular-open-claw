@@ -43,7 +43,7 @@ impl ProjectKnowledgeIndexer {
         info!("📚 [KnowledgeIndexer] Starting project knowledge indexing...");
 
         const MAX_INDEX_DEPTH: usize = 5; // DS-8: Depth limit to prevent scan runaway
-        // Scan docs directory
+                                          // Scan docs directory
         let docs_dir = self.workspace_root.join("docs");
         let arch_file = self.workspace_root.join("ARCHITECTURE.md");
 

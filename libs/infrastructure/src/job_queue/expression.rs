@@ -30,8 +30,13 @@ impl ExpressionOps for SqliteJobQueue {
         let karma_refs_json =
             serde_json::to_string(&expression.karma_refs).unwrap_or_else(|_| "[]".to_string());
 
+        let avatar_params_json = expression
+            .avatar_params
+            .as_ref()
+            .and_then(|v| serde_json::to_string(v).ok());
+
         sqlx::query(
-            "INSERT INTO expressions (id, content, emotion, karma_refs, audio_path, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO expressions (id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&expression.id)
         .bind(&expression.content)
@@ -39,6 +44,7 @@ impl ExpressionOps for SqliteJobQueue {
         .bind(&karma_refs_json)
         .bind(&expression.audio_path)
         .bind(&expression.duration_ms)
+        .bind(&avatar_params_json)
         .bind(&expression.created_at)
         .execute(&self.pool)
         .await
@@ -49,7 +55,7 @@ impl ExpressionOps for SqliteJobQueue {
 
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, content, emotion, karma_refs, audio_path, duration_ms, created_at FROM expressions ORDER BY created_at DESC LIMIT ?"
+            "SELECT id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at FROM expressions ORDER BY created_at DESC LIMIT ?"
         )
         .bind(limit)
         .fetch_all(&self.pool)
@@ -68,6 +74,9 @@ impl ExpressionOps for SqliteJobQueue {
                 karma_refs,
                 audio_path: row.get("audio_path"),
                 duration_ms: row.get("duration_ms"),
+                avatar_params: row
+                    .get::<Option<String>, _>("avatar_params")
+                    .and_then(|s| serde_json::from_str(&s).ok()),
                 created_at: row.get("created_at"),
             });
         }
