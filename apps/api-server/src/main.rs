@@ -133,6 +133,7 @@ async fn main() {
     let job_queue = Arc::new(job_queue);
 
     let circuit_breaker = Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+        "api-server",
         infrastructure::circuit_breaker::CircuitBreakerConfig {
             failure_threshold: 5,
             reset_timeout: std::time::Duration::from_secs(60),

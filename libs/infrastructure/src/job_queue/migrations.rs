@@ -8,6 +8,7 @@
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use tracing::{error, info, warn};
+use sqlx::Row;
 
 use super::SqliteJobQueue;
 
@@ -641,13 +642,14 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create system_settings table: {}", e),
         })?;
 
-        // v4: Expression Engine (Autonomous Expression)
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS expressions (
                 id TEXT PRIMARY KEY,
                 content TEXT NOT NULL,
                 emotion TEXT NOT NULL,
                 karma_refs TEXT DEFAULT '[]',
+                audio_path TEXT,        -- DP-9: TTS音声ファイルパス
+                duration_ms INTEGER,    -- DP-9: 音声の長さ(ms)
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
@@ -656,6 +658,38 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create expressions table: {}", e),
         })?;
+
+        // DP-10: Resource Usage & Cost Monitoring
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS resource_usage_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT,
+                provider_name TEXT NOT NULL,
+                model_name TEXT NOT NULL,
+                usage_type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                estimated_cost_usd REAL NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create resource_usage_logs table: {}", e),
+        })?;
+
+        // 既存の expressions テーブルにカラムがない場合は追加する (手動マイグレーション)
+        let columns = sqlx::query("PRAGMA table_info(expressions)")
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+        
+        let has_audio_path = columns.iter().any(|c| c.get::<String, _>("name") == "audio_path");
+        if !has_audio_path {
+            let _ = sqlx::query("ALTER TABLE expressions ADD COLUMN audio_path TEXT").execute(&self.pool).await;
+            let _ = sqlx::query("ALTER TABLE expressions ADD COLUMN duration_ms INTEGER").execute(&self.pool).await;
+        }
 
         // v5: AgentRx Diagnostics (Trajectory Tracking)
         sqlx::query(

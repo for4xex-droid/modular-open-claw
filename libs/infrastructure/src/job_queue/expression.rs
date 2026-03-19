@@ -10,7 +10,9 @@ use aiome_core::error::AiomeError;
 use aiome_core::expression::Expression;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
+use aiome_contracts::expression::ResourceUsageLog;
 use sqlx::Row;
+use tracing::{error, info, warn};
 
 #[async_trait]
 pub trait ExpressionOps {
@@ -18,6 +20,8 @@ pub trait ExpressionOps {
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
     async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError>;
     async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError>;
+    /// DP-10: リソース使用量を記録
+    async fn record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
@@ -27,12 +31,14 @@ impl ExpressionOps for SqliteJobQueue {
             serde_json::to_string(&expression.karma_refs).unwrap_or_else(|_| "[]".to_string());
 
         sqlx::query(
-            "INSERT INTO expressions (id, content, emotion, karma_refs, created_at) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO expressions (id, content, emotion, karma_refs, audio_path, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&expression.id)
         .bind(&expression.content)
         .bind(&expression.emotion)
         .bind(&karma_refs_json)
+        .bind(&expression.audio_path)
+        .bind(&expression.duration_ms)
         .bind(&expression.created_at)
         .execute(&self.pool)
         .await
@@ -43,7 +49,7 @@ impl ExpressionOps for SqliteJobQueue {
 
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, content, emotion, karma_refs, created_at FROM expressions ORDER BY created_at DESC LIMIT ?"
+            "SELECT id, content, emotion, karma_refs, audio_path, duration_ms, created_at FROM expressions ORDER BY created_at DESC LIMIT ?"
         )
         .bind(limit)
         .fetch_all(&self.pool)
@@ -60,6 +66,8 @@ impl ExpressionOps for SqliteJobQueue {
                 content: row.get("content"),
                 emotion: row.get("emotion"),
                 karma_refs,
+                audio_path: row.get("audio_path"),
+                duration_ms: row.get("duration_ms"),
                 created_at: row.get("created_at"),
             });
         }
@@ -92,6 +100,24 @@ impl ExpressionOps for SqliteJobQueue {
         .execute(&self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to set setting: {}", e) })?;
+
+        Ok(())
+    }
+
+    async fn record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError> {
+        sqlx::query(
+            "INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&log.job_id)
+        .bind(&log.provider_name)
+        .bind(&log.model_name)
+        .bind(&log.usage_type)
+        .bind(&log.amount)
+        .bind(&log.estimated_cost_usd)
+        .bind(&log.created_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to record resource usage: {}", e) })?;
 
         Ok(())
     }
