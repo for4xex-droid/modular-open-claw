@@ -36,4 +36,9 @@ pub async fn trigger_agent_chat(
 ## Consequences
 - **Positive**: High resistance to accidental route exposure. Handlers clearly declare their security assumptions, satisfying zero-trust architectural boundaries.
 - **Positive**: CI acts as an automated security architect preventing silent security bypasses during refactoring loops.
-- **Negative**: Adds verbose boilerplate (`_auth: crate::auth::Authenticated`) to all route handlers that may not otherwise utilize the embedded `agent_id`.
+- **Negative**: Adds verbose boilerplate (`_auth: crate::auth::Authenticated` or `auth: crate::auth::Authenticated`) to all route handlers that may not otherwise utilize the embedded `agent_id`.
+- **Risk (SPOF)**: The current Type-Driven Security model relies on a single shared secret (`api_server_secret`). While the *presence* of authentication is guaranteed by the type system, the *strength* of it remains a Single Point of Failure. If the shared secret is leaked, all endpoints are compromised.
+
+## Future Considerations
+- **JWT / RBAC Integration (Phase 8.2)**: To mitigate the SPOF risk, we plan to shift from a shared secret to scoped JSON Web Tokens (JWT) with Role-Based Access Control (RBAC).
+- **ProtectedRouter Wrapper (Typestate Pattern)**: The current implementation enforces constraints via CI (`deep-scan.sh CC-6`) rather than strict compiler typestate on the `Router`. In the future, building a `ProtectedRouter<S>` wrapper could enforce compile-time errors for handlers missing `Authenticated` without relying on CI scripts.

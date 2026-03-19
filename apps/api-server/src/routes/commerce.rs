@@ -53,12 +53,12 @@ pub struct PurchaseResponse {
 )]
 pub async fn get_balance(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     axum::extract::Path(agent_id): axum::extract::Path<uuid::Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     // SEC-2: Authentication is enforced by the Authenticated extractor.
     // RBAC: Check agent_id ownership
-    if agent_id != _auth.agent_id {
+    if agent_id != auth.agent_id {
         return Err(AppError::forbidden(
             "Unauthorized access to this agent's balance",
         ));
@@ -92,13 +92,13 @@ pub async fn get_balance(
 )]
 pub async fn execute_purchase(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     axum::extract::Path(agent_id): axum::extract::Path<uuid::Uuid>,
     Json(req): Json<PurchaseRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // SEC-2: Authentication is enforced by the Authenticated extractor.
     // RBAC: Check agent_id ownership
-    if agent_id != _auth.agent_id {
+    if agent_id != auth.agent_id {
         return Err(AppError::forbidden(
             "Unauthorized purchase request for this agent",
         ));

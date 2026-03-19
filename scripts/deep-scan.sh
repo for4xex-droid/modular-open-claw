@@ -234,12 +234,12 @@ cross_cutting_checks() {
   echo "── CC-6: Type-Driven Security (Auth Extractor Enforcement) ──"
   local total_handlers auth_handlers missing_auth_count
   total_handlers=$(find apps/api-server/src/routes -name "*.rs" -exec awk '/pub async fn/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
-  auth_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '/_auth: .*Authenticated/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
+  auth_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '/(auth|_auth): .*Authenticated/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
   
   if [[ "$total_handlers" -gt 0 ]]; then
     missing_auth_count=$((total_handlers - auth_handlers))
-    if [[ "$missing_auth_count" -gt 5 ]]; then
-      warn "Type-Driven Security 抜け漏れの可能性: $missing_auth_count 個の公開API関数で _auth: Authenticated が未定義 ($auth_handlers/$total_handlers 保護済み)"
+    if [[ "$missing_auth_count" -gt 0 ]]; then
+      err "Type-Driven Security 違反: $missing_auth_count 個のAPIハンドラで (auth|_auth): Authenticated が未定義 ($auth_handlers/$total_handlers 保護済み)"
     else
       pass "Type-Driven Security: $auth_handlers/$total_handlers のハンドラで認証型制約を確認完了"
     fi
