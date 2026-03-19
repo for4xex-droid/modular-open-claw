@@ -33,6 +33,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
 | 11 | **Cascade Error / AI Hallucination** | **Loss of Context during Self-Evolution** | 🔴 High | **Context Management System (`RIPPLE_MAP.md` + ADRs)** |
 | 12 | **CSAM / Binary Contamination** | **Malicious Binary CRDT/P2P** | 🔴 High | **Protocol Asset Filter + 3-Layer Defense (eKYC, Hash, 5.5-Head) (Phase 8.1)** |
+| 13 | **Session Hijacking / Weak Auth** | **Bearer Token Brute Force / Static IDs** | 🔴 High | **OAuth 2.1 / JWT AuthManager + extension-based User Extractors (Phase 8.2)** |
 
 ## 3. Defense Architecture
 
@@ -47,6 +48,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution is strictly walled off from wildcard host access.
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.
+- **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
 
 ### Layer 3: Audit Log & Hash Chains

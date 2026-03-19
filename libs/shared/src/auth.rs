@@ -49,7 +49,8 @@ mod tests {
             "iss": "https://auth.aiome.network"
         }"#;
 
-        let claims: AiomeCustomClaims = serde_json::from_str(json_str).unwrap();
+        let claims: AiomeCustomClaims =
+            serde_json::from_str(json_str).expect("Valid test claims JSON");
         assert_eq!(claims.sub, "user_001");
         assert!(claims.ekyc_verified);
         assert_eq!(claims.roles, vec!["admin"]);
@@ -63,7 +64,8 @@ mod tests {
             "exp": 1700000000
         }"#;
 
-        let claims: AiomeCustomClaims = serde_json::from_str(json_str).unwrap();
+        let claims: AiomeCustomClaims =
+            serde_json::from_str(json_str).expect("Valid test claims default JSON");
         assert_eq!(claims.sub, "user_002");
         assert!(!claims.ekyc_verified); // default is false
         assert!(claims.roles.is_empty());

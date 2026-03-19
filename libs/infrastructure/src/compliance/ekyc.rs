@@ -10,6 +10,7 @@ use secrecy::{ExposeSecret, Secret};
 use stripe::Client;
 use tracing::{error, info, warn};
 
+/// インターフェース: ユーザー検証 (eKYC) エンジン
 #[async_trait]
 pub trait EkycEngine: Send + Sync {
     /// 新しい検証セッションを作成し、URL を返す
@@ -25,6 +26,7 @@ pub struct StripeEkycEngine {
 }
 
 impl StripeEkycEngine {
+    /// Stripe Identity Client を初期化する
     pub fn new(api_key: Secret<String>, return_url: String) -> Self {
         let client = Client::new(api_key.expose_secret());
         Self { client, return_url }

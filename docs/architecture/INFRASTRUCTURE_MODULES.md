@@ -7,6 +7,7 @@
 | モジュール | 役割 | 状態 |
 |---|---|---|
 | `aiome_log` | システム全体の標準化されたロギング（JSON/Text）を提供。 | 実装完了 |
+| `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。 | **Phase 8.2** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |

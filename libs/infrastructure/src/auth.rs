@@ -22,6 +22,7 @@ pub trait AuthManager: Send + Sync {
 pub struct MockAuthManager;
 
 impl MockAuthManager {
+    /// Create a new instance of MockAuthManager.
     pub fn new() -> Self {
         Self
     }
@@ -66,7 +67,7 @@ mod tests {
         let claims = manager
             .validate_token("mock_valid_token_user_123")
             .await
-            .unwrap();
+            .expect("Valid mock token should pass");
         assert_eq!(claims.sub, "user_123");
         assert!(!claims.ekyc_verified);
 
@@ -74,7 +75,7 @@ mod tests {
         let ekyc_claims = manager
             .validate_token("mock_valid_token_ekyc_user_123")
             .await
-            .unwrap();
+            .expect("Valid ekyc mock token should pass");
         assert_eq!(ekyc_claims.sub, "user_123");
         assert!(ekyc_claims.ekyc_verified);
     }
