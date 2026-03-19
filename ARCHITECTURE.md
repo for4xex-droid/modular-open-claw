@@ -34,6 +34,7 @@ graph TD
         aiome-core(aiome-core)
         infrastructure(infrastructure)
         shared(shared)
+        avatar-engine(avatar-engine)
         fs_reader(fs_reader)
         terminal_exec(terminal_exec)
         fs_writer(fs_writer)
@@ -53,10 +54,12 @@ graph TD
     key-proxy --> shared
     aiome-core --> shared
     aiome-core --> aiome-contracts
+    aiome-core --> avatar-engine
     infrastructure --> soul
     infrastructure --> aiome-contracts
     infrastructure --> shared
     shared --> aiome-contracts
+    avatar-engine --> aiome-contracts
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
@@ -76,6 +79,7 @@ graph TD
 | `aiome-core` | `libs/core` | (Core Module) |
 | `infrastructure` | `libs/infrastructure` | (Core Module) |
 | `shared` | `libs/shared` | (Core Module) |
+| `avatar-engine` | `libs/avatar-engine` | Aiome physical manifestation and 2D asset routing engine (Inochi2D & VRM compatible) |
 | `fs_reader` | `libs/wasm-skills/fs_reader` | (Core Module) |
 | `terminal_exec` | `libs/wasm-skills/terminal_exec` | (Core Module) |
 | `fs_writer` | `libs/wasm-skills/fs_writer` | (Core Module) |
@@ -92,4 +96,4 @@ API_SERVER_SECRET, FEDERATION_SECRET, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_P
 ```
 
 ---
-*Last Auto-Generated: 2026-03-19 21:45:04 UTC*
+*Last Auto-Generated: 2026-03-19 22:28:41 UTC*
