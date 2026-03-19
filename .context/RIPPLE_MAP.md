@@ -48,6 +48,13 @@
 | `api-server` (main.rs) | `AppState` でのインスタンス化 |
 | `api_integration_tests.rs` | テスト用 Dummy/Mock 構築 |
 
+### compliance/quarantine.rs — `QuarantineStore`
+| 影響先 | 理由 |
+|---|---|
+| `api-server` (main.rs) | `AppState` でのインスタンス化・DB初期化 |
+| `api-server` (routes/avatar.rs) | 非安全アセットの検疫保存ロジック |
+| `api_integration_tests.rs` | テスト用 `MockQuarantineStore` 構築 |
+
 ---
 
 ## libs/soul（ドメイン層 — infrastructure に依存しない）

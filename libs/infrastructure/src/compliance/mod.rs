@@ -7,5 +7,8 @@
 
 /// 年齢確認 (Stripe Identity)
 pub mod ekyc;
+/// アセット検疫 (CSAM/Compliance)
+pub mod quarantine;
 
 pub use ekyc::{EkycEngine, MockEkycEngine, StripeEkycEngine};
+pub use quarantine::{AssetReason, QuarantineStore, SqliteQuarantineStore};

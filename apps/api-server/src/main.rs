@@ -83,6 +83,7 @@ pub struct AppState {
     pub config: Arc<shared::config::AiomeConfig>,
     pub gift_engine: Arc<dyn aiome_contracts::commerce::GiftEngine>,
     pub ekyc_engine: Arc<dyn infrastructure::compliance::ekyc::EkycEngine>,
+    pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
 }
 
 #[tokio::main]
@@ -368,6 +369,13 @@ async fn main() {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified).");
                 Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)
             }
+        },
+        quarantine_store: {
+            let pool = job_queue.get_pool().clone();
+            let store = infrastructure::compliance::quarantine::SqliteQuarantineStore::new(pool)
+                .await
+                .expect("🚨 Failed to initialize SqliteQuarantineStore");
+            Arc::new(store)
         },
     };
 

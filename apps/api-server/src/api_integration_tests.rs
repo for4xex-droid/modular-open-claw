@@ -170,6 +170,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
             true,
         )),
         ekyc_engine: Arc::new(infrastructure::compliance::ekyc::MockEkycEngine),
+        quarantine_store: Arc::new(infrastructure::compliance::quarantine::MockQuarantineStore),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

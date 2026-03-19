@@ -14,7 +14,7 @@ use axum::{
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use shared::csam::{ImageHasher, LegalStatus, ProportionsChecker};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 #[derive(Deserialize, Serialize, utoipa::ToSchema)]
 pub struct AvatarAssetRequest {
@@ -91,7 +91,24 @@ pub async fn upload_avatar_handler(
 
     let overall_safe = identity_verified && !is_csam_hit && legal_status != LegalStatus::Restricted;
 
-    // TODO: DB にアセット情報を保存 (is_quarantined = !overall_safe)
+    // 非安全なアセットを検疫所に保存
+    if !overall_safe {
+        let reason = if is_csam_hit {
+            infrastructure::compliance::AssetReason::CsamHit
+        } else if legal_status == LegalStatus::Restricted {
+            infrastructure::compliance::AssetReason::RestrictedProportions
+        } else {
+            infrastructure::compliance::AssetReason::EkycFailed
+        };
+
+        if let Err(e) = state
+            .quarantine_store
+            .quarantine_asset(&req.name, &hash, reason)
+            .await
+        {
+            error!("🚨 [Avatar] Failed to quarantine asset {}: {}", req.name, e);
+        }
+    }
 
     Ok(Json(AvatarVerificationResult {
         identity_verified,
