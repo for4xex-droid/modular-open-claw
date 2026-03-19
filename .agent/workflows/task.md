@@ -1,87 +1,63 @@
 ---
-description: GitHub Issueに基づいたタスク実行。Issue確認 → 計画 → 実装 → PR作成 → Issue更新までの一連のフロー。
+description: 複数のワークフローを自動連結・実行する究極のタスク・オーケストレーター（Mission Control）。GitHub Issue等の要件を起点に自律判断します。
 ---
 
-# /task - GitHub駆動開発ワークフロー
+# /task - ミッション・コントロール・オーケストレーター 👑
 
-GitHub Issueを起点として開発を進めるワークフローです。
-コンテキストの喪失を防ぎ、GitHubを「プロジェクトの真実」として常に最新に保ちます。
+このコマンドは、Aiome の全ワークフローを統括する「指揮者」です。
+ユーザーは「タスク内容」または「Issue番号」を与えるだけで、AIがタスクの種別（Feature, Fix, Security, Docs）を解析し、必要なワークフローを適切な順番で**自動連鎖**させます。
 
 ## コマンド使用法
 
 ```bash
-# 特定のIssueに着手
 /task #123
-
-# 新しいタスクを開始（Issue作成から）
-/task 新しい機能を追加したい
+/task 新しい決済APIを導入したい
 ```
 
-## 実行フロー
+---
 
-### 1. タスク確認・準備 (GitHub MCP)
-- **指定がIssue番号の場合**:
-  - Issueの内容、コメント、現在のステータスを取得します。
-  - 既にPRがあるか、作業中のブランチがあるかを確認します。
-- **指定が新規内容の場合**:
-  - 新規Issueを作成し、その番号を取得します。
+## 🚀 実行フェーズ (The Orchestration Pipeline)
 
-### 2. コンテキスト同期
-- 最近の変更や関連するIssueを検索し、重複実装を防ぎます。
-- `AIOME.md` や `rules.md` のルールを確認します。
+エージェントは、以下のフェーズに沿って自立的にタスクを進行させます。
 
-### 3. 実装計画 (GitHub MCP)
-- 複雑なタスクの場合、実装計画を立案します。
-- **アクション**: 計画をIssueのコメントとして投稿します（記憶の外部化）。
-  > 📝「以下の計画で実装を進めます...」
+### Phase 0: コンテキストの取得 & タスク種別の判定
+1. ユーザー入力（またはGitHub MCP）から要件を取得します。
+2. 以下の4分類から**タスク種別を1つ決定**します。
+   - `[FEAT]` 新機能開発・アーキテクチャ変更
+   - `[FIX]` バグ修正・リファクタリング
+   - `[SEC]` セキュリティ・脆弱性対応
+   - `[DOCS]` ドキュメントや設定の更新
 
-### 4. 実装 & テスト (Local)
-- トピックブランチを作成します (`feat/issue-123-...`)。
-- `/tdd` ワークフローに従って実装とテストを行います。
-- `git commit` でコミットします（メッセージに `Close #123` 等を含めない）。
+### Phase 1: Planning & Verification (計画とメタ検証)
+タスク種別に応じて、必要なワークフローを連鎖させます。
 
-### 5. レビュー & PR作成 (GitHub MCP)
-- lintやテストが通ることを確認します。
-- **アクション**: PRを作成し、Issueに関連付けます。
-- PRの説明には、変更内容の要約とIssueへのリンクを含めます。
+- **`[FEAT]`, `[SEC]` の場合**:
+  1. まず `/[deep-scan]` を実行し、ASTマトリクスから現行構造の全体像を把握する。
+  2. 実装計画を立案する。
+  3. 実装計画の初稿が完了したら、必ず `/[perfect-plan]` を実行し、波及漏れや依存関係の矛盾がないかメタ検証（Gate 1〜5）を行う。
+- **`[FIX]`, `[DOCS]` の場合**:
+  1. 計画立案後、`/[preflight]` を実行して `RIPPLE_MAP.md` から影響範囲を確認する。
 
-### 6. 完了報告 (GitHub MCP)
-- **アクション**: Issueに作業完了のコメントを投稿します。
-- 必要に応じてIssueのステータスを更新します（例: In Progress → Review）。
+### Phase 2: Implementation (実装)
+- **`[SEC]` の場合のみ**: 実装前に `/[red-team]` を実行し、攻撃ベクトルをシミュレーションして防御策を確定させる。
+- 全てのコード変更は `/[tdd]`（テスト駆動開発）の精神に則り、テストを修正/作成してから本体コードを実装する。
 
-## GitHub MCP 活用ポイント
+### Phase 3: Review & Sync (監査と同期)
+コードの変更が完了し、テスト（`cargo test` 等）がPASSしたら、以下の2つを**必ず**実行します。
 
-以下のアクションは **即座にGitHub上に反映** されます：
+1. `/[code-review]` - 品質、セキュリティ、保守性の最終セルフチェック。
+2. `/[docs-sync]` - `CHANGELOG.md`, `RIPPLE_MAP.md`, `ARCHITECTURE.md` 等のドキュメント群をコードの最新状態に合わせて完全同期する。（ADRが必要かもここで判断）
 
-- `create_issue`: Issue作成
-- `get_issue`: Issue内容取得
-- `add_issue_comment`: コメント投稿（進捗/計画メモ）
-- `create_pull_request`: PR作成
-- `search_issues`: 関連タスク検索
+### Phase 4: Git Commit & Finish (完了)
+- Conventional Commitsのプレフィックスを用いてコミットします。
+  例: `feat: add Tremendous API gift engine (#123)`
+  例: `fix: resolve silent panic in biome decryption (#124)`
+- GitHub MCPが有効であればPRを作成し、なければ完了をユーザーに報告します。
 
-## コミットメッセージ規約
+---
 
-Issue番号を紐付けるため、以下の形式を推奨します：
+## 🧠 エージェントへの絶対指示 (Directives for AI)
 
-```
-feat: ユーザー認証機能を追加 (#123)
-fix: ログイン時のクラッシュを修正 (#124)
-```
-
-## 事前準備
-
-`mcp_config.json` にGitHub設定が必要です：
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_TOKEN"
-      }
-    }
-  }
-}
-```
+> **Agent Directive:**
+> あなたが `/task` コマンドを受け取った場合、ユーザーに「現在どのフェーズ（どの連鎖ワークフロー）を実行中か」を随時報告しながら、上記のパイプラインを**自律的に最後まで完遂**してください。
+> 各フェーズの移行ごとに、連鎖するワークフローの名前（例: `> 🔄 Transitioning to /perfect-plan`）を明示し、Aiomeの極限の堅牢性を保証してください。
