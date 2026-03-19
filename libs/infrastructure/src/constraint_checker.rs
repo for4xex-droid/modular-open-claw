@@ -77,15 +77,13 @@ impl ConstraintChecker {
             }
         }
 
-        if step.action == "fs_write" {
-            if !self.permission_manifest.allow_filesystem_write {
-                violations.push(ConstraintViolation {
-                    constraint_name: "FsWriteDenied".to_string(),
-                    expected: "allow_filesystem_write: true".to_string(),
-                    actual: "false".to_string(),
-                    severity: 100,
-                });
-            }
+        if step.action == "fs_write" && !self.permission_manifest.allow_filesystem_write {
+            violations.push(ConstraintViolation {
+                constraint_name: "FsWriteDenied".to_string(),
+                expected: "allow_filesystem_write: true".to_string(),
+                actual: "false".to_string(),
+                severity: 100,
+            });
         }
 
         // 3. Output Panic/Error detection

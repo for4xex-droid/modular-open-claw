@@ -29,6 +29,20 @@ pub trait CommerceEngine: Send + Sync {
         item_id: Uuid,
         metadata: serde_json::Value,
     ) -> Result<String, AiomeError>; // 戻り値はトランザクションID
+    /// 今日使用したコインの総額を取得する
+    async fn get_daily_spend(&self, agent_id: Uuid) -> Result<u64, AiomeError>;
+
+    /// 1日の使用上限を取得する
+    async fn get_daily_limit(&self, agent_id: Uuid) -> Result<u64, AiomeError>;
+
+    /// エスクロー（一時保留）決済を作成する
+    async fn escrow_create(&self, agent_id: Uuid, amount: u64) -> Result<String, AiomeError>;
+
+    /// ステーキング（証拠金預託）を行う
+    async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError>;
+
+    /// スラッシュ（罰則によるトークン没収）を実行する
+    async fn slash(&self, agent_id: Uuid, amount: u64, reason: &str) -> Result<(), AiomeError>;
 }
 
 /// 経済コンテキスト

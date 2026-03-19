@@ -3,7 +3,7 @@ import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { useDisplayMode } from '../hooks/useDisplayMode';
 import {
     Monitor, Lock, Database,
-    MessageSquare, Globe, Shield, Check, X, Loader2, Cpu, Plus
+    MessageSquare, Globe, Shield, Check, X, Loader2, Cpu, Plus, Mic, Brain
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch } from '../lib/auth';
@@ -378,7 +378,64 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </section>
 
-                {/* 4. Security & System */}
+
+                {/* 4. AI Training & Voice (NG-12) */}
+                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <Brain size={24} color="var(--accent-cyan)" />
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>AI Training & Voice</h3>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <SettingInput
+                            label="LoRA Adapter Path"
+                            value={getSetting('lora_adapter_path')}
+                            placeholder="/path/to/adapter"
+                            onBlur={(v) => update_setting_handler(v, 'lora_adapter_path', 'llm')}
+                            saving={saving === 'lora_adapter_path'}
+                        />
+                        <SettingInput
+                            label="LoRA Base Model"
+                            value={getSetting('lora_base_model')}
+                            placeholder="/path/to/base_model"
+                            onBlur={(v) => update_setting_handler(v, 'lora_base_model', 'llm')}
+                            saving={saving === 'lora_base_model'}
+                        />
+                        
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.5rem 0' }} />
+                        
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                                <Mic size={18} color="var(--accent-cyan)" />
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>Text-to-Speech (TTS)</label>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.7rem', opacity: 0.6 }}>Provider</label>
+                                    <select
+                                        value={getSetting('tts_provider')}
+                                        onChange={(e) => update_setting_handler(e.target.value, 'tts_provider', 'voice')}
+                                        style={selectStyle}
+                                    >
+                                        <option value="edge_tts">Edge TTS (Cloud)</option>
+                                        <option value="voicevox">Voicevox (Local)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <SettingInput
+                                        label="Voice Name / ID"
+                                        value={getSetting('tts_voice')}
+                                        placeholder="en-US-AriaNeural"
+                                        onBlur={(v) => update_setting_handler(v, 'tts_voice', 'voice')}
+                                        saving={saving === 'tts_voice'}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 5. Security & System */}
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Shield size={24} color="var(--accent-rose)" />

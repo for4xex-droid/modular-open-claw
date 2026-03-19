@@ -173,26 +173,44 @@ impl AutonomousBiomeEngine {
         let payload_to_sign = format!("{}:{}:{}", sender_pubkey, config.topic_id, clock);
         let signature = queue.sign_swarm_payload(&payload_to_sign).await?;
 
-        let msg = BiomeMessage {
-            sender_pubkey,
-            recipient_pubkey: config.peer_pubkey.clone(),
-            topic_id: config.topic_id.clone(),
-            content,
-            karma_root_cid: "cid_auto_v20".to_string(),
-            signature,
-            lamport_clock: clock,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            encryption: "none".to_string(),
-        };
-
-        // Try Hub relay, fallback to local if Hub fails (or if configured to bypass)
         let hub_url = std::env::var("SAMSARA_HUB_URL")
             .or_else(|_| std::env::var("SAMSARA_HUB_REST"))
             .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+        
         let hub_secret =
             std::env::var("FEDERATION_SECRET").map_err(|_| AiomeError::Infrastructure {
                 reason: "FEDERATION_SECRET missing for autonomous biome communication".to_string(),
             })?;
+
+        let msg = {
+            let mut m = BiomeMessage {
+                sender_pubkey,
+                recipient_pubkey: config.peer_pubkey.clone(),
+                topic_id: config.topic_id.clone(),
+                content,
+                karma_root_cid: "cid_auto_v20".to_string(),
+                signature: signature.clone(),
+                lamport_clock: clock,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                encryption: "none".to_string(),
+            };
+            
+            // Phase 6.9: Cryptographic enforcement (HKDF-like improvement)
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(b"aiome-biome-p2p");
+            hasher.update(hub_secret.as_bytes());
+            let derived = hasher.finalize();
+
+            let mut key = [0u8; 32];
+            key.copy_from_slice(&derived);
+
+            m.encrypt(&key).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to encrypt biome telemetry: {}", e),
+            })?;
+            m
+        };
+
         let client = crate::http::get_http_client();
 
         let res = client

@@ -32,7 +32,11 @@ while ! lsof -Pi :9999 -sTCP:LISTEN -t >/dev/null; do
 done
 echo "✅ Key-Proxy is ready (PID: $PROXY_PID)."
 
-# 4. Run Integration Tests
+# 4. Run Unit & Doc Tests (Workspace-wide)
+echo "🧪 Running unit and documentation tests..."
+cargo test --workspace --lib --bins --no-fail-fast
+
+# 5. Run Integration Tests
 echo "🧪 Running Zero-Trust integration tests..."
 export KEY_PROXY_URL="http://127.0.0.1:9999"
 if cargo test -p infrastructure --test zero_trust; then

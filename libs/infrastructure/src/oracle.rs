@@ -42,7 +42,8 @@ impl Oracle {
         );
 
         let engagement_rate = if views > 0 {
-            (likes as f64 / views as f64) * 100.0
+            let rate = (likes as f64 / views as f64) * 100.0;
+            rate.min(100.0) // NG-6 FIX: Clamp to 100% max
         } else {
             0.0
         };

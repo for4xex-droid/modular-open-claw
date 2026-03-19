@@ -20,7 +20,7 @@
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
-| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。 | **第3世代進化** |
+| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。Ollama の LoRA 動的ビルダ (`build_lora_model`) を統合済。 | **第3世代進化** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |

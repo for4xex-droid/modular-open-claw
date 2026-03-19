@@ -22,7 +22,7 @@ async fn test_circuit_breaker_lifecycle() {
         failure_threshold: 3,
         reset_timeout: Duration::from_millis(100),
     };
-    let cb = CircuitBreaker::new(config);
+    let cb = CircuitBreaker::new("test-service", config);
 
     // Initial state: Closed
     assert!(cb.check_state().await.is_ok());

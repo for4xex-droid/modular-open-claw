@@ -58,7 +58,7 @@ impl ArtifactStore for SqliteArtifactStore {
     ) -> Result<String, AiomeError> {
         let id = Uuid::new_v4().to_string();
         let timestamp = chrono::Utc::now();
-        let dir_name = format!("{}_{}", timestamp.format("%Y-%m-%d"), id[..8].to_string());
+        let dir_name = format!("{}_{}", timestamp.format("%Y-%m-%d"), &id[..8]);
 
         // 1. Create directory using PathSandbox for secure jail confinement
         let sandbox = PathSandbox::new(jail.root()).map_err(|e| AiomeError::Infrastructure {

@@ -69,8 +69,7 @@ pub fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
 
         let skill_name = before_brace
             .split(|c: char| !c.is_alphanumeric() && c != '_')
-            .filter(|s| !s.is_empty())
-            .last()
+            .rfind(|s| !s.is_empty())
             .unwrap_or("")
             .to_string();
 
@@ -365,11 +364,15 @@ pub async fn trigger_agent_chat(
 
     let mut economic_context = None;
     if let Some(engine) = &state.commerce_engine {
-        if let Ok(balance) = engine.get_balance(_auth.agent_id).await {
+        if let (Ok(balance), Ok(spent_today), Ok(daily_limit)) = (
+            engine.get_balance(_auth.agent_id).await,
+            engine.get_daily_spend(_auth.agent_id).await,
+            engine.get_daily_limit(_auth.agent_id).await,
+        ) {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,
-                spent_today: 0,
-                daily_limit: 1000,
+                spent_today,
+                daily_limit,
             });
         }
     }
@@ -401,6 +404,14 @@ pub async fn trigger_agent_chat(
             current_history.join("\n"),
             payload.prompt
         );
+
+        // Phase 6.9: Prevent API abuse & Bind Economy (NG-25 Fix)
+        if let Some(engine) = &state.commerce_engine {
+             if let Err(e) = engine.validate_activity(_auth.agent_id, "inference", 1).await {
+                  tracing::warn!("💰 [Economy] Activity blocked by Commerce Engine: {}", e);
+                  return Err(crate::error::AppError(e));
+             }
+        }
         let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
             tracing::error!("Failed to acquire LLM permit: {}", e);
             crate::error::AppError(aiome_core::error::AiomeError::Infrastructure {
@@ -418,6 +429,18 @@ pub async fn trigger_agent_chat(
                 let reply = resp.content.trim().to_string();
                 final_reply = reply.clone();
                 let mut skill_results = Vec::new();
+
+                // Phase 6.9: Charge Economy Engine for LLM Usage (NG-25 Fix)
+                if let Some(engine) = &state.commerce_engine {
+                    let inference_id = uuid::Uuid::new_v4();
+                    if let Err(e) = engine.execute_autonomous_purchase(
+                        _auth.agent_id, 
+                        inference_id, 
+                        serde_json::json!({"action": "inference", "tokens": full_prompt.len()})
+                    ).await {
+                        tracing::warn!("💰 [Economy] Failed to record token consumption: {}", e);
+                    }
+                }
 
                 let calls = parse_tool_calls(&reply);
                 for (skill_name, skill_input) in calls {

@@ -85,4 +85,38 @@ impl ExpressionEngine {
             created_at: Utc::now().to_rfc3339(),
         })
     }
+
+    /// NG-22: Synthesize audio using OpenAI API
+    pub async fn synthesize_audio_openai(
+        text: &str,
+        voice: &str,
+        api_key: &str,
+    ) -> Result<(Vec<u8>, u64), AiomeError> {
+        let client = crate::http::get_http_client();
+        let payload = serde_json::json!({
+            "model": "tts-1",
+            "input": text,
+            "voice": voice
+        });
+        
+        let resp = client.post("https://api.openai.com/v1/audio/speech")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure { reason: format!("TTS request failed: {}", e) })?;
+            
+        if !resp.status().is_success() {
+             let status = resp.status();
+             let err = resp.text().await.unwrap_or_default();
+             return Err(AiomeError::Infrastructure { reason: format!("TTS api failed [{}]: {}", status, err) });
+        }
+        
+        let audio_bytes = resp.bytes().await.map_err(|_| AiomeError::Infrastructure { reason: "Failed to read audio bytes".into() })?;
+        
+        // Approximate duration: ~75ms per character (generic heuristic)
+        let duration_ms = (text.chars().count() as u64) * 75;
+        
+        Ok((audio_bytes.to_vec(), duration_ms))
+    }
 }

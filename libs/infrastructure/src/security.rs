@@ -143,24 +143,27 @@ impl RuntimeJail for BastionGuard {
         }
 
         // 5. Script Engine and Command Constraints (Red Team fix)
-        if (binary == "python3" || binary == "python")
-            && (args.contains(&"-c") || args.contains(&"-m"))
-        {
-            return Err(AiomeError::Infrastructure {
-                reason: "Security Violation: python -c/-m is forbidden.".into(),
-            });
-        }
-        if binary == "node" && (args.contains(&"-e") || args.contains(&"--eval")) {
-            return Err(AiomeError::Infrastructure {
-                reason: "Security Violation: node -e is forbidden.".into(),
-            });
-        }
-        if (binary == "find" || binary == "xargs")
-            && (args.contains(&"-exec") || args.contains(&"-I"))
-        {
-            return Err(AiomeError::Infrastructure {
-                reason: "Security Violation: find -exec or xargs -I is forbidden.".into(),
-            });
+        // DS-19 FIX: Allow system internal calls to bypass these restrictions for LoRA/System tasks
+        if !self.is_system_internal {
+            if (binary == "python3" || binary == "python")
+                && (args.contains(&"-c") || args.contains(&"-m"))
+            {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: python -c/-m is forbidden.".into(),
+                });
+            }
+            if binary == "node" && (args.contains(&"-e") || args.contains(&"--eval")) {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: node -e is forbidden.".into(),
+                });
+            }
+            if (binary == "find" || binary == "xargs")
+                && (args.contains(&"-exec") || args.contains(&"-I"))
+            {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Security Violation: find -exec or xargs -I is forbidden.".into(),
+                });
+            }
         }
 
         // 6. Path Canonicalization & Strict traversal check (SEC-Whitelist)
@@ -324,6 +327,8 @@ impl BastionGuard {
         if !current.is_empty() {
             parts.push(current);
         }
+        // NOTE: If in_double_quote or in_single_quote is true here, the quote was never closed.
+        // We currently just keep the content, which is safer than dropping it or panicking.
         parts
     }
 }

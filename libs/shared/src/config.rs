@@ -27,6 +27,8 @@ pub struct AiomeConfig {
     pub samsara_hub_url: String,
     /// CORS許可オリジンのリスト
     pub allowed_origins: Vec<String>,
+    /// DRM保護（Abyss Vault）の物理パス
+    pub abyss_vault_path: String,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -42,6 +44,8 @@ pub const DEFAULT_ALLOWED_ORIGINS: &str =
 pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
 /// Ruri埋め込みサーバーのデフォルトURL
 pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
+/// Abyss Vaultのデフォルトパス
+pub const DEFAULT_ABYSS_VAULT_PATH: &str = "~/.aiome/abyss_vault";
 
 impl AiomeConfig {
     /// 環境変数から設定を読み込む
@@ -74,6 +78,9 @@ impl AiomeConfig {
             .map(|s| s.trim().to_string())
             .collect();
 
+        let abyss_vault_path =
+            env::var("ABYSS_VAULT_PATH").unwrap_or_else(|_| DEFAULT_ABYSS_VAULT_PATH.to_string());
+
         // Load and immediately remove sensitive API keys
         let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|key| {
             env::remove_var("GEMINI_API_KEY");
@@ -102,6 +109,7 @@ impl AiomeConfig {
             key_proxy_url,
             samsara_hub_url,
             allowed_origins,
+            abyss_vault_path,
         })
     }
 

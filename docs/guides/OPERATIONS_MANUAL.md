@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.0  
-**Last Updated:** 2026-03-17
+**Version:** 3.1  
+**Last Updated:** 2026-03-19
 
 ---
 
@@ -62,6 +62,7 @@ SAMSARA_HUB_WS=ws://127.0.0.1:3016/api/v1/federation/ws  # Hub WebSocket
 ALLOWED_ORIGINS=http://localhost:1420,http://localhost:5173  # CORS許可オリジン
 EMBEDDING_PROVIDER=ruri                          # 埋め込みプロバイダー (ruri/gemini/ollama)
 RURI_EMBED_URL=http://localhost:8100             # RuriサーバーURL
+ABYSS_VAULT_PATH=~/.aiome/abyss_vault            # APIキー物理隔離ディレクトリ
 ```
 
 > **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。
@@ -112,6 +113,7 @@ AIの性格や話し方を定義するファイルです。オンボーディン
 - Avatar（性別・スタイル）
 - LLM Provider（フロントエンド / バックグラウンド）
 - Background LLM（プロバイダー / モデル / APIキー）
+- AI Training & Voice（LoRAアダプタ、ベースモデル、TTS音声プロバイダの設定）
 
 ---
 

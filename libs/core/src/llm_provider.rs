@@ -36,6 +36,47 @@ impl OllamaProvider {
             client: crate::http::get_http_client().clone(),
         }
     }
+
+    /// NG-21: 動的にLoRAモデルをOllamaへビルド・登録する
+    pub async fn build_lora_model(
+        host: &str,
+        base_model: &str,
+        adapter_path: &str,
+        new_model_name: &str,
+    ) -> Result<(), AiomeError> {
+        tracing::info!("🛠️ [Ollama] Building LoRA model: {} (Base: {}, Adapter: {})", new_model_name, base_model, adapter_path);
+        
+        let client = crate::http::get_http_client();
+        let modelfile = format!("FROM {}\nADAPTER \"{}\"\n", base_model, adapter_path);
+
+        let url = format!("{}/api/create", host);
+        let payload = serde_json::json!({
+            "name": new_model_name,
+            "modelfile": modelfile,
+            "stream": false
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to request Ollama model build: {}", e),
+            })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let err_text = resp.text().await.unwrap_or_default();
+            tracing::error!("🚨 [Ollama] Build failed: {}", err_text);
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Ollama model build failed [{}]: {}", status, err_text),
+            });
+        }
+        
+        tracing::info!("✅ [Ollama] Successfully built LoRA model: {}", new_model_name);
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -1247,6 +1288,7 @@ impl EmbeddingProvider for RuriProvider {
 /// Infrastructure テスト用のモックLLM
 #[derive(Debug, Clone, Default)]
 pub struct MockLlmProvider {
+    /// Mock response content.
     pub response: String,
 }
 
@@ -1274,7 +1316,14 @@ impl LlmProvider for MockLlmProvider {
         Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
         AiomeError,
     > {
-        unimplemented!()
+        let response = if self.response.is_empty() {
+            "{\"winner\": \"Skill A\", \"reasoning\": \"Mock victory\"}".to_string()
+        } else {
+            self.response.clone()
+        };
+
+        let stream = tokio_stream::iter(vec![Ok(response)]);
+        Ok(Box::pin(stream))
     }
     async fn test_connection(&self) -> Result<(), AiomeError> {
         Ok(())
@@ -1292,7 +1341,7 @@ mod tests {
 
     #[test]
     fn test_provider_initialization_and_names() {
-        let client = reqwest::Client::new();
+        let client = crate::http::get_http_client().clone();
 
         let ollama =
             OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string());
@@ -1332,7 +1381,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = reqwest::Client::new();
+        let client = crate::http::get_http_client().clone();
         let provider = LmStudioProvider::new(client, mock_server.uri(), "test-model".to_string());
 
         let result = provider.complete("Say hello", Some("System prompt")).await;

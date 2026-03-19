@@ -17,11 +17,10 @@ const ImmuneSystem: React.FC = () => {
             if (res.ok) {
                 const data: ImmuneRule[] = await res.json();
 
-                // Map backend severity (0-100) to UI risk
                 const mapped = data.map(r => ({
                     ...r,
                     risk: r.severity > 80 ? "CRITICAL" : r.severity > 50 ? "HIGH" : "MEDIUM",
-                    active: true // Backend doesn't have active field, assume true
+                    active: r.approval_status === "Approved" // Reflect actual status
                 }));
                 setRules(mapped);
             }
@@ -258,7 +257,7 @@ const ImmuneSystem: React.FC = () => {
                                             </span>
                                         </div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                            Action: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{rule.action}</span> • Status: <span style={{ color: 'var(--accent-emerald)' }}>Active</span>
+                                            Action: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{rule.action}</span> • Status: <span style={{ color: rule.active ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>{rule.approval_status}</span>
                                         </div>
                                     </div>
                                 </div>

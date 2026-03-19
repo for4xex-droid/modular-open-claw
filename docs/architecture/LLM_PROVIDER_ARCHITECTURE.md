@@ -1,8 +1,8 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.0  
-**Last Updated:** 2026-03-17  
-**Author:** Antigraivty Agent / motivationstudio
+**Version:** 1.1
+**Last Updated:** 2026-03-19  
+**Author:** Antigravity Agent / motivationstudio
 
 ---
 
@@ -59,6 +59,9 @@ LLM の接続先は以下の優先順位で解決されます：
 | Claude | `claude` | `ANTHROPIC_API_KEY` | API直接 |
 | LM Studio | `lmstudio` | 不要 | `lm_studio_host` / `http://127.0.0.1:1234` |
 | Ollama | `ollama` (default) | 不要 | `ollama_host` / `AiomeConfig.ollama_host` |
+
+#### 3.1.1 Ollama LoRA 動的ビルド (Phase 6.8 実装)
+`OllamaProvider` は設定の変更 (`lora_adapter_path`, `lora_base_model`) をフックして、Ollamaのバックエンドに直接 `Modelfile` ( `FROM <base> \n ADAPTER <path>` ) を生成・リクエストし、新しいチューニング済みモデルを動的ビルド (`build_lora_model`) する機能を備えています。APIからのパラメータ挿入の限界を回避し、ローカル環境での完全なファインチューニング適用を実現します。
 
 ### 3.2 回復力機能
 

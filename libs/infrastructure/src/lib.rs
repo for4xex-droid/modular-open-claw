@@ -68,4 +68,8 @@ pub mod user_learner;
 /// 入出力データの検証
 pub mod validator;
 pub mod workspace_manager;
+
+#[cfg(test)]
+pub mod test_utils;
+mod soul_store_tests;
 mod workspace_manager_tests;

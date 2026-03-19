@@ -174,6 +174,8 @@ pub fn http_client_with_timeout(timeout: Duration) -> Result<reqwest::Client, re
     reqwest::Client::builder()
         .timeout(timeout)
         .connect_timeout(Duration::from_secs(5))
+        // SEC-5 FIX: SSRF prevention via redirect blocking
+        .redirect(reqwest::redirect::Policy::none())
         .build()
 }
 

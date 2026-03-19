@@ -148,12 +148,7 @@ async fn main() {
         chrono::Duration::hours(24),
     ));
 
-    let http_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .pool_idle_timeout(std::time::Duration::from_secs(90))
-        .redirect(reqwest::redirect::Policy::none()) // C5: Harden SSRF by disabling redirects
-        .build()
-        .unwrap_or_default();
+    let http_client = aiome_core::http::get_http_client().clone();
 
     let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
         jq: job_queue.clone(),
@@ -1466,7 +1461,9 @@ pub fn build_app(
                 .into_inner()
         )
         // --- Layer 0: Payload Protection ---
-        .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB max request body
+        // G-20 FIX: Increased to 512MB to accommodate Voice Core (.pth) and LoRA uploads.
+        // NOTE: Individual route-level limits will be implemented once upload handlers are finalized.
+        .layer(RequestBodyLimitLayer::new(512 * 1024 * 1024))
 }
 
 #[cfg(test)]

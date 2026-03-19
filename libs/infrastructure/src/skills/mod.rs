@@ -166,7 +166,7 @@ impl WasmSkillManager {
         if let Ok(entries) = std::fs::read_dir(&self.skills_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |ext| ext == "json")
+                if path.extension().is_some_and(|ext| ext == "json")
                     && path.to_string_lossy().ends_with(".meta.json")
                 {
                     if let Ok(data) = std::fs::read_to_string(&path) {
@@ -229,11 +229,7 @@ impl WasmSkillManager {
         }
         let wasm_bytes = {
             let cache = self.wasm_cache.read().unwrap_or_else(|e| e.into_inner());
-            if let Some(data) = cache.get(skill_name) {
-                Some(data.clone())
-            } else {
-                None
-            }
+            cache.get(skill_name).cloned()
         };
 
         let wasm_data = match wasm_bytes {
@@ -306,7 +302,7 @@ impl WasmSkillManager {
                 [ValType::I64],
                 UserData::new(()),
                 move |plugin, inputs, outputs, _user_data| {
-                    let cmd_ptr = inputs.get(0).and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
+                    let cmd_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
                     let handle = plugin.memory_handle(cmd_ptr).ok_or_else(|| extism::Error::msg("Invalid memory handle"))?;
                     let cmd_str: String = plugin.memory_str(handle).map_err(|e: extism::Error| e)?.to_string();
                     let guard = BastionGuard::new(host_exec_permissions.clone());
@@ -336,7 +332,7 @@ impl WasmSkillManager {
                 [ValType::I64],
                 UserData::new(()),
                 move |plugin, inputs, outputs, _user_data| {
-                    let json_ptr = inputs.get(0).and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
+                    let json_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
                     let handle = plugin.memory_handle(json_ptr).ok_or_else(|| extism::Error::msg("Invalid memory handle for host_write"))?;
                     let req_str = plugin.memory_str(handle).map_err(|e: extism::Error| e)?;
 
@@ -398,7 +394,7 @@ impl WasmSkillManager {
             plugin.call::<&str, String>(&func_name_str, &input_str)
                 .map_err(|e| {
                     if e.to_string().to_lowercase().contains("timeout") {
-                        format!("WASM execution timed out")
+                        "WASM execution timed out".to_string()
                     } else {
                         format!("WASM execution error: {}", e)
                     }
@@ -531,10 +527,10 @@ impl WasmSkillManager {
         let instance: serde_json::Value = serde_json::from_str(&output)?;
 
         let compiled = JSONSchema::compile(&schema_val).map_err(|e| {
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Schema compilation failed: {}", e),
-            )) as Box<dyn std::error::Error + Send + Sync>
+            Box::new(std::io::Error::other(format!(
+                "Schema compilation failed: {}",
+                e
+            ))) as Box<dyn std::error::Error + Send + Sync>
         })?;
 
         if let Err(mut errors) = compiled.validate(&instance) {

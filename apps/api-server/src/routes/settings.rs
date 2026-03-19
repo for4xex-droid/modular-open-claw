@@ -102,6 +102,10 @@ pub async fn update_setting(
         "ai_name",
         "ai_motto",
         "ai_vrm_url",
+        "lora_adapter_path",
+        "lora_base_model",
+        "tts_provider",
+        "tts_voice",
     ];
 
     if !allowed_keys.contains(&payload.key.as_str()) {
@@ -116,7 +120,7 @@ pub async fn update_setting(
     }
 
     // 2. Category validation
-    let allowed_categories = ["llm", "channel", "system", "security", "cors", "identity"];
+    let allowed_categories = ["llm", "channel", "system", "security", "cors", "identity", "voice"];
     if !allowed_categories.contains(&payload.category.as_str()) {
         return Err(
             aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
@@ -156,6 +160,44 @@ pub async fn update_setting(
         .job_queue
         .update_setting(&payload.key, &payload.value, &payload.category, is_secret)
         .await?;
+
+    // Phase 6.5: Sync hook for AgentSoul
+    if payload.key == "lora_adapter_path" || payload.key == "lora_base_model" {
+        if let Ok(Some(mut soul)) = state.soul_store.load_soul("system-soul").await {
+            let val = if payload.value.is_empty() { None } else { Some(payload.value.clone()) };
+            if payload.key == "lora_adapter_path" {
+                soul.lora_adapter_path = val;
+            } else {
+                soul.lora_base_model = val;
+            }
+            if let Err(e) = state.soul_store.save_soul(&soul).await {
+                tracing::error!("Failed to sync AgentSoul for key {}: {:?}", payload.key, e);
+            } else {
+                tracing::info!("🔄 [Settings] AgentSoul synchronized with new {}", payload.key);
+                
+                // NG-21: Kick-off Ollama model build dynamically
+                if let (Some(base), Some(adapter)) = (soul.lora_base_model.clone(), soul.lora_adapter_path.clone()) {
+                    let host = state.job_queue
+                        .get_setting_value("ollama_host")
+                        .await
+                        .unwrap_or_else(|_| Some("http://localhost:11434".to_string()))
+                        .unwrap_or_else(|| "http://localhost:11434".to_string());
+                    
+                    let new_model = format!("{}-lora", base.replace(':', "-"));
+                    let q = state.job_queue.clone();
+                    
+                    tokio::spawn(async move {
+                        if let Err(e) = aiome_core::llm_provider::OllamaProvider::build_lora_model(&host, &base, &adapter, &new_model).await {
+                            tracing::error!("❌ [Ollama] Async LoRA Build Failed: {}", e);
+                        } else {
+                            // Automatically update the config to use the new LoRA model
+                            let _ = q.update_setting("ollama_model", &new_model, "llm", false).await;
+                        }
+                    });
+                }
+            }
+        }
+    }
 
     Ok(Json(serde_json::json!({"status": "ok"})))
 }

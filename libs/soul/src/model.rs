@@ -26,6 +26,12 @@ pub struct AgentSoul {
     pub instinct: Instinct,
     pub anamnesis: crate::anamnesis::AnamnesisProfile,
     pub experience_buffer: Vec<Experience>,
+
+    // LoRA / Model Fine-tuning integration (G-13)
+    #[serde(default)]
+    pub lora_adapter_path: Option<String>,
+    #[serde(default)]
+    pub lora_base_model: Option<String>,
 }
 
 impl AgentSoul {
@@ -41,6 +47,8 @@ impl AgentSoul {
             instinct: Instinct::default(),
             anamnesis: crate::anamnesis::AnamnesisProfile::default(),
             experience_buffer: Vec::new(),
+            lora_adapter_path: None,
+            lora_base_model: None,
         };
         soul.compute_hash();
         soul

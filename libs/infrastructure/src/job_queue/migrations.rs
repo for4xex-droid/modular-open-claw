@@ -455,6 +455,8 @@ impl DbInitializer for SqliteJobQueue {
                 instinct_json TEXT NOT NULL,
                 anamnesis_json TEXT NOT NULL DEFAULT '{}',
                 experience_buffer_json TEXT NOT NULL,
+                lora_adapter_path TEXT,
+                lora_base_model TEXT,
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
@@ -464,16 +466,17 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create agent_souls table: {}", e),
         })?;
 
-        // Migration for Step 6: Anamnesis Profile
-        if let Err(e) = sqlx::query(
+        // Migration for Step 6: Anamnesis Profile & LoRA Adaptation (NG-8)
+        for migration in [
             "ALTER TABLE agent_souls ADD COLUMN anamnesis_json TEXT NOT NULL DEFAULT '{}';",
-        )
-        .execute(&self.pool)
-        .await
-        {
-            let msg = e.to_string();
-            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
-                warn!("⚠️ [DbInitializer] Migration anamnesis_json failed: {}", e);
+            "ALTER TABLE agent_souls ADD COLUMN lora_adapter_path TEXT;",
+            "ALTER TABLE agent_souls ADD COLUMN lora_base_model TEXT;",
+        ] {
+            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                    warn!("⚠️ [DbInitializer] Migration failed ({}): {}", migration, e);
+                }
             }
         }
 

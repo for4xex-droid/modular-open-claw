@@ -42,6 +42,7 @@ impl ProjectKnowledgeIndexer {
     pub async fn run_indexing(&self) -> Result<(), AiomeError> {
         info!("📚 [KnowledgeIndexer] Starting project knowledge indexing...");
 
+        const MAX_INDEX_DEPTH: usize = 5; // DS-8: Depth limit to prevent scan runaway
         // Scan docs directory
         let docs_dir = self.workspace_root.join("docs");
         let arch_file = self.workspace_root.join("ARCHITECTURE.md");
@@ -52,11 +53,22 @@ impl ProjectKnowledgeIndexer {
         }
 
         if docs_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(docs_dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
-                        files_to_index.push(path);
+            let mut stack = vec![(docs_dir, 0)]; // (path, current_depth)
+            while let Some((dir, depth)) = stack.pop() {
+                if depth > MAX_INDEX_DEPTH {
+                    warn!("⚠️ [KnowledgeIndexer] Skip deep directory: {:?}", dir);
+                    continue;
+                }
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            stack.push((path, depth + 1));
+                        } else if path.is_file()
+                            && path.extension().map(|e| e == "md").unwrap_or(false)
+                        {
+                            files_to_index.push(path);
+                        }
                     }
                 }
             }

@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use aiome_core::traits::JobQueue;
 use axum::{
     extract::State,
@@ -17,6 +24,8 @@ pub struct SoulStatusResponse {
     pub somatic_markers_count: usize,
     pub soul_resonance_avg: f64,
     pub karma_resonance: i32,
+    pub lora_adapter_path: Option<String>,
+    pub lora_base_model: Option<String>,
 }
 
 pub async fn get_soul_status(
@@ -31,6 +40,8 @@ pub async fn get_soul_status(
         somatic_markers_count: 0,
         soul_resonance_avg: 0.0,
         karma_resonance: 0,
+        lora_adapter_path: None,
+        lora_base_model: None,
     };
 
     // RS-6: Distinguish karma resonance from soul resonance
@@ -45,6 +56,8 @@ pub async fn get_soul_status(
             response.attachment_style = format!("{:?}", soul.attachment.style);
             response.active_defenses_count = soul.defenses.len();
             response.somatic_markers_count = soul.somatic_markers.len();
+            response.lora_adapter_path = soul.lora_adapter_path.clone();
+            response.lora_base_model = soul.lora_base_model.clone();
 
             if !soul.somatic_markers.is_empty() {
                 let sum: f64 = soul

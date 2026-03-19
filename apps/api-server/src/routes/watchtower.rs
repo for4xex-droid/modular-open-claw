@@ -39,7 +39,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let mut relay_task = tokio::spawn(async move {
         while let Ok(event) = broadcast_rx.recv().await {
             if let Ok(json) = serde_json::to_string(&event) {
-                if sender.send(Message::Text(json.into())).await.is_err() {
+                if sender.send(Message::Text(json)).await.is_err() {
                     break;
                 }
             }
@@ -166,11 +166,15 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
                 );
                 uuid::Uuid::nil()
             });
-        if let Ok(balance) = engine.get_balance(agent_id).await {
+        if let (Ok(balance), Ok(spent_today), Ok(daily_limit)) = (
+            engine.get_balance(agent_id).await,
+            engine.get_daily_spend(agent_id).await,
+            engine.get_daily_limit(agent_id).await,
+        ) {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,
-                spent_today: 0,
-                daily_limit: 1000,
+                spent_today,
+                daily_limit,
             });
         }
     }

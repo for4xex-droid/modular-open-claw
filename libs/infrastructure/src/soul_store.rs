@@ -92,8 +92,9 @@ impl SqliteSoulStore {
             INSERT INTO agent_souls (
                 id, generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
-                instinct_json, anamnesis_json, experience_buffer_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                instinct_json, anamnesis_json, experience_buffer_json,
+                lora_adapter_path, lora_base_model, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
                 generation=excluded.generation,
                 soul_hash=excluded.soul_hash,
@@ -104,6 +105,8 @@ impl SqliteSoulStore {
                 instinct_json=excluded.instinct_json,
                 anamnesis_json=excluded.anamnesis_json,
                 experience_buffer_json=excluded.experience_buffer_json,
+                lora_adapter_path=excluded.lora_adapter_path,
+                lora_base_model=excluded.lora_base_model,
                 updated_at=datetime('now')
             "#,
         )
@@ -117,6 +120,8 @@ impl SqliteSoulStore {
         .bind(instinct_json)
         .bind(anamnesis_json)
         .bind(buffer_json)
+        .bind(&soul.lora_adapter_path)
+        .bind(&soul.lora_base_model)
         .execute(&*self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
@@ -170,7 +175,8 @@ impl SqliteSoulStore {
             SELECT
                 generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
-                instinct_json, anamnesis_json, experience_buffer_json
+                instinct_json, anamnesis_json, experience_buffer_json,
+                lora_adapter_path, lora_base_model
             FROM agent_souls
             WHERE id = ?
             "#,
@@ -229,6 +235,8 @@ impl SqliteSoulStore {
                 instinct: parsed_instinct,
                 anamnesis: parsed_anamnesis,
                 experience_buffer: parsed_buffer,
+                lora_adapter_path: r.get("lora_adapter_path"),
+                lora_base_model: r.get("lora_base_model"),
             };
 
             // RS-1: Update cache on explicit load

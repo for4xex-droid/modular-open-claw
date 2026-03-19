@@ -103,7 +103,7 @@ impl TrajectoryOps for SqliteJobQueue {
             let input = serde_json::from_str(&input_str).unwrap_or(serde_json::Value::Null);
             let output = serde_json::from_str(&output_str).unwrap_or(serde_json::Value::Null);
             let constraint_violations = serde_json::from_str(&violations_str).unwrap_or_default();
-            let failure_category = failure_cat_str.and_then(|s| FailureCategory::from_str(&s));
+            let failure_category = failure_cat_str.and_then(|s| s.parse().ok());
 
             steps.push(TrajectoryStep {
                 step_id: step_id as u32,
@@ -163,8 +163,7 @@ impl TrajectoryOps for SqliteJobQueue {
             let hint: String = row.get("self_repair_hint");
             let diagn_at: String = row.get("diagnosed_at");
 
-            let category =
-                FailureCategory::from_str(&cat_str).unwrap_or(FailureCategory::SystemFailure);
+            let category = cat_str.parse().unwrap_or(FailureCategory::SystemFailure);
             let evidence = serde_json::from_str(&evidence_str).unwrap_or_default();
 
             Ok(Some(AgentDiagnosis {

@@ -36,4 +36,24 @@ impl CommerceEngine for MockCommerceEngine {
     ) -> Result<String, AiomeError> {
         Ok(Uuid::new_v4().to_string()) // ダミーのトランザクションID
     }
+
+    async fn get_daily_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(0) // デフォルトで 0 支出
+    }
+
+    async fn get_daily_limit(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(1000) // 1000 回のデフォルトリミット
+    }
+
+    async fn escrow_create(&self, _agent_id: Uuid, _amount: u64) -> Result<String, AiomeError> {
+        Ok(format!("escrow-{}", Uuid::new_v4()))
+    }
+
+    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
 }

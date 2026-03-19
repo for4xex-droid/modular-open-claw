@@ -62,7 +62,7 @@ impl AgentRxDiagnostics {
 
         let step_id = v["critical_failure_step"].as_u64().unwrap_or(0) as u32;
         let cat_str = v["failure_category"].as_str().unwrap_or("SystemFailure");
-        let category = FailureCategory::from_str(cat_str).unwrap_or(FailureCategory::SystemFailure);
+        let category = cat_str.parse().unwrap_or(FailureCategory::SystemFailure);
         let root_cause = v["root_cause"].as_str().unwrap_or("Unknown").to_string();
         let hint = v["self_repair_hint"].as_str().unwrap_or("").to_string();
 

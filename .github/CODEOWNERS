@@ -59,6 +59,20 @@
 /libs/infrastructure/src/job_queue/migrations.rs  @motista
 
 # ──────────────────────────────────────
+# LLM & AI Core (NG-11)
+# ──────────────────────────────────────
+/libs/infrastructure/src/llm/           @motista
+/libs/core/src/llm_provider.rs         @motista
+/libs/infrastructure/src/soul_store.rs @motista
+/libs/soul/                             @motista
+
+# ──────────────────────────────────────
+# Commerce & Marketplace
+# ──────────────────────────────────────
+/libs/infrastructure/src/commerce*      @motista
+/libs/infrastructure/src/artifact_store.rs @motista
+
+# ──────────────────────────────────────
 # Legal & Governance
 # ──────────────────────────────────────
 /LICENSE*                               @motista

@@ -100,7 +100,9 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🧠 **完全自律思考 (Autonomous loop)**: ユーザーの指示なしで、24時間トレンドを監視し、企画からタスク実行までを全自動化。
 - ⚡ **ストリーミング Agent Console**: 思考プロセス（1文字ずつの出力）とツール実行（WASM Skill）をリアルタイムに可視化する SSE ベースのチャットインターフェース。
 - 🛡️ **自律型免疫システム (Autonomous Defense)**: バックグラウンドワーカーが失敗ログ（Karma）を常に分析し、脆弱性や攻撃パターンに対する新しい防御ルールを自動生成・運用（Auto-Healing）。
-- 🌐 **Samsara Federation Sync**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期し、ネットワーク全体で集合知を形成。
+- 🗣️ **TTS Expression Engine**: Connects AI's inner emotional states to speech synthesis APIs (like OpenAI `tts-1`) to autonomously generate local `.mp3` voice expressions.
+- ⚙️ **Dynamic Ollama LoRA Builder**: AI can decide on optimal fine-tuned layers and issue automated rebuilds via Ollama backend to perfectly inject persona traits on-the-fly.
+- 🌐 **Samsara Federation Sync**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期し、ネットワーク全体で集合知を形成。Biome P2P telemetry traffic is further secured with robust symmetric encryption passing through the central hubs to prevent eavesdropping and data manipulation.
 
 ---
 

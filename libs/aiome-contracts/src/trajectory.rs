@@ -32,35 +32,38 @@ pub enum FailureCategory {
     SystemFailure,
 }
 
-impl ToString for FailureCategory {
-    fn to_string(&self) -> String {
-        match self {
-            Self::PlanAdherenceFailure => "PlanAdherenceFailure".to_string(),
-            Self::InventionOfNewInformation => "InventionOfNewInformation".to_string(),
-            Self::InvalidInvocation => "InvalidInvocation".to_string(),
-            Self::MisinterpretationOfOutput => "MisinterpretationOfOutput".to_string(),
-            Self::IntentPlanMisalignment => "IntentPlanMisalignment".to_string(),
-            Self::UnderSpecifiedIntent => "UnderSpecifiedIntent".to_string(),
-            Self::IntentNotSupported => "IntentNotSupported".to_string(),
-            Self::GuardrailsTriggered => "GuardrailsTriggered".to_string(),
-            Self::SystemFailure => "SystemFailure".to_string(),
-        }
+impl std::fmt::Display for FailureCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::PlanAdherenceFailure => "PlanAdherenceFailure",
+            Self::InventionOfNewInformation => "InventionOfNewInformation",
+            Self::InvalidInvocation => "InvalidInvocation",
+            Self::MisinterpretationOfOutput => "MisinterpretationOfOutput",
+            Self::IntentPlanMisalignment => "IntentPlanMisalignment",
+            Self::UnderSpecifiedIntent => "UnderSpecifiedIntent",
+            Self::IntentNotSupported => "IntentNotSupported",
+            Self::GuardrailsTriggered => "GuardrailsTriggered",
+            Self::SystemFailure => "SystemFailure",
+        };
+        write!(f, "{}", s)
     }
 }
 
-impl FailureCategory {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for FailureCategory {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "PlanAdherenceFailure" => Some(Self::PlanAdherenceFailure),
-            "InventionOfNewInformation" => Some(Self::InventionOfNewInformation),
-            "InvalidInvocation" => Some(Self::InvalidInvocation),
-            "MisinterpretationOfOutput" => Some(Self::MisinterpretationOfOutput),
-            "IntentPlanMisalignment" => Some(Self::IntentPlanMisalignment),
-            "UnderSpecifiedIntent" => Some(Self::UnderSpecifiedIntent),
-            "IntentNotSupported" => Some(Self::IntentNotSupported),
-            "GuardrailsTriggered" => Some(Self::GuardrailsTriggered),
-            "SystemFailure" => Some(Self::SystemFailure),
-            _ => None,
+            "PlanAdherenceFailure" => Ok(Self::PlanAdherenceFailure),
+            "InventionOfNewInformation" => Ok(Self::InventionOfNewInformation),
+            "InvalidInvocation" => Ok(Self::InvalidInvocation),
+            "MisinterpretationOfOutput" => Ok(Self::MisinterpretationOfOutput),
+            "IntentPlanMisalignment" => Ok(Self::IntentPlanMisalignment),
+            "UnderSpecifiedIntent" => Ok(Self::UnderSpecifiedIntent),
+            "IntentNotSupported" => Ok(Self::IntentNotSupported),
+            "GuardrailsTriggered" => Ok(Self::GuardrailsTriggered),
+            "SystemFailure" => Ok(Self::SystemFailure),
+            _ => Err(()),
         }
     }
 }

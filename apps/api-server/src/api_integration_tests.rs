@@ -32,6 +32,22 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
     fn name(&self) -> &str {
         "Dummy"
     }
+
+    async fn stream_complete(
+        &self,
+        _prompt: &str,
+        _sys: Option<&str>,
+    ) -> Result<
+        std::pin::Pin<
+            Box<dyn tokio_stream::Stream<Item = Result<String, aiome_core::error::AiomeError>> + Send>,
+        >,
+        aiome_core::error::AiomeError,
+    > {
+        let s = async_stream::stream! {
+            yield Ok("Dummy Stream".to_string());
+        };
+        Ok(Box::pin(s))
+    }
 }
 
 async fn create_test_server() -> (TestServer, tempfile::TempDir) {

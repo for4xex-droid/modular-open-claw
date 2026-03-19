@@ -45,6 +45,7 @@ export interface ImmuneRule {
     severity: number;
     action: string;
     created_at: string;
+    approval_status: 'Pending' | 'Approved' | 'Rejected' | 'Quarantined';
     risk?: string;
     active?: boolean;
 }

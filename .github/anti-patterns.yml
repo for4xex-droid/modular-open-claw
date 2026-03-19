@@ -1,0 +1,27 @@
+# Aiome Anti-Patterns Configuration
+# Used by scripts/pattern-enforcer.sh to prevent regression of critical security/economic bugs.
+
+patterns:
+  - id: hardcoded-economic-context
+    description: "Manual construction of EconomicContext with hardcoded values is forbidden. Use CommerceEngine."
+    pattern: "EconomicContext \\{.*spent_today:.*daily_limit:.*\\}"
+    severity: error
+    files: ["apps/api-server/src/**/*.rs"]
+
+  - id: insecure-exec
+    description: "Direct std::process::Command use without BastionGuard is restricted."
+    pattern: "std::process::Command::new"
+    severity: warning
+    files: ["libs/**/*.rs", "apps/**/*.rs"]
+
+  - id: missing-is-system-internal
+    description: "Check if safe_exec calls should include is_system_internal flag for privileged commands."
+    pattern: "safe_exec\\(.*false\\)"
+    severity: warning
+    files: ["libs/infrastructure/src/**/*.rs"]
+
+  - id: large-payload-bypass
+    description: "RequestBodyLimitLayer should be tuned per-route, global 512MB is a temporary fix."
+    pattern: "RequestBodyLimitLayer::new\\(512"
+    severity: warning
+    files: ["apps/api-server/src/main.rs"]

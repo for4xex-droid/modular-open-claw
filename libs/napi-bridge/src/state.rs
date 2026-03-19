@@ -32,10 +32,7 @@ pub async fn get_llm_provider(
 ) -> Result<&'static Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>, AiomeError> {
     LLM.get_or_try_init(|| async {
         let db = get_db().await?;
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
-            .build()
-            .unwrap_or_default();
+        let client = aiome_core::http::get_http_client().clone();
 
         let provider_type = db
             .get_setting_value("llm_provider")

@@ -96,9 +96,17 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
+        // DS-1 FIX: Apply Circuit Breaker protection to streaming results
+        if self.circuit_breaker.check_state().await.is_err() {
+            self.slo_engine.record_error().await;
+            return Err(AiomeError::Infrastructure {
+                reason: "Circuit Breaker is OPEN (LLM service degraded)".into(),
+            });
+        }
+
         let (provider_type, model) = self.resolve_config(false).await;
 
-        match provider_type.as_str() {
+        let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
                 aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
@@ -131,7 +139,9 @@ impl LlmProvider for DynamicLlmProvider {
                     .stream_complete(prompt, system)
                     .await
             }
-        }
+        };
+
+        self.handle_result(result).await
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {

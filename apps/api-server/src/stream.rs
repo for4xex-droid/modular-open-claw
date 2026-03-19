@@ -133,11 +133,15 @@ pub async fn trigger_agent_chat_stream(
                 tracing::error!("Failed to get system agent ID, falling back to nil: {:?}", err);
                 uuid::Uuid::nil()
             });
-            if let Ok(balance) = engine.get_balance(agent_id).await {
+            if let (Ok(balance), Ok(spent_today), Ok(daily_limit)) = (
+                engine.get_balance(agent_id).await,
+                engine.get_daily_spend(agent_id).await,
+                engine.get_daily_limit(agent_id).await,
+            ) {
                 economic_context = Some(aiome_core::commerce::EconomicContext {
                     balance,
-                    spent_today: 0,
-                    daily_limit: 1000,
+                    spent_today,
+                    daily_limit,
                 });
             }
         }
@@ -204,11 +208,9 @@ pub async fn trigger_agent_chat_stream(
                                 yield Ok(Event::default().event("text").data(&text));
                             }
                             buffer = buffer[idx..].to_string();
-                        } else {
-                            if !buffer.is_empty() {
-                                yield Ok(Event::default().event("text").data(&buffer));
-                                buffer.clear();
-                            }
+                        } else if !buffer.is_empty() {
+                            yield Ok(Event::default().event("text").data(&buffer));
+                            buffer.clear();
                         }
                     }
                 }
