@@ -109,3 +109,40 @@ fn verify_constant_time(a: &[u8], b: &[u8]) -> bool {
     b_padded[..b.len()].copy_from_slice(b);
     a.len() == b.len() && bool::from(a_padded.ct_eq(&b_padded))
 }
+
+/// A wrapper for the JWT Claims, provided by `jwt_auth_middleware` via request extensions.
+#[derive(Clone)]
+pub struct AuthenticatedUser(pub shared::auth::AiomeCustomClaims);
+
+/// JWT Auth middleware function: Used for user-facing API endpoints.
+/// Validates the Bearer token using `AuthManager` and embeds `AuthenticatedUser` into the request extensions.
+pub async fn jwt_auth_middleware(
+    State(state): State<crate::AppState>,
+    mut req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or_default();
+
+    if !auth_header.starts_with("Bearer ") {
+        warn!("⛔ [JWT Auth] Missing or malformed Bearer token");
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let token = auth_header.trim_start_matches("Bearer ");
+
+    match state.auth_manager.validate_token(token).await {
+        Ok(claims) => {
+            // Embed claims into request extensions so handlers can extract it
+            req.extensions_mut().insert(AuthenticatedUser(claims));
+            Ok(next.run(req).await)
+        }
+        Err(e) => {
+            warn!("⛔ [JWT Auth] Token validation failed: {}", e);
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
+}

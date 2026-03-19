@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-19T23:59:57.160661
+> Generated at: 2026-03-20T00:28:15.941422
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -77,7 +77,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `infrastructure`
 **Traits (Interfaces)**
-- ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
+- ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
 **Domain Structs**
-- ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, ExternalTrendSonar, HeartbeatWakeupService, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockCommerceEngine, MockEkycEngine, MockJobQueue, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteJobQueue, SqliteSoulStore, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, WasmSkillManager, WorkspaceManager
+- ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, ExternalTrendSonar, HeartbeatWakeupService, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockCommerceEngine, MockEkycEngine, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteJobQueue, SqliteQuarantineStore, SqliteSoulStore, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, WasmSkillManager, WorkspaceManager
 

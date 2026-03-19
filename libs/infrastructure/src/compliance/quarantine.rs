@@ -69,6 +69,12 @@ impl SqliteQuarantineStore {
         .execute(&pool)
         .await?;
 
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_quarantined_assets_hash ON quarantined_assets (image_hash)",
+        )
+        .execute(&pool)
+        .await?;
+
         Ok(Self { pool })
     }
 }

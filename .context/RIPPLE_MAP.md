@@ -26,6 +26,12 @@
 | `libs/core` (autonomous.rs) | AI 出力（おねだり・ダークパターン）の検証・遮断 |
 | `api-server` (main.rs) | AppState 経由での利用（将来層） |
 
+### auth.rs (AiomeCustomClaims)
+| 影響先 | 理由 |
+|---|---|
+| `libs/infrastructure` (auth.rs) | トークン検証時の返り値として使用 |
+| `api-server` (auth.rs) | `AuthenticatedUser` ラッパーの保持対象 |
+
 ---
 
 ## libs/aiome-contracts（インターフェース定義）

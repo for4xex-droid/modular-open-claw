@@ -9,6 +9,7 @@
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![warn(missing_docs)]
 
+pub mod auth;
 pub mod cleaner;
 /// アプリケーション設定の管理
 pub mod config;

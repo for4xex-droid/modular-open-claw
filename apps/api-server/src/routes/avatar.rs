@@ -44,19 +44,26 @@ pub struct AvatarVerificationResult {
 )]
 pub async fn upload_avatar_handler(
     State(state): State<AppState>,
+    axum::extract::Extension(user): axum::extract::Extension<crate::auth::AuthenticatedUser>,
     Json(req): Json<AvatarAssetRequest>,
 ) -> Result<Json<AvatarVerificationResult>, AppError> {
-    info!("📤 [Avatar] Processing custom asset: {}", req.name);
+    info!(
+        "📤 [Avatar] Processing custom asset: {} for user: {}",
+        req.name, user.0.sub
+    );
 
     // 1. eKYC 年齢確認のチェック
-    // TODO: 実際のユーザー ID を取得
-    let identity_verified = state
-        .ekyc_engine
-        .check_status("session_dummy")
-        .await
-        .unwrap_or(false);
+    let identity_verified = user.0.ekyc_verified
+        || state
+            .ekyc_engine
+            .check_status(&user.0.sub)
+            .await
+            .unwrap_or(false);
     if !identity_verified {
-        warn!("⚠️ [Avatar] User is NOT identity verified. Upload blocked.");
+        warn!(
+            "⚠️ [Avatar] User {} is NOT identity verified. Upload blocked.",
+            user.0.sub
+        );
     }
 
     // 2. 画像知覚ハッシュの検証 (CSAM)
@@ -68,14 +75,18 @@ pub async fn upload_avatar_handler(
             })
         })?;
 
-    let hasher = ImageHasher::new();
-    let hash = hasher.compute_hash(&content_bytes).map_err(|e| {
-        AppError(aiome_contracts::error::AiomeError::Infrastructure {
-            reason: format!("Hash processing error: {}", e),
-        })
-    })?;
+    // NOTE: ImageHasher は非 Send なため、await ポイント前にドロップさせるためブロックで囲う
+    let (hash, is_csam_hit) = {
+        let hasher = ImageHasher::new();
+        let h = hasher.compute_hash(&content_bytes).map_err(|e| {
+            AppError(aiome_contracts::error::AiomeError::Infrastructure {
+                reason: format!("Hash processing error: {}", e),
+            })
+        })?;
+        let hit = hasher.is_blacklisted(&h);
+        (h, hit)
+    };
 
-    let is_csam_hit = hasher.is_blacklisted(&hash);
     let image_status = if is_csam_hit {
         "BLACKLISTED".to_string()
     } else {
@@ -128,18 +139,18 @@ pub async fn upload_avatar_handler(
 )]
 pub async fn get_ekyc_status_handler(
     State(state): State<AppState>,
+    axum::extract::Extension(user): axum::extract::Extension<crate::auth::AuthenticatedUser>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // 開発用ダミー ID
-    let user_id = "user_001";
     let session_url = state
         .ekyc_engine
-        .create_verification_session(user_id)
+        .create_verification_session(&user.0.sub)
         .await?;
-    let verified = state
-        .ekyc_engine
-        .check_status("session_dummy")
-        .await
-        .unwrap_or(false);
+    let verified = user.0.ekyc_verified
+        || state
+            .ekyc_engine
+            .check_status(&user.0.sub)
+            .await
+            .unwrap_or(false);
 
     Ok(Json(serde_json::json!({
         "verified": verified,

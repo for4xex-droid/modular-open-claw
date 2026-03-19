@@ -84,6 +84,7 @@ pub struct AppState {
     pub gift_engine: Arc<dyn aiome_contracts::commerce::GiftEngine>,
     pub ekyc_engine: Arc<dyn infrastructure::compliance::ekyc::EkycEngine>,
     pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
+    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
 }
 
 #[tokio::main]
@@ -377,6 +378,7 @@ async fn main() {
                 .expect("🚨 Failed to initialize SqliteQuarantineStore");
             Arc::new(store)
         },
+        auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
     };
 
     // RS-1: Pre-load soul cache to avoid DB I/O on hot paths
@@ -1428,13 +1430,18 @@ pub fn build_app(
             "/api/expression/list",
             get(routes::expression::list_expressions),
         )
-        .route(
-            "/api/avatar/upload",
-            axum::routing::post(routes::avatar::upload_avatar_handler),
-        )
-        .route(
-            "/api/avatar/ekyc-status",
-            get(routes::avatar::get_ekyc_status_handler),
+        .nest(
+            "/api/avatar",
+            Router::new()
+                .route(
+                    "/upload",
+                    axum::routing::post(routes::avatar::upload_avatar_handler),
+                )
+                .route("/ekyc-status", get(routes::avatar::get_ekyc_status_handler))
+                .route_layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::auth::jwt_auth_middleware,
+                )),
         )
         .route(
             "/api/expression/auto",

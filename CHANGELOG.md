@@ -8,10 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 8.2 (OAuth 2.1 Foundation)**:
+    - **JWT Custom Claims**: Added `AiomeCustomClaims` in `libs/shared/auth` to define the standardized token structure (including `sub`, `ekyc_verified`, `roles`).
+    - **AuthManager Interface**: Introduced `AuthManager` trait and `MockAuthManager` in `libs/infrastructure/auth` to handle stateless token validation.
+    - **API Middlewares**: Implemented `jwt_auth_middleware` in `api-server` to extract and validate Bearer tokens, injecting `AuthenticatedUser` into request extensions.
+    - **Route Refactoring**: Updated `/api/avatar/upload` and `/api/avatar/ekyc-status` to use dynamic user IDs and eKYC statuses from the JWT claims, eliminating `session_dummy` hardcodes.
 - **Phase 8.1.5 (Asset Quarantine Persistence)**:
     - **Quarantine DB**: Added `QuarantineStore` and `SqliteQuarantineStore` to `libs/infrastructure` to provide a persistent "waiting room" for non-compliant assets (CSAM, eKYC fails, proportion violations).
     - **API Integration**: Integrated quarantine storage into the `/api/avatar/upload` flow, ensuring illegal or unvetted assets are recorded for audit and prevented from re-uploading via hash-based detection.
     - **Ripple Synchronization**: Fully synchronized `AppState` and `api_integration_tests.rs` to maintain high-quality CI through structural changes.
+    - **Performance Optimization (Gap-5)**: Added SQLite index to `quarantined_assets.image_hash` for faster duplicate lookups.
+    - **Bug Fix (E-101)**: Resolved a "Future is not Send" compilation error in `upload_avatar_handler` by ensuring `ImageHasher` is dropped before await points.
 - **Phase 8.1 (CSAM 3-Layer Defense & Compliance)**:
     - **eKYC Integration (Stripe)**: Added `StripeEkycEngine` and `MockEkycEngine` in `libs/infrastructure/compliance` for strict 18+ real-name and age verification prior to custom asset publishing.
     - **Perceptual Image Hashing (CSAM Defense)**: Added `ImageHasher` in `libs/shared/csam` using DCT hashing (`img_hash`) to resiliently detect illegal or malicious textures against a known blacklist.

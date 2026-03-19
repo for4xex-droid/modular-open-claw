@@ -15,6 +15,8 @@
 pub mod aiome_log;
 /// 成果物の永続化・管理
 pub mod artifact_store;
+/// 認証・JWTトークン検証モジュール (Phase 8.2)
+pub mod auth;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
