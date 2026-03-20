@@ -32,10 +32,12 @@ extism = "1.13.0"
 extism-convert = "1.13.0"
 wasi = "0.14.7"
 tokio-util = { workspace = true, features = ["codec", "io"] }
-secrecy = { workspace = true }
+secrecy = { version = "0.8.0", features = ["serde"] }
 jsonschema = { workspace = true }
 sha2 = "0.10"
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+hmac = "0.12"
+hex = "0.4"
+ed25519-dalek = { version = "2.1", features = ["pkcs8", "rand_core"] }
 base64 = "0.22"
 rand = "0.8"
 contracts = "0.6.7"
@@ -45,6 +47,8 @@ serenity = { version = "0.12", default-features = false, features = ["client", "
 teloxide = { version = "0.13", features = ["macros"] }
 once_cell = { workspace = true }
 tokio-stream = "0.1"
+jsonwebtoken = "9.3.1"
+zeroize = "1.8.1"
 
 [dev-dependencies]
 tempfile = "3"

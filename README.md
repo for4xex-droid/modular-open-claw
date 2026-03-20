@@ -90,6 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 * **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
+*Last Mutated: 2026-03-20*
 
 ---
 
@@ -107,6 +108,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🎁 **Phase 7.2: A2C 恩返し / 法的ガードレール**: 高い Karma を持つユーザーに対し、AI が自律的に Tremendous 経由で実世界のギフトコードを送付する「恩返し」機能を搭載。同時に、AI によるダークパターン（おねだり等）を検知・遮断する **Begging Supervisor** により、法的・倫理的透明性を担保します。
 - 🛡️ **Phase 8.1 / 8.1.5: CSAM 3層防御 & アセット検疫 (Child Safety & Compliance)**: アバターアセットの安全な公開に向け、① Stripe Identity を用いた **eKYC 実名・年齢確認**、② 知覚ハッシュ (DCT) による画像の **CSAM フィルタリング**、③ NURTURE 法的要件に基づく **5.5頭身チェッカー** をサーバーサイドで統合。基準を満たさないアセットを即座に SQLite (`QuarantineStore`) に永続的に隔離（Quarantine）し、ネットワークの健全性を物理的に保護します。
 - 🔑 **Phase 8.2: OAuth 2.1 / JWT 認証基盤**: 従来のダミー ID に依存する設計から脱却し、RFC 規格に準拠した **AuthManager (JWT 検証)** を導入。ステートレスかつセキュアなユーザー識別を可能にし、リソース所有権の厳格な保護を実現しています。
+- 🏛️ **Phase 8.8: Audit & Immunity Ledger (監査と透明性)**: エージェントの自己修復履歴（Diagnostics）と、ハッシュチェーンで保護されたシステム変更履歴（Global Ledger）を管理コンソールから直接確認可能に。NURTURE §12 の「人間による監査可能性」を具現化しました。
 
 ---
 
@@ -132,6 +134,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Core Engine** | Rust / Bastion OSS | 高速・メモリ安全かつ堅牢なセキュリティ基盤 |
 | **Formal Verification** | TLA+ / TLC / Rust TypeState / MBT | 状態遷移のTLA+仕様化とモデルチェッカーによる検証。TypeStateと手動インテグレーションテストによる「数学からRust実行バイナリまでの絶対保証（95%カバレッジ）」 |
 | **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
+| **Last Updated:** 2026-03-20
 | **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: ユーザー応答はクラウド、自律タスクはローカル推論 |
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
 | **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
@@ -196,7 +199,14 @@ cargo run --bin api-server
 cargo run --bin watchtower
 
 # 6. Samsara Hub (Federation) の起動 (Collective Intelligence)
+# Base64 encoded Ed25519 private key for JWT signing/validation (Required for Phase 8.2).
+# Generate with: openssl genpkey -algorithm ed25519 -outform DER | base64
+JWT_PRIVATE_KEY_B64=""
+
+# The secret used for P2P Federation and Samsara Hub synchronization (Legacy).
+FEDERATION_SECRET=""
 export FEDERATION_SECRET=your_hub_secret
+export JWT_PRIVATE_KEY_B64=your_b64_private_key
 cargo run --bin samsara-hub
 ```
 
@@ -205,9 +215,9 @@ cargo run --bin samsara-hub
 ### シナジー体感デモ (Synergy Demonstration)
 Aiome 管理コンソールでは、エージェントの自律的な進化を視覚的に体験できます。
 
-1. **Dashboard 起動**: `cargo run -p api-server` を実行。
-2. **アクセス**: ブラウザで `http://localhost:3015` を開く。
-3. **Synergy Panel**: サイドバーの **"Agency Synergy"** から以下のデモを試せます：
+1.  **Dashboard 起動**: `cargo run -p api-server` を実行。
+2.  **アクセス**: ブラウザで `http://localhost:3015` を開く。
+3.  **Synergy Panel**: サイドバーの **"Agency Synergy"** から以下のデモを試せます：
     - **Evolution Pulse**: タスク失敗から教訓（Karma）が蒸留される過程の視覚化。
     - **Security Shield**: Abyss Vault による API キー強奪試行の物理的阻止。
     - **Swarm Sync**: 他ノードとの免疫知識（Collective Intelligence）の同期。
@@ -224,8 +234,10 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - `VAULT_SECRET`: Abyss Vault (Key Proxy) 認証用。
 - `FEDERATION_SECRET`: Samsara Hub 通信の認証用。
 - `API_SERVER_SECRET`: API Server への全リクエストの認証用。
+- `JWT_PRIVATE_KEY_B64`: JWT署名/検証用のBase64エンコードされたEd25519秘密鍵。
 
 > ℹ️ すべての環境変数は `AiomeConfig` (`libs/shared/src/config.rs`) で一元管理されています。詳細は [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md) を参照。
+> ℹ️ `key-proxy` は、APIキーを安全に管理するための重要なコンポーネントです。起動時に `GEMINI_API_KEY` などの機密情報を環境変数として渡すことで、アプリケーションコードから直接アクセスされることなく、安全なプロキシ経由で利用されます。これにより、APIキーの漏洩リスクを大幅に低減します。
 
 ---
 
@@ -233,10 +245,11 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 
 - **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
 - **[LLMプロバイダー設計 (LLM Provider Architecture)](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md)**: 動的LLMプロバイダーのアーキテクチャとフォールバック設計。
-- **[運用マニュアル (Operations Guide)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
+- **[運用マニュアル (Operations Manual)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
 - **[進化戦略 (Evolution Strategy)](docs/architecture/EVOLUTION_STRATEGY.md)**: 自己進化と育成システムの設計思想。
 - **[人格のカスタマイズ (Soul Customization)](docs/guides/CUSTOMIZING_SOUL.md)**: AIの性格や反応の調整方法。
 - **[セキュリティ設計 (Security Design)](docs/architecture/SECURITY_DESIGN.md)**: 多層防御の詳細。
+- **[インフラストラクチャ設計 (Infrastructure Design)](docs/architecture/INFRASTRUCTURE_DESIGN.md)**: システムの基盤となるインフラの設計思想。
 
 ---
 
@@ -244,7 +257,8 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
-- **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
+- **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
+*最終更新: 2026-03-20*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

@@ -28,6 +28,8 @@ pub mod expression;
 pub mod http;
 /// 外部LLMAPI(Gemini, OpenAI等)とのインターフェース
 pub mod llm_provider;
+/// LoRAモデルの管理・推論支援（Phase 10.1b）
+pub mod lora;
 /// 権限検証・セキュリティ機能
 pub mod security;
 /// JobQueue等、インフラ層に実装を依存させるためのTrait

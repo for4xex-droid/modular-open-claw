@@ -69,7 +69,12 @@
           "500": {
             "description": "Internal error"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/artifacts": {
@@ -279,7 +284,12 @@
           "409": {
             "description": "Dialogue already running"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/autonomous/status": {
@@ -297,7 +307,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/autonomous/stop": {
@@ -315,7 +330,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/list": {
@@ -336,7 +356,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/send": {
@@ -364,7 +389,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/status": {
@@ -382,7 +412,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/biome/topics": {
@@ -400,7 +435,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -457,7 +497,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/expression/generate": {
@@ -478,7 +523,12 @@
           "400": {
             "description": "No karma available"
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/expression/list": {
@@ -511,7 +561,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/expression/status": {
@@ -529,7 +584,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/health": {
@@ -681,7 +741,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/karma": {
@@ -702,7 +767,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/rules": {
@@ -723,7 +793,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -749,7 +824,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/rules/{id}": {
@@ -778,7 +858,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/test/failure": {
@@ -796,7 +881,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/test/federation": {
@@ -814,7 +904,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/synergy/test/security": {
@@ -832,7 +927,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/system/evolution": {
@@ -853,7 +953,74 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/audit/diagnostics": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_diagnoses",
+        "responses": {
+          "200": {
+            "description": "Fetch agent diagnostics history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiagnosisResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/audit/ledger": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_audit_ledger",
+        "responses": {
+          "200": {
+            "description": "Fetch secure audit ledger",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditLedgerResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/v1/commerce/balance/{agent_id}": {
@@ -976,7 +1143,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
       }
     },
     "/api/v1/ollama/models": {
@@ -1106,6 +1278,34 @@
         ]
       }
     },
+    "/api/v1/trends": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_trends",
+        "responses": {
+          "200": {
+            "description": "Fetch current AI trends (Skeleton)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/wiki": {
       "get": {
         "tags": [
@@ -1209,6 +1409,40 @@
           "Rejected"
         ]
       },
+      "AuditLedgerResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "table_name",
+          "operation",
+          "record_id",
+          "current_hash"
+        ],
+        "properties": {
+          "current_hash": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "table_name": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "AutoToggle": {
         "type": "object",
         "required": [
@@ -1232,6 +1466,46 @@
           },
           "role": {
             "type": "string"
+          }
+        }
+      },
+      "DiagnosisResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id"
+        ],
+        "properties": {
+          "failure_category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "root_cause": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "self_repair_hint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -1726,6 +2000,44 @@
           },
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "TrendItem": {
+        "type": "object",
+        "description": "トレンド情報の1件分",
+        "required": [
+          "keyword",
+          "source",
+          "score"
+        ],
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "キーワード"
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "description": "スコア (高いほど注目度が高い)"
+          },
+          "source": {
+            "type": "string",
+            "description": "ソース (例: \"X\", \"GoogleTrends\", \"5ch\")"
+          }
+        }
+      },
+      "TrendsResponse": {
+        "type": "object",
+        "required": [
+          "trends"
+        ],
+        "properties": {
+          "trends": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendItem"
+            }
           }
         }
       },

@@ -62,6 +62,7 @@ struct AppState {
     vault_secret: Arc<SecretString>,
     client: reqwest::Client,
     state: Arc<RwLock<QuotaState>>,
+    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
     persistence_path: PathBuf,
     caller_quotas: Arc<HashMap<String, u64>>,
 }
@@ -150,6 +151,19 @@ async fn main() -> anyhow::Result<()> {
             .redirect(reqwest::redirect::Policy::none())
             .build()?,
         state: Arc::new(RwLock::new(quota_state)),
+        auth_manager: {
+            match std::env::var("JWT_PRIVATE_KEY_B64") {
+                Ok(key_b64) => {
+                    info!("🔑 [KeyProxy] Loading JWT private key from environment");
+                    Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
+                        .expect("Invalid JWT_PRIVATE_KEY_B64"))
+                }
+                Err(_) => {
+                    warn!("⚠️ [KeyProxy] JWT key not set, using MockAuthManager");
+                    Arc::new(infrastructure::auth::MockAuthManager::new())
+                }
+            }
+        },
         persistence_path,
         caller_quotas: Arc::new(quotas),
     };
@@ -228,19 +242,39 @@ async fn auth_middleware(
     let auth_header = req
         .headers()
         .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok());
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
 
-    let expected = format!("Bearer {}", state.vault_secret.expose_secret());
-
-    if auth_header
-        .filter(|a| subtle::ConstantTimeEq::ct_eq(a.as_bytes(), expected.as_bytes()).into())
-        .is_some()
-    {
-        return Ok(next.run(req).await);
+    // Strategy 1: JWT validation via AuthManager
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
     }
 
-    warn!("⛔ [KeyProxy] Unauthorized access attempt.");
-    Err(StatusCode::UNAUTHORIZED)
+    // Strategy 2: Legacy Vault Secret fallback
+    if !authenticated {
+        let expected = format!("Bearer {}", state.vault_secret.expose_secret());
+        if auth_header.len() == expected.len() {
+            if bool::from(subtle::ConstantTimeEq::ct_eq(
+                auth_header.as_bytes(),
+                expected.as_bytes(),
+            )) {
+                authenticated = true;
+            }
+        }
+    }
+
+    if authenticated {
+        Ok(next.run(req).await)
+    } else {
+        warn!("⛔ [KeyProxy] Unauthorized access attempt.");
+        Err(StatusCode::UNAUTHORIZED)
+    }
 }
 
 async fn handle_llm_complete(

@@ -481,3 +481,50 @@ pub async fn get_ollama_models(
         .into())
     }
 }
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct IdentityResponse {
+    pub ai_name: String,
+    pub ai_motto: String,
+    pub ai_vrm_url: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/settings/identity",
+    responses(
+        (status = 200, description = "Get AI Identity", body = IdentityResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_identity(
+    State(state): State<AppState>,
+    _auth: Authenticated,
+) -> Result<Json<IdentityResponse>, AppError> {
+    let ai_name = state
+        .job_queue
+        .get_setting_value("ai_name")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "Aiome Agent".to_string());
+    let ai_motto = state
+        .job_queue
+        .get_setting_value("ai_motto")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "The Autonomous AI Operating System".to_string());
+    let ai_vrm_url = state
+        .job_queue
+        .get_setting_value("ai_vrm_url")
+        .await
+        .ok()
+        .flatten();
+
+    Ok(Json(IdentityResponse {
+        ai_name,
+        ai_motto,
+        ai_vrm_url,
+    }))
+}

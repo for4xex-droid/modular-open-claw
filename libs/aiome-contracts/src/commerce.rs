@@ -43,6 +43,25 @@ pub trait CommerceEngine: Send + Sync {
 
     /// スラッシュ（罰則によるトークン没収）を実行する
     async fn slash(&self, agent_id: Uuid, amount: u64, reason: &str) -> Result<(), AiomeError>;
+    
+    /// ライセンス（Voice Asset 等の使用権）を登録する (P0-1)
+    async fn register_license(
+        &self,
+        agent_id: Uuid,
+        asset_id: Uuid,
+        license_type: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// Webhook 署名の検証
+    fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError>;
+
+    /// Webhook イベントの冪等処理
+    async fn process_webhook(
+        &self,
+        event_id: &str,
+        event_type: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), AiomeError>;
 }
 
 /// 経済コンテキスト

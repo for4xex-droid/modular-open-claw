@@ -56,7 +56,11 @@ use utoipa::OpenApi;
         crate::routes::artifacts::get_artifact_handler,
         crate::routes::artifacts::download_artifact_file_handler,
         crate::routes::artifacts::delete_artifact_handler,
-        crate::routes::artifacts::get_artifact_edges_handler
+        crate::routes::artifacts::get_artifact_edges_handler,
+        // Audit & Trends (Phase 8.6)
+        crate::routes::general::get_audit_ledger,
+        crate::routes::general::get_diagnoses,
+        crate::routes::general::get_trends
     ),
     components(
         schemas(
@@ -81,7 +85,11 @@ use utoipa::OpenApi;
             crate::routes::expression::ListParams,
             crate::routes::expression::AutoToggle,
             crate::routes::commerce::PurchaseRequest,
-            crate::routes::artifacts::ListArtifactsParams
+            crate::routes::artifacts::ListArtifactsParams,
+            crate::routes::general::AuditLedgerResponse,
+            crate::routes::general::DiagnosisResponse,
+            crate::routes::general::TrendsResponse,
+            aiome_contracts::traits::TrendItem
         )
     ),
     info(

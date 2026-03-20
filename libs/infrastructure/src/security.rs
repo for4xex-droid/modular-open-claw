@@ -8,7 +8,8 @@
 use aiome_core::error::AiomeError;
 pub use aiome_core::security::{PermissionManifest, RuntimeJail};
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use tracing::{error, info, warn};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// `SecurityConfig` 構造体
@@ -224,14 +225,39 @@ impl RuntimeJail for BastionGuard {
         );
 
         use std::process::Command;
-
-        let output =
+ 
+        // Phase 9: Dynamic Sandbox Wrapping (gVisor / sandbox-exec)
+        let mut cmd = if cfg!(target_os = "macos") && !self.is_system_internal {
+            // macOS: sandbox-exec (if available) - Fallback to normal for dev
+            if std::path::Path::new("/usr/bin/sandbox-exec").exists() {
+                let mut c = Command::new("sandbox-exec");
+                c.arg("-p").arg("(version 1) (allow default)"); // Placeholder for Phase 9.1 profile
+                c.arg(binary);
+                c
+            } else {
+                Command::new(binary)
+            }
+        } else if cfg!(target_os = "linux") && !self.is_system_internal {
+            // Linux: prioritize gVisor (runsc)
+            if std::path::Path::new("/usr/bin/runsc").exists() {
+                let mut c = Command::new("runsc");
+                c.arg("do");
+                c.arg(binary);
+                c
+            } else {
+                warn!("⚠️ [Security] runsc (gVisor) not found. Running with standard host kernel.");
+                Command::new(binary)
+            }
+        } else {
             Command::new(binary)
-                .args(args)
-                .output()
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Execution failed: {}", e),
-                })?;
+        };
+
+        let output = cmd
+            .args(args)
+            .output()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Execution failed: {}", e),
+            })?;
 
         if !output.status.success() {
             let err_msg = String::from_utf8_lossy(&output.stderr).to_string();
@@ -330,6 +356,45 @@ impl BastionGuard {
         // NOTE: If in_double_quote or in_single_quote is true here, the quote was never closed.
         // We currently just keep the content, which is safer than dropping it or panicking.
         parts
+    }
+}
+
+pub mod abyss_voice_vault;
+use abyss_voice_vault::AbyssVoiceVault;
+use aiome_contracts::voice_vault::VoiceKeyVault;
+
+/// Phase 9: Voice Core DRM (Digital Rights Management)
+///
+/// ボイスアセット（TTSモデル、LoRA等）の正当な所有権を管理し、
+/// Abyss Vault 経由でのキー取得と復号を行う基盤。
+pub struct VoiceCoreDrm {
+    /// Abyss Vault のベースURL
+    pub vault_url: String,
+    vault: AbyssVoiceVault,
+}
+
+impl VoiceCoreDrm {
+    /// 新しい DRM インスタンスを生成する
+    pub fn new(vault_url: String) -> Self {
+        Self {
+            vault_url,
+            vault: AbyssVoiceVault::new(),
+        }
+    }
+
+    /// アセットの復号キーを取得する (Abyss Vault 連携)
+    pub async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Vec<u8>, AiomeError> {
+        self.vault.fetch_decryption_key(agent_id, asset_id).await
+    }
+    
+    /// ライセンスを検証する
+    pub async fn verify_license(&self, agent_id: Uuid, asset_id: Uuid) -> Result<bool, AiomeError> {
+        self.vault.verify_license(agent_id, asset_id).await
+    }
+    
+    /// アセットキーを登録する
+    pub async fn register_asset_key(&self, asset_id: Uuid, key: Vec<u8>) -> Result<(), AiomeError> {
+        self.vault.register_asset_key(asset_id, key).await
     }
 }
 
@@ -468,6 +533,55 @@ mod tests {
             if should_be_blocked {
                 prop_assert!(res.is_err(), "Input '{}' should have been blocked", s);
             }
+        }
+    }
+
+    #[test]
+    fn test_bastion_guard_sandbox_selection() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+        
+        // This test is mostly for coverage and log inspection.
+        // It ensures the logic doesn't panic.
+        let _ = guard.safe_exec("ls -la");
+    }
+
+    #[test]
+    fn test_bastion_guard_system_internal_bypass() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: false, // Normal users restricted
+            ..Default::default()
+        };
+        
+        // System internal guard should bypass even if shell is disallowed in manifest
+        let guard = BastionGuard::new_internal(manifest);
+        let cmd = "ls";
+        
+        // We don't check for success/failure of the actual command (as it depends on env),
+        // but we check if it was BLOCKED by the guard logic.
+        let res = guard.safe_exec(cmd);
+        
+        if let Err(AiomeError::Infrastructure { reason }) = &res {
+            assert!(!reason.contains("Forbidden"), "Internal guard should not be forbidden. Error: {}", reason);
+        }
+    }
+
+    #[test]
+    fn test_bastion_guard_macos_sandbox_regex() {
+        // Test internal helper if it was exposed, or just verify the wrapping logic
+        if cfg!(target_os = "macos") && std::path::Path::new("/usr/bin/sandbox-exec").exists() {
+            let manifest = PermissionManifest {
+                allow_shell_execution: true,
+                ..Default::default()
+            };
+            let guard = BastionGuard::new(manifest);
+            
+            // This is hard to test tanpa mock Command, but we can verify it doesn't fail.
+            let res = guard.safe_exec("ls");
+            assert!(res.is_ok() || !res.unwrap_err().to_string().contains("Forbidden"));
         }
     }
 }

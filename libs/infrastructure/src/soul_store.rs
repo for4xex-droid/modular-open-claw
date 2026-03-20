@@ -93,8 +93,8 @@ impl SqliteSoulStore {
                 id, generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                lora_adapter_path, lora_base_model, lora_hash, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
                 generation=excluded.generation,
                 soul_hash=excluded.soul_hash,
@@ -107,6 +107,7 @@ impl SqliteSoulStore {
                 experience_buffer_json=excluded.experience_buffer_json,
                 lora_adapter_path=excluded.lora_adapter_path,
                 lora_base_model=excluded.lora_base_model,
+                lora_hash=excluded.lora_hash,
                 updated_at=datetime('now')
             "#,
         )
@@ -122,6 +123,7 @@ impl SqliteSoulStore {
         .bind(buffer_json)
         .bind(&soul.lora_adapter_path)
         .bind(&soul.lora_base_model)
+        .bind(&soul.lora_hash)
         .execute(&*self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
@@ -176,7 +178,7 @@ impl SqliteSoulStore {
                 generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model
+                lora_adapter_path, lora_base_model, lora_hash
             FROM agent_souls
             WHERE id = ?
             "#,
@@ -237,6 +239,7 @@ impl SqliteSoulStore {
                 experience_buffer: parsed_buffer,
                 lora_adapter_path: r.get("lora_adapter_path"),
                 lora_base_model: r.get("lora_base_model"),
+                lora_hash: r.get("lora_hash"), // Phase 10.1b
             };
 
             // RS-1: Update cache on explicit load

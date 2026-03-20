@@ -57,6 +57,9 @@ proptest = "1.6.0"
 img_hash = "3.2"
 image = "0.23"
 stripe = { version = "0.41", package = "async-stripe", features = ["runtime-tokio-hyper-rustls"] }
+hkdf = "0.12"
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
 
 [workspace.lints.clippy]
 unwrap_used = "warn"

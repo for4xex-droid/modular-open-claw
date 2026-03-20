@@ -19,6 +19,7 @@ pub mod security;
 pub mod traits;
 pub mod trajectory;
 pub mod types;
+pub mod voice_vault;
 
 pub use biome::*;
 pub use commerce::*;
@@ -32,3 +33,4 @@ pub use security::*;
 pub use traits::*;
 pub use trajectory::*;
 pub use types::*;
+pub use voice_vault::*;

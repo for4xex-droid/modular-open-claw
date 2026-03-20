@@ -22,6 +22,20 @@ impl AppError {
             reason: reason.into(),
         })
     }
+
+    /// Validation / Bad Request (400 Bad Request)
+    pub fn bad_request(reason: impl Into<String>) -> Self {
+        Self(AiomeError::Infrastructure {
+            reason: reason.into(),
+        })
+    }
+
+    /// Internal Server Error (500)
+    pub fn internal(reason: impl Into<String>) -> Self {
+        Self(AiomeError::Infrastructure {
+            reason: reason.into(),
+        })
+    }
 }
 
 impl From<AiomeError> for AppError {

@@ -71,7 +71,11 @@ impl EkycEngine for MockEkycEngine {
         Ok("https://example.com/mock-verify-success".to_string())
     }
 
-    async fn check_status(&self, _session_id: &str) -> anyhow::Result<bool> {
-        Ok(true) // 常に成功
+    async fn check_status(&self, session_id: &str) -> anyhow::Result<bool> {
+        if session_id.contains("unverified") {
+            Ok(false)
+        } else {
+            Ok(true)
+        }
     }
 }

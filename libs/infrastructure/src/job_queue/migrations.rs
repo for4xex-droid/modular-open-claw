@@ -454,10 +454,11 @@ impl DbInitializer for SqliteJobQueue {
                 attachment_json TEXT NOT NULL,
                 instinct_json TEXT NOT NULL,
                 anamnesis_json TEXT NOT NULL DEFAULT '{}',
-                experience_buffer_json TEXT NOT NULL,
-                lora_adapter_path TEXT,
-                lora_base_model TEXT,
-                updated_at TEXT DEFAULT (datetime('now'))
+                experience_buffer_json TEXT, -- L3 Context
+                lora_adapter_path TEXT,      -- G-13 LoRA path
+                lora_base_model TEXT,        -- G-13 base model
+                lora_hash TEXT,              -- Phase 10.1b LoRA hash
+                updated_at DATETIME
             );",
         )
         .execute(&self.pool)
@@ -796,6 +797,37 @@ impl DbInitializer for SqliteJobQueue {
             );
         }
 
+        // Phase 10.2: Voice Commerce Webhook Idempotency (Gate 2)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+                event_id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                processed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create stripe_webhook_events table: {}", e),
+        })?;
+
+        // Phase 10: Asset Registry
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS asset_registry (
+                id TEXT PRIMARY KEY,
+                creator_id TEXT NOT NULL,
+                asset_type TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                price_coins INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create asset_registry table: {}", e),
+        })?;
         // Add triggers to automatically write to the audit ledger and compute hashes via SQLite hex/random or simple concats
         let trigger_tables = vec![
             "jobs",

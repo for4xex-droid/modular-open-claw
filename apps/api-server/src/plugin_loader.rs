@@ -23,16 +23,20 @@ impl PluginRegistry {
         self.plugins.push(plugin);
     }
 
-    pub fn merge_routes(&self, mut router: Router) -> Router {
+    pub fn merge_routes<S>(&self, mut router: Router<S>) -> Router<S>
+    where
+        S: Clone + Send + Sync + 'static,
+    {
         for plugin in &self.plugins {
             if let Some(opaque_router) = plugin.routes() {
-                if let Some(plugin_router) = opaque_router.downcast_ref::<Router>() {
+                if let Some(plugin_router) = opaque_router.downcast_ref::<Router<S>>() {
                     info!("🛣️  Merging routes from plugin: {}", plugin.name());
                     router = router.merge(plugin_router.clone());
                 } else {
                     warn!(
-                        "⚠️  Plugin {} returned a router that is not an axum::Router",
-                        plugin.name()
+                        "⚠️  Plugin {} returned a router that is not an axum::Router<{}>",
+                        plugin.name(),
+                        std::any::type_name::<S>()
                     );
                 }
             }

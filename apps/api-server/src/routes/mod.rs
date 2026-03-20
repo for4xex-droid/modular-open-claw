@@ -17,3 +17,5 @@ pub mod settings;
 pub mod skill;
 pub mod soul;
 pub mod watchtower;
+pub mod voice;
+pub mod commerce_webhook;

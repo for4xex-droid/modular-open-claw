@@ -38,7 +38,8 @@ pub struct StartAutonomousRequest {
     path = "/api/biome/status",
     responses(
         (status = 200, description = "Biome protocol status", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn biome_status(
     State(state): State<AppState>,
@@ -64,7 +65,8 @@ pub async fn biome_status(
     path = "/api/biome/topics",
     responses(
         (status = 200, description = "List topics from Hub", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn list_topics(
     State(state): State<AppState>,
@@ -158,7 +160,8 @@ pub async fn create_topic(
     responses(
         (status = 200, description = "Autonomous dialogue started", body = serde_json::Value),
         (status = 409, description = "Dialogue already running")
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn autonomous_start(
     State(state): State<AppState>,
@@ -235,7 +238,8 @@ pub async fn autonomous_start(
     path = "/api/biome/autonomous/stop",
     responses(
         (status = 200, description = "Stopping autonomous dialogue", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn autonomous_stop(
     State(state): State<AppState>,
@@ -250,7 +254,8 @@ pub async fn autonomous_stop(
     path = "/api/biome/autonomous/status",
     responses(
         (status = 200, description = "Current autonomous status", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn autonomous_status(
     State(state): State<AppState>,
@@ -270,7 +275,8 @@ pub async fn autonomous_status(
     path = "/api/biome/list",
     responses(
         (status = 200, description = "List biome messages", body = [serde_json::Value])
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn list_messages(
     State(state): State<AppState>,
@@ -335,7 +341,8 @@ pub async fn list_messages(
     request_body = SendBiomeRequest,
     responses(
         (status = 200, description = "Message sent/relayed", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn send_message(
     State(state): State<AppState>,

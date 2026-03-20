@@ -29,19 +29,24 @@ use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::timeout::TimeoutLayer;
-use tracing::{error, info, warn};
+use tracing::{error, info, warn, debug};
 use utoipa::OpenApi;
 
 mod api;
+mod app_state;
 mod auth;
 mod docker;
 mod error;
 mod logging;
 mod mcp;
 mod plugin_loader;
+mod router;
 mod routes;
 mod skill_handler;
 mod stream;
+
+pub use app_state::AppState;
+pub use router::build_app;
 
 #[cfg(feature = "nurture")]
 use commerce_protocol;
@@ -51,46 +56,16 @@ use nurture_api;
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
 
-#[derive(Clone)]
-pub struct AppState {
-    pub health_monitor: Arc<Mutex<HealthMonitor>>,
-    pub job_queue: Arc<infrastructure::job_queue::SqliteJobQueue>,
-    pub wasm_skill_manager: Arc<infrastructure::skills::WasmSkillManager>,
-    pub skill_forge: Arc<infrastructure::skills::forge::SkillForge>,
-    pub docs_path: String,
-    pub llm_semaphore: Arc<tokio::sync::Semaphore>,
-    pub forge_semaphore: Arc<tokio::sync::Semaphore>,
-    pub mcp_sessions: Arc<
-        tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<String>>>,
-    >,
-    pub mcp_manager: Arc<mcp::client::McpProcessManager>,
-    pub artifact_store: Arc<dyn aiome_core::traits::ArtifactStore>,
-    pub event_sender: tokio::sync::broadcast::Sender<shared::watchtower::CoreEvent>,
-    pub context_engine: Arc<infrastructure::context_engine::ContextEngine>,
-    pub soul_mutator: Arc<infrastructure::soul_mutator::SoulMutator>,
-    pub soul_store: Arc<infrastructure::soul_store::SqliteSoulStore>,
-    pub provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
-    pub autonomous_running: Arc<std::sync::atomic::AtomicBool>,
-    pub autonomous_config: Arc<tokio::sync::RwLock<Option<aiome_core::biome::AutonomousConfig>>>,
-    pub http_client: reqwest::Client,
-    pub docker_failures: Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>,
-    pub security_policy: shared::security::SecurityPolicy,
-    pub commerce_engine: Option<Arc<dyn aiome_core::commerce::CommerceEngine>>,
-    pub circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
-    pub slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
-    pub api_server_secret: Arc<secrecy::SecretString>,
-    pub federation_secret: Option<Arc<secrecy::SecretString>>,
-    pub config: Arc<shared::config::AiomeConfig>,
-    pub gift_engine: Arc<dyn aiome_contracts::commerce::GiftEngine>,
-    pub ekyc_engine: Arc<dyn infrastructure::compliance::ekyc::EkycEngine>,
-    pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
-    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
-    pub system_agent_id: uuid::Uuid,
-}
-
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
+    
+    // 0. Initialize Metrics EXPORTER (Q-5)
+    let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .expect("Failed to install Prometheus recorder");
+    tracing::info!("📊 Prometheus Metrics initialized at /api/v1/metrics");
+
     let static_path = "apps/api-server/static";
     let docs_path = "../../docs";
 
@@ -384,7 +359,23 @@ async fn main() {
                 .expect("🚨 Failed to initialize SqliteQuarantineStore");
             Arc::new(store)
         },
-        auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
+        auth_manager: {
+            match std::env::var("JWT_PRIVATE_KEY_B64") {
+                Ok(key_b64) => {
+                    info!("🔑 [Auth] Loading JWT private key from environment");
+                    Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
+                        .expect("Invalid JWT_PRIVATE_KEY_B64"))
+                }
+                Err(_) if cfg!(debug_assertions) => {
+                    warn!("⚠️ [Auth] JWT key not set, using MockAuthManager (dev only)");
+                    Arc::new(infrastructure::auth::MockAuthManager::new())
+                }
+                Err(_) => {
+                    error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
+                    std::process::exit(1);
+                }
+            }
+        },
         system_agent_id,
     };
 
@@ -405,6 +396,7 @@ async fn main() {
         #[cfg(feature = "nurture")]
         nurture_state,
         plugin_registry,
+        metrics_handle,
     );
 
     // Initial Security Check (C1)
@@ -1261,285 +1253,6 @@ async fn shutdown_signal(token: CancellationToken) {
     info!("👋 [api-server] Graceful shutdown complete.");
 }
 
-pub fn build_app(
-    state: AppState,
-    cors_layer: CorsLayer,
-    static_path: &str,
-    #[cfg(feature = "nurture")] nurture_state: nurture_api::state::SharedState,
-    plugin_registry: plugin_loader::PluginRegistry,
-) -> Router {
-    let internal_router: Router<AppState> = Router::new()
-        // --- Protected Routes (Require Authentication) ---
-        .route("/api/wiki", get(routes::general::list_wiki_files))
-        .route(
-            "/api/wiki/:filename",
-            get(routes::general::get_wiki_content),
-        )
-        .route(
-            "/api/synergy/graph",
-            get(routes::karma::synergy_graph_handler),
-        )
-        .route(
-            "/api/synergy/test/failure",
-            axum::routing::post(routes::karma::trigger_failure_demo),
-        )
-        .route(
-            "/api/synergy/test/security",
-            axum::routing::post(routes::karma::trigger_security_demo),
-        )
-        .route(
-            "/api/synergy/test/federation",
-            axum::routing::post(routes::karma::trigger_federation_demo),
-        )
-        .route(
-            "/api/synergy/rules",
-            get(routes::karma::get_immune_rules_handler)
-                .post(routes::karma::add_immune_rule_handler)
-                .put(routes::karma::add_immune_rule_handler),
-        )
-        .route(
-            "/api/synergy/rules/:id",
-            axum::routing::delete(routes::karma::delete_immune_rule_handler),
-        )
-        .route(
-            "/api/artifacts",
-            get(routes::artifacts::list_artifacts_handler),
-        )
-        .route(
-            "/api/artifacts/:id",
-            get(routes::artifacts::get_artifact_handler)
-                .delete(routes::artifacts::delete_artifact_handler),
-        )
-        .route(
-            "/api/artifacts/:id/edges",
-            get(routes::artifacts::get_artifact_edges_handler),
-        )
-        .route(
-            "/api/artifacts/:id/files/:filename",
-            get(routes::artifacts::download_artifact_file_handler),
-        )
-        .route(
-            "/api/agent/chat",
-            axum::routing::post(routes::agent::trigger_agent_chat).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(1, std::time::Duration::from_secs(3)), // 1 chat per 3s
-            ),
-        )
-        .route(
-            "/api/agent/feedback",
-            axum::routing::post(routes::agent::handle_karma_feedback),
-        )
-        .route(
-            "/api/system/evolution",
-            get(routes::karma::get_evolution_history_handler),
-        )
-        .route("/api/soul/status", get(routes::soul::get_soul_status))
-        .route(
-            "/api/v1/settings",
-            get(routes::settings::get_settings).put(routes::settings::update_setting),
-        )
-        .route(
-            "/api/v1/settings/test",
-            axum::routing::post(routes::settings::test_connection).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(5, std::time::Duration::from_secs(1)), // 5 tests per sec
-            ),
-        )
-        .route(
-            "/api/v1/ollama/models",
-            get(routes::settings::get_ollama_models),
-        )
-        .route(
-            "/api/v1/commerce/balance/:agent_id",
-            get(routes::commerce::get_balance),
-        )
-        .route(
-            "/api/v1/commerce/purchase/:agent_id",
-            axum::routing::post(routes::commerce::execute_purchase).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(1, std::time::Duration::from_secs(2)), // 1 purchase per 2s
-            ),
-        )
-        .route("/api/v1/logs", get(routes::general::get_logs))
-        .route("/api/biome/status", get(routes::biome::biome_status))
-        .route(
-            "/api/biome/topics",
-            get(routes::biome::list_topics)
-                .post(routes::biome::create_topic)
-                .route_layer(
-                    tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(
-                            handle_rate_limit,
-                        ))
-                        .buffer(5)
-                        .rate_limit(1, std::time::Duration::from_secs(5)), // 1 topic per 5s
-                ),
-        )
-        .route("/api/biome/list", get(routes::biome::list_messages))
-        .route(
-            "/api/biome/send",
-            axum::routing::post(routes::biome::send_message).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(2, std::time::Duration::from_secs(1)), // 2 messages per sec (p2p)
-            ),
-        )
-        .route(
-            "/api/biome/autonomous/start",
-            axum::routing::post(routes::biome::autonomous_start).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(1, std::time::Duration::from_secs(2)), // 1 toggle per 2s
-            ),
-        )
-        .route(
-            "/api/biome/autonomous/stop",
-            axum::routing::post(routes::biome::autonomous_stop),
-        )
-        .route(
-            "/api/biome/autonomous/status",
-            get(routes::biome::autonomous_status),
-        )
-        .route(
-            "/api/expression/status",
-            get(routes::expression::expression_status),
-        )
-        .route(
-            "/api/expression/generate",
-            axum::routing::post(routes::expression::generate_expression).route_layer(
-                tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(
-                        handle_rate_limit,
-                    ))
-                    .buffer(5)
-                    .rate_limit(1, std::time::Duration::from_secs(10)), // 1 generation per 10s (costly)
-            ),
-        )
-        .route(
-            "/api/expression/list",
-            get(routes::expression::list_expressions),
-        )
-        .nest(
-            "/api/avatar",
-            Router::new()
-                .route(
-                    "/upload",
-                    axum::routing::post(routes::avatar::upload_avatar_handler),
-                )
-                .route("/ekyc-status", get(routes::avatar::get_ekyc_status_handler))
-                .route_layer(axum::middleware::from_fn_with_state(
-                    state.clone(),
-                    crate::auth::jwt_auth_middleware,
-                )),
-        )
-        .route(
-            "/api/expression/auto",
-            axum::routing::post(routes::expression::toggle_auto_expression),
-        )
-        .route("/api/skills", get(routes::skill::list_skills))
-        .route(
-            "/api/skills/import",
-            axum::routing::post(routes::skill::import_skill),
-        )
-        .route(
-            "/api/skills/mcp/spawn",
-            axum::routing::post(routes::skill::spawn_mcp_server),
-        )
-        .route("/api/health", get(routes::general::get_health_status))
-        // Apply timeout only to standard routes (avoids killing long-lived SSE/WS)
-        .layer(TimeoutLayer::new(Duration::from_secs(30)));
-
-    let streaming_router: Router<AppState> = Router::new()
-        .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
-        .route(
-            "/api/agent/chat/stream",
-            axum::routing::post(stream::trigger_agent_chat_stream),
-        )
-        .nest("/api/v1/mcp", mcp::router())
-        .route(
-            "/api/system/vitality",
-            get(stream::trigger_system_vitality_stream),
-        )
-        .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler));
-
-    let router: Router<AppState> = Router::new().merge(internal_router).merge(streaming_router);
-
-    #[cfg(feature = "nurture")]
-    {
-        // nurture routes are merged after with_state, so handle separately
-    }
-
-    // Apply auth middleware BEFORE with_state, using from_fn_with_state
-    let state_for_auth = state.clone();
-    let router = router.with_state(state);
-
-    #[cfg(feature = "nurture")]
-    let router = router.merge(nurture_api::routes::nurture_routes(nurture_state));
-
-    // Dynamic Route Merging from PluginRegistry (Phase A-2)
-    let router = plugin_registry.merge_routes(router);
-
-    router
-        .route_layer(axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware))
-
-        // --- Public Routes (Internal Monitoring / SSE / WS) ---
-        .merge(utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api::ApiDoc::openapi()))
-        .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
-        // --- Layer 3: Security Headers (Defense in Depth) ---
-        .layer(SetResponseHeaderLayer::if_not_present(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")))
-        .layer(SetResponseHeaderLayer::if_not_present(X_FRAME_OPTIONS, HeaderValue::from_static("DENY")))
-        .layer(SetResponseHeaderLayer::if_not_present(STRICT_TRANSPORT_SECURITY, HeaderValue::from_static("max-age=31536000; includeSubDomains")))
-        .layer(SetResponseHeaderLayer::if_not_present(CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; object-src 'none'; base-uri 'self';")))
-        // --- Layer 2: Dynamic CORS (Whitelisting) ---
-        // Sources: 1) ALLOWED_ORIGINS env var (defaults)  2) DB system_settings (dynamic)
-        .layer(cors_layer)
-        // --- Layer 1: Global Rate Limiting & DoS Protection ---
-        .layer(
-            tower::ServiceBuilder::new()
-                .layer(axum::error_handling::HandleErrorLayer::new(|err: tower::BoxError| async move {
-                    (StatusCode::INTERNAL_SERVER_ERROR, format!("Security Layer Error: {}", err))
-                }))
-                .buffer(1024)
-                .rate_limit(50, std::time::Duration::from_secs(1)) // Spike protection
-                .into_inner()
-        )
-        // --- Layer 0: Payload Protection ---
-        // G-20 FIX: Increased to 512MB to accommodate Voice Core (.pth) and LoRA uploads.
-        // NOTE: Individual route-level limits will be implemented once upload handlers are finalized.
-        .layer(RequestBodyLimitLayer::new(512 * 1024 * 1024))
-}
 
 #[cfg(test)]
 mod api_integration_tests;
-
-async fn handle_rate_limit(_err: tower::BoxError) -> (axum::http::StatusCode, &'static str) {
-    (
-        axum::http::StatusCode::TOO_MANY_REQUESTS,
-        "Rate Limit Exceeded",
-    )
-}
-
-async fn handle_global_error(err: tower::BoxError) -> (axum::http::StatusCode, String) {
-    (
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Security Layer Error: {}", err),
-    )
-}

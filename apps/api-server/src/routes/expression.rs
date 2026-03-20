@@ -31,7 +31,8 @@ pub struct AutoToggle {
     path = "/api/expression/status",
     responses(
         (status = 200, description = "Expression engine status", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn expression_status(
     State(state): State<AppState>,
@@ -71,7 +72,8 @@ pub async fn expression_status(
     responses(
         (status = 200, description = "Generated expression", body = serde_json::Value),
         (status = 400, description = "No karma available")
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn generate_expression(
     State(state): State<AppState>,
@@ -94,9 +96,9 @@ pub async fn generate_expression(
     let mut expression =
         ExpressionEngine::generate(&karma, &soul_prompt, state.provider.as_ref()).await?;
 
-    // 4. NG-22: Trigger TTS if configured
+    // 4. NG-22 / Phase 10.1a: Trigger TTS if configured
     if let Ok(Some(tts_prov)) = state.job_queue.get_setting_value("tts_provider").await {
-        if tts_prov == "openai" {
+        let (audio_res, ext) = if tts_prov == "openai" {
             let voice = state
                 .job_queue
                 .get_setting_value("tts_voice")
@@ -105,33 +107,69 @@ pub async fn generate_expression(
                 .unwrap_or_else(|| "alloy".to_string());
             if let Ok(Some(api_key)) = state.job_queue.get_setting_value("llm_api_key").await {
                 tracing::info!(
-                    "🗣️ [TTS] Synthesizing audio for Expression {} with voice '{}'",
+                    "🗣️ [TTS] Synthesizing OpenAI audio for Expression {} with voice '{}'",
                     expression.id,
                     voice
                 );
-                match ExpressionEngine::synthesize_audio_openai(
-                    &expression.content,
-                    &voice,
-                    &api_key,
+                (
+                    ExpressionEngine::synthesize_audio_openai(&expression.content, &voice, &api_key)
+                        .await,
+                    "mp3",
                 )
-                .await
-                {
-                    Ok((audio_bytes, dur)) => {
-                        let path = format!("workspace/audio/{}.mp3", expression.id);
-                        let _ = std::fs::create_dir_all("workspace/audio");
-                        if let Err(e) = std::fs::write(&path, audio_bytes) {
-                            tracing::error!("Failed to write audio file {}: {}", path, e);
-                        } else {
-                            expression.audio_path = Some(path.clone());
-                            expression.duration_ms = Some(dur as i32);
-                            tracing::info!("✅ [TTS] Audio saved to {}", path);
-                        }
-                    }
-                    Err(e) => tracing::warn!("❌ [TTS] Failed to synthesize audio: {}", e),
-                }
             } else {
                 tracing::warn!("⚠️ [TTS] OpenAI TTS selected but no API key configured.");
+                (
+                    Err(aiome_core::error::AiomeError::Infrastructure {
+                        reason: "Missing API Key".into(),
+                    }),
+                    "mp3",
+                )
             }
+        } else if tts_prov == "xtts" {
+            let speaker = state
+                .job_queue
+                .get_setting_value("tts_voice") // speaker_id used here
+                .await
+                .unwrap_or(None)
+                .unwrap_or_else(|| "p225".to_string());
+            let endpoint = state
+                .job_queue
+                .get_setting_value("tts_endpoint")
+                .await
+                .unwrap_or(None)
+                .unwrap_or_else(|| "http://localhost:8020".to_string());
+
+            tracing::info!(
+                "🗣️ [TTS] Synthesizing XTTS audio for Expression {} with speaker '{}'",
+                expression.id,
+                speaker
+            );
+            (
+                ExpressionEngine::synthesize_audio_xtts(&expression.content, &speaker, &endpoint)
+                    .await,
+                "wav",
+            )
+        } else {
+            (
+                Err(aiome_core::error::AiomeError::Infrastructure {
+                    reason: "Unsupported TTS provider".into(),
+                }),
+                "raw",
+            )
+        };
+
+        if let Ok((audio_bytes, dur)) = audio_res {
+            let path = format!("workspace/audio/{}.{}", expression.id, ext);
+            let _ = std::fs::create_dir_all("workspace/audio");
+            if let Err(e) = std::fs::write(&path, audio_bytes) {
+                tracing::error!("Failed to write audio file {}: {}", path, e);
+            } else {
+                expression.audio_path = Some(path.clone());
+                expression.duration_ms = Some(dur as i32);
+                tracing::info!("✅ [TTS] Audio saved to {} ({}ms)", path, dur);
+            }
+        } else if audio_res.is_err() && tts_prov != "none" {
+            tracing::warn!("❌ [TTS] Failed to synthesize audio via {}: {:?}", tts_prov, audio_res.err());
         }
     }
 
@@ -149,7 +187,8 @@ pub async fn generate_expression(
     ),
     responses(
         (status = 200, description = "Recent expressions", body = [serde_json::Value])
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn list_expressions(
     State(state): State<AppState>,
@@ -168,7 +207,8 @@ pub async fn list_expressions(
     request_body = AutoToggle,
     responses(
         (status = 200, description = "Toggled auto-expression", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn toggle_auto_expression(
     State(state): State<AppState>,

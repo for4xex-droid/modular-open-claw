@@ -157,7 +157,7 @@ pub async fn import_skill(
             reason: format!("SSRF Blocked: {}", e),
         })?;
 
-    // 2. Fetch the content
+    // 2. Fetch the content with size limit (W-8 Fix)
     let resp = state
         .http_client
         .get(&payload.url)
@@ -168,19 +168,39 @@ pub async fn import_skill(
             source: e.into(),
         })?;
 
-    let content = resp.text().await.map_err(|e| {
+    if let Some(cl) = resp.content_length() {
+        if cl > 1_048_576 {
+            return Err(aiome_core::error::AiomeError::SecurityViolation {
+                reason: format!("Imported skill content length ({}) exceeds 1MB limit", cl),
+            }
+            .into());
+        }
+    }
+
+    use futures::StreamExt;
+    let mut body_stream = resp.bytes_stream();
+    let mut content_bytes = Vec::new();
+
+    while let Some(chunk_res) = body_stream.next().await {
+        let chunk = chunk_res.map_err(|e| aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
+            reason: format!("Failed to read stream: {}", e),
+        })?;
+        
+        content_bytes.extend_from_slice(&chunk);
+        
+        if content_bytes.len() > 1_048_576 {
+            return Err(aiome_core::error::AiomeError::SecurityViolation {
+                reason: "Imported skill content exceeds 1MB limit (streaming detected)".into(),
+            }
+            .into());
+        }
+    }
+
+    let content = String::from_utf8(content_bytes).map_err(|e| {
         aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-            reason: format!("Failed to read body: {}", e),
+            reason: format!("Content is not valid UTF-8: {}", e),
         }
     })?;
-
-    // SEC: Limit imported content size to 1MB to prevent memory exhaustion or DoS
-    if content.len() > 1_048_576 {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: "Imported skill content exceeds 1MB limit".into(),
-        }
-        .into());
-    }
 
     // 2. Parse using SkillImporter (Infrastructure)
     use infrastructure::skills::cleanroom::Cleanroom;

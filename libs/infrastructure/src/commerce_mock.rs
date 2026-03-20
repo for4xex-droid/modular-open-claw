@@ -8,6 +8,7 @@
 use aiome_core::commerce::{CommerceEngine, EconomicContext};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
+use tracing::info;
 use uuid::Uuid;
 
 /// OSS 版向けのモック経済エンジン
@@ -54,6 +55,30 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn register_license(
+        &self,
+        _agent_id: Uuid,
+        asset_id: Uuid,
+        _license_type: &str,
+    ) -> Result<String, AiomeError> {
+        info!("🏷️ [MockCommerceEngine] Registering license for asset {}", asset_id);
+        Ok(format!("lic_{}", Uuid::new_v4()))
+    }
+
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
+        Ok(()) // モックなので常に成功
+    }
+
+    async fn process_webhook(
+        &self,
+        event_id: &str,
+        _event_type: &str,
+        _payload: &serde_json::Value,
+    ) -> Result<(), AiomeError> {
+        info!("💡 [MockCommerceEngine] Mock processing webhook event: {}", event_id);
         Ok(())
     }
 }

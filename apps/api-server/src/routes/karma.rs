@@ -21,7 +21,8 @@ use tracing::{info, warn};
     path = "/api/synergy/karma",
     responses(
         (status = 200, description = "List recent karma", body = [serde_json::Value])
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn get_karma_stream(
     State(state): State<AppState>,
@@ -36,7 +37,8 @@ pub async fn get_karma_stream(
     path = "/api/synergy/test/failure",
     responses(
         (status = 200, description = "Demo failure triggered", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn trigger_failure_demo(
     State(state): State<AppState>,
@@ -94,7 +96,8 @@ pub async fn trigger_failure_demo(
     path = "/api/synergy/test/security",
     responses(
         (status = 200, description = "Demo security triggered", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
@@ -114,7 +117,8 @@ pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<
     path = "/api/synergy/test/federation",
     responses(
         (status = 200, description = "Demo federation triggered", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn trigger_federation_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
@@ -153,7 +157,8 @@ pub struct GraphData {
     path = "/api/synergy/graph",
     responses(
         (status = 200, description = "Synergy graph data", body = GraphData)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn synergy_graph_handler(
     State(state): State<AppState>,
@@ -226,7 +231,8 @@ pub async fn synergy_graph_handler(
     path = "/api/synergy/rules",
     responses(
         (status = 200, description = "List immune rules", body = [serde_json::Value])
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn get_immune_rules_handler(
     State(state): State<AppState>,
@@ -242,7 +248,8 @@ pub async fn get_immune_rules_handler(
     request_body = ImmuneRule,
     responses(
         (status = 200, description = "Rule added", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn add_immune_rule_handler(
     State(state): State<AppState>,
@@ -272,7 +279,8 @@ pub async fn add_immune_rule_handler(
     ),
     responses(
         (status = 200, description = "Rule deleted", body = serde_json::Value)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn delete_immune_rule_handler(
     State(state): State<AppState>,
@@ -289,7 +297,8 @@ pub async fn delete_immune_rule_handler(
     path = "/api/system/evolution",
     responses(
         (status = 200, description = "Evolution history", body = [serde_json::Value])
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn get_evolution_history_handler(
     State(state): State<AppState>,

@@ -7,3 +7,5 @@
 
 /// ギフト送信実装 (Tremendous 連携等)
 pub mod gift;
+/// Stripe 決済実装
+pub mod stripe;

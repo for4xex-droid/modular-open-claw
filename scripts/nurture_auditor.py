@@ -7,8 +7,8 @@ from datetime import datetime
 # Regex patterns for static analysis
 RUST_STRUCT_PATTERN = re.compile(r'pub\s+struct\s+([A-Z][a-zA-Z0-9_]*)')
 RUST_TRAIT_PATTERN = re.compile(r'pub\s+trait\s+([A-Z][a-zA-Z0-9_]*)')
-RUST_ROUTE_PATTERN = re.compile(r'route\("([^"]+)"')
-TS_COMPONENT_PATTERN = re.compile(r'const\s+([A-Z][a-zA-Z0-9_]*)\s*:\s*React\.FC')
+RUST_ROUTE_PATTERN = re.compile(r'route\s*\(\s*"([^"]+)"')
+TS_COMPONENT_PATTERN = re.compile(r'(?:export\s+default\s+function|const)\s+([A-Z][a-zA-Z0-9_]*)\s*(?::\s*React\.FC|[=(])')
 
 def analyze_rust_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:

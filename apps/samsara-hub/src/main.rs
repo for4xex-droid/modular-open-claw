@@ -39,6 +39,7 @@ use tracing::{error, info, warn};
 pub struct HubState {
     pool: SqlitePool,
     secret: secrecy::SecretString,
+    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
     tx: broadcast::Sender<HubMessage>,
     active_connections: std::sync::atomic::AtomicUsize,
 }
@@ -105,6 +106,12 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(HubState {
         pool: pool.clone(),
         secret,
+        auth_manager: {
+            match std::env::var("JWT_PRIVATE_KEY_B64") {
+                Ok(key_b64) => Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)?),
+                Err(_) => Arc::new(infrastructure::auth::MockAuthManager::new()),
+            }
+        },
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
     });
@@ -264,7 +271,7 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
         .execute(pool)
         .await?;
 
-    // BFT: Composite indexes for O(1) Equivocation (Double-Signing) Detection
+    // BFT: Composite indexes for O(1) Equivocation (Double-Signing)
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_karma_node_clock ON quarantined_karma(node_id, lamport_clock);").execute(pool).await?;
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_rules_node_clock ON quarantined_rules(node_id, lamport_clock);").execute(pool).await?;
 
@@ -421,14 +428,29 @@ async fn create_topic_handler(
     headers: HeaderMap,
     Json(req): Json<CreateTopicRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    // 1. Auth Check (Consolidated and timing-leak proof)
-    if !verify_bearer(
-        headers
+    // Auth Check
+    let auth_header = headers
             .get(axum::http::header::AUTHORIZATION)
             .and_then(|h| h.to_str().ok())
-            .unwrap_or(""),
-        &state.secret,
-    ) {
+            .unwrap_or("");
+
+    // Try JWT (AuthManager) first
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+             if claims.agent_id != uuid::Uuid::nil() {
+                 authenticated = true;
+             }
+        }
+    }
+
+    // Fallback to Legacy Shared Secret
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
@@ -601,11 +623,6 @@ async fn biome_relay_handler(
             warn!("🛡️ [Relay] Failed to increment turn_count for {}: {}", msg.topic_id, e);
         }
 
-    // Broadcast to real-time subscribers
-    if let Err(e) = state.tx.send(HubMessage::BiomeRelay(msg)) {
-        warn!("🛡️ [Relay] Failed to broadcast biome relay: {}", e);
-    }
-
     (
         StatusCode::ACCEPTED,
         Json(serde_json::json!({"status": "accepted"})),
@@ -623,14 +640,27 @@ async fn biome_ws_handler(
     Query(query): Query<BiomeWsQuery>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    // 1. Auth Check (Consolidated and timing-leak proof)
-    if !verify_bearer(
-        headers
+    // Auth Check
+    let auth_header = headers
             .get(axum::http::header::AUTHORIZATION)
             .and_then(|h| h.to_str().ok())
-            .unwrap_or(""),
-        &state.secret,
-    ) {
+            .unwrap_or("");
+
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
@@ -673,23 +703,32 @@ async fn sync_handler(
     headers: HeaderMap,
     Json(payload): Json<FederationSyncRequest>,
 ) -> impl IntoResponse {
-    // 1. Auth Check (Consolidated and timing-leak proof)
-    let auth = headers
+    // Auth Wall
+    let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
-    let is_auth_valid = verify_bearer(auth, &state.secret);
 
-    if !is_auth_valid {
-        warn!(
-            "🔒 Unauthorized sync attempt from node: {}",
-            payload.node_id
-        );
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
+        warn!("🔒 Unauthorized sync attempt from node: {}", payload.node_id);
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
-        )
-            .into_response();
+        ).into_response();
     }
 
     // BFT: BAN Check
@@ -807,22 +846,31 @@ async fn push_handler(
     Json(payload): Json<FederationPushRequest>,
 ) -> impl IntoResponse {
     // Auth Wall
-    let auth = headers
+    let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
-    let is_auth_valid = verify_bearer(auth, &state.secret);
 
-    if !is_auth_valid {
-        warn!(
-            "🔒 Unauthorized push attempt from node: {}",
-            payload.node_id
-        );
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
+        warn!("🔒 Unauthorized push attempt from node: {}", payload.node_id);
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
-        )
-            .into_response();
+        ).into_response();
     }
 
     // BFT: BAN Check
@@ -1003,12 +1051,26 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<HubState>>,
 ) -> impl IntoResponse {
-    let auth = headers
+    let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
 
-    if !verify_bearer(auth, &state.secret) {
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
         warn!("🔒 Unauthorized WS upgrade attempt");
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
@@ -1288,12 +1350,49 @@ async fn approval_worker(pool: SqlitePool, token: CancellationToken) {
     }
 }
 
+// Custom extractor for authenticated user claims
+#[derive(Clone, Debug)]
+pub struct AuthenticatedUser(pub shared::auth::AiomeCustomClaims);
+
 use automerge::AutoCommit;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct TimelineSyncRequest {
     pub hub_id: String,
     pub automerge_blob: Vec<u8>,
+}
+
+async fn auth_middleware(
+    State(state): State<Arc<HubState>>,
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if authenticated {
+        Ok(next.run(req).await)
+    } else {
+        warn!("⛔ [Hub] Unauthorized access attempt.");
+        Err(StatusCode::UNAUTHORIZED)
+    }
 }
 
 async fn timeline_sync_handler(
@@ -1405,16 +1504,16 @@ pub fn build_app(state: Arc<HubState>) -> Router {
     Router::new()
         .route("/api/v1/federation/sync", post(sync_handler))
         .route("/api/v1/federation/push", post(push_handler))
-        .route("/api/v1/federation/ws", get(ws_handler))
         .route("/api/v1/health", get(health_handler))
-        // Biome Routes (Phase 20)
         .route(
             "/api/v1/biome/topics",
             get(list_topics_handler).post(create_topic_handler),
         )
         .route("/api/v1/biome/relay", post(biome_relay_handler))
         .route("/api/v1/biome/ws", get(biome_ws_handler))
-        // CRDT Timeline Relay
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
+        // WS and Sync handled inside their handlers for manual auth/handshake
+        .route("/api/v1/federation/ws", get(ws_handler)) 
         .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(cors)
         .layer(DefaultBodyLimit::max(5 * 1024 * 1024)) // 5MB limit

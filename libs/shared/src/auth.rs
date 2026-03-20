@@ -18,6 +18,10 @@ pub struct AiomeCustomClaims {
     #[serde(default)]
     pub ekyc_verified: bool,
 
+    /// Agent identifier target for this session (Scope-based RBAC)
+    #[serde(default = "uuid::Uuid::nil")]
+    pub agent_id: uuid::Uuid,
+
     /// User roles for RBAC
     #[serde(default)]
     pub roles: Vec<String>,
@@ -70,5 +74,24 @@ mod tests {
         assert!(!claims.ekyc_verified); // default is false
         assert!(claims.roles.is_empty());
         assert_eq!(claims.exp, 1700000000);
+    }
+
+    #[test]
+    fn test_deserialize_claims_with_agent_id() {
+        let agent_uuid = uuid::Uuid::new_v4();
+        let json_str = format!(
+            r#"{{
+            "sub": "user_003",
+            "agent_id": "{}",
+            "exp": 1700000000
+        }}"#,
+            agent_uuid
+        );
+
+        let claims: AiomeCustomClaims =
+            serde_json::from_str(&json_str).expect("Valid test claims with agent_id JSON");
+
+        // This will now fail because AiomeCustomClaims doesn't have agent_id yet (RED)
+        assert_eq!(claims.agent_id, agent_uuid);
     }
 }

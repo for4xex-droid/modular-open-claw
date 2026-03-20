@@ -43,11 +43,17 @@ LABEL org.opencontainers.image.authors="motivationstudio,LLC" \
 RUN groupadd -g 10001 aiome && \
     useradd -u 10001 -g aiome -m -s /bin/false aiome
 
-# 2. Hardening: Install only necessary CA certs and runtime libraries
+# 2. Hardening: Install only necessary CA certs, runtime libraries, and gVisor (runsc)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     curl \
+    gnupg \
+    libcap2-bin \
+    && curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" > /etc/apt/sources.list.d/gvisor.list \
+    && apt-get update && apt-get install -y runsc \
+    && setcap cap_sys_ptrace+ep /usr/bin/runsc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

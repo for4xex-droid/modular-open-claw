@@ -18,6 +18,14 @@ pub enum CsamError {
     HashError,
 }
 
+impl From<CsamError> for aiome_contracts::error::AiomeError {
+    fn from(e: CsamError) -> Self {
+        aiome_contracts::error::AiomeError::Infrastructure {
+            reason: format!("[CSAM] {}", e),
+        }
+    }
+}
+
 /// 知覚ハッシュ生成器 (PhotoDNA 互換アプローチ)
 pub struct ImageHasher {
     hasher: img_hash::Hasher,

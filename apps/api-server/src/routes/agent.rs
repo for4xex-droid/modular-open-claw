@@ -665,7 +665,8 @@ pub struct KarmaFeedbackRequest {
     responses(
         (status = 200, description = "Feedback recorded"),
         (status = 500, description = "Internal error")
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn handle_karma_feedback(
     State(state): State<AppState>,

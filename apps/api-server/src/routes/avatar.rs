@@ -64,6 +64,10 @@ pub async fn upload_avatar_handler(
             "⚠️ [Avatar] User {} is NOT identity verified. Upload blocked.",
             user.0.sub
         );
+        return Err(aiome_contracts::error::AiomeError::SecurityViolation {
+            reason: "eKYC verification required for custom asset upload".to_string(),
+        }
+        .into());
     }
 
     // 2. 画像知覚ハッシュの検証 (CSAM)

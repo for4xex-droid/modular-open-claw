@@ -36,40 +36,40 @@ impl FromRequestParts<crate::AppState> for Authenticated {
             .and_then(|h| h.to_str().ok())
             .unwrap_or_default();
 
-        let expected_bearer = format!("Bearer {}", state.api_server_secret.expose_secret());
+        if !auth_header.starts_with("Bearer ") {
+            return Err((StatusCode::UNAUTHORIZED, "Missing or malformed Bearer token").into_response());
+        }
 
-        if verify_constant_time(auth_header.as_bytes(), expected_bearer.as_bytes()) {
-            // A-4: User Specificity - Check X-Agent-Id header
-            let agent_id = parts
-                .headers
-                .get("X-Agent-Id")
-                .and_then(|h| h.to_str().ok())
-                .and_then(|s| uuid::Uuid::parse_str(s).ok());
+        let token = auth_header.trim_start_matches("Bearer ");
 
-            // Fallback to system agent ID if not provided or invalid
-            let final_agent_id = match agent_id {
-                Some(id) => id,
-                None => state.system_agent_id,
-            };
-
-            Ok(Authenticated {
-                agent_id: final_agent_id,
-            })
-        } else {
-            let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-            if !auth_header.is_empty() && auth_header.starts_with("Bearer ") {
+        match state.auth_manager.validate_token(token).await {
+            Ok(claims) => {
+                // nil UUID Guard (Expert Review G-3)
+                if claims.agent_id == uuid::Uuid::nil() {
+                    // SEC: PII protection - don't log raw 'sub'
+                    let sub_hash = &claims.sub.chars().take(8).collect::<String>();
+                    warn!("🛡️ [Auth] Blocked request with nil agent_id for sub: {}...", sub_hash);
+                    return Err((StatusCode::FORBIDDEN, "agent_id (UUID) is required").into_response());
+                }
+                
+                Ok(Authenticated {
+                    agent_id: claims.agent_id,
+                })
+            }
+            Err(e) => {
+                warn!("⛔ [Auth] JWT validation failed: {}", e);
+                let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
                 use axum::http::HeaderValue;
                 resp.headers_mut()
                     .insert("X-Token-Expired", HeaderValue::from_static("true"));
+                Err(resp)
             }
-            Err(resp)
         }
     }
 }
 
-/// Auth middleware function: Used with `from_fn_with_state` for route_layer auth.
-/// Performs the same constant-time comparison as the Authenticated extractor.
-pub async fn auth_middleware(
+/// legacy auth middleware function (Shared Secret) - Keep for grace period
+pub async fn legacy_auth_middleware(
     State(state): State<crate::AppState>,
     req: Request<axum::body::Body>,
     next: Next,
@@ -86,9 +86,38 @@ pub async fn auth_middleware(
         Ok(next.run(req).await)
     } else {
         if !auth_header.is_empty() && auth_header.starts_with("Bearer ") {
-            warn!("⛔ [Auth] Invalid Bearer token received");
+            warn!("⛔ [Auth] Invalid Bearer token (legacy) received");
         }
         Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+/// JWT Auth middleware function (Default for Phase 8.2+)
+pub async fn auth_middleware(
+    State(state): State<crate::AppState>,
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or_default();
+
+    if !auth_header.starts_with("Bearer ") {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    let token = auth_header.trim_start_matches("Bearer ");
+
+    match state.auth_manager.validate_token(token).await {
+        Ok(_) => {
+            Ok(next.run(req).await)
+        }
+        Err(e) => {
+            warn!("⛔ [Auth] JWT validation failed: {}", e);
+            Err(StatusCode::UNAUTHORIZED)
+        }
     }
 }
 
@@ -121,7 +150,7 @@ pub async fn jwt_auth_middleware(
         .unwrap_or_default();
 
     if !auth_header.starts_with("Bearer ") {
-        warn!("⛔ [JWT Auth] Missing or malformed Bearer token");
+        warn!("⛔ [Auth] Missing or malformed Bearer token");
         return Err(StatusCode::UNAUTHORIZED);
     }
 
@@ -129,12 +158,19 @@ pub async fn jwt_auth_middleware(
 
     match state.auth_manager.validate_token(token).await {
         Ok(claims) => {
+            // nil UUID Guard (Expert Review G-3)
+            if claims.agent_id == uuid::Uuid::nil() {
+                let sub_hash = &claims.sub.chars().take(8).collect::<String>();
+                warn!("🛡️ [Auth] Blocked request with nil agent_id for sub: {}...", sub_hash);
+                return Err(StatusCode::FORBIDDEN);
+            }
+            
             // Embed claims into request extensions so handlers can extract it
             req.extensions_mut().insert(AuthenticatedUser(claims));
             Ok(next.run(req).await)
         }
         Err(e) => {
-            warn!("⛔ [JWT Auth] Token validation failed: {}", e);
+            warn!("⛔ [Auth] JWT validation failed: {}", e);
             Err(StatusCode::UNAUTHORIZED)
         }
     }

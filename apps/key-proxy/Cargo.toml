@@ -23,7 +23,9 @@ tower-http = { version = "0.5", features = ["full", "limit"] }
 nix = { workspace = true }
 dotenvy = "0.15"
 subtle = "2.6.1"
+uuid = { workspace = true }
 
 # Internal
 aiome-core = { path = "../../libs/core" }
 shared = { path = "../../libs/shared" }
+infrastructure = { path = "../../libs/infrastructure" }

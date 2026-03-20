@@ -27,11 +27,13 @@ pub struct AgentSoul {
     pub anamnesis: crate::anamnesis::AnamnesisProfile,
     pub experience_buffer: Vec<Experience>,
 
-    // LoRA / Model Fine-tuning integration (G-13)
+    // LoRA / Model Fine-tuning integration (G-13 / Phase 10.1b)
     #[serde(default)]
     pub lora_adapter_path: Option<String>,
     #[serde(default)]
     pub lora_base_model: Option<String>,
+    #[serde(default)]
+    pub lora_hash: Option<String>,
 }
 
 impl AgentSoul {
@@ -49,6 +51,7 @@ impl AgentSoul {
             experience_buffer: Vec::new(),
             lora_adapter_path: None,
             lora_base_model: None,
+            lora_hash: None,
         };
         soul.compute_hash();
         soul
@@ -56,12 +59,13 @@ impl AgentSoul {
 
     pub fn compute_hash(&mut self) -> String {
         let payload = format!(
-            "{}:{}:{}:{}:{}",
+            "{}:{}:{}:{}:{}:{}",
             self.id,
             self.generation,
             self.instinct.hash,
             self.attachment.interaction_count,
-            self.predictive_model.global_surprise_sensitivity
+            self.predictive_model.global_surprise_sensitivity,
+            self.lora_hash.as_deref().unwrap_or("none")
         );
         let mut hasher = Sha256::new();
         hasher.update(payload.as_bytes());
@@ -154,5 +158,23 @@ mod tests {
 
         assert_eq!(soul.defenses.len(), 1); // d2 should be removed (0.201 * 0.995 < 0.2)
         assert!(soul.defenses[0].intensity < 1.0); // d1 should be decayed
+    }
+
+    #[test]
+    fn test_soul_hash_change() {
+        let mut soul = AgentSoul::new("test-hash".to_string());
+        let hash1 = soul.soul_hash.clone();
+        
+        soul.generation += 1;
+        let hash2 = soul.compute_hash();
+        assert_ne!(hash1, hash2, "Hash must change when generation increases");
+        
+        soul.attachment.interaction_count += 10;
+        let hash3 = soul.compute_hash();
+        assert_ne!(hash2, hash3, "Hash must change when interaction count increases");
+
+        soul.lora_hash = Some("sha256:abcd".into());
+        let hash4 = soul.compute_hash();
+        assert_ne!(hash3, hash4, "Hash must change when lora_hash changes");
     }
 }

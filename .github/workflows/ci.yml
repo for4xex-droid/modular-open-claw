@@ -310,9 +310,21 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
 
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Distroless Image
+        run: |
+          docker build -t aiome-api:latest -f docker/distroless.Dockerfile --build-arg BIN_NAME=api-server .
+      - name: Build Samsara Hub Image
+        run: |
+          docker build -t aiome-hub:latest -f docker/distroless.Dockerfile --build-arg BIN_NAME=samsara-hub .
+
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, deep-scan, semver-check, unused-deps, sbom]
+    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, deep-scan, semver-check, unused-deps, sbom, docker-build]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:

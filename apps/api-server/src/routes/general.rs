@@ -78,7 +78,6 @@ pub async fn get_wiki_content(
 )]
 pub async fn get_health_status(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
 ) -> Result<Json<ResourceStatus>, AppError> {
     let mut monitor = state.health_monitor.lock().await;
     let mut status = monitor.check();
@@ -112,7 +111,8 @@ pub struct LogEntryResponse {
     ),
     responses(
         (status = 200, description = "Fetch application logs", body = Vec<LogEntryResponse>)
-    )
+    ),
+    security(("api_key" = []))
 )]
 pub async fn get_logs(
     State(state): State<AppState>,
@@ -137,4 +137,98 @@ pub async fn get_logs(
     })?;
 
     Ok(Json(logs))
+}
+#[derive(serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct AuditLedgerResponse {
+    pub id: i64,
+    pub table_name: String,
+    pub operation: String,
+    pub record_id: String,
+    pub current_hash: String,
+    pub timestamp: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit/ledger",
+    responses(
+        (status = 200, description = "Fetch secure audit ledger", body = [AuditLedgerResponse]),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_audit_ledger(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<Vec<AuditLedgerResponse>>, AppError> {
+    let pool = state.job_queue.get_pool();
+    let rows = sqlx::query_as::<_, AuditLedgerResponse>(
+        "SELECT id, table_name, operation, record_id, current_hash, timestamp FROM audit_ledger_global ORDER BY id DESC LIMIT 100",
+    )
+    .fetch_all(pool)
+    .await;
+
+    let ledger = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+        reason: format!("DB Error: {}", e),
+    })?;
+
+    Ok(Json(ledger))
+}
+#[derive(serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct DiagnosisResponse {
+    pub id: i64,
+    pub job_id: String,
+    pub root_cause: Option<String>,
+    pub self_repair_hint: Option<String>,
+    pub failure_category: Option<String>,
+    pub timestamp: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit/diagnostics",
+    responses(
+        (status = 200, description = "Fetch agent diagnostics history", body = [DiagnosisResponse]),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_diagnoses(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<Vec<DiagnosisResponse>>, AppError> {
+    let pool = state.job_queue.get_pool();
+    let rows = sqlx::query_as::<_, DiagnosisResponse>(
+        "SELECT id, job_id, root_cause, self_repair_hint, failure_category, diagnosed_at as timestamp FROM agent_diagnoses ORDER BY id DESC LIMIT 100",
+    )
+    .fetch_all(pool)
+    .await;
+
+    let diagnoses = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+        reason: format!("DB Error: {}", e),
+    })?;
+
+    Ok(Json(diagnoses))
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct TrendsResponse {
+    pub trends: Vec<aiome_core::traits::TrendItem>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/trends",
+    responses(
+        (status = 200, description = "Fetch current AI trends (Skeleton)", body = TrendsResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_trends(
+    _state: State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<TrendsResponse>, AppError> {
+    // Phase 8.6: Skeleton only. Real implementation in Phase 10.
+    Ok(Json(TrendsResponse { trends: vec![] }))
 }

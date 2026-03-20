@@ -37,6 +37,32 @@ pub enum ProcessError {
     },
 }
 
+impl From<ProcessError> for aiome_contracts::error::AiomeError {
+    fn from(e: ProcessError) -> Self {
+        match e {
+            ProcessError::TimedOut { timeout_secs, .. } => {
+                aiome_contracts::error::AiomeError::RemoteServiceTimeout { timeout_secs }
+            }
+            ProcessError::SpawnFailed(err) => {
+                if err.kind() == std::io::ErrorKind::PermissionDenied {
+                    aiome_contracts::error::AiomeError::SecurityViolation {
+                        reason: format!("Process spawn denied: {}", err),
+                    }
+                } else {
+                    aiome_contracts::error::AiomeError::OsError {
+                        source: anyhow::anyhow!("{}", err),
+                    }
+                }
+            }
+            ProcessError::NonZeroExit {
+                command, exit_code, ..
+            } => aiome_contracts::error::AiomeError::SubprocessFailed {
+                reason: format!("Command '{}' failed with code {}", command, exit_code),
+            },
+        }
+    }
+}
+
 impl std::fmt::Display for ProcessError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

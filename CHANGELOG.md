@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 10.2 (Voice Commerce MVP & DRM)**:
+    - **VoiceKeyVault**: Introduced `VoiceKeyVault` trait and `AbyssVoiceVault` implementation using `zeroize` for memory-safe cryptography to protect creator AES-256 asset keys.
+    - **Commerce Webhook & Stripe**: Implemented `StripeCommerceEngine` with signature verification and robust idempotency through the `stripe_webhook_events` database ledger.
+    - **Asset Registry**: Added `RegistryManager` in `infrastructure/registry.rs` to securely map external UUIDs to proprietary creator voice models.
+    - **Voice Store UI**: Developed the `VoiceStore` React component in the Management Console, enabling one-click purchases and Karma Coin integration for DRM-protected assets.
+    - **Commerce Policy**: Drafted `commerce_policy.md` outlining the 80/20 revenue split, KC economy rules, and strict zero-tolerance policies for unauthorized clone uploads.
+    - **Security Logs**: Configured global log masking for sensitive secrets like `STRIPE_WEBHOOK_SECRET` in `tracing-subscriber` configuration.
+- **Phase 10.1a (XTTS Core Integration)**:
+    - **XTTS Synthesis**: Implemented `ExpressionEngine::synthesize_audio_xtts` in `aiome-core`, enabling integration with local XTTS v2 servers for high-quality, personalized voice synthesis.
+    - **API Provider Selection**: Updated the `/api/expression/generate` endpoint to support switching between OpenAI (tts-1) and localized XTTS providers via system settings.
+    - **Legal Guardrails**: Established `voice_upload_terms.md` and a TTS provider comparison matrix to manage copyright and licensing risks associated with creator-first audio assets.
+- **Phase 10.1b (LoRA Metadata & Soul Persistence)**:
+    - **LoraEngine**: Introduced `LoraEngine` in `libs/core` to manage LoRA model metadata (hashes, base models, file paths) for consistent model identification.
+    - **Soul Identification**: Extended `AgentSoul` with a `lora_hash` field, ensuring that the AI's internal identity and hash-chains are tied to the specific fine-tuned model version.
+    - **Persistence Layer**: Updated `SqliteSoulStore` and database migrations to support the `lora_hash` column, enabling seamless recovery of model settings across AI rebirth cycles.
+- **Phase 8.8 (Audit & Immunity Ledger UI)**:
+    - **Audit UI**: Implemented `DiagnosticsHistory` component in the management console, providing a transparent view of agent self-repair logs and system-wide hash-chained change logs.
+    - **User Experience**: Integrated the Audit tab into the main navigation with lazy loading and optimized "Load More" pagination to prevent UI bloat from large log sets.
+    - **AST Visibility**: Fixed a regex bug in the `nurture_auditor.py` script that was skipping 10+ React components (e.g., `ArtifactVault`), restoring full visibility to the AST structure matrix.
+- **Phase 8.7 (Post-Scan Remediation & Synergy)**:
+    - **Type Synchronization**: Added `DiagnosisResponse`, `TrendsResponse`, and `AuditLedgerResponse` to the OpenAPI schema in `api.rs`, enabling full TypeScript type safety across the stack.
+    - **Artifact Lineage Visualizer**: Expanded `GraphView.tsx` to integrate Artifact data (`/api/artifacts`) alongside Karma nodes, visualizing the creative lineage of the AI through purple diamond nodes and "materialized" edges.
+    - **Load Test Readiness**: Added a dedicated load testing task to the Phase 9.0 roadmap to verify the impact of the new 2MB request body limit on high-traffic routes.
+- **Phase 8.6 (Deep Scan Remediation & Security Hardening)**:
+    - **DDoS Protection**: Implemented a global request body limit of 2MB in `api-server` using `RequestBodyLimitLayer` to mitigate resource exhaustion attacks.
+    - **Route Specific Bypass**: Added a 50MB body limit bypass specifically for the `/upload` (avatar) route to maintain essential high-payload functionality while securing the rest of the API.
+    - **API Registry Expansion**: Formally exposed the Diagnostics API (`/api/v1/audit/diagnostics`) and implemented a Trends API skeleton (`/api/v1/trends`) to fulfill Project NURTURE requirements.
+    - **AST Scripting**: Created `scripts/nurture_auditor.py` for automated AST-based structural analysis, enabling deep codebase audits without hitting LLM context limits.
+- **Phase 8.2 (OAuth 2.1 & JWT Authentication)**:
+    - **JWT AuthManager**: Implemented `JwtAuthManager` and `AuthManager` trait to replace legacy shared secrets with stateless, secure Ed25519 JWT tokens.
+    - **Hybrid Middleware**: Added `auth_middleware` in `samsara-hub` and `key-proxy` supporting both Bearer JWT and legacy secrets for backward compatibility.
+    - **PII Protection**: Implemented SHA-256 hashing for user identifiers (`sub`) in JWT validation logs to prevent PII exposure.
+    - **Production Security**: Hardened `key-proxy` to require `JWT_PRIVATE_KEY_B64` in production, eliminating the risk of accidental MockAuthManager usage.
 - **Phase 8.3 (Type-Driven Security)**:
     - **Type-Level Enforcement**: Added `_auth: Authenticated` extractor to all (45) public asynchronous route handlers in `api-server` (agent, biome, karma, artifacts, skill, streams, expression, general), ensuring that unauthenticated routes cannot compile.
     - **Performance Optimization**: Cached `system_agent_id` into `AppState` during application startup, eliminating redundant database queries inside the `Authenticated` extractor for hot-path APIs.
@@ -120,7 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System prompt now dynamically injects AI name from DB settings.
 - `build_system_instructions()` prioritizes `SOUL.md` content over hardcoded identity.
 
-## [0.1.0] - 2026-03-05
+## [0.1.0] - 2026-03-20
 
 ### Added
 - **Full OSS Strategy**: Pivoted from Open-Core to a Full Open Source foundation under the Elastic License 2.0 (ELv2).

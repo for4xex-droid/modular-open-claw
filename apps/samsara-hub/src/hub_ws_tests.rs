@@ -26,6 +26,7 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
     let state = Arc::new(HubState {
         pool,
         secret: secrecy::SecretString::new("test_secret".to_string()),
+        auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
     });

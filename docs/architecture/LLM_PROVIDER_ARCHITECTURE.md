@@ -182,7 +182,27 @@ graph TB
 
 ---
 
-## 7. 設定変更の影響範囲
+## 7. Speech Synthesis (TTS) Architecture (Phase 10.1a)
+
+`ExpressionEngine` は `LlmProvider` を使用してテキストを生成した後、オプションで TTS 合成を行います。
+
+### 7.1 対応 TTS プロバイダー
+
+| プロバイダー | 設定値 (`tts_provider`) | API キー / エンドポイント | 特徴 |
+|---|---|---|---|
+| OpenAI | `openai` | `llm_api_key` | 高速・高品質、要クラウド接続 |
+| XTTS | `xtts` | `tts_endpoint` | ローカル実行可能、クローン音声対応 |
+| なし | `none` | 不要 | テキストのみ生成 |
+
+### 7.2 LoRA モデル連携 (Phase 10.1b)
+
+人格のファインチューニングに使用される LoRA モデルは、`AgentSoul` の `lora_hash` フィールドによって識別されます。
+- `lora_hash`: モデルの同一性を保証し、`soul_hash` の一部として計算されます。
+- 実行時、`OllamaProvider` はこのハッシュに基づいて `build_lora_model()` を呼び出し、適切なアダプタをロードします。
+
+---
+
+## 8. 設定変更の影響範囲
 
 | 変更箇所 | 影響 | 再起動必要 |
 |---|---|---|
