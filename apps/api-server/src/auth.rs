@@ -38,7 +38,11 @@ impl FromRequestParts<crate::AppState> for Authenticated {
             .unwrap_or_default();
 
         if !auth_header.starts_with("Bearer ") {
-            return Err((StatusCode::UNAUTHORIZED, "Missing or malformed Bearer token").into_response());
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                "Missing or malformed Bearer token",
+            )
+                .into_response());
         }
 
         let token = auth_header.trim_start_matches("Bearer ");
@@ -49,10 +53,15 @@ impl FromRequestParts<crate::AppState> for Authenticated {
                 if claims.agent_id == uuid::Uuid::nil() {
                     // SEC: PII protection - don't log raw 'sub'
                     let sub_hash = &claims.sub.chars().take(8).collect::<String>();
-                    warn!("🛡️ [Auth] Blocked request with nil agent_id for sub: {}...", sub_hash);
-                    return Err((StatusCode::FORBIDDEN, "agent_id (UUID) is required").into_response());
+                    warn!(
+                        "🛡️ [Auth] Blocked request with nil agent_id for sub: {}...",
+                        sub_hash
+                    );
+                    return Err(
+                        (StatusCode::FORBIDDEN, "agent_id (UUID) is required").into_response()
+                    );
                 }
-                
+
                 Ok(Authenticated {
                     agent_id: claims.agent_id,
                     ekyc_verified: claims.ekyc_verified,
@@ -113,7 +122,15 @@ pub async fn auth_middleware(
     let token = auth_header.trim_start_matches("Bearer ");
 
     match state.auth_manager.validate_token(token).await {
-        Ok(_) => {
+        Ok(claims) => {
+            // G-2: Per-Agent Rate Limiting
+            if let Err(e) = state.rate_limiter.check(claims.agent_id) {
+                warn!(
+                    "⚠️ [RateLimit] Blocked request for agent {}: {}",
+                    claims.agent_id, e
+                );
+                return Err(StatusCode::TOO_MANY_REQUESTS);
+            }
             Ok(next.run(req).await)
         }
         Err(e) => {
@@ -163,10 +180,22 @@ pub async fn jwt_auth_middleware(
             // nil UUID Guard (Expert Review G-3)
             if claims.agent_id == uuid::Uuid::nil() {
                 let sub_hash = &claims.sub.chars().take(8).collect::<String>();
-                warn!("🛡️ [Auth] Blocked request with nil agent_id for sub: {}...", sub_hash);
+                warn!(
+                    "🛡️ [Auth] Blocked request with nil agent_id for sub: {}...",
+                    sub_hash
+                );
                 return Err(StatusCode::FORBIDDEN);
             }
-            
+
+            // G-2: Per-Agent Rate Limiting
+            if let Err(e) = state.rate_limiter.check(claims.agent_id) {
+                warn!(
+                    "⚠️ [RateLimit] Blocked request for agent {}: {}",
+                    claims.agent_id, e
+                );
+                return Err(StatusCode::TOO_MANY_REQUESTS);
+            }
+
             // Embed claims into request extensions so handlers can extract it
             req.extensions_mut().insert(AuthenticatedUser(claims));
             Ok(next.run(req).await)

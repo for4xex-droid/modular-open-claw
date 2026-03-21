@@ -53,12 +53,19 @@ pub async fn send_gift(
 ) -> Result<impl IntoResponse, AppError> {
     // SEC: Authentication & OS Authority
     if agent_id != auth.agent_id {
-        return Err(AppError::forbidden("Unauthorized gift request for this agent"));
+        return Err(AppError::forbidden(
+            "Unauthorized gift request for this agent",
+        ));
     }
 
     if !auth.ekyc_verified {
-        tracing::warn!("🛡️ [Gift] Blocked unverified gift request from agent: {}", agent_id);
-        return Err(AppError::forbidden("eKYC verification is required to send gifts"));
+        tracing::warn!(
+            "🛡️ [Gift] Blocked unverified gift request from agent: {}",
+            agent_id
+        );
+        return Err(AppError::forbidden(
+            "eKYC verification is required to send gifts",
+        ));
     }
 
     tracing::info!(
@@ -69,26 +76,28 @@ pub async fn send_gift(
     );
 
     // 1. Policy validation (Amount, Limit, Safety)
-    state.gift_engine.validate_gift_policy(agent_id, req.amount_usd).await?;
+    state
+        .gift_engine
+        .validate_gift_policy(agent_id, req.amount_usd)
+        .await?;
 
     // 2. Execute Gift Sending
-    let order_id = state.gift_engine.send_gift_code(
-        &req.recipient_email,
-        req.amount_usd,
-        &req.reason
-    ).await?;
+    let order_id = state
+        .gift_engine
+        .send_gift_code(&req.recipient_email, req.amount_usd, &req.reason)
+        .await?;
 
     // Phase 15.3: Audit Trail with PII Masking (HMAC)
     use hmac::{Hmac, Mac};
-    use sha2::Sha256;
     use secrecy::ExposeSecret;
+    use sha2::Sha256;
 
     // Use API_SERVER_SECRET as a consistent salt for HMAC to prevent rainbow table attacks
     type HmacSha256 = Hmac<Sha256>;
     let secret = state.api_server_secret.expose_secret();
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
         .map_err(|_| AppError::internal("Failed to init HMAC for audit log"))?;
-    
+
     mac.update(req.recipient_email.as_bytes());
     let hashed_email = hex::encode(mac.finalize().into_bytes());
 
@@ -143,7 +152,7 @@ pub async fn get_gift_policy(
 
     // Phase 15.3: 動的ポリシースナップショット (Fetches from Engine)
     let policy = state.gift_engine.get_policy_context(agent_id).await?;
-    
+
     Ok(Json(GiftPolicyResponse {
         max_amount_usd: policy.max_amount_usd,
         daily_limit_reached: policy.daily_limit_reached,

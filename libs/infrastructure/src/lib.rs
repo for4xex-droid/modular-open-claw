@@ -36,6 +36,8 @@ pub mod context_engine;
 pub mod diagnostics;
 /// アイドル時の自律思考管理
 pub mod dream_state;
+/// AIギグ・エコノミー受発注エンジン
+pub mod gig_engine;
 /// 定期診断・プロアクティブ発火
 pub mod heartbeat_wakeup;
 /// 脅威シグネチャ監視・遮断
@@ -52,6 +54,8 @@ pub mod memory_crystallizer;
 pub mod oracle;
 /// 成果物のSNS自動投稿
 pub mod publisher;
+/// エージェント別のレート制限 (G-2)
+pub mod rate_limiter;
 /// デジタルアセットのレジストリ・所有権管理モジュール
 pub mod registry;
 /// Soul転生（L3）ロジック

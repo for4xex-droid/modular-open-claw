@@ -13,6 +13,8 @@
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
 | `commerce` | 外部決済・ギフトAPI（Tremendous等）との自律的な商用連携基盤。**Phase 16** で `RevenueSplitter` による売上分配（80/20）を実装。 | **Phase 16 完了** |
 | `commerce_mock` | 決済フローのカルシウム（テスト用途）。 | 実装完了 |
+| `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
+| `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
 | `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。**Phase 16** で API ハンドラーへの認証・検証済みフラグによる経済活動制限を適用。 | **Phase 16 完了** |
 | `concept_manager` | AIが獲得した概念（Concepts）をベクターDBで管理。 | 実装完了 |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。 | **新規実装** |
@@ -27,6 +29,7 @@
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
+| `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。 | 実装完了 |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
@@ -45,4 +48,4 @@
 - **Core Domain**: `libs/core/src/lora` に新設された `LoraEngine` は、モデルのメタデータ（ハッシュ等）を管理し、インフラ層の `soul_store` と連携して人格の同一性を維持します。
 
 ---
-*最終更新: 2026-03-21 (Phase 16)*
+*最終更新: 2026-03-22 (Phase 16/20/17)*

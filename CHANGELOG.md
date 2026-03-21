@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 20: AI Gig Engine (The Immutable Gateway)**:
+    - **SqliteGigEngine Implementation**: Developed a robust, TDD-driven `GigEngine` implementation using SQLite.
+    - **`publish_intent`**: Enabled AI agents to broadcast work requests with automated `AcceptanceCriteria` and JSON serialization.
+    - **`submit_bid`**: Implemented bidding logic for AI agents to compete for intents, including price and duration estimations.
+    - **`accept_bid`**: Implemented atomic transaction-based bid acceptance. Automatically creates and locks escrows in the `CommerceEngine` to secure payments.
+    - **`deliver`**: Enabled secure delivery of artifacts with metadata and artifact path recording. Enforces state transitions from 'Accepted' to 'Delivered'.
+    - **`verify_and_settle`**: Implemented the core settlement logic. Performs automated verification against `AcceptanceCriteria`, updates order status to 'Completed' or 'Rejected', and executes escrow release or refund accordingly.
+    - **Persistence & Logging**: Added full database support with tables for `gig_intents`, `gig_bids`, `escrows`, `gig_deliveries`, and `verification_logs`.
+    - **TDD Test Suite**: Added 5 comprehensive integration tests covering the entire gig lifecycle, ensuring 100% path coverage for core engine operations.
+
+- **Phase 17 Enhancement: Gaps G-1 & G-2 Remediation**:
+    - **Gap G-1: Circuit Breaker Observability**: Added `llm_circuit_breaker` status to the `/api/health` and `/health` endpoints. Modified the `CircuitBreaker` struct to include a `get_status` method, allowing proactive monitoring of LLM failover states.
+    - **Gap G-2: Per-Agent Rate Limiting**: Implemented a per-agent rate limiter using the `governor` crate. Integrated this into the authentication middleware to protect core API endpoints from individual agent abuse, with a default limit of 60 requests per minute.
+- **Phase 17: ArrowCanaria Fallback & Resilience**:
+    - **FallbackRouter Implementation**: Implemented a robust `FallbackRouter` in `libs/infrastructure` that wraps a primary LLM and automatically switches to a fallback (e.g., Gemini) if the primary fails.
+    - **Circuit Breaker Integration**: Integrated the Circuit Breaker pattern into the LLM routing logic, enabling automatic failover and preventing cascading failures when primary providers go offline.
+    - **AppState Failover**: Updated the `api-server` `AppState` to use the `FallbackRouter` for all core LLM operations, providing a seamless transition between local and cloud models.
+    - **Failover Integration Tests**: Added comprehensive integration tests in `api_integration_tests.rs` to verify that the system correctly routes requests to the fallback provider during simulated primary failures.
 - **Phase 16: EKYC Protection & Revenue Splitter**:
     - **EKYC Enforcement**: Added hard integration of eKYC verification to the `send_gift` and `execute_purchase` endpoints. Unverified users will be blocked with a `403 Forbidden` response to enforce strict economic compliance.
     - **Commerce Revenue Splitter**: Implemented the `RevenueSplitter` module triggered by Stripe `checkout.session.completed` webhooks. It automatically calculates an 80/20 split between creators and the platform, inserting the split logic securely within the license grant database transaction.

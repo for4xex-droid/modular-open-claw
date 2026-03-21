@@ -71,7 +71,7 @@ mod tests {
                 amount INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-            "#
+            "#,
         )
         .execute(&pool)
         .await
@@ -90,15 +90,9 @@ mod tests {
 
         // TDD Act: Execute split inside a transaction
         let mut tx = pool.begin().await.unwrap();
-        RevenueSplitter::split_revenue(
-            &mut tx,
-            tx_id,
-            total_amount,
-            creator_id,
-            platform_fee_pct,
-        )
-        .await
-        .unwrap();
+        RevenueSplitter::split_revenue(&mut tx, tx_id, total_amount, creator_id, platform_fee_pct)
+            .await
+            .unwrap();
         tx.commit().await.unwrap();
 
         // TDD Assert: Verify the records in the database

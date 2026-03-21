@@ -66,7 +66,7 @@ impl EkycEngine for StripeEkycEngine {
                     ("client_reference_id", user_id),
                     ("metadata[user_id]", user_id),
                 ])
-                .send()
+                .send(),
         )
         .await
         .map_err(|_| anyhow::anyhow!("Stripe API timeout"))??;
@@ -82,7 +82,7 @@ impl EkycEngine for StripeEkycEngine {
             .get("url")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Stripe response missing 'url'"))?;
-        
+
         let session_id = json
             .get("id")
             .and_then(|v| v.as_str())
@@ -95,7 +95,10 @@ impl EkycEngine for StripeEkycEngine {
     }
 
     async fn check_status(&self, user_id: &str) -> anyhow::Result<bool> {
-        info!("💳 [eKYC] Checking verification status for user: {}", user_id);
+        info!(
+            "💳 [eKYC] Checking verification status for user: {}",
+            user_id
+        );
 
         // Expert Review v3: client_reference_id でフィルタリング (Stripe API は metadata フィルタ非対応)
         let resp = tokio::time::timeout(
@@ -103,11 +106,8 @@ impl EkycEngine for StripeEkycEngine {
             self.client
                 .get("https://api.stripe.com/v1/identity/verification_sessions")
                 .basic_auth(self.api_key.expose_secret(), Some(""))
-                .query(&[
-                    ("limit", "1"),
-                    ("client_reference_id", user_id), 
-                ])
-                .send()
+                .query(&[("limit", "1"), ("client_reference_id", user_id)])
+                .send(),
         )
         .await
         .map_err(|_| anyhow::anyhow!("Stripe API timeout"))??;

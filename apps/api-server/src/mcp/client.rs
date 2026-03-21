@@ -206,16 +206,19 @@ impl McpProcessManager {
                 .min_by_key(|(_, c)| *c.last_activity.read().unwrap())
                 .map(|(k, _)| k.clone());
             if let Some(oldest_id) = oldest_id {
-                info!("💥 [MCP] Reached max process limit ({}). Evicting least recently used: {}", MAX_MCP_PROCESSES, oldest_id);
+                info!(
+                    "💥 [MCP] Reached max process limit ({}). Evicting least recently used: {}",
+                    MAX_MCP_PROCESSES, oldest_id
+                );
                 clients.remove(&oldest_id);
             }
         }
 
-        // Must drop lock before calling spawn because spawn takes time? 
+        // Must drop lock before calling spawn because spawn takes time?
         // We can just keep it or spawn first then lock. Let's spawn first to minimize lock time,
         // but wait, if we drop lock, we might exceed MAX_MCP_PROCESSES if multiple spawn concurrently.
         // It's safer to keep the lock, but spawn doesn't "take time" (it's sync OS process creation).
-        
+
         let client = McpClient::spawn(id.clone(), cmd, args)?;
         clients.insert(id, client.clone());
         Ok(client)
@@ -239,7 +242,11 @@ impl McpProcessManager {
             let last_activity = *client.last_activity.read().unwrap();
             let is_idle = now.duration_since(last_activity) >= timeout;
             if is_idle {
-                info!("💤 [MCP] Reaping idle client: {} (idle time: {:?})", id, now.duration_since(last_activity));
+                info!(
+                    "💤 [MCP] Reaping idle client: {} (idle time: {:?})",
+                    id,
+                    now.duration_since(last_activity)
+                );
             }
             !is_idle // keep if not idle
         });
@@ -255,7 +262,10 @@ mod tests {
     async fn test_mcp_max_processes() {
         let manager = McpProcessManager::new();
         for i in 0..6 {
-            manager.spawn_stdio_server(format!("client{}", i), "echo", vec![]).await.unwrap();
+            manager
+                .spawn_stdio_server(format!("client{}", i), "echo", vec![])
+                .await
+                .unwrap();
         }
         let clients = manager.active_client_ids().await;
         assert!(clients.len() <= 5, "Should not exceed MAX_MCP_PROCESSES");
@@ -264,8 +274,11 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_reap_idle() {
         let manager = McpProcessManager::new();
-        let client = manager.spawn_stdio_server("idle_client".to_string(), "echo", vec![]).await.unwrap();
-        
+        let client = manager
+            .spawn_stdio_server("idle_client".to_string(), "echo", vec![])
+            .await
+            .unwrap();
+
         // artificially age the client's last_activity
         if let Ok(mut act) = client.last_activity.write() {
             *act = std::time::Instant::now() - Duration::from_secs(100);

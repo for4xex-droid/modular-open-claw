@@ -35,9 +35,11 @@ impl JwtAuthManager {
         let signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
         let verifying_key = signing_key.verifying_key();
 
-        let pkcs8_der = signing_key.to_pkcs8_der().map_err(|e| AiomeError::Infrastructure {
-            reason: format!("PKCS8 derivation failed: {}", e),
-        })?;
+        let pkcs8_der = signing_key
+            .to_pkcs8_der()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("PKCS8 derivation failed: {}", e),
+            })?;
 
         let encoding_key = jsonwebtoken::EncodingKey::from_ed_der(pkcs8_der.as_bytes());
         let decoding_key = jsonwebtoken::DecodingKey::from_ed_der(verifying_key.as_bytes());

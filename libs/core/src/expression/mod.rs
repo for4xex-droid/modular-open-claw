@@ -9,3 +9,5 @@ pub use aiome_contracts::expression::Expression;
 
 /// 感情テキストとメタデータを生成する推論アルゴリズム
 pub mod engine;
+/// Phase 10.1a: TTS非同期処理ワーカー
+pub mod tts_worker;

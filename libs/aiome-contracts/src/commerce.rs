@@ -38,12 +38,18 @@ pub trait CommerceEngine: Send + Sync {
     /// エスクロー（一時保留）決済を作成する
     async fn escrow_create(&self, agent_id: Uuid, amount: u64) -> Result<String, AiomeError>;
 
+    /// エスクローを解放し受注者に送金する
+    async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError>;
+
+    /// エスクローを依頼者に返金する（キャンセル時）
+    async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError>;
+
     /// ステーキング（証拠金預託）を行う
     async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError>;
 
     /// スラッシュ（罰則によるトークン没収）を実行する
     async fn slash(&self, agent_id: Uuid, amount: u64, reason: &str) -> Result<(), AiomeError>;
-    
+
     /// ライセンス（Voice Asset 等の使用権）を登録する (P0-1)
     async fn register_license(
         &self,

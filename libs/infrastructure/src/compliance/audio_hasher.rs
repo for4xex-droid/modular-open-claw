@@ -52,7 +52,10 @@ impl AudioHasher {
                 })
             }
             Err(_) => {
-                tracing::error!("❌ [AudioHasher] Computation timed out after {:?}", self.timeout_duration);
+                tracing::error!(
+                    "❌ [AudioHasher] Computation timed out after {:?}",
+                    self.timeout_duration
+                );
                 Err(AiomeError::Infrastructure {
                     reason: "Audio hash computation timed out".to_string(),
                 })
@@ -76,7 +79,7 @@ mod tests {
     #[tokio::test]
     async fn test_compute_hash_timeout() {
         let hasher = AudioHasher::new(Duration::from_millis(10));
-        
+
         // 意図的にタイムアウトさせるため、少し重い（ダミーで sleep する）タスクをエミュレートする
         // 実際の compute_hash はモックできないため、タイムアウトの挙動自体をテストする
         let compute_future = task::spawn_blocking(move || {

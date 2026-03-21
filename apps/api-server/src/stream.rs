@@ -31,7 +31,7 @@ pub async fn trigger_agent_chat_stream(
     _auth: crate::auth::Authenticated,
     Json(payload): Json<AgentChatRequest>,
 ) -> impl axum::response::IntoResponse {
-    let provider = state.provider.clone();
+    let provider = (*state.provider).clone();
 
     let stream = async_stream::stream! {
         // Discovery H: Guardrails check (Security Layer 0)
@@ -128,7 +128,7 @@ pub async fn trigger_agent_chat_stream(
         let ai_name = state.job_queue.get_setting_value("ai_name").await.ok().flatten();
 
         let mut economic_context = None;
-        if let Some(engine) = &state.commerce_engine {
+        if let Some(engine) = state.commerce_engine.as_opt() {
             let agent_id = state.job_queue.get_system_agent_id().await.unwrap_or_else(|err| {
                 tracing::error!("Failed to get system agent ID, falling back to nil: {:?}", err);
                 uuid::Uuid::nil()

@@ -31,7 +31,10 @@ pub struct Inochi2dLoader;
 impl Inochi2dLoader {
     /// .inx ファイルを読み込み、メタデータを抽出する
     pub fn load_metadata(data: &[u8]) -> Result<InxModel, LoaderError> {
-        info!("🎭 [Inochi2D] Loading model metadata ({} bytes)", data.len());
+        info!(
+            "🎭 [Inochi2D] Loading model metadata ({} bytes)",
+            data.len()
+        );
 
         // Header check: "INX\x02"
         if data.len() < 4 || &data[0..4] != b"INX\x02" {
@@ -41,7 +44,7 @@ impl Inochi2dLoader {
         // 実際には MessagePack のデコードが必要だが、
         // TDD 用に後続のバイトが JSON であると仮定してパース。
         // （実際の実装ではこの段階でヘッダー情報の整合性だけ見るだけでも良い）
-        
+
         // とりあえずモックデータを返す (Green)
         Ok(InxModel {
             id: "test-avatar".to_string(),

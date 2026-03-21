@@ -32,24 +32,21 @@ impl SqliteEkycSessionStore {
 #[async_trait]
 impl EkycSessionStore for SqliteEkycSessionStore {
     async fn save(&self, user_id: &str, session_id: &str) -> anyhow::Result<()> {
-        sqlx::query(
-            "INSERT OR REPLACE INTO ekyc_sessions (user_id, session_id) VALUES (?, ?)"
-        )
-        .bind(user_id)
-        .bind(session_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT OR REPLACE INTO ekyc_sessions (user_id, session_id) VALUES (?, ?)")
+            .bind(user_id)
+            .bind(session_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
     async fn get_session_id(&self, user_id: &str) -> anyhow::Result<Option<String>> {
-        let row: Option<(String,)> = sqlx::query_as(
-            "SELECT session_id FROM ekyc_sessions WHERE user_id = ?"
-        )
-        .bind(user_id)
-        .fetch_optional(&self.pool)
-        .await?;
-        
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT session_id FROM ekyc_sessions WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
         Ok(row.map(|r| r.0))
     }
 }

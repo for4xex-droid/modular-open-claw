@@ -36,7 +36,7 @@ impl ExpressionOps for SqliteJobQueue {
             .and_then(|v| serde_json::to_string(v).ok());
 
         sqlx::query(
-            "INSERT INTO expressions (id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT OR REPLACE INTO expressions (id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at, tts_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&expression.id)
         .bind(&expression.content)
@@ -46,6 +46,7 @@ impl ExpressionOps for SqliteJobQueue {
         .bind(&expression.duration_ms)
         .bind(&avatar_params_json)
         .bind(&expression.created_at)
+        .bind(expression.tts_status.to_string())
         .execute(&self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to store expression: {}", e) })?;
@@ -55,7 +56,7 @@ impl ExpressionOps for SqliteJobQueue {
 
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
         let rows = sqlx::query(
-            "SELECT id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at FROM expressions ORDER BY created_at DESC LIMIT ?"
+            "SELECT id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at, tts_status FROM expressions ORDER BY created_at DESC LIMIT ?"
         )
         .bind(limit)
         .fetch_all(&self.pool)
@@ -78,6 +79,9 @@ impl ExpressionOps for SqliteJobQueue {
                     .get::<Option<String>, _>("avatar_params")
                     .and_then(|s| serde_json::from_str(&s).ok()),
                 created_at: row.get("created_at"),
+                tts_status: aiome_contracts::expression::TtsStatus::from_string(
+                    &row.get::<String, _>("tts_status"),
+                ),
             });
         }
 

@@ -115,12 +115,12 @@ pub async fn create_topic(
         .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
     let hub_secret = state
         .federation_secret
-        .as_ref()
+        .as_opt()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
             source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
         })?;
-    let client = state.http_client.clone();
+    let client = (*state.http_client).clone();
 
     info!("🌟 [Biome] Requesting new topic creation on Hub: {:?}", req);
     state.security_policy.validate_url(&hub_url).await?;
@@ -209,12 +209,11 @@ pub async fn autonomous_start(
         req.topic_id
     );
 
-    let queue = state.job_queue.clone();
-    let llm = state.provider.clone();
-    let running = state.autonomous_running.clone();
-    let semaphore = state.llm_semaphore.clone();
-
-    let gift_engine = state.gift_engine.clone();
+    let queue = (*state.job_queue).clone();
+    let llm = (*state.provider).clone();
+    let running = (*state.autonomous_running).clone();
+    let semaphore = (*state.llm_semaphore).clone();
+    let gift_engine = (*state.gift_engine).clone();
     let master_email = state.config.master_email.clone();
 
     tokio::spawn(async move {
@@ -291,7 +290,7 @@ pub async fn list_messages(
 
     let hub_secret_opt = state
         .federation_secret
-        .as_ref()
+        .as_opt()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string());
 
     let messages = rows
@@ -391,7 +390,7 @@ pub async fn send_message(
 
     // 0. Biome Dialogue Constraint Check
     let current_turn =
-        match DialogueManager::check_and_advance_turn(&*state.job_queue, &req.topic_id).await {
+        match DialogueManager::check_and_advance_turn(&**state.job_queue, &req.topic_id).await {
             Ok(t) => t,
             Err(e) => {
                 warn!("🚫 [Biome] Message blocked: {}", e);
@@ -424,7 +423,7 @@ pub async fn send_message(
     // NG-28: Apply encryption if FEDERATION_SECRET is set
     let hub_secret = state
         .federation_secret
-        .as_ref()
+        .as_opt()
         .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
             source: anyhow::anyhow!("FEDERATION_SECRET not configured for biome encryption"),
@@ -487,7 +486,7 @@ pub async fn send_message(
         let topic_id = msg.topic_id.clone();
 
         tokio::spawn(async move {
-            let _ = DialogueManager::distill_conversation(&*queue, &*llm, &topic_id).await;
+            let _ = DialogueManager::distill_conversation(&**queue, &**llm, &topic_id).await;
         });
     }
 

@@ -158,8 +158,10 @@ async fn main() -> anyhow::Result<()> {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
                 Ok(key_b64) => {
                     info!("🔑 [KeyProxy] Loading JWT private key from environment");
-                    Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                        .expect("Invalid JWT_PRIVATE_KEY_B64"))
+                    Arc::new(
+                        infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
+                            .expect("Invalid JWT_PRIVATE_KEY_B64"),
+                    )
                 }
                 Err(_) => {
                     warn!("⚠️ [KeyProxy] JWT key not set, using MockAuthManager");

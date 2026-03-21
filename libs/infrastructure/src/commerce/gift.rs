@@ -54,7 +54,7 @@ impl GiftEngine for TremendousGiftEngine {
     ) -> Result<String, AiomeError> {
         // Quick Win: [Expert-Review Gate 4] reason length limit
         let safe_reason = reason.chars().take(256).collect::<String>();
-        
+
         info!(
             "🎁 [GiftEngine] Processing gift for {} (Amount: ${}, Reason: {})",
             recipient_email, amount_usd, safe_reason
@@ -126,7 +126,10 @@ impl GiftEngine for TremendousGiftEngine {
         // 1. 個別ギフト上限チェック ($5.0)
         if amount_usd > context.max_amount_usd {
             return Err(AiomeError::SecurityViolation {
-                reason: format!("Autonomous gift amount exceeds safety limit (${})", context.max_amount_usd),
+                reason: format!(
+                    "Autonomous gift amount exceeds safety limit (${})",
+                    context.max_amount_usd
+                ),
             });
         }
 
@@ -136,20 +139,24 @@ impl GiftEngine for TremendousGiftEngine {
                 reason: "Daily autonomous gift limit reached for this agent".to_string(),
             });
         }
-        
+
         // 余裕を持たせたチェック (合計が $20.0 を超えないか)
         if context.daily_sent_total_usd + amount_usd > 20.0 {
             return Err(AiomeError::SecurityViolation {
-                reason: "Proposed gift would exceed daily aggregate safety limit ($20.0)".to_string(),
+                reason: "Proposed gift would exceed daily aggregate safety limit ($20.0)"
+                    .to_string(),
             });
         }
 
         Ok(())
     }
 
-    async fn get_policy_context(&self, agent_id: Uuid) -> Result<aiome_contracts::commerce::GiftPolicyContext, AiomeError> {
+    async fn get_policy_context(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<aiome_contracts::commerce::GiftPolicyContext, AiomeError> {
         use sqlx::Row;
-        
+
         // Phase 15.2: 監査ログから今日（JST/UTC 混合に注意だが現行はサーバーローカル/UTC）の送信実績を取得
         let row = sqlx::query(
             "SELECT 
@@ -159,12 +166,14 @@ impl GiftEngine for TremendousGiftEngine {
              WHERE table_name = 'gift_transactions'
                AND operation = 'SEND'
                AND timestamp >= datetime('now', 'start of day')
-               AND json_extract(new_data, '$.agent_id') = ?"
+               AND json_extract(new_data, '$.agent_id') = ?",
         )
         .bind(agent_id.to_string())
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to fetch gift audit: {}", e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to fetch gift audit: {}", e),
+        })?;
 
         let count: i64 = row.get("count");
         let total: f64 = row.get::<Option<f64>, _>("total").unwrap_or(0.0);

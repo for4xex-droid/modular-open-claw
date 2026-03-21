@@ -15,8 +15,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use serde::Serialize;
+use std::time::SystemTime;
+
 /// Circuit Breaker の状態
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum CircuitState {
     /// 正常稼働中
     Closed,
@@ -24,6 +27,21 @@ pub enum CircuitState {
     Open,
     /// 復旧テスト中（次の1回で判定）
     HalfOpen,
+}
+
+/// Circuit Breaker の状態レポート用 DTO
+#[derive(Debug, Clone, Serialize)]
+pub struct CircuitBreakerStatus {
+    /// サービス識別名
+    pub name: String,
+    /// 現在の状態
+    pub state: CircuitState,
+    /// 現在の連続失敗数
+    pub failure_count: usize,
+    /// 最後の失敗時刻（未発生なら None）
+    pub last_failure_at: Option<SystemTime>,
+    /// Open から HalfOpen に遷移するまでの秒数
+    pub reset_timeout_seconds: u64,
 }
 
 /// Circuit Breaker の設定
@@ -43,6 +61,8 @@ pub struct CircuitBreaker {
     failures: Arc<AtomicUsize>,
     config: CircuitBreakerConfig,
     last_failure_time: Arc<RwLock<Option<std::time::Instant>>>,
+    // G-1: 最後の失敗時刻を SystemTime でも保持（DTO のため）
+    last_failure_system_time: Arc<RwLock<Option<SystemTime>>>,
 }
 
 impl CircuitBreaker {
@@ -54,6 +74,21 @@ impl CircuitBreaker {
             failures: Arc::new(AtomicUsize::new(0)),
             config,
             last_failure_time: Arc::new(RwLock::new(None)),
+            last_failure_system_time: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// 現在のステータスを取得する
+    pub async fn get_status(&self) -> CircuitBreakerStatus {
+        let state = *self.state.read().await;
+        let last_fail = *self.last_failure_system_time.read().await;
+
+        CircuitBreakerStatus {
+            name: self.name.clone(),
+            state,
+            failure_count: self.failures.load(Ordering::Relaxed),
+            last_failure_at: last_fail,
+            reset_timeout_seconds: self.config.reset_timeout.as_secs(),
         }
     }
 
@@ -96,6 +131,10 @@ impl CircuitBreaker {
     /// 失敗を記録し、閾値超過なら Open に遷移する
     pub async fn record_failure(&self) {
         let fails = self.failures.fetch_add(1, Ordering::Relaxed) + 1;
+
+        let now_instant = std::time::Instant::now();
+        let now_system = SystemTime::now();
+
         let mut state = self.state.write().await;
 
         if *state == CircuitState::HalfOpen || fails >= self.config.failure_threshold {
@@ -107,7 +146,10 @@ impl CircuitBreaker {
                 *state = CircuitState::Open;
             }
             let mut last_fail = self.last_failure_time.write().await;
-            *last_fail = Some(std::time::Instant::now());
+            *last_fail = Some(now_instant);
+
+            let mut last_fail_sys = self.last_failure_system_time.write().await;
+            *last_fail_sys = Some(now_system);
         }
     }
 }
@@ -151,5 +193,33 @@ mod tests {
         assert!(cb.check_state().await.is_ok()); // Half-Open
         cb.record_success().await;
         assert!(cb.check_state().await.is_ok()); // Closed
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_status_reporting() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            reset_timeout: Duration::from_secs(60),
+        };
+        let cb = CircuitBreaker::new("status-test", config);
+
+        // Initial state
+        let status = cb.get_status().await;
+        assert_eq!(status.name, "status-test");
+        assert_eq!(status.state, CircuitState::Closed);
+        assert_eq!(status.failure_count, 0);
+        assert!(status.last_failure_at.is_none());
+
+        // After one failure
+        cb.record_failure().await;
+        let status = cb.get_status().await;
+        assert_eq!(status.failure_count, 1);
+        assert_eq!(status.state, CircuitState::Closed);
+
+        // After threshold failure
+        cb.record_failure().await;
+        let status = cb.get_status().await;
+        assert_eq!(status.state, CircuitState::Open);
+        assert!(status.last_failure_at.is_some());
     }
 }

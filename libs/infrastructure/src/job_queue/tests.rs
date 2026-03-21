@@ -871,3 +871,51 @@ async fn test_sqlite_trajectory_store() {
     assert_eq!(fetched.root_cause, "Missing argument");
     assert_eq!(fetched.self_repair_hint, "Add argument");
 }
+
+#[tokio::test]
+async fn test_sqlite_expression_tts_status() {
+    use crate::job_queue::expression::ExpressionOps;
+    use aiome_contracts::expression::TtsStatus;
+    use aiome_core::expression::Expression;
+
+    let (jq, _tmp) = create_test_queue().await;
+
+    let expr = Expression {
+        id: "expr-1".into(),
+        content: "Hello world".into(),
+        emotion: "happy".into(),
+        karma_refs: vec!["k1".into()],
+        audio_path: None,
+        duration_ms: None,
+        tts_status: TtsStatus::NotRequested,
+        avatar_params: None,
+        created_at: Utc::now().to_rfc3339(),
+    };
+
+    ExpressionOps::store_expression(&jq, &expr)
+        .await
+        .expect("Failed to store expression");
+
+    let fetched = ExpressionOps::fetch_expressions(&jq, 10)
+        .await
+        .expect("Failed to fetch expressions");
+    assert_eq!(fetched.len(), 1);
+    assert_eq!(fetched[0].id, "expr-1");
+    assert_eq!(fetched[0].tts_status, TtsStatus::NotRequested);
+
+    // Update status (INSERT OR REPLACE)
+    let mut updated = fetched[0].clone();
+    updated.tts_status = TtsStatus::Ready;
+    updated.audio_path = Some("path/to/audio.wav".into());
+
+    ExpressionOps::store_expression(&jq, &updated)
+        .await
+        .expect("Failed to update expression");
+
+    let refetched = ExpressionOps::fetch_expressions(&jq, 10)
+        .await
+        .expect("Failed to fetch expressions");
+    assert_eq!(refetched.len(), 1);
+    assert_eq!(refetched[0].tts_status, TtsStatus::Ready);
+    assert_eq!(refetched[0].audio_path, Some("path/to/audio.wav".into()));
+}

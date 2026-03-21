@@ -1,5 +1,31 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Default,
+    strum_macros::Display,
+    strum_macros::EnumString,
+)]
+#[strum(serialize_all = "PascalCase")]
+pub enum TtsStatus {
+    #[default]
+    NotRequested,
+    Generating,
+    Ready,
+    Failed,
+}
+
+impl TtsStatus {
+    pub fn from_string(s: &str) -> Self {
+        use std::str::FromStr;
+        Self::from_str(s).unwrap_or(Self::NotRequested)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expression {
     pub id: String,
@@ -8,6 +34,7 @@ pub struct Expression {
     pub karma_refs: Vec<String>, // 参照したKarmaのID (JSON array serialized in DB)
     pub audio_path: Option<String>, // DP-9: 音声ファイルのパス
     pub duration_ms: Option<i32>, // DP-9: 音声の長さ(ms)
+    pub tts_status: TtsStatus, // Phase 10.1a: TTS生成ステータス
     pub avatar_params: Option<serde_json::Value>, // Phase 7: Inochi2D/VRM 感情パラメータ
     pub created_at: String,
 }

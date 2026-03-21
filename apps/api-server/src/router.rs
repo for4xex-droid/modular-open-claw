@@ -5,35 +5,40 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::auth;
+use crate::routes;
+use crate::AppState;
 use axum::{
-    http::{header::{CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS}, HeaderValue, StatusCode},
+    http::{
+        header::{
+            CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS,
+            X_FRAME_OPTIONS,
+        },
+        HeaderValue, StatusCode,
+    },
     routing::{get, post},
     Router,
 };
-use tower_http::{
-    cors::CorsLayer,
-    limit::RequestBodyLimitLayer,
-    services::ServeDir,
-    set_header::SetResponseHeaderLayer,
-    timeout::TimeoutLayer,
-};
 use std::time::Duration;
+use tower_http::{
+    cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir,
+    set_header::SetResponseHeaderLayer, timeout::TimeoutLayer,
+};
 use utoipa::OpenApi;
-use crate::AppState;
-use crate::routes;
-use crate::auth;
 
 pub fn build_app(
     state: AppState,
     cors_layer: CorsLayer,
     static_path: &str,
-    #[cfg(feature = "nurture")]
-    nurture_state: nurture_api::NurtureState,
+    #[cfg(feature = "nurture")] nurture_state: nurture_api::NurtureState,
     plugin_registry: crate::plugin_loader::PluginRegistry,
     metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 ) -> Router {
     let internal_router = Router::new()
-        .route("/api/v1/metrics", get(move || std::future::ready(metrics_handle.render())))
+        .route(
+            "/api/v1/metrics",
+            get(move || std::future::ready(metrics_handle.render())),
+        )
         .route("/", get(routes::general::get_health_status))
         .route(
             "/api/v1/ollama/models",
@@ -59,14 +64,25 @@ pub fn build_app(
             "/api/v1/gift/send/:agent_id",
             axum::routing::post(routes::gift::send_gift).route_layer(
                 tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
                     .buffer(5)
                     .rate_limit(1, std::time::Duration::from_secs(30)), // 1 gift per 30s
             ),
         )
-        .route("/api/v1/gift/policy/:agent_id", get(routes::gift::get_gift_policy))
-        .route("/api/v1/audit/ledger", get(routes::general::get_audit_ledger))
-        .route("/api/v1/audit/diagnostics", get(routes::general::get_diagnoses))
+        .route(
+            "/api/v1/gift/policy/:agent_id",
+            get(routes::gift::get_gift_policy),
+        )
+        .route(
+            "/api/v1/audit/ledger",
+            get(routes::general::get_audit_ledger),
+        )
+        .route(
+            "/api/v1/audit/diagnostics",
+            get(routes::general::get_diagnoses),
+        )
         .route("/api/v1/trends", get(routes::general::get_trends))
         .route("/api/biome/status", get(routes::biome::biome_status))
         .route(
@@ -113,19 +129,44 @@ pub fn build_app(
             "/api/biome/autonomous/status",
             get(routes::biome::autonomous_status),
         )
-        .route("/api/synergy/graph", get(routes::karma::synergy_graph_handler));
+        .route(
+            "/api/synergy/graph",
+            get(routes::karma::synergy_graph_handler),
+        );
 
     #[cfg(feature = "dev-routes")]
     let internal_router = internal_router
-        .route("/api/synergy/test/failure", post(routes::karma::trigger_failure_demo))
-        .route("/api/synergy/test/security", post(routes::karma::trigger_security_demo))
-        .route("/api/synergy/test/federation", post(routes::karma::trigger_federation_demo));
+        .route(
+            "/api/synergy/test/failure",
+            post(routes::karma::trigger_failure_demo),
+        )
+        .route(
+            "/api/synergy/test/security",
+            post(routes::karma::trigger_security_demo),
+        )
+        .route(
+            "/api/synergy/test/federation",
+            post(routes::karma::trigger_federation_demo),
+        );
 
     let internal_router = internal_router
-        .route("/api/synergy/rules", get(routes::karma::get_immune_rules_handler).post(routes::karma::add_immune_rule_handler))
-        .route("/api/synergy/rules/:id", axum::routing::delete(routes::karma::delete_immune_rule_handler))
-        .route("/api/system/evolution", get(routes::karma::get_evolution_history_handler))
-        .route("/api/v1/voice/list", get(routes::voice::list_voice_assets_handler))
+        .route(
+            "/api/synergy/rules",
+            get(routes::karma::get_immune_rules_handler)
+                .post(routes::karma::add_immune_rule_handler),
+        )
+        .route(
+            "/api/synergy/rules/:id",
+            axum::routing::delete(routes::karma::delete_immune_rule_handler),
+        )
+        .route(
+            "/api/system/evolution",
+            get(routes::karma::get_evolution_history_handler),
+        )
+        .route(
+            "/api/v1/voice/list",
+            get(routes::voice::list_voice_assets_handler),
+        )
         .route("/api/wiki", get(routes::general::list_wiki_files))
         .route("/api/wiki/content", get(routes::general::get_wiki_content))
         .route(
@@ -135,7 +176,9 @@ pub fn build_app(
                 .post(routes::settings::update_setting)
                 .route_layer(
                     tower::ServiceBuilder::new()
-                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .layer(axum::error_handling::HandleErrorLayer::new(
+                            handle_rate_limit,
+                        ))
                         .buffer(5)
                         .rate_limit(1, std::time::Duration::from_secs(2)), // 1 write per 2s
                 ),
@@ -152,12 +195,17 @@ pub fn build_app(
             "/api/v1/ekyc/session",
             post(routes::ekyc::create_ekyc_session_handler).route_layer(
                 tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
                     .buffer(5)
                     .rate_limit(1, std::time::Duration::from_secs(5)), // 1 session per 5s
             ),
         )
-        .route("/api/v1/ekyc/status", get(routes::avatar::get_ekyc_status_handler))
+        .route(
+            "/api/v1/ekyc/status",
+            get(routes::avatar::get_ekyc_status_handler),
+        )
         .route(
             "/api/expression/status",
             get(routes::expression::expression_status),
@@ -177,7 +225,10 @@ pub fn build_app(
             "/api/expression/list",
             get(routes::expression::list_expressions),
         )
-        .route("/api/artifacts", get(routes::artifacts::list_artifacts_handler))
+        .route(
+            "/api/artifacts",
+            get(routes::artifacts::list_artifacts_handler),
+        )
         .route(
             "/api/artifacts/:id",
             get(routes::artifacts::get_artifact_handler)
@@ -200,7 +251,9 @@ pub fn build_app(
             "/api/skills/import",
             axum::routing::post(routes::skill::import_skill).route_layer(
                 tower::ServiceBuilder::new()
-                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
                     .buffer(5)
                     .rate_limit(1, std::time::Duration::from_secs(10)), // 1 import per 10s
             ),
@@ -213,32 +266,47 @@ pub fn build_app(
 
     let streaming_router = Router::new()
         .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
-        .route("/api/stream/chat", get(crate::stream::trigger_agent_chat_stream))
-        .route("/api/stream/vitality", get(crate::stream::trigger_system_vitality_stream))
+        .route(
+            "/api/stream/chat",
+            get(crate::stream::trigger_agent_chat_stream),
+        )
+        .route(
+            "/api/stream/vitality",
+            get(crate::stream::trigger_system_vitality_stream),
+        )
         .nest("/api/v1/mcp", crate::mcp::router())
-        .route("/api/agent/feedback", post(routes::agent::handle_karma_feedback));
- 
+        .route(
+            "/api/agent/feedback",
+            post(routes::agent::handle_karma_feedback),
+        );
+
     let state_copy = state.clone();
     let state_for_auth = state.clone();
- 
+
     // 1. Create the base authenticated router (WITHOUT global limit yet)
-    let mut authed_router = internal_router
-        .merge(streaming_router);
- 
+    let mut authed_router = internal_router.merge(streaming_router);
+
     #[cfg(feature = "nurture")]
     {
         authed_router = authed_router.merge(nurture_api::routes::nurture_routes(nurture_state));
     }
- 
-    let authed_router = plugin_registry.merge_routes(authed_router)
-        .route_layer(axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware));
 
-// 2. Create the base public router
+    let authed_router = plugin_registry.merge_routes(authed_router).route_layer(
+        axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware),
+    );
+
+    // 2. Create the base public router
     let public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
-        .route("/api/v1/commerce/webhook", axum::routing::post(routes::commerce_webhook::stripe_webhook))
-        .merge(utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", crate::api::ApiDoc::openapi()))
+        .route(
+            "/api/v1/commerce/webhook",
+            axum::routing::post(routes::commerce_webhook::stripe_webhook),
+        )
+        .merge(
+            utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", crate::api::ApiDoc::openapi()),
+        )
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true));
 
     // 3. Apply 2MB limit to the combined base router
@@ -257,30 +325,42 @@ pub fn build_app(
                     ))
                     .buffer(2)
                     .rate_limit(1, std::time::Duration::from_secs(1))
-                    .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::auth_middleware))
-                    .layer(RequestBodyLimitLayer::new(100 * 1024 * 1024))
+                    .layer(axum::middleware::from_fn_with_state(
+                        state.clone(),
+                        crate::auth::auth_middleware,
+                    ))
+                    .layer(RequestBodyLimitLayer::new(500 * 1024 * 1024)),
             ),
         )
         .route(
             "/api/avatar/upload",
             axum::routing::post(routes::avatar::upload_avatar_handler).route_layer(
                 tower::ServiceBuilder::new()
-                    .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::jwt_auth_middleware))
-                    .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024))
+                    .layer(axum::middleware::from_fn_with_state(
+                        state.clone(),
+                        crate::auth::jwt_auth_middleware,
+                    ))
+                    .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)),
             ),
         )
         .route(
             "/api/avatar/ekyc-status",
             get(routes::avatar::get_ekyc_status_handler).route_layer(
-                axum::middleware::from_fn_with_state(state.clone(), crate::auth::jwt_auth_middleware)
+                axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::auth::jwt_auth_middleware,
+                ),
             ),
         )
         .route(
             "/api/v1/avatar/inochi2d/upload",
             axum::routing::post(routes::inochi2d::upload_inochi2d_handler).route_layer(
                 tower::ServiceBuilder::new()
-                    .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::jwt_auth_middleware))
-                    .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024))
+                    .layer(axum::middleware::from_fn_with_state(
+                        state.clone(),
+                        crate::auth::jwt_auth_middleware,
+                    ))
+                    .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)),
             ),
         )
         .layer(axum::extract::DefaultBodyLimit::disable());
@@ -308,8 +388,5 @@ pub fn build_app(
 }
 
 pub async fn handle_rate_limit(_err: tower::BoxError) -> (StatusCode, &'static str) {
-    (
-        StatusCode::TOO_MANY_REQUESTS,
-        "Rate Limit Exceeded",
-    )
+    (StatusCode::TOO_MANY_REQUESTS, "Rate Limit Exceeded")
 }

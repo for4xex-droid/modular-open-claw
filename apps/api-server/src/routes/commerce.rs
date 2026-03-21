@@ -66,7 +66,7 @@ pub async fn get_balance(
 
     tracing::info!("💰 [Commerce] Balance query for agent: {}", agent_id);
 
-    let engine = state.commerce_engine.as_ref().ok_or_else(|| {
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),
         }
@@ -105,8 +105,13 @@ pub async fn execute_purchase(
     }
 
     if !auth.ekyc_verified {
-        tracing::warn!("🛡️ [Commerce] Blocked unverified purchase request from agent: {}", agent_id);
-        return Err(AppError::forbidden("eKYC verification is required to make purchases"));
+        tracing::warn!(
+            "🛡️ [Commerce] Blocked unverified purchase request from agent: {}",
+            agent_id
+        );
+        return Err(AppError::forbidden(
+            "eKYC verification is required to make purchases",
+        ));
     }
 
     tracing::info!(
@@ -115,7 +120,7 @@ pub async fn execute_purchase(
         req.item_id
     );
 
-    let engine = state.commerce_engine.as_ref().ok_or_else(|| {
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),
         }

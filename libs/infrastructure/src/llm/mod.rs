@@ -7,5 +7,7 @@
 
 /// `dynamic` モジュール
 pub mod dynamic;
+/// `fallback_router` モジュール
+pub mod fallback_router;
 /// `proxy` モジュール
 pub mod proxy;

@@ -17,8 +17,8 @@ pub struct LipSyncFrame {
     pub viseme: Viseme,
 }
 
-use async_trait::async_trait;
 use aiome_contracts::error::AiomeError;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait LipSyncProvider: Send + Sync {

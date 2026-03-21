@@ -68,9 +68,15 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
 
         // SEC-4: Secret Masking (Expert 4 Gap)
         // Simple heuristic to obfuscate common API keys or Stripe secrets from being logged
-        let masked_message = if visitor.message.contains("STRIPE_") || visitor.message.contains("API_KEY") || visitor.message.contains("sk_") {
-            let re = regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY)[A-Za-z0-9_-]+").unwrap();
-            re.replace_all(&visitor.message, "$1***MASKED***").to_string()
+        let masked_message = if visitor.message.contains("STRIPE_")
+            || visitor.message.contains("API_KEY")
+            || visitor.message.contains("sk_")
+        {
+            let re =
+                regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY)[A-Za-z0-9_-]+")
+                    .unwrap();
+            re.replace_all(&visitor.message, "$1***MASKED***")
+                .to_string()
         } else {
             visitor.message
         };

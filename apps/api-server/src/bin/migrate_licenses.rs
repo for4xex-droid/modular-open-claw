@@ -27,14 +27,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             original_event_id TEXT,
             status TEXT NOT NULL DEFAULT 'active',
             granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );"
+        );",
     )
     .execute(&pool)
     .await?;
 
     // 2. 過去の Webhook 完了イベントを取得する前に、テーブルの存在確認を行う（開発環境用）
     let table_exists: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='stripe_webhook_events';"
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='stripe_webhook_events';",
     )
     .fetch_one(&pool)
     .await?;
@@ -49,12 +49,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SELECT event_id, metadata 
         FROM stripe_webhook_events 
         WHERE event_type = 'checkout.session.completed'
-        "#
+        "#,
     )
     .fetch_all(&pool)
     .await?;
 
-    println!("🔍 Found {} Completed Checkout Sessions locally.", events.len());
+    println!(
+        "🔍 Found {} Completed Checkout Sessions locally.",
+        events.len()
+    );
 
     let mut migrated_count = 0;
     let mut skipped_count = 0;
@@ -82,7 +85,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // パターン C: {"data": {"object": {"metadata": {"agent_id": "..."}}}} (Event フル保存)
             let (agent_id, asset_id) = if agent_id.is_none() {
-                let m = metadata_json.get("data")
+                let m = metadata_json
+                    .get("data")
                     .and_then(|v| v.get("object"))
                     .and_then(|v| v.get("metadata"));
                 let ag = m.and_then(|v| v.get("agent_id")).and_then(|v| v.as_str());
@@ -93,14 +97,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             if let (Some(ag_str), Some(as_str)) = (agent_id, asset_id) {
-                if let (Ok(ag_uuid), Ok(as_uuid)) = (Uuid::parse_str(ag_str), Uuid::parse_str(as_str)) {
+                if let (Ok(ag_uuid), Ok(as_uuid)) =
+                    (Uuid::parse_str(ag_str), Uuid::parse_str(as_str))
+                {
                     // DB に既にこの original_event_id + agent + asset の組み合わせが移行されていないか確認
-                    let count: (i64,) = sqlx::query_as(
-                        "SELECT COUNT(*) FROM licenses WHERE original_event_id = ?"
-                    )
-                    .bind(&event_id)
-                    .fetch_one(&pool)
-                    .await?;
+                    let count: (i64,) =
+                        sqlx::query_as("SELECT COUNT(*) FROM licenses WHERE original_event_id = ?")
+                            .bind(&event_id)
+                            .fetch_one(&pool)
+                            .await?;
 
                     if count.0 > 0 {
                         skipped_count += 1;
@@ -113,7 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         r#"
                         INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status)
                         VALUES (?, ?, ?, ?, 'active')
-                        "#
+                        "#,
                     )
                     .bind(license_id.to_string())
                     .bind(ag_uuid.to_string())
@@ -122,14 +127,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .execute(&pool)
                     .await?;
 
-                    println!("✅ Migrated Event {}: Agent {} -> Asset {}", event_id, ag_uuid, as_uuid);
+                    println!(
+                        "✅ Migrated Event {}: Agent {} -> Asset {}",
+                        event_id, ag_uuid, as_uuid
+                    );
                     migrated_count += 1;
                 } else {
                     println!("⚠️ Event {}: Invalid UUID format", event_id);
                     parsing_failed_count += 1;
                 }
             } else {
-                println!("⚠️ Event {}: Could not find agent_id/asset_id anywhere", event_id);
+                println!(
+                    "⚠️ Event {}: Could not find agent_id/asset_id anywhere",
+                    event_id
+                );
                 parsing_failed_count += 1;
             }
         } else {

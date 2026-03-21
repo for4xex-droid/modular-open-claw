@@ -182,12 +182,15 @@ pub async fn import_skill(
     let mut content_bytes = Vec::new();
 
     while let Some(chunk_res) = body_stream.next().await {
-        let chunk = chunk_res.map_err(|e| aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-            reason: format!("Failed to read stream: {}", e),
-        })?;
-        
+        let chunk =
+            chunk_res.map_err(
+                |e| aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
+                    reason: format!("Failed to read stream: {}", e),
+                },
+            )?;
+
         content_bytes.extend_from_slice(&chunk);
-        
+
         if content_bytes.len() > 1_048_576 {
             return Err(aiome_core::error::AiomeError::SecurityViolation {
                 reason: "Imported skill content exceeds 1MB limit (streaming detected)".into(),
@@ -229,7 +232,7 @@ pub async fn import_skill(
 
     // 3. Process via Cleanroom (N2)
     let cleanroom = Cleanroom::new(
-        (*state.skill_forge).clone(),
+        (**state.skill_forge).clone(),
         std::path::PathBuf::from("workspace/cleanroom"),
     );
 

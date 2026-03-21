@@ -7,8 +7,8 @@
 
 use aiome_core::error::AiomeError;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 /// アセット種別
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,12 +68,12 @@ impl RegistryManager {
     /// アセットのメタデータを登録する
     pub async fn register_asset(&self, manifest: AssetManifest) -> Result<(), AiomeError> {
         let type_str = manifest.asset_type.as_ref();
-        
+
         let result = sqlx::query(
             r#"
             INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins)
             VALUES (?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(manifest.id.to_string())
         .bind(manifest.creator_id.to_string())
@@ -86,12 +86,17 @@ impl RegistryManager {
 
         match result {
             Ok(_) => {
-                tracing::info!("📦 [Registry] Successfully registered asset: {}", manifest.id);
+                tracing::info!(
+                    "📦 [Registry] Successfully registered asset: {}",
+                    manifest.id
+                );
                 Ok(())
             }
             Err(e) => {
                 tracing::error!("❌ [Registry] Failed to register asset: {}", e);
-                Err(AiomeError::Infrastructure { reason: e.to_string() })
+                Err(AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })
             }
         }
     }
@@ -103,7 +108,7 @@ impl RegistryManager {
             SELECT id, creator_id, asset_type, name, description, price_coins
             FROM asset_registry
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(asset_id.to_string())
         .fetch_optional(&self.pool)
@@ -130,14 +135,21 @@ impl RegistryManager {
             Ok(None) => Err(AiomeError::ArtifactNotFound {
                 path: format!("Asset {}", asset_id),
             }),
-            Err(e) => Err(AiomeError::Infrastructure { reason: e.to_string() }),
+            Err(e) => Err(AiomeError::Infrastructure {
+                reason: e.to_string(),
+            }),
         }
     }
 
     /// 指定した種別のアセット一覧を取得する (scope: "public" | "owned")
-    pub async fn list_assets_by_type(&self, asset_type: AssetType, agent_id: Option<Uuid>, scope: &str) -> Result<Vec<AssetManifest>, AiomeError> {
+    pub async fn list_assets_by_type(
+        &self,
+        asset_type: AssetType,
+        agent_id: Option<Uuid>,
+        scope: &str,
+    ) -> Result<Vec<AssetManifest>, AiomeError> {
         let type_str = asset_type.as_ref();
-        
+
         let rows_result = if scope == "owned" {
             if let Some(agent) = agent_id {
                 sqlx::query_as::<_, (String, String, String, String, String, i64)>(
@@ -154,7 +166,9 @@ impl RegistryManager {
                 .fetch_all(&self.pool)
                 .await
             } else {
-                return Err(AiomeError::Infrastructure { reason: "agent_id is required for owned scope".into() });
+                return Err(AiomeError::Infrastructure {
+                    reason: "agent_id is required for owned scope".into(),
+                });
             }
         } else {
             sqlx::query_as::<_, (String, String, String, String, String, i64)>(
@@ -162,7 +176,7 @@ impl RegistryManager {
                 SELECT id, creator_id, asset_type, name, description, price_coins
                 FROM asset_registry
                 WHERE asset_type = ?
-                "#
+                "#,
             )
             .bind(type_str)
             .fetch_all(&self.pool)
@@ -171,40 +185,46 @@ impl RegistryManager {
 
         match rows_result {
             Ok(rows) => {
-                let assets = rows.into_iter().map(|row| {
-                    AssetManifest {
+                let assets = rows
+                    .into_iter()
+                    .map(|row| AssetManifest {
                         id: Uuid::parse_str(&row.0).unwrap_or_default(),
                         creator_id: Uuid::parse_str(&row.1).unwrap_or_default(),
                         asset_type: asset_type.clone(),
                         name: row.3,
                         description: row.4,
                         price_coins: row.5 as u64,
-                    }
-                }).collect();
+                    })
+                    .collect();
                 Ok(assets)
             }
-            Err(e) => Err(AiomeError::Infrastructure { reason: e.to_string() }),
+            Err(e) => Err(AiomeError::Infrastructure {
+                reason: e.to_string(),
+            }),
         }
     }
 
     /// エージェントがアセットを所有しているか確認する
-    pub async fn check_ownership(&self, agent_id: Uuid, asset_id: Uuid) -> Result<bool, AiomeError> {
+    pub async fn check_ownership(
+        &self,
+        agent_id: Uuid,
+        asset_id: Uuid,
+    ) -> Result<bool, AiomeError> {
         // 0. Creator は無条件で所有 (§LDR-3)
-        let is_creator: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM asset_registry WHERE id = ? AND creator_id = ?"
-        )
-        .bind(asset_id.to_string())
-        .bind(agent_id.to_string())
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or((0,));
+        let is_creator: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM asset_registry WHERE id = ? AND creator_id = ?")
+                .bind(asset_id.to_string())
+                .bind(agent_id.to_string())
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or((0,));
 
         if is_creator.0 > 0 {
             return Ok(true);
         }
 
         // Phase 11: Dual-read (licenses優先、フォールバック: stripe_webhook_events)
-        
+
         // 1. licenses テーブルを先にチェック
         let license_count: (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM licenses WHERE agent_id = ? AND asset_id = ? AND status = 'active'"
@@ -226,24 +246,31 @@ impl RegistryManager {
             WHERE event_type = 'checkout.session.completed' 
             AND json_extract(metadata, '$.agent_id') = ? 
             AND json_extract(metadata, '$.asset_id') = ?
-            "#
+            "#,
         )
         .bind(agent_id.to_string())
         .bind(asset_id.to_string())
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         Ok(count.0 > 0)
     }
 
     /// デジタルアセットのライセンスを付与する
-    pub async fn grant_license(&self, agent_id: Uuid, asset_id: Uuid, original_event_id: String) -> Result<(), AiomeError> {
+    pub async fn grant_license(
+        &self,
+        agent_id: Uuid,
+        asset_id: Uuid,
+        original_event_id: String,
+    ) -> Result<(), AiomeError> {
         let result = sqlx::query(
             r#"
             INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status)
             VALUES (?, ?, ?, ?, 'active')
-            "#
+            "#,
         )
         .bind(Uuid::new_v4().to_string())
         .bind(agent_id.to_string())
@@ -254,12 +281,18 @@ impl RegistryManager {
 
         match result {
             Ok(_) => {
-                tracing::info!("🎫 [Registry] Granted license to agent {} for asset {}", agent_id, asset_id);
+                tracing::info!(
+                    "🎫 [Registry] Granted license to agent {} for asset {}",
+                    agent_id,
+                    asset_id
+                );
                 Ok(())
             }
             Err(e) => {
                 tracing::error!("❌ [Registry] Failed to grant license: {}", e);
-                Err(AiomeError::Infrastructure { reason: e.to_string() })
+                Err(AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })
             }
         }
     }
@@ -276,7 +309,7 @@ impl RegistryManager {
             r#"
             INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status)
             VALUES (?, ?, ?, ?, 'active')
-            "#
+            "#,
         )
         .bind(Uuid::new_v4().to_string())
         .bind(agent_id.to_string())
@@ -287,12 +320,18 @@ impl RegistryManager {
 
         match result {
             Ok(_) => {
-                tracing::info!("🎫 [Registry] Granted license to agent {} for asset {} (tx)", agent_id, asset_id);
+                tracing::info!(
+                    "🎫 [Registry] Granted license to agent {} for asset {} (tx)",
+                    agent_id,
+                    asset_id
+                );
                 Ok(())
             }
             Err(e) => {
                 tracing::error!("❌ [Registry] Failed to grant license (tx): {}", e);
-                Err(AiomeError::Infrastructure { reason: e.to_string() })
+                Err(AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })
             }
         }
     }
@@ -328,7 +367,7 @@ mod tests {
                 price_coins INTEGER NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-            "#
+            "#,
         )
         .execute(&pool)
         .await
@@ -342,7 +381,7 @@ mod tests {
                 metadata TEXT,
                 processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-            "#
+            "#,
         )
         .execute(&pool)
         .await
@@ -358,7 +397,7 @@ mod tests {
                 status TEXT NOT NULL DEFAULT 'active',
                 granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
-            "#
+            "#,
         )
         .execute(&pool)
         .await
@@ -371,7 +410,7 @@ mod tests {
     async fn test_registry_register_and_get_asset() {
         let pool = setup_db_for_registry().await;
         let registry = RegistryManager::new(pool);
-        
+
         let asset_id = Uuid::new_v4();
         let manifest = AssetManifest {
             id: asset_id,
@@ -400,11 +439,14 @@ mod tests {
 
         // ダミーWebhookイベントの挿入 (所有権の記録)
         sqlx::query(
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)"
+            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
         )
         .bind("evt_test_ownership")
         .bind("checkout.session.completed")
-        .bind(format!(r#"{{"agent_id": "{}", "asset_id": "{}"}}"#, agent_id, asset_id))
+        .bind(format!(
+            r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
+            agent_id, asset_id
+        ))
         .execute(&registry.pool)
         .await
         .unwrap();
@@ -417,21 +459,24 @@ mod tests {
     async fn test_registry_check_ownership_false_positive_prevention() {
         let pool = setup_db_for_registry().await;
         let registry = RegistryManager::new(pool);
-        
+
         let target_agent = Uuid::new_v4();
         let target_asset = Uuid::new_v4();
-        
+
         // ターゲットに酷似したID（一部が共通する文字列など）を挿入
         // 実際には UUID なので確率は低いが、LIKE 検索の脆弱性をエミュレート
         let sibling_agent = target_agent.to_string();
         let partial_agent = &sibling_agent[..8]; // 先頭部分のみ
-        
+
         sqlx::query(
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)"
+            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
         )
         .bind("evt_false_positive")
         .bind("checkout.session.completed")
-        .bind(format!(r#"{{"agent_id": "{}", "asset_id": "{}"}}"#, partial_agent, target_asset))
+        .bind(format!(
+            r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
+            partial_agent, target_asset
+        ))
         .execute(&registry.pool)
         .await
         .unwrap();
@@ -440,31 +485,40 @@ mod tests {
         // 実際には UUID 同士だが、文字列として検索しているため危険。
         // 現在の実装が LIKE %agent_id% なので、DB内の partial_agent に %target_agent% はマッチしないが、
         // 逆（DBに長いIDがあり、短いIDで検索）だとマッチする。
-        
-        // 正しい検証: 
+
+        // 正しい検証:
         // 検索値: "123"
         // DB値: "12345"
         // LIKE %123% は true になる。これがバイパスのリスク。
-        
+
         let short_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
         let long_id_contained = "00000000-0000-0000-0000-000000000001-suffix"; // 非UUIDだがDBには入る
-        
+
         sqlx::query(
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)"
+            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
         )
         .bind("evt_bypass")
         .bind("checkout.session.completed")
-        .bind(format!(r#"{{"agent_id": "{}", "asset_id": "{}"}}"#, long_id_contained, target_asset))
+        .bind(format!(
+            r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
+            long_id_contained, target_asset
+        ))
         .execute(&registry.pool)
         .await
         .unwrap();
-        
+
         // short_id で検索すると、long_id_contained に LIKE でマッチしてしまう
-        let result = registry.check_ownership(short_id, target_asset).await.unwrap();
-        
+        let result = registry
+            .check_ownership(short_id, target_asset)
+            .await
+            .unwrap();
+
         // 本来は false であるべき（IDが完全一致していないため）
         // 現状の実装 (LIKE) では true になってしまうはず = RED
-        assert!(!result, "LIKE search should not match partial IDs (Bypass Risk)");
+        assert!(
+            !result,
+            "LIKE search should not match partial IDs (Bypass Risk)"
+        );
     }
 
     #[tokio::test]
@@ -478,10 +532,12 @@ mod tests {
         assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
 
         // 新しいメソッド: ライセンスの付与 (まだ未実装なのでコンパイルエラーになるかパニックするはず)
-        registry.grant_license(agent_id, asset_id, "evt_test_grant".to_string()).await.unwrap();
+        registry
+            .grant_license(agent_id, asset_id, "evt_test_grant".to_string())
+            .await
+            .unwrap();
 
         // 購入後
         assert!(registry.check_ownership(agent_id, asset_id).await.unwrap());
     }
 }
-

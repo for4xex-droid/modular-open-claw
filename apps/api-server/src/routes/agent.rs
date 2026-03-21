@@ -260,11 +260,11 @@ pub async fn trigger_agent_chat(
         })));
     }
 
-    let provider = state.provider.clone();
+    let provider = (*state.provider).clone();
 
     let immune_system = infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone());
     if let Ok(Some(rule)) = immune_system
-        .verify_intent(&payload.prompt, state.job_queue.as_ref())
+        .verify_intent(&payload.prompt, &**state.job_queue)
         .await
     {
         return Ok(Json(serde_json::json!({
@@ -363,7 +363,7 @@ pub async fn trigger_agent_chat(
         .flatten();
 
     let mut economic_context = None;
-    if let Some(engine) = &state.commerce_engine {
+    if let Some(engine) = state.commerce_engine.as_opt() {
         if let (Ok(balance), Ok(spent_today), Ok(daily_limit)) = (
             engine.get_balance(auth.agent_id).await,
             engine.get_daily_spend(auth.agent_id).await,
@@ -406,7 +406,7 @@ pub async fn trigger_agent_chat(
         );
 
         // Phase 6.9: Prevent API abuse & Bind Economy (NG-25 Fix)
-        if let Some(engine) = &state.commerce_engine {
+        if let Some(engine) = state.commerce_engine.as_opt() {
             if let Err(e) = engine
                 .validate_activity(auth.agent_id, "inference", 1)
                 .await
@@ -434,7 +434,7 @@ pub async fn trigger_agent_chat(
                 let mut skill_results = Vec::new();
 
                 // Phase 6.9: Charge Economy Engine for LLM Usage (NG-25 Fix)
-                if let Some(engine) = &state.commerce_engine {
+                if let Some(engine) = state.commerce_engine.as_opt() {
                     let inference_id = uuid::Uuid::new_v4();
                     if let Err(e) = engine
                         .execute_autonomous_purchase(
@@ -588,7 +588,7 @@ pub async fn trigger_agent_chat(
         .job_queue
         .insert_chat_message(&channel_id, "assistant", &final_reply)
         .await;
-    let ce = state.context_engine.clone();
+    let ce = (*state.context_engine).clone();
     let cid = channel_id.clone();
     tokio::spawn(async move {
         let _ = ce.maintain_context(&cid, 8000).await; // 文字数基準 (≒4000トークン)
@@ -596,8 +596,8 @@ pub async fn trigger_agent_chat(
 
     // 🛡️ AgentRx: Post-Execution Diagnostics
     if total_steps > 0 {
-        let jq = state.job_queue.clone();
-        let provider = state.provider.clone();
+        let jq = (*state.job_queue).clone();
+        let provider_bg = (*state.provider).clone();
         let diag_exec_id = chat_execution_id.clone();
         let prompt_clone = payload.prompt.clone();
 
@@ -610,7 +610,7 @@ pub async fn trigger_agent_chat(
                 {
                     info!("🔍 [AgentRx] Failure or violation detected. Starting diagnostics for {}...", diag_exec_id);
                     let diagnostics =
-                        infrastructure::diagnostics::AgentRxDiagnostics::new(provider);
+                        infrastructure::diagnostics::AgentRxDiagnostics::new(provider_bg);
 
                     // Create a virtual job for context
                     let virtual_job = aiome_core::traits::Job {

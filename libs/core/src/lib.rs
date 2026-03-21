@@ -39,3 +39,5 @@ pub mod traits;
 pub mod trajectory {
     pub use aiome_contracts::trajectory::*;
 }
+/// LLM出力のサニタイズなどのセキュリティ実装
+pub mod security_impl;

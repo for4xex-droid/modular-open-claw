@@ -169,14 +169,17 @@ mod tests {
     fn test_soul_hash_change() {
         let mut soul = AgentSoul::new("test-hash".to_string());
         let hash1 = soul.soul_hash.clone();
-        
+
         soul.generation += 1;
         let hash2 = soul.compute_hash();
         assert_ne!(hash1, hash2, "Hash must change when generation increases");
-        
+
         soul.attachment.interaction_count += 10;
         let hash3 = soul.compute_hash();
-        assert_ne!(hash2, hash3, "Hash must change when interaction count increases");
+        assert_ne!(
+            hash2, hash3,
+            "Hash must change when interaction count increases"
+        );
 
         soul.lora_hash = Some("sha256:abcd".into());
         let hash4 = soul.compute_hash();

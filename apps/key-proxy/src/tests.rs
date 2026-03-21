@@ -1,10 +1,13 @@
+use crate::{
+    AppState, QuotaState, Router, auth_middleware, get, handle_llm_complete, handle_llm_embed,
+    handle_llm_stream, post,
+};
 use axum::http::StatusCode;
 use axum_test::TestServer;
-use std::sync::Arc;
 use secrecy::SecretString;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::{AppState, QuotaState, Router, get, post, handle_llm_complete, handle_llm_stream, handle_llm_embed, auth_middleware};
 
 fn create_test_state() -> AppState {
     AppState {
@@ -55,8 +58,37 @@ async fn test_health_check_authorized() {
 
     let response = server
         .get("/api/v1/health")
-        .add_header(axum::http::header::AUTHORIZATION, "Bearer test_vault_secret")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            "Bearer test_vault_secret",
+        )
         .await;
-    
+
     assert_eq!(response.status_code(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_llm_complete_unauthorized() {
+    let state = create_test_state();
+    let app = build_test_router(state);
+    let server = TestServer::new(app).unwrap();
+
+    let response = server
+        .post("/api/v1/llm/complete")
+        .json(&serde_json::json!({"prompt": "hello"}))
+        .await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_llm_embed_unauthorized() {
+    let state = create_test_state();
+    let app = build_test_router(state);
+    let server = TestServer::new(app).unwrap();
+
+    let response = server
+        .post("/api/v1/llm/embed")
+        .json(&serde_json::json!({"input": "hello"}))
+        .await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }

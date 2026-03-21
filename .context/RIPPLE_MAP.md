@@ -126,5 +126,53 @@ graph TD
     B -->|Transaction Commit| F[Successful DB Write]
 ```
 
+### 🛡️ Phase 17: ArrowCanaria Fallback & Resilience
+- **変更内容**: 
+    - `fallback_router.rs`: `FallbackRouter` による LLM フェイルオーバーロジックの実装。
+    - `circuit_breaker.rs`: プライマリ接続失敗時の遮断と自動復旧ロジック。
+    - `main.rs`: `AppState` への `FallbackRouter` インジェクションと `bg_provider` の代替利用。
+    - `AiomeConfig`: `Default` トレイトの実装によるテスト容易性の向上。
+- **波及効果**: 
+    - プライマリ LLM プロバイダーが停止しても、システムが「安全なデフォルト応答」または代替プロバイダー（Gemini 等）を使用して継続稼働可能になる。
+    - `api-server` の全チャット・自律タスクの可用性が大幅に向上。
+
+```mermaid
+graph TD
+    A[AppState::provider] -->|Request| B[FallbackRouter]
+    B -->|Check State| C[CircuitBreaker]
+    C -->|CLOSED| D[Primary LLM]
+    C -->|OPEN| E[Fallback LLM]
+    D -->|Failure| C
+    E -->|Safe Response| F[User / System]
+```
+
+### 🛡️ Phase 17 Enhancement: Gaps G-1 & G-2 Remediation
+- **変更内容**: 
+    - `health.rs` / `general.rs`: `ResourceStatus` に `llm_circuit_breaker` を追加し、ヘルスチェック API でサーキットブレーカーの状態を公開 (Gap G-1)。
+    - `rate_limiter.rs` / `auth.rs`: `governor` によるエージェント別レート制限の実装と認証ミドルウェアへの統合 (Gap G-2)。
+- **波及効果**: 
+    - LLM のフェイルオーバー状態を外部監視システムから検知可能になる。
+    - エージェント毎のリクエスト頻度が制限され、DoS 攻撃や予期せぬループ消費のリスクが低減。
+
+### 🛡️ Phase 20: AI Gig Engine (The Immutable Gateway)
+- **変更内容**: 
+    - `gig_engine.rs`: `SqliteGigEngine` による AI 受発注プロトコルの実装。
+    - `gig.rs`: `AcceptanceCriteria`, `GigIntent`, `GigBid` 等のプロトコル型の定義。
+    - `commerce.rs`: `escrow_release`, `escrow_refund` への対応。
+    - `verification_logs`: 検証履歴の永続化。
+- **波及効果**: 
+    - エージェント間の自律的な商取引（ギグ・エコノミー）が可能になる。
+    - 納品物の自動検証と、不適合時の自動返金/スラッシュによる Immutable な契約履行が担保される。
+    - `api-server` の AppState に `GigEngine` が注入され、全エージェントが利用可能になる。
+
+```mermaid
+graph TD
+    A[libs/infrastructure/src/gig_engine.rs] -->|SqliteGigEngine| B[apps/api-server/src/app_state.rs]
+    A -->|Escrow Operations| C[libs/aiome-contracts/src/commerce.rs]
+    D[libs/aiome-contracts/src/gig.rs] -->|Traits/Types| A
+    E[gig_intents, gig_bids, escrows tables] -->|Storage| A
+    F[verification_logs table] -->|Audit Trail| A
+```
+
 ---
-*最終更新日: 2026-03-21* (Phase 16)
+*最終更新日: 2026-03-22* (Phase 20 Implementation)

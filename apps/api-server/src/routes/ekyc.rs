@@ -7,11 +7,9 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use axum::{
-    extract::{Json, State},
-};
+use axum::extract::{Json, State};
 use serde::{Deserialize, Serialize};
-use tracing::{info};
+use tracing::info;
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct EkycSessionResponse {
@@ -36,7 +34,10 @@ pub async fn create_ekyc_session_handler(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
 ) -> Result<Json<EkycSessionResponse>, AppError> {
-    info!("🛡️ [eKYC] Initiating verification for agent: {}", auth.agent_id);
+    info!(
+        "🛡️ [eKYC] Initiating verification for agent: {}",
+        auth.agent_id
+    );
 
     let session = state
         .ekyc_engine

@@ -23,7 +23,10 @@ use std::fs;
     ),
     security(("api_key" = []))
 )]
-pub async fn list_wiki_files(State(state): State<AppState>, _auth: crate::auth::Authenticated) -> Result<Json<Vec<String>>, AppError> {
+pub async fn list_wiki_files(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<Vec<String>>, AppError> {
     let mut files = Vec::new();
     if let Ok(entries) = fs::read_dir(&state.docs_path) {
         for entry in entries.flatten() {
@@ -90,6 +93,10 @@ pub async fn get_health_status(
         status.creativity = stats.creativity;
         status.fatigue = stats.fatigue;
     }
+
+    // G-1: LLM サーキットブレーカーの状態を取得して追加
+    let cb_status = state.circuit_breaker.get_status().await;
+    status.llm_circuit_breaker = Some(serde_json::to_value(cb_status).unwrap_or_default());
 
     Ok(Json(status))
 }

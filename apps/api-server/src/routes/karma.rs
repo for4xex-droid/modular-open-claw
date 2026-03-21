@@ -101,7 +101,9 @@ pub async fn trigger_failure_demo(
     security(("api_key" = []))
 )]
 #[cfg(feature = "dev-routes")]
-pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
+pub async fn trigger_security_demo(
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",
         "steps": [
@@ -123,7 +125,9 @@ pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<
     security(("api_key" = []))
 )]
 #[cfg(feature = "dev-routes")]
-pub async fn trigger_federation_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
+pub async fn trigger_federation_demo(
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",
         "steps": [

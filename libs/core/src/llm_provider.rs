@@ -82,6 +82,101 @@ impl OllamaProvider {
         );
         Ok(())
     }
+
+    /// フォーマットを指定してリクエストを送信します
+    pub async fn complete_with_format(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+        format: &str,
+    ) -> Result<LlmResponse, AiomeError> {
+        let url = format!("{}/api/chat", self.host);
+        let mut messages = Vec::new();
+
+        if let Some(sys) = system {
+            messages.push(serde_json::json!({
+                "role": "system",
+                "content": sys
+            }));
+        }
+
+        messages.push(serde_json::json!({
+            "role": "user",
+            "content": prompt
+        }));
+
+        let payload = serde_json::json!({
+            "model": self.model,
+            "messages": messages,
+            "stream": false,
+            "think": false,
+            "format": format,
+            "options": {
+                "num_predict": 300,
+                "temperature": 0.7
+            }
+        });
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Ollama request failed: {}", e),
+            })?;
+
+        let body: serde_json::Value =
+            resp.json().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Ollama response parse failed: {}", e),
+            })?;
+
+        let content = body["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        let stop_reason = match body["done_reason"].as_str() {
+            Some("stop") => StopReason::EndTurn,
+            Some("length") => StopReason::MaxTokens,
+            Some(other) => StopReason::Other(other.to_string()),
+            None => StopReason::EndTurn,
+        };
+
+        Ok(LlmResponse {
+            content,
+            stop_reason,
+        })
+    }
+
+    /// 構造化JSON出力を強制し、パース失敗時に1回リトライします
+    pub async fn complete_structured<T: serde::de::DeserializeOwned>(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<T, AiomeError> {
+        let response = self.complete_with_format(prompt, system, "json").await?;
+
+        match serde_json::from_str::<T>(&response.content) {
+            Ok(parsed) => Ok(parsed),
+            Err(e) => {
+                tracing::warn!("⚠️ [Ollama] JSON parse failed: {}. Retrying...", e);
+                let retry_prompt = format!(
+                    "前回の出力にJSONフォーマットエラーがありました。\nエラー: {}\n出力されたテキスト: {}\n\n正しいJSONフォーマットのみで再出力してください。",
+                    e, response.content
+                );
+                let retry_response = self
+                    .complete_with_format(&retry_prompt, system, "json")
+                    .await?;
+                serde_json::from_str::<T>(&retry_response.content).map_err(|e2| {
+                    AiomeError::Infrastructure {
+                        reason: format!("Ollama JSON parse failed after retry: {}", e2),
+                    }
+                })
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -111,8 +206,9 @@ impl LlmProvider for OllamaProvider {
             "messages": messages,
             "stream": false,
             "think": false,
+            "format": "json",
             "options": {
-                "num_predict": 4096,
+                "num_predict": 300,
                 "temperature": 0.7
             }
         });
@@ -1295,6 +1391,8 @@ impl EmbeddingProvider for RuriProvider {
 pub struct MockLlmProvider {
     /// Mock response content.
     pub response: String,
+    /// Force the mock to return an error.
+    pub should_fail: bool,
 }
 
 #[async_trait]
@@ -1304,6 +1402,11 @@ impl LlmProvider for MockLlmProvider {
         _prompt: &str,
         _system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
+        if self.should_fail {
+            return Err(AiomeError::Infrastructure {
+                reason: "Mock failure".into(),
+            });
+        }
         Ok(LlmResponse {
             content: if self.response.is_empty() {
                 "{\"winner\": \"Skill A\", \"reasoning\": \"Mock victory\"}".to_string()
@@ -1321,6 +1424,11 @@ impl LlmProvider for MockLlmProvider {
         Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
         AiomeError,
     > {
+        if self.should_fail {
+            return Err(AiomeError::Infrastructure {
+                reason: "Mock failure".into(),
+            });
+        }
         let response = if self.response.is_empty() {
             "{\"winner\": \"Skill A\", \"reasoning\": \"Mock victory\"}".to_string()
         } else {
@@ -1392,5 +1500,130 @@ mod tests {
         let result = provider.complete("Say hello", Some("System prompt")).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().content, "Hello from mock LM Studio");
+    }
+
+    #[tokio::test]
+    async fn test_ollama_complete_json_format_and_options() {
+        let mock_server = MockServer::start().await;
+
+        // 期待されるリクエストボディの検証
+        Mock::given(method("POST"))
+            .and(path("/api/chat"))
+            .and(wiremock::matchers::body_json(serde_json::json!({
+                "model": "arrowcanaria",
+                "messages": [{
+                    "role": "user",
+                    "content": "Give JSON"
+                }],
+                "stream": false,
+                "think": false,
+                "format": "json",
+                "options": {
+                    "num_predict": 300,
+                    "temperature": 0.7
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": {
+                    "role": "assistant",
+                    "content": "{\"status\": \"ok\"}"
+                },
+                "done_reason": "stop"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let provider = OllamaProvider::new(mock_server.uri(), "arrowcanaria".to_string());
+
+        // 現時点ではコードが未実装（format: json を送っていない）ため、
+        // wiremock がマッチせず 404 を返し、テストが失敗するはず。
+        let result = provider.complete("Give JSON", None).await;
+
+        assert!(
+            result.is_ok(),
+            "Request should succeed if matched, but will fail (404) if logic is missing: {:?}",
+            result.err()
+        );
+        assert_eq!(result.unwrap().content, "{\"status\": \"ok\"}");
+    }
+
+    #[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
+    struct TestData {
+        name: String,
+        score: i32,
+    }
+
+    #[tokio::test]
+    async fn test_ollama_complete_structured_success() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/chat"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": { "role": "assistant", "content": "{\"name\": \"Alice\", \"score\": 100}" },
+                "done_reason": "stop"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let provider = OllamaProvider::new(mock_server.uri(), "test".to_string());
+        let result: Result<TestData, AiomeError> =
+            provider.complete_structured("give data", None).await;
+
+        assert!(
+            result.is_ok(),
+            "Should successfully parse valid JSON: {:?}",
+            result.err()
+        );
+        assert_eq!(
+            result.unwrap(),
+            TestData {
+                name: "Alice".into(),
+                score: 100
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ollama_complete_structured_retry_on_failure() {
+        let mock_server = MockServer::start().await;
+
+        // 1回目: 壊れたJSON
+        Mock::given(method("POST"))
+            .and(path("/api/chat"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": { "role": "assistant", "content": "{\"name\": \"Bob\", \"score\": " },
+                "done_reason": "stop"
+            })))
+            .up_to_n_times(1)
+            .mount(&mock_server)
+            .await;
+
+        // 2回目: 修正されたJSON
+        Mock::given(method("POST"))
+            .and(path("/api/chat"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": { "role": "assistant", "content": "{\"name\": \"Bob\", \"score\": 200}" },
+                "done_reason": "stop"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let provider = OllamaProvider::new(mock_server.uri(), "test".to_string());
+        let result: Result<TestData, AiomeError> =
+            provider.complete_structured("give data", None).await;
+
+        assert!(
+            result.is_ok(),
+            "Should succeed after retry: {:?}",
+            result.err()
+        );
+        assert_eq!(
+            result.unwrap(),
+            TestData {
+                name: "Bob".into(),
+                score: 200
+            }
+        );
     }
 }

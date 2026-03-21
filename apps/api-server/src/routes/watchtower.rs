@@ -153,7 +153,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         .ok()
         .flatten();
     let mut economic_context = None;
-    if let Some(engine) = &state.commerce_engine {
+    if let Some(engine) = state.commerce_engine.as_opt() {
         // Fix: Use stable system agent ID
         let agent_id = state
             .job_queue

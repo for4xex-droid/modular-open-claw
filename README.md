@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 * **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-03-21*
+*Last Mutated: 2026-03-22*
 
 ---
 
@@ -111,6 +111,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🔑 **Phase 8.2: OAuth 2.1 / JWT 認証基盤**: 従来のダミー ID に依存する設計から脱却し、RFC 規格に準拠した **AuthManager (JWT 検証)** を導入。ステートレスかつセキュアなユーザー識別を可能にし、リソース所有権の厳格な保護を実現しています。
 - 🏛️ **Phase 8.8: Audit & Immunity Ledger (監査と透明性)**: エージェントの自己修復履歴（Diagnostics）と、ハッシュチェーンで保護されたシステム変更履歴（Global Ledger）を管理コンソールから直接確認可能に。NURTURE §12 の「人間による監査可能性」を具現化しました。
 - 🛡️ **Phase 16: EKYC Protection & Revenue Splitter**: 有償アセットの購入やギフト送信において **eKYC 済フラグ** を強制し、未認証ユーザーの経済活動を物理的にブロックします。また、Stripe Webhook と連動した **RevenueSplitter** により、売上の自動分配（クリエイター：プラットフォーム = 80:20）をデータベーストランザクション内で一貫して実行します。さらに、起動直後に機密環境変数をメモリから消去する **Zeroize** 処理により、秘匿情報の永続的な残留を防止します。
+- 🏗️ **Phase 20: AI Gig Economy (The Immutable Gateway)**: AI エージェント間で仕事の発注・受注、納品検証、エスクロー（一時預かり）決済を自律的に完結させる経済基盤を実装。納品物が事前に定義された基準（Acceptance Criteria）を満たした場合のみ報酬が支払われる「不変のゲートウェイ」により、エージェント間の信用の最小化を実現します。
 
 ---
 
@@ -136,7 +137,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Core Engine** | Rust / Bastion OSS | 高速・メモリ安全かつ堅牢なセキュリティ基盤 |
 | **Formal Verification** | TLA+ / TLC / Rust TypeState / MBT | 状態遷移のTLA+仕様化とモデルチェッカーによる検証。TypeStateと手動インテグレーションテストによる「数学からRust実行バイナリまでの絶対保証（95%カバレッジ）」 |
 | **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
-| **Last Updated:** 2026-03-20
+| **Last Updated:** 2026-03-22
 | **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: ユーザー応答はクラウド、自律タスクはローカル推論 |
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
 | **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
@@ -237,6 +238,8 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - `FEDERATION_SECRET`: Samsara Hub 通信の認証用。
 - `API_SERVER_SECRET`: API Server への全リクエストの認証用。
 - `JWT_PRIVATE_KEY_B64`: JWT署名/検証用のBase64エンコードされたEd25519秘密鍵。
+- `XTTS_ENDPOINT`: ローカルXTTSサーバーのエンドポイントURL (TTS_PROVIDER="xtts"時)。
+- `XTTS_SPEAKER`: XTTSで使用するデフォルトの話者ID。
 
 > ℹ️ すべての環境変数は `AiomeConfig` (`libs/shared/src/config.rs`) で一元管理されています。詳細は [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md) を参照。
 > ℹ️ `key-proxy` は、APIキーを安全に管理するための重要なコンポーネントです。起動時に `GEMINI_API_KEY` などの機密情報を環境変数として渡すことで、アプリケーションコードから直接アクセスされることなく、安全なプロキシ経由で利用されます。これにより、APIキーの漏洩リスクを大幅に低減します。
@@ -260,7 +263,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-21*
+*最終更新: 2026-03-22*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

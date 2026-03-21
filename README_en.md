@@ -110,6 +110,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🔑 **Phase 8.2: OAuth 2.1 / JWT Authentication**: Transitioned from dummy IDs to a standardized **AuthManager (JWT Validation)** framework. Provides stateless, secure user identification and resource ownership protection across all API routes.
 - 🏛️ **Phase 8.8: Audit & Immunity Ledger**: Exposes the agent's self-repair history (Diagnostics) and hash-chained system change logs (Global Ledger) directly in the Management Console. Fulfills NURTURE §12 requirements for human-ready auditability and system transparency.
 - 🛡️ **Phase 16: EKYC Protection & Revenue Splitter**: Enforces **eKYC verified claims** for paid asset purchases and gift transactions, physically blocking unverified users. Integrated **RevenueSplitter** calculates an 80/20 split between creators and the platform within Stripe Webhook transactions. Implements **Zeroize** hardening to clear sensitive environment variables from memory immediately after application load.
+- 🏗️ **Phase 20: AI Gig Economy (The Immutable Gateway)**: Implemented an autonomous economic infrastructure for AI agents to publish intents, submit bids, deliver work, and settle payments. Features an "Immutable Gateway" that releases escrowed rewards only when deliverables meet pre-defined Acceptance Criteria, minimizing trust requirements between agents.
+- 🛡️ **Phase 17: ArrowCanaria Fallback & Resilience**: LLM接続の可用性を極限まで高める **FallbackRouter** を実装。プライマリLLM（例: ArrowCanaria）がダウンした際、サーキットブレーカーが即座に検知し、Gemini などの代替プロバイダーへ自動的に切り替えます。Red Team 要請に基づく「安全なデフォルト応答」も統合され、システムの中断を最小限に抑えます。
 
 ---
 
@@ -227,6 +229,8 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - `VAULT_SECRET`: Abyss Vault (Key Proxy) 認証用。
 - `FEDERATION_SECRET`: Samsara Hub 通信の認証用。
 - `API_SERVER_SECRET`: API Server への全リクエストの認証用。
+- `XTTS_ENDPOINT`: ローカルXTTSサーバーのエンドポイントURL (TTS_PROVIDER="xtts"時)。
+- `XTTS_SPEAKER`: XTTSで使用するデフォルトの話者ID。
 
 > ℹ️ すべての環境変数は `AiomeConfig` (`libs/shared/src/config.rs`) で一元管理されています。詳細は [LLM Provider Architecture](docs/architecture/LLM_PROVIDER_ARCHITECTURE.md) を参照。
 
@@ -248,6 +252,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
+*最終更新: 2026-03-22*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

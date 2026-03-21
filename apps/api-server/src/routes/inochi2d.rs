@@ -1,16 +1,12 @@
 use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
-use axum::{
-    body::Bytes,
-    extract::State,
-    Json,
-};
-use serde::Serialize;
-use tracing::{info, warn, error};
 use avatar_engine::loader::Inochi2dLoader;
-use infrastructure::registry::{AssetType, AssetManifest};
+use axum::{body::Bytes, extract::State, Json};
+use infrastructure::registry::{AssetManifest, AssetType};
+use serde::Serialize;
 use shared::sandbox::PathSandbox;
+use tracing::{error, info, warn};
 
 #[derive(Serialize)]
 pub struct Inochi2dUploadResponse {
@@ -24,15 +20,27 @@ pub async fn upload_inochi2d_handler(
     axum::extract::Extension(user): axum::extract::Extension<AuthenticatedUser>,
     body: Bytes,
 ) -> Result<Json<Inochi2dUploadResponse>, AppError> {
-    info!("🎭 [Inochi2D] Uploading mascot model for user: {}", user.0.sub);
+    info!(
+        "🎭 [Inochi2D] Uploading mascot model for user: {}",
+        user.0.sub
+    );
 
     // 1. eKYC Gate: 年齢確認済みかチェック
-    let is_verified = user.0.ekyc_verified 
-        || state.ekyc_engine.check_status(&user.0.sub).await.unwrap_or(false);
-    
+    let is_verified = user.0.ekyc_verified
+        || state
+            .ekyc_engine
+            .check_status(&user.0.sub)
+            .await
+            .unwrap_or(false);
+
     if !is_verified {
-        warn!("⛔ [Inochi2D] Unverified user {} attempted upload. Blocked.", user.0.sub);
-        return Err(AppError::forbidden("eKYC verification required for mascot upload"));
+        warn!(
+            "⛔ [Inochi2D] Unverified user {} attempted upload. Blocked.",
+            user.0.sub
+        );
+        return Err(AppError::forbidden(
+            "eKYC verification required for mascot upload",
+        ));
     }
 
     // 2. Format Validation
@@ -42,25 +50,25 @@ pub async fn upload_inochi2d_handler(
     // 3. Save to File System (.inochi2d_assets/)
     let asset_id = uuid::Uuid::new_v4();
     let filename = format!("{}.inx", asset_id);
-    
+
     let base_dir = std::path::PathBuf::from(".inochi2d_assets");
     if !base_dir.exists() {
-        std::fs::create_dir_all(&base_dir).map_err(|e| AppError::internal(format!("Failed to create directory: {}", e)))?;
+        std::fs::create_dir_all(&base_dir)
+            .map_err(|e| AppError::internal(format!("Failed to create directory: {}", e)))?;
     }
 
     // Initialize Sandbox (Expert Review v3)
     let sandbox = PathSandbox::new(&base_dir)
         .map_err(|e| AppError::internal(format!("Failed to initialize sandbox: {}", e)))?;
 
-    let save_path = sandbox.validate_path(&filename)
+    let save_path = sandbox
+        .validate_path(&filename)
         .map_err(|e| AppError::bad_request(format!("Path traversal blocked: {}", e)))?;
 
-    tokio::fs::write(&save_path, &body)
-        .await
-        .map_err(|e| {
-            error!("🚨 [Inochi2D] Failed to save INX file: {}", e);
-            AppError::internal("Failed to save model file")
-        })?;
+    tokio::fs::write(&save_path, &body).await.map_err(|e| {
+        error!("🚨 [Inochi2D] Failed to save INX file: {}", e);
+        AppError::internal("Failed to save model file")
+    })?;
 
     // 4. Registry 登録
     let manifest = AssetManifest {
@@ -72,7 +80,9 @@ pub async fn upload_inochi2d_handler(
         price_coins: 0,
     };
 
-    state.registry.register_asset(manifest)
+    state
+        .registry
+        .register_asset(manifest)
         .await
         .map_err(|e| AppError::internal(format!("Registry error: {}", e)))?;
 

@@ -92,3 +92,36 @@ impl EmotionToParameterMapper {
         self.mappings.get(emotion).cloned().unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_emotion_mapping_excited() {
+        let mapper = EmotionToParameterMapper::new();
+        let params = mapper.map_emotion("excited");
+        assert_eq!(params.eye_open_l, 1.0);
+        assert_eq!(params.eye_open_r, 1.0);
+        assert_eq!(params.mouth_open, 0.7);
+        assert_eq!(params.physics_intensity, 1.5);
+    }
+
+    #[test]
+    fn test_emotion_mapping_unknown() {
+        let mapper = EmotionToParameterMapper::new();
+        let params = mapper.map_emotion("unknown_emotion");
+        // Should return default AvatarParameters (all 0.0)
+        assert_eq!(params.eye_open_l, 0.0);
+        assert_eq!(params.mouth_open, 0.0);
+        assert_eq!(params.physics_intensity, 0.0);
+    }
+
+    #[test]
+    fn test_emotion_mapping_curious() {
+        let mapper = EmotionToParameterMapper::new();
+        let params = mapper.map_emotion("curious");
+        assert_eq!(params.angle_x, 15.0);
+        assert_eq!(params.eyebrow_y, 0.5);
+    }
+}

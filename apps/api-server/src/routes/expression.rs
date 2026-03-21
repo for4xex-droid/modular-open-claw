@@ -98,10 +98,8 @@ pub async fn generate_expression(
         state.llm_semaphore.acquire(),
     )
     .await
-    .map_err(|_| {
-        aiome_contracts::error::AiomeError::ResourceBusy {
-            reason: "GPU/VRAM contention (Generation).".to_string(),
-        }
+    .map_err(|_| aiome_contracts::error::AiomeError::ResourceBusy {
+        reason: "GPU/VRAM contention (Generation).".to_string(),
     })?
     .map_err(|e| aiome_contracts::error::AiomeError::Infrastructure {
         reason: format!("Semaphore acquire error: {}", e),
@@ -127,8 +125,12 @@ pub async fn generate_expression(
                     voice
                 );
                 (
-                    ExpressionEngine::synthesize_audio_openai(&expression.content, &voice, &api_key)
-                        .await,
+                    ExpressionEngine::synthesize_audio_openai(
+                        &expression.content,
+                        &voice,
+                        &api_key,
+                    )
+                    .await,
                     "mp3",
                 )
             } else {
@@ -184,7 +186,11 @@ pub async fn generate_expression(
                 tracing::info!("✅ [TTS] Audio saved to {} ({}ms)", path, dur);
             }
         } else if audio_res.is_err() && tts_prov != "none" {
-            tracing::warn!("❌ [TTS] Failed to synthesize audio via {}: {:?}", tts_prov, audio_res.err());
+            tracing::warn!(
+                "❌ [TTS] Failed to synthesize audio via {}: {:?}",
+                tts_prov,
+                audio_res.err()
+            );
         }
     }
 

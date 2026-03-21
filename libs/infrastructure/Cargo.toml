@@ -50,6 +50,7 @@ tokio-stream = "0.1"
 jsonwebtoken = "9.3.1"
 zeroize = "1.8.1"
 aes-gcm = "0.10.3"
+governor = { version = "0.6", features = ["dashmap"] }
 
 [dev-dependencies]
 tempfile = "3"

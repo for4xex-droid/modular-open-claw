@@ -33,7 +33,7 @@ impl PhysicsSimulator {
     pub fn step(&mut self, target: f32, dt: f32) -> f32 {
         let force = -self.config.spring_k * (self.current_value - target);
         let acceleration = force / self.config.mass;
-        
+
         self.velocity += acceleration * dt;
         self.velocity *= 1.0 - (self.config.damping * dt);
         self.current_value += self.velocity * dt;
@@ -54,11 +54,11 @@ mod tests {
             damping: 0.5,
         };
         let mut sim = PhysicsSimulator::new(config);
-        
+
         let start = sim.current_value;
         sim.step(1.0, 0.1);
         let next = sim.current_value;
-        
+
         // Target が 1.0 なので、値が増加するはず
         assert!(next > start);
     }

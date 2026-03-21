@@ -66,6 +66,9 @@ pub struct ResourceStatus {
     pub creativity: i32,
     /// 疲労度
     pub fatigue: i32,
+    /// LLM サーキットブレーカーの状態 (G-1)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub llm_circuit_breaker: Option<serde_json::Value>,
 }
 
 /// システムの状態を監視する
@@ -158,6 +161,7 @@ impl HealthMonitor {
             resonance: 50,
             creativity: 30,
             fatigue: 10,
+            llm_circuit_breaker: None,
         }
     }
 }

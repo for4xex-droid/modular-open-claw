@@ -3,7 +3,7 @@ use secrecy::SecretString;
 use std::env;
 
 /// Aiome Core Configuration
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AiomeConfig {
     /// データベースファイルのパス
     pub db_path: String,
@@ -33,6 +33,10 @@ pub struct AiomeConfig {
     pub tremendous_api_key: Option<SecretString>,
     /// 管理者・ギフト受取用メールアドレス
     pub master_email: Option<String>,
+    /// XTTSサーバーのエンドポイントURL (Phase 10.1a)
+    pub xtts_endpoint: Option<String>,
+    /// XTTSで使用するデフォルト話者ID (Phase 10.1a)
+    pub xtts_speaker: Option<String>,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -50,6 +54,29 @@ pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
 pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
 /// Abyss Vaultのデフォルトパス
 pub const DEFAULT_ABYSS_VAULT_PATH: &str = "~/.aiome/abyss_vault";
+
+impl Default for AiomeConfig {
+    fn default() -> Self {
+        Self {
+            db_path: "sqlite://workspace/aiome.db".to_string(),
+            log_level: "info".to_string(),
+            ollama_host: DEFAULT_OLLAMA_HOST.to_string(),
+            ollama_model: "qwen3.5:9b".to_string(),
+            gemini_api_key: None,
+            openai_api_key: None,
+            anthropic_api_key: None,
+            api_server_port: 3015,
+            key_proxy_url: DEFAULT_KEY_PROXY_URL.to_string(),
+            samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
+            allowed_origins: vec!["http://localhost:1420".to_string()],
+            abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
+            tremendous_api_key: None,
+            master_email: None,
+            xtts_endpoint: Some("http://localhost:18020".to_string()),
+            xtts_speaker: Some("p225".to_string()),
+        }
+    }
+}
 
 impl AiomeConfig {
     /// 環境変数から設定を読み込む
@@ -119,6 +146,8 @@ impl AiomeConfig {
                 SecretString::from(key)
             }),
             master_email: env::var("MASTER_EMAIL").ok(),
+            xtts_endpoint: env::var("XTTS_ENDPOINT").ok(),
+            xtts_speaker: env::var("XTTS_SPEAKER").ok(),
         })
     }
 

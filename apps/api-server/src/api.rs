@@ -112,13 +112,11 @@ pub struct ApiDoc;
 
 #[cfg(feature = "dev-routes")]
 #[derive(OpenApi)]
-#[openapi(
-    paths(
-        crate::routes::karma::trigger_failure_demo,
-        crate::routes::karma::trigger_security_demo,
-        crate::routes::karma::trigger_federation_demo,
-    )
-)]
+#[openapi(paths(
+    crate::routes::karma::trigger_failure_demo,
+    crate::routes::karma::trigger_security_demo,
+    crate::routes::karma::trigger_federation_demo,
+))]
 pub struct DemoApiDoc;
 
 struct SecurityAddon;

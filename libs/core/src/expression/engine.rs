@@ -90,6 +90,7 @@ impl ExpressionEngine {
             karma_refs: karma_ids,
             audio_path: None,  // DP-9: Initially None, set when TTS is processed
             duration_ms: None, // DP-9: Initially None
+            tts_status: aiome_contracts::expression::TtsStatus::NotRequested, // Phase 10.1a
             avatar_params: params_json,
             created_at: Utc::now().to_rfc3339(),
         })
@@ -151,14 +152,11 @@ impl ExpressionEngine {
 
         let url = format!("{}/tts_to_audio", endpoint.trim_end_matches('/'));
 
-        let resp = client
-            .post(&url)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
+        let resp = client.post(&url).json(&payload).send().await.map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("XTTS request failed: {}", e),
-            })?;
+            }
+        })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -187,8 +185,10 @@ mod tests {
     async fn test_synthesize_audio_xtts_green() {
         // This should fail with ConnectionRefused if no local XTTS server is running,
         // which confirms the synthesis code is executed (GREEN for logic).
-        let res = ExpressionEngine::synthesize_audio_xtts("hello", "p225", "http://localhost:18020").await;
-        
+        let res =
+            ExpressionEngine::synthesize_audio_xtts("hello", "p225", "http://localhost:18020")
+                .await;
+
         if let Err(AiomeError::Infrastructure { reason }) = res {
             // "XTTS request failed" comes from our new logic
             assert!(reason.contains("XTTS request failed"));

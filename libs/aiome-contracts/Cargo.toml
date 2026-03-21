@@ -9,6 +9,8 @@ async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26"
 zeroize = "1.8"
 chrono = { workspace = true }
 thiserror = { workspace = true }

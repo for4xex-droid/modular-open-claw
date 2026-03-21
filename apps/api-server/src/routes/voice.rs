@@ -1,14 +1,14 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use serde_json::json;
 use crate::{app_state::AppState, auth::Authenticated, error::AppError};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use infrastructure::registry::{AssetManifest, AssetType};
+use infrastructure::security::crypto::encrypt_aes256gcm;
+use rand::Rng;
+use serde_json::json;
+use std::path::PathBuf;
+use tokio::fs;
 use tracing::info;
 use uuid::Uuid;
 use zeroize::Zeroizing;
-use rand::Rng;
-use std::path::PathBuf;
-use infrastructure::security::crypto::encrypt_aes256gcm;
-use infrastructure::registry::{AssetManifest, AssetType};
-use tokio::fs;
 
 /// [POST] /api/v1/voice/upload
 /// Phase 10.2: Voice asset upload with AES-256-GCM DRM Encryption (§SEC-1, §SEC-4, §4-B)
@@ -21,22 +21,34 @@ pub async fn upload_voice_handler(
     if size == 0 {
         return Err(AppError::bad_request("Voice asset body cannot be empty"));
     }
-    
+
     let asset_id = Uuid::new_v4();
     let agent_id = auth.agent_id; // §SEC-4: Creator Auth
 
-    info!("🎤 [Voice] Processing voice asset upload: {} bytes (Agent: {}, Asset: {})", size, agent_id, asset_id);
-    
+    info!(
+        "🎤 [Voice] Processing voice asset upload: {} bytes (Agent: {}, Asset: {})",
+        size, agent_id, asset_id
+    );
+
     // 0. CSAM 検疫チェック (Phase 11: タイムアウト付き spawn_blocking による防御)
     let hasher = infrastructure::compliance::AudioHasher::default();
-    let audio_hash = hasher.compute_hash(body.to_vec()).await.map_err(|e| {
-        AppError::internal(format!("Audio hashing failed: {}", e))
-    })?;
+    let audio_hash = hasher
+        .compute_hash(body.to_vec())
+        .await
+        .map_err(|e| AppError::internal(format!("Audio hashing failed: {}", e)))?;
 
     info!("🔍 [Voice] Computed Audio CSAM Hash: {}", audio_hash);
 
-    if state.quarantine_store.is_quarantined(&audio_hash).await.unwrap_or(false) {
-        tracing::warn!("🚨 [Voice] Asset blocked due to Quarantine Rule Match (Hash: {})", audio_hash);
+    if state
+        .quarantine_store
+        .is_quarantined(&audio_hash)
+        .await
+        .unwrap_or(false)
+    {
+        tracing::warn!(
+            "🚨 [Voice] Asset blocked due to Quarantine Rule Match (Hash: {})",
+            audio_hash
+        );
         return Err(AppError::forbidden("Asset rejected by compliance policy"));
     }
 
@@ -48,26 +60,37 @@ pub async fn upload_voice_handler(
 
     // 4. workspace外の安全な領域に保存 (ここでは ~/.aiome/abyss_vault/ をシミュレートするか、適当な一時ディレクトリ)
     let workspace_root = state.config.abyss_vault_path.clone();
-    let workspace_root = if workspace_root.is_empty() { "workspace".to_string() } else { workspace_root };
+    let workspace_root = if workspace_root.is_empty() {
+        "workspace".to_string()
+    } else {
+        workspace_root
+    };
     let vault_dir = PathBuf::from(workspace_root).join(".abyss_vault");
-    
-    fs::create_dir_all(&vault_dir).await.map_err(|e| AppError::internal(format!("Failed to create vault directory: {}", e)))?;
-    
+
+    fs::create_dir_all(&vault_dir)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to create vault directory: {}", e)))?;
+
     let file_path = vault_dir.join(format!("{}.aivoice", asset_id));
-    fs::write(&file_path, &encrypted).await.map_err(|e| AppError::internal(format!("Failed to write encrypted voice asset: {}", e)))?;
+    fs::write(&file_path, &encrypted)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to write encrypted voice asset: {}", e)))?;
 
     // 5. 鍵を AbyssVoiceVault に登録 (メモリ + 将来的に永続化)
     state.voice_drm.register_asset_key(asset_id, key).await?;
 
     // 6. Registry にアセットメタデータ登録
-    state.registry.register_asset(AssetManifest {
-        id: asset_id,
-        creator_id: agent_id,
-        asset_type: AssetType::VoiceModel,
-        name: format!("Voice Model {}", asset_id),
-        description: "User uploaded voice model".into(),
-        price_coins: 0,
-    }).await?;
+    state
+        .registry
+        .register_asset(AssetManifest {
+            id: asset_id,
+            creator_id: agent_id,
+            asset_type: AssetType::VoiceModel,
+            name: format!("Voice Model {}", asset_id),
+            description: "User uploaded voice model".into(),
+            price_coins: 0,
+        })
+        .await?;
 
     Ok((
         StatusCode::OK,
@@ -104,9 +127,13 @@ pub async fn list_voice_assets_handler(
     State(state): State<AppState>,
     axum::extract::Query(query): axum::extract::Query<ListVoiceAssetsQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    let assets = state.registry.list_assets_by_type(infrastructure::registry::AssetType::VoiceModel, Some(auth.agent_id), &query.scope).await?;
-    Ok((
-        StatusCode::OK,
-        Json(assets),
-    ))
+    let assets = state
+        .registry
+        .list_assets_by_type(
+            infrastructure::registry::AssetType::VoiceModel,
+            Some(auth.agent_id),
+            &query.scope,
+        )
+        .await?;
+    Ok((StatusCode::OK, Json(assets)))
 }

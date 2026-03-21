@@ -111,11 +111,11 @@ impl BeggingSupervisor {
             // おねだり検出：頻度制限を確認
             if let Some(last) = last_begging_at {
                 let diff = now - last;
-                
+
                 // Expert Review 指摘: 25〜35日のランダムなジッター。
                 let seed = last.timestamp_nanos_opt().unwrap_or(0);
                 let jitter_days = 25 + (seed % 11);
-                
+
                 if diff < chrono::Duration::days(jitter_days) {
                     return ValidationResult::Blocked(format!(
                         "Frequency limit: Too many begging attempts recently. (Next allowed in {} days). Original block: {}",
@@ -152,15 +152,19 @@ mod tests {
 
         // 1. 直近（5日前）におねだりがあった場合、「おねだりワード（買って）」があれば「記憶」に基づきブロックされるべき
         let last_begging = now - Duration::days(5);
-        let result = BeggingSupervisor::validate_output_with_memory("何か買って！", Some(last_begging), now);
-        
+        let result =
+            BeggingSupervisor::validate_output_with_memory("何か買って！", Some(last_begging), now);
+
         match result {
             ValidationResult::Blocked(r) => assert!(r.contains("Frequency limit")),
-            ValidationResult::Valid => panic!("Should have blocked due to 5-day proximity to previous successful begging attempt"),
+            ValidationResult::Valid => panic!(
+                "Should have blocked due to 5-day proximity to previous successful begging attempt"
+            ),
         }
 
         // 2. 直近におねだりがあっても、普通の会話（こんにちは）であればパスすべき
-        let result_normal = BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
+        let result_normal =
+            BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
         assert_eq!(result_normal, ValidationResult::Valid);
     }
 
@@ -170,7 +174,8 @@ mod tests {
 
         // 2. 36日以上経過していれば、おねだりワードがなければ通すべき
         let last_begging = now - Duration::days(36);
-        let result = BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
+        let result =
+            BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
         assert_eq!(result, ValidationResult::Valid);
     }
 

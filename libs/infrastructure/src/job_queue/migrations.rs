@@ -656,7 +656,8 @@ impl DbInitializer for SqliteJobQueue {
                 audio_path TEXT,        -- DP-9: TTS音声ファイルパス
                 duration_ms INTEGER,    -- DP-9: 音声の長さ(ms)
                 avatar_params TEXT,     -- Phase 7: Inochi2D/VRM 感情パラメータ
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now')),
+                tts_status TEXT NOT NULL DEFAULT 'NotRequested'
             );",
         )
         .execute(&self.pool)
@@ -721,6 +722,19 @@ impl DbInitializer for SqliteJobQueue {
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (avatar_params): {}", e),
+                })?;
+        }
+
+        // Phase 10.1a: tts_status column
+        let has_tts_status = columns
+            .iter()
+            .any(|c| c.get::<String, _>("name") == "tts_status");
+        if !has_tts_status {
+            sqlx::query("ALTER TABLE expressions ADD COLUMN tts_status TEXT NOT NULL DEFAULT 'NotRequested'")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to alter expressions table (tts_status): {}", e),
                 })?;
         }
 
@@ -834,7 +848,10 @@ impl DbInitializer for SqliteJobQueue {
         {
             let msg = e.to_string();
             if !msg.contains("duplicate column name") && !msg.contains("already exists") {
-                warn!("⚠️ [DbInitializer] Migration stripe_webhook_events metadata failed: {}", e);
+                warn!(
+                    "⚠️ [DbInitializer] Migration stripe_webhook_events metadata failed: {}",
+                    e
+                );
             }
         }
 
@@ -848,7 +865,7 @@ impl DbInitializer for SqliteJobQueue {
                 description TEXT,
                 price_coins INTEGER NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );"
+            );",
         )
         .execute(&self.pool)
         .await
@@ -865,7 +882,7 @@ impl DbInitializer for SqliteJobQueue {
                 role TEXT NOT NULL, -- 'creator', 'platform'
                 amount INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );"
+            );",
         )
         .execute(&self.pool)
         .await
@@ -937,7 +954,7 @@ impl DbInitializer for SqliteJobQueue {
                 original_event_id TEXT,
                 status TEXT NOT NULL DEFAULT 'active',
                 granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );"
+            );",
         )
         .execute(&self.pool)
         .await
@@ -952,7 +969,7 @@ impl DbInitializer for SqliteJobQueue {
                 session_id TEXT NOT NULL,
                 status TEXT DEFAULT 'requires_input',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );"
+            );",
         )
         .execute(&self.pool)
         .await
@@ -961,13 +978,17 @@ impl DbInitializer for SqliteJobQueue {
         })?;
 
         // Add key_version for Master Key rotation
-        if let Err(e) = sqlx::query("ALTER TABLE vault_keys ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1;")
-            .execute(&self.pool)
-            .await
+        if let Err(e) =
+            sqlx::query("ALTER TABLE vault_keys ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1;")
+                .execute(&self.pool)
+                .await
         {
             let msg = e.to_string();
             if !msg.contains("duplicate column name") && !msg.contains("already exists") {
-                warn!("⚠️ [DbInitializer] Migration vault_keys key_version failed: {}", e);
+                warn!(
+                    "⚠️ [DbInitializer] Migration vault_keys key_version failed: {}",
+                    e
+                );
             }
         }
 

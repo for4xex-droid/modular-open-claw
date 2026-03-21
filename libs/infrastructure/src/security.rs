@@ -5,11 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::registry::RegistryManager;
 use aiome_core::error::AiomeError;
 pub use aiome_core::security::{PermissionManifest, RuntimeJail};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::registry::RegistryManager;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -133,9 +133,10 @@ impl RuntimeJail for BastionGuard {
         let args: Vec<&str> = parts[1..].iter().map(|s| s.as_str()).collect();
 
         // Strict Whitelist check against SecurityConfig (Global Singleton)
-        if !GLOBAL_SECURITY_CONFIG
-            .allowed_binaries
-            .contains(&binary.to_string())
+        if !self.is_system_internal
+            && !GLOBAL_SECURITY_CONFIG
+                .allowed_binaries
+                .contains(&binary.to_string())
         {
             return Err(AiomeError::Infrastructure {
                 reason: format!(
@@ -227,7 +228,7 @@ impl RuntimeJail for BastionGuard {
         );
 
         use std::process::Command;
- 
+
         // Phase 9: Dynamic Sandbox Wrapping (gVisor / sandbox-exec)
         let mut cmd = if cfg!(target_os = "macos") && !self.is_system_internal {
             // macOS: sandbox-exec (if available) - Fallback to normal for dev
@@ -361,10 +362,10 @@ impl BastionGuard {
     }
 }
 
-/// 暗号化・復号処理のユーティリティ群
-pub mod crypto;
 /// Abyss Voice Vault (暗号化ボイスアセットの復号管理)
 pub mod abyss_voice_vault;
+/// 暗号化・復号処理のユーティリティ群
+pub mod crypto;
 use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;
 use zeroize::Zeroizing;
@@ -383,7 +384,11 @@ pub struct VoiceCoreDrm {
 
 impl VoiceCoreDrm {
     /// 新しい DRM インスタンスを生成する
-    pub async fn new(vault_url: String, registry: Arc<RegistryManager>, pool: sqlx::SqlitePool) -> Self {
+    pub async fn new(
+        vault_url: String,
+        registry: Arc<RegistryManager>,
+        pool: sqlx::SqlitePool,
+    ) -> Self {
         let vault = AbyssVoiceVault::new(registry.clone(), pool);
         // 起動時に永続化された鍵をリストア (§CISO-1)
         match vault.restore_keys_from_db().await {
@@ -398,17 +403,25 @@ impl VoiceCoreDrm {
     }
 
     /// アセットの復号キーを取得する (Abyss Vault 連携)
-    pub async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Zeroizing<Vec<u8>>, AiomeError> {
+    pub async fn fetch_decryption_key(
+        &self,
+        agent_id: Uuid,
+        asset_id: Uuid,
+    ) -> Result<Zeroizing<Vec<u8>>, AiomeError> {
         self.vault.fetch_decryption_key(agent_id, asset_id).await
     }
-    
+
     /// ライセンスを検証する
     pub async fn verify_license(&self, agent_id: Uuid, asset_id: Uuid) -> Result<bool, AiomeError> {
         self.vault.verify_license(agent_id, asset_id).await
     }
-    
+
     /// アセットキーを登録する
-    pub async fn register_asset_key(&self, asset_id: Uuid, key: Zeroizing<Vec<u8>>) -> Result<(), AiomeError> {
+    pub async fn register_asset_key(
+        &self,
+        asset_id: Uuid,
+        key: Zeroizing<Vec<u8>>,
+    ) -> Result<(), AiomeError> {
         self.vault.register_asset_key(asset_id, key).await
     }
 }
@@ -558,7 +571,7 @@ mod tests {
             ..Default::default()
         };
         let guard = BastionGuard::new(manifest);
-        
+
         // This test is mostly for coverage and log inspection.
         // It ensures the logic doesn't panic.
         let _ = guard.safe_exec("ls -la");
@@ -570,17 +583,21 @@ mod tests {
             allow_shell_execution: false, // Normal users restricted
             ..Default::default()
         };
-        
+
         // System internal guard should bypass even if shell is disallowed in manifest
         let guard = BastionGuard::new_internal(manifest);
         let cmd = "ls";
-        
+
         // We don't check for success/failure of the actual command (as it depends on env),
         // but we check if it was BLOCKED by the guard logic.
         let res = guard.safe_exec(cmd);
-        
+
         if let Err(AiomeError::Infrastructure { reason }) = &res {
-            assert!(!reason.contains("Forbidden"), "Internal guard should not be forbidden. Error: {}", reason);
+            assert!(
+                !reason.contains("Forbidden"),
+                "Internal guard should not be forbidden. Error: {}",
+                reason
+            );
         }
     }
 
@@ -593,10 +610,28 @@ mod tests {
                 ..Default::default()
             };
             let guard = BastionGuard::new(manifest);
-            
+
             // This is hard to test tanpa mock Command, but we can verify it doesn't fail.
             let res = guard.safe_exec("ls");
             assert!(res.is_ok() || !res.unwrap_err().to_string().contains("Forbidden"));
+        }
+    }
+
+    #[test]
+    fn test_bastion_guard_internal_bypasses_whitelist() {
+        let manifest = PermissionManifest::default();
+        let guard = BastionGuard::new_internal(manifest);
+
+        // "rm" is NOT in the default whitelist
+        let res = guard.safe_exec("rm --version");
+
+        // If it fails with "is not in the whitelist", then the bypass is NOT working (RED)
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(
+                !reason.contains("is not in the whitelist"),
+                "Internal guard should bypass whitelist. Error: {}",
+                reason
+            );
         }
     }
 }

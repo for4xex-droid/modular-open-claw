@@ -108,7 +108,9 @@ async fn main() -> anyhow::Result<()> {
         secret,
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
-                Ok(key_b64) => Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)?),
+                Ok(key_b64) => Arc::new(
+                    infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)?,
+                ),
                 Err(_) => Arc::new(infrastructure::auth::MockAuthManager::new()),
             }
         },
@@ -430,18 +432,18 @@ async fn create_topic_handler(
 ) -> (StatusCode, Json<serde_json::Value>) {
     // Auth Check
     let auth_header = headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or("");
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
 
     // Try JWT (AuthManager) first
     let mut authenticated = false;
     if auth_header.starts_with("Bearer ") {
         let token = auth_header.trim_start_matches("Bearer ");
         if let Ok(claims) = state.auth_manager.validate_token(token).await {
-             if claims.agent_id != uuid::Uuid::nil() {
-                 authenticated = true;
-             }
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
         }
     }
 
@@ -642,9 +644,9 @@ async fn biome_ws_handler(
 ) -> impl IntoResponse {
     // Auth Check
     let auth_header = headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or("");
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
 
     let mut authenticated = false;
     if auth_header.starts_with("Bearer ") {
@@ -724,11 +726,15 @@ async fn sync_handler(
     }
 
     if !authenticated {
-        warn!("🔒 Unauthorized sync attempt from node: {}", payload.node_id);
+        warn!(
+            "🔒 Unauthorized sync attempt from node: {}",
+            payload.node_id
+        );
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
-        ).into_response();
+        )
+            .into_response();
     }
 
     // BFT: BAN Check
@@ -866,11 +872,15 @@ async fn push_handler(
     }
 
     if !authenticated {
-        warn!("🔒 Unauthorized push attempt from node: {}", payload.node_id);
+        warn!(
+            "🔒 Unauthorized push attempt from node: {}",
+            payload.node_id
+        );
         return (
             StatusCode::UNAUTHORIZED,
             Json(serde_json::json!({"error": "Unauthorized"})),
-        ).into_response();
+        )
+            .into_response();
     }
 
     // BFT: BAN Check
@@ -1511,9 +1521,12 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         )
         .route("/api/v1/biome/relay", post(biome_relay_handler))
         .route("/api/v1/biome/ws", get(biome_ws_handler))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ))
         // WS and Sync handled inside their handlers for manual auth/handshake
-        .route("/api/v1/federation/ws", get(ws_handler)) 
+        .route("/api/v1/federation/ws", get(ws_handler))
         .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(cors)
         .layer(DefaultBodyLimit::max(5 * 1024 * 1024)) // 5MB limit
