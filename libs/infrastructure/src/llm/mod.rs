@@ -11,3 +11,7 @@ pub mod dynamic;
 pub mod fallback_router;
 /// `proxy` モジュール
 pub mod proxy;
+/// `cost_breaker` モジュール
+pub mod cost_breaker;
+/// `semantic_cache` モジュール
+pub mod semantic_cache;

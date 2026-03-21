@@ -102,4 +102,5 @@ pub struct AppState {
     pub system_agent_id: uuid::Uuid,
     pub voice_drm: Component<Arc<VoiceCoreDrm>>,
     pub registry: Component<Arc<RegistryManager>>,
+    pub gig_engine: Component<Arc<dyn aiome_contracts::gig::GigEngine>>,
 }

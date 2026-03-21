@@ -84,6 +84,34 @@ pub fn build_app(
             get(routes::general::get_diagnoses),
         )
         .route("/api/v1/trends", get(routes::general::get_trends))
+        .route(
+            "/api/v1/gig/publish",
+            axum::routing::post(routes::gig::publish_intent).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(30)), // 1 publish per 30s
+            ),
+        )
+        .route(
+            "/api/v1/gig/bid",
+            axum::routing::post(routes::gig::submit_bid).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(5)), // 1 bid per 5s
+            ),
+        )
+        .route(
+            "/api/v1/gig/accept/:intent_id/:bid_id",
+            post(routes::gig::accept_bid),
+        )
+        .route("/api/v1/gig/deliver", post(routes::gig::deliver))
+        .route("/api/v1/gig/verify/:order_id", post(routes::gig::verify))
         .route("/api/biome/status", get(routes::biome::biome_status))
         .route(
             "/api/biome/topics",

@@ -77,6 +77,8 @@ pub mod soul_store;
 pub mod trend_sonar;
 /// ユーザー行動パターン学習
 pub mod user_learner;
+/// RSSベースのトレンド収集
+pub mod rss_collector;
 /// 入出力データの検証
 pub mod validator;
 pub mod workspace_manager;

@@ -25,6 +25,7 @@ pub trait CoreOps {
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
         agent_id: Option<uuid::Uuid>,
+        priority: i32,
     ) -> Result<String, AiomeError>;
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
     async fn do_dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError>;
@@ -61,6 +62,7 @@ impl CoreOps for SqliteJobQueue {
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
         agent_id: Option<uuid::Uuid>,
+        priority: i32,
     ) -> Result<String, AiomeError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
@@ -71,7 +73,7 @@ impl CoreOps for SqliteJobQueue {
         let agent_id_str = agent_id.map(|uid| uid.to_string());
 
         sqlx::query(
-            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(category)
@@ -81,6 +83,7 @@ impl CoreOps for SqliteJobQueue {
         .bind(manifest_json)
         .bind(agent_id_str)
         .bind(JobStatus::Pending.to_string())
+        .bind(priority)
         .bind(&now)
         .bind(&now)
         .execute(&self.pool)
@@ -92,7 +95,7 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
         let row = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE id = ?"
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE id = ?"
         )
         .bind(job_id)
         .fetch_optional(&self.pool)
@@ -142,6 +145,7 @@ impl CoreOps for SqliteJobQueue {
                 output_artifacts,
                 permission_manifest,
                 agent_id,
+                priority: r.get("priority"),
             }))
         } else {
             Ok(None)
@@ -163,7 +167,7 @@ impl CoreOps for SqliteJobQueue {
             .collect::<Vec<_>>()
             .join(", ");
         let query_str = format!(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts FROM jobs WHERE status = ? AND category IN ({}) ORDER BY created_at ASC LIMIT 1",
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE status = ? AND category IN ({}) ORDER BY priority DESC, created_at ASC LIMIT 1",
             placeholders
         );
         let mut query = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
@@ -233,6 +237,7 @@ impl CoreOps for SqliteJobQueue {
                 output_artifacts,
                 permission_manifest,
                 agent_id,
+                priority: r.get("priority"),
             }))
         } else {
             Ok(None)
@@ -365,7 +370,7 @@ impl CoreOps for SqliteJobQueue {
         let rows = sqlx::query(
             "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
-                     sns_platform, sns_content_id, published_at, output_artifacts 
+                      sns_platform, sns_content_id, published_at, output_artifacts, priority 
               FROM jobs 
               ORDER BY created_at DESC LIMIT ?"
         )
@@ -400,6 +405,7 @@ impl CoreOps for SqliteJobQueue {
                     .try_get::<String, _>("permission_manifest")
                     .ok()
                     .and_then(|s| serde_json::from_str(&s).ok()),
+                priority: r.get("priority"),
             });
         }
         Ok(jobs)

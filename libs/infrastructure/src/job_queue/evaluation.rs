@@ -55,7 +55,7 @@ impl EvaluationOps for SqliteJobQueue {
         let rows = sqlx::query(
             "SELECT id, category, topic, style_name, karma_directives, permission_manifest, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
-                     sns_platform, sns_content_id, published_at, output_artifacts 
+                     sns_platform, sns_content_id, published_at, output_artifacts, priority 
               FROM jobs 
               WHERE sns_platform IS NOT NULL 
               AND sns_content_id IS NOT NULL 
@@ -97,6 +97,7 @@ impl EvaluationOps for SqliteJobQueue {
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
                 permission_manifest,
                 agent_id: None,
+                priority: r.get("priority"),
             });
         }
         Ok(jobs)
@@ -316,6 +317,7 @@ impl EvaluationOps for SqliteJobQueue {
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
                 permission_manifest,
                 agent_id: None,
+                priority: r.get("priority"),
             });
         }
         Ok(jobs)

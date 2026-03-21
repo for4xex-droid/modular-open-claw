@@ -58,9 +58,9 @@ use watchtower::WatchtowerOps;
 /// Job Queue that utilizes SQLite in WAL Mode to allow multi-threaded queue operations.
 #[derive(Clone, Debug)]
 pub struct SqliteJobQueue {
-    pool: SqlitePool,
-    embed_provider: Arc<tokio::sync::RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
-    karma_cache: Arc<tokio::sync::RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
+    pub(crate) pool: SqlitePool,
+    pub(crate) embed_provider: Arc<tokio::sync::RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
+    pub(crate) karma_cache: Arc<tokio::sync::RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
 }
 
 impl SqliteJobQueue {
@@ -129,6 +129,7 @@ impl JobQueue for SqliteJobQueue {
         karma_directives: Option<&str>,
         permission_manifest: Option<aiome_core::security::PermissionManifest>,
         agent_id: Option<uuid::Uuid>,
+        priority: i32,
     ) -> Result<String, AiomeError> {
         Box::pin(self.do_enqueue(
             category,
@@ -137,6 +138,7 @@ impl JobQueue for SqliteJobQueue {
             karma_directives,
             permission_manifest,
             agent_id,
+            priority,
         ))
         .await
     }

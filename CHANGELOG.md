@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Trend Sonar Refactoring (Multi-Source Support)**:
+    - Introduced `TrendAdapter` trait to decouple trend fetching from the core `ExternalTrendSonar` logic.
+    - Implemented `WebSearchAdapter` for real-time trend gathering via external Search APIs.
+    - Integrated `RssCollector` as a `TrendAdapter`, enabling it to serve as both a `TrendSource` and a flexible adapter.
+    - Updated `ExternalTrendSonar` to manage a collection of adapters, aggregating results from multiple sources (Web Search, RSS, etc.).
+    - Added `sanitize_snippet` utility to clean raw HTML/URL data from external search results.
+    - Restructured `main.rs` to pre-initialize a shared `TrendSonar` instance with multiple adapters, improving performance and consistency across the Background Worker and Dream State.
+    - Added comprehensive unit tests for multi-source aggregation and adapter logic.
+
 ### Added
 - **Phase 20: AI Gig Engine (The Immutable Gateway)**:
     - **SqliteGigEngine Implementation**: Developed a robust, TDD-driven `GigEngine` implementation using SQLite.
@@ -171,6 +181,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Thread Stack Size**: Added `.cargo/config.toml` with `RUST_MIN_STACK=64MB` to ensure sufficient stack space for debug-build async futures.
 - **Repository Hygiene**: Removed `check_output.txt` from the repository and added it to `.gitignore`.
 - **Dream State JSON Injection (A-9)**: Replaced `format!`-based JSON construction with `serde_json::json!` macro in `dream_state.rs` to prevent JSON injection through unsanitized strings.
+- **Integration Test Stability**:
+    - **test_gig_lifecycle**: Resolved a series of issues in the Gig Engine integration test, including JSON response parsing (mapping UUID from response object), incorrect status code assertions, and missing database tables.
+    - **Database Migrations**: Added Gig Engine tables (`gig_intents`, `gig_bids`, etc.) to the core migrations to ensure schema consistency.
+    - **Mock LLM Enhancements**: Updated `DummyLlm` to return valid JSON for `OracleJudge` requests, enabling verification tests to pass.
+    - **Prometheus Conflict Resolution**: Consolidated Prometheus recorder initialization using a single global `Lazy` cell, fixing the `test_fallback_router_failover` panic.
+    - **Ownership & Type Safety**: Fixed several Rust compilation errors (`E0382`, `E0308`) related to `AppState` component cloning and type mismatches in test utilities.
 
 ### Changed
 - **Panic-Free Startup**: Replaced all `expect()` / `unwrap()` calls in `api-server/main.rs` startup path with `unwrap_or_else` + `error!` + `std::process::exit(1)` for graceful error reporting.

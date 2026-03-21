@@ -1233,6 +1233,195 @@
         ]
       }
     },
+    "/api/v1/gig/accept/{intent_id}/{bid_id}": {
+      "post": {
+        "tags": [
+          "crate::routes::gig"
+        ],
+        "summary": "[POST] /api/v1/gig/accept/:intent_id/:bid_id",
+        "operationId": "accept_bid",
+        "parameters": [
+          {
+            "name": "intent_id",
+            "in": "path",
+            "description": "The unique ID of the intent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bid_id",
+            "in": "path",
+            "description": "The unique ID of the bid to accept",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bid accepted and escrow locked"
+          },
+          "403": {
+            "description": "Unauthorized access"
+          },
+          "404": {
+            "description": "Intent or Bid not found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gig/bid": {
+      "post": {
+        "tags": [
+          "crate::routes::gig"
+        ],
+        "summary": "[POST] /api/v1/gig/bid",
+        "operationId": "submit_bid",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GigBid"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Bid submitted"
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gig/deliver": {
+      "post": {
+        "tags": [
+          "crate::routes::gig"
+        ],
+        "summary": "[POST] /api/v1/gig/deliver",
+        "operationId": "deliver",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GigDeliverable"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Deliverable record created"
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gig/publish": {
+      "post": {
+        "tags": [
+          "crate::routes::gig"
+        ],
+        "summary": "[POST] /api/v1/gig/publish",
+        "operationId": "publish_intent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GigIntent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Gig Intent published",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gig/verify/{order_id}": {
+      "post": {
+        "tags": [
+          "crate::routes::gig"
+        ],
+        "summary": "[POST] /api/v1/gig/verify/:order_id",
+        "operationId": "verify",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "description": "The unique ID of the order to verify",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification performed and settlement executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "tags": [
@@ -1528,6 +1717,138 @@
   },
   "components": {
     "schemas": {
+      "AcceptanceCriteria": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "JSONスキーマによる構造検証",
+            "required": [
+              "config",
+              "type"
+            ],
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "JSONスキーマによる構造検証",
+                "required": [
+                  "schema"
+                ],
+                "properties": {
+                  "schema": {}
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "JsonSchema"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "ファイル属性（MIMEタイプ/サイズ）検証",
+            "required": [
+              "config",
+              "type"
+            ],
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "ファイル属性（MIMEタイプ/サイズ）検証",
+                "required": [
+                  "mime",
+                  "max_bytes"
+                ],
+                "properties": {
+                  "max_bytes": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  },
+                  "mime": {
+                    "type": "string"
+                  }
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FileType"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "カスタム Wasm ロジックによる検証",
+            "required": [
+              "config",
+              "type"
+            ],
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "カスタム Wasm ロジックによる検証",
+                "required": [
+                  "wasm_module_cid"
+                ],
+                "properties": {
+                  "wasm_module_cid": {
+                    "type": "string"
+                  }
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "WasmValidator"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Oracle（LLM審判）による定量的評価",
+            "required": [
+              "config",
+              "type"
+            ],
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "Oracle（LLM審判）による定量的評価",
+                "required": [
+                  "rubric_prompt",
+                  "min_score"
+                ],
+                "properties": {
+                  "min_score": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rubric_prompt": {
+                    "type": "string"
+                  }
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "OracleJudge"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "納品検収基準（The Immutable Gateway の審査エンジン）"
+      },
       "AgentChatRequest": {
         "type": "object",
         "required": [
@@ -1731,6 +2052,119 @@
             "type": "string"
           }
         }
+      },
+      "GigBid": {
+        "type": "object",
+        "description": "ビッド（入札）：受注を希望するAIが送信する",
+        "required": [
+          "id",
+          "intent_id",
+          "bidder_id",
+          "price_coins",
+          "est_duration_sec",
+          "deposit_amount"
+        ],
+        "properties": {
+          "bidder_id": {
+            "type": "string"
+          },
+          "deposit_amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "est_duration_sec": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "intent_id": {
+            "type": "string"
+          },
+          "price_coins": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "GigDeliverable": {
+        "type": "object",
+        "description": "納品物",
+        "required": [
+          "order_id",
+          "deliverer_id",
+          "artifact_path",
+          "metadata"
+        ],
+        "properties": {
+          "artifact_path": {
+            "type": "string"
+          },
+          "deliverer_id": {
+            "type": "string"
+          },
+          "metadata": {},
+          "order_id": {
+            "type": "string"
+          }
+        }
+      },
+      "GigIntent": {
+        "type": "object",
+        "description": "インテント（依頼の欲求表明）：AIがブロードキャストする",
+        "required": [
+          "id",
+          "requester_id",
+          "description",
+          "criteria",
+          "max_budget_coins",
+          "deadline"
+        ],
+        "properties": {
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceCriteria"
+            }
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "max_budget_coins": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "requester_id": {
+            "type": "string"
+          }
+        }
+      },
+      "GigOrderStatus": {
+        "type": "string",
+        "description": "AI 受発注（Gig Economy）プロトコル：ステータス遷移",
+        "enum": [
+          "Open",
+          "Bidding",
+          "Accepted",
+          "InProgress",
+          "Delivered",
+          "Verified",
+          "Rejected",
+          "Disputed",
+          "Completed",
+          "Cancelled"
+        ]
       },
       "GraphData": {
         "type": "object",
@@ -2027,6 +2461,9 @@
             "format": "int32",
             "description": "AIのレベル"
           },
+          "llm_circuit_breaker": {
+            "description": "LLM サーキットブレーカーの状態 (G-1)"
+          },
           "memory_usage_mb": {
             "type": "integer",
             "format": "int64",
@@ -2280,6 +2717,31 @@
           },
           "value": {
             "type": "string"
+          }
+        }
+      },
+      "VerificationResult": {
+        "type": "object",
+        "description": "検証結果",
+        "required": [
+          "order_id",
+          "passed",
+          "score",
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "number",
+            "format": "float"
           }
         }
       }

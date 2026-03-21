@@ -103,6 +103,7 @@ impl DreamState {
                         Some(&directives),
                         None,
                         None,
+                        0,
                     )
                     .await?;
                 return Ok(Some(format!("Explored a new seed: {}", best.keyword)));
@@ -151,6 +152,7 @@ impl DreamState {
                     Some(&directives),
                     None,
                     None,
+                    0,
                 )
                 .await?;
             return Ok(Some(format!("Reflected on failure of '{}'", fail.topic)));
@@ -214,6 +216,7 @@ impl DreamState {
                     Some(&directives),
                     None,
                     None,
+                    0,
                 )
                 .await?;
 
@@ -247,6 +250,7 @@ impl DreamState {
                             Some(&directives),
                             None,
                             None,
+                            0,
                         )
                         .await?;
                     return Ok(Some(
@@ -330,6 +334,7 @@ mod tests {
                 _karma_directives: Option<&str>,
                 _permission_manifest: Option<aiome_core::security::PermissionManifest>,
                 _agent_id: Option<uuid::Uuid>,
+                _priority: i32,
             ) -> Result<String, AiomeError> {
                 Ok("mock".into())
             }
@@ -592,7 +597,7 @@ mod tests {
             }
         }
         let dream = DreamState::new();
-        let sonar = ExternalTrendSonar::new("key".into());
+        let sonar = ExternalTrendSonar::new(vec![]);
         let res = dream.dream(&BusyJQ, &sonar, 1).await;
         assert!(res.is_ok());
     }
@@ -600,7 +605,7 @@ mod tests {
     #[tokio::test]
     async fn test_dream_execution() {
         let jq = crate::test_utils::MockJobQueue;
-        let sonar = ExternalTrendSonar::new("key".into());
+        let sonar = ExternalTrendSonar::new(vec![]);
         let dream = DreamState::new();
         // Since it's random, we just ensure it doesn't crash
         let res = dream.dream(&jq, &sonar, 10).await;

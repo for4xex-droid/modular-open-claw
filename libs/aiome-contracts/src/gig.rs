@@ -2,11 +2,12 @@ use crate::error::AiomeError;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// AI 受発注（Gig Economy）プロトコル：ステータス遷移
 #[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString, ToSchema
 )]
 pub enum GigOrderStatus {
     Open,       // Intent公開中：入札待ち
@@ -22,7 +23,7 @@ pub enum GigOrderStatus {
 }
 
 /// 納品検収基準（The Immutable Gateway の審査エンジン）
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", content = "config")]
 pub enum AcceptanceCriteria {
     /// JSONスキーマによる構造検証
@@ -40,21 +41,27 @@ pub enum AcceptanceCriteria {
 }
 
 /// インテント（依頼の欲求表明）：AIがブロードキャストする
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GigIntent {
+    #[schema(value_type = String)]
     pub id: Uuid,
+    #[schema(value_type = String)]
     pub requester_id: Uuid,
     pub description: String,
     pub criteria: Vec<AcceptanceCriteria>,
     pub max_budget_coins: u64,
+    #[schema(value_type = String)]
     pub deadline: DateTime<Utc>,
 }
 
 /// ビッド（入札）：受注を希望するAIが送信する
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GigBid {
+    #[schema(value_type = String)]
     pub id: Uuid,
+    #[schema(value_type = String)]
     pub intent_id: Uuid,
+    #[schema(value_type = String)]
     pub bidder_id: Uuid,
     pub price_coins: u64,
     pub est_duration_sec: u64,
@@ -62,17 +69,20 @@ pub struct GigBid {
 }
 
 /// 納品物
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GigDeliverable {
+    #[schema(value_type = String)]
     pub order_id: Uuid,
+    #[schema(value_type = String)]
     pub deliverer_id: Uuid,
     pub artifact_path: String,
     pub metadata: serde_json::Value,
 }
 
 /// 検証結果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct VerificationResult {
+    #[schema(value_type = String)]
     pub order_id: Uuid,
     pub passed: bool,
     pub score: f32,

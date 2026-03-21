@@ -14,17 +14,32 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
+// 💎 Shared Global Metrics Recorder (PR-10 Mitigation)
+// Prometheus handles only one global recorder per process.
+static GLOBAL_METRICS_HANDLE: once_cell::sync::Lazy<
+    metrics_exporter_prometheus::PrometheusHandle,
+> = once_cell::sync::Lazy::new(|| {
+    metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .expect("Failed to install global prometheus recorder in tests")
+});
+
 #[derive(Debug)]
 struct DummyLlm;
 #[async_trait::async_trait]
 impl aiome_core::llm_provider::LlmProvider for DummyLlm {
     async fn complete(
         &self,
-        _prompt: &str,
+        prompt: &str,
         _sys: Option<&str>,
     ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
+        let content = if prompt.contains("JSON format") || prompt.contains("Oracle Judge") {
+            r#"{"passed": true, "score": 1.0, "detail": "Perfect"}"#.to_string()
+        } else {
+            "Dummy Output".to_string()
+        };
         Ok(aiome_contracts::LlmResponse {
-            content: "Dummy Output".to_string(),
+            content,
             stop_reason: aiome_contracts::StopReason::EndTurn,
         })
     }
@@ -138,6 +153,18 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
     ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
+
+    async fn escrow_release(
+        &self,
+        _order_id: &str,
+        _payee_id: uuid::Uuid,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn escrow_refund(&self, _order_id: &str) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -174,11 +201,7 @@ impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
     }
 }
 
-async fn create_test_server() -> (
-    TestServer,
-    Arc<infrastructure::registry::RegistryManager>,
-    tempfile::TempDir,
-) {
+async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
 
@@ -279,13 +302,13 @@ async fn create_test_server() -> (
         ))),
         autonomous_running: Component::new(autonomous_running),
         autonomous_config: Component::new(autonomous_config),
-        provider: Component::new(provider),
+        provider: Component::new(provider.clone()),
         docker_failures: Component::new(Arc::new(tokio::sync::RwLock::new(
             std::collections::HashMap::new(),
         ))),
         http_client: Component::new(aiome_core::http::get_http_client().clone()),
         security_policy: shared::security::SecurityPolicy::default(),
-        commerce_engine: Component::new(commerce_engine),
+        commerce_engine: Component::new(commerce_engine.clone()),
         circuit_breaker: Component::new(Arc::new(
             infrastructure::circuit_breaker::CircuitBreaker::new(
                 "integration-test",
@@ -326,6 +349,8 @@ async fn create_test_server() -> (
                     abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
                     tremendous_api_key: None,
                     master_email: None,
+                    xtts_endpoint: None,
+                    xtts_speaker: None,
                 }
             });
             // 常にテスト用の一時パスで上書きする
@@ -345,26 +370,21 @@ async fn create_test_server() -> (
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
+        gig_engine: Component::new(Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
+            job_queue.get_pool().clone(),
+            commerce_engine.clone(),
+            provider.clone(),
+        )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         ..Default::default()
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
 
-    // In testing, multiple test_servers share the process. Prometheus only allows one global recorder.
-    // Hack: We use a static cell to hold the handle created by the first test.
-    static METRICS_HANDLE: once_cell::sync::Lazy<metrics_exporter_prometheus::PrometheusHandle> =
-        once_cell::sync::Lazy::new(|| {
-            metrics_exporter_prometheus::PrometheusBuilder::new()
-                .install_recorder()
-                .expect("Failed to install global prometheus recorder in tests")
-        });
-
     let plugin_registry = plugin_loader::PluginRegistry::new();
-    let metrics_handle = METRICS_HANDLE.clone();
+    let metrics_handle = GLOBAL_METRICS_HANDLE.clone();
 
-    let app = build_app(state, cors_layer, "static", plugin_registry, metrics_handle);
-
-    (TestServer::new(app).unwrap(), registry, tmp_dir)
+    let app = build_app(state.clone(), cors_layer, "static", plugin_registry, metrics_handle);
+    (TestServer::new(app).unwrap(), state, tmp_dir)
 }
 
 fn test_bearer() -> String {
@@ -374,7 +394,7 @@ fn test_bearer() -> String {
 
 #[tokio::test]
 async fn test_health_check() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
     let response = server
         .get("/api/health")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
@@ -396,7 +416,7 @@ async fn test_health_check() {
 
 #[tokio::test]
 async fn test_rate_limiting_per_agent() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
     for _ in 0..5 {
@@ -416,14 +436,14 @@ async fn test_rate_limiting_per_agent() {
 
 #[tokio::test]
 async fn test_settings_unauthorized() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
     let response = server.get("/api/v1/settings").await;
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_settings_authorized_and_crud() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // Get empty settings
     let get_resp = server
@@ -463,7 +483,7 @@ async fn test_settings_authorized_and_crud() {
 
 #[tokio::test]
 async fn test_settings_ssrf_protection() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let payload = json!({
         "service": "ollama",
@@ -486,7 +506,7 @@ async fn test_settings_ssrf_protection() {
 
 #[tokio::test]
 async fn test_biome_routes_auth() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let resp_no_auth = server.get("/api/biome/status").await;
     assert_eq!(resp_no_auth.status_code(), StatusCode::UNAUTHORIZED);
@@ -500,7 +520,7 @@ async fn test_biome_routes_auth() {
 
 #[tokio::test]
 async fn test_ollama_models() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // Test hitting the ollama models endpoint
     let resp = server
@@ -519,7 +539,7 @@ async fn test_ollama_models() {
 
 #[tokio::test]
 async fn test_avatar_upload_ekyc_enforcement() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // mock_valid_token_unverified does NOT start with 'ekyc_'
     let bearer = "Bearer mock_valid_token_unverified_user".to_string();
@@ -548,7 +568,7 @@ async fn test_avatar_upload_ekyc_enforcement() {
 
 #[tokio::test]
 async fn test_skill_import_oom_protection() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // We need to mock a remote server that returns a huge response.
     // Since we use reqwest::Client in AppState, this is hard to mock without a real mock server.
@@ -567,7 +587,7 @@ async fn test_skill_import_oom_protection() {
 }
 #[tokio::test]
 async fn test_global_body_limit() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // Send a 4MB JSON payload (limit should be 2MB)
     let large_string = "a".repeat(4 * 1024 * 1024);
@@ -593,7 +613,7 @@ async fn test_global_body_limit() {
 
 #[tokio::test]
 async fn test_avatar_upload_limit_bypass() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // Send a 10MB payload to /api/avatar/upload (permitted by 50MB layer)
     let large_base64 = "a".repeat(10 * 1024 * 1024);
@@ -622,7 +642,7 @@ async fn test_avatar_upload_limit_bypass() {
 
 #[tokio::test]
 async fn test_diagnostics_api() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/v1/audit/diagnostics")
@@ -636,7 +656,7 @@ async fn test_diagnostics_api() {
 
 #[tokio::test]
 async fn test_artifacts_api() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/artifacts")
@@ -650,7 +670,7 @@ async fn test_artifacts_api() {
 
 #[tokio::test]
 async fn test_trends_api() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/v1/trends")
@@ -664,7 +684,8 @@ async fn test_trends_api() {
 
 #[tokio::test]
 async fn test_stripe_webhook_idempotency_and_license_grant() {
-    let (server, registry, _tmp) = create_test_server().await;
+    let (server, state, _tmp) = create_test_server().await;
+    let registry = state.registry.clone();
 
     let agent_id = uuid::Uuid::new_v4();
     let asset_id = uuid::Uuid::new_v4();
@@ -764,7 +785,8 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
 #[tokio::test]
 #[serial]
 async fn test_voice_drm_roundtrip() {
-    let (server, registry, tmp) = create_test_server().await;
+    let (server, state, tmp) = create_test_server().await;
+    let registry = state.registry.clone();
     let token = test_bearer();
 
     let original_audio = b"secret_ai_voice_model_data_12345".to_vec();
@@ -810,7 +832,7 @@ async fn test_voice_drm_roundtrip() {
 
     // Reconstruct vault
     let vault =
-        infrastructure::security::abyss_voice_vault::AbyssVoiceVault::new(registry.clone(), pool);
+        infrastructure::security::abyss_voice_vault::AbyssVoiceVault::new((*registry).clone(), pool);
     vault.restore_keys_from_db().await.unwrap();
 
     use aiome_contracts::voice_vault::VoiceKeyVault;
@@ -828,7 +850,7 @@ async fn test_voice_drm_roundtrip() {
 
 #[tokio::test]
 async fn test_synergy_demo_routes_visibility() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
     let resp = server
         .post("/api/synergy/test/failure")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
@@ -851,7 +873,7 @@ async fn test_synergy_demo_routes_visibility() {
 
 #[tokio::test]
 async fn test_voice_asset_list() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // 1. Fetch public voice models
     let resp = server
@@ -866,7 +888,7 @@ async fn test_voice_asset_list() {
 
 #[tokio::test]
 async fn test_ekyc_session_creation() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let resp = server
         .post("/api/v1/ekyc/session")
@@ -881,7 +903,7 @@ async fn test_ekyc_session_creation() {
 
 #[tokio::test]
 async fn test_inochi2d_upload() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // valid INX magic: INX\x02
     let mut payload = b"INX\x02".to_vec();
@@ -898,7 +920,7 @@ async fn test_inochi2d_upload() {
 
 #[tokio::test]
 async fn test_gift_policy_dynamic() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // Auth token corresponds to agent_id 00000000-0000-0000-0000-000000000001
     let agent_id = "00000000-0000-0000-0000-000000000001";
@@ -915,7 +937,7 @@ async fn test_gift_policy_dynamic() {
 
 #[tokio::test]
 async fn test_gift_send_success() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let agent_id = "00000000-0000-0000-0000-000000000001";
     let payload = json!({
@@ -940,7 +962,7 @@ async fn test_gift_send_success() {
 
 #[tokio::test]
 async fn test_gift_send_unverified_blocked() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let agent_id = "00000000-0000-0000-0000-000000000001";
     let payload = json!({
@@ -966,7 +988,7 @@ async fn test_gift_send_unverified_blocked() {
 
 #[tokio::test]
 async fn test_commerce_purchase_unverified_blocked() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     let agent_id = "00000000-0000-0000-0000-000000000001";
     let payload = json!({
@@ -991,7 +1013,7 @@ async fn test_commerce_purchase_unverified_blocked() {
 
 #[tokio::test]
 async fn test_voice_upload_limit() {
-    let (server, _registry, _tmp) = create_test_server().await;
+    let (server, _state, _tmp) = create_test_server().await;
 
     // After relaxation to 500MB, 110MB should be ACCEPTED by the limit layer.
     let large_data = vec![0u8; 110 * 1024 * 1024];
@@ -1050,15 +1072,7 @@ async fn test_fallback_router_failover() {
     state.health_monitor = Component::new(Arc::new(Mutex::new(HealthMonitor::new())));
     state.config = Component::new(Arc::new(shared::config::AiomeConfig::default()));
 
-    // Use the shared lazy metrics handle to avoid "FailedToSetGlobalRecorder" panic
-    static TEST_METRICS_HANDLE: once_cell::sync::Lazy<
-        metrics_exporter_prometheus::PrometheusHandle,
-    > = once_cell::sync::Lazy::new(|| {
-        metrics_exporter_prometheus::PrometheusBuilder::new()
-            .install_recorder()
-            .expect("Failed to install global prometheus recorder in tests")
-    });
-    let metrics_handle = TEST_METRICS_HANDLE.clone();
+    let metrics_handle = GLOBAL_METRICS_HANDLE.clone();
 
     let app = build_app(
         state,
@@ -1079,10 +1093,10 @@ async fn test_tts_worker_flow_red() {
     use aiome_contracts::expression::TtsStatus;
     use aiome_core::expression::tts_worker::TtsWorker;
     use aiome_core::expression::Expression;
-    use infrastructure::job_queue::expression::ExpressionOps;
 
-    let (server, _registry, tmp) = create_test_server().await;
-    let jq = server.app().state::<AppState>().job_queue.get();
+
+    let (server, state, tmp) = create_test_server().await;
+    let jq = state.job_queue.clone();
 
     let artifacts_dir = tmp.path().join("artifacts");
 
@@ -1099,7 +1113,7 @@ async fn test_tts_worker_flow_red() {
         created_at: chrono::Utc::now().to_rfc3339(),
     };
 
-    ExpressionOps::store_expression(jq.as_ref(), &expr)
+    JobQueue::store_expression(&**jq, &expr)
         .await
         .unwrap();
 
@@ -1126,7 +1140,7 @@ async fn test_tts_worker_flow_red() {
     );
 
     // 3. Verify status in DB (should be Failed or still Generating/NotRequested depending on retry logic)
-    let fetched = ExpressionOps::fetch_expressions(jq.as_ref(), 1)
+    let fetched = JobQueue::fetch_expressions(&**jq, 1)
         .await
         .unwrap();
     assert_eq!(
@@ -1134,4 +1148,88 @@ async fn test_tts_worker_flow_red() {
         TtsStatus::Failed,
         "Status should be Failed after connection error"
     );
+}
+
+#[tokio::test]
+async fn test_gig_lifecycle() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let auth = test_bearer();
+    let requester_id = uuid::Uuid::new_v4();
+
+    // 1. Publish Intent
+    let publish_req = json!({
+        "id": uuid::Uuid::new_v4(),
+        "requester_id": requester_id,
+        "description": "Test work request",
+        "criteria": [
+            {
+                "type": "OracleJudge",
+                "config": {
+                    "rubric_prompt": "Is it good?",
+                    "min_score": 0.0,
+                    "model": null
+                }
+            }
+        ],
+        "max_budget_coins": 100,
+        "deadline": (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339()
+    });
+
+    let resp = server
+        .post("/api/v1/gig/publish")
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .json(&publish_req)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::CREATED);
+    let intent_id_json = resp.json::<serde_json::Value>();
+    let intent_id = uuid::Uuid::parse_str(intent_id_json["id"].as_str().unwrap()).unwrap();
+
+    // 2. Submit Bid
+    let bid_id = uuid::Uuid::new_v4();
+    let bidder_id = uuid::Uuid::new_v4();
+    let bid_req = json!({
+        "id": bid_id,
+        "intent_id": intent_id,
+        "bidder_id": bidder_id,
+        "price_coins": 50,
+        "est_duration_sec": 3600,
+        "deposit_amount": 10
+    });
+
+    let resp = server
+        .post("/api/v1/gig/bid")
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .json(&bid_req)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 3. Accept Bid
+    let resp = server
+        .post(&format!("/api/v1/gig/accept/{}/{}", intent_id, bid_id))
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 4. Deliver
+    let deliver_req = json!({
+        "order_id": intent_id,
+        "deliverer_id": bidder_id,
+        "artifact_path": "path/to/artifact",
+        "metadata": {}
+    });
+    let resp = server
+        .post("/api/v1/gig/deliver")
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .json(&deliver_req)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 5. Verify
+    let resp = server
+        .post(&format!("/api/v1/gig/verify/{}", intent_id))
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let verify_res = resp.json::<aiome_contracts::gig::VerificationResult>();
+    assert!(verify_res.passed);
 }

@@ -45,6 +45,10 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
+        // --- Day 1: Cost Control ---
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        cost_breaker.enforce().await?;
+
         let (provider_type, model) = self.resolve_config(false).await;
 
         if let Err(e) = self.circuit_breaker.check_state().await {
@@ -96,6 +100,10 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
+        // --- Day 1: Cost Control ---
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        cost_breaker.enforce().await?;
+
         // DS-1 FIX: Apply Circuit Breaker protection to streaming results
         if self.circuit_breaker.check_state().await.is_err() {
             self.slo_engine.record_error().await;
@@ -296,6 +304,10 @@ impl LlmProvider for BackgroundLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
+        // --- Day 1: Cost Control ---
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        cost_breaker.enforce().await?;
+
         let provider_type = self
             .jq
             .get_setting_value("bg_llm_provider")

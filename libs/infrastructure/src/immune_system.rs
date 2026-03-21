@@ -255,6 +255,7 @@ mod tests {
             _karma_directives: Option<&str>,
             _permission_manifest: Option<aiome_core::security::PermissionManifest>,
             _agent_id: Option<uuid::Uuid>,
+            _priority: i32,
         ) -> Result<String, AiomeError> {
             Ok("id".into())
         }

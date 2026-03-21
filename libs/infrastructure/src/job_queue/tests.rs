@@ -64,7 +64,7 @@ pub(crate) async fn create_test_queue() -> (SqliteJobQueue, tempfile::TempDir) {
 async fn test_sqlite_job_queue_basic_ops() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Test Topic", "Style", None, None, None)
+        .enqueue("Task", "Test Topic", "Style", None, None, None, 0)
         .await
         .expect("Enqueue failed");
     let job = jq
@@ -79,7 +79,7 @@ async fn test_sqlite_job_queue_basic_ops() {
 #[tokio::test]
 async fn test_sqlite_job_queue_dequeue_lifecycle() {
     let (jq, _tmp) = create_test_queue().await;
-    jq.enqueue("Task", "Topic 1", "Style", None, None, None)
+    jq.enqueue("Task", "Topic 1", "Style", None, None, None, 0)
         .await
         .unwrap();
     let job = jq
@@ -101,7 +101,7 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
 async fn test_sqlite_job_queue_karma_storage() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -128,7 +128,7 @@ async fn test_sqlite_job_queue_karma_storage() {
 async fn test_sqlite_job_queue_zombie_reclamation() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Zombies", "Style", None, None, None)
+        .enqueue("Task", "Zombies", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.dequeue(&["Task"]).await.unwrap();
@@ -151,7 +151,7 @@ async fn test_sqlite_job_queue_zombie_reclamation() {
 async fn test_sqlite_job_queue_creative_rating_guard() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Rating", "Style", None, None, None)
+        .enqueue("Task", "Rating", "Style", None, None, None, 0)
         .await
         .unwrap();
 
@@ -171,7 +171,7 @@ async fn test_sqlite_job_queue_creative_rating_guard() {
 async fn test_sqlite_job_queue_db_purge() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Old Job", "Style", None, None, None)
+        .enqueue("Task", "Old Job", "Style", None, None, None, 0)
         .await
         .unwrap();
     let job = jq
@@ -195,7 +195,7 @@ async fn test_sqlite_job_queue_db_purge() {
 #[tokio::test]
 async fn test_sqlite_job_queue_concurrent_dequeue() {
     let (jq, _tmp) = create_test_queue().await;
-    jq.enqueue("Task", "Job 1", "Style", None, None, None)
+    jq.enqueue("Task", "Job 1", "Style", None, None, None, 0)
         .await
         .unwrap();
 
@@ -228,7 +228,7 @@ async fn test_sqlite_job_queue_concurrent_dequeue() {
 async fn test_sqlite_job_queue_heartbeat() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Heart", "Style", None, None, None)
+        .enqueue("Task", "Heart", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.dequeue(&["Task"]).await.unwrap();
@@ -245,7 +245,7 @@ async fn test_sqlite_job_queue_heartbeat() {
 async fn test_sqlite_job_queue_execution_logs() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Log", "Style", None, None, None)
+        .enqueue("Task", "Log", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_execution_log(&job_id, "WASM STDOUT: Hello")
@@ -259,7 +259,7 @@ async fn test_sqlite_job_queue_execution_logs() {
 async fn test_sqlite_job_queue_unincorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -287,7 +287,7 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
 async fn test_sqlite_job_queue_incorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -320,7 +320,7 @@ async fn test_sqlite_job_queue_incorporate_karma() {
 async fn test_sqlite_job_queue_retry_poison_pill() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Retry", "Style", None, None, None)
+        .enqueue("Task", "Retry", "Style", None, None, None, 0)
         .await
         .unwrap();
 
@@ -396,7 +396,7 @@ async fn test_sqlite_job_queue_soul_history() {
 async fn test_sqlite_job_queue_karma_soul_coherence() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     let soul_v1 = "550e8400-e29b-41d4-a716-446655440000";
@@ -431,7 +431,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     assert!(result_v2_legacy.entries[0].lesson.contains("[LEGACY KARMA"));
 
     let job_id2 = jq
-        .enqueue("Task", "Topic 2", "Style", None, None, None)
+        .enqueue("Task", "Topic 2", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -488,7 +488,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
     jq = jq.with_embeddings(Arc::new(MockEmbedProvider));
 
     let job_id = jq
-        .enqueue("Task", "Real Topic", "Style", None, None, None)
+        .enqueue("Task", "Real Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     // Use manual SQL to insert embedding matched to MockEmbedProvider's output
@@ -519,7 +519,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
 async fn test_sqlite_job_queue_karma_cache_hit() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Cache Test", "Style", None, None, None)
+        .enqueue("Task", "Cache Test", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -559,7 +559,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
 async fn test_sqlite_job_queue_karma_weight_clamp() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(
@@ -605,7 +605,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
 async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
 
@@ -687,7 +687,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
 async fn test_sqlite_job_queue_karma_fts_match() {
     let (jq, _tmp) = create_test_queue().await;
     let job_id = jq
-        .enqueue("Task", "Topic", "Style", None, None, None)
+        .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
 
@@ -816,7 +816,7 @@ async fn test_sqlite_trajectory_store() {
 
     // Create a dummy job first
     let job_id = jq
-        .enqueue("Testing", "Trajectory Test", "Standard", None, None, None)
+        .enqueue("Testing", "Trajectory Test", "Standard", None, None, None, 0)
         .await
         .expect("Failed to enqueue dummy job");
 
@@ -918,4 +918,36 @@ async fn test_sqlite_expression_tts_status() {
     assert_eq!(refetched.len(), 1);
     assert_eq!(refetched[0].tts_status, TtsStatus::Ready);
     assert_eq!(refetched[0].audio_path, Some("path/to/audio.wav".into()));
+}
+#[tokio::test]
+async fn test_sqlite_job_queue_priority_order() {
+    let (jq, _tmp) = create_test_queue().await;
+
+    // 1. Enqueue low priority job
+    jq.enqueue("Task", "Low Priority", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+
+    // 2. Enqueue high priority job (enqueued later)
+    jq.enqueue("Task", "High Priority", "Style", None, None, None, 10)
+        .await
+        .unwrap();
+
+    // 3. Dequeue - should get High Priority first
+    let job1 = jq
+        .dequeue(&["Task"])
+        .await
+        .unwrap()
+        .expect("Should find job");
+    assert_eq!(job1.topic, "High Priority");
+    assert_eq!(job1.priority, 10);
+
+    // 4. Dequeue - should get Low Priority next
+    let job2 = jq
+        .dequeue(&["Task"])
+        .await
+        .unwrap()
+        .expect("Should find job");
+    assert_eq!(job2.topic, "Low Priority");
+    assert_eq!(job2.priority, 0);
 }

@@ -37,6 +37,7 @@ import { useAvatarState } from "./hooks/useAvatarState";
 import { useDisplayMode } from "./hooks/useDisplayMode";
 import { AgentStats, VitalityUIEvent, Karma } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
+import { useViewMode } from "./hooks/useViewMode";
 
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -165,6 +166,18 @@ function App() {
     );
   };
 
+  const { viewMode } = useViewMode();
+
+  const isVisible = (tab: string) => {
+    const beginner = ['dashboard', 'karma', 'expressions', 'settings'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome'];
+    const advanced = [...intermediate, 'graph', 'audit', 'immune'];
+    
+    if (viewMode === 'beginner') return beginner.includes(tab);
+    if (viewMode === 'intermediate') return intermediate.includes(tab);
+    return advanced.includes(tab);
+  };
+
   return (
     <div className="app-container">
       <AnimatePresence>
@@ -214,82 +227,106 @@ function App() {
 
         <nav className="nav-group">
           <h4>Synergy Hub</h4>
-          <NavItem
-            icon={<Activity size={20} />}
-            label="Biotope"
-            active={activeTab === "dashboard"}
-            onClick={() => setActiveTab("dashboard")}
-          />
-          <NavItem
-            icon={<Clock size={20} />}
-            label="Chronicle"
-            active={activeTab === "karma"}
-            onClick={() => setActiveTab("karma")}
-          />
-          <NavItem
-            icon={<GitMerge size={20} />}
-            label="Resonance Map"
-            active={activeTab === "graph"}
-            onClick={() => setActiveTab("graph")}
-          />
-          <NavItem
-            icon={<Box size={20} />}
-            label="Artifact Vault"
-            active={activeTab === "artifacts"}
-            onClick={() => setActiveTab("artifacts")}
-          />
-          <NavItem
-            icon={<Activity size={20} />}
-            label="Audit"
-            active={activeTab === "audit"}
-            onClick={() => setActiveTab("audit")}
-          />
-          <NavItem
-            icon={<Sparkles size={20} />}
-            label="Expressions"
-            active={activeTab === "expressions"}
-            onClick={() => setActiveTab("expressions")}
-          />
-          <NavItem
-            icon={<Network size={20} />}
-            label="Biome Lab"
-            active={activeTab === "biome"}
-            onClick={() => setActiveTab("biome")}
-          />
-          <NavItem
-            icon={<Crown size={20} />}
-            label="Voice Store"
-            active={activeTab === "store"}
-            onClick={() => setActiveTab("store")}
-          />
+          {isVisible("dashboard") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label="Biotope"
+              active={activeTab === "dashboard"}
+              onClick={() => setActiveTab("dashboard")}
+            />
+          )}
+          {isVisible("karma") && (
+            <NavItem
+              icon={<Clock size={20} />}
+              label="Chronicle"
+              active={activeTab === "karma"}
+              onClick={() => setActiveTab("karma")}
+            />
+          )}
+          {isVisible("graph") && (
+            <NavItem
+              icon={<GitMerge size={20} />}
+              label="Resonance Map"
+              active={activeTab === "graph"}
+              onClick={() => setActiveTab("graph")}
+            />
+          )}
+          {isVisible("artifacts") && (
+            <NavItem
+              icon={<Box size={20} />}
+              label="Artifact Vault"
+              active={activeTab === "artifacts"}
+              onClick={() => setActiveTab("artifacts")}
+            />
+          )}
+          {isVisible("audit") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label="Audit"
+              active={activeTab === "audit"}
+              onClick={() => setActiveTab("audit")}
+            />
+          )}
+          {isVisible("expressions") && (
+            <NavItem
+              icon={<Sparkles size={20} />}
+              label="Expressions"
+              active={activeTab === "expressions"}
+              onClick={() => setActiveTab("expressions")}
+            />
+          )}
+          {isVisible("biome") && (
+            <NavItem
+              icon={<Network size={20} />}
+              label="Biome Lab"
+              active={activeTab === "biome"}
+              onClick={() => setActiveTab("biome")}
+            />
+          )}
+          {isVisible("store") && (
+            <NavItem
+              icon={<Crown size={20} />}
+              label="Voice Store"
+              active={activeTab === "store"}
+              onClick={() => setActiveTab("store")}
+            />
+          )}
         </nav>
 
         <nav className="nav-group">
           <h4>Control</h4>
-          <NavItem
-            icon={<Shield size={20} />}
-            label="Immune System"
-            active={activeTab === "immune"}
-            onClick={() => setActiveTab("immune")}
-          />
-          <NavItem
-            icon={<MessageSquare size={20} />}
-            label="Agent Console"
-            active={activeTab === "agent"}
-            onClick={() => setActiveTab("agent")}
-          />
-          <NavItem
-            icon={<Package size={20} />}
-            label="Skill Vault"
-            active={activeTab === "vault"}
-            onClick={() => setActiveTab("vault")}
-          />
-          <NavItem
-            icon={<SettingsIcon size={20} />}
-            label="Settings"
-            active={activeTab === "settings"}
-            onClick={() => setActiveTab("settings")}
-          />
+          {isVisible("immune") && (
+            <NavItem
+              icon={<Shield size={20} />}
+              label="Immune System"
+              active={activeTab === "immune"}
+              onClick={() => setActiveTab("immune")}
+            />
+          )}
+          {isVisible("agent") && (
+            <NavItem
+              icon={<MessageSquare size={20} />}
+              label="Agent Console"
+              active={activeTab === "agent"}
+              onClick={() => setActiveTab("agent")}
+            />
+          )}
+          {isVisible("vault") && (
+            <NavItem
+              icon={<Package size={20} />}
+              label="Skill Vault"
+              active={activeTab === "vault"}
+              onClick={() => setActiveTab("vault")}
+            />
+          )}
+          {isVisible("settings") && (
+            <NavItem
+              icon={<SettingsIcon size={20} />}
+              label="Settings"
+              active={activeTab === "settings"}
+              onClick={() => setActiveTab("settings")}
+            />
+          )}
         </nav>
 
         <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontSize: '0.8rem' }}>

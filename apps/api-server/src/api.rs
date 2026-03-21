@@ -64,7 +64,13 @@ use utoipa::OpenApi;
         // Audit & Trends (Phase 8.6)
         crate::routes::general::get_audit_ledger,
         crate::routes::general::get_diagnoses,
-        crate::routes::general::get_trends
+        crate::routes::general::get_trends,
+        // Gig Economy
+        crate::routes::gig::publish_intent,
+        crate::routes::gig::submit_bid,
+        crate::routes::gig::accept_bid,
+        crate::routes::gig::deliver,
+        crate::routes::gig::verify
     ),
     components(
         schemas(
@@ -97,7 +103,14 @@ use utoipa::OpenApi;
             crate::routes::general::DiagnosisResponse,
             crate::routes::general::TrendsResponse,
             aiome_contracts::traits::TrendItem,
-            crate::routes::ekyc::EkycSessionResponse
+            crate::routes::ekyc::EkycSessionResponse,
+            // Gig Economy
+            aiome_contracts::gig::GigIntent,
+            aiome_contracts::gig::GigBid,
+            aiome_contracts::gig::GigDeliverable,
+            aiome_contracts::gig::VerificationResult,
+            aiome_contracts::gig::AcceptanceCriteria,
+            aiome_contracts::gig::GigOrderStatus
         )
     ),
     info(

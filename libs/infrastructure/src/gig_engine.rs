@@ -8,18 +8,26 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use aiome_contracts::llm::LlmProvider;
+
 /// SQLite をバックエンドとする GigEngine 実装
 pub struct SqliteGigEngine {
     pool: SqlitePool,
     commerce_engine: Arc<dyn CommerceEngine>,
+    llm_provider: Arc<dyn LlmProvider>,
 }
 
 impl SqliteGigEngine {
     /// SqliteGigEngine の新規インスタンスを生成する
-    pub fn new(pool: SqlitePool, commerce_engine: Arc<dyn CommerceEngine>) -> Self {
+    pub fn new(
+        pool: SqlitePool,
+        commerce_engine: Arc<dyn CommerceEngine>,
+        llm_provider: Arc<dyn LlmProvider>,
+    ) -> Self {
         Self {
             pool,
             commerce_engine,
+            llm_provider,
         }
     }
 }
@@ -266,7 +274,7 @@ impl GigEngine for SqliteGigEngine {
                 reason: format!("Criteria parsing failed: {}", e),
             })?;
 
-        let (_artifact_path, _metadata_json): (String, String) =
+        let (artifact_path, metadata_json): (String, String) =
             sqlx::query_as("SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = ?")
                 .bind(order_id.to_string())
                 .fetch_one(&mut *tx)
@@ -275,24 +283,74 @@ impl GigEngine for SqliteGigEngine {
                     reason: format!("Delivery lookup failed: {}", e),
                 })?;
 
-        // 2. Perform Verification (Simplified for now)
+        let metadata: serde_json::Value =
+            serde_json::from_str(&metadata_json).unwrap_or(serde_json::Value::Null);
+
+        // 2. Perform Verification
         let mut passed = true;
         let mut detail = String::new();
-        let overall_score = 1.0f32;
+        let mut overall_score = 0.0f32;
+        let mut check_count = 0;
 
         if criteria.is_empty() {
             detail.push_str("No criteria defined. Automatic pass.");
+            overall_score = 1.0;
         } else {
             for (i, c) in criteria.iter().enumerate() {
+                check_count += 1;
                 match c {
                     AcceptanceCriteria::FileType { mime, max_bytes } => {
                         detail.push_str(&format!(
-                            "[{}] FileType check ({} bytes, mime: {}) passed. ",
+                            "[{}] FileType check ({} bytes, mime: {}). ",
                             i, max_bytes, mime
                         ));
+                        overall_score += 1.0;
                     }
-                    AcceptanceCriteria::JsonSchema { .. } => {
-                        detail.push_str(&format!("[{}] JsonSchema check passed. ", i));
+                    AcceptanceCriteria::JsonSchema { schema } => {
+                        let res = jsonschema::is_valid(schema, &metadata);
+                        if !res {
+                            passed = false;
+                            detail.push_str(&format!("[{}] JsonSchema validation failed. ", i));
+                        } else {
+                            detail.push_str(&format!("[{}] JsonSchema check passed. ", i));
+                            overall_score += 1.0;
+                        }
+                    }
+                    AcceptanceCriteria::OracleJudge { rubric_prompt, min_score, .. } => {
+                        let prompt = format!(
+                            "As an Oracle Judge, evaluate the following delivery against the rubric.\n\n\
+                             Rubric: {}\n\
+                             Artifact Path: {}\n\
+                             Metadata: {}\n\n\
+                             Respond EXACTLY in this JSON format: {{ \"passed\": bool, \"score\": float, \"detail\": \"string\" }}",
+                            rubric_prompt, artifact_path, metadata_json
+                        );
+
+                        match self.llm_provider.complete(&prompt, Some("You are a strict and fair AI Verifier.")).await {
+                            Ok(resp) => {
+                                #[derive(serde::Deserialize)]
+                                struct OracleResponse {
+                                    passed: bool,
+                                    score: f32,
+                                    detail: String,
+                                }
+
+                                if let Ok(parsed) = serde_json::from_str::<OracleResponse>(&resp.content) {
+                                    if !parsed.passed || parsed.score < *min_score {
+                                        passed = false;
+                                    }
+                                    overall_score += parsed.score;
+                                    detail.push_str(&format!("[{}] Oracle: {}. ", i, parsed.detail));
+                                } else {
+                                    passed = false;
+                                    detail.push_str(&format!("[{}] Oracle failed: Invalid JSON response. ", i));
+                                }
+                            }
+                            Err(e) => {
+                                passed = false;
+                                detail.push_str(&format!("[{}] Oracle failed: LLM error {}. ", i, e));
+                            }
+                        }
                     }
                     _ => {
                         detail.push_str(&format!(
@@ -301,6 +359,9 @@ impl GigEngine for SqliteGigEngine {
                         ));
                     }
                 }
+            }
+            if check_count > 0 {
+                overall_score /= check_count as f32;
             }
         }
 
@@ -369,8 +430,8 @@ impl GigEngine for SqliteGigEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core::llm_provider::MockLlmProvider;
     use crate::commerce_mock::MockCommerceEngine;
-    use aiome_contracts::gig::AcceptanceCriteria;
     use chrono::Utc;
 
     async fn setup_db() -> SqlitePool {
@@ -454,11 +515,18 @@ mod tests {
         pool
     }
 
+    fn mock_llm() -> Arc<dyn LlmProvider> {
+        Arc::new(MockLlmProvider {
+            response: "{\"passed\": true, \"score\": 0.95, \"detail\": \"Good job!\"}".into(),
+            should_fail: false,
+        })
+    }
+
     #[tokio::test]
     async fn test_gig_intent_lifecycle_green() {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
-        let engine = SqliteGigEngine::new(pool, commerce);
+        let engine = SqliteGigEngine::new(pool, commerce, mock_llm());
 
         let intent_id = Uuid::new_v4();
         let intent = GigIntent {
@@ -491,7 +559,7 @@ mod tests {
     async fn test_gig_bid_submission_green() {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
-        let engine = SqliteGigEngine::new(pool, commerce);
+        let engine = SqliteGigEngine::new(pool, commerce, mock_llm());
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -535,7 +603,7 @@ mod tests {
     async fn test_gig_bid_acceptance_green() {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
-        let engine = SqliteGigEngine::new(pool, commerce);
+        let engine = SqliteGigEngine::new(pool, commerce, mock_llm());
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -599,7 +667,7 @@ mod tests {
     async fn test_gig_delivery_green() {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
-        let engine = SqliteGigEngine::new(pool, commerce);
+        let engine = SqliteGigEngine::new(pool, commerce, mock_llm());
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -664,7 +732,7 @@ mod tests {
     async fn test_gig_verify_and_settle_green() {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
-        let engine = SqliteGigEngine::new(pool, commerce);
+        let engine = SqliteGigEngine::new(pool, commerce, mock_llm());
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -729,5 +797,70 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(log_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_gig_verify_with_oracle_judge() {
+        let pool = setup_db().await;
+        let commerce = Arc::new(MockCommerceEngine);
+        let llm = Arc::new(MockLlmProvider {
+            response: "{\"passed\": true, \"score\": 0.98, \"detail\": \"Excellent work analyzed by LLM.\"}"
+                .into(),
+            should_fail: false,
+        });
+        let engine = SqliteGigEngine::new(pool, commerce, llm);
+
+        let intent_id = Uuid::new_v4();
+        let bidder_id = Uuid::new_v4();
+
+        // 1. Setup: Intent with OracleJudge
+        engine
+            .publish_intent(GigIntent {
+                id: intent_id,
+                requester_id: Uuid::new_v4(),
+                description: "Write a high quality haiku".into(),
+                criteria: vec![AcceptanceCriteria::OracleJudge {
+                    rubric_prompt: "Assess poetic quality".into(),
+                    min_score: 0.8,
+                    model: None,
+                }],
+                max_budget_coins: 100,
+                deadline: Utc::now() + chrono::Duration::hours(1),
+            })
+            .await
+            .unwrap();
+
+        // Acceptance and Delivery
+        let bid_id = Uuid::new_v4();
+        engine
+            .submit_bid(GigBid {
+                id: bid_id,
+                intent_id,
+                bidder_id,
+                price_coins: 50,
+                est_duration_sec: 3600,
+                deposit_amount: 5,
+            })
+            .await
+            .unwrap();
+        engine.accept_bid(intent_id, bid_id).await.unwrap();
+        engine
+            .deliver(GigDeliverable {
+                order_id: intent_id,
+                deliverer_id: bidder_id,
+                artifact_path: "haiku.txt".into(),
+                metadata: serde_json::json!({"content": "Old pond, frog jumps in."}),
+            })
+            .await
+            .unwrap();
+
+        // 2. Verify and Settle (OracleJudge should be invoked)
+        let result = engine.verify_and_settle(intent_id).await.unwrap();
+
+        // TDD RED expectation: Current implementation stubs OracleJudge, so it should not have score 0.98
+        // Or it should not have the detail from LLM.
+        assert!(result.passed);
+        assert_eq!(result.score, 0.98); // This will FAIL because current score is fixed at 1.0
+        assert!(result.detail.contains("Excellent work analyzed by LLM.")); // This will FAIL because detail is stubbed
     }
 }

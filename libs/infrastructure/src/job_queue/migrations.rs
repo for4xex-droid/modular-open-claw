@@ -898,6 +898,10 @@ impl DbInitializer for SqliteJobQueue {
             "system_state",
             "ai_artifacts",
             "revenue_splits",
+            "gig_intents",
+            "gig_bids",
+            "escrows",
+            "gig_deliveries",
         ];
         for table in trigger_tables {
             let trigger_sql = format!(
@@ -977,6 +981,92 @@ impl DbInitializer for SqliteJobQueue {
             reason: format!("Failed to create ekyc_sessions table: {}", e),
         })?;
 
+        // Phase 22: Gig Engine (Autonomous Gig Economy)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS gig_intents (
+                id TEXT PRIMARY KEY,
+                requester_id TEXT NOT NULL,
+                description TEXT NOT NULL,
+                criteria TEXT NOT NULL,
+                max_budget_coins INTEGER NOT NULL,
+                deadline TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Open',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create gig_intents table: {}", e),
+        })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS gig_bids (
+                id TEXT PRIMARY KEY,
+                intent_id TEXT NOT NULL REFERENCES gig_intents(id),
+                bidder_id TEXT NOT NULL,
+                price_coins INTEGER NOT NULL,
+                est_duration_sec INTEGER NOT NULL,
+                deposit_amount INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create gig_bids table: {}", e),
+        })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS escrows (
+                id TEXT PRIMARY KEY,
+                payer_id TEXT NOT NULL,
+                recipient_id TEXT,
+                order_id TEXT NOT NULL REFERENCES gig_intents(id),
+                amount INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Locked',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create escrows table: {}", e),
+        })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS gig_deliveries (
+                order_id TEXT PRIMARY KEY REFERENCES gig_intents(id),
+                deliverer_id TEXT NOT NULL,
+                artifact_path TEXT NOT NULL,
+                metadata TEXT NOT NULL,
+                delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create gig_deliveries table: {}", e),
+        })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS verification_logs (
+                id TEXT PRIMARY KEY,
+                order_id TEXT NOT NULL REFERENCES gig_intents(id),
+                criteria_type TEXT NOT NULL,
+                passed INTEGER NOT NULL,
+                score REAL NOT NULL,
+                detail TEXT,
+                verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create verification_logs table: {}", e),
+        })?;
+
         // Add key_version for Master Key rotation
         if let Err(e) =
             sqlx::query("ALTER TABLE vault_keys ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1;")
@@ -989,6 +1079,50 @@ impl DbInitializer for SqliteJobQueue {
                     "⚠️ [DbInitializer] Migration vault_keys key_version failed: {}",
                     e
                 );
+            }
+        }
+
+        // --- Integrated Planning: Trend Fountain & Cost Control (Day 1) ---
+        // 1. LLM Response Cache (Semantic Cache Table)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS llm_response_cache (
+                prompt_hash TEXT PRIMARY KEY,
+                response TEXT NOT NULL,
+                provider_name TEXT NOT NULL,
+                model_name TEXT NOT NULL,
+                ttl_seconds INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create llm_response_cache table: {}", e),
+        })?;
+
+        // 2. Trend Fountain (L2 Cache Table)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS trend_cache (
+                source_url TEXT PRIMARY KEY,
+                content TEXT NOT NULL, -- JSON serialized TrendOutput
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create trend_cache table: {}", e),
+        })?;
+
+        // 3. Job Priority (Day 5-6 Planning, but Migration here)
+        if let Err(e) = sqlx::query("ALTER TABLE jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 100;")
+                .execute(&self.pool)
+                .await
+        {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration jobs priority failed: {}", e);
             }
         }
 

@@ -329,7 +329,8 @@ impl KarmaOps for SqliteJobQueue {
                 published_at: try_get_optional_string(&r, "published_at"),
                 output_artifacts: try_get_optional_string(&r, "output_artifacts"),
                 permission_manifest,
-                agent_id: None,
+                agent_id: None, // In case of older/manual distilled
+                priority: r.get("priority"),
             });
         }
         Ok(jobs)

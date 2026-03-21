@@ -97,7 +97,7 @@ async fn test_analyze_threats_and_verify() {
 
     // Add a dummy job and karma to trigger the fetch_relevant_karma in analyze_threats
     let job_id = jq
-        .enqueue("Task", "Security Test", "Style", None, None, None)
+        .enqueue("Task", "Security Test", "Style", None, None, None, 0)
         .await
         .unwrap();
     jq.store_karma(

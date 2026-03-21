@@ -22,3 +22,4 @@ pub mod skill;
 pub mod soul;
 pub mod voice;
 pub mod watchtower;
+pub mod gig;

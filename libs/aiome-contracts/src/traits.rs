@@ -142,6 +142,8 @@ pub struct Job {
     pub permission_manifest: Option<crate::security::PermissionManifest>,
     /// 👤 エージェントID (Phase A-4: User Specificity)
     pub agent_id: Option<uuid::Uuid>,
+    /// 🚀 優先度 (Phase 20.2: Job Throttling)
+    pub priority: i32,
 }
 
 /// ジョブキュー (The Persistent Memory & Samsara)
@@ -160,6 +162,7 @@ pub trait JobQueue: Send + Sync {
         karma_directives: Option<&str>,
         permission_manifest: Option<crate::security::PermissionManifest>,
         agent_id: Option<uuid::Uuid>,
+        priority: i32,
     ) -> Result<String, AiomeError>;
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
 

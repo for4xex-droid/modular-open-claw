@@ -174,5 +174,51 @@ graph TD
     F[verification_logs table] -->|Audit Trail| A
 ```
 
+### 🛡️ Phase 20.1: Gig API & Gap Remediation
+- **変更内容**: 
+    - `gig.rs`: 新規 API エンドポイントの実装。
+    - `router.rs`: `/api/v1/gig/*` の登録とレート制限の適用。
+    - `app_state.rs`: `gig_engine` コンポーネントの保持。
+    - `main.rs`: `SqliteGigEngine` の初期化と LlmProvider の注入。
+    - `gig_engine.rs`: `OracleJudge` における `LlmProvider` を活用した自律検証ロジックの実装。
+- **波及効果**: 
+    - `api_integration_tests.rs`: `MockGigEngine` と E2E テストの追加。
+    - `gig_engine.rs`: `new()` シグネチャ変更による全初期化箇所の修正。
+
+```mermaid
+graph TD
+    A[routes/gig.rs] -->|Handler| B[app_state.rs]
+    B -->|GigEngine| C[gig_engine.rs]
+    C -->|LlmProvider| L[LLM Provider Architecture]
+    C -->|Escrow| D[commerce.rs]
+    E[router.rs] -->|Route Registration| A
+    F[main.rs] -->|Initialization| C
+    G[api_integration_tests.rs] -->|Test Server| B
+```
+
+### 📊 Trend Sonar Refactoring (Multi-Source Support)
+- **変更内容**: 
+    - `trend_sonar.rs`: `TrendAdapter` トレイトの導入と `ExternalTrendSonar` のマルチアダプタ化。
+    - `rss_collector.rs`: `TrendAdapter` 実装による統合。
+    - `main.rs`: 起動時の複数アダプタ初期化と `trend_sonar` インスタンスの共有化。
+    - `dream_state.rs`: `ExternalTrendSonar` シグネチャ変更に伴うテストコードの修正。
+- **波及効果**: 
+    - トレンド収集元（Web検索, RSS等）が抽象化され、今後のデータソース追加が容易になる。
+    - `BackgroundWorker` と `DreamState` で同一のトレンド収集基盤を共有することで、動作の一貫性が向上。
+    - `sanitize_snippet` による外部データの入力バリデーションが強化される。
+
+```mermaid
+graph TD
+    A[main.rs] -->|Initialization| B[ExternalTrendSonar]
+    B -->|Aggregates| C[TrendAdapter Trait]
+    C -->|Impl| D[WebSearchAdapter]
+    C -->|Impl| E[RssCollector]
+    A -->|Shared Instance| F[BackgroundWorker]
+    F -->|Idle Trigger| G[DreamState]
+    G -->|Uses| B
+    F -->|Cycle Trigger| H[Trend Fetching]
+    H -->|Uses| B
+```
+
 ---
-*最終更新日: 2026-03-22* (Phase 20 Implementation)
+*最終更新日: 2026-03-22* (Trend Sonar Refactoring Integration)

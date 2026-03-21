@@ -632,6 +632,7 @@ pub async fn trigger_agent_chat(
                         output_artifacts: None,
                         permission_manifest: None,
                         agent_id: None,
+                        priority: 0,
                     };
 
                     match diagnostics.diagnose(&trajectory, &virtual_job).await {

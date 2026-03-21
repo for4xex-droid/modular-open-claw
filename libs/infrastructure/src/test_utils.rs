@@ -33,6 +33,7 @@ impl JobQueue for MockJobQueue {
         _: Option<&str>,
         _: Option<aiome_core::security::PermissionManifest>,
         _: Option<Uuid>,
+        _: i32,
     ) -> Result<String, AiomeError> {
         Ok("mock_id".into())
     }

@@ -24,7 +24,13 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                 method: 'PUT',
                 body: JSON.stringify({ key: 'ai_name', value: aiName, category: 'identity' })
             });
-            // Avatar settings are already handled by context (localStorage)
+            // Save View Mode
+            // @ts-ignore
+            const viewMode = window.__viewMode || 'intermediate';
+            await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
+                method: 'PUT',
+                body: JSON.stringify({ key: 'view_mode', value: viewMode, category: 'ui' })
+            });
             onClose();
         } catch (error) {
             console.error("Failed to save onboarding settings", error);
@@ -130,6 +136,38 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             description: "Your API keys are physically isolated at the OS level, ensuring safety even in autonomous mode.",
             icon: <Shield size={48} color="var(--accent-rose)" />,
         },
+        {
+            title: "Choose Experience Level",
+            description: "Select how you want to interact with the system. You can change this anytime.",
+            icon: <Sparkles size={48} color="var(--accent-cyan)" />,
+            content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
+                    {[
+                        { id: 'beginner', label: 'Beginner', desc: 'Simplified UI, essential features only.' },
+                        { id: 'intermediate', label: 'Intermediate', desc: 'Full control, standard dashboard.' },
+                        { id: 'advanced', label: 'Advanced', desc: 'Raw logs, expert settings enabled.' }
+                    ].map((lvl) => (
+                        <button
+                            key={lvl.id}
+                            onClick={() => {
+                                // @ts-ignore
+                                window.__viewMode = lvl.id;
+                                setStep(steps.length - 1); // Skip to last or trigger handleFinalize
+                            }}
+                            style={{
+                                padding: '1rem', borderRadius: '12px', textAlign: 'left',
+                                border: '1px solid var(--border-glass-bright)',
+                                background: 'rgba(255,255,255,0.03)',
+                                cursor: 'pointer', transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{lvl.label}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{lvl.desc}</div>
+                        </button>
+                    ))}
+                </div>
+            )
+        }
     ];
 
     return (

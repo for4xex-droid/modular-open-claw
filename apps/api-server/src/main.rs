@@ -345,7 +345,14 @@ async fn main() {
             }
             policy
         },
-        commerce_engine: Component(commerce_engine),
+        commerce_engine: Component(commerce_engine.clone()),
+        gig_engine: Component::new(Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
+            job_queue.get_pool().clone(),
+            commerce_engine
+                .clone()
+                .expect("Commerce Engine must be initialized for Gig Engine"),
+            provider.clone(),
+        )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         circuit_breaker: Component::new(circuit_breaker.clone()),
         rate_limiter: Component::new(rate_limiter),
         slo_engine: Component::new(slo_engine.clone()),
@@ -756,6 +763,17 @@ async fn main() {
             ),
         );
 
+        let search_api_key = std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
+        std::env::remove_var("SEARCH_API_KEY");
+
+        let mut trend_adapters: Vec<Arc<dyn infrastructure::trend_sonar::TrendAdapter>> = vec![
+            Arc::new(infrastructure::rss_collector::RssCollector::new(jq_clone.clone())),
+        ];
+        if search_api_key != "none" {
+            trend_adapters.push(Arc::new(infrastructure::trend_sonar::WebSearchAdapter::new(search_api_key)));
+        }
+        let trend_sonar = infrastructure::trend_sonar::ExternalTrendSonar::new(trend_adapters);
+
         loop {
             if token.is_cancelled() {
                 info!("🛑 [BackgroundWorker] Shutdown requested. Cleaning up...");
@@ -812,12 +830,6 @@ async fn main() {
             let pending_jobs = jq_clone.get_pending_job_count().await.unwrap_or(0);
             if pending_jobs == 0 {
                 let dream_state = infrastructure::dream_state::DreamState::new();
-                let search_api_key =
-                    std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
-                std::env::remove_var("SEARCH_API_KEY");
-                let trend_sonar =
-                    infrastructure::trend_sonar::ExternalTrendSonar::new(search_api_key);
-
                 match dream_state
                     .dream(jq_clone.as_ref(), &trend_sonar, current_level)
                     .await
@@ -1281,14 +1293,9 @@ async fn main() {
 
             // 11. Trend Sonar (Phase 12b Step 4) - Every 3 cycles (15 minutes)
             if wakeup_counter % 3 == 0 {
-                let search_api_key =
-                    std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
-                if search_api_key != "none" {
-                    info!("📡 [BackgroundWorker] Fetching latest trends...");
-                    let trend_sonar =
-                        infrastructure::trend_sonar::ExternalTrendSonar::new(search_api_key);
-                    use aiome_contracts::traits::TrendSource;
-                    match trend_sonar.get_trends("technology").await {
+                info!("📡 [BackgroundWorker] Fetching latest trends...");
+                use aiome_contracts::traits::TrendSource;
+                match trend_sonar.get_trends("technology").await {
                         Ok(trends) => {
                             if !trends.is_empty() {
                                 info!("📡 [BackgroundWorker] Found {} trends.", trends.len());
