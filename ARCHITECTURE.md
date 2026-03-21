@@ -46,12 +46,14 @@ graph TD
     api-server --> soul
     api-server --> infrastructure
     api-server --> shared
+    api-server --> avatar-engine
     api-server --> aiome-contracts
     samsara-hub --> aiome-core
     samsara-hub --> shared
     samsara-hub --> infrastructure
     key-proxy --> aiome-core
     key-proxy --> shared
+    key-proxy --> infrastructure
     aiome-core --> shared
     aiome-core --> aiome-contracts
     aiome-core --> avatar-engine
@@ -92,8 +94,8 @@ graph TD
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
 ```text
-API_SERVER_SECRET, FEDERATION_SECRET, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, AIOME_DB_PATH, SAMSARA_HUB_REST, SAMSARA_HUB_WS
+API_SERVER_SECRET, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, TTS_PROVIDER, TTS_ENDPOINT, STRIPE_TEST_MODE, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, AIOME_DB_PATH, SAMSARA_HUB_REST, SAMSARA_HUB_WS, EKYC_RETURN_URL, QUARANTINE_DIR, FORGE_DOCKER_IMAGE
 ```
 
 ---
-*Last Auto-Generated: 2026-03-20 01:30:34 UTC*
+*Last Auto-Generated: 2026-03-21 18:24:00 UTC*
