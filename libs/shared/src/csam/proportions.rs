@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
+/// アバターの体型に関する法的ステータス判定結果
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, utoipa::ToSchema)]
 pub enum LegalStatus {
     /// 全年齢対象 (5.5頭身以上)

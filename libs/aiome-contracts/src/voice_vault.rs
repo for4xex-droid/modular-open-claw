@@ -1,6 +1,7 @@
 use crate::error::AiomeError;
 use async_trait::async_trait;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 /// ボイスキー・保管庫トレイト
 /// 
@@ -11,8 +12,8 @@ pub trait VoiceKeyVault: Send + Sync {
     /// 特定のアセットの復号キーを取得する
     /// 
     /// `agent_id`: リクエスト元のエージェント ID
-    /// `asset_id`: 復号したいボイスアセットの ID
-    async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Vec<u8>, AiomeError>;
+    /// `asset_id`: 復号したいボイスアセット의 ID
+    async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Zeroizing<Vec<u8>>, AiomeError>;
 
     /// アセットの所有権（ライセンス）を検証する
     /// 
@@ -22,5 +23,11 @@ pub trait VoiceKeyVault: Send + Sync {
     /// 新しいアセットのキーを Vault に登録する（クリエイターによるアップロード時）
     /// 
     /// キーは物理的に隔離されたストレージに保存される。
-    async fn register_asset_key(&self, asset_id: Uuid, key: Vec<u8>) -> Result<(), AiomeError>;
+    async fn register_asset_key(&self, asset_id: Uuid, key: Zeroizing<Vec<u8>>) -> Result<(), AiomeError>;
+
+    /// ストリーミング復号 (ディスクに平文を残さない)
+    /// 
+    /// 復号鍵を取得し、メモリ上で暗号データを復号する。
+    async fn decrypt_stream(&self, agent_id: Uuid, asset_id: Uuid, encrypted_data: &[u8]) -> Result<Vec<u8>, AiomeError>;
+
 }

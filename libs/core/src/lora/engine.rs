@@ -11,23 +11,31 @@ use serde::{Deserialize, Serialize};
 /// Phase 10.1b: LoRAモデルのメタデータを管理するエンジン
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoraModel {
+    /// 一意の ID
     pub id: String,
+    /// モデルの表示名
     pub name: String,
+    /// モデルファイルのハッシュ値
     pub lora_hash: String,
+    /// ベースモデル名 (例: stable-diffusion-v1-5)
     pub base_model: String,
+    /// ファイルシステム上のパス
     pub file_path: String,
 }
 
+/// LoRAエンジン - ロードされたモデル群を管理
 pub struct LoraEngine {
-    // RED: Empty models for now
+    /// ロード済みのLoRAモデル一覧
     pub models: Vec<LoraModel>,
 }
 
 impl LoraEngine {
+    /// 新規LoRAエンジンを生成する
     pub fn new() -> Self {
         Self { models: Vec::new() }
     }
 
+    /// ハッシュからLoRAモデルを検索する
     pub fn find_by_hash(&self, hash: &str) -> Result<LoraModel, AiomeError> {
         self.models
             .iter()

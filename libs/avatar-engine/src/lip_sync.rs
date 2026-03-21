@@ -16,3 +16,12 @@ pub struct LipSyncFrame {
     pub mouth_open: f32,
     pub viseme: Viseme,
 }
+
+use async_trait::async_trait;
+use aiome_contracts::error::AiomeError;
+
+#[async_trait]
+pub trait LipSyncProvider: Send + Sync {
+    /// 与えられた音声データ (PCM等の一定フォーマット想定) からリップシンクフレームシーケンスを生成する
+    async fn generate_frames(&self, audio_data: &[u8]) -> Result<Vec<LipSyncFrame>, AiomeError>;
+}

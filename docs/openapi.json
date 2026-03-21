@@ -1111,6 +1111,128 @@
         ]
       }
     },
+    "/api/v1/ekyc/session": {
+      "post": {
+        "tags": [
+          "crate::routes::ekyc"
+        ],
+        "summary": "EKYC 検証セッションを開始・URL取得",
+        "operationId": "create_ekyc_session_handler",
+        "responses": {
+          "200": {
+            "description": "セッション開始成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EkycSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "認証エラー"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gift/policy/{agent_id}": {
+      "get": {
+        "tags": [
+          "crate::routes::gift"
+        ],
+        "summary": "[GET] /api/v1/gift/policy/:agent_id\nギフト送信ポリシーの取得（LLM プロンプト構築用に現在の残高や上限を返す）",
+        "operationId": "get_gift_policy",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gift policy context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiftPolicyResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/gift/send/{agent_id}": {
+      "post": {
+        "tags": [
+          "crate::routes::gift"
+        ],
+        "summary": "[POST] /api/v1/gift/send/:agent_id\nAI による自律的ギフト（恩返し / A2C）の実行",
+        "operationId": "send_gift",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Gift sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GiftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Policy violation or invalid request"
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "tags": [
@@ -1297,6 +1419,36 @@
           },
           "401": {
             "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/voice/list": {
+      "get": {
+        "tags": [
+          "crate::routes::voice"
+        ],
+        "summary": "[GET] /api/v1/voice/list\nList Voice Models",
+        "operationId": "list_voice_assets_handler",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope of assets (public/owned)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of voice assets"
           }
         },
         "security": [
@@ -1506,6 +1658,77 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "EkycSessionResponse": {
+        "type": "object",
+        "required": [
+          "session_url",
+          "session_id",
+          "status"
+        ],
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "session_url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "GiftPolicyResponse": {
+        "type": "object",
+        "required": [
+          "max_amount_usd",
+          "daily_limit_reached"
+        ],
+        "properties": {
+          "daily_limit_reached": {
+            "type": "boolean"
+          },
+          "max_amount_usd": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "GiftRequest": {
+        "type": "object",
+        "description": "ギフトリクエスト",
+        "required": [
+          "recipient_email",
+          "amount_usd",
+          "reason"
+        ],
+        "properties": {
+          "amount_usd": {
+            "type": "number",
+            "format": "double"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "recipient_email": {
+            "type": "string"
+          }
+        }
+      },
+      "GiftResponse": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "status"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },

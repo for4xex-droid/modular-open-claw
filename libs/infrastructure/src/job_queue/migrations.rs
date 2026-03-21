@@ -472,6 +472,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE agent_souls ADD COLUMN anamnesis_json TEXT NOT NULL DEFAULT '{}';",
             "ALTER TABLE agent_souls ADD COLUMN lora_adapter_path TEXT;",
             "ALTER TABLE agent_souls ADD COLUMN lora_base_model TEXT;",
+            "ALTER TABLE agent_souls ADD COLUMN last_begging_at TEXT;",
         ] {
             if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
                 let msg = e.to_string();
@@ -802,6 +803,7 @@ impl DbInitializer for SqliteJobQueue {
             "CREATE TABLE IF NOT EXISTS stripe_webhook_events (
                 event_id TEXT PRIMARY KEY,
                 event_type TEXT NOT NULL,
+                metadata TEXT,
                 processed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
         )
@@ -810,6 +812,31 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create stripe_webhook_events table: {}", e),
         })?;
+
+        // Phase 10.2: Vault Key Persistence (§CISO-1)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS vault_keys (
+                asset_id TEXT PRIMARY KEY,
+                encrypted_key BLOB NOT NULL, -- Master key で暗号化されたアセット復号鍵
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create vault_keys table: {}", e),
+        })?;
+
+        // Migration to add metadata column if missing
+        if let Err(e) = sqlx::query("ALTER TABLE stripe_webhook_events ADD COLUMN metadata TEXT;")
+            .execute(&self.pool)
+            .await
+        {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration stripe_webhook_events metadata failed: {}", e);
+            }
+        }
 
         // Phase 10: Asset Registry
         sqlx::query(
@@ -828,6 +855,24 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create asset_registry table: {}", e),
         })?;
+
+        // Phase 16.5: Revenue Splits
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS revenue_splits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tx_id TEXT NOT NULL,
+                recipient_id TEXT NOT NULL,
+                role TEXT NOT NULL, -- 'creator', 'platform'
+                amount INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create revenue_splits table: {}", e),
+        })?;
+
         // Add triggers to automatically write to the audit ledger and compute hashes via SQLite hex/random or simple concats
         let trigger_tables = vec![
             "jobs",
@@ -835,6 +880,7 @@ impl DbInitializer for SqliteJobQueue {
             "sns_metrics_history",
             "system_state",
             "ai_artifacts",
+            "revenue_splits",
         ];
         for table in trigger_tables {
             let trigger_sql = format!(
@@ -879,6 +925,49 @@ impl DbInitializer for SqliteJobQueue {
                     "⚠️ [DbInitializer] Failed to create audit_update trigger for {}: {}",
                     table, e
                 );
+            }
+        }
+
+        // Phase 11: Voice DRM & Economy Ledger (Gate 4 Patch)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS licenses (
+                id TEXT PRIMARY KEY,
+                agent_id TEXT NOT NULL,
+                asset_id TEXT NOT NULL,
+                original_event_id TEXT,
+                status TEXT NOT NULL DEFAULT 'active',
+                granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create licenses table: {}", e),
+        })?;
+
+        // Phase 14: eKYC Session Persistence
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS ekyc_sessions (
+                user_id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                status TEXT DEFAULT 'requires_input',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );"
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create ekyc_sessions table: {}", e),
+        })?;
+
+        // Add key_version for Master Key rotation
+        if let Err(e) = sqlx::query("ALTER TABLE vault_keys ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1;")
+            .execute(&self.pool)
+            .await
+        {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") && !msg.contains("already exists") {
+                warn!("⚠️ [DbInitializer] Migration vault_keys key_version failed: {}", e);
             }
         }
 

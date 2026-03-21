@@ -49,6 +49,7 @@ once_cell = { workspace = true }
 tokio-stream = "0.1"
 jsonwebtoken = "9.3.1"
 zeroize = "1.8.1"
+aes-gcm = "0.10.3"
 
 [dev-dependencies]
 tempfile = "3"

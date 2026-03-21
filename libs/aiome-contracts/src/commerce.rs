@@ -96,10 +96,22 @@ pub trait GiftEngine: Send + Sync {
     /// ギフト送信が許可されているか検証する (日次上限、エージェント信頼度)
     async fn validate_gift_policy(&self, agent_id: Uuid, amount_usd: f64)
         -> Result<(), AiomeError>;
+
+    /// 現在のギフトポリシーのコンテキスト（上限額・日次制限等）を返す
+    async fn get_policy_context(&self, agent_id: Uuid) -> Result<GiftPolicyContext, AiomeError>;
+}
+
+/// ギフトポリシーコンテキスト（LLM プロンプト構築・API 返却用）
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct GiftPolicyContext {
+    pub max_amount_usd: f64,
+    pub daily_limit_reached: bool,
+    pub daily_sent_count: u32,
+    pub daily_sent_total_usd: f64,
 }
 
 /// ギフトリクエスト
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct GiftRequest {
     pub recipient_email: String,
     pub amount_usd: f64,

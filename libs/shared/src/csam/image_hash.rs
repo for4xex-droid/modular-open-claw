@@ -10,10 +10,13 @@ use img_hash::{HashAlg, HasherConfig};
 use std::io::Cursor;
 use thiserror::Error;
 
+/// CSAM画像ハッシュ生成に関連するエラー
 #[derive(Error, Debug)]
 pub enum CsamError {
+    /// 画像処理中に発生したエラー
     #[error("Image processing error: {0}")]
     ImageError(#[from] image::ImageError),
+    /// ハッシュ生成自体が失敗したエラー
     #[error("Hash generation failed")]
     HashError,
 }
@@ -32,6 +35,7 @@ pub struct ImageHasher {
 }
 
 impl ImageHasher {
+    /// `ImageHasher` の新しいインスタンスを作成する
     pub fn new() -> Self {
         // DCT (Discrete Cosine Transform) を使用してノイズ耐性を高める
         let hasher = HasherConfig::new()

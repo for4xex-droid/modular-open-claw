@@ -144,8 +144,8 @@ pub async fn upload_avatar_handler(
 pub async fn get_ekyc_status_handler(
     State(state): State<AppState>,
     axum::extract::Extension(user): axum::extract::Extension<crate::auth::AuthenticatedUser>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let session_url = state
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let session = state
         .ekyc_engine
         .create_verification_session(&user.0.sub)
         .await?;
@@ -156,8 +156,18 @@ pub async fn get_ekyc_status_handler(
             .await
             .unwrap_or(false);
 
-    Ok(Json(serde_json::json!({
-        "verified": verified,
-        "session_url": session_url,
-    })))
+    let headers = [
+        ("Deprecated", "true"),
+        ("Sunset", "2026-06-01"),
+        ("Link", "</api/v1/ekyc/session>; rel=\"successor-version\""),
+    ];
+
+    Ok((
+        headers,
+        Json(serde_json::json!({
+            "verified": verified,
+            "session_url": session.url,
+            "session_id": session.session_id,
+        })),
+    ))
 }

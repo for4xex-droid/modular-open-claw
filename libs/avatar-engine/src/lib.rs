@@ -7,6 +7,8 @@
 
 pub mod asset_manifest;
 pub mod lip_sync;
+pub mod loader;
+pub mod physics;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

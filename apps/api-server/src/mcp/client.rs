@@ -23,6 +23,7 @@ pub struct McpClient {
     stdin: Arc<Mutex<tokio::process::ChildStdin>>,
     pending_requests: Arc<Mutex<HashMap<i64, oneshot::Sender<JsonRpcResponse>>>>,
     request_counter: AtomicI64,
+    pub last_activity: std::sync::RwLock<std::time::Instant>,
 }
 
 impl McpClient {
@@ -106,6 +107,7 @@ impl McpClient {
             stdin: Arc::new(Mutex::new(stdin)),
             pending_requests,
             request_counter: AtomicI64::new(1),
+            last_activity: std::sync::RwLock::new(std::time::Instant::now()),
         }))
     }
 
@@ -114,6 +116,10 @@ impl McpClient {
         method: &str,
         params: Option<serde_json::Value>,
     ) -> Result<serde_json::Value> {
+        if let Ok(mut last) = self.last_activity.write() {
+            *last = std::time::Instant::now();
+        }
+
         let id = self.request_counter.fetch_add(1, Ordering::SeqCst);
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -190,8 +196,27 @@ impl McpProcessManager {
         cmd: &str,
         args: Vec<String>,
     ) -> Result<Arc<McpClient>> {
-        let client = McpClient::spawn(id.clone(), cmd, args)?;
         let mut clients = self.clients.lock().await;
+
+        // Evict oldest if we are at MAX_MCP_PROCESSES limit
+        const MAX_MCP_PROCESSES: usize = 5;
+        if clients.len() >= MAX_MCP_PROCESSES && !clients.contains_key(&id) {
+            let oldest_id = clients
+                .iter()
+                .min_by_key(|(_, c)| *c.last_activity.read().unwrap())
+                .map(|(k, _)| k.clone());
+            if let Some(oldest_id) = oldest_id {
+                info!("💥 [MCP] Reached max process limit ({}). Evicting least recently used: {}", MAX_MCP_PROCESSES, oldest_id);
+                clients.remove(&oldest_id);
+            }
+        }
+
+        // Must drop lock before calling spawn because spawn takes time? 
+        // We can just keep it or spawn first then lock. Let's spawn first to minimize lock time,
+        // but wait, if we drop lock, we might exceed MAX_MCP_PROCESSES if multiple spawn concurrently.
+        // It's safer to keep the lock, but spawn doesn't "take time" (it's sync OS process creation).
+        
+        let client = McpClient::spawn(id.clone(), cmd, args)?;
         clients.insert(id, client.clone());
         Ok(client)
     }
@@ -205,5 +230,49 @@ impl McpProcessManager {
         let mut clients = self.clients.lock().await;
         info!("💥 [MCP] Evicting {} managed MCP clients", clients.len());
         clients.clear();
+    }
+
+    pub async fn reap_idle_clients(&self, timeout: std::time::Duration) {
+        let mut clients = self.clients.lock().await;
+        let now = std::time::Instant::now();
+        clients.retain(|id, client| {
+            let last_activity = *client.last_activity.read().unwrap();
+            let is_idle = now.duration_since(last_activity) >= timeout;
+            if is_idle {
+                info!("💤 [MCP] Reaping idle client: {} (idle time: {:?})", id, now.duration_since(last_activity));
+            }
+            !is_idle // keep if not idle
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_mcp_max_processes() {
+        let manager = McpProcessManager::new();
+        for i in 0..6 {
+            manager.spawn_stdio_server(format!("client{}", i), "echo", vec![]).await.unwrap();
+        }
+        let clients = manager.active_client_ids().await;
+        assert!(clients.len() <= 5, "Should not exceed MAX_MCP_PROCESSES");
+    }
+
+    #[tokio::test]
+    async fn test_mcp_reap_idle() {
+        let manager = McpProcessManager::new();
+        let client = manager.spawn_stdio_server("idle_client".to_string(), "echo", vec![]).await.unwrap();
+        
+        // artificially age the client's last_activity
+        if let Ok(mut act) = client.last_activity.write() {
+            *act = std::time::Instant::now() - Duration::from_secs(100);
+        }
+
+        manager.reap_idle_clients(Duration::from_millis(10)).await;
+        let clients = manager.active_client_ids().await;
+        assert!(clients.is_empty(), "Idle client should have been reaped");
     }
 }

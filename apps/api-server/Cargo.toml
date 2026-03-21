@@ -9,6 +9,7 @@ aiome_core = { path = "../../libs/core", package = "aiome-core" }
 soul = { path = "../../libs/soul" }
 infrastructure = { path = "../../libs/infrastructure" }
 shared = { path = "../../libs/shared" }
+avatar-engine = { path = "../../libs/avatar-engine" }
 aiome-contracts = { path = "../../libs/aiome-contracts", features = ["axum"] }
 tokio = { workspace = true }
 axum.workspace = true
@@ -51,11 +52,19 @@ commerce-protocol = { path = "../../../ProjectーNurture/libs/commerce-protocol"
 secrecy.workspace = true
 stripe.workspace = true
 once_cell.workspace = true
+rand = "0.8"
+zeroize = "1.8.1"
+hmac = "0.12.1"
+sha2.workspace = true
+hex = "0.4.3"
 
 [features]
+default = ["dev-routes"]
+dev-routes = []
 nurture = ["dep:nurture-api", "dep:nurture-core", "dep:nurture-infra", "dep:commerce-protocol", "aiome_core/nurture"]
 
 [dev-dependencies]
 axum-test = "16"
 tempfile = "3.27.0"
 wiremock = { workspace = true }
+serial_test = "3"

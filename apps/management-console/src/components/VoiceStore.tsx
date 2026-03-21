@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
 
@@ -39,13 +39,13 @@ const mockAssets: VoiceAsset[] = [
 ];
 
 export default function VoiceStore() {
-  const [assets] = useState<VoiceAsset[]>(mockAssets);
+  const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, fetch available assets and user balance here
     fetchBalance();
+    fetchVoiceAssets();
   }, []);
 
   const fetchBalance = async () => {
@@ -57,27 +57,66 @@ export default function VoiceStore() {
         const data = await res.json();
         setBalance(data.coins);
       } else {
-        // Fallback for demo
-        setBalance(2000);
+        setBalance(0);
       }
     } catch (e) {
-      setBalance(2000);
+      setBalance(0);
+    }
+  };
+
+  const fetchVoiceAssets = async () => {
+    try {
+      const res = await fetch("/api/v1/voice/list?scope=public", {
+        headers: { "Authorization": "Bearer mock_valid_token_ekyc_verified_user" }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mappedAssets = data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price_coins: item.price_coins,
+          author: item.creator_id,
+          tags: ["voice", "api"],
+        }));
+        if (mappedAssets.length > 0) {
+            setAssets(mappedAssets);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch voice assets", e);
     }
   };
 
   const handlePurchase = async (asset: VoiceAsset) => {
     setPurchasing(asset.id);
     
-    // Simulate API Call
-    setTimeout(() => {
-      if (balance >= asset.price_coins) {
+    try {
+      const res = await fetch("/api/v1/commerce/purchase/agent-001", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer mock_valid_token_ekyc_verified_user",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          asset_id: asset.id,
+          amount_coins: asset.price_coins,
+          context_layer: "voice_registry_buy"
+        })
+      });
+
+      if (res.ok) {
         setBalance(prev => prev - asset.price_coins);
         alert(`Success! Purchased ${asset.name}. DRM key has been securely deposited to your Abyss Vault.`);
       } else {
-        alert("Insufficient Karma Coins. Please recharge your balance.");
+        const data = await res.json();
+        alert(`Purchase failed: ${data.message || 'Insufficient funds'}`);
       }
+    } catch (e) {
+      alert("Purchase request failed.");
+    } finally {
       setPurchasing(null);
-    }, 1500);
+    }
   };
 
   return (

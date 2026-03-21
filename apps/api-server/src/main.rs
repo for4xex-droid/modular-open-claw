@@ -310,7 +310,7 @@ async fn main() {
         provider: provider.clone(),
         autonomous_running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         autonomous_config: Arc::new(tokio::sync::RwLock::new(None)),
-        http_client,
+        http_client: http_client.clone(),
         docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         security_policy: {
             let mut policy = shared::security::SecurityPolicy::default();
@@ -332,24 +332,41 @@ async fn main() {
                 .as_ref()
                 .map(|s| s.expose_secret().to_string())
                 .unwrap_or_default();
+            let sandbox = std::env::var("TREMENDOUS_SANDBOX")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(true); // Default to true (Sandbox First)
+            
             Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
                 key,
-                cfg!(debug_assertions),
+                sandbox,
+                job_queue.get_pool().clone(),
             ))
+        },
+        ekyc_session_store: {
+            let pool = job_queue.get_pool().clone();
+            Arc::new(infrastructure::compliance::ekyc_store::SqliteEkycSessionStore::new(pool))
         },
         ekyc_engine: {
             use secrecy::ExposeSecret;
-            let stripe_key = std::env::var("STRIPE_API_KEY")
-                .ok()
-                .map(secrecy::SecretString::from);
+            let stripe_key = std::env::var("STRIPE_API_KEY").ok().map(|key| {
+                std::env::remove_var("STRIPE_API_KEY");
+                secrecy::SecretString::from(key)
+            });
+            
             if let Some(key) = stripe_key {
                 Arc::new(infrastructure::compliance::ekyc::StripeEkycEngine::new(
                     key,
                     "http://localhost:1420/verify-callback".to_string(),
+                    http_client.clone(),
                 ))
             } else {
-                warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified).");
-                Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)
+                if cfg!(debug_assertions) {
+                    warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
+                    Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)
+                } else {
+                    error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
+                    std::process::exit(1);
+                }
             }
         },
         quarantine_store: {
@@ -362,6 +379,7 @@ async fn main() {
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
                 Ok(key_b64) => {
+                    std::env::remove_var("JWT_PRIVATE_KEY_B64");
                     info!("🔑 [Auth] Loading JWT private key from environment");
                     Arc::new(infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
                         .expect("Invalid JWT_PRIVATE_KEY_B64"))
@@ -377,6 +395,14 @@ async fn main() {
             }
         },
         system_agent_id,
+        registry: {
+            Arc::new(infrastructure::registry::RegistryManager::new(job_queue.get_pool().clone()))
+        },
+        voice_drm: {
+            let registry = Arc::new(infrastructure::registry::RegistryManager::new(job_queue.get_pool().clone()));
+            let vault_url = std::env::var("ABYSS_VAULT_URL").unwrap_or_else(|_| "http://localhost:3016".to_string());
+            Arc::new(infrastructure::security::VoiceCoreDrm::new(vault_url, registry, job_queue.get_pool().clone()).await)
+        },
     };
 
     // RS-1: Pre-load soul cache to avoid DB I/O on hot paths
@@ -426,6 +452,25 @@ async fn main() {
     let token_bg = token.clone();
     let federation_secret_bg = federation_secret.clone();
     let http_client_bg = state.http_client.clone();
+    
+    // ⚙️ MCP Process Reaper Task
+    let mcp_manager_reaper = state.mcp_manager.clone();
+    let token_reaper = token.clone();
+    tokio::spawn(async move {
+        info!("⚙️ [McpReaper] Starting background task (60s interval, 300s timeout)");
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {
+                    mcp_manager_reaper.reap_idle_clients(std::time::Duration::from_secs(300)).await;
+                }
+                _ = token_reaper.cancelled() => {
+                    info!("🛑 [McpReaper] Shutdown requested. Exiting.");
+                    break;
+                }
+            }
+        }
+    });
+
     tokio::spawn(async move {
         let token = token_bg;
         let token_ws = token.clone();
@@ -723,8 +768,8 @@ async fn main() {
             let pending_jobs = jq_clone.get_pending_job_count().await.unwrap_or(0);
             if pending_jobs == 0 {
                 let dream_state = infrastructure::dream_state::DreamState::new();
-                let search_api_key =
-                    std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
+                let search_api_key = std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
+                std::env::remove_var("SEARCH_API_KEY");
                 let trend_sonar =
                     infrastructure::trend_sonar::ExternalTrendSonar::new(search_api_key);
 
@@ -1186,6 +1231,29 @@ async fn main() {
                             let _ = std::fs::remove_file(old_path);
                         }
                     }
+                }
+            }
+
+            // 11. Trend Sonar (Phase 12b Step 4) - Every 3 cycles (15 minutes)
+            if wakeup_counter % 3 == 0 {
+                let search_api_key = std::env::var("SEARCH_API_KEY").unwrap_or_else(|_| "none".to_string());
+                if search_api_key != "none" {
+                    info!("📡 [BackgroundWorker] Fetching latest trends...");
+                    let trend_sonar = infrastructure::trend_sonar::ExternalTrendSonar::new(search_api_key);
+                    use aiome_contracts::traits::TrendSource;
+                    match trend_sonar.get_trends("technology").await {
+                        Ok(trends) => {
+                            if !trends.is_empty() {
+                                info!("📡 [BackgroundWorker] Found {} trends.", trends.len());
+                                info!("📡 [BackgroundWorker] Top trend keyword: {}", trends[0].keyword);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("⚠️ [BackgroundWorker] Trend fetching failed: {:?}", e);
+                        }
+                    }
+                } else {
+                    info!("📡 [BackgroundWorker] SEARCH_API_KEY not set. Skipping trend fetch.");
                 }
             }
 

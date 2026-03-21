@@ -26,9 +26,6 @@ use utoipa::OpenApi;
         crate::routes::agent::handle_karma_feedback,
         // Karma
         crate::routes::karma::get_karma_stream,
-        crate::routes::karma::trigger_failure_demo,
-        crate::routes::karma::trigger_security_demo,
-        crate::routes::karma::trigger_federation_demo,
         crate::routes::karma::synergy_graph_handler,
         crate::routes::karma::get_immune_rules_handler,
         crate::routes::karma::add_immune_rule_handler,
@@ -51,12 +48,19 @@ use utoipa::OpenApi;
         // Commerce
         crate::routes::commerce::get_balance,
         crate::routes::commerce::execute_purchase,
+        // Gift
+        crate::routes::gift::send_gift,
+        crate::routes::gift::get_gift_policy,
+        // Voice & Avatar
+        crate::routes::voice::list_voice_assets_handler,
         // Artifacts
         crate::routes::artifacts::list_artifacts_handler,
         crate::routes::artifacts::get_artifact_handler,
         crate::routes::artifacts::download_artifact_file_handler,
         crate::routes::artifacts::delete_artifact_handler,
         crate::routes::artifacts::get_artifact_edges_handler,
+        // EKYC
+        crate::routes::ekyc::create_ekyc_session_handler,
         // Audit & Trends (Phase 8.6)
         crate::routes::general::get_audit_ledger,
         crate::routes::general::get_diagnoses,
@@ -85,11 +89,15 @@ use utoipa::OpenApi;
             crate::routes::expression::ListParams,
             crate::routes::expression::AutoToggle,
             crate::routes::commerce::PurchaseRequest,
+            aiome_contracts::commerce::GiftRequest,
+            crate::routes::gift::GiftResponse,
+            crate::routes::gift::GiftPolicyResponse,
             crate::routes::artifacts::ListArtifactsParams,
             crate::routes::general::AuditLedgerResponse,
             crate::routes::general::DiagnosisResponse,
             crate::routes::general::TrendsResponse,
-            aiome_contracts::traits::TrendItem
+            aiome_contracts::traits::TrendItem,
+            crate::routes::ekyc::EkycSessionResponse
         )
     ),
     info(
@@ -101,6 +109,17 @@ use utoipa::OpenApi;
 )
 ]
 pub struct ApiDoc;
+
+#[cfg(feature = "dev-routes")]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        crate::routes::karma::trigger_failure_demo,
+        crate::routes::karma::trigger_security_demo,
+        crate::routes::karma::trigger_federation_demo,
+    )
+)]
+pub struct DemoApiDoc;
 
 struct SecurityAddon;
 
@@ -116,6 +135,14 @@ impl utoipa::Modify for SecurityAddon {
                         .build(),
                 ),
             );
+        }
+
+        #[cfg(feature = "dev-routes")]
+        {
+            let mut demo_doc = DemoApiDoc::openapi();
+            for (path, item) in demo_doc.paths.paths {
+                openapi.paths.paths.insert(path, item);
+            }
         }
     }
 }

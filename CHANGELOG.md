@@ -8,13 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Phase 10.2 (Voice Commerce MVP & DRM)**:
-    - **VoiceKeyVault**: Introduced `VoiceKeyVault` trait and `AbyssVoiceVault` implementation using `zeroize` for memory-safe cryptography to protect creator AES-256 asset keys.
-    - **Commerce Webhook & Stripe**: Implemented `StripeCommerceEngine` with signature verification and robust idempotency through the `stripe_webhook_events` database ledger.
-    - **Asset Registry**: Added `RegistryManager` in `infrastructure/registry.rs` to securely map external UUIDs to proprietary creator voice models.
-    - **Voice Store UI**: Developed the `VoiceStore` React component in the Management Console, enabling one-click purchases and Karma Coin integration for DRM-protected assets.
-    - **Commerce Policy**: Drafted `commerce_policy.md` outlining the 80/20 revenue split, KC economy rules, and strict zero-tolerance policies for unauthorized clone uploads.
-    - **Security Logs**: Configured global log masking for sensitive secrets like `STRIPE_WEBHOOK_SECRET` in `tracing-subscriber` configuration.
+- **Phase 16: EKYC Protection & Revenue Splitter**:
+    - **EKYC Enforcement**: Added hard integration of eKYC verification to the `send_gift` and `execute_purchase` endpoints. Unverified users will be blocked with a `403 Forbidden` response to enforce strict economic compliance.
+    - **Commerce Revenue Splitter**: Implemented the `RevenueSplitter` module triggered by Stripe `checkout.session.completed` webhooks. It automatically calculates an 80/20 split between creators and the platform, inserting the split logic securely within the license grant database transaction.
+    - **Zeroize Security Hardening**: Addressed in-memory secret persistence vulnerabilities by immediately zeroizing and removing `STRIPE_API_KEY`, `JWT_PRIVATE_KEY_B64`, and `SEARCH_API_KEY` from the environment immediately after load during application startup.
+    - **Audit Ledger Visibility**: Ensured `revenue_splits` has been added to the automated database `audit_ledger_global` triggers to maintain a comprehensive changelog.
+- **Phase 14: eKYC Persistence & Inochi2D Physics Sync**:
+    - **EKYC Session Store**: Implemented `EkycSessionStore` using SQLite to persist Stripe verification session IDs, ensuring continuity across application restarts.
+    - **Stripe API Hardening**: Updated `EkycEngine` to use `client_reference_id` for accurate filtering and implemented technical timeouts (30s) for better resilience.
+    - **Inochi2D Physics Sync**: Added `physics_override` to the `avatar_expression` SSE stream. Implemented a 1.5x "Resonance Boost" logic that amplifies physics animations when resonance level exceeds 80.
+    - **Secure Mascot Upload**: Enforced the `jwt_auth_middleware` and `PathSandbox` jail on the Inochi2D upload route, preventing unauthorized access and path traversal attacks (Expert Review v3).
+    - **Stripe Fail-safe**: Introduced a mandatory check for `STRIPE_API_KEY` in release builds, causing the server to exit if missing, preventing insecure mock-state deployments.
+- **Phase 13a: Stripe EKYC Session API Implementation**:
+    - **StripeEkycEngine**: Upgraded `StripeEkycEngine` from mock behavior to real `reqwest`-based implementation, calling the Stripe Identity Verification Sessions API directly.
+    - **Session API**: Implemented `POST /api/v1/ekyc/session` to initiate verification sessions and updated `GET /api/v1/ekyc/status` to handle real status tracking for user-agent verification.
+    - **Refactor**: Modified `main.rs` to inject the shared `reqwest::Client` into `StripeEkycEngine`, ensuring consistent connection pool management.
+- **Phase 13b: Inochi2D (2D Avatar) Pipeline Integration**:
+    - **Inochi2dLoader**: Developed `Inochi2dLoader` in `libs/avatar-engine` providing magic byte validation (`INX\x02`) and metadata extraction for versioned Inochi2D models.
+    - **Physics Simulator**: Implemented `PhysicsSimulator` using spring-damping algorithms to calculate real-time secondary animations for 2D avatars.
+    - **Mascot Upload pipeline**: Exposed `POST /api/v1/avatar/inochi2d/upload` with a dedicated 50MB allowance in `router.rs`, enabling registration of `.inx` assets.
+- **Phase 10.2 Security Hardening (Expert Review Integrated)**:
+        - **Persistent Key Vault**: Implemented `vault_keys` table for persistent storage of voice asset keys, protected by a 256-bit Master Key (`VAULT_MASTER_KEY`).
+        - **AES-256-GCM Nonce Management**: Enforced random 12-byte nonce generation for every encryption operation in `crypto.rs` to prevent ciphertext reuse attacks.
+        - **Authorization Bypass Fix**: Replaced the vulnerable `LIKE` operator with `json_extract` in `RegistryManager::check_ownership` for precise atomic matching of `agent_id` and `asset_id`.
+        - **Memory Protection**: Reduced the voice upload body limit from 500MB to 100MB to mitigate OOM-based DoS/OOMKill attack chains.
+        - **Mutex Poison Recovery**: Added `unwrap_or_else` recovery for `AbyssVoiceVault` mutexes to prevent permanent vault locks on thread panic.
+        - **Audit & Compliance**: Added audit logging for all decryption key access attempts and removed redundant sync-I/O `exists()` checks in async upload handlers.
+- **Phase 11.0 (Voice DRM Refinement)**:
+    - **Dual-Read Ownership & Migration**: Implemented `licenses` table priority reading with legacy `stripe_webhook_events` fallback in `RegistryManager::check_ownership`. Developed a standalone seamless data migration script (`migrate_licenses.rs`).
+    - **Audio CSAM Detection**: Developed multi-threaded, robust CSAM detection for audio uploads via `AudioHasher` employing `tokio::task::spawn_blocking` and timeout defenses to prevent CPU exhaustion.
+    - **LipSync Responsibility Separation**: Extracted `get_lipsync_frames` from `VoiceKeyVault` into a standalone `LipSyncProvider` trait moved to `avatar-engine`, drastically improving Interface Segregation.
+    - **Vault Key Caching**: Refactored `AbyssVoiceVault` internal logic to feature lazy-initialized caching for `VAULT_MASTER_KEY` via `OnceCell`, shielding E2E test suites from environment variable absence panics.
+    - **Voice E2E Roundtrip**: Introduced end-to-end integration tests encapsulating the complete lifecycle of a voice upload, spanning CSAM triage, registry ownership logic, AES-GCM encrypted persistence, and authorized Vault decryption.
 - **Phase 10.1a (XTTS Core Integration)**:
     - **XTTS Synthesis**: Implemented `ExpressionEngine::synthesize_audio_xtts` in `aiome-core`, enabling integration with local XTTS v2 servers for high-quality, personalized voice synthesis.
     - **API Provider Selection**: Updated the `/api/expression/generate` endpoint to support switching between OpenAI (tts-1) and localized XTTS providers via system settings.

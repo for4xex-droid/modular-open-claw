@@ -52,6 +52,7 @@ pub mod memory_crystallizer;
 pub mod oracle;
 /// 成果物のSNS自動投稿
 pub mod publisher;
+/// デジタルアセットのレジストリ・所有権管理モジュール
 pub mod registry;
 /// Soul転生（L3）ロジック
 pub mod samsara_engine;

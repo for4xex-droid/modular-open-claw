@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-21T01:48:41.430250
+> Generated at: 2026-03-21T18:04:38.801210
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -46,9 +46,14 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/system/evolution`
 - `/api/v1/audit/diagnostics`
 - `/api/v1/audit/ledger`
+- `/api/v1/avatar/inochi2d/upload`
 - `/api/v1/commerce/balance/:agent_id`
 - `/api/v1/commerce/purchase/:agent_id`
 - `/api/v1/commerce/webhook`
+- `/api/v1/ekyc/session`
+- `/api/v1/ekyc/status`
+- `/api/v1/gift/policy/:agent_id`
+- `/api/v1/gift/send/:agent_id`
 - `/api/v1/logs`
 - `/api/v1/metrics`
 - `/api/v1/ollama/models`
@@ -56,6 +61,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/settings/identity`
 - `/api/v1/settings/test`
 - `/api/v1/trends`
+- `/api/v1/voice/list`
 - `/api/v1/voice/upload`
 - `/api/wiki`
 - `/api/wiki/content`
@@ -63,7 +69,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/messages`
 - `/sse`
 **Key Structs**
-- AgentChatRequest, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, DbLoggerLayer, DiagnosisResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, TrendsResponse, UpdateSettingsRequest
+- AgentChatRequest, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, DbLoggerLayer, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, Inochi2dUploadResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, TrendsResponse, UpdateSettingsRequest
 
 ### `samsara-hub`
 **REST / Websocket Routes**
@@ -101,14 +107,16 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - AiomeConfig, AiomeCustomClaims, AuditEntry, BeggingSupervisor, CleanupTarget, HealthMonitor, ImageHasher, PathSandbox, ProportionsChecker, ResourceStatus, Secret, SecurityPolicy, StorageCleaner
 
 ### `avatar-engine`
+**Traits (Interfaces)**
+- LipSyncProvider
 **Domain Structs**
-- AssetManifest, AvatarParameters, EmotionToParameterMapper, LipSyncFrame
+- AssetManifest, AvatarParameters, EmotionToParameterMapper, Inochi2dLoader, InxModel, LipSyncFrame, PhysicsConfig, PhysicsSimulator
 
 ### `aiome-contracts`
 **Traits (Interfaces)**
 - AgentAct, AiomeLogger, AiomePlugin, ArtifactStore, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, JobQueue, LlmProvider, MediaProcessor, Publisher, RuntimeJail, TrajectoryStore, TrendSource, VoiceKeyVault
 **Domain Structs**
-- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedKarma, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftRequest, ImmuneRule, Job, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaSearchResult, LlmJobResponse, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, ResourceUsageLog, SnsMetricsRecord, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TrendItem, TrendRequest, TrendResponse, WorkflowRequest, WorkflowResponse
+- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedKarma, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, ImmuneRule, Job, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaSearchResult, LlmJobResponse, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, ResourceUsageLog, SnsMetricsRecord, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TrendItem, TrendRequest, TrendResponse, WorkflowRequest, WorkflowResponse
 
 ### `soul`
 **Traits (Interfaces)**
@@ -118,7 +126,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `infrastructure`
 **Traits (Interfaces)**
-- AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
+- AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EkycSessionStore, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, WatchtowerOps
 **Domain Structs**
-- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, AssetManifest, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, ExternalTrendSonar, HeartbeatWakeupService, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteJobQueue, SqliteQuarantineStore, SqliteSoulStore, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WorkspaceManager
+- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AgentRxDiagnostics, AiomeLogClient, AssetManifest, AudioHasher, BackgroundLlmProvider, BastionGuard, CircuitBreaker, CircuitBreakerConfig, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, EkycSession, ExternalTrendSonar, HeartbeatWakeupService, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, SecurityConfig, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteEkycSessionStore, SqliteJobQueue, SqliteQuarantineStore, SqliteSoulStore, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, TrendArgs, TrendOutput, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WorkspaceManager
 

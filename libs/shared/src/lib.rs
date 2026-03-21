@@ -9,10 +9,12 @@
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![warn(missing_docs)]
 
+/// 認証・認可関連のロジック
 pub mod auth;
 pub mod cleaner;
 /// アプリケーション設定の管理
 pub mod config;
+/// 暗号化・ハッシュ処理共有ロジック
 pub mod crypto;
 /// CSAM (Child Safety & Compliance)
 pub mod csam;

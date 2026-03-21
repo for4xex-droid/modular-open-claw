@@ -101,6 +101,9 @@ pub enum AiomeError {
 
     #[error("コンテンツ権利未検証: item_id={item_id}")]
     ContentNotVerified { item_id: String },
+
+    #[error("リソースビジー（処理限界）: {reason}")]
+    ResourceBusy { reason: String },
 }
 
 #[cfg(feature = "axum")]
@@ -154,6 +157,10 @@ impl axum::response::IntoResponse for AiomeError {
             AiomeError::RemoteServiceExecutionFailed { .. } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Execution failed".to_string(),
+            ),
+            AiomeError::ResourceBusy { reason } => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                format!("System busy: {}", reason),
             ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,

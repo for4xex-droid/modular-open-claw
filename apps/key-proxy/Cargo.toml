@@ -29,3 +29,6 @@ uuid = { workspace = true }
 aiome-core = { path = "../../libs/core" }
 shared = { path = "../../libs/shared" }
 infrastructure = { path = "../../libs/infrastructure" }
+
+[dev-dependencies]
+axum-test = "16.4.0"

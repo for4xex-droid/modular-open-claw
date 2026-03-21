@@ -8,6 +8,8 @@
 use aiome_core::error::AiomeError;
 pub use aiome_core::security::{PermissionManifest, RuntimeJail};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use crate::registry::RegistryManager;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -359,9 +361,13 @@ impl BastionGuard {
     }
 }
 
+/// 暗号化・復号処理のユーティリティ群
+pub mod crypto;
+/// Abyss Voice Vault (暗号化ボイスアセットの復号管理)
 pub mod abyss_voice_vault;
 use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;
+use zeroize::Zeroizing;
 
 /// Phase 9: Voice Core DRM (Digital Rights Management)
 ///
@@ -371,19 +377,28 @@ pub struct VoiceCoreDrm {
     /// Abyss Vault のベースURL
     pub vault_url: String,
     vault: AbyssVoiceVault,
+    #[allow(dead_code)]
+    registry: Arc<RegistryManager>,
 }
 
 impl VoiceCoreDrm {
     /// 新しい DRM インスタンスを生成する
-    pub fn new(vault_url: String) -> Self {
+    pub async fn new(vault_url: String, registry: Arc<RegistryManager>, pool: sqlx::SqlitePool) -> Self {
+        let vault = AbyssVoiceVault::new(registry.clone(), pool);
+        // 起動時に永続化された鍵をリストア (§CISO-1)
+        match vault.restore_keys_from_db().await {
+            Ok(n) => tracing::info!("🔐 [DRM] {} vault keys restored on startup", n),
+            Err(e) => tracing::error!("🚨 [DRM] Failed to restore vault keys: {:?}", e),
+        }
         Self {
             vault_url,
-            vault: AbyssVoiceVault::new(),
+            vault,
+            registry,
         }
     }
 
     /// アセットの復号キーを取得する (Abyss Vault 連携)
-    pub async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Vec<u8>, AiomeError> {
+    pub async fn fetch_decryption_key(&self, agent_id: Uuid, asset_id: Uuid) -> Result<Zeroizing<Vec<u8>>, AiomeError> {
         self.vault.fetch_decryption_key(agent_id, asset_id).await
     }
     
@@ -393,7 +408,7 @@ impl VoiceCoreDrm {
     }
     
     /// アセットキーを登録する
-    pub async fn register_asset_key(&self, asset_id: Uuid, key: Vec<u8>) -> Result<(), AiomeError> {
+    pub async fn register_asset_key(&self, asset_id: Uuid, key: Zeroizing<Vec<u8>>) -> Result<(), AiomeError> {
         self.vault.register_asset_key(asset_id, key).await
     }
 }

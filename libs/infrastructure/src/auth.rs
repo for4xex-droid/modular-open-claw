@@ -12,6 +12,7 @@ use ed25519_dalek::pkcs8::EncodePrivateKey;
 use shared::auth::AiomeCustomClaims;
 use tracing::instrument;
 
+/// 認証マネージャの基盤トレイト
 #[async_trait]
 pub trait AuthManager: Send + Sync {
     /// 与えられた Bearer トークンを検証し、正当であれば Custom Claims を返す

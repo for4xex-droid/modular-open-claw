@@ -55,6 +55,16 @@ pub fn build_app(
             ),
         )
         .route("/api/v1/logs", get(routes::general::get_logs))
+        .route(
+            "/api/v1/gift/send/:agent_id",
+            axum::routing::post(routes::gift::send_gift).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(30)), // 1 gift per 30s
+            ),
+        )
+        .route("/api/v1/gift/policy/:agent_id", get(routes::gift::get_gift_policy))
         .route("/api/v1/audit/ledger", get(routes::general::get_audit_ledger))
         .route("/api/v1/audit/diagnostics", get(routes::general::get_diagnoses))
         .route("/api/v1/trends", get(routes::general::get_trends))
@@ -103,18 +113,32 @@ pub fn build_app(
             "/api/biome/autonomous/status",
             get(routes::biome::autonomous_status),
         )
-        .route("/api/synergy/graph", get(routes::karma::synergy_graph_handler))
+        .route("/api/synergy/graph", get(routes::karma::synergy_graph_handler));
+
+    #[cfg(feature = "dev-routes")]
+    let internal_router = internal_router
         .route("/api/synergy/test/failure", post(routes::karma::trigger_failure_demo))
         .route("/api/synergy/test/security", post(routes::karma::trigger_security_demo))
-        .route("/api/synergy/test/federation", post(routes::karma::trigger_federation_demo))
+        .route("/api/synergy/test/federation", post(routes::karma::trigger_federation_demo));
+
+    let internal_router = internal_router
         .route("/api/synergy/rules", get(routes::karma::get_immune_rules_handler).post(routes::karma::add_immune_rule_handler))
         .route("/api/synergy/rules/:id", axum::routing::delete(routes::karma::delete_immune_rule_handler))
         .route("/api/system/evolution", get(routes::karma::get_evolution_history_handler))
+        .route("/api/v1/voice/list", get(routes::voice::list_voice_assets_handler))
         .route("/api/wiki", get(routes::general::list_wiki_files))
         .route("/api/wiki/content", get(routes::general::get_wiki_content))
         .route(
             "/api/v1/settings",
-            get(routes::settings::get_settings).put(routes::settings::update_setting).post(routes::settings::update_setting),
+            get(routes::settings::get_settings)
+                .put(routes::settings::update_setting)
+                .post(routes::settings::update_setting)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(2)), // 1 write per 2s
+                ),
         )
         .route(
             "/api/v1/settings/test",
@@ -124,6 +148,16 @@ pub fn build_app(
             "/api/v1/settings/identity",
             get(routes::settings::get_identity),
         )
+        .route(
+            "/api/v1/ekyc/session",
+            post(routes::ekyc::create_ekyc_session_handler).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(5)), // 1 session per 5s
+            ),
+        )
+        .route("/api/v1/ekyc/status", get(routes::avatar::get_ekyc_status_handler))
         .route(
             "/api/expression/status",
             get(routes::expression::expression_status),
@@ -164,7 +198,12 @@ pub fn build_app(
         .route("/api/skills", get(routes::skill::list_skills))
         .route(
             "/api/skills/import",
-            axum::routing::post(routes::skill::import_skill),
+            axum::routing::post(routes::skill::import_skill).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(handle_rate_limit))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(10)), // 1 import per 10s
+            ),
         )
         .route(
             "/api/skills/mcp/spawn",
@@ -219,7 +258,7 @@ pub fn build_app(
                     .buffer(2)
                     .rate_limit(1, std::time::Duration::from_secs(1))
                     .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::auth_middleware))
-                    .layer(RequestBodyLimitLayer::new(500 * 1024 * 1024))
+                    .layer(RequestBodyLimitLayer::new(100 * 1024 * 1024))
             ),
         )
         .route(
@@ -234,6 +273,14 @@ pub fn build_app(
             "/api/avatar/ekyc-status",
             get(routes::avatar::get_ekyc_status_handler).route_layer(
                 axum::middleware::from_fn_with_state(state.clone(), crate::auth::jwt_auth_middleware)
+            ),
+        )
+        .route(
+            "/api/v1/avatar/inochi2d/upload",
+            axum::routing::post(routes::inochi2d::upload_inochi2d_handler).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::jwt_auth_middleware))
+                    .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024))
             ),
         )
         .layer(axum::extract::DefaultBodyLimit::disable());

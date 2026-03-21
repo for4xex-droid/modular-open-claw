@@ -4,12 +4,14 @@ use async_trait::async_trait;
 use uuid::Uuid;
 use stripe::{Webhook, WebhookError};
 
+/// Stripe Webhook イベントを処理する商用エンジン実装
 pub struct StripeCommerceEngine {
     webhook_secret: String,
     pool: sqlx::SqlitePool,
 }
 
 impl StripeCommerceEngine {
+    /// 新規 Stripe エンジンを初期化する
     pub fn new(webhook_secret: String, pool: sqlx::SqlitePool) -> Self {
         Self { webhook_secret, pool }
     }

@@ -29,7 +29,7 @@ chacha20poly1305 = { workspace = true }
 ed25519-dalek = { workspace = true }
 x25519-dalek = { workspace = true }
 rand = { workspace = true }
-utoipa = "5"
+utoipa.workspace = true
 sha2 = "0.10.9"
 
 [dev-dependencies]

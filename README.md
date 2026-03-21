@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 * **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-03-20*
+*Last Mutated: 2026-03-21*
 
 ---
 
@@ -107,8 +107,10 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🌐 **Samsara Federation Sync (Secure P2P)**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期。**バイナリ送信を拒絶するプロトコルレベルの CSAM フィルタ**により、P2P ネットワークの安全性を担保しつつ、`FEDERATION_SECRET` 由来の対称鍵による秘匿通信を実現しています。
 - 🎁 **Phase 7.2: A2C 恩返し / 法的ガードレール**: 高い Karma を持つユーザーに対し、AI が自律的に Tremendous 経由で実世界のギフトコードを送付する「恩返し」機能を搭載。同時に、AI によるダークパターン（おねだり等）を検知・遮断する **Begging Supervisor** により、法的・倫理的透明性を担保します。
 - 🛡️ **Phase 8.1 / 8.1.5: CSAM 3層防御 & アセット検疫 (Child Safety & Compliance)**: アバターアセットの安全な公開に向け、① Stripe Identity を用いた **eKYC 実名・年齢確認**、② 知覚ハッシュ (DCT) による画像の **CSAM フィルタリング**、③ NURTURE 法的要件に基づく **5.5頭身チェッカー** をサーバーサイドで統合。基準を満たさないアセットを即座に SQLite (`QuarantineStore`) に永続的に隔離（Quarantine）し、ネットワークの健全性を物理的に保護します。
+- 🛡️ **Phase 14: eKYC 本人確認永続化 & 物理同期強化**: Stripe Identity による本人確認セッション ID を SQLite (`EkycSessionStore`) に永続化。サーバー再起動後も検証状態を維持可能にしました。また、Inochi2D アバターの物理演算に「共鳴度（Resonance）」を統合。共鳴レベル 80 以上でアニメーションが 1.5 倍にブーストされる動的な表現力を実現しています。
 - 🔑 **Phase 8.2: OAuth 2.1 / JWT 認証基盤**: 従来のダミー ID に依存する設計から脱却し、RFC 規格に準拠した **AuthManager (JWT 検証)** を導入。ステートレスかつセキュアなユーザー識別を可能にし、リソース所有権の厳格な保護を実現しています。
 - 🏛️ **Phase 8.8: Audit & Immunity Ledger (監査と透明性)**: エージェントの自己修復履歴（Diagnostics）と、ハッシュチェーンで保護されたシステム変更履歴（Global Ledger）を管理コンソールから直接確認可能に。NURTURE §12 の「人間による監査可能性」を具現化しました。
+- 🛡️ **Phase 16: EKYC Protection & Revenue Splitter**: 有償アセットの購入やギフト送信において **eKYC 済フラグ** を強制し、未認証ユーザーの経済活動を物理的にブロックします。また、Stripe Webhook と連動した **RevenueSplitter** により、売上の自動分配（クリエイター：プラットフォーム = 80:20）をデータベーストランザクション内で一貫して実行します。さらに、起動直後に機密環境変数をメモリから消去する **Zeroize** 処理により、秘匿情報の永続的な残留を防止します。
 
 ---
 
@@ -258,7 +260,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-20*
+*最終更新: 2026-03-21*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

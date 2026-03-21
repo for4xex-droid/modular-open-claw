@@ -104,6 +104,11 @@ pub async fn execute_purchase(
         ));
     }
 
+    if !auth.ekyc_verified {
+        tracing::warn!("🛡️ [Commerce] Blocked unverified purchase request from agent: {}", agent_id);
+        return Err(AppError::forbidden("eKYC verification is required to make purchases"));
+    }
+
     tracing::info!(
         "🛒 [Commerce] Purchase request for agent: {}, item: {}",
         agent_id,

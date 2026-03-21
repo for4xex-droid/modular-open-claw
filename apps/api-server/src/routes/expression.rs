@@ -92,7 +92,22 @@ pub async fn generate_expression(
     // 2. Fetch Soul Prompt
     let soul_prompt = state.soul_mutator.get_active_prompt().await?;
 
-    // 3. Generate Expression
+    // 3. VRAM Arbitration (15-C): Wait for GPU resource availability
+    let _permit = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        state.llm_semaphore.acquire(),
+    )
+    .await
+    .map_err(|_| {
+        aiome_contracts::error::AiomeError::ResourceBusy {
+            reason: "GPU/VRAM contention (Generation).".to_string(),
+        }
+    })?
+    .map_err(|e| aiome_contracts::error::AiomeError::Infrastructure {
+        reason: format!("Semaphore acquire error: {}", e),
+    })?;
+
+    // 4. Generate Expression
     let mut expression =
         ExpressionEngine::generate(&karma, &soul_prompt, state.provider.as_ref()).await?;
 

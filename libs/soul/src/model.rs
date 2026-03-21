@@ -34,6 +34,10 @@ pub struct AgentSoul {
     pub lora_base_model: Option<String>,
     #[serde(default)]
     pub lora_hash: Option<String>,
+
+    // Phase 15-B: Dark pattern guardrail memory
+    #[serde(default)]
+    pub last_begging_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl AgentSoul {
@@ -52,6 +56,7 @@ impl AgentSoul {
             lora_adapter_path: None,
             lora_base_model: None,
             lora_hash: None,
+            last_begging_at: None,
         };
         soul.compute_hash();
         soul

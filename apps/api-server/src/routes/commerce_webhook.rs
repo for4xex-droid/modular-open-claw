@@ -66,23 +66,92 @@ pub async fn stripe_webhook(
     let event_type = event_type_str.as_str();
     info!("📦 [StripeWebhook] Verified event: {} ({})", event_id, event_type);
 
-    // 5. 冪等性の保証 (Gate 2/Expert 2)
-    let payload_val = serde_json::to_value(&event).unwrap_or(serde_json::Value::Null);
-    if let Err(e) = engine.process_webhook(event_id, event_type, &payload_val).await {
-        error!("❌ [StripeWebhook] Idempotency processing failed for {}: {}", event_id, e);
-        return Err(AppError::internal("Webhook processing failed"));
+    // 5. 冪等性の保証とライセンス付与 (単一トランザクション / Phase 11)
+    let pool = state.job_queue.get_pool();
+    let mut tx = pool.begin().await.map_err(|e| {
+        error!("❌ [StripeWebhook] Failed to begin transaction: {}", e);
+        AppError::internal("Database error")
+    })?;
+
+    // 冪等性チェック
+    let result = sqlx::query("INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)")
+        .bind(event_id)
+        .bind(event_type)
+        .bind(serde_json::to_string(&event.data.object).unwrap_or_default())
+        .execute(&mut *tx)
+        .await;
+
+    match result {
+        Ok(_) => {
+            info!("📦 [StripeWebhook] Webhook event {} inserted for processing.", event_id);
+        }
+        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
+            info!("💡 [StripeWebhook] Webhook event {} was already processed. Skipping.", event_id);
+            return Ok(StatusCode::OK);
+        }
+        Err(e) => {
+            error!("❌ [StripeWebhook] Idempotency DB error {}: {}", event_id, e);
+            return Err(AppError::internal("Database error"));
+        }
     }
 
-    // 6. トランザクション処理 & AuditLedger 記録 (Gate 2/perfect-plan 追加対応)
-    match event.type_ {
-        stripe::EventType::CheckoutSessionCompleted => {
-            // TODO: (Phase 10.2) Checkout完了時の処理
-            // VoiceKeyVault を用いたライセンス付与、AiomeLedger への記録など
-            info!("💳 [StripeWebhook] Checkout session completed processing stub.");
+    // 6. トランザクション処理 (ライセンス付与等)
+    if event.type_ == stripe::EventType::CheckoutSessionCompleted {
+        if let Some(session) = match &event.data.object {
+            stripe::EventObject::CheckoutSession(s) => Some(s),
+            _ => None,
+        } {
+            let agent_id_str = session.metadata.as_ref().and_then(|m| m.get("agent_id"));
+            let asset_id_str = session.metadata.as_ref().and_then(|m| m.get("asset_id"));
+
+            if let (Some(a), Some(asset)) = (agent_id_str, asset_id_str) {
+                if let (Ok(agent_uuid), Ok(asset_uuid)) = (uuid::Uuid::parse_str(a), uuid::Uuid::parse_str(asset)) {
+                    info!("💳 [StripeWebhook] Processing License Grant: Agent {} -> Asset {}", agent_uuid, asset_uuid);
+                    
+                    // 6a. 収益分配 (Revenue Split)
+                    match state.registry.get_asset(asset_uuid).await {
+                        Ok(asset_manifest) => {
+                            let amount = session.amount_total.unwrap_or(asset_manifest.price_coins as i64);
+                            if amount > 0 {
+                                if let Err(e) = infrastructure::commerce::splitter::RevenueSplitter::split_revenue(
+                                    &mut tx,
+                                    event_id,
+                                    amount,
+                                    asset_manifest.creator_id,
+                                    0.15 // 15% platform fee
+                                ).await {
+                                    let _ = tx.rollback().await;
+                                    error!("❌ [StripeWebhook] Failed to split revenue: {}", e);
+                                    return Err(AppError::internal("Revenue split failed"));
+                                }
+                                info!("💸 [StripeWebhook] Revenue split completed: tx_id={}, amount={}, creator={}", event_id, amount, asset_manifest.creator_id);
+                            }
+                        }
+                        Err(e) => {
+                            error!("⚠️ [StripeWebhook] Failed to get asset {} for revenue split: {}", asset_uuid, e);
+                            // Continue to grant license even if asset metadata fails?
+                            // Better to fail to maintain consistency.
+                            let _ = tx.rollback().await;
+                            return Err(AppError::internal("Failed to retrieve asset for revenue split"));
+                        }
+                    }
+
+                    // 6b. ライセンス付与
+                    if let Err(e) = state.registry.grant_license_with_tx(&mut tx, agent_uuid, asset_uuid, event_id.to_string()).await {
+                        let _ = tx.rollback().await;
+                        error!("❌ [StripeWebhook] Failed to grant license: {}", e);
+                        return Err(AppError::internal("License grant failed"));
+                    }
+                }
+            }
         }
-        _ => {
-            info!("ℹ️ [StripeWebhook] Unhandled event type: {}", event_type);
-        }
+    } else {
+        info!("ℹ️ [StripeWebhook] Unhandled event type: {}", event_type);
+    }
+
+    if let Err(e) = tx.commit().await {
+        error!("❌ [StripeWebhook] Failed to commit transaction: {}", e);
+        return Err(AppError::internal("Transaction commit failed"));
     }
 
     Ok(StatusCode::OK)

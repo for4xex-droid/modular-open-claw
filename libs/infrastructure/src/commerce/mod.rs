@@ -9,3 +9,6 @@
 pub mod gift;
 /// Stripe 決済実装
 pub mod stripe;
+
+/// 収益分配機能
+pub mod splitter;

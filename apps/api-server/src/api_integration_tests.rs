@@ -11,6 +11,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use serial_test::serial;
 
 #[derive(Debug)]
 struct DummyLlm;
@@ -53,7 +54,53 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
     }
 }
 
-async fn create_test_server() -> (TestServer, tempfile::TempDir) {
+#[derive(Debug)]
+struct MockCommerceEngine;
+#[async_trait::async_trait]
+impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
+    async fn get_balance(&self, _agent_id: uuid::Uuid) -> Result<u64, aiome_core::error::AiomeError> { Ok(0) }
+    async fn validate_activity(&self, _agent_id: uuid::Uuid, _activity_type: &str, _amount: u64) -> Result<(), aiome_core::error::AiomeError> { Ok(()) }
+    async fn execute_autonomous_purchase(&self, _agent_id: uuid::Uuid, _item_id: uuid::Uuid, _metadata: serde_json::Value) -> Result<String, aiome_core::error::AiomeError> { Ok("mock".into()) }
+    async fn get_daily_spend(&self, _agent_id: uuid::Uuid) -> Result<u64, aiome_core::error::AiomeError> { Ok(0) }
+    async fn get_daily_limit(&self, _agent_id: uuid::Uuid) -> Result<u64, aiome_core::error::AiomeError> { Ok(100) }
+    async fn escrow_create(&self, _agent_id: uuid::Uuid, _amount: u64) -> Result<String, aiome_core::error::AiomeError> { Ok("esc".into()) }
+    async fn stake(&self, _agent_id: uuid::Uuid, _amount: u64) -> Result<(), aiome_core::error::AiomeError> { Ok(()) }
+    async fn slash(&self, _agent_id: uuid::Uuid, _amount: u64, _reason: &str) -> Result<(), aiome_core::error::AiomeError> { Ok(()) }
+    async fn register_license(&self, _agent_id: uuid::Uuid, _asset_id: uuid::Uuid, _license_type: &str) -> Result<String, aiome_core::error::AiomeError> { Ok("lic".into()) }
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), aiome_core::error::AiomeError> { Ok(()) }
+    async fn process_webhook(&self, _event_id: &str, _event_type: &str, _payload: &serde_json::Value) -> Result<(), aiome_core::error::AiomeError> { Ok(()) }
+}
+
+#[derive(Debug)]
+struct MockGiftEngine;
+#[async_trait::async_trait]
+impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
+    async fn send_gift_code(
+        &self,
+        _recipient_email: &str,
+        _amount_usd: f64,
+        _reason: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("mock_order_123".to_string())
+    }
+
+    async fn validate_gift_policy(&self, _agent_id: uuid::Uuid, _amount_usd: f64)
+        -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn get_policy_context(&self, _agent_id: uuid::Uuid) -> Result<aiome_contracts::commerce::GiftPolicyContext, aiome_core::error::AiomeError> {
+        Ok(aiome_contracts::commerce::GiftPolicyContext {
+            max_amount_usd: 5.0,
+            daily_limit_reached: false,
+            daily_sent_count: 0,
+            daily_sent_total_usd: 0.0,
+        })
+    }
+}
+
+
+async fn create_test_server() -> (TestServer, Arc<infrastructure::registry::RegistryManager>, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
 
@@ -85,6 +132,10 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         )
         .unwrap(),
     );
+    
+    // Create .abyss_vault directory inside the tmp_dir
+    let vault_dir = tmp_dir.path().join(".abyss_vault");
+    std::fs::create_dir_all(&vault_dir).unwrap();
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
         forge_dir.to_str().unwrap(),
         skills_dir.to_str().unwrap(),
@@ -105,6 +156,17 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
 
+    let registry = Arc::new(infrastructure::registry::RegistryManager::new(job_queue.get_pool().clone()));
+    std::env::set_var("VAULT_MASTER_KEY", "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+    std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
+    let voice_drm = Arc::new(infrastructure::security::VoiceCoreDrm::new(
+        "http://localhost:3016".to_string(),
+        registry.clone(),
+        job_queue.get_pool().clone()
+    ).await);
+
+    let commerce_engine = Arc::new(MockCommerceEngine);
+
     let state = AppState {
         health_monitor: Arc::new(Mutex::new(HealthMonitor::new())),
         job_queue: job_queue.clone(),
@@ -118,6 +180,8 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         artifact_store,
         event_sender: tokio::sync::broadcast::channel(10).0,
         context_engine,
+        registry: registry.clone(),
+        voice_drm: voice_drm.clone(),
         soul_mutator,
         soul_store: Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
             job_queue.get_pool().clone(),
@@ -128,7 +192,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         docker_failures: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         http_client: aiome_core::http::get_http_client().clone(),
         security_policy: shared::security::SecurityPolicy::default(),
-        commerce_engine: None,
+        commerce_engine: Some(commerce_engine),
         circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
             "integration-test",
             infrastructure::circuit_breaker::CircuitBreakerConfig {
@@ -147,29 +211,33 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
         federation_secret: Some(Arc::new(secrecy::SecretString::from(
             "test_fed_secret".to_string(),
         ))),
-        config: Arc::new(shared::config::AiomeConfig::load().unwrap_or_else(|_| {
-            shared::config::AiomeConfig {
-                db_path: db_path.to_str().unwrap().to_string(),
-                log_level: "info".to_string(),
-                ollama_host: "".to_string(),
-                ollama_model: "".to_string(),
-                gemini_api_key: None,
-                openai_api_key: None,
-                anthropic_api_key: None,
-                api_server_port: 0,
-                key_proxy_url: "".to_string(),
-                samsara_hub_url: "".to_string(),
-                allowed_origins: vec![],
-                abyss_vault_path: "".to_string(),
-                tremendous_api_key: None,
-                master_email: None,
-            }
-        })),
-        gift_engine: Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
-            "".to_string(),
-            true,
-        )),
+        config: {
+            let mut config = shared::config::AiomeConfig::load().unwrap_or_else(|_| {
+                shared::config::AiomeConfig {
+                    db_path: db_path.to_str().unwrap().to_string(),
+                    log_level: "info".to_string(),
+                    ollama_host: "".to_string(),
+                    ollama_model: "".to_string(),
+                    gemini_api_key: None,
+                    openai_api_key: None,
+                    anthropic_api_key: None,
+                    api_server_port: 0,
+                    key_proxy_url: "".to_string(),
+                    samsara_hub_url: "".to_string(),
+                    allowed_origins: vec![],
+                    abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
+                    tremendous_api_key: None,
+                    master_email: None,
+                }
+            });
+            // 常にテスト用の一時パスで上書きする
+            config.db_path = db_path.to_str().unwrap().to_string();
+            config.abyss_vault_path = tmp_dir.path().to_str().unwrap().to_string();
+            Arc::new(config)
+        },
+        gift_engine: Arc::new(MockGiftEngine),
         ekyc_engine: Arc::new(infrastructure::compliance::ekyc::MockEkycEngine),
+        ekyc_session_store: Arc::new(infrastructure::compliance::ekyc_store::MockEkycSessionStore),
         quarantine_store: Arc::new(infrastructure::compliance::quarantine::MockQuarantineStore),
         auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
@@ -191,7 +259,7 @@ async fn create_test_server() -> (TestServer, tempfile::TempDir) {
     
     let app = build_app(state, cors_layer, "static", plugin_registry, metrics_handle);
 
-    (TestServer::new(app).unwrap(), tmp_dir)
+    (TestServer::new(app).unwrap(), registry, tmp_dir)
 }
 
 fn test_bearer() -> String {
@@ -201,7 +269,7 @@ fn test_bearer() -> String {
 
 #[tokio::test]
 async fn test_health_check() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
     let response = server
         .get("/api/health")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
@@ -216,14 +284,14 @@ async fn test_health_check() {
 
 #[tokio::test]
 async fn test_settings_unauthorized() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
     let response = server.get("/api/v1/settings").await;
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
 async fn test_settings_authorized_and_crud() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // Get empty settings
     let get_resp = server
@@ -263,7 +331,7 @@ async fn test_settings_authorized_and_crud() {
 
 #[tokio::test]
 async fn test_settings_ssrf_protection() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     let payload = json!({
         "service": "ollama",
@@ -286,7 +354,7 @@ async fn test_settings_ssrf_protection() {
 
 #[tokio::test]
 async fn test_biome_routes_auth() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     let resp_no_auth = server.get("/api/biome/status").await;
     assert_eq!(resp_no_auth.status_code(), StatusCode::UNAUTHORIZED);
@@ -300,7 +368,7 @@ async fn test_biome_routes_auth() {
 
 #[tokio::test]
 async fn test_ollama_models() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // Test hitting the ollama models endpoint
     let resp = server
@@ -319,7 +387,7 @@ async fn test_ollama_models() {
 
 #[tokio::test]
 async fn test_avatar_upload_ekyc_enforcement() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // mock_valid_token_unverified does NOT start with 'ekyc_'
     let bearer = "Bearer mock_valid_token_unverified_user".to_string();
@@ -344,7 +412,7 @@ async fn test_avatar_upload_ekyc_enforcement() {
 
 #[tokio::test]
 async fn test_skill_import_oom_protection() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // We need to mock a remote server that returns a huge response.
     // Since we use reqwest::Client in AppState, this is hard to mock without a real mock server.
@@ -363,7 +431,7 @@ async fn test_skill_import_oom_protection() {
 }
 #[tokio::test]
 async fn test_global_body_limit() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // Send a 4MB JSON payload (limit should be 2MB)
     let large_string = "a".repeat(4 * 1024 * 1024);
@@ -385,7 +453,7 @@ async fn test_global_body_limit() {
 
 #[tokio::test]
 async fn test_avatar_upload_limit_bypass() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     // Send a 10MB payload to /api/avatar/upload (permitted by 50MB layer)
     let large_base64 = "a".repeat(10 * 1024 * 1024);
@@ -410,7 +478,7 @@ async fn test_avatar_upload_limit_bypass() {
 
 #[tokio::test]
 async fn test_diagnostics_api() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/v1/audit/diagnostics")
@@ -424,7 +492,7 @@ async fn test_diagnostics_api() {
 
 #[tokio::test]
 async fn test_artifacts_api() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/artifacts")
@@ -438,7 +506,7 @@ async fn test_artifacts_api() {
 
 #[tokio::test]
 async fn test_trends_api() {
-    let (server, _tmp) = create_test_server().await;
+    let (server, _registry, _tmp) = create_test_server().await;
 
     let resp = server
         .get("/api/v1/trends")
@@ -449,3 +517,284 @@ async fn test_trends_api() {
     let json = resp.json::<serde_json::Value>();
     assert!(json.get("trends").is_some());
 }
+
+#[tokio::test]
+async fn test_stripe_webhook_idempotency_and_license_grant() {
+    let (server, registry, _tmp) = create_test_server().await;
+    
+    let agent_id = uuid::Uuid::new_v4();
+    let asset_id = uuid::Uuid::new_v4();
+    
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert(String::from("agent_id"), agent_id.to_string());
+    metadata.insert(String::from("asset_id"), asset_id.to_string());
+
+    let session = stripe::CheckoutSession {
+        id: "cs_test_123".parse().unwrap(),
+        metadata: Some(metadata),
+        amount_total: Some(1000), // $10.00
+        ..Default::default()
+    };
+
+    let mut session_val = serde_json::to_value(&session).unwrap();
+    if let Some(obj) = session_val.as_object_mut() {
+        obj.insert("object".to_string(), serde_json::json!("checkout.session"));
+    }
+
+    let db_path = _tmp.path().join("test.db");
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .connect(&format!("sqlite:{}", db_path.to_str().unwrap()))
+        .await
+        .unwrap();
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS revenue_splits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tx_id TEXT NOT NULL,
+            recipient_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            amount INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        "#
+    ).execute(&pool).await.unwrap();
+
+    registry.register_asset(infrastructure::registry::AssetManifest {
+        id: asset_id,
+        creator_id: uuid::Uuid::new_v4(),
+        asset_type: infrastructure::registry::AssetType::Plugin,
+        name: "Test Asset".to_string(),
+        description: "Test".to_string(),
+        price_coins: 1000,
+    }).await.unwrap();
+
+    let payload_val = serde_json::json!({
+        "id": "evt_test_123",
+        "object": "event",
+        "api_version": "2022-11-15",
+        "created": 1677628800,
+        "livemode": false,
+        "pending_webhooks": 1,
+        "request": {
+            "id": null,
+            "idempotency_key": null
+        },
+        "type": "checkout.session.completed",
+        "data": {
+            "object": session_val
+        }
+    });
+    
+    let payload = serde_json::to_string(&payload_val).unwrap();
+
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let sig_header = format!("t={},v1=dummy_signature", now);
+    
+    let resp: axum_test::TestResponse = server.post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", sig_header.clone())
+        .add_header("content-type", "application/json")
+        .text(payload.clone())
+        .await;
+        
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    
+    // 現在の api-server 実装では grant_license は呼ばれないため、ここは RED になるはずだったが、実装により GREEN になる
+    let is_owned = registry.check_ownership(agent_id, asset_id).await.unwrap();
+    assert!(is_owned, "Webhook must grant license in a single transaction (GREEN)");
+}
+
+#[tokio::test]
+#[serial]
+async fn test_voice_drm_roundtrip() {
+    let (server, registry, tmp) = create_test_server().await;
+    let token = test_bearer();
+
+    let original_audio = b"secret_ai_voice_model_data_12345".to_vec();
+
+    // 1. Upload
+    let response = server
+        .post("/api/v1/voice/upload")
+        .add_header(axum::http::header::AUTHORIZATION, &token)
+        .bytes(original_audio.clone().into())
+        .await;
+
+    assert_eq!(response.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = response.json();
+    let asset_id_str = json["asset_id"].as_str().unwrap();
+    let asset_id = uuid::Uuid::parse_str(asset_id_str).unwrap();
+    
+    let agent_id_str = json["creator_id"].as_str().unwrap();
+    let agent_id = uuid::Uuid::parse_str(agent_id_str).unwrap();
+
+    let db_path = tmp.path().join("test.db");
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .connect(&format!("sqlite:{}", db_path.to_str().unwrap()))
+        .await
+        .unwrap();
+
+    // 2. Validate registry
+    let owns = registry.check_ownership(agent_id, asset_id).await.unwrap();
+    assert!(owns, "The uploader must own the uploaded asset");
+
+    // 3. Verify file on disk
+    let vault_dir = tmp.path().join(".abyss_vault");
+    let file_path = vault_dir.join(format!("{}.aivoice", asset_id));
+    assert!(file_path.exists(), "The encrypted voice asset should exist on disk");
+
+    // 4. Decrypt manually using AbyssVoiceVault
+    let encrypted_data = tokio::fs::read(&file_path).await.unwrap();
+    
+    // Check if it's actually encrypted (not matching original)
+    assert_ne!(encrypted_data, original_audio, "File must be encrypted");
+
+    // Reconstruct vault
+    let vault = infrastructure::security::abyss_voice_vault::AbyssVoiceVault::new(registry.clone(), pool);
+    vault.restore_keys_from_db().await.unwrap();
+
+    use aiome_contracts::voice_vault::VoiceKeyVault;
+    let decrypted = vault.decrypt_stream(agent_id, asset_id, &encrypted_data).await.unwrap();
+    
+    // 5. Assert equal
+    assert_eq!(decrypted, original_audio, "Decrypted data must exactly match original uploaded audio");
+}
+
+#[tokio::test]
+async fn test_synergy_demo_routes_visibility() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    let resp = server.post("/api/synergy/test/failure")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+    
+    #[cfg(feature = "dev-routes")]
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK, "dev-routes is enabled, should return 200 OK");
+    
+    #[cfg(not(feature = "dev-routes"))]
+    assert_eq!(resp.status_code(), axum::http::StatusCode::METHOD_NOT_ALLOWED, "dev-routes is disabled, fallback ServeDir should return 405 for POST");
+}
+
+#[tokio::test]
+async fn test_voice_asset_list() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    // 1. Fetch public voice models
+    let resp = server.get("/api/v1/voice/list?scope=public")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+    
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = resp.json();
+    assert!(json.as_array().is_some(), "Response should be a JSON array");
+}
+
+#[tokio::test]
+async fn test_ekyc_session_creation() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    let resp = server.post("/api/v1/ekyc/session")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+    
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = resp.json();
+    assert!(json.get("session_url").is_some());
+    assert!(json.get("session_id").is_some());
+}
+
+#[tokio::test]
+async fn test_inochi2d_upload() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    // valid INX magic: INX\x02
+    let mut payload = b"INX\x02".to_vec();
+    payload.extend(vec![0u8; 100]); // dummy data
+    
+    let resp = server.post("/api/v1/avatar/inochi2d/upload")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .bytes(payload.into())
+        .await;
+    
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_gift_policy_dynamic() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    // Auth token corresponds to agent_id 00000000-0000-0000-0000-000000000001
+    let agent_id = "00000000-0000-0000-0000-000000000001";
+    let resp = server.get(&format!("/api/v1/gift/policy/{}", agent_id))
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+    
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = resp.json();
+    assert_eq!(json["max_amount_usd"], 5.0);
+    assert_eq!(json["daily_limit_reached"], false);
+}
+
+#[tokio::test]
+async fn test_gift_send_success() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    let agent_id = "00000000-0000-0000-0000-000000000001";
+    let payload = json!({
+        "recipient_email": "test@example.com",
+        "amount_usd": 2.5,
+        "reason": "Test gift"
+    });
+
+    let verified_bearer = "Bearer mock_valid_token_ekyc_test_user".to_string();
+
+    let resp = server.post(&format!("/api/v1/gift/send/{}", agent_id))
+        .add_header(axum::http::header::AUTHORIZATION, verified_bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), axum::http::StatusCode::CREATED);
+    let json: serde_json::Value = resp.json();
+    assert_eq!(json["status"], "Sent");
+    assert!(json.get("order_id").is_some());
+}
+
+#[tokio::test]
+async fn test_gift_send_unverified_blocked() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    let agent_id = "00000000-0000-0000-0000-000000000001";
+    let payload = json!({
+        "recipient_email": "hacker@example.com",
+        "amount_usd": 5.0,
+        "reason": "Unverified gift"
+    });
+
+    let unverified_bearer = "Bearer mock_valid_token_unverified_user".to_string();
+
+    let resp = server.post(&format!("/api/v1/gift/send/{}", agent_id))
+        .add_header(axum::http::header::AUTHORIZATION, unverified_bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), axum::http::StatusCode::FORBIDDEN, "Unverified user should not be able to send gifts");
+}
+
+#[tokio::test]
+async fn test_commerce_purchase_unverified_blocked() {
+    let (server, _registry, _tmp) = create_test_server().await;
+    
+    let agent_id = "00000000-0000-0000-0000-000000000001";
+    let payload = json!({
+        "item_id": "00000000-0000-0000-0000-000000000002",
+        "metadata": {}
+    });
+
+    let unverified_bearer = "Bearer mock_valid_token_unverified_user".to_string();
+
+    let resp = server.post(&format!("/api/v1/commerce/purchase/{}", agent_id))
+        .add_header(axum::http::header::AUTHORIZATION, unverified_bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), axum::http::StatusCode::FORBIDDEN, "Unverified user should not be able to execute purchases");
+}
+

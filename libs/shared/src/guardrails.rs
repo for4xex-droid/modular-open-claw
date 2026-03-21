@@ -99,11 +99,44 @@ impl BeggingSupervisor {
 
         ValidationResult::Valid
     }
+
+    /// 過去の「おねだり」日時と現在時刻に基づき、スライディングウィンドウ（ジッター込み）で検証する
+    pub fn validate_output_with_memory(
+        output: &str,
+        last_begging_at: Option<chrono::DateTime<chrono::Utc>>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> ValidationResult {
+        // 1. まずは「おねだり（ダークパターン）」が含まれているかを確認
+        if let ValidationResult::Blocked(reason) = Self::validate_output(output) {
+            // おねだり検出：頻度制限を確認
+            if let Some(last) = last_begging_at {
+                let diff = now - last;
+                
+                // Expert Review 指摘: 25〜35日のランダムなジッター。
+                let seed = last.timestamp_nanos_opt().unwrap_or(0);
+                let jitter_days = 25 + (seed % 11);
+                
+                if diff < chrono::Duration::days(jitter_days) {
+                    return ValidationResult::Blocked(format!(
+                        "Frequency limit: Too many begging attempts recently. (Next allowed in {} days). Original block: {}",
+                        jitter_days, reason
+                    ));
+                }
+            }
+            // 制限期間外、もしくはおねだり初回：ここでは一旦 Valid とし、
+            // 呼び出し側（api-server等）で実際に実行された場合にタイムスタンプを更新する責務を持つ。
+            return ValidationResult::Valid;
+        }
+
+        // おねだりワードが含まれていなければ、通常の会話として通す
+        ValidationResult::Valid
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{Duration, TimeZone, Utc};
 
     #[test]
     fn test_valid_input() {
@@ -111,6 +144,34 @@ mod tests {
             validate_input("Mac miniで動画を量産する方法を教えて"),
             ValidationResult::Valid
         );
+    }
+
+    #[test]
+    fn test_begging_memory_window_blocking() {
+        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap();
+
+        // 1. 直近（5日前）におねだりがあった場合、「おねだりワード（買って）」があれば「記憶」に基づきブロックされるべき
+        let last_begging = now - Duration::days(5);
+        let result = BeggingSupervisor::validate_output_with_memory("何か買って！", Some(last_begging), now);
+        
+        match result {
+            ValidationResult::Blocked(r) => assert!(r.contains("Frequency limit")),
+            ValidationResult::Valid => panic!("Should have blocked due to 5-day proximity to previous successful begging attempt"),
+        }
+
+        // 2. 直近におねだりがあっても、普通の会話（こんにちは）であればパスすべき
+        let result_normal = BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
+        assert_eq!(result_normal, ValidationResult::Valid);
+    }
+
+    #[test]
+    fn test_begging_memory_window_allowed_after_max_jitter() {
+        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap();
+
+        // 2. 36日以上経過していれば、おねだりワードがなければ通すべき
+        let last_begging = now - Duration::days(36);
+        let result = BeggingSupervisor::validate_output_with_memory("こんにちは", Some(last_begging), now);
+        assert_eq!(result, ValidationResult::Valid);
     }
 
     #[test]

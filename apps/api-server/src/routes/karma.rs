@@ -40,6 +40,7 @@ pub async fn get_karma_stream(
     ),
     security(("api_key" = []))
 )]
+#[cfg(feature = "dev-routes")]
 pub async fn trigger_failure_demo(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
@@ -99,6 +100,7 @@ pub async fn trigger_failure_demo(
     ),
     security(("api_key" = []))
 )]
+#[cfg(feature = "dev-routes")]
 pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",
@@ -120,6 +122,7 @@ pub async fn trigger_security_demo(_auth: crate::auth::Authenticated) -> Result<
     ),
     security(("api_key" = []))
 )]
+#[cfg(feature = "dev-routes")]
 pub async fn trigger_federation_demo(_auth: crate::auth::Authenticated) -> Result<Json<serde_json::Value>, AppError> {
     Ok(Json(serde_json::json!({
         "status": "success",

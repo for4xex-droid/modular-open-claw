@@ -20,6 +20,7 @@ use tracing::warn;
 /// Requires `AppState` as the Router state type.
 pub struct Authenticated {
     pub agent_id: uuid::Uuid,
+    pub ekyc_verified: bool,
 }
 
 #[async_trait]
@@ -54,6 +55,7 @@ impl FromRequestParts<crate::AppState> for Authenticated {
                 
                 Ok(Authenticated {
                     agent_id: claims.agent_id,
+                    ekyc_verified: claims.ekyc_verified,
                 })
             }
             Err(e) => {

@@ -23,6 +23,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug, Deserialize)]
 struct ProxyRequest {
     caller_id: String,
@@ -37,11 +40,11 @@ struct ProxyResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct QuotaState {
-    total_calls: u64,
-    last_reset_day: u32, // Day of the year
+pub(crate) struct QuotaState {
+    pub(crate) total_calls: u64,
+    pub(crate) last_reset_day: u32, // Day of the year
     #[serde(default)]
-    per_caller_calls: std::collections::HashMap<String, u64>,
+    pub(crate) per_caller_calls: std::collections::HashMap<String, u64>,
 }
 
 impl Default for QuotaState {
@@ -57,14 +60,14 @@ impl Default for QuotaState {
 use std::collections::HashMap;
 
 #[derive(Clone)]
-struct AppState {
-    gemini_key: Arc<SecretString>,
-    vault_secret: Arc<SecretString>,
-    client: reqwest::Client,
-    state: Arc<RwLock<QuotaState>>,
+pub(crate) struct AppState {
+    pub(crate) gemini_key: Arc<SecretString>,
+    pub(crate) vault_secret: Arc<SecretString>,
+    pub(crate) client: reqwest::Client,
+    pub(crate) state: Arc<RwLock<QuotaState>>,
     pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
-    persistence_path: PathBuf,
-    caller_quotas: Arc<HashMap<String, u64>>,
+    pub(crate) persistence_path: PathBuf,
+    pub(crate) caller_quotas: Arc<HashMap<String, u64>>,
 }
 
 #[tokio::main]
@@ -234,7 +237,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn auth_middleware(
+pub(crate) async fn auth_middleware(
     State(state): State<AppState>,
     req: axum::http::Request<axum::body::Body>,
     next: axum::middleware::Next,
@@ -277,7 +280,7 @@ async fn auth_middleware(
     }
 }
 
-async fn handle_llm_complete(
+pub(crate) async fn handle_llm_complete(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
@@ -356,7 +359,7 @@ struct EmbedResponse {
     embedding: Vec<f32>,
 }
 
-async fn handle_llm_embed(
+pub(crate) async fn handle_llm_embed(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
@@ -421,7 +424,7 @@ async fn handle_llm_embed(
     }
 }
 
-async fn handle_llm_stream(
+pub(crate) async fn handle_llm_stream(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {

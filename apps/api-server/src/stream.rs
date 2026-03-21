@@ -147,6 +147,8 @@ pub async fn trigger_agent_chat_stream(
         }
 
         let soul_snapshot = state.soul_store.get_snapshot().await;
+        // Load actual soul from store to get last_begging_at memory
+        let mut soul = state.soul_store.load_soul("system-soul").await.unwrap_or_default().unwrap_or_else(|| soul::AgentSoul::new("system-soul".to_string()));
 
         let system_instructions = build_system_instructions(
             &state,
@@ -174,10 +176,11 @@ pub async fn trigger_agent_chat_stream(
             yield Ok(Event::default().event("turn_start").data(turn.to_string()));
 
             // Security Layer: Enforce semaphore even for SSE to prevent GPU OOM
-            let _permit = match timeout(Duration::from_secs(30), state.llm_semaphore.acquire()).await {
+            // Phase 15.1: 10s timeout for VRAM arbitration
+            let _permit = match timeout(Duration::from_secs(10), state.llm_semaphore.acquire()).await {
                 Ok(Ok(p)) => p,
                 _ => {
-                    yield Ok(Event::default().event("error").data("System busy (LLM capacity reached). Please try again later."));
+                    yield Ok(Event::default().event("error").data("System busy: VRAM resource contention. Please try again in 10-30 seconds."));
                     return;
                 }
             };
@@ -217,6 +220,27 @@ pub async fn trigger_agent_chat_stream(
 
                 if !is_tool_call_mode && !buffer.is_empty() {
                     yield Ok(Event::default().event("text").data(&buffer));
+                }
+
+                // Phase 15.1: Begging Control with Memory
+                use shared::guardrails::{BeggingSupervisor, ValidationResult};
+                let now = chrono::Utc::now();
+                match BeggingSupervisor::validate_output_with_memory(&full_reply, soul.last_begging_at, now) {
+                    ValidationResult::Blocked(reason) => {
+                        tracing::warn!("🛡️ [Guardrail] Begging blocked: {}", reason);
+                        yield Ok(Event::default().event("error").data(format!("🚨 [SECURITY BLOCK] {}", reason)));
+                        break; // Stop turns
+                    }
+                    ValidationResult::Valid => {
+                        // Check if it WAS a begging attempt that we allowed (implied by validate_output check)
+                        if let ValidationResult::Blocked(_) = BeggingSupervisor::validate_output(&full_reply) {
+                            tracing::info!("🎁 [Guardrail] Begging allowed (First time or outside window). Updating memory.");
+                            soul.last_begging_at = Some(now);
+                            if let Err(e) = state.soul_store.save_soul(&soul).await {
+                                tracing::error!("🚨 Failed to update soul last_begging_at memory: {:?}", e);
+                            }
+                        }
+                    }
                 }
 
                 let calls = parse_tool_calls(&full_reply);
@@ -403,10 +427,26 @@ pub async fn trigger_system_vitality_stream(
                         if let Ok(exprs) = state.job_queue.fetch_expressions(1).await {
                             if let Some(latest) = exprs.first() {
                                 if Some(latest.id.clone()) != last_expression_id {
+                                    let resonance = stats.resonance as f32 / 100.0; // 0.0 - 1.0
+                                    let mut physics_override = if latest.emotion == "excited" || latest.emotion == "aggressive" {
+                                        1.2 + resonance * 0.3
+                                    } else if latest.emotion == "sad" || latest.emotion == "tired" {
+                                        0.5 + resonance * 0.2
+                                    } else {
+                                        1.0 + resonance * 0.1
+                                    };
+
+                                    // Phase 14c: Resonance Boost (Level 80+)
+                                    if stats.resonance >= 80 {
+                                        physics_override *= 1.5;
+                                        info!("🔥 [Inochi2D] Resonance Boost active! Physics x1.5");
+                                    }
+
                                     let mut payload = serde_json::json!({
                                         "id": latest.id,
                                         "emotion": latest.emotion,
                                         "content": latest.content,
+                                        "physics_override": Some(physics_override),
                                     });
                                     if let Some(ref params) = latest.avatar_params {
                                         payload["avatar_params"] = params.clone();

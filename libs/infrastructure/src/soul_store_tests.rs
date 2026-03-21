@@ -57,4 +57,29 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_begging_persistence_roundtrip() -> Result<(), AiomeError> {
+        use chrono::{TimeZone, Utc};
+        let pool = setup_db().await;
+        let store = SqliteSoulStore::new(Arc::new(pool));
+
+        let mut soul = AgentSoul::new("test-agent-begging".to_string());
+        // SQLite text precision typically ignores nano-seconds in simple ISO strings, so we use s precision
+        let begging_time = Utc.with_ymd_and_hms(2026, 3, 21, 10, 30, 0).unwrap();
+        soul.last_begging_at = Some(begging_time);
+
+        // Save
+        store.save_soul(&soul).await?;
+
+        // Load
+        let loaded = store
+            .load_soul("test-agent-begging")
+            .await?
+            .expect("Soul not found");
+
+        assert_eq!(loaded.last_begging_at, Some(begging_time));
+
+        Ok(())
+    }
 }

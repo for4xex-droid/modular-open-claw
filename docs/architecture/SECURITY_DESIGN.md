@@ -35,13 +35,17 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 12 | **CSAM / Binary Contamination** | **Malicious Binary CRDT/P2P** | 🔴 High | **Protocol Asset Filter + 3-Layer Defense (eKYC, Hash, 5.5-Head) (Phase 8.1)** |
 | 13 | **Session Hijacking / Weak Auth** | **Bearer Token Brute Force / Static IDs** | 🔴 High | **OAuth 2.1 / JWT AuthManager + extension-based User Extractors (Phase 8.2)** |
 | 14 | **Global API DoS / OOM** | **Oversized Request Body (Global)** | 🟡 Mid | **Global 2MB Limit (RequestBodyLimitLayer) + 50MB Avatar Bypass (Phase 8.6)** |
+| 15 | **Stripe API Key Leak / Null** | **Empty key in Release build** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 14)** |
+| 16 | **Unauthorized Economic Activity** | **Unverified users sending gifts/buying** | 🔴 High | **Mandatory eKYC Verified Claim Enforcement (403 Forbidden) (Phase 16)** |
+| 17 | **Revenue Split Inconsistency** | **License grant without accounting** | 🔴 High | **Atomic Transaction: RevenueSplitter + License Grant (Phase 16)** |
+| 18 | **Persistent Env Var Secrets** | **Secrets visible in /proc/pid/environ** | 🔴 High | **Immediate std::env::remove_var (Zeroize) after Startup Load (Phase 16)** |
 
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
 - Detects prompt injections and command injections.
 - Sanitizes control characters and enforces length limits.
-- **Binary/CSAM Blocking (Phase 7.1 & 8.1)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (against illegal CSAM blacklists), and 3) Skeletal Proportion Rules (5.5-head ratio to prevent child-like models). Non-compliant assets are actively quarantined and their metadata is persistently stored in the `QuarantineStore` (SQLite) to prevent bypasses and facilitate audits.
+- **Binary/CSAM Blocking (Phase 7.1 & 8.1)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (against illegal CSAM blacklists), and 3) Skeletal Proportion Rules (5.5-head ratio to prevent child-like models). Non-compliant assets are actively quarantined and their metadata is persistently stored in the `QuarantineStore` (SQLite) to prevent bypasses and facilitate audits. **Phase 14** adds **EKYC Session Persistence** via SQLite, ensuring continuous verification state across server restarts.
 - **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
@@ -89,8 +93,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-20*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 8.8 Completion)*
+*Last Mutated: 2026-03-21*
+*Managed by: Aiome Sovereign Task Force (Ref: Phase 16 Completion)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -108,3 +112,9 @@ Within milliseconds of startup, the vault reads the API keys from environment va
 
 ### 6.4 SSRF & Routing Lockdown
 Endpoints are hardcoded in the vault's source code. The proxy ignores arbitrary URLs from the agent and only routes to official provider endpoints (e.g., Google, OpenAI), making SSRF (Server-Side Request Forgery) structurally impossible.
+
+### 6.5 Key Hierarchy (Phase 11)
+The Voice DRM and future encrypted assets rely on a strict key hierarchy:
+1. **Master Key (`VAULT_MASTER_KEY`)**: A symmetric 256-bit AES key, provided via environment variable, representing the root of trust. Cached securely in memory via `OnceCell` to minimize environmental reads and securely zeroized.
+2. **Asset Data Keys (DEK)**: A unique 256-bit symmetric key is randomly generated per uploaded asset (e.g. Voice Models) for AES-256-GCM.
+3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.

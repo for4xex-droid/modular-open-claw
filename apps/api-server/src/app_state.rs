@@ -24,8 +24,12 @@ use infrastructure::auth::AuthManager;
 use shared::health::HealthMonitor;
 use shared::config::AiomeConfig;
 use shared::security::SecurityPolicy;
+use infrastructure::security::VoiceCoreDrm;
+use infrastructure::registry::RegistryManager;
 use shared::watchtower::CoreEvent;
 use aiome_contracts::commerce::GiftEngine;
+
+use infrastructure::compliance::ekyc_store::EkycSessionStore;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -59,7 +63,10 @@ pub struct AppState {
     pub config: Arc<AiomeConfig>,
     pub gift_engine: Arc<dyn GiftEngine>,
     pub ekyc_engine: Arc<dyn EkycEngine>,
+    pub ekyc_session_store: Arc<dyn EkycSessionStore>,
     pub quarantine_store: Arc<dyn QuarantineStore>,
     pub auth_manager: Arc<dyn AuthManager>,
     pub system_agent_id: uuid::Uuid,
+    pub voice_drm: Arc<VoiceCoreDrm>,
+    pub registry: Arc<RegistryManager>,
 }

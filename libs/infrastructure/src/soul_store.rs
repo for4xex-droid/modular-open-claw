@@ -93,8 +93,8 @@ impl SqliteSoulStore {
                 id, generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model, lora_hash, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                lora_adapter_path, lora_base_model, lora_hash, last_begging_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
                 generation=excluded.generation,
                 soul_hash=excluded.soul_hash,
@@ -108,6 +108,7 @@ impl SqliteSoulStore {
                 lora_adapter_path=excluded.lora_adapter_path,
                 lora_base_model=excluded.lora_base_model,
                 lora_hash=excluded.lora_hash,
+                last_begging_at=excluded.last_begging_at,
                 updated_at=datetime('now')
             "#,
         )
@@ -124,6 +125,7 @@ impl SqliteSoulStore {
         .bind(&soul.lora_adapter_path)
         .bind(&soul.lora_base_model)
         .bind(&soul.lora_hash)
+        .bind(soul.last_begging_at)
         .execute(&*self.pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
@@ -178,7 +180,7 @@ impl SqliteSoulStore {
                 generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model, lora_hash
+                lora_adapter_path, lora_base_model, lora_hash, last_begging_at
             FROM agent_souls
             WHERE id = ?
             "#,
@@ -240,6 +242,7 @@ impl SqliteSoulStore {
                 lora_adapter_path: r.get("lora_adapter_path"),
                 lora_base_model: r.get("lora_base_model"),
                 lora_hash: r.get("lora_hash"), // Phase 10.1b
+                last_begging_at: r.get("last_begging_at"),
             };
 
             // RS-1: Update cache on explicit load
