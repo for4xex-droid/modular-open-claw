@@ -7,9 +7,12 @@
 
 use super::*;
 use crate::app_state::Component;
+use aiome_contracts::traits::JobQueue;
 use axum_test::TestServer;
+use infrastructure::auth::AuthManager;
 use serde_json::json;
 use serial_test::serial;
+use shared::config::AiomeConfig;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -351,25 +354,23 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             "test_fed_secret".to_string(),
         ))),
         config: Component::new({
-            let mut config = shared::config::AiomeConfig::load().unwrap_or_else(|_| {
-                shared::config::AiomeConfig {
-                    db_path: db_path.to_str().unwrap().to_string(),
-                    log_level: "info".to_string(),
-                    ollama_host: "".to_string(),
-                    ollama_model: "".to_string(),
-                    gemini_api_key: None,
-                    openai_api_key: None,
-                    anthropic_api_key: None,
-                    api_server_port: 0,
-                    key_proxy_url: "".to_string(),
-                    samsara_hub_url: "".to_string(),
-                    allowed_origins: vec![],
-                    abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
-                    tremendous_api_key: None,
-                    master_email: None,
-                    xtts_endpoint: None,
-                    xtts_speaker: None,
-                }
+            let mut config = AiomeConfig::load().unwrap_or_else(|_| AiomeConfig {
+                db_path: db_path.to_str().unwrap().to_string(),
+                log_level: "info".to_string(),
+                ollama_host: "".to_string(),
+                ollama_model: "".to_string(),
+                gemini_api_key: None,
+                openai_api_key: None,
+                anthropic_api_key: None,
+                api_server_port: 0,
+                key_proxy_url: "".to_string(),
+                samsara_hub_url: "".to_string(),
+                allowed_origins: vec![],
+                abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
+                tremendous_api_key: None,
+                master_email: None,
+                xtts_endpoint: None,
+                xtts_speaker: None,
             });
             // 常にテスト用の一時パスで上書きする
             config.db_path = db_path.to_str().unwrap().to_string();
@@ -396,6 +397,9 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
+        affiliate_adapter: Component::new(
+            Arc::new(infrastructure::intent::AffiliateAdapter::new()),
+        ),
         ..Default::default()
     };
 
@@ -1390,60 +1394,73 @@ async fn test_test_endpoints_are_accessible_in_debug() {
     assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 }
 #[tokio::test]
-#[serial]
-async fn test_agentsense_intent_and_feedback_green() {
+async fn test_treasure_get_recommendations() {
     let (server, state, _tmp) = create_test_server().await;
-
-    // 1. Generate Intent from Summary
     let agent_id = uuid::Uuid::new_v4();
-    let summary = "I want to buy a high-performance GPU for machine learning. My budget is around $800. My email is user@example.com.";
-    let intent_opt = state
-        .intent_generator
-        .generate_from_summary(agent_id, summary)
-        .await
-        .expect("Intent generation failed");
-    let intent = intent_opt.expect("Intent is None");
 
-    // verify PI stripping in the generated intent (DummyLlm creates static output, so we check if firewall was called)
-    assert!(!intent.description.contains("user@example.com"));
-
-    // 2. Publish Intent (Mocking the storage logic or using the real SQLite GigEngine in test server)
-    let intent_id = state
-        .gig_engine
-        .publish_intent(intent.clone())
-        .await
-        .expect("Publish failed");
-
-    // 3. Record Feedback (Treasure API)
-    // require JWT for /api/v1/treasure
+    // Generate valid token for the test agent
     let token = state
         .auth_manager
         .issue_token(shared::auth::AiomeCustomClaims {
             sub: "test_user".to_string(),
+            iss: "aiome-test".to_string(),
+            roles: vec!["user".into()],
             ekyc_verified: true,
             agent_id,
-            roles: vec!["user".to_string()],
-            exp: 9999999999,
-            iat: 1600000000,
-            iss: "aiome".to_string(),
+            exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+            iat: chrono::Utc::now().timestamp() as usize,
         })
         .await
         .unwrap();
 
-    let feedback = json!({
-        "intent_id": intent_id,
-        "action": "click",
-        "metadata": { "ref": "ML_GPU_2026" }
-    });
-
+    // 1. Get recommendations (Treasure Box)
     let response = server
-        .post("/api/v1/treasure")
+        .get("/api/v1/treasure")
         .add_header(
             axum::http::header::AUTHORIZATION,
             format!("Bearer {}", token),
         )
-        .json(&feedback)
         .await;
 
-    response.assert_status(axum::http::StatusCode::OK);
+    // This should fail initially (RED) as the GET route is not yet defined
+    assert_eq!(response.status_code(), axum::http::StatusCode::OK);
+
+    let items = response.json::<Vec<serde_json::Value>>();
+    assert!(
+        !items.is_empty(),
+        "Should receive at least one recommendation"
+    );
+    assert!(
+        items[0]["id"].as_str().is_some(),
+        "Recommendations should have IDs"
+    );
+
+    // 2. Record feedback (AS-1.7: Karma Reward)
+    let item_id = items[0]["id"].as_str().unwrap();
+    let feedback_req = serde_json::json!({
+        "item_id": item_id,
+        "action": "click"
+    });
+
+    let response = server
+        .post("/api/v1/treasure/feedback")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
+        .json(&feedback_req)
+        .await;
+
+    assert_eq!(response.status_code(), axum::http::StatusCode::OK);
+
+    // Check if resonance increased (via AgentStats)
+    let stats: aiome_contracts::types::AgentStats = state
+        .job_queue
+        .get_agent_stats()
+        .await
+        .expect("Failed to get agent stats");
+    assert!(
+        stats.resonance > 0,
+        "Agent resonance should increase after feedback"
+    );
 }

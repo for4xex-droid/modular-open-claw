@@ -6,20 +6,66 @@
 use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
+use aiome_contracts::traits::JobQueue;
+use aiome_contracts::treasure::{TreasureFeedback, TreasureItem};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
     Extension, Json,
 };
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct TreasureFeedback {
-    pub intent_id: Uuid,
-    pub action: String, // "view", "click"
-    pub metadata: Option<serde_json::Value>,
+/// [GET] /api/v1/treasure
+#[utoipa::path(
+    get,
+    path = "/api/v1/treasure",
+    responses(
+        (status = 200, description = "List of current recommendations", body = Vec<TreasureItem>),
+        (status = 401, description = "Unauthorized access")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_treasure(
+    State(state): State<AppState>,
+    Extension(AuthenticatedUser(claims)): Extension<AuthenticatedUser>,
+) -> Result<impl IntoResponse, AppError> {
+    // 1. Generate Intent (AS-1.1 - 1.2)
+    let intent_gen = state.intent_generator.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Intent Generator not enabled".into(),
+        }
+    })?;
+
+    // In a real scenario, we'd fetch actual context.
+    // Here we use the agent's ID to fetch its "Recent desires"
+    let intent = intent_gen.generate_for_agent(claims.agent_id).await?;
+
+    // 2. Fetch recommendations via AffiliateAdapter (AS-1.3)
+    let adapter = state.affiliate_adapter.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Affiliate Adapter not enabled".into(),
+        }
+    })?;
+
+    let bids: Vec<aiome_contracts::gig::GigBid> = adapter.fetch_bids_for_intent(&intent).await?;
+
+    // 3. Map to TreasureItems
+    let items: Vec<TreasureItem> = bids
+        .into_iter()
+        .map(|bid| TreasureItem {
+            id: bid.id,
+            title: format!("Recommended for {}", intent.description),
+            description: "High quality recommendation based on your needs.".into(),
+            url: "https://example.com/item".into(),
+            price_coins: Some(bid.price_coins),
+            category: "Product".into(),
+            score: 0.85,
+            disclosure_label: "AI推薦 / 広告".into(),
+        })
+        .collect();
+
+    Ok(Json(items))
 }
 
 /// [POST] /api/v1/treasure
@@ -38,16 +84,27 @@ pub async fn record_feedback(
     Extension(AuthenticatedUser(claims)): Extension<AuthenticatedUser>,
     Json(feedback): Json<TreasureFeedback>,
 ) -> Result<impl IntoResponse, AppError> {
-    // AS-1: AgentSense Feedback Processing
-    // In AS-1, we just log this for now (and maybe reward karma)
+    // AS-1.7: AgentSense Feedback & Karma Reward
     tracing::info!(
         "💰 [Treasure] Feedback from {}: {} on {}",
         claims.agent_id,
         feedback.action,
-        feedback.intent_id
+        feedback.item_id
     );
 
-    // TODO: Implement Karma rewarding logic here
+    // Reward Karma if action is "buy" or "click"
+    if feedback.action == "click" || feedback.action == "buy" {
+        let job_queue = state.job_queue.as_opt().ok_or_else(|| {
+            aiome_core::error::AiomeError::Infrastructure {
+                reason: "Job Queue not enabled".into(),
+            }
+        })?;
+
+        let weight = if feedback.action == "buy" { 10 } else { 1 };
+        job_queue.add_resonance(weight).await?;
+
+        tracing::info!("⭐ [Treasure] Rewarded {} Resonance to agent", weight);
+    }
 
     Ok(StatusCode::OK)
 }

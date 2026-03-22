@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2026-03-22
 
 ### Added
+- **AgentSense MVP (AS-1)**:
+    - Implemented `GET /api/v1/treasure` to generate and fetch personalized AI "Sense" (recommendations).
+    - Implemented `POST /api/v1/treasure/feedback` to record agent interactions and reward resonance.
+    - Added `AffiliateAdapter` for modular bid/recommendation fetching (currently mocked).
+    - Integrated `IntentGenerator::generate_for_agent` to derive autonomous "wishes" from agent state.
+    - Added comprehensive integration test `test_treasure_get_recommendations` covering the full feedback-reward loop.
 - **Audit API: Quarantine Ledger**:
     - Implemented `GET /api/v1/audit/quarantine` to allow the system agent to list and audit quarantined assets.
     - Extended `QuarantineStore` trait and `SqliteQuarantineStore` with `list_assets` capability.

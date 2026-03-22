@@ -7,6 +7,7 @@
 
 /// アフィリエイトアダプターモジュール
 pub mod affiliate_adapter;
+pub use affiliate_adapter::AffiliateAdapter;
 
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::gig::{AcceptanceCriteria, GigIntent, IntentCategory};
@@ -104,6 +105,30 @@ impl IntentGenerator {
             category,
             deadline: chrono::Utc::now() + chrono::Duration::days(1),
         }))
+    }
+
+    /// エージェントの状態からインテントを生成する (AS-1.1: AgentSense)
+    pub async fn generate_for_agent(&self, agent_id: Uuid) -> Result<GigIntent, AiomeError> {
+        info!(
+            "🧬 [IntentGenerator] Generating Sense for agent: {}",
+            agent_id
+        );
+
+        // MVP: モックインテントを生成。
+        // フェーズが進むとエージェントの現在地や課題、流行りを踏まえたリアルな「欲」を生成する。
+        Ok(GigIntent {
+            id: Uuid::new_v4(),
+            requester_id: agent_id,
+            description: "エージェントの自律成長を加速させるためのツール/学習リソース".into(),
+            criteria: vec![AcceptanceCriteria::OracleJudge {
+                rubric_prompt: "Check if the item is useful for AI growth.".into(),
+                min_score: 0.7,
+                model: None,
+            }],
+            max_budget_coins: 100,
+            category: IntentCategory::Tool,
+            deadline: chrono::Utc::now() + chrono::Duration::days(7),
+        })
     }
 }
 

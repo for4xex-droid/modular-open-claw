@@ -249,3 +249,29 @@ graph TD
     I[SqliteGigEngine] -->|Path Validation| J[PathSandbox]
     J -->|Jail| K[ARTIFACT_ROOT]
 ```
+
+### 💎 AgentSense MVP (Phase 24)
+- **変更内容**: 
+    - `treasure.rs`: `TreasureItem`, `TreasureFeedback` 定義。`get_treasure`, `record_feedback` ハンドラ実装。
+    - `affiliate_adapter.rs`: `AffiliateAdapter` 新設（アフィリエイト/ギグ案件の取得抽象化）。
+    - `intent/mod.rs`: `IntentGenerator::generate_for_agent` 実装 (AgentSense 生成ロジック)。
+    - `app_state.rs`: `affiliate_adapter` コンポーネントの追加。
+    - `router.rs`: `/api/v1/treasure` 系のルート登録と JWT 認証適用。
+- **波及効果**: 
+    - エージェントが自身の状態（Resonance）に基づいたパーソナライズされた案件（宝箱）を受け取ることが可能になる。
+    - ユーザー（またはエージェント自身）のインタラクションが Resonance（カルマ/レゾナンス）として還元され、エージェントの成長サイクルが循環する。
+    - `api_integration_tests.rs`: 推薦取得 〜 フィードバック送信 〜 報酬還元のフルループ E2E テストが追加。
+
+```mermaid
+graph TD
+    A[IntentGenerator] -->|Generate Sense| B[GigIntent]
+    B -->|Fetch Bids| C[AffiliateAdapter]
+    C -->|Recommend| D[TreasureItem]
+    D -->|GET /api/v1/treasure| E[Frontend / Agent]
+    E -->|POST feedback| F[record_feedback]
+    F -->|Reward| G[JobQueue::add_resonance]
+    G -->|Update| H[AgentStats]
+```
+
+---
+*最終更新日: 2026-03-22* (AgentSense MVP Integration)

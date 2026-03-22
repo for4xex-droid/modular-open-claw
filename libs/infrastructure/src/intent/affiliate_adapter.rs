@@ -27,6 +27,27 @@ impl AffiliateAdapter {
         }
     }
 
+    /// インテントに基づき、商品/広告の入札 (GigBid) を取得する (AS-1.3)
+    pub async fn fetch_bids_for_intent(
+        &self,
+        intent: &aiome_contracts::gig::GigIntent,
+    ) -> Result<Vec<aiome_contracts::gig::GigBid>, AiomeError> {
+        info!("🏷️ [Affiliate] Searching items for: {}", intent.description);
+
+        // AS-1.3: 実効的なアダプター実装（モック）
+        // 実際には各アフィリエイトAPIを叩き、商品の詳細を取得して GigBid に変換する
+        let mock_bid = aiome_contracts::gig::GigBid {
+            id: uuid::Uuid::new_v4(),
+            intent_id: intent.id,
+            bidder_id: uuid::Uuid::nil(), // システム自身またはアフィリエイトプロバイダのID
+            price_coins: 10,
+            est_duration_sec: 0,
+            deposit_amount: 0,
+        };
+
+        Ok(vec![mock_bid])
+    }
+
     /// URLが許可リストにあるかチェックする (QW-1: SSRF対策)
     pub fn validate_url(&self, url: &str) -> Result<(), AiomeError> {
         let parsed = url::Url::parse(url).map_err(|_| AiomeError::Infrastructure {

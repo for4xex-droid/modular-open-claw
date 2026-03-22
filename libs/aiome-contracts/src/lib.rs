@@ -19,6 +19,7 @@ pub mod plugin;
 pub mod security;
 pub mod traits;
 pub mod trajectory;
+pub mod treasure;
 pub mod types;
 pub mod voice_vault;
 
@@ -34,5 +35,6 @@ pub use plugin::*;
 pub use security::*;
 pub use traits::*;
 pub use trajectory::*;
+pub use treasure::*;
 pub use types::*;
 pub use voice_vault::*;

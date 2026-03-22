@@ -404,14 +404,15 @@ pub fn build_app(
                     .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)),
             ),
         )
-        .route(
+        .nest(
             "/api/v1/treasure",
-            axum::routing::post(routes::treasure::record_feedback).route_layer(
-                axum::middleware::from_fn_with_state(
+            Router::new()
+                .route("/", get(routes::treasure::get_treasure))
+                .route("/feedback", post(routes::treasure::record_feedback))
+                .route_layer(axum::middleware::from_fn_with_state(
                     state.clone(),
                     crate::auth::jwt_auth_middleware,
-                ),
-            ),
+                )),
         )
         .layer(axum::extract::DefaultBodyLimit::disable());
 

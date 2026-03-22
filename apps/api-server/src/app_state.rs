@@ -105,4 +105,5 @@ pub struct AppState {
     pub gig_engine: Component<Arc<dyn aiome_contracts::gig::GigEngine>>,
     pub intent_generator: Component<Arc<infrastructure::intent::IntentGenerator>>,
     pub intent_firewall: Component<Arc<infrastructure::intent::IntentFirewall>>,
+    pub affiliate_adapter: Component<Arc<infrastructure::intent::AffiliateAdapter>>,
 }

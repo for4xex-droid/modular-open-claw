@@ -426,6 +426,9 @@ async fn main() {
         registry: Component::new(registry),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
+        affiliate_adapter: Component::new(
+            Arc::new(infrastructure::intent::AffiliateAdapter::new()),
+        ),
     };
 
     let cors_layer = CorsLayer::new()
