@@ -1264,6 +1264,7 @@ async fn test_gig_lifecycle() {
             }
         ],
         "max_budget_coins": 100,
+        "category": "Other",
         "deadline": (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339()
     });
 

@@ -2122,9 +2122,13 @@
           "description",
           "criteria",
           "max_budget_coins",
+          "category",
           "deadline"
         ],
         "properties": {
+          "category": {
+            "$ref": "#/components/schemas/IntentCategory"
+          },
           "criteria": {
             "type": "array",
             "items": {
@@ -2282,6 +2286,17 @@
             "type": "string"
           }
         }
+      },
+      "IntentCategory": {
+        "type": "string",
+        "description": "インテントカテゴリ（AgentSense 用）",
+        "enum": [
+          "Learning",
+          "Tool",
+          "Service",
+          "Content",
+          "Other"
+        ]
       },
       "KarmaFeedbackRequest": {
         "type": "object",
