@@ -167,7 +167,7 @@ def generate_architecture():
         out += "```\n\n"
         
     out += "---\n"
-    out += f"*Last Auto-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}*\n"
+    out += f"*Last Auto-Generated: {datetime.now().strftime('%Y-%m-%d UTC')}*\n"
 
     with open(arch_file, 'w', encoding='utf-8') as f:
         f.write(out)
