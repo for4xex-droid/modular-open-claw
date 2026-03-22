@@ -60,6 +60,8 @@ stripe = { version = "0.41", package = "async-stripe", features = ["runtime-toki
 hkdf = "0.12"
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
+url = "2.5"
+html-escape = "0.2"
 
 [workspace.lints.clippy]
 unwrap_used = "warn"

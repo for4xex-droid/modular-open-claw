@@ -6,8 +6,8 @@
  */
 
 pub mod agent;
-pub mod auth;
 pub mod artifacts;
+pub mod auth;
 pub mod avatar;
 pub mod biome;
 pub mod commerce;
@@ -16,11 +16,12 @@ pub mod ekyc;
 pub mod expression;
 pub mod general;
 pub mod gift;
+pub mod gig;
 pub mod inochi2d;
 pub mod karma;
 pub mod settings;
 pub mod skill;
 pub mod soul;
+pub mod treasure;
 pub mod voice;
 pub mod watchtower;
-pub mod gig;

@@ -7,7 +7,16 @@ use uuid::Uuid;
 
 /// AI 受発注（Gig Economy）プロトコル：ステータス遷移
 #[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, strum::Display, strum::EnumString, ToSchema
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    strum::Display,
+    strum::EnumString,
+    ToSchema,
 )]
 pub enum GigOrderStatus {
     Open,       // Intent公開中：入札待ち
@@ -20,6 +29,27 @@ pub enum GigOrderStatus {
     Disputed,   // 紛争中：要人間介入
     Completed,  // 完了：報酬分配済
     Cancelled,  // キャンセル：エスクロー返金
+}
+
+/// インテントカテゴリ（AgentSense 用）
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    strum::Display,
+    strum::EnumString,
+    ToSchema,
+)]
+pub enum IntentCategory {
+    Learning, // 学習用データ
+    Tool,     // ツール作成
+    Service,  // サービス代行
+    Content,  // コンテンツ生成
+    Other,    // その他
 }
 
 /// 納品検収基準（The Immutable Gateway の審査エンジン）
@@ -50,6 +80,7 @@ pub struct GigIntent {
     pub description: String,
     pub criteria: Vec<AcceptanceCriteria>,
     pub max_budget_coins: u64,
+    pub category: IntentCategory,
     #[schema(value_type = String)]
     pub deadline: DateTime<Utc>,
 }

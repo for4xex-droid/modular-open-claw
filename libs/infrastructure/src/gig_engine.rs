@@ -1,7 +1,8 @@
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::gig::{
-    AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, VerificationResult,
+    AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, IntentCategory,
+    VerificationResult,
 };
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -10,8 +11,8 @@ use uuid::Uuid;
 
 use aiome_contracts::llm::LlmProvider;
 
-use std::path::PathBuf;
 use shared::sandbox::PathSandbox;
+use std::path::PathBuf;
 
 /// SQLite をバックエンドとする GigEngine 実装
 pub struct SqliteGigEngine {
@@ -52,14 +53,15 @@ impl GigEngine for SqliteGigEngine {
             })?;
 
         sqlx::query(
-            "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, deadline, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'Open')"
+            "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')"
         )
         .bind(intent.id.to_string())
         .bind(intent.requester_id.to_string())
         .bind(intent.description)
         .bind(criteria_json)
         .bind(intent.max_budget_coins as i64)
+        .bind(intent.category.to_string())
         .bind(intent.deadline.to_rfc3339())
         .execute(&self.pool)
         .await
@@ -219,15 +221,20 @@ impl GigEngine for SqliteGigEngine {
         }
 
         // 2. Validate Artifact Path (G-22 Enforcement)
-        let sandbox = PathSandbox::new(&self.artifact_root).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to create PathSandbox: {}", e),
-        })?;
-
-        let safe_artifact_path = sandbox
-            .validate_path(&deliverable.artifact_path)
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Insecure artifact path: {}. Potential traversal blocked.", e),
+        let sandbox =
+            PathSandbox::new(&self.artifact_root).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create PathSandbox: {}", e),
             })?;
+
+        let safe_artifact_path =
+            sandbox
+                .validate_path(&deliverable.artifact_path)
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!(
+                        "Insecure artifact path: {}. Potential traversal blocked.",
+                        e
+                    ),
+                })?;
 
         // 3. Record Delivery
         let metadata_str = serde_json::to_string(&deliverable.metadata).map_err(|e| {
@@ -338,7 +345,11 @@ impl GigEngine for SqliteGigEngine {
                             overall_score += 1.0;
                         }
                     }
-                    AcceptanceCriteria::OracleJudge { rubric_prompt, min_score, .. } => {
+                    AcceptanceCriteria::OracleJudge {
+                        rubric_prompt,
+                        min_score,
+                        ..
+                    } => {
                         let prompt = format!(
                             "As an Oracle Judge, evaluate the following delivery against the rubric.\n\n\
                              Rubric: {}\n\
@@ -348,7 +359,11 @@ impl GigEngine for SqliteGigEngine {
                             rubric_prompt, artifact_path, metadata_json
                         );
 
-                        match self.llm_provider.complete(&prompt, Some("You are a strict and fair AI Verifier.")).await {
+                        match self
+                            .llm_provider
+                            .complete(&prompt, Some("You are a strict and fair AI Verifier."))
+                            .await
+                        {
                             Ok(resp) => {
                                 #[derive(serde::Deserialize)]
                                 struct OracleResponse {
@@ -357,20 +372,27 @@ impl GigEngine for SqliteGigEngine {
                                     detail: String,
                                 }
 
-                                if let Ok(parsed) = serde_json::from_str::<OracleResponse>(&resp.content) {
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<OracleResponse>(&resp.content)
+                                {
                                     if !parsed.passed || parsed.score < *min_score {
                                         passed = false;
                                     }
                                     overall_score += parsed.score;
-                                    detail.push_str(&format!("[{}] Oracle: {}. ", i, parsed.detail));
+                                    detail
+                                        .push_str(&format!("[{}] Oracle: {}. ", i, parsed.detail));
                                 } else {
                                     passed = false;
-                                    detail.push_str(&format!("[{}] Oracle failed: Invalid JSON response. ", i));
+                                    detail.push_str(&format!(
+                                        "[{}] Oracle failed: Invalid JSON response. ",
+                                        i
+                                    ));
                                 }
                             }
                             Err(e) => {
                                 passed = false;
-                                detail.push_str(&format!("[{}] Oracle failed: LLM error {}. ", i, e));
+                                detail
+                                    .push_str(&format!("[{}] Oracle failed: LLM error {}. ", i, e));
                             }
                         }
                     }
@@ -452,8 +474,8 @@ impl GigEngine for SqliteGigEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_core::llm_provider::MockLlmProvider;
     use crate::commerce_mock::MockCommerceEngine;
+    use aiome_core::llm_provider::MockLlmProvider;
     use chrono::Utc;
 
     async fn setup_db() -> SqlitePool {
@@ -466,6 +488,7 @@ mod tests {
                 description TEXT NOT NULL,
                 criteria TEXT NOT NULL,
                 max_budget_coins INTEGER NOT NULL,
+                category TEXT NOT NULL DEFAULT 'Other',
                 deadline TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Open',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -549,7 +572,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let intent = GigIntent {
@@ -561,6 +589,7 @@ mod tests {
                 max_bytes: 1024,
             }],
             max_budget_coins: 100,
+            category: IntentCategory::Other,
             deadline: Utc::now() + chrono::Duration::hours(1),
         };
 
@@ -583,7 +612,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -595,6 +629,7 @@ mod tests {
             description: "Test bidding".into(),
             criteria: vec![],
             max_budget_coins: 100,
+            category: IntentCategory::Service,
             deadline: Utc::now() + chrono::Duration::hours(1),
         };
         engine.publish_intent(intent).await.unwrap();
@@ -628,7 +663,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -642,6 +682,7 @@ mod tests {
                 description: "Acceptance test".into(),
                 criteria: vec![],
                 max_budget_coins: 100,
+                category: IntentCategory::Tool,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -693,7 +734,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -707,6 +753,7 @@ mod tests {
                 description: "Delivery test".into(),
                 criteria: vec![],
                 max_budget_coins: 100,
+                category: IntentCategory::Content,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -759,7 +806,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
@@ -773,6 +825,7 @@ mod tests {
                 description: "Settlement test".into(),
                 criteria: vec![],
                 max_budget_coins: 100,
+                category: IntentCategory::Service,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -853,6 +906,7 @@ mod tests {
                     model: None,
                 }],
                 max_budget_coins: 100,
+                category: IntentCategory::Content,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -895,7 +949,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bidder_id = Uuid::new_v4();
@@ -908,6 +967,7 @@ mod tests {
                 description: "Traversal test".into(),
                 criteria: vec![],
                 max_budget_coins: 100,
+                category: IntentCategory::Other,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -925,7 +985,20 @@ mod tests {
             .await
             .unwrap();
 
-        engine.accept_bid(intent_id, Uuid::parse_str(&sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?").bind(intent_id.to_string()).fetch_one(&engine.pool).await.unwrap()).unwrap()).await.unwrap();
+        engine
+            .accept_bid(
+                intent_id,
+                Uuid::parse_str(
+                    &sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?")
+                        .bind(intent_id.to_string())
+                        .fetch_one(&engine.pool)
+                        .await
+                        .unwrap(),
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
 
         // 2. Deliver with traversal path
         let deliverable = GigDeliverable {
@@ -937,10 +1010,17 @@ mod tests {
 
         // This should fail according to our G-22 requirement
         let result = engine.deliver(deliverable).await;
-        assert!(result.is_err(), "Delivery should fail due to path traversal");
-        
+        assert!(
+            result.is_err(),
+            "Delivery should fail due to path traversal"
+        );
+
         let err_msg = format!("{}", result.unwrap_err());
-        assert!(err_msg.contains("Insecure artifact path") || err_msg.contains("traversal"), "Error message should mention access denial or traversal: {}", err_msg);
+        assert!(
+            err_msg.contains("Insecure artifact path") || err_msg.contains("traversal"),
+            "Error message should mention access denial or traversal: {}",
+            err_msg
+        );
     }
 
     #[tokio::test]
@@ -948,7 +1028,12 @@ mod tests {
         let pool = setup_db().await;
         let commerce = Arc::new(MockCommerceEngine);
         let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, mock_llm(), artifact_root.path().to_path_buf());
+        let engine = SqliteGigEngine::new(
+            pool,
+            commerce,
+            mock_llm(),
+            artifact_root.path().to_path_buf(),
+        );
 
         let intent_id = Uuid::new_v4();
         let bidder_id = Uuid::new_v4();
@@ -961,6 +1046,7 @@ mod tests {
                 description: "Absolute path test".into(),
                 criteria: vec![],
                 max_budget_coins: 100,
+                category: IntentCategory::Other,
                 deadline: Utc::now() + chrono::Duration::hours(1),
             })
             .await
@@ -978,7 +1064,20 @@ mod tests {
             .await
             .unwrap();
 
-        engine.accept_bid(intent_id, Uuid::parse_str(&sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?").bind(intent_id.to_string()).fetch_one(&engine.pool).await.unwrap()).unwrap()).await.unwrap();
+        engine
+            .accept_bid(
+                intent_id,
+                Uuid::parse_str(
+                    &sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?")
+                        .bind(intent_id.to_string())
+                        .fetch_one(&engine.pool)
+                        .await
+                        .unwrap(),
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
 
         // 2. Deliver with absolute path outside jail
         let deliverable = GigDeliverable {
@@ -990,9 +1089,16 @@ mod tests {
 
         // This should fail
         let result = engine.deliver(deliverable).await;
-        assert!(result.is_err(), "Delivery should fail due to absolute path traversal");
-        
+        assert!(
+            result.is_err(),
+            "Delivery should fail due to absolute path traversal"
+        );
+
         let err_msg = format!("{}", result.unwrap_err());
-        assert!(err_msg.contains("Insecure artifact path") || err_msg.contains("outside of jail"), "Error message should mention access denial: {}", err_msg);
+        assert!(
+            err_msg.contains("Insecure artifact path") || err_msg.contains("outside of jail"),
+            "Error message should mention access denial: {}",
+            err_msg
+        );
     }
 }

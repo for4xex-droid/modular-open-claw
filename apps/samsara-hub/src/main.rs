@@ -1034,11 +1034,18 @@ async fn push_handler(
     if let Some(metrics) = &payload.metrics {
         let metrics_json = serde_json::to_string(metrics).unwrap_or_default();
         if let Err(e) = sqlx::query(
-            "INSERT INTO federated_metrics (node_id, metrics_json, received_at) VALUES (?, ?, ?)"
+            "INSERT INTO federated_metrics (node_id, metrics_json, received_at) VALUES (?, ?, ?)",
         )
-        .bind(&payload.node_id).bind(&metrics_json).bind(&received_at)
-        .execute(&mut *tx).await {
-            warn!("🛡️ [Push] Failed to store federated metrics from {}: {}", payload.node_id, e);
+        .bind(&payload.node_id)
+        .bind(&metrics_json)
+        .bind(&received_at)
+        .execute(&mut *tx)
+        .await
+        {
+            warn!(
+                "🛡️ [Push] Failed to store federated metrics from {}: {}",
+                payload.node_id, e
+            );
         }
     }
 

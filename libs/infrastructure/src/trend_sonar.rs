@@ -40,7 +40,6 @@ struct WebResultItem {
     description: Option<String>,
 }
 
-
 /// Context Sanitization: strips HTML tags, excessive whitespace, and URLs
 pub(crate) fn sanitize_snippet(snippet: &str) -> String {
     let mut text = snippet.to_string();
@@ -66,17 +65,22 @@ pub(crate) fn sanitize_snippet(snippet: &str) -> String {
 }
 
 #[async_trait]
+/// トレンドソースからのデータ取得インターフェース
 pub trait TrendAdapter: Send + Sync {
+    /// クエリに基づきトレンドアイテムを取得する
     async fn fetch(&self, query: &str) -> Result<Vec<TrendItem>, AiomeError>;
+    /// アダプターの名前を返す
     fn name(&self) -> &str;
 }
 
+/// Web検索（Tavily等）を使用するトレンドアダプター
 pub struct WebSearchAdapter {
     api_key: String,
     client: reqwest::Client,
 }
 
 impl WebSearchAdapter {
+    /// WebSearchAdapter の新規インスタンスを生成する
     pub fn new(api_key: String) -> Self {
         Self {
             api_key,
@@ -87,7 +91,9 @@ impl WebSearchAdapter {
 
 #[async_trait]
 impl TrendAdapter for WebSearchAdapter {
-    fn name(&self) -> &str { "WebSearch" }
+    fn name(&self) -> &str {
+        "WebSearch"
+    }
 
     async fn fetch(&self, category: &str) -> Result<Vec<TrendItem>, AiomeError> {
         tracing::debug!(
@@ -133,7 +139,7 @@ impl TrendAdapter for WebSearchAdapter {
                         trends.push(TrendItem {
                             keyword: sanitized,
                             source: "ExternalSearch".to_string(),
-                            score: 1.0, 
+                            score: 1.0,
                         });
                     }
                 }
@@ -152,6 +158,7 @@ pub struct ExternalTrendSonar {
 }
 
 impl ExternalTrendSonar {
+    /// ExternalTrendSonar の新規インスタンスを生成する
     pub fn new(
         adapters: Vec<std::sync::Arc<dyn TrendAdapter>>,
         provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>>,
@@ -213,11 +220,10 @@ impl ExternalTrendSonar {
             score: f64,
         }
 
-        let evaluated: Vec<EvaluatedTrend> = serde_json::from_str(&json_str).map_err(|e| {
-            AiomeError::Infrastructure {
+        let evaluated: Vec<EvaluatedTrend> =
+            serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to parse Trend Evaluation JSON: {}", e),
-            }
-        })?;
+            })?;
 
         Ok(evaluated
             .into_iter()
@@ -260,18 +266,28 @@ mod tests {
         async fn fetch(&self, _query: &str) -> Result<Vec<TrendItem>, AiomeError> {
             Ok(self.trends.clone())
         }
-        fn name(&self) -> &str { &self.name }
+        fn name(&self) -> &str {
+            &self.name
+        }
     }
 
     #[tokio::test]
     async fn test_trend_sonar_aggregation() {
         let adapter1: Arc<dyn TrendAdapter> = Arc::new(MockAdapter {
             name: "source1".into(),
-            trends: vec![TrendItem { keyword: "rust".into(), source: "source1".into(), score: 1.0 }],
+            trends: vec![TrendItem {
+                keyword: "rust".into(),
+                source: "source1".into(),
+                score: 1.0,
+            }],
         });
         let adapter2: Arc<dyn TrendAdapter> = Arc::new(MockAdapter {
             name: "source2".into(),
-            trends: vec![TrendItem { keyword: "aiome".into(), source: "source2".into(), score: 0.8 }],
+            trends: vec![TrendItem {
+                keyword: "aiome".into(),
+                source: "source2".into(),
+                score: 0.8,
+            }],
         });
 
         let sonar = ExternalTrendSonar::new(vec![adapter1, adapter2], None);

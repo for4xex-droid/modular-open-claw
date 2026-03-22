@@ -49,9 +49,7 @@ pub struct TokenResponse {
         (status = 200, description = "OAuth 2.1 Authorization Endpoint (Mock)")
     )
 )]
-pub async fn authorize_handler(
-    Query(_query): Query<AuthorizeRequest>,
-) -> Result<String, AppError> {
+pub async fn authorize_handler(Query(_query): Query<AuthorizeRequest>) -> Result<String, AppError> {
     // Phase 21 Mock: Redirect or display login
     Ok("OAuth 2.1 Proceed to Login (Mock)".to_string())
 }

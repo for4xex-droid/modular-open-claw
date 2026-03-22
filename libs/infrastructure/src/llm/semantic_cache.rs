@@ -8,10 +8,10 @@
 use crate::job_queue::SqliteJobQueue;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{LlmResponse, StopReason};
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;
-use sha2::{Sha256, Digest};
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// LLMセマンティックキャッシュ
 /// 同一または類似のプロンプトに対する応答をSQLiteにキャッシュし、コストを削減する。
@@ -20,6 +20,7 @@ pub struct SemanticCache {
 }
 
 impl SemanticCache {
+    /// SemanticCache の新規インスタンスを生成する
     pub fn new(jq: Arc<SqliteJobQueue>) -> Self {
         Self { jq }
     }
@@ -35,9 +36,13 @@ impl SemanticCache {
     }
 
     /// キャッシュから取得
-    pub async fn get(&self, prompt: &str, system: Option<&str>) -> Result<Option<LlmResponse>, AiomeError> {
+    pub async fn get(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<Option<LlmResponse>, AiomeError> {
         let hash = Self::compute_hash(prompt, system);
-        
+
         let row = sqlx::query(
             "SELECT response, provider_name, model_name FROM llm_response_cache 
              WHERE prompt_hash = ? AND created_at > datetime('now', '-' || ttl_seconds || ' seconds')"
@@ -62,20 +67,20 @@ impl SemanticCache {
 
     /// キャッシュに保存
     pub async fn set(
-        &self, 
-        prompt: &str, 
-        system: Option<&str>, 
-        response: &LlmResponse, 
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+        response: &LlmResponse,
         provider_name: &str,
         model_name: &str,
-        ttl_seconds: i64
+        ttl_seconds: i64,
     ) -> Result<(), AiomeError> {
         let hash = Self::compute_hash(prompt, system);
-        
+
         sqlx::query(
             "INSERT OR REPLACE INTO llm_response_cache 
              (prompt_hash, response, provider_name, model_name, ttl_seconds, created_at)
-             VALUES (?, ?, ?, ?, ?, datetime('now'))"
+             VALUES (?, ?, ?, ?, ?, datetime('now'))",
         )
         .bind(&hash)
         .bind(&response.content)
@@ -114,7 +119,17 @@ mod tests {
         assert!(cached.is_none());
 
         // Cache it
-        cache.set(prompt, system, &response, "mock-provider", "mock-model", 3600).await.unwrap();
+        cache
+            .set(
+                prompt,
+                system,
+                &response,
+                "mock-provider",
+                "mock-model",
+                3600,
+            )
+            .await
+            .unwrap();
 
         // Retrieve it
         let cached = cache.get(prompt, system).await.unwrap();

@@ -6,12 +6,12 @@
  */
 
 use crate::job_queue::SqliteJobQueue;
-use aiome_core::error::AiomeError;
 use aiome_contracts::traits::{TrendItem, TrendSource};
+use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use regex::Regex;
-use std::sync::Arc;
 use sqlx::Row;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 /// トレンドソースとしての RSS コレクター
@@ -22,6 +22,7 @@ pub struct RssCollector {
 }
 
 impl RssCollector {
+    /// RssCollector の新規インスタンスを生成する
     pub fn new(jq: Arc<SqliteJobQueue>) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -36,15 +37,18 @@ impl RssCollector {
             return Ok(cached);
         }
 
-        let resp = self.client.get(url).send().await
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to fetch RSS feed: {}", e),
             })?;
-        
-        let xml = resp.text().await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to read RSS text: {}", e),
-            })?;
+
+        let xml = resp.text().await.map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to read RSS text: {}", e),
+        })?;
 
         // 簡易正規表現パース (RSS 2.0 / Atom 共通項)
         let title_re = Regex::new(r"<title>(.*?)</title>").unwrap();
@@ -53,8 +57,10 @@ impl RssCollector {
         for cap in title_re.captures_iter(&xml) {
             let title_raw = cap[1].trim();
             let title = crate::trend_sonar::sanitize_snippet(title_raw);
-            if title.is_empty() || title == "RSS" { continue; }
-            
+            if title.is_empty() || title == "RSS" {
+                continue;
+            }
+
             items.push(TrendItem {
                 keyword: title,
                 source: "RSS".to_string(),
@@ -71,7 +77,7 @@ impl RssCollector {
     async fn get_cached_trend(&self, url: &str) -> Result<Option<Vec<TrendItem>>, AiomeError> {
         let row = sqlx::query(
             "SELECT content FROM trend_cache 
-             WHERE source_url = ? AND expires_at > datetime('now')"
+             WHERE source_url = ? AND expires_at > datetime('now')",
         )
         .bind(url)
         .fetch_optional(&self.jq.pool)
@@ -82,8 +88,8 @@ impl RssCollector {
 
         if let Some(row) = row {
             let content: String = row.get(0);
-            let items: Vec<TrendItem> = serde_json::from_str(&content)
-                .map_err(|e| AiomeError::Infrastructure {
+            let items: Vec<TrendItem> =
+                serde_json::from_str(&content).map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Cache decode failed: {}", e),
                 })?;
             return Ok(Some(items));
@@ -91,11 +97,16 @@ impl RssCollector {
         Ok(None)
     }
 
-    async fn set_cached_trend(&self, url: &str, items: &[TrendItem], ttl_sec: i64) -> Result<(), AiomeError> {
+    async fn set_cached_trend(
+        &self,
+        url: &str,
+        items: &[TrendItem],
+        ttl_sec: i64,
+    ) -> Result<(), AiomeError> {
         let json = serde_json::to_string(items).unwrap();
         sqlx::query(
             "INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) 
-             VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))"
+             VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))",
         )
         .bind(url)
         .bind(json)
@@ -120,13 +131,19 @@ use crate::trend_sonar::TrendAdapter;
 
 #[async_trait]
 impl TrendAdapter for RssCollector {
-    fn name(&self) -> &str { "RSS" }
+    fn name(&self) -> &str {
+        "RSS"
+    }
 
     async fn fetch(&self, category: &str) -> Result<Vec<TrendItem>, AiomeError> {
         // 設定からカテゴリに応じたRSS URLを取得する想定 (現在はモックでGoogle News)
         let urls = match category {
-            "tech" => vec!["https://news.google.com/rss/search?q=technology&hl=ja&gl=JP&ceid=JP:ja"],
-            "business" => vec!["https://news.google.com/rss/search?q=business&hl=ja&gl=JP&ceid=JP:ja"],
+            "tech" => {
+                vec!["https://news.google.com/rss/search?q=technology&hl=ja&gl=JP&ceid=JP:ja"]
+            }
+            "business" => {
+                vec!["https://news.google.com/rss/search?q=business&hl=ja&gl=JP&ceid=JP:ja"]
+            }
             _ => vec!["https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja"],
         };
 

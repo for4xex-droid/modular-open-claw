@@ -140,18 +140,21 @@ impl QuarantineStore for SqliteQuarantineStore {
         let rows = sqlx::query("SELECT id, asset_name, image_hash, reason, status, uploaded_at FROM quarantined_assets ORDER BY uploaded_at DESC")
             .fetch_all(&self.pool)
             .await?;
-        
-        let assets = rows.into_iter().map(|row| {
-            use sqlx::Row;
-            QuarantinedAsset {
-                id: row.get("id"),
-                asset_name: row.get("asset_name"),
-                image_hash: row.get("image_hash"),
-                reason: row.get("reason"),
-                status: row.get("status"),
-                uploaded_at: row.get("uploaded_at"),
-            }
-        }).collect();
+
+        let assets = rows
+            .into_iter()
+            .map(|row| {
+                use sqlx::Row;
+                QuarantinedAsset {
+                    id: row.get("id"),
+                    asset_name: row.get("asset_name"),
+                    image_hash: row.get("image_hash"),
+                    reason: row.get("reason"),
+                    status: row.get("status"),
+                    uploaded_at: row.get("uploaded_at"),
+                }
+            })
+            .collect();
 
         Ok(assets)
     }

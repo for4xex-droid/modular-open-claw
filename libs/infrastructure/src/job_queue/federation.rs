@@ -415,20 +415,36 @@ impl FederationOps for SqliteJobQueue {
         let stats = <Self as super::evolution::EvolutionOps>::do_get_agent_stats(self).await?;
 
         // 1. Job Metrics
-        let total_completed = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Completed'")
-            .fetch_one(&self.pool).await.unwrap_or(0);
-        let total_failed = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Failed'")
-            .fetch_one(&self.pool).await.unwrap_or(0);
-        let pending_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Pending'")
-            .fetch_one(&self.pool).await.unwrap_or(0);
+        let total_completed =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Completed'")
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(0);
+        let total_failed =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Failed'")
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(0);
+        let pending_count =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Pending'")
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(0);
 
         // 2. Karma Metrics
-        let total_karma = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE is_archived = 0")
-            .fetch_one(&self.pool).await.unwrap_or(0);
+        let total_karma =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE is_archived = 0")
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(0);
         let technical_weight = sqlx::query_scalar::<_, i64>("SELECT COALESCE(SUM(weight), 0) FROM karma_logs WHERE karma_type = 'Technical' AND is_archived = 0")
             .fetch_one(&self.pool).await.unwrap_or(0);
-        let creative_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE karma_type = 'Creative' AND is_archived = 0")
-            .fetch_one(&self.pool).await.unwrap_or(0);
+        let creative_count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM karma_logs WHERE karma_type = 'Creative' AND is_archived = 0",
+        )
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
 
         // Map shared::watchtower::AgentStats to aiome_contracts::AgentStats
         let contract_stats = aiome_contracts::AgentStats {

@@ -130,7 +130,7 @@ impl AuthManager for MockAuthManager {
         if token.starts_with("mock_valid_token_") {
             let part = token.replace("mock_valid_token_", "");
             let components: Vec<&str> = part.split(':').collect();
-            
+
             let (sub, agent_id_str) = if components.len() >= 2 {
                 (components[0].to_string(), Some(components[1]))
             } else {

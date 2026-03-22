@@ -103,4 +103,6 @@ pub struct AppState {
     pub voice_drm: Component<Arc<VoiceCoreDrm>>,
     pub registry: Component<Arc<RegistryManager>>,
     pub gig_engine: Component<Arc<dyn aiome_contracts::gig::GigEngine>>,
+    pub intent_generator: Component<Arc<infrastructure::intent::IntentGenerator>>,
+    pub intent_firewall: Component<Arc<infrastructure::intent::IntentFirewall>>,
 }

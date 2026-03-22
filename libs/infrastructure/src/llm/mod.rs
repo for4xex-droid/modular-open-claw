@@ -5,13 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+/// `cost_breaker` モジュール
+pub mod cost_breaker;
 /// `dynamic` モジュール
 pub mod dynamic;
 /// `fallback_router` モジュール
 pub mod fallback_router;
 /// `proxy` モジュール
 pub mod proxy;
-/// `cost_breaker` モジュール
-pub mod cost_breaker;
 /// `semantic_cache` モジュール
 pub mod semantic_cache;

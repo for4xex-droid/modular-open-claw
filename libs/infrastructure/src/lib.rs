@@ -42,6 +42,8 @@ pub mod gig_engine;
 pub mod heartbeat_wakeup;
 /// 脅威シグネチャ監視・遮断
 pub mod immune_system;
+/// Intent の生成・サニタイズ (AgentSense Phase AS-1)
+pub mod intent;
 /// タスクキュー・非同期実行・リトライ
 pub mod job_queue;
 /// ドキュメント・Karma検索インデックス
@@ -58,6 +60,8 @@ pub mod publisher;
 pub mod rate_limiter;
 /// デジタルアセットのレジストリ・所有権管理モジュール
 pub mod registry;
+/// RSSベースのトレンド収集
+pub mod rss_collector;
 /// Soul転生（L3）ロジック
 pub mod samsara_engine;
 /// ネットワークセキュリティポリシー
@@ -77,13 +81,11 @@ pub mod soul_store;
 pub mod trend_sonar;
 /// ユーザー行動パターン学習
 pub mod user_learner;
-/// RSSベースのトレンド収集
-pub mod rss_collector;
 /// 入出力データの検証
 pub mod validator;
 pub mod workspace_manager;
 
 mod soul_store_tests;
-#[cfg(test)]
+#[cfg(any(test, debug_assertions))]
 pub mod test_utils;
 mod workspace_manager_tests;

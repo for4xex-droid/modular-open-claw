@@ -249,7 +249,9 @@ impl RuntimeJail for BastionGuard {
                 .unwrap_or(false);
 
             if runsc_exists {
-                info!("🛡️ [Security] gVisor (runsc) detected. Running in secure user-space kernel.");
+                info!(
+                    "🛡️ [Security] gVisor (runsc) detected. Running in secure user-space kernel."
+                );
                 let mut c = Command::new("runsc");
                 c.arg("do");
                 c.arg(binary);

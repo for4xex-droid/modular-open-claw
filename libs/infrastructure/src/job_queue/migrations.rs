@@ -473,6 +473,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE agent_souls ADD COLUMN lora_adapter_path TEXT;",
             "ALTER TABLE agent_souls ADD COLUMN lora_base_model TEXT;",
             "ALTER TABLE agent_souls ADD COLUMN last_begging_at TEXT;",
+            "ALTER TABLE gig_intents ADD COLUMN category TEXT NOT NULL DEFAULT 'Other';",
         ] {
             if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
                 let msg = e.to_string();
@@ -989,6 +990,7 @@ impl DbInitializer for SqliteJobQueue {
                 description TEXT NOT NULL,
                 criteria TEXT NOT NULL,
                 max_budget_coins INTEGER NOT NULL,
+                category TEXT NOT NULL DEFAULT 'Other',
                 deadline TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Open',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -1116,7 +1118,8 @@ impl DbInitializer for SqliteJobQueue {
         })?;
 
         // 3. Job Priority (Day 5-6 Planning, but Migration here)
-        if let Err(e) = sqlx::query("ALTER TABLE jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 100;")
+        if let Err(e) =
+            sqlx::query("ALTER TABLE jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 100;")
                 .execute(&self.pool)
                 .await
         {

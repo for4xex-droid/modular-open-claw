@@ -35,11 +35,13 @@ pub async fn publish_intent(
     // Ensure the requester_id is the authenticated agent
     intent.requester_id = auth.agent_id;
 
-    let engine = state.gig_engine.as_opt().ok_or_else(|| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: "Gig Engine not enabled".into(),
-        }
-    })?;
+    let engine =
+        state
+            .gig_engine
+            .as_opt()
+            .ok_or_else(|| aiome_core::error::AiomeError::Infrastructure {
+                reason: "Gig Engine not enabled".into(),
+            })?;
 
     let id = engine.publish_intent(intent).await?;
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "id": id }))))
@@ -64,11 +66,13 @@ pub async fn submit_bid(
     // SEC-2: Ensure bidder_id is the authenticated agent
     bid.bidder_id = auth.agent_id;
 
-    let engine = state.gig_engine.as_opt().ok_or_else(|| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: "Gig Engine not enabled".into(),
-        }
-    })?;
+    let engine =
+        state
+            .gig_engine
+            .as_opt()
+            .ok_or_else(|| aiome_core::error::AiomeError::Infrastructure {
+                reason: "Gig Engine not enabled".into(),
+            })?;
 
     engine.submit_bid(bid).await?;
     Ok(StatusCode::OK)
@@ -94,11 +98,13 @@ pub async fn accept_bid(
     _auth: crate::auth::Authenticated,
     Path((intent_id, bid_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, AppError> {
-    let engine = state.gig_engine.as_opt().ok_or_else(|| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: "Gig Engine not enabled".into(),
-        }
-    })?;
+    let engine =
+        state
+            .gig_engine
+            .as_opt()
+            .ok_or_else(|| aiome_core::error::AiomeError::Infrastructure {
+                reason: "Gig Engine not enabled".into(),
+            })?;
 
     engine.accept_bid(intent_id, bid_id).await?;
     Ok(StatusCode::OK)
@@ -123,11 +129,13 @@ pub async fn deliver(
     // SEC-2: Ensure deliverer_id is the authenticated agent
     deliverable.deliverer_id = auth.agent_id;
 
-    let engine = state.gig_engine.as_opt().ok_or_else(|| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: "Gig Engine not enabled".into(),
-        }
-    })?;
+    let engine =
+        state
+            .gig_engine
+            .as_opt()
+            .ok_or_else(|| aiome_core::error::AiomeError::Infrastructure {
+                reason: "Gig Engine not enabled".into(),
+            })?;
 
     engine.deliver(deliverable).await?;
     Ok(StatusCode::OK)
@@ -152,11 +160,13 @@ pub async fn verify(
     _auth: crate::auth::Authenticated,
     Path(order_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let engine = state.gig_engine.as_opt().ok_or_else(|| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: "Gig Engine not enabled".into(),
-        }
-    })?;
+    let engine =
+        state
+            .gig_engine
+            .as_opt()
+            .ok_or_else(|| aiome_core::error::AiomeError::Infrastructure {
+                reason: "Gig Engine not enabled".into(),
+            })?;
 
     let result = engine.verify_and_settle(order_id).await?;
     Ok(Json(result))

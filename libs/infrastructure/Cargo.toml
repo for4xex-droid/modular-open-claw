@@ -23,6 +23,8 @@ schemars = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
 bastion = { package = "bastion-core", git = "https://github.com/for4xex-droid/bastion.git", branch = "main", features = ["net", "fs"] }
 chrono.workspace = true
+url = "2.5"
+html-escape = "0.2"
 regex = "1.12.3"
 async-recursion = "1.1.1"
 unicode-normalization = { workspace = true }

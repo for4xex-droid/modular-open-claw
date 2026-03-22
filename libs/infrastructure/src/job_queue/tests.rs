@@ -816,7 +816,15 @@ async fn test_sqlite_trajectory_store() {
 
     // Create a dummy job first
     let job_id = jq
-        .enqueue("Testing", "Trajectory Test", "Standard", None, None, None, 0)
+        .enqueue(
+            "Testing",
+            "Trajectory Test",
+            "Standard",
+            None,
+            None,
+            None,
+            0,
+        )
         .await
         .expect("Failed to enqueue dummy job");
 

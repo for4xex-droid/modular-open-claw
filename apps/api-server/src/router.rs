@@ -335,7 +335,10 @@ pub fn build_app(
     let public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
-        .route("/api/v1/auth/authorize", get(routes::auth::authorize_handler))
+        .route(
+            "/api/v1/auth/authorize",
+            get(routes::auth::authorize_handler),
+        )
         .route("/api/v1/auth/token", post(routes::auth::token_handler))
         .route(
             "/api/v1/commerce/webhook",
@@ -399,6 +402,15 @@ pub fn build_app(
                         crate::auth::jwt_auth_middleware,
                     ))
                     .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)),
+            ),
+        )
+        .route(
+            "/api/v1/treasure",
+            axum::routing::post(routes::treasure::record_feedback).route_layer(
+                axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::auth::jwt_auth_middleware,
+                ),
             ),
         )
         .layer(axum::extract::DefaultBodyLimit::disable());
