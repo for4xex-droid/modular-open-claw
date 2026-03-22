@@ -13,6 +13,7 @@ use axum::{
     routing::get,
 };
 use shared::health::{HealthMonitor, ResourceStatus};
+use aiome_contracts::contracts::QuarantinedAsset;
 use std::fs;
 
 #[utoipa::path(
@@ -123,9 +124,17 @@ pub struct LogEntryResponse {
 )]
 pub async fn get_logs(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<LogEntryResponse>>, AppError> {
+    // G-Log: Only system agent is allowed to access global application logs
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied: Only the system agent can view global infrastructure logs."
+                .to_string(),
+        }
+        .into());
+    }
     let limit = params
         .get("limit")
         .and_then(|s| s.parse::<i64>().ok())
@@ -166,8 +175,14 @@ pub struct AuditLedgerResponse {
 )]
 pub async fn get_audit_ledger(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<AuditLedgerResponse>>, AppError> {
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied".to_string(),
+        }
+        .into());
+    }
     let pool = state.job_queue.get_pool();
     let rows = sqlx::query_as::<_, AuditLedgerResponse>(
         "SELECT id, table_name, operation, record_id, current_hash, timestamp FROM audit_ledger_global ORDER BY id DESC LIMIT 100",
@@ -202,8 +217,14 @@ pub struct DiagnosisResponse {
 )]
 pub async fn get_diagnoses(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
 ) -> Result<Json<Vec<DiagnosisResponse>>, AppError> {
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied".to_string(),
+        }
+        .into());
+    }
     let pool = state.job_queue.get_pool();
     let rows = sqlx::query_as::<_, DiagnosisResponse>(
         "SELECT id, job_id, root_cause, self_repair_hint, failure_category, diagnosed_at as timestamp FROM agent_diagnoses ORDER BY id DESC LIMIT 100",
@@ -216,6 +237,36 @@ pub async fn get_diagnoses(
     })?;
 
     Ok(Json(diagnoses))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit/quarantine",
+    responses(
+        (status = 200, description = "Fetch quarantined assets store", body = [QuarantinedAsset]),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_quarantined_assets(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+) -> Result<Json<Vec<QuarantinedAsset>>, AppError> {
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied: System agent only".to_string(),
+        }
+        .into());
+    }
+
+    let assets = state.quarantine_store.list_assets().await.map_err(|e| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: format!("Quarantine Store Error: {}", e),
+        }
+    })?;
+
+    Ok(Json(assets))
 }
 
 #[derive(serde::Serialize, utoipa::ToSchema)]

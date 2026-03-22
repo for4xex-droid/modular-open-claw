@@ -5,7 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 2026-03-22
+
+### Added
+- **Audit API: Quarantine Ledger**:
+    - Implemented `GET /api/v1/audit/quarantine` to allow the system agent to list and audit quarantined assets.
+    - Extended `QuarantineStore` trait and `SqliteQuarantineStore` with `list_assets` capability.
+- **OAuth 2.1 Mock Endpoints**:
+    - Added stub handlers for `/api/v1/auth/authorize` and `/api/v1/auth/token` in `api-server`.
+    - Integrated with `utoipa` for OpenAPI documentation of the authentication flow.
+- **Enhanced Mock Authentication**:
+    - Updated `MockAuthManager` to support custom `agent_id` via mock tokens (`mock_valid_token_<sub>:<agent_id>`).
+    - Standardized separator to `:` to prevent collisions with usernames containing underscores.
+
+### Fixed
+- **BastionGuard gVisor (runsc) Integration**:
+    - Implemented dynamic detection of `runsc` bin in Linux environments.
+    - Prioritizes gVisor for secure user-space kernel execution while maintaining a gracefull host fallback for development.
+- **Integration Test Stability**:
+    - Resolved `test_gig_lifecycle` failure by ensuring compatible `artifact_path` for `PathSandbox` validation.
+    - Restored functionality to 32/33 integration tests after auth manager refactoring.
 
 ### Fixed
 - **Trend Sonar Refactoring (Multi-Source Support)**:
@@ -16,6 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added `sanitize_snippet` utility to clean raw HTML/URL data from external search results.
     - Restructured `main.rs` to pre-initialize a shared `TrendSonar` instance with multiple adapters, improving performance and consistency across the Background Worker and Dream State.
     - Added comprehensive unit tests for multi-source aggregation and adapter logic.
+- **RSS Sanitization (G-Security)**:
+    - Implemented `sanitize_snippet` to clean RSS feed content and prevent HTML/script injection.
+    - Applied sanitization to all incoming RSS titles in `RssCollector`.
+- **Gig Engine Security (G-22)**:
+    - Integrated `PathSandbox` into `SqliteGigEngine::deliver` to enforce strict path validation.
+    - Prevents path traversal attacks by ensuring delivery artifacts remain within the designated `ARTIFACT_ROOT`.
+- **API Security Hardening (G-Log)**:
+    - Restricted access to sensitive endpoints (`/api/v1/logs`, `/api/v1/audit/ledger`, `/api/v1/audit/diagnostics`) to the system agent only.
+    - Verified security with automated access control checks in the routing layer.
 
 ### Added
 - **Phase 20: AI Gig Engine (The Immutable Gateway)**:
@@ -23,10 +51,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **`publish_intent`**: Enabled AI agents to broadcast work requests with automated `AcceptanceCriteria` and JSON serialization.
     - **`submit_bid`**: Implemented bidding logic for AI agents to compete for intents, including price and duration estimations.
     - **`accept_bid`**: Implemented atomic transaction-based bid acceptance. Automatically creates and locks escrows in the `CommerceEngine` to secure payments.
-    - **`deliver`**: Enabled secure delivery of artifacts with metadata and artifact path recording. Enforces state transitions from 'Accepted' to 'Delivered'.
+    - **`deliver`**: Enabled secure delivery of artifacts with metadata and artifact path recording. Enforces state transitions from 'Accepted' to 'Delivered'. Added `PathSandbox` validation to prevent path traversal attacks (G-22).
     - **`verify_and_settle`**: Implemented the core settlement logic. Performs automated verification against `AcceptanceCriteria`, updates order status to 'Completed' or 'Rejected', and executes escrow release or refund accordingly.
     - **Persistence & Logging**: Added full database support with tables for `gig_intents`, `gig_bids`, `escrows`, `gig_deliveries`, and `verification_logs`.
     - **TDD Test Suite**: Added 5 comprehensive integration tests covering the entire gig lifecycle, ensuring 100% path coverage for core engine operations.
+- **Phase 20 Enhancement: Federated Metrics (G-23)**:
+    - Added `metrics` field to `FederationPushRequest` to support transmission of node-level statistics to Samsara Hub.
+    - Implemented `fetch_federated_metrics` in `SqliteJobQueue` to aggregate level, XP, job completion rates, and karma counts.
+    - Updated Samsara Hub to persist received metrics in the `federated_metrics` table for global analytics.
+- **Trend Oracle (LLM Evaluation)**:
+    - Integrated an optional `LlmProvider` into `ExternalTrendSonar` for intelligent trend assessment.
+    - Implemented LLM-based scoring and filtering to prioritize high-value trends for autonomous agents.
 
 - **Phase 17 Enhancement: Gaps G-1 & G-2 Remediation**:
     - **Gap G-1: Circuit Breaker Observability**: Added `llm_circuit_breaker` status to the `/api/health` and `/health` endpoints. Modified the `CircuitBreaker` struct to include a `get_status` method, allowing proactive monitoring of LLM failover states.

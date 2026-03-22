@@ -15,7 +15,6 @@ use utoipa::OpenApi;
         crate::routes::general::get_wiki_content,
         crate::routes::settings::get_settings,
         crate::routes::settings::update_setting,
-        crate::routes::settings::test_connection,
         crate::routes::settings::get_ollama_models,
         crate::routes::skill::list_skills,
         crate::routes::skill::import_skill,
@@ -123,12 +122,13 @@ use utoipa::OpenApi;
 ]
 pub struct ApiDoc;
 
-#[cfg(feature = "dev-routes")]
+#[cfg(debug_assertions)]
 #[derive(OpenApi)]
 #[openapi(paths(
     crate::routes::karma::trigger_failure_demo,
     crate::routes::karma::trigger_security_demo,
     crate::routes::karma::trigger_federation_demo,
+    crate::routes::settings::test_connection,
 ))]
 pub struct DemoApiDoc;
 
@@ -148,7 +148,7 @@ impl utoipa::Modify for SecurityAddon {
             );
         }
 
-        #[cfg(feature = "dev-routes")]
+        #[cfg(debug_assertions)]
         {
             let mut demo_doc = DemoApiDoc::openapi();
             for (path, item) in demo_doc.paths.paths {

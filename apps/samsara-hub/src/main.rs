@@ -368,6 +368,17 @@ async fn init_hub_db(pool: &SqlitePool) -> anyhow::Result<()> {
     .execute(pool)
     .await?;
 
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS federated_metrics (
+            node_id TEXT NOT NULL,
+            metrics_json TEXT NOT NULL,
+            received_at TEXT NOT NULL,
+            PRIMARY KEY (node_id, received_at)
+        );",
+    )
+    .execute(pool)
+    .await?;
+
     info!("✅ Hub Database initialized (Approved & Quarantine layers + BFT/Reputation & Biome).");
     Ok(())
 }
@@ -1016,6 +1027,18 @@ async fn push_handler(
         .bind(&a.reasoning).bind(&a.created_at).bind(&received_at)
         .execute(&mut *tx).await {
             warn!("🛡️ [Push] Failed to quarantine arena match {}: {}", a.id, e);
+        }
+    }
+
+    // G-23: Store Federated Metrics
+    if let Some(metrics) = &payload.metrics {
+        let metrics_json = serde_json::to_string(metrics).unwrap_or_default();
+        if let Err(e) = sqlx::query(
+            "INSERT INTO federated_metrics (node_id, metrics_json, received_at) VALUES (?, ?, ?)"
+        )
+        .bind(&payload.node_id).bind(&metrics_json).bind(&received_at)
+        .execute(&mut *tx).await {
+            warn!("🛡️ [Push] Failed to store federated metrics from {}: {}", payload.node_id, e);
         }
     }
 

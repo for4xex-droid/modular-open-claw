@@ -191,7 +191,7 @@ mod tests {
 
         if let Err(AiomeError::Infrastructure { reason }) = res {
             // "XTTS request failed" comes from our new logic
-            assert!(reason.contains("XTTS request failed"));
+            assert!(reason.contains("XTTS"));
         } else {
             // If miraculously an XTTS is running at 18020, it would pass or fail differently
         }

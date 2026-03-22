@@ -8,7 +8,7 @@
 //! Provides mock implementations and helper functions for infrastructure testing.
 use aiome_contracts::biome::BiomeMessage;
 use aiome_contracts::contracts::{
-    ArenaMatch, FederatedKarma, ImmuneRule, OracleVerdict, SamsaraEvent,
+    ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule, OracleVerdict, SamsaraEvent,
 };
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::traits::{Job, JobQueue, JobStatus, KarmaSearchResult, SnsMetricsRecord};
@@ -167,6 +167,9 @@ impl JobQueue for MockJobQueue {
     }
     async fn update_peer_sync_time(&self, _: &str, _: &str) -> Result<(), AiomeError> {
         Ok(())
+    }
+    async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
+        Ok(FederatedMetrics::default())
     }
     async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
         Ok(vec![])

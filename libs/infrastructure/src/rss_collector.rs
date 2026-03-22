@@ -51,7 +51,8 @@ impl RssCollector {
         let mut items = Vec::new();
 
         for cap in title_re.captures_iter(&xml) {
-            let title = cap[1].trim().to_string();
+            let title_raw = cap[1].trim();
+            let title = crate::trend_sonar::sanitize_snippet(title_raw);
             if title.is_empty() || title == "RSS" { continue; }
             
             items.push(TrendItem {
@@ -138,5 +139,33 @@ impl TrendAdapter for RssCollector {
         }
 
         Ok(all_items)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rss_sanitization_unit() {
+        let xml = r#"<rss><channel>
+            <item><title><b>Trending</b> &amp; News</title></item>
+            <item><title>Visit https://malicious.link/trap</title></item>
+            <item><title>  Clean   Title  </title></item>
+        </channel></rss>"#;
+
+        let title_re = regex::Regex::new(r"<title>(.*?)</title>").unwrap();
+        let mut items = Vec::new();
+        for cap in title_re.captures_iter(&xml) {
+            let title_raw = cap[1].trim();
+            let title = crate::trend_sonar::sanitize_snippet(title_raw);
+            if !title.is_empty() && title != "RSS" {
+                items.push(title);
+            }
+        }
+
+        assert!(items.contains(&"Trending & News".to_string()));
+        assert!(items.contains(&"Visit".to_string()));
+        assert!(items.contains(&"Clean Title".to_string()));
     }
 }

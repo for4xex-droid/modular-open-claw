@@ -160,6 +160,7 @@ graph TD
     - `gig.rs`: `AcceptanceCriteria`, `GigIntent`, `GigBid` 等のプロトコル型の定義。
     - `commerce.rs`: `escrow_release`, `escrow_refund` への対応。
     - `verification_logs`: 検証履歴の永続化。
+    - `PathSandbox`: `deliver` 時に成果物パスの安全性を検証 (G-22)。
 - **波及効果**: 
     - エージェント間の自律的な商取引（ギグ・エコノミー）が可能になる。
     - 納品物の自動検証と、不適合時の自動返金/スラッシュによる Immutable な契約履行が担保される。
@@ -222,3 +223,29 @@ graph TD
 
 ---
 *最終更新日: 2026-03-22* (Trend Sonar Refactoring Integration)
+### 🛡️ Gig Engine & Federated Metrics (Phase 22 / 23)
+- **変更内容**: 
+    - `gig_engine.rs`: `SqliteGigEngine` 実装。`PathSandbox` によるパスバリデーション (§G-22)。
+    - `job_queue/federation.rs`: `FederationOps` に `fetch_federated_metrics` 追加。`AgentStats` 型パス修正。
+    - `contracts.rs` / `types.rs`: `FederatedMetrics` / `JobMetrics` / `KarmaMetrics` 定義。`FederationPushRequest` 拡張 (§G-23)。
+    - `rss_collector.rs`: `sanitize_snippet` によるタイトルサニタイズ (§G-Security)。
+    - `trend_sonar.rs`: `ExternalTrendSonar` に `LlmProvider` 統合 (Oracle Mode)。
+    - `general.rs`: `/api/v1/logs` / `/api/v1/audit/*` への System Agent 認証強制 (§G-Log)。
+- **波及効果**: 
+    - `main.rs`: `TrendSonar` の初期化フロー（LLM プロバイダー注入）と、バックグラウンドワーカーのメトリクス収集ループの有効化。
+    - `samsara-hub`: 受信側ノードにおける `federated_metrics` テーブルの作成と、パッシブメトリクス蓄積。
+    - `api_integration_tests.rs`: Gig Lifecycle とパスバリデーション、フェデレーションメトリクスの検証パスが追加。
+
+```mermaid
+graph TD
+    A[SqliteJobQueue] -->|Metrics Aggregation| B[FederatedMetrics]
+    B -->|Integration| C[FederationPushRequest]
+    C -->|Push| D[Samsara Hub]
+    D -->|Persistence| E[federated_metrics table]
+    
+    F[ExternalTrendSonar] -->|LLM Evaluation| G[LlmProvider]
+    G -->|Oracle Score| H[Filtered Trends]
+    
+    I[SqliteGigEngine] -->|Path Validation| J[PathSandbox]
+    J -->|Jail| K[ARTIFACT_ROOT]
+```

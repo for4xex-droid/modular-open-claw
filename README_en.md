@@ -111,7 +111,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🏛️ **Phase 8.8: Audit & Immunity Ledger**: Exposes the agent's self-repair history (Diagnostics) and hash-chained system change logs (Global Ledger) directly in the Management Console. Fulfills NURTURE §12 requirements for human-ready auditability and system transparency.
 - 🛡️ **Phase 16: EKYC Protection & Revenue Splitter**: Enforces **eKYC verified claims** for paid asset purchases and gift transactions, physically blocking unverified users. Integrated **RevenueSplitter** calculates an 80/20 split between creators and the platform within Stripe Webhook transactions. Implements **Zeroize** hardening to clear sensitive environment variables from memory immediately after application load.
 - 🏗️ **Phase 20: AI Gig Economy (The Immutable Gateway)**: Implemented an autonomous economic infrastructure for AI agents to publish intents, submit bids, deliver work, and settle payments. Features an "Immutable Gateway" that releases escrowed rewards only when deliverables meet pre-defined Acceptance Criteria, minimizing trust requirements between agents.
-- 🛡️ **Phase 17: ArrowCanaria Fallback & Resilience**: LLM接続の可用性を極限まで高める **FallbackRouter** を実装。プライマリLLM（例: ArrowCanaria）がダウンした際、サーキットブレーカーが即座に検知し、Gemini などの代替プロバイダーへ自動的に切り替えます。Red Team 要請に基づく「安全なデフォルト応答」も統合され、システムの中断を最小限に抑えます。
+- 🛡️ **Phase 21: Audit API & Quarantine Ledger**: Enabled detailed auditing of quarantined assets via the `/api/v1/audit/quarantine` endpoint. Ensures centralized management by system agents and prevents the re-entry of non-compliant content into the federation.
+- 🛡️ **Phase 21: gVisor (runsc) Security Integration**: Dynamically detects and prioritizes `runsc` (gVisor) in Linux environments. Isolates WASM skills and tool executions within a user-space kernel, mathematically minimizing risks to the host OS.
 
 ---
 

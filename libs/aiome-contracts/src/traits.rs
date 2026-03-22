@@ -425,6 +425,11 @@ pub trait JobQueue: Send + Sync {
         sync_time: &str,
     ) -> Result<(), AiomeError>;
 
+    /// Federation: 外部ノードへ提供するためのメトリクスを取得 (G-23)
+    async fn fetch_federated_metrics(
+        &self,
+    ) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
+
     /// Get all immune rules for visualization
     async fn get_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
 

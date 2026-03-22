@@ -92,6 +92,10 @@ async fn main() {
         });
     }
 
+    if !std::path::Path::new("workspace/gig_artifacts").exists() {
+        let _ = std::fs::create_dir_all("workspace/gig_artifacts");
+    }
+
     let cancel_token = tokio_util::sync::CancellationToken::new();
     let plugin_registry = plugin_loader::PluginRegistry::new();
 
@@ -352,6 +356,7 @@ async fn main() {
                 .clone()
                 .expect("Commerce Engine must be initialized for Gig Engine"),
             provider.clone(),
+            std::path::PathBuf::from("workspace/gig_artifacts"),
         )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         circuit_breaker: Component::new(circuit_breaker.clone()),
         rate_limiter: Component::new(rate_limiter),
@@ -772,7 +777,7 @@ async fn main() {
         if search_api_key != "none" {
             trend_adapters.push(Arc::new(infrastructure::trend_sonar::WebSearchAdapter::new(search_api_key)));
         }
-        let trend_sonar = infrastructure::trend_sonar::ExternalTrendSonar::new(trend_adapters);
+        let trend_sonar = infrastructure::trend_sonar::ExternalTrendSonar::new(trend_adapters, Some(bg_provider.clone()));
 
         loop {
             if token.is_cancelled() {
@@ -1014,8 +1019,10 @@ async fn main() {
                 let rules: Vec<aiome_core::contracts::ImmuneRule> = rules;
                 if !karmas.is_empty() || !rules.is_empty() {
                     let self_node_id = jq_clone.get_node_id().await.unwrap_or_default();
+                    let metrics = jq_clone.fetch_federated_metrics().await.ok();
+                    
                     info!(
-                        "📤 [BackgroundWorker] Pushing {} Karmas and {} Rules to Hub.",
+                        "📤 [BackgroundWorker] Pushing {} Karmas, {} Rules, and Metrics to Hub.",
                         karmas.len(),
                         rules.len()
                     );
@@ -1024,6 +1031,7 @@ async fn main() {
                         karmas,
                         rules,
                         arena_matches: vec![],
+                        metrics,
                     };
 
                     let res = client
@@ -1296,21 +1304,18 @@ async fn main() {
                 info!("📡 [BackgroundWorker] Fetching latest trends...");
                 use aiome_contracts::traits::TrendSource;
                 match trend_sonar.get_trends("technology").await {
-                        Ok(trends) => {
-                            if !trends.is_empty() {
-                                info!("📡 [BackgroundWorker] Found {} trends.", trends.len());
-                                info!(
-                                    "📡 [BackgroundWorker] Top trend keyword: {}",
-                                    trends[0].keyword
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            warn!("⚠️ [BackgroundWorker] Trend fetching failed: {:?}", e);
+                    Ok(trends) => {
+                        if !trends.is_empty() {
+                            info!("📡 [BackgroundWorker] Found {} trends.", trends.len());
+                            info!(
+                                "📡 [BackgroundWorker] Top trend keyword: {}",
+                                trends[0].keyword
+                            );
                         }
                     }
-                } else {
-                    info!("📡 [BackgroundWorker] SEARCH_API_KEY not set. Skipping trend fetch.");
+                    Err(e) => {
+                        warn!("⚠️ [BackgroundWorker] Trend fetching failed: {:?}", e);
+                    }
                 }
             }
 

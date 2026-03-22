@@ -440,6 +440,12 @@ impl JobQueue for SqliteJobQueue {
         Box::pin(self.do_get_peer_sync_time(peer_url)).await
     }
 
+    async fn fetch_federated_metrics(
+        &self,
+    ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError> {
+        Box::pin(self.do_fetch_federated_metrics()).await
+    }
+
     async fn update_peer_sync_time(
         &self,
         peer_url: &str,

@@ -246,7 +246,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
     let artifact_store = Arc::new(infrastructure::artifact_store::SqliteArtifactStore::new(
         job_queue.get_pool().clone(),
-        artifacts_dir,
+        artifacts_dir.clone(),
     ));
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
         provider.clone(),
@@ -374,6 +374,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             job_queue.get_pool().clone(),
             commerce_engine.clone(),
             provider.clone(),
+            artifacts_dir.clone(),
         )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         ..Default::default()
     };
@@ -851,9 +852,12 @@ async fn test_voice_drm_roundtrip() {
 #[tokio::test]
 async fn test_synergy_demo_routes_visibility() {
     let (server, _state, _tmp) = create_test_server().await;
+    let auth = test_bearer();
+    
+    // 1. Synergy Test Routes
     let resp = server
         .post("/api/synergy/test/failure")
-        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
         .await;
 
     #[cfg(feature = "dev-routes")]
@@ -863,12 +867,69 @@ async fn test_synergy_demo_routes_visibility() {
         "dev-routes is enabled, should return 200 OK"
     );
 
-    #[cfg(not(feature = "dev-routes"))]
-    assert_eq!(
-        resp.status_code(),
-        axum::http::StatusCode::METHOD_NOT_ALLOWED,
-        "dev-routes is disabled, fallback ServeDir should return 405 for POST"
-    );
+    #[cfg(not(debug_assertions))]
+    {
+        assert_eq!(
+            resp.status_code(),
+            axum::http::StatusCode::NOT_FOUND,
+            "Synergy test routes must be 404 in non-debug builds"
+        );
+    }
+
+    // 2. Settings Test Connection Route
+    let resp_settings = server
+        .post("/api/v1/settings/test")
+        .add_header(axum::http::header::AUTHORIZATION, &auth)
+        .json(&json!({
+            "service": "ollama",
+            "url": "http://localhost:11434"
+        }))
+        .await;
+
+    #[cfg(not(debug_assertions))]
+    {
+        assert_eq!(
+            resp_settings.status_code(),
+            axum::http::StatusCode::NOT_FOUND,
+            "Settings test route must be 404 in non-debug builds"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_quarantine_audit_api() {
+    let (server, state, _tmp) = create_test_server().await;
+    let system_id = state.system_agent_id;
+    let system_auth = format!("Bearer mock_valid_token_sysadmin:{}", system_id);
+    
+    // 1. System Agent access: Expect 200 OK
+    let resp = server
+        .get("/api/v1/audit/quarantine")
+        .add_header(axum::http::header::AUTHORIZATION, &system_auth)
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 2. Unauthorized access: Another agent_id
+    let other_id = uuid::Uuid::new_v4();
+    let other_auth = format!("Bearer mock_valid_token_testuser:{}", other_id);
+    let resp_forbidden = server
+        .get("/api/v1/audit/quarantine")
+        .add_header(axum::http::header::AUTHORIZATION, &other_auth)
+        .await;
+    assert_eq!(resp_forbidden.status_code(), axum::http::StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_oauth2_endpoints_stub() {
+    let (server, _state, _tmp) = create_test_server().await;
+    
+    // 1. Authorize: GET
+    let resp = server.get("/api/v1/auth/authorize?client_id=test&response_type=code").await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 2. Token: POST
+    let resp = server.post("/api/v1/auth/token").json(&json!({"grant_type": "authorization_code", "code": "mock"})).await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 }
 
 #[tokio::test]
@@ -1214,7 +1275,7 @@ async fn test_gig_lifecycle() {
     let deliver_req = json!({
         "order_id": intent_id,
         "deliverer_id": bidder_id,
-        "artifact_path": "path/to/artifact",
+        "artifact_path": "artifact.txt",
         "metadata": {}
     });
     let resp = server
@@ -1232,4 +1293,41 @@ async fn test_gig_lifecycle() {
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
     let verify_res = resp.json::<aiome_contracts::gig::VerificationResult>();
     assert!(verify_res.passed);
+}
+
+#[tokio::test]
+#[serial]
+#[cfg(not(debug_assertions))]
+async fn test_test_endpoints_are_inaccessible_in_release() {
+    let (server, _state, _dir) = create_test_server().await;
+
+    let res = server.post("/api/synergy/test/failure").await;
+    let code = res.status_code();
+    assert!(code == axum::http::StatusCode::NOT_FOUND || code == axum::http::StatusCode::METHOD_NOT_ALLOWED, "Status was: {}", code);
+
+    let res = server.post("/api/synergy/test/security").await;
+    let code = res.status_code();
+    assert!(code == axum::http::StatusCode::NOT_FOUND || code == axum::http::StatusCode::METHOD_NOT_ALLOWED, "Status was: {}", code);
+
+    let res = server.post("/api/synergy/test/federation").await;
+    let code = res.status_code();
+    assert!(code == axum::http::StatusCode::NOT_FOUND || code == axum::http::StatusCode::METHOD_NOT_ALLOWED, "Status was: {}", code);
+
+    let res = server.post("/api/v1/settings/test").json(&serde_json::json!({})).await;
+    let code = res.status_code();
+    assert!(code == axum::http::StatusCode::NOT_FOUND || code == axum::http::StatusCode::METHOD_NOT_ALLOWED, "Status was: {}", code);
+}
+
+#[tokio::test]
+#[serial]
+#[cfg(debug_assertions)]
+async fn test_test_endpoints_are_accessible_in_debug() {
+    let (server, _state, _dir) = create_test_server().await;
+
+    // test endpoints might require authorization and params, so 401/400 is fine, but NOT 404.
+    let res = server.post("/api/synergy/test/failure").await;
+    assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
+
+    let res = server.post("/api/v1/settings/test").json(&serde_json::json!({})).await;
+    assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 }

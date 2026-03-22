@@ -2,6 +2,7 @@
 //!
 //! CSAM やコンプライアンス違反のアセットを永続的に記録・管理する。
 
+use aiome_contracts::contracts::QuarantinedAsset;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -46,6 +47,8 @@ pub trait QuarantineStore: Send + Sync {
     async fn is_quarantined(&self, image_hash: &str) -> anyhow::Result<bool>;
     /// アセットの解放（検疫解除）
     async fn release_asset(&self, id: &str) -> anyhow::Result<()>;
+    /// 検疫アセットの一覧取得
+    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>>;
 }
 
 /// SQLite を使用した検疫ストア実装
@@ -132,6 +135,26 @@ impl QuarantineStore for SqliteQuarantineStore {
         info!("🔓 [Quarantine] Asset released: {}", id);
         Ok(())
     }
+
+    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
+        let rows = sqlx::query("SELECT id, asset_name, image_hash, reason, status, uploaded_at FROM quarantined_assets ORDER BY uploaded_at DESC")
+            .fetch_all(&self.pool)
+            .await?;
+        
+        let assets = rows.into_iter().map(|row| {
+            use sqlx::Row;
+            QuarantinedAsset {
+                id: row.get("id"),
+                asset_name: row.get("asset_name"),
+                image_hash: row.get("image_hash"),
+                reason: row.get("reason"),
+                status: row.get("status"),
+                uploaded_at: row.get("uploaded_at"),
+            }
+        }).collect();
+
+        Ok(assets)
+    }
 }
 
 /// テスト用モック
@@ -154,6 +177,10 @@ impl QuarantineStore for MockQuarantineStore {
 
     async fn release_asset(&self, _id: &str) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
+        Ok(vec![])
     }
 }
 

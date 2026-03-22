@@ -83,6 +83,10 @@ pub fn build_app(
             "/api/v1/audit/diagnostics",
             get(routes::general::get_diagnoses),
         )
+        .route(
+            "/api/v1/audit/quarantine",
+            get(routes::general::get_quarantined_assets),
+        )
         .route("/api/v1/trends", get(routes::general::get_trends))
         .route(
             "/api/v1/gig/publish",
@@ -162,7 +166,7 @@ pub fn build_app(
             get(routes::karma::synergy_graph_handler),
         );
 
-    #[cfg(feature = "dev-routes")]
+    #[cfg(debug_assertions)]
     let internal_router = internal_router
         .route(
             "/api/synergy/test/failure",
@@ -212,13 +216,17 @@ pub fn build_app(
                 ),
         )
         .route(
-            "/api/v1/settings/test",
-            post(routes::settings::test_connection),
-        )
-        .route(
             "/api/v1/settings/identity",
             get(routes::settings::get_identity),
-        )
+        );
+
+    #[cfg(debug_assertions)]
+    let internal_router = internal_router.route(
+        "/api/v1/settings/test",
+        post(routes::settings::test_connection),
+    );
+
+    let internal_router = internal_router
         .route(
             "/api/v1/ekyc/session",
             post(routes::ekyc::create_ekyc_session_handler).route_layer(
@@ -327,6 +335,8 @@ pub fn build_app(
     let public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
+        .route("/api/v1/auth/authorize", get(routes::auth::authorize_handler))
+        .route("/api/v1/auth/token", post(routes::auth::token_handler))
         .route(
             "/api/v1/commerce/webhook",
             axum::routing::post(routes::commerce_webhook::stripe_webhook),

@@ -951,3 +951,18 @@ async fn test_sqlite_job_queue_priority_order() {
     assert_eq!(job2.topic, "Low Priority");
     assert_eq!(job2.priority, 0);
 }
+#[tokio::test]
+async fn test_fetch_federated_metrics() {
+    let (jq, _tmp) = create_test_queue().await;
+
+    // 初期状態のメトリクスを取得
+    let metrics = jq
+        .fetch_federated_metrics()
+        .await
+        .expect("Fetch federated metrics failed");
+
+    // 基本構造の妥当性を検証
+    assert_eq!(metrics.stats.level, 1);
+    assert_eq!(metrics.job_metrics.total_completed, 0);
+    assert_eq!(metrics.karma_metrics.total_count, 0);
+}

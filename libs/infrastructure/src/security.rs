@@ -231,7 +231,7 @@ impl RuntimeJail for BastionGuard {
 
         // Phase 9: Dynamic Sandbox Wrapping (gVisor / sandbox-exec)
         let mut cmd = if cfg!(target_os = "macos") && !self.is_system_internal {
-            // macOS: sandbox-exec (if available) - Fallback to normal for dev
+            // macOS: sandbox-exec (if available)
             if std::path::Path::new("/usr/bin/sandbox-exec").exists() {
                 let mut c = Command::new("sandbox-exec");
                 c.arg("-p").arg("(version 1) (allow default)"); // Placeholder for Phase 9.1 profile
@@ -242,13 +242,20 @@ impl RuntimeJail for BastionGuard {
             }
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
             // Linux: prioritize gVisor (runsc)
-            if std::path::Path::new("/usr/bin/runsc").exists() {
+            let runsc_exists = std::process::Command::new("which")
+                .arg("runsc")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if runsc_exists {
+                info!("🛡️ [Security] gVisor (runsc) detected. Running in secure user-space kernel.");
                 let mut c = Command::new("runsc");
                 c.arg("do");
                 c.arg(binary);
                 c
             } else {
-                warn!("⚠️ [Security] runsc (gVisor) not found. Running with standard host kernel.");
+                warn!("⚠️ [Security] gVisor (runsc) not found in PATH. Falling back to host kernel (Risk: High). Consider installing runsc for production.");
                 Command::new(binary)
             }
         } else {

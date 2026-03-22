@@ -42,7 +42,7 @@ struct WebResultItem {
 
 
 /// Context Sanitization: strips HTML tags, excessive whitespace, and URLs
-fn sanitize_snippet(snippet: &str) -> String {
+pub(crate) fn sanitize_snippet(snippet: &str) -> String {
     let mut text = snippet.to_string();
 
     // Strip URLs
@@ -148,11 +148,15 @@ impl TrendAdapter for WebSearchAdapter {
 /// `ExternalTrendSonar` 構造体
 pub struct ExternalTrendSonar {
     adapters: Vec<std::sync::Arc<dyn TrendAdapter>>,
+    provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>>,
 }
 
 impl ExternalTrendSonar {
-    pub fn new(adapters: Vec<std::sync::Arc<dyn TrendAdapter>>) -> Self {
-        Self { adapters }
+    pub fn new(
+        adapters: Vec<std::sync::Arc<dyn TrendAdapter>>,
+        provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>>,
+    ) -> Self {
+        Self { adapters, provider }
     }
 }
 
@@ -163,10 +167,66 @@ impl TrendSource for ExternalTrendSonar {
         for adapter in &self.adapters {
             match adapter.fetch(category).await {
                 Ok(mut trends) => all_trends.append(&mut trends),
-                Err(e) => tracing::warn!("⚠️ [TrendSonar] Adapter {} failed: {}", adapter.name(), e),
+                Err(e) => {
+                    tracing::warn!("⚠️ [TrendSonar] Adapter {} failed: {}", adapter.name(), e)
+                }
             }
         }
+
+        if let Some(ref provider) = self.provider {
+            if !all_trends.is_empty() {
+                all_trends = self
+                    .evaluate_trends_with_llm(provider, category, all_trends)
+                    .await?;
+            }
+        }
+
         Ok(all_trends)
+    }
+}
+
+impl ExternalTrendSonar {
+    async fn evaluate_trends_with_llm(
+        &self,
+        provider: &std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>,
+        category: &str,
+        trends: Vec<TrendItem>,
+    ) -> Result<Vec<TrendItem>, AiomeError> {
+        let keywords_str = trends
+            .iter()
+            .map(|t| t.keyword.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let prompt = format!(
+            "カテゴリ '{}' に関する以下のキーワードから、最も注目度が高く、かつ AI の自律成長に役立つと思われるものを 3つまで抽出し、0.0から1.0のスコアを付けて JSON形式で出力せよ。\n\nキーワード:\n{}\n\n出力形式: [{{ \"keyword\": \"string\", \"score\": 0.8 }}]",
+            category, keywords_str
+        );
+
+        let resp = provider
+            .complete(&prompt, Some("You are a Trend Analysis Expert."))
+            .await?;
+        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+
+        #[derive(serde::Deserialize)]
+        struct EvaluatedTrend {
+            keyword: String,
+            score: f64,
+        }
+
+        let evaluated: Vec<EvaluatedTrend> = serde_json::from_str(&json_str).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Failed to parse Trend Evaluation JSON: {}", e),
+            }
+        })?;
+
+        Ok(evaluated
+            .into_iter()
+            .map(|e| TrendItem {
+                keyword: e.keyword,
+                source: "LLM-Evaluated".to_string(),
+                score: e.score,
+            })
+            .collect())
     }
 }
 
@@ -214,7 +274,7 @@ mod tests {
             trends: vec![TrendItem { keyword: "aiome".into(), source: "source2".into(), score: 0.8 }],
         });
 
-        let sonar = ExternalTrendSonar::new(vec![adapter1, adapter2]);
+        let sonar = ExternalTrendSonar::new(vec![adapter1, adapter2], None);
         let results = sonar.get_trends("tech").await.unwrap();
 
         assert_eq!(results.len(), 2);

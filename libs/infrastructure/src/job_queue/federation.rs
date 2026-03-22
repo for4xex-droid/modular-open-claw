@@ -7,7 +7,7 @@
 
 use super::try_get_optional_string;
 use super::SqliteJobQueue;
-use aiome_core::contracts::{ArenaMatch, FederatedKarma, ImmuneRule};
+use aiome_core::contracts::{ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
@@ -40,6 +40,9 @@ pub trait FederationOps {
         karma_ids: Vec<String>,
         rule_ids: Vec<String>,
     ) -> Result<(), AiomeError>;
+    async fn do_fetch_federated_metrics(
+        &self,
+    ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError>;
 }
 
 #[async_trait]
@@ -404,5 +407,50 @@ impl FederationOps for SqliteJobQueue {
             reason: format!("Mark federated commit failed: {}", e),
         })?;
         Ok(())
+    }
+
+    async fn do_fetch_federated_metrics(
+        &self,
+    ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError> {
+        let stats = <Self as super::evolution::EvolutionOps>::do_get_agent_stats(self).await?;
+
+        // 1. Job Metrics
+        let total_completed = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Completed'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        let total_failed = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Failed'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        let pending_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Pending'")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+
+        // 2. Karma Metrics
+        let total_karma = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE is_archived = 0")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        let technical_weight = sqlx::query_scalar::<_, i64>("SELECT COALESCE(SUM(weight), 0) FROM karma_logs WHERE karma_type = 'Technical' AND is_archived = 0")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+        let creative_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE karma_type = 'Creative' AND is_archived = 0")
+            .fetch_one(&self.pool).await.unwrap_or(0);
+
+        // Map shared::watchtower::AgentStats to aiome_contracts::AgentStats
+        let contract_stats = aiome_contracts::AgentStats {
+            level: stats.level,
+            exp: stats.exp,
+            resonance: stats.resonance,
+            creativity: stats.creativity,
+            fatigue: stats.fatigue,
+        };
+
+        Ok(aiome_core::contracts::FederatedMetrics {
+            stats: contract_stats,
+            job_metrics: aiome_core::contracts::JobMetrics {
+                total_completed,
+                total_failed,
+                pending_count,
+            },
+            karma_metrics: aiome_core::contracts::KarmaMetrics {
+                total_count: total_karma,
+                technical_weight,
+                creative_count,
+            },
+        })
     }
 }

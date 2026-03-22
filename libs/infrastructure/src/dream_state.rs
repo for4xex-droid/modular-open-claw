@@ -269,7 +269,7 @@ mod tests {
     use super::*;
     use aiome_core::biome::BiomeMessage;
     use aiome_core::contracts::{
-        ArenaMatch, FederatedKarma, ImmuneRule, OracleVerdict, SamsaraEvent,
+        ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule, OracleVerdict, SamsaraEvent,
     };
     use aiome_core::error::AiomeError;
     use aiome_core::traits::{Job, JobQueue, JobStatus, KarmaSearchResult, SnsMetricsRecord};
@@ -592,12 +592,15 @@ mod tests {
             ) -> Result<(), AiomeError> {
                 Ok(())
             }
+            async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
+                Ok(FederatedMetrics::default())
+            }
             async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
                 Ok(Uuid::new_v4())
             }
         }
         let dream = DreamState::new();
-        let sonar = ExternalTrendSonar::new(vec![]);
+        let sonar = ExternalTrendSonar::new(vec![], None);
         let res = dream.dream(&BusyJQ, &sonar, 1).await;
         assert!(res.is_ok());
     }
@@ -605,7 +608,7 @@ mod tests {
     #[tokio::test]
     async fn test_dream_execution() {
         let jq = crate::test_utils::MockJobQueue;
-        let sonar = ExternalTrendSonar::new(vec![]);
+        let sonar = ExternalTrendSonar::new(vec![], None);
         let dream = DreamState::new();
         // Since it's random, we just ensure it doesn't crash
         let res = dream.dream(&jq, &sonar, 10).await;

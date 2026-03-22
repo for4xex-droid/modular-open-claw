@@ -400,7 +400,7 @@ impl SoulMutator {
 mod tests {
     use super::*;
     use aiome_core::biome::BiomeMessage;
-    use aiome_core::contracts::SamsaraEvent;
+    use aiome_core::contracts::{FederatedMetrics, SamsaraEvent};
     use aiome_core::error::AiomeError;
     use aiome_core::llm_provider::LlmProvider;
     use aiome_core::traits::{Job, JobQueue, KarmaSearchResult, SnsMetricsRecord};
@@ -755,6 +755,9 @@ mod tests {
             _: &str,
         ) -> Result<(), AiomeError> {
             Ok(())
+        }
+        async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
+            Ok(FederatedMetrics::default())
         }
         async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
             Ok(uuid::Uuid::new_v4())

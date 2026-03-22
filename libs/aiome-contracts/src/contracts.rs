@@ -422,6 +422,38 @@ pub struct FederatedKarma {
     pub somatic_valence: Option<f64>,
 }
 
+/// 検疫済みアセットのレコード構造体
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct QuarantinedAsset {
+    pub id: String,
+    pub asset_name: String,
+    pub image_hash: String,
+    pub reason: String,
+    pub status: String,
+    pub uploaded_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FederatedMetrics {
+    pub stats: crate::types::AgentStats,
+    pub job_metrics: JobMetrics,
+    pub karma_metrics: KarmaMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct JobMetrics {
+    pub total_completed: i64,
+    pub total_failed: i64,
+    pub pending_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct KarmaMetrics {
+    pub total_count: i64,
+    pub technical_weight: i64,
+    pub creative_count: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationPushRequest {
     pub node_id: String,
@@ -429,6 +461,8 @@ pub struct FederationPushRequest {
     pub rules: Vec<ImmuneRule>,
     #[serde(default)]
     pub arena_matches: Vec<ArenaMatch>,
+    #[serde(default)]
+    pub metrics: Option<FederatedMetrics>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

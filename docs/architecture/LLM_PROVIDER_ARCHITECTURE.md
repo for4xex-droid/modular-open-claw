@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.1
-**Last Updated:** 2026-03-19  
+**Version:** 1.2
+**Last Updated:** 2026-03-22
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -69,7 +69,15 @@ LLM の接続先は以下の優先順位で解決されます：
 - **SLO Engine**: 24時間ウィンドウでエラーバジェットを管理。80% 超過で警告。
 - **ストリーミング**: `stream_complete()` で SSE 経由のリアルタイムトークン配信。
 
-### 3.3 Embedding 対応
+### 3.3 FallbackRouter (Phase 17 実装)
+`FallbackRouter` は、プライマリLLM（例: 外部サービスや高負荷モデル）の障害をサーキットブレーカーで検知し、セカンダリ（例: Gemini Cloud などの安定プロバイダー）へ透過的に切り替えます。
+- **Failover**: タイムアウトや 5xx エラーを検知して自動トリガー。
+- **Transparent**: 利用側は単一の `LlmProvider` として操作可能。
+
+### 3.4 Trend Evaluation (Phase 20/21 実装)
+`ExternalTrendSonar` はオプションの `LlmProvider` を参照し、収集されたトレンドキーワードに対してスコアリング（注目度・有用性）を行います。これにより、単なる収集から「意味のある選別」へと進化しています。
+
+### 3.5 Embedding 対応
 
 `DynamicLlmProvider` は `EmbeddingProvider` も実装しています。
 - Gemini: `gemini-embedding-001` モデルを使用

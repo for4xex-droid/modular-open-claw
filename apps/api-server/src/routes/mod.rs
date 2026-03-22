@@ -6,6 +6,7 @@
  */
 
 pub mod agent;
+pub mod auth;
 pub mod artifacts;
 pub mod avatar;
 pub mod biome;

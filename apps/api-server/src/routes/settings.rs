@@ -230,6 +230,7 @@ pub async fn update_setting(
     ),
     security(("api_key" = []))
 )]
+#[cfg(debug_assertions)]
 pub async fn test_connection(
     state: State<AppState>,
     _auth: Authenticated,

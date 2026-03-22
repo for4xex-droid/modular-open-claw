@@ -128,15 +128,30 @@ impl AuthManager for MockAuthManager {
     #[instrument(skip_all)]
     async fn validate_token(&self, token: &str) -> anyhow::Result<AiomeCustomClaims, AiomeError> {
         if token.starts_with("mock_valid_token_") {
-            let user_id = token.replace("mock_valid_token_", "");
-            let ekyc_verified = user_id.starts_with("ekyc_");
-            let clean_id = user_id.replace("ekyc_", "");
+            let part = token.replace("mock_valid_token_", "");
+            let components: Vec<&str> = part.split(':').collect();
+            
+            let (sub, agent_id_str) = if components.len() >= 2 {
+                (components[0].to_string(), Some(components[1]))
+            } else {
+                (part, None)
+            };
+
+            let ekyc_verified = sub.starts_with("ekyc");
+            let clean_sub = sub.replace("ekyc", "");
+
+            let agent_id = if let Some(id_str) = agent_id_str {
+                uuid::Uuid::parse_str(id_str).map_err(|e| AiomeError::SecurityViolation {
+                    reason: format!("Invalid Agent ID in mock token: {}", e),
+                })?
+            } else {
+                uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()
+            };
 
             Ok(AiomeCustomClaims {
-                sub: clean_id,
+                sub: clean_sub,
                 ekyc_verified,
-                // A-4: For testing, provide a non-nil agent_id to pass the Authenticated guard
-                agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+                agent_id,
                 roles: vec!["user".to_string()],
                 exp: 9999999999,
                 iat: 1600000000,

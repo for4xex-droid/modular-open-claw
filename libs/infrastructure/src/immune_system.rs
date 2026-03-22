@@ -180,7 +180,7 @@ mod tests {
     use super::*;
     use aiome_core::biome::BiomeMessage;
     use aiome_core::contracts::{
-        ArenaMatch, FederatedKarma, ImmuneRule, OracleVerdict, SamsaraEvent,
+        ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule, OracleVerdict, SamsaraEvent,
     };
     use aiome_core::error::AiomeError;
     use aiome_core::traits::{
@@ -516,6 +516,9 @@ mod tests {
             _: &str,
         ) -> Result<(), AiomeError> {
             Ok(())
+        }
+        async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
+            Ok(FederatedMetrics::default())
         }
         async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
             Ok(uuid::Uuid::new_v4())
