@@ -113,6 +113,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🏗️ **Phase 20: AI Gig Economy (The Immutable Gateway)**: Implemented an autonomous economic infrastructure for AI agents to publish intents, submit bids, deliver work, and settle payments. Features an "Immutable Gateway" that releases escrowed rewards only when deliverables meet pre-defined Acceptance Criteria, minimizing trust requirements between agents.
 - 🛡️ **Phase 21: Audit API & Quarantine Ledger**: Enabled detailed auditing of quarantined assets via the `/api/v1/audit/quarantine` endpoint. Ensures centralized management by system agents and prevents the re-entry of non-compliant content into the federation.
 - 🛡️ **Phase 21: gVisor (runsc) Security Integration**: Dynamically detects and prioritizes `runsc` (gVisor) in Linux environments. Isolates WASM skills and tool executions within a user-space kernel, mathematically minimizing risks to the host OS.
+- 🛡️ **Phase 24: Unified Safety & AI Code Review (Security Hardening)**: Implements **Unified Response Purger (purge_entities)** in `aiome-core` for robust, centralized sanitization of external inputs (RSS, LLM, etc.). Introduces **AI-Driven Code Review (Cleanroom)** to perform security audits on imported skills via LLM, neutralizing malicious logic or "Vampire Attacks" before compilation.
+- 📊 **Phase 24: Periodic Federated Metrics (Global Observability)**: Adds an autonomous background task to push node health, job success rates, and Karma growth to the Samsara Hub every hour. Enables global federation visibility and automated anomaly detection across all Aiome nodes.
 
 ---
 

@@ -8,11 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2026-03-22
 
 ### Added
+- **Unified Response Purger (G-21)**:
+    - Implemented `purge_entities` in `aiome-core` for robust, multi-step sanitization of external inputs.
+    - Centralized regex patterns and HTML/entity decoding logic to prevent XSS and script injection.
+    - Applied to `TrendSonar` and RSS collectors for unified safety.
+- **AI-Driven Code Review (G-22)**:
+    - Integrated LLM-based security auditing into `Cleanroom` for skill imports.
+    - Performs pre-forge analysis of skill source code to detect "Vampire Attacks" or malicious network calls.
+- **Periodic Federated Metrics (G-23)**:
+    - Added a background task to the `api-server` to push node metrics to the Samsara Hub every hour.
+    - Implemented `do_push_federated_metrics` in `FederationOps` and fixed its `SqliteJobQueue` implementation.
 - **AgentSense MVP (AS-1)**:
     - Implemented `GET /api/v1/treasure` to generate and fetch personalized AI "Sense" (recommendations).
     - Implemented `POST /api/v1/treasure/feedback` to record agent interactions and reward resonance.
     - Added `AffiliateAdapter` for modular bid/recommendation fetching (currently mocked).
-    - Integrated `IntentGenerator::generate_for_agent` to derive autonomous "wishes" from agent state.
+    - **Soul-Linked Intent Generation**: Enhanced `IntentGenerator` to derive agent "wishes" from their `AgentSoul` attachment style (Anxious/Avoidant/Secure), stored in the `SoulStore` (Gap G-26).
+    - **TreasureBox UI**: Developed a premium glassmorphism React component and `useTreasure` hook in the Management Console to display and interact with recommendations (Gap G-25).
     - Added comprehensive integration test `test_treasure_get_recommendations` covering the full feedback-reward loop.
 - **Audit API: Quarantine Ledger**:
     - Implemented `GET /api/v1/audit/quarantine` to allow the system agent to list and audit quarantined assets.
@@ -31,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Integration Test Stability**:
     - Resolved `test_gig_lifecycle` failure by ensuring compatible `artifact_path` for `PathSandbox` validation.
     - Restored functionality to 32/33 integration tests after auth manager refactoring.
+- **Cleanroom Security Auditor**:
+    - Resolved `LlmProvider::complete` argument mismatch and response parsing logic to ensure robust AI-driven code auditing.
 
 ### Fixed
 - **Trend Sonar Refactoring (Multi-Source Support)**:

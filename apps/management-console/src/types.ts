@@ -65,3 +65,20 @@ export interface ChatMessage {
     content: string;
     isError?: boolean;
 }
+
+export interface TreasureItem {
+    id: string;
+    title: string;
+    description: string;
+    url: string;
+    price_coins?: number;
+    category: string;
+    score: number;
+    disclosure_label: string;
+}
+
+export interface TreasureFeedback {
+    item_id: string;
+    action: string;
+    metadata?: Record<string, any>;
+}

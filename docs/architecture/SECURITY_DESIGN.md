@@ -39,6 +39,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 16 | **Unauthorized Economic Activity** | **Unverified users sending gifts/buying** | 🔴 High | **Mandatory eKYC Verified Claim Enforcement (403 Forbidden) (Phase 16)** |
 | 17 | **Revenue Split Inconsistency** | **License grant without accounting** | 🔴 High | **Atomic Transaction: RevenueSplitter + License Grant (Phase 16)** |
 | 18 | **Persistent Env Var Secrets** | **Secrets visible in /proc/pid/environ** | 🔴 High | **Immediate std::env::remove_var (Zeroize) after Startup Load (Phase 16)** |
+| 19 | **Web/RSS Content Injection** | **Malicious RSS/Search snippets** | 🔴 High | **Unified Response Purger (purge_entities) (Phase 24)** |
+| 20 | **Malicious Skill Import** | **Skill crafts backdoors/vampire attacks** | 🔴 High | **AI-Driven Code Audit (Cleanroom) (Phase 24)** |
+| 21 | **Federation Blind Spot** | **Node health/metrics unseen by Hub** | 🟡 Mid | **Periodic Federated Metrics Push (Samsara Hub) (Phase 24)** |
 
 ## 3. Defense Architecture
 
@@ -49,6 +52,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
+- **Unified Response Purger (Phase 24)**: Implements `purge_entities` in `aiome-core` to provide robust, multi-step sanitization for all external inputs, including RSS feeds, Web Search results, and LLM outputs. It centralizes regex patterns, HTML decoding, and tag stripping to prevent XSS and script injection at the core layer.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
@@ -61,10 +65,12 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
 - **Hash Chains**: All operational logs in SQLite are cryptographically linked using SHA-256 hash chains, enabling immediate detection of deletion or tampering efforts.
 - **Diagnostics & Immunity Ledger (Phase 8.8)**: Exposes a formalized `Audit & Immunity Ledger` in the management console. This provides human-readable visibility into local `agent_diagnoses` (self-repair trails) and `audit_ledger_global` (hash-chained record mutations), satisfying NURTURE §12 auditability requirements.
+- **Federated Metrics Persistence (Phase 24)**: Extends the `Samsara Hub` with a `federated_metrics` table to record node-level health, job completion rates, and karma growth. Enables global observability and anomaly detection across the autonomous federation.
 
 ### Layer 4: Build Isolation & Formal TDD Forge (S-Rank Defense)
 - **OS-Native Sandbox**: Autonomous compilation (`cargo build`) executed by the agent is forcibly containerized using OS-native guardrails (`sandbox-exec` / `bwrap`) to prevent supply chain attacks during the Forge process.
 - **Fail-Forward Training**: Instead of terminating agents when code fails to compile, the system employs TDD-based reinforcement loops without permanent Karma penalties, allowing self-healing code generation.
+- **AI-Driven Skill Audit (Phase 24)**: Integrates LLM-based security auditing into the `Cleanroom` forge process. Before compiling any imported skill, the system performs an AI-driven review to detect malicious patterns, unauthorized network calls, or "Vampire Attacks" (credential exfiltration) that might bypass static WASM analysis.
 - **Core State Actor**: The system uses a strictly serial MPSC Channel Actor Model to manage state updates, preventing async/sync deadlock scenarios inherently.
 
 ## 4. Operational Safety Layers
@@ -93,8 +99,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-21*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 16 Completion)*
+*Last Mutated: 2026-03-22*
+*Managed by: Aiome Sovereign Task Force (Ref: Phase 24 Completion)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 

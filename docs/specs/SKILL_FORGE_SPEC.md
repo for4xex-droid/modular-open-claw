@@ -1,4 +1,4 @@
-# Skill Forge (自律技能鍛造) 仕様書 (v1.0)
+# Skill Forge (自律技能鍛造) 仕様書 (v1.1)
 
 ## 概要
 
@@ -12,7 +12,8 @@
 
 1.  **意図解析 (Parse)**: `CommandCenter` (Oracle LLM) がユーザーの要求を解析し、既存スキルで対応不能かつ「構築可能」な場合に `forge_skill` 判定を下す。
 2.  **設計と実装 (Forge)**: `SkillForge` が Oracle LLM に対して、特定の PDK 制約と「鉄の掟」を遵守した Rust コードの生成を依頼する。
-3.  **隔離ビルド (Compile)**: 生成されたコードは `/tmp` 下の UUID フォルダで、最小限の依存関係を持つ `skill_generator` テンプレートを用いて `wasm32-wasip1` ターゲットでビルドされる。
+3.  **セキュリティ監査 (Audit)**: 生成、またはインポートされたソースコードは、コンパイル前に `Cleanroom` (Oracle LLM) による多角的なセキュリティ監査を受け、Vampire Attack や悪意あるロジックの混入をチェックする。
+4.  **隔離ビルド (Compile)**: 監査を通過したコードは `/tmp` 下の UUID フォルダで、最小限の依存関係を持つ `skill_generator` テンプレートを用いて `wasm32-wasip1` ターゲットでビルドされる。
 4.  **検証とデプロイ (Load)**: ビルドが成功すると、WASM ファイルは `workspace/skills/` に配置され、`WasmSkillManager` がこれをホットロードする。
 5.  **実行 (Execute)**: ロードされたスキルは WASI サンドボックス内で、秒単位のタイムアウトとメモリ制限、ネットワークホワイトリスト管理の下で実行される。
 
@@ -28,7 +29,7 @@
 
 ---
 
-## 🛡️ ゼロトラスト 7 層防衛 (Defense in Depth)
+## 🛡️ ゼロトラスト 8 層防衛 (Defense in Depth)
 
 1.  **ランタイム分離**: Extism (Wasmtime) によるメモリ・CPU レベルの物理隔離。
 2.  **ビルド制限**: スキル生成時に `build.rs` を強制排除し、ホスト OS での任意コード実行を防止。
@@ -37,6 +38,7 @@
 5.  **リソース上限**: メモリ使用量上限 (100MB) と実行時間上限 (10秒) を適用。
 6.  **機密情報隠蔽**: プラグインはホストの環境変数に直接触れることはできず、許可されたキーのみが WASM メモリへ注入される。
 7.  **出力バリデーション**: スキルの生出力は Oracle LLM (Synthesis層) が必ず再解析し、不適切な情報をユーザーに返さない。
+8.  **AI セキュリティ監査 (Phase 24)**: コンパイル前に `Cleanroom` (Oracle LLM) がソースコードをレビューし、悪意あるネットワーク通信や機密情報窃取の兆候を事前に検出。
 
 ---
 
@@ -55,5 +57,5 @@
 
 ---
 
-更新日: 2026-03-17
-管理者: Aiome / Watchtower Evolution Unit
+更新日: 2026-03-22
+管理者: Aiome / Watchtower Evolution Unit (Ref: Phase 24 Security Enhancement)

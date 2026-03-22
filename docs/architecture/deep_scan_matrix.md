@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-22T22:35:24.329790
+> Generated at: 2026-03-22T23:05:15.670868
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, BiomeDialogueView, BiotopeView, CharacterBillboard, DiagnosticsHistory, DioramaView, ExpressionPipeline, FilterButton, GraphView, ImmuneSystem, Inlets, InxRenderer, OllamaModelSelector, OnboardingModal, OriginsManager, Outlet, PAGE_SIZE, Rat, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SystemBirth, Timeline, VaultProtectionItem, VoiceStore, VrmRenderer
+- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, BiomeDialogueView, BiotopeView, CharacterBillboard, DiagnosticsHistory, DioramaView, ExpressionPipeline, FilterButton, GraphView, ImmuneSystem, Inlets, InxRenderer, OllamaModelSelector, OnboardingModal, OriginsManager, Outlet, PAGE_SIZE, Rat, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SystemBirth, Timeline, TreasureBox, VaultProtectionItem, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**
@@ -68,17 +68,17 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/settings`
 - `/api/v1/settings/identity`
 - `/api/v1/settings/test`
-- `/api/v1/treasure`
 - `/api/v1/trends`
 - `/api/v1/voice/list`
 - `/api/v1/voice/upload`
 - `/api/wiki`
 - `/api/wiki/content`
+- `/feedback`
 - `/health`
 - `/messages`
 - `/sse`
 **Key Structs**
-- AgentChatRequest, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, Component, DbLoggerLayer, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, Inochi2dUploadResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TreasureFeedback, TrendsResponse, UpdateSettingsRequest
+- AgentChatRequest, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AvatarAssetRequest, AvatarVerificationResult, CallToolResult, ChatMessage, CommerceBalanceResponse, Component, DbLoggerLayer, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, Inochi2dUploadResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, LogEntry, LogEntryResponse, McpClient, McpDiscoveryFile, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PurchaseRequest, PurchaseResponse, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest
 
 ### `samsara-hub`
 **REST / Websocket Routes**
@@ -123,9 +123,9 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `aiome-contracts`
 **Traits (Interfaces)**
-- AgentAct, AiomeLogger, AiomePlugin, ArtifactStore, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, GigEngine, JobQueue, LlmProvider, MediaProcessor, Publisher, RuntimeJail, TrajectoryStore, TrendSource, VoiceKeyVault
+- AgentAct, AiomeLogger, AiomePlugin, ArtifactStore, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, GigEngine, JobQueue, LlmProvider, MediaProcessor, Publisher, RuntimeJail, SoulStore, TrajectoryStore, TrendSource, VoiceKeyVault
 **Domain Structs**
-- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedKarma, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, GigBid, GigDeliverable, GigIntent, ImmuneRule, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, LlmJobResponse, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, SnsMetricsRecord, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, VerificationResult, WorkflowRequest, WorkflowResponse
+- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedKarma, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, GigBid, GigDeliverable, GigIntent, ImmuneRule, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, LlmJobResponse, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, SnsMetricsRecord, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TreasureFeedback, TreasureItem, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, VerificationResult, WorkflowRequest, WorkflowResponse
 
 ### `soul`
 **Traits (Interfaces)**

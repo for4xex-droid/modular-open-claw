@@ -12,7 +12,7 @@ use aiome_core::error::AiomeError;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
 use sqlx::Row;
-use tracing::warn;
+use tracing::{info, warn};
 
 #[async_trait]
 pub trait FederationOps {
@@ -43,6 +43,7 @@ pub trait FederationOps {
     async fn do_fetch_federated_metrics(
         &self,
     ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError>;
+    async fn do_push_federated_metrics(&self) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
@@ -150,8 +151,6 @@ impl FederationOps for SqliteJobQueue {
 
         use base64::{prelude::BASE64_STANDARD, Engine};
         use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-        use std::time::Duration;
-        use tracing::{debug, info};
 
         for k in karmas {
             // Verify Ed25519 Signature
@@ -468,5 +467,53 @@ impl FederationOps for SqliteJobQueue {
                 creative_count,
             },
         })
+    }
+
+    async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {
+        let metrics = self.do_fetch_federated_metrics().await?;
+        let node_id = self.get_node_id().await?;
+
+        let hub_url = std::env::var("SAMSARA_HUB_URL")
+            .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+        let hub_secret = std::env::var("FEDERATION_SECRET").ok();
+
+        if let Some(secret) = hub_secret {
+            let client = aiome_core::http::get_http_client();
+            let push_req = aiome_core::contracts::FederationPushRequest {
+                node_id: node_id.clone(),
+                karmas: vec![],
+                rules: vec![],
+                arena_matches: vec![],
+                metrics: Some(metrics),
+            };
+
+            let res = client
+                .post(format!("{}/api/v1/federation/push", hub_url))
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&push_req)
+                .send()
+                .await;
+
+            match res {
+                Ok(r) if r.status().is_success() => {
+                    info!(
+                        "🚀 [Federation] Periodic metrics pushed to Samsara Hub for Node: {}",
+                        node_id
+                    );
+                }
+                Ok(r) => {
+                    let status = r.status();
+                    let text = r.text().await.unwrap_or_default();
+                    warn!(
+                        "⚠️ [Federation] Hub metrics push failed [{}]: {}",
+                        status, text
+                    );
+                }
+                Err(e) => {
+                    warn!("⚠️ [Federation] Hub metrics push connection failed: {}", e);
+                }
+            }
+        }
+        Ok(())
     }
 }

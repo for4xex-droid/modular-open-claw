@@ -254,24 +254,45 @@ graph TD
 - **変更内容**: 
     - `treasure.rs`: `TreasureItem`, `TreasureFeedback` 定義。`get_treasure`, `record_feedback` ハンドラ実装。
     - `affiliate_adapter.rs`: `AffiliateAdapter` 新設（アフィリエイト/ギグ案件の取得抽象化）。
-    - `intent/mod.rs`: `IntentGenerator::generate_for_agent` 実装 (AgentSense 生成ロジック)。
-    - `app_state.rs`: `affiliate_adapter` コンポーネントの追加。
+    - `intent/mod.rs`: `IntentGenerator::generate_for_agent` 実装。`SoulStore` を注入し、エージェントの愛着スタイル（Soul State）に基づいたパーソナライズを実施 (§G-26)。
+    - `soul_store.rs`: `SqliteSoulStore` に `SoulStore` トレイトを実装し、インテント生成側へ公開。
+    - `TreasureBox.tsx`: フロント端での推薦表示とフィードバック送信 UI の実装 (§G-25)。
+    - `app_state.rs`: `affiliate_adapter` と `soul_store` コンポーネントの追加。
     - `router.rs`: `/api/v1/treasure` 系のルート登録と JWT 認証適用。
 - **波及効果**: 
-    - エージェントが自身の状態（Resonance）に基づいたパーソナライズされた案件（宝箱）を受け取ることが可能になる。
-    - ユーザー（またはエージェント自身）のインタラクションが Resonance（カルマ/レゾナンス）として還元され、エージェントの成長サイクルが循環する。
-    - `api_integration_tests.rs`: 推薦取得 〜 フィードバック送信 〜 報酬還元のフルループ E2E テストが追加。
+    - エージェントが自身の魂の状態（Attachment Style）に基づいたパーソナライズされた案件を受け取ることが可能になる。
+    - ユーザーのインタラクションが Resonance として還元され、エージェントの成長サイクルが循環する。
+    - `api_integration_tests.rs`: 推薦取得 〜 推薦内容の魂連動性の検証 〜 フィードバック送信 〜 報酬還元のフルループ E2E テストが確立。
 
 ```mermaid
 graph TD
     A[IntentGenerator] -->|Generate Sense| B[GigIntent]
+    S[SoulStore / Sqlite] -->|Provide Attachment Style| A
+    A -->|Reflect Soul State| B
     B -->|Fetch Bids| C[AffiliateAdapter]
     C -->|Recommend| D[TreasureItem]
-    D -->|GET /api/v1/treasure| E[Frontend / Agent]
+    D -->|GET /api/v1/treasure| E[Management Console / TreasureBox]
     E -->|POST feedback| F[record_feedback]
     F -->|Reward| G[JobQueue::add_resonance]
     G -->|Update| H[AgentStats]
 ```
 
 ---
-*最終更新日: 2026-03-22* (AgentSense MVP Integration)
+*最終更新日: 2026-03-22* (AgentSense MVP & Security Hardening Integration)
+
+### 🛡️ Unified Safety & AI Code Review (G-21 / G-22)
+- **変更内容**: 
+    - `libs/core/src/security_impl.rs`: `purge_entities` による統合サニタイズ基盤の実装 (§G-21)。
+    - `libs/infrastructure/src/skills/cleanroom.rs`: `audit_source_code` による WASM スキルの AI コードレビュー (§G-22)。
+    - `libs/infrastructure/src/trend_sonar.rs`: `purge_entities` への移行。
+- **波及効果**: 
+    - 全ての外部入力（RSS, LLM 出力, スキルコード）に対する安全性が向上。
+    - スキルインポート時に LLM による静的/動的解析に近いセキュリティチェックが強制される。
+
+### 📊 Periodic Federated Metrics (G-23)
+- **変更内容**: 
+    - `apps/api-server/src/main.rs`: 1時間おきのメトリクス Push ループの実装。
+    - `libs/infrastructure/src/job_queue/federation.rs`: `do_push_federated_metrics` の具象化と Hub への送信ロジック。
+- **波及効果**: 
+    - Samsara Hub におけるフェデレーション全体の稼働状況の可視化が自動化。
+    - 各ノードの健全性と成長度が自律的に報告されるエコノミー基盤が確立。

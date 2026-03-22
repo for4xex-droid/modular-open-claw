@@ -275,10 +275,14 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
+    let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
+        job_queue.get_pool().clone(),
+    )));
     let intent_generator = Arc::new(infrastructure::intent::IntentGenerator::new(
         context_engine.clone(),
         provider.clone(),
         intent_firewall.clone(),
+        soul_store.clone(),
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
@@ -318,9 +322,6 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         event_sender: Component::new(tokio::sync::broadcast::channel(10).0),
         context_engine: Component::new(context_engine),
         soul_mutator: Component::new(soul_mutator),
-        soul_store: Component::new(Arc::new(infrastructure::soul_store::SqliteSoulStore::new(
-            Arc::new(job_queue.get_pool().clone()),
-        ))),
         autonomous_running: Component::new(autonomous_running),
         autonomous_config: Component::new(autonomous_config),
         provider: Component::new(provider.clone()),
@@ -397,6 +398,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
+        soul_store: Component::new(soul_store),
         affiliate_adapter: Component::new(
             Arc::new(infrastructure::intent::AffiliateAdapter::new()),
         ),

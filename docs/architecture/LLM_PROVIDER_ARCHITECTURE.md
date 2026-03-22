@@ -82,6 +82,9 @@ LLM の接続先は以下の優先順位で解決されます：
 `DynamicLlmProvider` は `EmbeddingProvider` も実装しています。
 - Gemini: `gemini-embedding-001` モデルを使用
 - Ollama: ローカルモデルのエンベディング機能を利用
+ 
+### 3.6 Security Auditing (Phase 24 実装)
+`Cleanroom` は `LlmProvider` を使用して、生成またはインポートされたスキルソースコードのセキュリティ監査を行います。専用の監査プロンプトを用いて、Vampire Attack（機密情報窃取）や不適切なネットワーク通信の兆候を解析し、安全性が確認されたコードのみをコンパイルプロセスへ移行させます。
 
 ---
 

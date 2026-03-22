@@ -27,6 +27,7 @@ pub struct IntentGenerator {
     _context_engine: Arc<crate::context_engine::ContextEngine>,
     llm: Arc<dyn LlmProvider + Send + Sync>,
     firewall: Arc<IntentFirewall>,
+    soul_store: Arc<dyn aiome_contracts::traits::SoulStore + Send + Sync>,
 }
 
 impl IntentGenerator {
@@ -35,11 +36,13 @@ impl IntentGenerator {
         context_engine: Arc<crate::context_engine::ContextEngine>,
         llm: Arc<dyn LlmProvider + Send + Sync>,
         firewall: Arc<IntentFirewall>,
+        soul_store: Arc<dyn aiome_contracts::traits::SoulStore + Send + Sync>,
     ) -> Self {
         Self {
             _context_engine: context_engine,
             llm,
             firewall,
+            soul_store,
         }
     }
 
@@ -114,19 +117,44 @@ impl IntentGenerator {
             agent_id
         );
 
-        // MVP: モックインテントを生成。
-        // フェーズが進むとエージェントの現在地や課題、流行りを踏まえたリアルな「欲」を生成する。
+        // Fetch soul state
+        let soul_val = self.soul_store.load_soul(&agent_id.to_string()).await?;
+        let attachment_style = if let Some(val) = soul_val {
+            val["attachment"]["style"]
+                .as_str()
+                .unwrap_or("Secure")
+                .to_string()
+        } else {
+            "Secure".to_string()
+        };
+
+        // Determine intent based on attachment style
+        let (description, category) = match attachment_style.as_str() {
+            "Anxious" => (
+                "Find a resource for inner peace and emotional healing.".into(),
+                IntentCategory::Service,
+            ),
+            "Avoidant" => (
+                "Discover a tool for self-reliance and autonomous skill building.".into(),
+                IntentCategory::Tool,
+            ),
+            _ => (
+                "Explore a new domain for creative growth and challenge.".into(),
+                IntentCategory::Learning,
+            ),
+        };
+
         Ok(GigIntent {
             id: Uuid::new_v4(),
             requester_id: agent_id,
-            description: "エージェントの自律成長を加速させるためのツール/学習リソース".into(),
+            description,
             criteria: vec![AcceptanceCriteria::OracleJudge {
                 rubric_prompt: "Check if the item is useful for AI growth.".into(),
                 min_score: 0.7,
                 model: None,
             }],
             max_budget_coins: 100,
-            category: IntentCategory::Tool,
+            category,
             deadline: chrono::Utc::now() + chrono::Duration::days(7),
         })
     }
@@ -234,7 +262,8 @@ mod tests {
             Arc::new(MockLlm {
                 reply: "{\"category\": \"Tool\", \"description\": \"Build a tool to fix my computer\", \"budget\": 50}".into()
             }),
-            firewall
+            firewall,
+            Arc::new(MockSoulStore { style: "Secure".into() })
         );
 
         let requester_id = Uuid::new_v4();
@@ -250,5 +279,59 @@ mod tests {
         assert_eq!(intent.category, IntentCategory::Tool);
         assert!(intent.description.contains("Build a tool"));
         assert_eq!(intent.max_budget_coins, 50);
+    }
+
+    struct MockSoulStore {
+        style: String,
+    }
+
+    #[async_trait::async_trait]
+    impl aiome_contracts::traits::SoulStore for MockSoulStore {
+        async fn load_soul(&self, _: &str) -> Result<Option<serde_json::Value>, AiomeError> {
+            Ok(Some(serde_json::json!({
+                "attachment": { "style": self.style }
+            })))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_intent_generation_reflects_soul_state() {
+        let _tmp = tempdir().unwrap();
+        let jq = Arc::new(
+            crate::job_queue::SqliteJobQueue::new(":memory:")
+                .await
+                .unwrap(),
+        );
+        let ce = Arc::new(crate::context_engine::ContextEngine::new(
+            Arc::new(MockLlm {
+                reply: "ignore".into(),
+            }),
+            jq,
+            Arc::new(Semaphore::new(1)),
+        ));
+        let firewall = Arc::new(IntentFirewall::new());
+
+        // Test Anxious style
+        let anxious_store = Arc::new(MockSoulStore {
+            style: "Anxious".into(),
+        });
+        let generator = IntentGenerator::new(
+            ce.clone(),
+            Arc::new(MockLlm {
+                reply: "ignore".into(),
+            }),
+            firewall.clone(),
+            anxious_store,
+        );
+
+        let agent_id = Uuid::new_v4();
+        let intent = generator.generate_for_agent(agent_id).await.unwrap();
+
+        // This will fail initially because the logic is static
+        assert!(
+            intent.description.contains("healing") || intent.description.contains("peace"),
+            "Anxious agent should receive healing/peaceful intent. Got: {}",
+            intent.description
+        );
     }
 }

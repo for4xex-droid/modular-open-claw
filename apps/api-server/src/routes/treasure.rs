@@ -53,15 +53,28 @@ pub async fn get_treasure(
     // 3. Map to TreasureItems
     let items: Vec<TreasureItem> = bids
         .into_iter()
-        .map(|bid| TreasureItem {
-            id: bid.id,
-            title: format!("Recommended for {}", intent.description),
-            description: "High quality recommendation based on your needs.".into(),
-            url: "https://example.com/item".into(),
-            price_coins: Some(bid.price_coins),
-            category: "Product".into(),
-            score: 0.85,
-            disclosure_label: "AI推薦 / 広告".into(),
+        .map(|bid| {
+            let (title, category) = match intent.description.as_str() {
+                d if d.contains("inner peace") => {
+                    ("Serenity & Mindfulness Guide".into(), "Healing")
+                }
+                d if d.contains("self-reliance") => ("Advanced Automation Toolkit".into(), "Tools"),
+                d if d.contains("creative growth") => {
+                    ("Artistic Expansion Summit".into(), "Learning")
+                }
+                _ => (format!("Sense Upgrade: {}", intent.description), "Other"),
+            };
+
+            TreasureItem {
+                id: bid.id,
+                title,
+                description: format!("Based on your current sense: {}", intent.description),
+                url: "https://example.com/item".into(),
+                price_coins: Some(bid.price_coins),
+                category: category.into(),
+                score: 0.85,
+                disclosure_label: "AI推薦 / 広告".into(),
+            }
         })
         .collect();
 

@@ -14,15 +14,8 @@ use aiome_core::contracts::{TrendRequest, TrendResponse};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{AgentAct, TrendItem, TrendSource};
 use async_trait::async_trait;
-use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
-
-static URL_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"https?://\S+").expect("Invalid regex"));
-static HTML_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("Invalid regex"));
-static WS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").expect("Invalid regex"));
 
 /// Responses from External Web Search API
 #[derive(Deserialize, Debug)]
@@ -42,26 +35,7 @@ struct WebResultItem {
 
 /// Context Sanitization: strips HTML tags, excessive whitespace, and URLs
 pub(crate) fn sanitize_snippet(snippet: &str) -> String {
-    let mut text = snippet.to_string();
-
-    // Strip URLs
-    text = URL_RE.replace_all(&text, "").to_string();
-
-    // Strip HTML Tags
-    text = HTML_RE.replace_all(&text, "").to_string();
-
-    // Clean up HTML Entities (basic ones)
-    text = text
-        .replace("&quot;", "\"")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&#39;", "'");
-
-    // Collapse whitespace
-    text = WS_RE.replace_all(&text, " ").to_string();
-
-    text.trim().to_string()
+    aiome_core::security_impl::purge_entities(snippet)
 }
 
 #[async_trait]
@@ -296,5 +270,13 @@ mod tests {
         assert_eq!(results.len(), 2);
         assert!(results.iter().any(|t| t.keyword == "rust"));
         assert!(results.iter().any(|t| t.keyword == "aiome"));
+    }
+
+    #[test]
+    fn test_ammonia_directly() {
+        let input = "<script>alert(1)</script>";
+        let sanitized = ammonia::clean(input);
+        println!("AMMONIA Result: '{}'", sanitized);
+        // assert_eq!(sanitized, "");
     }
 }

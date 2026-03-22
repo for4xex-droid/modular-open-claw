@@ -185,4 +185,23 @@ mod tests {
         assert!(items.contains(&"Visit".to_string()));
         assert!(items.contains(&"Clean Title".to_string()));
     }
+
+    #[test]
+    fn test_rss_sanitization_xss_bypass() {
+        let xss_inputs = vec![
+            ("<script>alert(1)</script>", ""),
+            ("<img src=x onerror=alert(1)>", ""),
+            ("<scr<script>ipt>alert(1)</script>", ""),
+            ("<a href=\"javascript:alert(1)\">Click me</a>", "Click me"),
+            (
+                "<div>Safe <b>Bold</b> <iframe src='malicious.com'></iframe></div>",
+                "Safe Bold",
+            ),
+        ];
+
+        for (input, expected) in xss_inputs {
+            let sanitized = crate::trend_sonar::sanitize_snippet(input);
+            assert_eq!(sanitized, expected, "Failed to sanitize: {}", input);
+        }
+    }
 }

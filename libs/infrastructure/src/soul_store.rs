@@ -264,3 +264,18 @@ impl SqliteSoulStore {
         }
     }
 }
+
+#[async_trait::async_trait]
+impl aiome_contracts::traits::SoulStore for SqliteSoulStore {
+    async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError> {
+        if let Some(soul) = self.load_soul(id).await? {
+            // Convert AgentSoul to JSON
+            let val = serde_json::to_value(soul).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize Soul to JSON: {}", e),
+            })?;
+            Ok(Some(val))
+        } else {
+            Ok(None)
+        }
+    }
+}

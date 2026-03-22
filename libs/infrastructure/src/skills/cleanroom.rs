@@ -7,8 +7,10 @@
 
 use crate::skills::forge::SkillForge;
 use crate::skills::importer::SkillManifest;
+use aiome_core::llm_provider::LlmProvider;
 use std::path::PathBuf;
-use tracing::info;
+use std::sync::Arc;
+use tracing::{error, info, warn};
 
 /// [A-3] Cleanroom Environment
 /// A strictly isolated environment for building and testing skills before
@@ -16,12 +18,21 @@ use tracing::info;
 pub struct Cleanroom {
     forge: SkillForge,
     workspace: PathBuf,
+    provider: Option<Arc<dyn LlmProvider>>,
 }
 
 impl Cleanroom {
     /// 新しいインスタンスを生成する
-    pub fn new(forge: SkillForge, workspace: PathBuf) -> Self {
-        Self { forge, workspace }
+    pub fn new(
+        forge: SkillForge,
+        workspace: PathBuf,
+        provider: Option<Arc<dyn LlmProvider>>,
+    ) -> Self {
+        Self {
+            forge,
+            workspace,
+            provider,
+        }
     }
 
     /// [Vampire Attack] Process an imported manifest and attempt to forge it.
@@ -34,8 +45,29 @@ impl Cleanroom {
         match manifest.l3.engine.as_str() {
             "script" => {
                 if let Some(source) = manifest.l3.source_code {
+                    // [G-22] Advanced Threat Defense: AI-driven Code Review
+                    if let Some(ref provider) = self.provider {
+                        info!(
+                            "🛡️ [Cleanroom] Running AI Security Audit for skill: {}...",
+                            manifest.l1.name
+                        );
+                        let audit_res = self.audit_source_code(provider.clone(), &source).await;
+                        match audit_res {
+                            Ok(true) => {
+                                info!("✅ [Cleanroom] AI Audit PASSED for {}.", manifest.l1.name)
+                            }
+                            Ok(false) => {
+                                warn!("🚨 [Cleanroom] AI Audit REJECTED for {}. Potential malicious code detected.", manifest.l1.name);
+                                return Err(anyhow::anyhow!("Security Objection: AI-driven source audit rejected this code due to potential vulnerabilities or malicious intent."));
+                            }
+                            Err(e) => {
+                                warn!("⚠️ [Cleanroom] AI Audit failed to execute: {}. Falling back to strict mode (Block).", e);
+                                return Err(anyhow::anyhow!("Security Gate Error: Code audit failed. Forging aborted for safety."));
+                            }
+                        }
+                    }
+
                     info!("🛠️ [Cleanroom] Script detected. Attempting to forge into Wasm...");
-                    // Try to forge the script into a Wasm skill using the existing Forge
                     let path = self
                         .forge
                         .forge_skill(
@@ -74,6 +106,51 @@ impl Cleanroom {
                 "Unsupported L3 engine: {}",
                 manifest.l3.engine
             )),
+        }
+    }
+
+    /// [G-22] AI-driven code audit
+    async fn audit_source_code(
+        &self,
+        provider: Arc<dyn LlmProvider>,
+        source: &str,
+    ) -> anyhow::Result<bool> {
+        let prompt = format!(
+            "Analyze the following Rust code for security vulnerabilities, malicious intent, or hidden 'Vampire Attacks' (exfiltrating node private keys, access tokens, or unauthorized network calls). 
+            Code is intended to run in a WASM sandbox but we must be sure about its logic.
+            
+            Respond ONLY in JSON format: 
+            {{
+                \"safe\": true/false,
+                \"reason\": \"Your reasoning\"
+            }}
+            
+            Code:
+            ```rust
+            {}
+            ```",
+            source
+        );
+
+        let response = provider.complete(&prompt, Some("SecurityAuditor")).await;
+        match response {
+            Ok(res) => {
+                let json_str = res
+                    .content
+                    .trim()
+                    .trim_start_matches("```json")
+                    .trim_end_matches("```")
+                    .trim();
+                let v: serde_json::Value = serde_json::from_str(json_str)?;
+                let safe = v["safe"].as_bool().unwrap_or(false);
+                let reason = v["reason"].as_str().unwrap_or("No reason provided");
+
+                if !safe {
+                    warn!("🚨 [Audit Reason] {}", reason);
+                }
+                Ok(safe)
+            }
+            Err(e) => Err(anyhow::anyhow!("Audit completion failed: {}", e)),
         }
     }
 }

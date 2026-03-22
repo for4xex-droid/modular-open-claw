@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Zap } from 'lucide-react';
 import { AgentStats, VitalityUIEvent } from '../types';
+import { TreasureBox } from './TreasureBox';
 
 interface BiotopeViewProps {
     stats: AgentStats;
@@ -179,6 +180,11 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                             )}
                         </AnimatePresence>
                     </div>
+                </div>
+
+                {/* AgentSense: TreasureBox */}
+                <div className="ani-slide-right">
+                    <TreasureBox />
                 </div>
 
                 <div className="stat-card ani-slide-right" style={{ padding: '1.25rem' }}>

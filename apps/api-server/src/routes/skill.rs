@@ -234,6 +234,7 @@ pub async fn import_skill(
     let cleanroom = Cleanroom::new(
         (**state.skill_forge).clone(),
         std::path::PathBuf::from("workspace/cleanroom"),
+        Some((*state.provider).clone()),
     );
 
     let mut imported_skills = Vec::new();

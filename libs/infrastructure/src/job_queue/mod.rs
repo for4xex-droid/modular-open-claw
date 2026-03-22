@@ -29,7 +29,7 @@ pub mod crdt;
 mod evaluation;
 mod evolution;
 mod expression;
-mod federation;
+pub mod federation;
 mod guardrails;
 mod karma;
 mod karma_maintenance;

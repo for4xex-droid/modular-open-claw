@@ -252,6 +252,11 @@ async fn main() {
     let api_server_secret = Arc::new(secrecy::SecretString::from(api_server_secret_raw.clone()));
     let federation_secret = federation_secret_raw.map(|s| Arc::new(secrecy::SecretString::from(s)));
 
+    // Soul (Sense Foundation)
+    let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
+        job_queue.get_pool().clone(),
+    )));
+
     // AgentSense (AS-1)
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
@@ -263,15 +268,13 @@ async fn main() {
         context_engine.clone(),
         provider.clone(),
         intent_firewall.clone(),
+        soul_store.clone(),
     ));
 
     let soul_mutator = Arc::new(infrastructure::soul_mutator::SoulMutator::new(
         provider.clone(),
         std::path::PathBuf::from("workspace"),
     ));
-    let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
-        job_queue.get_pool().clone(),
-    )));
     let primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
     let fallback_provider: Arc<dyn LlmProvider + Send + Sync> = bg_provider.clone();
     let router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
@@ -448,6 +451,20 @@ async fn main() {
         plugin_registry,
         metrics_handle,
     );
+
+    // G-23: Periodic Federated Metrics Push (Background Maintenance Loop)
+    let jq_for_bg = job_queue.clone();
+    tokio::spawn(async move {
+        use infrastructure::job_queue::federation::FederationOps;
+        let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+        loop {
+            interval.tick().await;
+            info!("♻️ [Maintenance] Running periodic federated metrics push...");
+            if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
+                error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);
+            }
+        }
+    });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3015));
     info!("🚀 [api-server] Listening on http://{}", addr);

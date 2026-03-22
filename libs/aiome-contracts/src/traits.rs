@@ -475,6 +475,13 @@ pub trait JobQueue: Send + Sync {
     async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError>;
 }
 
+/// ソウル永続化ストア
+#[async_trait]
+pub trait SoulStore: Send + Sync {
+    /// 魂の状態を読み取る
+    async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError>;
+}
+
 /// コンテンツ・パブリッシャー (Publishing Engine)
 #[async_trait]
 pub trait Publisher: Send + Sync {
