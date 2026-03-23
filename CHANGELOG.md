@@ -337,3 +337,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.0]: https://github.com/motivationstudio-llc/aiome/releases/tag/v0.1.0
 
 *Initial Release*
+## [Unreleased]
+### Added
+- `VaultBackend` trait (ADR-019 Phase A)
+- `SqliteVaultBackend` based on `MlockedVec`
+
+### Changed
+- Refactored `AbyssVoiceVault` to use `SqliteVaultBackend` internally
+- Updated `SECURITY_DESIGN.md` §6.5 with vault abstraction specs.
