@@ -1387,6 +1387,7 @@ impl EmbeddingProvider for RuriProvider {
 }
 
 /// Infrastructure テスト用のモックLLM
+#[cfg(any(test, debug_assertions))]
 #[derive(Debug, Clone, Default)]
 pub struct MockLlmProvider {
     /// Mock response content.
@@ -1395,6 +1396,7 @@ pub struct MockLlmProvider {
     pub should_fail: bool,
 }
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl LlmProvider for MockLlmProvider {
     async fn complete(

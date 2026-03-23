@@ -5,9 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-03-23
+
+### Added
+- **Phase 28: Security Hardening & Code Quality (Partial)**:
+    - **Memory Persistence Hardening**: Implemented `MlockedVec` to lock sensitive cryptographic keys and decrypted voice assets in physical memory (`mlock(2)`), preventing swap-out to disk.
+    - **AbyssVoiceVault Protection**: Refactored `AbyssVoiceVault` to use `MlockedVec` for internal caches, satisfying the "H-1" risk item from the Deep Scan.
+- **Phase 27: Security Hardening & Architecture Audit**:
+    - **Scoped Mock Isolation (ADR-015)**: Strictly isolated all mock implementations (`MockAuthManager`, `MockCommerceEngine`, `MockEkycEngine`, `MockJobQueue`, etc.) to `debug` and `test` environments using `#[cfg(any(test, debug_assertions))]`.
+    - **Production Safety Guards**: Rewrote `api-server`, `key-proxy`, and `samsara-hub` initialization to provide fatal error exits in `release` builds instead of silent mock substitution or fallback secrets for critical security / commerce / CORS components (e.g., `API_SERVER_SECRET`, `ALLOWED_ORIGINS`, `JWT_PRIVATE_KEY_B64`).
+    - **Architecture Decision Records (ADRs)**:
+        - **ADR-016: Subscription Engine**: Defined the Stripe-based recurring payment architecture for A2C continuous support.
+        - **ADR-017: Generative Engine**: Planned the multimodal (image, audio, video) generative orchestrator and high-quality provider stack.
+        - **ADR-018: Watchtower App**: Proposed an independent, advanced architecture for the external platform I/O layer.
+
 ## [Unreleased] - 2026-03-22
 
 ### Added
+- **Phase 26: AI Writing Enhancement**:
+    - Added `HumanizerFilter` middleware to detect and remove common AI-isms and robotic phrasing (e.g., excessive hedging, chatbot artifacts).
+    - Added `WritingContext` to dynamically apply different writing rules based on the output destination (Chat, Manifesto, TechLog, etc.).
 - **Unified Response Purger (G-21)**:
     - Implemented `purge_entities` in `aiome-core` for robust, multi-step sanitization of external inputs.
     - Centralized regex patterns and HTML/entity decoding logic to prevent XSS and script injection.

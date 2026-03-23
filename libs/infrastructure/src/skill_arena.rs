@@ -24,9 +24,16 @@ pub struct SkillArena {
 
 impl Default for SkillArena {
     fn default() -> Self {
-        Self {
-            provider: Arc::new(aiome_core::llm_provider::MockLlmProvider::default()),
-            protected_skills: Self::default_protected_skills(),
+        #[cfg(any(test, debug_assertions))]
+        {
+            Self {
+                provider: Arc::new(aiome_core::llm_provider::MockLlmProvider::default()),
+                protected_skills: Self::default_protected_skills(),
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            panic!("SkillArena::default() is not supported in production. Use explicit LlmProvider via SkillArena::new().");
         }
     }
 }

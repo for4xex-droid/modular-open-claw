@@ -16,10 +16,10 @@ use aiome_contracts::types::AgentStats;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-/// A mock implementation of `JobQueue` for testing purposes.
-#[derive(Debug)]
+#[cfg(any(test, debug_assertions))]
 pub struct MockJobQueue;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl JobQueue for MockJobQueue {
     async fn get_pending_job_count(&self) -> Result<i64, AiomeError> {

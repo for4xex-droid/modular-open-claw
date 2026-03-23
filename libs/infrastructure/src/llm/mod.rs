@@ -15,3 +15,10 @@ pub mod fallback_router;
 pub mod proxy;
 /// `semantic_cache` モジュール
 pub mod semantic_cache;
+
+/// `humanizer_filter` モジュール
+pub mod humanizer_filter;
+/// `humanizer_rules` モジュール
+pub mod humanizer_rules;
+/// `writing_context` モジュール
+pub mod writing_context;

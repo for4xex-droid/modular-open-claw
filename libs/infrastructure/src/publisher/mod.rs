@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 /// `mock_x` モジュール
+#[cfg(any(test, debug_assertions))]
 pub mod mock_x;
 
 /// [B-2] Publish Pipeline Orchestrator

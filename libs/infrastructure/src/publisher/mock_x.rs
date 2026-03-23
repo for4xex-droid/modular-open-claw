@@ -13,8 +13,10 @@ use tracing::info;
 
 /// X (Twitter) Publisher (Mock version)
 /// 今後の本番実装時には、Abyss Vault / KeyProxy を通じて実際の API (reqwest) を叩くように差し替えること。
+#[cfg(any(test, debug_assertions))]
 pub struct MockXPublisher;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl Publisher for MockXPublisher {
     async fn publish(

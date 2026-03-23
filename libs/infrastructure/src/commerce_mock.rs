@@ -12,8 +12,10 @@ use tracing::info;
 use uuid::Uuid;
 
 /// OSS 版向けのモック経済エンジン
+#[cfg(any(test, debug_assertions))]
 pub struct MockCommerceEngine;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl CommerceEngine for MockCommerceEngine {
     async fn get_balance(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {

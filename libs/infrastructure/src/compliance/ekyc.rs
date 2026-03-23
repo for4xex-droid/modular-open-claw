@@ -130,8 +130,10 @@ impl EkycEngine for StripeEkycEngine {
 }
 
 /// 開発・テスト用のモック
+#[cfg(any(test, debug_assertions))]
 pub struct MockEkycEngine;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl EkycEngine for MockEkycEngine {
     async fn create_verification_session(&self, _user_id: &str) -> anyhow::Result<EkycSession> {

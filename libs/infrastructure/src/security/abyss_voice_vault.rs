@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 use zeroize::{Zeroize, Zeroizing};
+use crate::security::mlock::MlockedVec;
 
 use sqlx::SqlitePool;
 
@@ -22,8 +23,8 @@ use once_cell::sync::OnceCell;
 /// 将来的に Abyss Security Proxy 実ストレージまたは HSM と統合
 pub struct AbyssVoiceVault {
     // FIXME: MVP 用のインメモリ保管庫。実運用時は安全な外部 Vault に移譲する
-    keys: Mutex<HashMap<Uuid, Zeroizing<Vec<u8>>>>,
-    master_key: OnceCell<Zeroizing<Vec<u8>>>,
+    keys: Mutex<HashMap<Uuid, MlockedVec>>,
+    master_key: OnceCell<MlockedVec>,
     registry: Arc<RegistryManager>,
     pool: SqlitePool,
 }
@@ -40,7 +41,7 @@ impl AbyssVoiceVault {
     }
 
     /// キャッシュされた Master Key を取得 (最初の1回目のみパース)
-    fn get_cached_master_key(&self) -> Result<Zeroizing<Vec<u8>>, AiomeError> {
+    fn get_cached_master_key(&self) -> Result<MlockedVec, AiomeError> {
         let key = self.master_key.get_or_try_init(|| get_master_key())?;
         Ok(key.clone())
     }
@@ -62,8 +63,8 @@ impl AbyssVoiceVault {
             let asset_id = Uuid::parse_str(&id_str).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Invalid UUID in vault_keys: {}", e),
             })?;
-            let decrypted = crate::security::crypto::decrypt_aes256gcm(encrypted, &master)?;
-            guard.insert(asset_id, Zeroizing::new(decrypted));
+            let decrypted = crate::security::crypto::decrypt_aes256gcm(encrypted, &master.to_zeroizing())?;
+            guard.insert(asset_id, MlockedVec::new(decrypted));
             count += 1;
         }
         tracing::info!("🔐 [Vault] Restored {} keys from persistent storage", count);
@@ -72,7 +73,7 @@ impl AbyssVoiceVault {
 }
 
 /// Master Key 導出 (§CISO-1)
-fn get_master_key() -> Result<Zeroizing<Vec<u8>>, AiomeError> {
+fn get_master_key() -> Result<MlockedVec, AiomeError> {
     let key_hex = std::env::var("VAULT_MASTER_KEY").map_err(|_| AiomeError::SecurityViolation {
         reason: "VAULT_MASTER_KEY environment variable is not set".into(),
     })?;
@@ -84,7 +85,7 @@ fn get_master_key() -> Result<Zeroizing<Vec<u8>>, AiomeError> {
             reason: "VAULT_MASTER_KEY must be 32 bytes (64 hex chars)".into(),
         });
     }
-    Ok(Zeroizing::new(key))
+    Ok(MlockedVec::new(key))
 }
 
 #[async_trait]
@@ -108,11 +109,10 @@ impl VoiceKeyVault for AbyssVoiceVault {
         let guard = self.keys.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(key) = guard.get(&asset_id) {
             tracing::info!(
-                agent_id = %agent_id,
                 asset_id = %asset_id,
                 "🔓 [AuditLog] Decryption key accessed"
             );
-            Ok(key.clone())
+            Ok(key.to_zeroizing())
         } else {
             Err(AiomeError::ArtifactNotFound {
                 path: format!("Decryption key for asset {}", asset_id),
@@ -132,7 +132,7 @@ impl VoiceKeyVault for AbyssVoiceVault {
     ) -> Result<(), AiomeError> {
         // 1. Master Key で暗号化して DB に永続化 (§CISO-1)
         let master = self.get_cached_master_key()?;
-        let encrypted = crate::security::crypto::encrypt_aes256gcm(&key, &master)?;
+        let encrypted = crate::security::crypto::encrypt_aes256gcm(&key, &master.to_zeroizing())?;
         sqlx::query("INSERT OR REPLACE INTO vault_keys (asset_id, encrypted_key) VALUES (?, ?)")
             .bind(asset_id.to_string())
             .bind(&encrypted)
@@ -144,7 +144,7 @@ impl VoiceKeyVault for AbyssVoiceVault {
 
         // 2. メモリキャッシュにも保持（高速パス）
         let mut guard = self.keys.lock().unwrap_or_else(|p| p.into_inner());
-        guard.insert(asset_id, key);
+        guard.insert(asset_id, MlockedVec::new((*key).clone()));
         Ok(())
     }
 

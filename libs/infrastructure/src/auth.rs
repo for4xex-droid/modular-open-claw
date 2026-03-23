@@ -108,8 +108,10 @@ impl AuthManager for JwtAuthManager {
 }
 
 /// テスト用のモックマネージャ
+#[cfg(any(test, debug_assertions))]
 pub struct MockAuthManager;
 
+#[cfg(any(test, debug_assertions))]
 impl MockAuthManager {
     /// MockAuthManager を作成
     pub fn new() -> Self {
@@ -117,12 +119,14 @@ impl MockAuthManager {
     }
 }
 
+#[cfg(any(test, debug_assertions))]
 impl Default for MockAuthManager {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl AuthManager for MockAuthManager {
     #[instrument(skip_all)]

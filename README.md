@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 * **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-03-22*
+*Last Mutated: 2026-03-23*
 
 ---
 
@@ -116,6 +116,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 21: gVisor (runsc) セキュリティ連携**: Linux 環境において `runsc` (gVisor) を動的に検知し、優先的に使用。WASM スキルやツールの実行をユーザースペースカーネルで完全に隔離し、ホスト OS への影響を数学的に最小化します。
 - 🛡️ **Phase 24: Unified Safety & AI Code Review (Security Hardening)**: 外部入力（RSS, LLM 出力等）を統合的に無害化する **Unified Response Purger (purge_entities)** を実装。さらに、スキルインポート時に LLM によるセキュリティ監査を行う **AI-Driven Code Review (Cleanroom)** を導入し、静的解析を潜り抜ける悪意あるロジックを事前に遮断します。
 - 📊 **Phase 24: Periodic Federated Metrics (Global Observability)**: 各 Aiome ノードの健全性、ジョブ成功率、Karma 成長度を 1 時間おきに自律報告するメトリクス Push 機能を実装。Samsara Hub におけるフェデレーション全体の可視化と異常検知を自動化しました。
+- 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: リリースビルドにおけるテスト用のモック実装（`MockAuthManager`等）の混入を条件付きコンパイル (`#[cfg]`) で完全に排除。さらに、本番環境で `API_SERVER_SECRET` や `ALLOWED_ORIGINS` 等の必須セキュリティ変数が未設定の場合、安全でないフォールバック値を使用せず即座にプロセスを終了 (`exit(1)`) させる Fail-Fast 機構を導入し、セキュリティリスクを最小化しました。
 
 ---
 
@@ -141,7 +142,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Core Engine** | Rust / Bastion OSS | 高速・メモリ安全かつ堅牢なセキュリティ基盤 |
 | **Formal Verification** | TLA+ / TLC / Rust TypeState / MBT | 状態遷移のTLA+仕様化とモデルチェッカーによる検証。TypeStateと手動インテグレーションテストによる「数学からRust実行バイナリまでの絶対保証（95%カバレッジ）」 |
 | **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
-| **Last Updated:** 2026-03-22
+| **Last Updated:** 2026-03-23
 | **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: ユーザー応答はクラウド、自律タスクはローカル推論 |
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
 | **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
@@ -267,7 +268,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-22*
+*最終更新: 2026-03-23*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

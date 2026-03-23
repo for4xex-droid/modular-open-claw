@@ -321,3 +321,41 @@ graph TD
 ---
 *最終更新日: 2026-03-23* (Phase 25.5 / ADR-014 SQLite Lock Resolution)
 
+### 🛡️ Phase 26: AI Writing Enhancement
+- **変更内容**: 
+    - `writing_context.rs`: 出力先ごとの文体コンテキストを定義。
+    - `humanizer_rules.rs`: 日本語に特化したAIくささ除去ルールを定義。
+    - `humanizer_filter.rs`: `LlmProvider` デコレータパターンによるルール適用のミドルウェア実装。
+    - `main.rs`: `router_provider` を `HumanizerFilter` でラップし、API サーバー内の全 LLM 応答にフィルタを適用。
+- **波及効果**: 
+    - LLM のチャット出力や生成されるテキストから「お役に立てれば幸いです」等の冗長な定型句が除去され、自然な文体になる。
+    - `LlmProvider` を使用する全てのコンポーネントに自動適用される。
+
+```mermaid
+graph TD
+    A[Primary LlmProvider] -->|Fallback| B[FallbackRouter]
+    B -->|Responses| C[HumanizerFilter]
+    C -->|Rules| D[humanizer_rules.rs]
+    D -->|Sanitized Result| E[App State Provider]
+```
+---
+*最終更新日: 2026-03-23* (Phase 27 Security Hardening & Architecture Audit)
+
+### 🛡️ Phase 27: Security Hardening (Mock Isolation)
+- **変更内容**: 
+    - `libs/infrastructure/src/auth.rs`, `commerce_mock.rs`, `compliance/ekyc.rs`, `compliance/ekyc_store.rs`, `compliance/quarantine.rs`, `publisher/mock_x.rs`, `test_utils.rs`: 全てのモック型・実装に `#[cfg(any(test, debug_assertions))]` を付与。
+    - `libs/infrastructure/src/lib.rs`, `compliance/mod.rs`, `publisher/mod.rs`: モックモジュールの再エクスポートを `#[cfg]` で条件付き化。
+    - `apps/api-server/src/main.rs`: `if cfg!(debug_assertions)` による実行時分岐を `#[cfg(debug_assertions)]` によるコンパイル時分岐へ置換。環境変数未設定時は `panic!` または `std::process::exit(1)` で強制停止 (§SEC-FailFast)。
+- **波及効果**: 
+    - リリース用バイナリからテスト用モックコードが完全に排除され、攻撃表面が縮小。
+    - リリースビルド時、環境変数が欠如している場合に実行時に即座に異常終了するため、誤設定による未認証状態での稼働を防止。
+    - `cargo check --release` を CI/CD パイプラインに含めることが必須となる（型の欠落検知のため）。
+
+```mermaid
+graph TD
+    A[Cargo build --release] -->|Skip| B[Mock Impls]
+    C[api-server/main.rs] -->|#[cfg(not(debug))]| D[Secure Impls Only]
+    D -->|Env Missing| E[Panic/Exit 1]
+    F[Infrastructure Lib] -->|Symbol Tree| G[Clean Release Binary]
+    H[ADR-015..018] -->|Policy| C
+```

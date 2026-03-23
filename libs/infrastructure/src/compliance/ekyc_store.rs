@@ -52,8 +52,10 @@ impl EkycSessionStore for SqliteEkycSessionStore {
 }
 
 /// テスト用のモック実装
+#[cfg(any(test, debug_assertions))]
 pub struct MockEkycSessionStore;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl EkycSessionStore for MockEkycSessionStore {
     async fn save(&self, _user_id: &str, _session_id: &str) -> anyhow::Result<()> {

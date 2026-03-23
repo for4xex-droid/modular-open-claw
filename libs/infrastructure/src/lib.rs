@@ -4,7 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 //! # Infrastructure — I/O実装層
@@ -23,6 +23,7 @@ pub mod circuit_breaker;
 /// 商用連携実装（ギフト送信等）
 pub mod commerce;
 /// 決済フローのモック実装
+#[cfg(any(test, debug_assertions))]
 pub mod commerce_mock;
 /// コンプライアンス・eKYC
 pub mod compliance;

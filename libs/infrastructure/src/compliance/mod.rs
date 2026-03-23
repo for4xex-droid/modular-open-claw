@@ -15,6 +15,10 @@ pub mod ekyc_store;
 pub mod quarantine;
 
 pub use audio_hasher::AudioHasher;
-pub use ekyc::{EkycEngine, EkycSession, MockEkycEngine, StripeEkycEngine};
-pub use ekyc_store::{EkycSessionStore, MockEkycSessionStore, SqliteEkycSessionStore};
+pub use ekyc::{EkycEngine, EkycSession, StripeEkycEngine};
+#[cfg(any(test, debug_assertions))]
+pub use ekyc::MockEkycEngine;
+pub use ekyc_store::{EkycSessionStore, SqliteEkycSessionStore};
+#[cfg(any(test, debug_assertions))]
+pub use ekyc_store::MockEkycSessionStore;
 pub use quarantine::{AssetReason, QuarantineStore, SqliteQuarantineStore};

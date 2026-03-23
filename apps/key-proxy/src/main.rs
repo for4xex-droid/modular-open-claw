@@ -163,9 +163,15 @@ async fn main() -> anyhow::Result<()> {
                             .expect("Invalid JWT_PRIVATE_KEY_B64"),
                     )
                 }
+                #[cfg(debug_assertions)]
                 Err(_) => {
-                    warn!("⚠️ [KeyProxy] JWT key not set, using MockAuthManager");
+                    warn!("⚠️ [KeyProxy] JWT key not set, using MockAuthManager (dev only)");
                     Arc::new(infrastructure::auth::MockAuthManager::new())
+                }
+                #[cfg(not(debug_assertions))]
+                Err(_) => {
+                    error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
+                    std::process::exit(1);
                 }
             }
         },

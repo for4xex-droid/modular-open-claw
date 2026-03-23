@@ -235,19 +235,35 @@ async fn main() {
                 )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
             )
         } else {
-            if cfg!(debug_assertions) {
+            #[cfg(debug_assertions)]
+            {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockCommerceEngine for development.");
                 Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine)
                     as Arc<dyn aiome_core::commerce::CommerceEngine>)
-            } else {
+            }
+            #[cfg(not(debug_assertions))]
+            {
                 error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!");
                 std::process::exit(1);
             }
         }
     };
 
-    let api_server_secret_raw = std::env::var("API_SERVER_SECRET")
-        .unwrap_or_else(|_| "dev_secret_donotuseinprod".to_string());
+    let api_server_secret_raw = match std::env::var("API_SERVER_SECRET") {
+        Ok(s) => s,
+        Err(_) => {
+            #[cfg(debug_assertions)]
+            {
+                warn!("⚠️ [api-server] API_SERVER_SECRET not set. Using insecure default for development.");
+                "dev_secret_donotuseinprod".to_string()
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                error!("🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET MUST be set in production!");
+                std::process::exit(1);
+            }
+        }
+    };
     let federation_secret_raw = std::env::var("FEDERATION_SECRET").ok();
 
     let api_server_secret = Arc::new(secrecy::SecretString::from(api_server_secret_raw.clone()));
@@ -278,10 +294,15 @@ async fn main() {
     ));
     let primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
     let fallback_provider: Arc<dyn LlmProvider + Send + Sync> = bg_provider.clone();
-    let router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
+    let base_router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
         primary_provider,
         fallback_provider,
         3, // failure threshold
+    )) as Arc<dyn LlmProvider + Send + Sync>;
+    let router_provider = Arc::new(infrastructure::llm::humanizer_filter::HumanizerFilter::new(
+        base_router_provider,
+        infrastructure::llm::humanizer_rules::default_rules_ja(),
+        infrastructure::llm::writing_context::WritingContext::Default,
     )) as Arc<dyn LlmProvider + Send + Sync>;
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
@@ -324,10 +345,13 @@ async fn main() {
                 http_client.clone(),
             )) as Arc<dyn EkycEngine>
         } else {
-            if cfg!(debug_assertions) {
+            #[cfg(debug_assertions)]
+            {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
                 Arc::new(infrastructure::compliance::ekyc::MockEkycEngine) as Arc<dyn EkycEngine>
-            } else {
+            }
+            #[cfg(not(debug_assertions))]
+            {
                 error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
                 std::process::exit(1);
             }
@@ -350,10 +374,12 @@ async fn main() {
                         .expect("Invalid JWT_PRIVATE_KEY_B64"),
                 ) as Arc<dyn AuthManager>
             }
-            Err(_) if cfg!(debug_assertions) => {
+            #[cfg(debug_assertions)]
+            Err(_) => {
                 warn!("⚠️ [Auth] JWT key not set, using MockAuthManager (dev only)");
                 Arc::new(infrastructure::auth::MockAuthManager::new()) as Arc<dyn AuthManager>
             }
+            #[cfg(not(debug_assertions))]
             Err(_) => {
                 error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
                 std::process::exit(1);
@@ -435,10 +461,38 @@ async fn main() {
         ),
     };
 
-    let cors_layer = CorsLayer::new()
-        .allow_origin(AllowOrigin::any())
-        .allow_methods(tower_http::cors::Any)
-        .allow_headers(tower_http::cors::Any);
+    let cors_layer = {
+        let mut layer = CorsLayer::new()
+            .allow_methods(tower_http::cors::Any)
+            .allow_headers(tower_http::cors::Any);
+
+        match std::env::var("ALLOWED_ORIGINS") {
+            Ok(origins) if !origins.is_empty() => {
+                let list: Vec<HeaderValue> = origins
+                    .split(',')
+                    .map(|s| {
+                        HeaderValue::from_str(s.trim())
+                            .expect("Invalid origin in ALLOWED_ORIGINS")
+                    })
+                    .collect();
+                layer = layer.allow_origin(AllowOrigin::list(list));
+                info!("🌐 [CORS] Allowed origins: {}", origins);
+            }
+            _ => {
+                #[cfg(debug_assertions)]
+                {
+                    warn!("⚠️ [CORS] ALLOWED_ORIGINS not set. All origins allowed in dev mode.");
+                    layer = layer.allow_origin(AllowOrigin::any());
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    error!("🚨 [FATAL SECURITY ERROR] ALLOWED_ORIGINS MUST be set in production!");
+                    std::process::exit(1);
+                }
+            }
+        }
+        layer
+    };
 
     #[cfg(feature = "nurture")]
     let nurture_state = commerce_protocol::CommerceState::new();

@@ -44,7 +44,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 21 | **Federation Blind Spot** | **Node health/metrics unseen by Hub** | 🟡 Mid | **Periodic Federated Metrics Push (Samsara Hub) (Phase 24)** |
 | 22 | **Unauthorized Demo Access** | **Unauthenticated demo trigger** | 🔴 High | **Bearer Auth + MockAuthManager (Phase 25)** |
 | 23 | **SQLite Pool Exhaustion** | **Multi-tab SSE + gig_engine Transactions** | 🔴 High | **Transaction-free Demo SQL (ADR-014) + Audit Trigger Suspension (Phase 25.5)** |
-
+| 24 | **Testing Mocks in Production** | **Mock object leakage (e.g. MockLlmProvider)** | 🔴 High | **Conditional Compilation (#[cfg]) Isolation (Phase 27)** |
+| 25 | **Insecure Default Secrets** | **Fallback API_SERVER_SECRET** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 27)** |
+| 26 | **Unauthorized Frontend Requests**| **CORS misconfiguration (AllowOrigin::any)** | 🔴 High | **Strict ALLOWED_ORIGINS Enforcement (Phase 27)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -103,7 +105,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 
 ---
 *Last Mutated: 2026-03-23*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 25.5 — ADR-014 SQLite Lock Resolution)*
+*Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -129,4 +131,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-23 (Phase 25 / Autonomous AI Economy Demo)*
+*最終更新: 2026-03-23 (Phase 27 / Security & Architecture Audit)*

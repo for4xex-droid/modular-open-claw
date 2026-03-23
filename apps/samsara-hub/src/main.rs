@@ -111,7 +111,16 @@ async fn main() -> anyhow::Result<()> {
                 Ok(key_b64) => Arc::new(
                     infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)?,
                 ),
-                Err(_) => Arc::new(infrastructure::auth::MockAuthManager::new()),
+                #[cfg(debug_assertions)]
+                Err(_) => {
+                    warn!("⚠️ [SamsaraHub] JWT key not set, using MockAuthManager (dev only)");
+                    Arc::new(infrastructure::auth::MockAuthManager::new())
+                }
+                #[cfg(not(debug_assertions))]
+                Err(_) => {
+                    error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
+                    std::process::exit(1);
+                }
             }
         },
         tx,

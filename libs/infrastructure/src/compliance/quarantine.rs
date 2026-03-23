@@ -161,8 +161,10 @@ impl QuarantineStore for SqliteQuarantineStore {
 }
 
 /// テスト用モック
+#[cfg(any(test, debug_assertions))]
 pub struct MockQuarantineStore;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl QuarantineStore for MockQuarantineStore {
     async fn quarantine_asset(
