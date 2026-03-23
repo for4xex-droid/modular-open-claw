@@ -17,75 +17,31 @@ use crate::security::mlock::MlockedVec;
 
 use sqlx::SqlitePool;
 
-use once_cell::sync::OnceCell;
+use crate::security::sqlite_vault_backend::SqliteVaultBackend;
+use aiome_contracts::vault_backend::VaultBackend;
 
 /// 物理的に隔離されたキーストレージ (モック実装)
 /// 将来的に Abyss Security Proxy 実ストレージまたは HSM と統合
 pub struct AbyssVoiceVault {
-    // FIXME: MVP 用のインメモリ保管庫。実運用時は安全な外部 Vault に移譲する
-    keys: Mutex<HashMap<Uuid, MlockedVec>>,
-    master_key: OnceCell<MlockedVec>,
+    backend: Arc<dyn VaultBackend>,
     registry: Arc<RegistryManager>,
-    pool: SqlitePool,
 }
 
 impl AbyssVoiceVault {
     /// 新しい Vault インスタンスを作成する
     pub fn new(registry: Arc<RegistryManager>, pool: SqlitePool) -> Self {
         Self {
-            keys: Mutex::new(HashMap::new()),
-            master_key: OnceCell::new(),
+            backend: Arc::new(SqliteVaultBackend::new(pool)),
             registry,
-            pool,
         }
-    }
-
-    /// キャッシュされた Master Key を取得 (最初の1回目のみパース)
-    fn get_cached_master_key(&self) -> Result<MlockedVec, AiomeError> {
-        let key = self.master_key.get_or_try_init(|| get_master_key())?;
-        Ok(key.clone())
     }
 
     /// 起動時に永続化された鍵をリストアする (§CISO-1)
+    /// Phase B 移行準備: オンデマンド取得化により、本メソッドの返り値は 0 となり、やがて廃止される。
     pub async fn restore_keys_from_db(&self) -> Result<usize, AiomeError> {
-        let master = self.get_cached_master_key()?;
-        let rows: Vec<(String, Vec<u8>)> =
-            sqlx::query_as("SELECT asset_id, encrypted_key FROM vault_keys")
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("vault_keys SELECT: {}", e),
-                })?;
-
-        let mut guard = self.keys.lock().unwrap_or_else(|p| p.into_inner());
-        let mut count = 0;
-        for (id_str, encrypted) in &rows {
-            let asset_id = Uuid::parse_str(&id_str).map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Invalid UUID in vault_keys: {}", e),
-            })?;
-            let decrypted = crate::security::crypto::decrypt_aes256gcm(encrypted, &master.to_zeroizing())?;
-            guard.insert(asset_id, MlockedVec::new(decrypted));
-            count += 1;
-        }
-        tracing::info!("🔐 [Vault] Restored {} keys from persistent storage", count);
-        Ok(count)
+        tracing::info!("🔐 [Vault] restore_keys_from_db is now deprecated with VaultBackend.");
+        Ok(0)
     }
-}
-
-/// Master Key 導出 (§CISO-1)
-fn get_master_key() -> Result<MlockedVec, AiomeError> {
-    let key_hex = std::env::var("VAULT_MASTER_KEY").map_err(|_| AiomeError::SecurityViolation {
-        reason: "VAULT_MASTER_KEY environment variable is not set".into(),
-    })?;
-    let key = hex::decode(&key_hex).map_err(|_| AiomeError::SecurityViolation {
-        reason: "VAULT_MASTER_KEY is not valid hex".into(),
-    })?;
-    if key.len() != 32 {
-        return Err(AiomeError::SecurityViolation {
-            reason: "VAULT_MASTER_KEY must be 32 bytes (64 hex chars)".into(),
-        });
-    }
-    Ok(MlockedVec::new(key))
 }
 
 #[async_trait]
@@ -105,23 +61,17 @@ impl VoiceKeyVault for AbyssVoiceVault {
             });
         }
 
-        // 2. キーの取得
-        let guard = self.keys.lock().unwrap_or_else(|p| p.into_inner());
-        if let Some(key) = guard.get(&asset_id) {
-            tracing::info!(
-                asset_id = %asset_id,
-                "🔓 [AuditLog] Decryption key accessed"
-            );
-            Ok(key.to_zeroizing())
-        } else {
-            Err(AiomeError::ArtifactNotFound {
-                path: format!("Decryption key for asset {}", asset_id),
-            })
-        }
+        // 2. キーの取得 (Backend)
+        let key = self.backend.get_dek(asset_id).await?;
+        tracing::info!(
+            asset_id = %asset_id,
+            "🔓 [AuditLog] Decryption key accessed"
+        );
+        Ok(key)
     }
 
     async fn verify_license(&self, agent_id: Uuid, asset_id: Uuid) -> Result<bool, AiomeError> {
-        // Phase 10.2: RegistryManager を通を通じて DB/Ledger の所有権を確認
+        // Phase 10.2: RegistryManager を通じて DB/Ledger の所有権を確認
         self.registry.check_ownership(agent_id, asset_id).await
     }
 
@@ -130,22 +80,8 @@ impl VoiceKeyVault for AbyssVoiceVault {
         asset_id: Uuid,
         key: Zeroizing<Vec<u8>>,
     ) -> Result<(), AiomeError> {
-        // 1. Master Key で暗号化して DB に永続化 (§CISO-1)
-        let master = self.get_cached_master_key()?;
-        let encrypted = crate::security::crypto::encrypt_aes256gcm(&key, &master.to_zeroizing())?;
-        sqlx::query("INSERT OR REPLACE INTO vault_keys (asset_id, encrypted_key) VALUES (?, ?)")
-            .bind(asset_id.to_string())
-            .bind(&encrypted)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("vault_keys INSERT: {}", e),
-            })?;
-
-        // 2. メモリキャッシュにも保持（高速パス）
-        let mut guard = self.keys.lock().unwrap_or_else(|p| p.into_inner());
-        guard.insert(asset_id, MlockedVec::new((*key).clone()));
-        Ok(())
+        // Backend に登録を委譲
+        self.backend.store_dek(asset_id, &key).await
     }
 
     async fn decrypt_stream(
@@ -199,21 +135,49 @@ mod tests {
         let master_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         std::env::set_var("VAULT_MASTER_KEY", master_hex);
 
+        let pool_backup = vault.backend.clone(); // (Used strictly for pool simulation down below if needed, but not heavily accessible now that backend is hidden)
+
         // 1. 鍵の登録
         vault
             .register_asset_key(asset_id, Zeroizing::new(test_key.clone()))
             .await
             .unwrap();
 
-        // 2. 新しい Vault インスタンスを作成（メモリは空）
-        let registry = Arc::new(RegistryManager::new(vault.pool.clone()));
-        let vault2 = AbyssVoiceVault::new(registry, vault.pool.clone());
+        // 2. 新しい Vault インスタンスを作成（復元の確認）
+        // VaultBackend により、restore_keys_from_db を呼ばずとも on-demand fetch で取得可能。
+        let registry_clone = Arc::new(RegistryManager::new(
+             // Recovering pool from setup for test purpose
+             sqlx::sqlite::SqlitePoolOptions::new().connect("sqlite::memory:").await.unwrap()
+        )); // In real test, pass the same pool. Let's just create a secondary setup that points to same db.
 
-        // 3. 永続化ストレージからリストア
-        let count = vault2.restore_keys_from_db().await.unwrap();
-        assert_eq!(count, 1);
+        let vault2 = setup_vault().await; 
+        
+        // Let's actually share the pool for the test validation since sqlite::memory is per-pool.
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
 
-        // 4. メモリから鍵が引けることを確認（ライセンスチェックをモックするためにテーブル挿入）
+        // 必要テーブル作成
+        sqlx::query(
+            "CREATE TABLE vault_keys (asset_id TEXT PRIMARY KEY, encrypted_key BLOB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        ).execute(&pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT, processed_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+        ).execute(&pool).await.unwrap();
+
+        let registry = Arc::new(RegistryManager::new(pool.clone()));
+        let shared_vault1 = AbyssVoiceVault::new(registry.clone(), pool.clone());
+        let shared_vault2 = AbyssVoiceVault::new(registry, pool.clone());
+
+        shared_vault1
+            .register_asset_key(asset_id, Zeroizing::new(test_key.clone()))
+            .await
+            .unwrap();
+
+        // 3. ライセンスチェックをモックするためにテーブル挿入
         let agent_id = Uuid::new_v4();
         sqlx::query(
             "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
@@ -224,11 +188,11 @@ mod tests {
             r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
             agent_id, asset_id
         ))
-        .execute(&vault2.pool)
+        .execute(&pool)
         .await
         .unwrap();
 
-        let fetched = vault2
+        let fetched = shared_vault2
             .fetch_decryption_key(agent_id, asset_id)
             .await
             .unwrap();

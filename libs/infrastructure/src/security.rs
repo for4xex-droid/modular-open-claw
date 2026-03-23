@@ -377,6 +377,7 @@ pub mod mlock;
 pub mod abyss_voice_vault;
 /// 暗号化・復号処理のユーティリティ群
 pub mod crypto;
+pub mod sqlite_vault_backend;
 use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;
 use zeroize::Zeroizing;

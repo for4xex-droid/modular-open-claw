@@ -50,6 +50,14 @@ impl MlockedVec {
     }
 }
 
+impl std::fmt::Debug for MlockedVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MlockedVec")
+         .field("inner", &"***REDACTED***")
+         .finish()
+    }
+}
+
 impl Drop for MlockedVec {
     fn drop(&mut self) {
         let ptr = self.inner.as_ptr() as *const libc::c_void;
