@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### Added
+- `VaultBackend` trait (ADR-019 Phase A)
+- `SqliteVaultBackend` based on `MlockedVec`
+
+### Changed
+- Refactored `AbyssVoiceVault` to use `SqliteVaultBackend` internally
+- Updated `SECURITY_DESIGN.md` §6.5 with vault abstraction specs.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
