@@ -312,10 +312,7 @@ pub fn build_app(
             get(crate::stream::trigger_system_vitality_stream),
         )
         .nest("/api/v1/mcp", crate::mcp::router())
-        .route(
-            "/api/v1/watchtower/ws",
-            get(routes::watchtower::ws_handler),
-        )
+        .route("/api/v1/watchtower/ws", get(routes::watchtower::ws_handler))
         .route(
             "/api/agent/feedback",
             post(routes::agent::handle_karma_feedback),
