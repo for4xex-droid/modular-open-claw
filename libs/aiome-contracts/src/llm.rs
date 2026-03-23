@@ -21,6 +21,33 @@ pub enum StopReason {
     Other(String),
 }
 
+/// LLMへのメッセージ (ADR-021)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmMessage {
+    /// ロール ("system", "user", "assistant")
+    pub role: String,
+    /// 内容
+    pub content: String,
+    /// キャッシュ制御フラグ (ADR-021: Prompt Caching)
+    /// true の場合、このメッセージまでのプレフィックスをキャッシュ対象とする。
+    pub cache: bool,
+}
+
+/// LLMリクエストの構造体 (ADR-021)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LlmRequest {
+    /// メッセージ履歴
+    pub messages: Vec<LlmMessage>,
+    /// 温度パラメータ
+    pub temperature: Option<f32>,
+    /// 最大トークン数
+    pub max_tokens: Option<i32>,
+    /// 停止シーケンス
+    pub stop_sequences: Option<Vec<String>>,
+    /// 出力フォーマット (例: "json")
+    pub format: Option<String>,
+}
+
 /// LLMからの構造化レスポンス
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmResponse {
@@ -36,6 +63,20 @@ pub trait LlmProvider: Send + Sync + Debug {
     /// テキスト生成リクエスト
     async fn complete(&self, prompt: &str, system: Option<&str>)
         -> Result<LlmResponse, AiomeError>;
+
+    /// 詳細なリクエスト（キャッシュ制御を含む） (ADR-021)
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        let mut system = None;
+        let mut prompt = String::new();
+        for m in &request.messages {
+            if m.role == "system" {
+                system = Some(m.content.as_str());
+            } else if m.role == "user" {
+                prompt = m.content.clone();
+            }
+        }
+        self.complete(&prompt, system).await
+    }
 
     /// ストリーミング生成リクエスト
     async fn stream_complete(

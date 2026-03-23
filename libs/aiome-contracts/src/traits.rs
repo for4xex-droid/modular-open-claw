@@ -14,6 +14,21 @@ use crate::contracts::OracleVerdict;
 use crate::error::AiomeError;
 use async_trait::async_trait;
 use serde_json;
+
+/// コンポーネントの能力（Capability）を提供するトレイト (ADR-020)
+#[async_trait]
+pub trait CapabilityProvider: Send + Sync {
+    /// コンポーネントの識別名 (例: "GenerativeEngine")
+    fn capability_name(&self) -> &str;
+
+    /// コンポーネントの能力の要約 (LLM が段階的発見に使用する)
+    fn capability_description(&self) -> &str;
+
+    /// 詳細な能力仕様 (JSON Schema 等、任意実装)
+    fn capability_schema(&self) -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
 use std::path::PathBuf;
 
 /// トレンド調査ツール (TrendSonar)

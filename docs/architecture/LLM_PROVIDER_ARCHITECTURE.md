@@ -221,7 +221,31 @@ graph TB
 | 環境変数 (`.env`) | プロセス起動時に読み込み | ✅ 必要 |
 | `AiomeConfig` コード | コンパイル時に確定 | ✅ 必要 (ビルド) |
 
+### 3.7 Structured Output (Phase 31 実装)
+`LlmRequest` に `format` フィールドが追加されました。
+- Ollama: `format: "json"` が指定された場合、`format: "json"` パラメータをリクエストに付与し、LLM に JSON 形式での出力を強制します。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-03-23 (Phase 25 / Autonomous AI Economy Demo)*
+*最終更新: 2026-03-24 (Phase 31 / 信頼性向上 & 構造化出力対応)*
+
+---
+
+## 9. ローカル日本語 LLM 候補 (Phase 29 評価予定)
+
+`BackgroundLlmProvider` の最適モデル選定のため、以下の候補を比較評価する。
+
+| モデル | パラメータ | Q4_K_M サイズ | 特徴 | 評価優先度 |
+|---|---|---|---|---|
+| **Qwen3.5-9B-Japanese-awy** | 9B | ~5.5GB | Vision 対応、日本語特化 FT、Unsloth/LoRA 親和 | ★★★ |
+| Llama-3.1-Swallow-8B | 8B | ~5.0GB | 東工大製、日本語タスクベンチ上位 | ★★☆ |
+| Qwen2.5-7B-Instruct | 7B | ~4.5GB | 公式版、汎用性高い | ★★☆ |
+| Phi-4-mini-instruct | 3.8B | ~2.5GB | 超軽量、推論特化 | ★☆☆ |
+
+### 評価基準
+- Soul Mutation テキスト生成品質 (日本語自然さ)
+- Karma 蒸留の要約精度
+- DreamState 創造的シード生成力
+- トークン/秒 (Mac M-series での推論速度)
+

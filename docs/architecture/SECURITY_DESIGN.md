@@ -47,6 +47,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 24 | **Testing Mocks in Production** | **Mock object leakage (e.g. MockLlmProvider)** | 🔴 High | **Conditional Compilation (#[cfg]) Isolation (Phase 27)** |
 | 25 | **Insecure Default Secrets** | **Fallback API_SERVER_SECRET** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 27)** |
 | 26 | **Unauthorized Frontend Requests**| **CORS misconfiguration (AllowOrigin::any)** | 🔴 High | **Strict ALLOWED_ORIGINS Enforcement (Phase 27)** |
+| 27 | **Runtime Database Panic** | **unwrap() on Pool in PG mode** | 🟡 Mid | **Safe DatabasePool Getters (Phase 31)** |
+| 28 | **LLM Format Mismatch** | **JSON expected, Text received** | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -93,6 +95,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Preserve Intent Strategy (Phase 7.1)**: Utilizes ADR 007 standard for compiler warning suppression (`#[allow(...)]`). This ensures that context or "half-finished" logic is never accidentally deleted by AI agents during refactoring, maintaining a stable and explainable codebase while satisfying strict CI `-D warnings` constraints.
 - **Biome Encryption & DB Recovery (Phase 6.X)**: `AutonomousBiomeEngine` encrypts all node-to-node (P2P) traffic via ChaCha20-Poly1305 symmetric encryption derived from `FEDERATION_SECRET`. `api-server` implements exhaustive error logging for all message/topic insertions (NG-29), ensuring database stability and eliminating silent failures in the Biome protocol.
 - **SQLite Pool Exhaustion Prevention (Phase 25.5 / ADR-014)**: The `AutonomousDemo` orchestrator avoids `gig_engine` trait method calls (which internally use `pool.begin()` transactions) and instead executes individual SQL statements. This prevents connection pool exhaustion when multiple browser tabs maintain concurrent SSE connections. Audit triggers on gig tables are temporarily suspended during demo execution to eliminate cascading WRITE lock contention. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md` for the full production migration plan (PostgreSQL, async audit logging, SSE connection sharing).
+- **Database Backend Safety (Phase 31)**: Eliminated 10+ instances of direct `unwrap()` on database pools. All internal router handlers now use safe getters returning explicit Errors via `DatabasePool::get_sqlite_pool_or_err`. This prevents system-wide crashes when switching to alternative backends (e.g., PostgreSQL for high concurrency).
+- **LLM Structured Output (Phase 31)**: Formally supports `format: "json"` in `LlmRequest` to enforce structured responses from LLMs (Ollama), reducing parsing errors and potential hallucination impacts.
 
 ## 5. Comparison with Traditional Systems
 
@@ -131,4 +135,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-23 (Phase 27 / Security & Architecture Audit)*
+*最終更新: 2026-03-24 (Phase 31 / 信頼性向上 & TDD 完遂)*

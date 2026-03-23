@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use sqlx::Row;
 use tracing::{error, info, warn};
 
-use super::SqliteJobQueue;
+use super::UniversalJobQueue;
 
 #[async_trait]
 pub trait DbInitializer {
@@ -18,9 +18,13 @@ pub trait DbInitializer {
 }
 
 #[async_trait]
-impl DbInitializer for SqliteJobQueue {
+impl DbInitializer for UniversalJobQueue {
     /// The Immortal Samsara Schema (完全不可侵DDL)
     async fn init_db(&self) -> Result<(), AiomeError> {
+        let pool = self.pool.get_sqlite_pool().expect(
+            "init_db for generic migrations assumes SQLite. Postgres uses postgres_init.rs.",
+        );
+
         // Essential Audit Infrastructure
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS audit_ledger_global (
@@ -34,7 +38,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create audit_ledger_global: {}", e),
@@ -57,10 +61,10 @@ impl DbInitializer for SqliteJobQueue {
             // This MUST happen before any INSERT/UPDATE on these tables to avoid "no such column: NEW.id" errors
             // from lingering faulty triggers in the DB.
             let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_insert_{}", table))
-                .execute(&self.pool)
+                .execute(pool)
                 .await;
             let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_update_{}", table))
-                .execute(&self.pool)
+                .execute(pool)
                 .await;
 
             let trigger_sql = format!(
@@ -79,7 +83,7 @@ impl DbInitializer for SqliteJobQueue {
                  END;",
                 table, pk_col
             );
-            let _ = sqlx::query(&trigger_sql).execute(&self.pool).await;
+            let _ = sqlx::query(&trigger_sql).execute(pool).await;
 
             let update_sql = format!(
                 "CREATE TRIGGER IF NOT EXISTS audit_update_{0}
@@ -97,7 +101,7 @@ impl DbInitializer for SqliteJobQueue {
                  END;",
                 table, pk_col
             );
-            let _ = sqlx::query(&update_sql).execute(&self.pool).await;
+            let _ = sqlx::query(&update_sql).execute(pool).await;
         }
 
         // Use CREATE TABLE IF NOT EXISTS to prevent data loss on restart.
@@ -124,7 +128,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );"
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to create jobs table: {}", e) })?;
 
@@ -139,7 +143,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE jobs ADD COLUMN output_artifacts TEXT",
             "ALTER TABLE jobs ADD COLUMN permission_manifest TEXT",
         ] {
-            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+            if let Err(e) = sqlx::query(migration).execute(pool).await {
                 let msg = e.to_string();
                 if !msg.contains("duplicate column name") && !msg.contains("already exists") {
                     warn!(
@@ -167,7 +171,7 @@ impl DbInitializer for SqliteJobQueue {
                 FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE SET NULL
             );"
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to create karma_logs table: {}", e) })?;
 
@@ -175,7 +179,7 @@ impl DbInitializer for SqliteJobQueue {
         if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_jobs_status_started ON jobs(status, started_at);",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         {
             info!(
@@ -185,7 +189,7 @@ impl DbInitializer for SqliteJobQueue {
         }
 
         if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_skill_weight ON karma_logs(related_skill, weight DESC);")
-            .execute(&self.pool).await {
+            .execute(pool).await {
             info!("💡 [DbInitializer] Index idx_karma_logs_skill_weight setup (might already exist): {}", e);
         }
 
@@ -210,14 +214,14 @@ impl DbInitializer for SqliteJobQueue {
                 FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE CASCADE
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create sns_metrics_history: {}", e),
         })?;
 
         if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_sns_metrics_job ON sns_metrics_history(job_id, milestone_days);")
-            .execute(&self.pool).await {
+            .execute(pool).await {
              info!("💡 [DbInitializer] Index idx_sns_metrics_job setup (might already exist): {}", e);
         }
 
@@ -249,7 +253,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE immune_rules ADD COLUMN status TEXT DEFAULT 'Active'",
             "ALTER TABLE jobs ADD COLUMN agent_id TEXT",
         ] {
-            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+            if let Err(e) = sqlx::query(migration).execute(pool).await {
                 let msg = e.to_string();
                 if !msg.contains("duplicate column name") && !msg.contains("already exists") {
                     warn!("⚠️ [DbInitializer] Secondary migration failed ({}): {}", migration, e);
@@ -269,14 +273,14 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create agent_stats table: {}", e),
         })?;
 
         if let Err(e) = sqlx::query("INSERT OR IGNORE INTO agent_stats (id, level, exp, resonance, creativity, fatigue) VALUES (1, 1, 0, 0, 0, 0);")
-            .execute(&self.pool)
+            .execute(pool)
             .await {
             warn!("⚠️ [DbInitializer] Failed to ensure default agent_stats record: {}", e);
         }
@@ -289,7 +293,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create system_state table: {}", e),
@@ -298,7 +302,7 @@ impl DbInitializer for SqliteJobQueue {
         if let Err(e) = sqlx::query(
             "INSERT OR IGNORE INTO system_state (key, value) VALUES ('logical_clock', '0')",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         {
             warn!(
@@ -318,18 +322,18 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create chat_history: {}", e),
         })?;
 
         if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_channel ON chat_history(channel_id, created_at DESC);")
-            .execute(&self.pool).await {
+            .execute(pool).await {
             info!("💡 [DbInitializer] Index idx_chat_history_channel setup: {}", e);
         }
         if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_history_undistilled ON chat_history(is_distilled) WHERE is_distilled = 0;")
-            .execute(&self.pool).await {
+            .execute(pool).await {
             info!("💡 [DbInitializer] Index idx_chat_history_undistilled setup: {}", e);
         }
 
@@ -340,7 +344,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create chat_memory_summaries: {}", e),
@@ -356,7 +360,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create soul_mutation_history: {}", e),
@@ -369,7 +373,7 @@ impl DbInitializer for SqliteJobQueue {
                 last_sync_at TEXT NOT NULL
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create federation_peers: {}", e),
@@ -390,7 +394,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create immune_rules: {}", e),
@@ -407,28 +411,28 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create arena_history: {}", e),
         })?;
 
         // Federated Indices (Phase 15 Hardening)
-        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_federated ON karma_logs(is_federated) WHERE is_federated = 0;").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_federated ON karma_logs(is_federated) WHERE is_federated = 0;").execute(pool).await {
             info!("💡 [DbInitializer] Index idx_karma_logs_federated setup: {}", e);
         }
-        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_rules_federated ON immune_rules(is_federated) WHERE is_federated = 0;").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_rules_federated ON immune_rules(is_federated) WHERE is_federated = 0;").execute(pool).await {
             info!("💡 [DbInitializer] Index idx_immune_rules_federated setup: {}", e);
         }
         if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_karma_lamport ON karma_logs(lamport_clock, node_id);",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         {
             info!("💡 [DbInitializer] Index idx_karma_lamport setup: {}", e);
         }
-        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_lamport ON immune_rules(lamport_clock, node_id);").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_immune_lamport ON immune_rules(lamport_clock, node_id);").execute(pool).await {
             info!("💡 [DbInitializer] Index idx_immune_lamport setup: {}", e);
         }
 
@@ -447,7 +451,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create biome_messages: {}", e),
@@ -460,7 +464,7 @@ impl DbInitializer for SqliteJobQueue {
                 reputation_score INTEGER NOT NULL DEFAULT 100
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create biome_peers: {}", e),
@@ -477,7 +481,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create biome_topics: {}", e),
@@ -497,13 +501,13 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create evolution_chronicle: {}", e),
         })?;
 
-        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_messages_recipient ON biome_messages(recipient_pubkey);").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_messages_recipient ON biome_messages(recipient_pubkey);").execute(pool).await {
             warn!("⚠️ [DbInitializer] Index idx_biome_messages_recipient setup failed: {}", e);
         }
 
@@ -515,7 +519,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create timeline_checkpoints: {}", e),
@@ -540,7 +544,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at DATETIME
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create agent_souls table: {}", e),
@@ -555,7 +559,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE agent_souls ADD COLUMN last_begging_at TEXT;",
             "ALTER TABLE gig_intents ADD COLUMN category TEXT NOT NULL DEFAULT 'Other';",
         ] {
-            if let Err(e) = sqlx::query(migration).execute(&self.pool).await {
+            if let Err(e) = sqlx::query(migration).execute(pool).await {
                 let msg = e.to_string();
                 if !msg.contains("duplicate column name") && !msg.contains("already exists") {
                     warn!("⚠️ [DbInitializer] Migration failed ({}): {}", migration, e);
@@ -566,7 +570,7 @@ impl DbInitializer for SqliteJobQueue {
         // Memory Evolution Sprint 2: Procedural Forgetting
         if let Err(e) =
             sqlx::query("ALTER TABLE karma_logs ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             let msg = e.to_string();
@@ -574,12 +578,12 @@ impl DbInitializer for SqliteJobQueue {
                 warn!("⚠️ [DbInitializer] Migration is_archived failed: {}", e);
             }
         }
-        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_active ON karma_logs(is_archived) WHERE is_archived = 0;").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_karma_logs_active ON karma_logs(is_archived) WHERE is_archived = 0;").execute(pool).await {
             warn!("⚠️ [DbInitializer] Index idx_karma_logs_active setup failed: {}", e);
         }
 
         // Sprint 3-A: FTS5 (High-speed Text Search Layer)
-        if let Err(e) = sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS karma_fts USING fts5(lesson, content=karma_logs, content_rowid=rowid);").execute(&self.pool).await {
+        if let Err(e) = sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS karma_fts USING fts5(lesson, content=karma_logs, content_rowid=rowid);").execute(pool).await {
             let msg = e.to_string();
             if !msg.contains("already exists") {
                 warn!("⚠️ [DbInitializer] FTS5 setup failed: {}", e);
@@ -591,7 +595,7 @@ impl DbInitializer for SqliteJobQueue {
             "CREATE TRIGGER IF NOT EXISTS karma_fts_ad AFTER DELETE ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); END;",
             "CREATE TRIGGER IF NOT EXISTS karma_fts_au AFTER UPDATE OF lesson ON karma_logs BEGIN INSERT INTO karma_fts(karma_fts, rowid, lesson) VALUES('delete', old.rowid, old.lesson); INSERT INTO karma_fts(rowid, lesson) VALUES(new.rowid, new.lesson); END;",
         ] {
-            if let Err(e) = sqlx::query(trigger).execute(&self.pool).await {
+            if let Err(e) = sqlx::query(trigger).execute(pool).await {
                 let msg = e.to_string();
                 if !msg.contains("already exists") {
                     warn!("⚠️ [DbInitializer] FTS5 trigger setup failed ({}): {}", trigger, e);
@@ -602,7 +606,7 @@ impl DbInitializer for SqliteJobQueue {
         // Sprint 3-B: Taxonomy (Hierarchical Classification)
         if let Err(e) =
             sqlx::query("ALTER TABLE karma_logs ADD COLUMN domain TEXT DEFAULT 'general';")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             let msg = e.to_string();
@@ -611,7 +615,7 @@ impl DbInitializer for SqliteJobQueue {
             }
         }
         if let Err(e) = sqlx::query("ALTER TABLE karma_logs ADD COLUMN subtopic TEXT;")
-            .execute(&self.pool)
+            .execute(pool)
             .await
         {
             let msg = e.to_string();
@@ -622,7 +626,7 @@ impl DbInitializer for SqliteJobQueue {
         if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_karma_taxonomy ON karma_logs(domain, related_skill);",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         {
             warn!(
@@ -648,7 +652,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create ai_artifacts table: {}", e),
@@ -656,7 +660,7 @@ impl DbInitializer for SqliteJobQueue {
 
         // Phase 1: Artifact Evolution (Memory Crystal)
         if let Err(e) = sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN embedding BLOB;")
-            .execute(&self.pool)
+            .execute(pool)
             .await
         {
             let msg = e.to_string();
@@ -665,7 +669,7 @@ impl DbInitializer for SqliteJobQueue {
             }
         }
         if let Err(e) = sqlx::query("ALTER TABLE ai_artifacts ADD COLUMN text_content TEXT;")
-            .execute(&self.pool)
+            .execute(pool)
             .await
         {
             let msg = e.to_string();
@@ -685,7 +689,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create artifact_edges table: {}", e),
@@ -693,7 +697,7 @@ impl DbInitializer for SqliteJobQueue {
 
         if let Err(e) =
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_source ON artifact_edges(source_id);")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             warn!(
@@ -703,7 +707,7 @@ impl DbInitializer for SqliteJobQueue {
         }
         if let Err(e) =
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_edge_target ON artifact_edges(target_id);")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             warn!(
@@ -722,7 +726,7 @@ impl DbInitializer for SqliteJobQueue {
                 updated_at TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create system_settings table: {}", e),
@@ -741,7 +745,7 @@ impl DbInitializer for SqliteJobQueue {
                 tts_status TEXT NOT NULL DEFAULT 'NotRequested'
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create expressions table: {}", e),
@@ -761,7 +765,7 @@ impl DbInitializer for SqliteJobQueue {
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create resource_usage_logs table: {}", e),
@@ -769,7 +773,7 @@ impl DbInitializer for SqliteJobQueue {
 
         // 既存の expressions テーブルにカラムがない場合は追加する (手動マイグレーション)
         let columns = sqlx::query("PRAGMA table_info(expressions)")
-            .fetch_all(&self.pool)
+            .fetch_all(pool)
             .await
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to read expressions table info: {}", e),
@@ -780,13 +784,13 @@ impl DbInitializer for SqliteJobQueue {
             .any(|c| c.get::<String, _>("name") == "audio_path");
         if !has_audio_path {
             sqlx::query("ALTER TABLE expressions ADD COLUMN audio_path TEXT")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (audio_path): {}", e),
                 })?;
             sqlx::query("ALTER TABLE expressions ADD COLUMN duration_ms INTEGER")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (duration_ms): {}", e),
@@ -799,7 +803,7 @@ impl DbInitializer for SqliteJobQueue {
             .any(|c| c.get::<String, _>("name") == "avatar_params");
         if !has_avatar_params {
             sqlx::query("ALTER TABLE expressions ADD COLUMN avatar_params TEXT")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (avatar_params): {}", e),
@@ -812,7 +816,7 @@ impl DbInitializer for SqliteJobQueue {
             .any(|c| c.get::<String, _>("name") == "tts_status");
         if !has_tts_status {
             sqlx::query("ALTER TABLE expressions ADD COLUMN tts_status TEXT NOT NULL DEFAULT 'NotRequested'")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to alter expressions table (tts_status): {}", e),
@@ -836,7 +840,7 @@ impl DbInitializer for SqliteJobQueue {
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create trajectory_steps table: {}", e),
@@ -855,7 +859,7 @@ impl DbInitializer for SqliteJobQueue {
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create agent_diagnoses table: {}", e),
@@ -874,7 +878,7 @@ impl DbInitializer for SqliteJobQueue {
                 timestamp TEXT DEFAULT (datetime('now'))
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create audit_ledger_global table: {}", e),
@@ -884,7 +888,7 @@ impl DbInitializer for SqliteJobQueue {
         if let Err(e) = sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_audit_ledger_time ON audit_ledger_global(timestamp);",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         {
             warn!(
@@ -902,7 +906,7 @@ impl DbInitializer for SqliteJobQueue {
                 processed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create stripe_webhook_events table: {}", e),
@@ -916,7 +920,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create vault_keys table: {}", e),
@@ -924,7 +928,7 @@ impl DbInitializer for SqliteJobQueue {
 
         // Migration to add metadata column if missing
         if let Err(e) = sqlx::query("ALTER TABLE stripe_webhook_events ADD COLUMN metadata TEXT;")
-            .execute(&self.pool)
+            .execute(pool)
             .await
         {
             let msg = e.to_string();
@@ -948,7 +952,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create asset_registry table: {}", e),
@@ -965,7 +969,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create revenue_splits table: {}", e),
@@ -982,7 +986,7 @@ impl DbInitializer for SqliteJobQueue {
                 granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create licenses table: {}", e),
@@ -997,7 +1001,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create ekyc_sessions table: {}", e),
@@ -1017,7 +1021,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create gig_intents table: {}", e),
@@ -1035,7 +1039,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create gig_bids table: {}", e),
@@ -1052,7 +1056,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create escrows table: {}", e),
@@ -1067,7 +1071,7 @@ impl DbInitializer for SqliteJobQueue {
                 delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create gig_deliveries table: {}", e),
@@ -1084,7 +1088,7 @@ impl DbInitializer for SqliteJobQueue {
                 verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create verification_logs table: {}", e),
@@ -1093,7 +1097,7 @@ impl DbInitializer for SqliteJobQueue {
         // Add key_version for Master Key rotation
         if let Err(e) =
             sqlx::query("ALTER TABLE vault_keys ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1;")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             let msg = e.to_string();
@@ -1117,7 +1121,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create llm_response_cache table: {}", e),
@@ -1132,7 +1136,7 @@ impl DbInitializer for SqliteJobQueue {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );",
         )
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create trend_cache table: {}", e),
@@ -1141,7 +1145,7 @@ impl DbInitializer for SqliteJobQueue {
         // 3. Job Priority (Day 5-6 Planning, but Migration here)
         if let Err(e) =
             sqlx::query("ALTER TABLE jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 100;")
-                .execute(&self.pool)
+                .execute(pool)
                 .await
         {
             let msg = e.to_string();

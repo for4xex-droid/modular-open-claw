@@ -587,7 +587,7 @@ mod tests {
             signature: None,
         };
         // MockJQ::fetch_active_immune_rules should be used by system.verify_intent.
-        // In our actual implementation, SqliteJobQueue::fetch_active_immune_rules
+        // In our actual implementation, UniversalJobQueue::fetch_active_immune_rules
         // filters out non-Approved rules.
         // We need to ensure that if MockJQ only returns what's "active", verify_intent is safe.
 

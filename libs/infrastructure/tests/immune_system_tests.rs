@@ -10,7 +10,7 @@ use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
 use infrastructure::immune_system::AdaptiveImmuneSystem;
-use infrastructure::job_queue::SqliteJobQueue;
+use infrastructure::job_queue::UniversalJobQueue;
 use std::sync::Arc;
 
 use tempfile::TempDir;
@@ -40,11 +40,11 @@ impl LlmProvider for MockLlmProvider {
     }
 }
 
-async fn create_test_queue() -> (SqliteJobQueue, TempDir) {
+async fn create_test_queue() -> (UniversalJobQueue, TempDir) {
     let tmp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
-    let jq = SqliteJobQueue::new(&format!("sqlite://{}", db_path_str))
+    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str))
         .await
         .expect("Failed to create test job queue");
     (jq, tmp_dir)

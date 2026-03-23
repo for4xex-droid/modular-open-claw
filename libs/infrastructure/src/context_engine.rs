@@ -5,9 +5,12 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
+use aiome_contracts::llm::{LlmMessage, LlmRequest};
+use aiome_contracts::traits::CapabilityProvider;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
@@ -15,7 +18,7 @@ use tracing::{info, warn};
 /// LLM向けコンテキスト生成エンジン
 pub struct ContextEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
-    job_queue: Arc<SqliteJobQueue>,
+    job_queue: Arc<UniversalJobQueue>,
     semaphore: Arc<Semaphore>,
 }
 
@@ -23,7 +26,7 @@ impl ContextEngine {
     /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
-        job_queue: Arc<SqliteJobQueue>,
+        job_queue: Arc<UniversalJobQueue>,
         semaphore: Arc<Semaphore>,
     ) -> Self {
         Self {
@@ -88,12 +91,26 @@ impl ContextEngine {
                     .collect::<Vec<_>>()
                     .join("\n");
 
-                let prompt = format!(
-                    "以下のこれまでの要約と新しい会話履歴の内容を統合し、簡潔かつ重要なコンテキストを保持した新しい要約を作成してください。\n\n現在の要約:\n{}\n\n追加の会話履歴:\n{}\n\n出力形式: 重要な事実、ユーザーの意図、現在の状況をまとめた日本語の段落。余計な挨拶は不要。",
-                    current_summary, recent_context
-                );
+                let request = LlmRequest {
+                    messages: vec![
+                        LlmMessage {
+                            role: "system".into(),
+                            content: "あなたは会話要約アシスタントです。".into(),
+                            cache: true, // システム指示をキャッシュ
+                        },
+                        LlmMessage {
+                            role: "user".into(),
+                            content: format!(
+                                "以下のこれまでの要約と新しい会話履歴の内容を統合し、簡潔かつ重要なコンテキストを保持した新しい要約を作成してください。\n\n現在の要約:\n{}\n\n追加の会話履歴:\n{}\n\n出力形式: 重要な事実、ユーザーの意図、現在の状況をまとめた日本語の段落。余計な挨拶は不要。",
+                                current_summary, recent_context
+                            ),
+                            cache: false,
+                        },
+                    ],
+                    ..Default::default()
+                };
 
-                match self.provider.complete(&prompt, None).await {
+                match self.provider.complete_with_cache(request).await {
                     Ok(resp) => {
                         self.job_queue
                             .update_chat_memory_summary(channel_id, resp.content.trim())
@@ -125,10 +142,36 @@ impl ContextEngine {
     }
 }
 
+#[async_trait]
+impl CapabilityProvider for ContextEngine {
+    fn capability_name(&self) -> &str {
+        "ContextEngine"
+    }
+
+    fn capability_description(&self) -> &str {
+        "AIのための長期・短期記憶とコンテキスト圧縮機能を提供します。"
+    }
+
+    fn capability_schema(&self) -> serde_json::Value {
+        serde_json::json!({
+            "functions": [
+                {
+                    "name": "get_intelligent_history",
+                    "description": "チャネルの会話履歴と要約を取得します。"
+                },
+                {
+                    "name": "maintain_context",
+                    "description": "会話履歴が長い場合に要約による圧縮を実行します。"
+                }
+            ]
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::job_queue::SqliteJobQueue;
+    use crate::job_queue::UniversalJobQueue;
     use aiome_core::llm_provider::LlmProvider;
     use serde_json::json;
     use std::sync::Arc;
@@ -161,7 +204,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_intelligent_history() {
-        let jq = SqliteJobQueue::new(":memory:").await.unwrap();
+        let jq = UniversalJobQueue::new(":memory:").await.unwrap();
         jq.insert_chat_message("user-1", "user", "Hello")
             .await
             .unwrap();
@@ -185,7 +228,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_maintain_context_compression() {
-        let jq = SqliteJobQueue::new(":memory:").await.unwrap();
+        let jq = UniversalJobQueue::new(":memory:").await.unwrap();
         // Insert many messages to exceed threshold
         for i in 0..10 {
             jq.insert_chat_message("user-1", "user", &format!("Message {}", i))

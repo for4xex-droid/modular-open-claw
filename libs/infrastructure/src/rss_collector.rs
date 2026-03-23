@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use aiome_contracts::traits::{TrendItem, TrendSource};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
@@ -18,12 +18,12 @@ use tracing::{info, warn};
 /// 複数のRSSフィードから最新記事を取得し、キーワードを抽出する。
 pub struct RssCollector {
     client: reqwest::Client,
-    jq: Arc<SqliteJobQueue>,
+    jq: Arc<UniversalJobQueue>,
 }
 
 impl RssCollector {
     /// RssCollector の新規インスタンスを生成する
-    pub fn new(jq: Arc<SqliteJobQueue>) -> Self {
+    pub fn new(jq: Arc<UniversalJobQueue>) -> Self {
         Self {
             client: reqwest::Client::new(),
             jq,
@@ -75,19 +75,30 @@ impl RssCollector {
     }
 
     async fn get_cached_trend(&self, url: &str) -> Result<Option<Vec<TrendItem>>, AiomeError> {
-        let row = sqlx::query(
-            "SELECT content FROM trend_cache 
-             WHERE source_url = ? AND expires_at > datetime('now')",
-        )
-        .bind(url)
-        .fetch_optional(&self.jq.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Trend cache lookup failed: {}", e),
-        })?;
+        let content_opt = match &self.jq.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let row = sqlx::query("SELECT content FROM trend_cache WHERE source_url = ? AND expires_at > datetime('now')")
+                    .bind(url)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                row.map(|r| r.get::<String, _>(0))
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let row = sqlx::query(
+                    "SELECT content FROM trend_cache WHERE source_url = $1 AND expires_at > NOW()",
+                )
+                .bind(url)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                row.map(|r| r.get::<String, _>(0))
+            }
+        };
 
-        if let Some(row) = row {
-            let content: String = row.get(0);
+        if let Some(content) = content_opt {
             let items: Vec<TrendItem> =
                 serde_json::from_str(&content).map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Cache decode failed: {}", e),
@@ -104,15 +115,27 @@ impl RssCollector {
         ttl_sec: i64,
     ) -> Result<(), AiomeError> {
         let json = serde_json::to_string(items).unwrap();
-        sqlx::query(
-            "INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) 
-             VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))",
-        )
-        .bind(url)
-        .bind(json)
-        .bind(ttl_sec)
-        .execute(&self.jq.pool)
-        .await
+        match &self.jq.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query("INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))")
+                    .bind(url)
+                    .bind(&json)
+                    .bind(ttl_sec)
+                    .execute(p)
+                    .await
+                    .map(|_| ())
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let interval = format!("{} seconds", ttl_sec);
+                sqlx::query("INSERT INTO trend_cache (source_url, content, expires_at) VALUES ($1, $2, NOW() + $3::interval) ON CONFLICT (source_url) DO UPDATE SET content = EXCLUDED.content, expires_at = EXCLUDED.expires_at")
+                    .bind(url)
+                    .bind(&json)
+                    .bind(interval)
+                    .execute(p)
+                    .await
+                    .map(|_| ())
+            }
+        }
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Trend cache write failed: {}", e),
         })?;

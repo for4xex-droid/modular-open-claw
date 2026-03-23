@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use sqlx::Row;
 use std::sync::Arc;
@@ -23,14 +23,14 @@ pub struct CostStatus {
 
 /// コストに基づくサーキットブレーカー
 pub struct CostCircuitBreaker {
-    jq: Arc<SqliteJobQueue>,
+    jq: Arc<UniversalJobQueue>,
     /// 24時間あたりのデフォルトコスト上限 (USD)
     default_limit_usd: f64,
 }
 
 impl CostCircuitBreaker {
     /// CostCircuitBreaker の新規インスタンスを生成する
-    pub fn new(jq: Arc<SqliteJobQueue>, default_limit_usd: f64) -> Self {
+    pub fn new(jq: Arc<UniversalJobQueue>, default_limit_usd: f64) -> Self {
         Self {
             jq,
             default_limit_usd,
@@ -50,16 +50,23 @@ impl CostCircuitBreaker {
             .unwrap_or(self.default_limit_usd);
 
         // 過去24時間の累計コストを集計
-        let total_usd: f64 = sqlx::query(
-            "SELECT SUM(estimated_cost_usd) FROM resource_usage_logs 
-             WHERE created_at > datetime('now', '-1 day')",
-        )
-        .fetch_one(&self.jq.pool)
-        .await
-        .map(|row| row.get::<Option<f64>, _>(0).unwrap_or(0.0))
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to aggregate costs: {}", e),
-        })?;
+        let res_opt = match &self.jq.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-1 day')")
+                .fetch_one(p)
+                .await
+                .map(|row| row.get::<Option<f64>, _>(0)),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - INTERVAL '1 day'")
+                .fetch_one(p)
+                .await
+                .map(|row| row.get::<Option<f64>, _>(0)),
+        };
+
+        let total_usd: f64 =
+            res_opt
+                .map(|opt| opt.unwrap_or(0.0))
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to aggregate costs: {}", e),
+                })?;
 
         let is_tripped = total_usd >= limit_usd;
 
@@ -110,12 +117,12 @@ impl CostCircuitBreaker {
 
 /// 特定のトランザクションを保護するためのバイパススイッチ
 pub struct CostBypassSwitch {
-    jq: Arc<SqliteJobQueue>,
+    jq: Arc<UniversalJobQueue>,
 }
 
 impl CostBypassSwitch {
     /// CostBypassSwitch の新規インスタンスを生成する
-    pub fn new(jq: Arc<SqliteJobQueue>) -> Self {
+    pub fn new(jq: Arc<UniversalJobQueue>) -> Self {
         Self { jq }
     }
 

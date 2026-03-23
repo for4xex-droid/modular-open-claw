@@ -1,12 +1,33 @@
-## [Unreleased]
+## [Unreleased] - 2026-03-24
 
 ### Added
+- **Phase 31: 信頼性向上 & LLM TDD 実装 [完了]**
+    - **Database Reliability**: `get_sqlite_pool().unwrap()` を 10 箇所排除し、安全な `get_sqlite_pool_or_err()?` へ置換。PostgreSQL 等の他バックエンド使用時のランタイムパニックを防止。
+    - **LLM Structured Output**: `LlmRequest` に `format` フィールドを追加し、Ollama での JSON モードを正式サポート。
+    - **TDD Test Implementation**: `aiome-core` 内の Ollama 関連 2 テストの `#[ignore]` を解除。実機/WireMock 双方での整合性を確認。
+
+## [Unreleased] - 2026-03-23
+
+### Added
+- **Phase 28: 基盤強化 (ADR-019 Phase B / L1 強化) [完了]**
+    - `SqliteVaultBackend` への LRU キャッシュ (1000 keys) 統合。`MlockedVec` によるメモリ保護を維持。
+    - `lru` クレイトの導入（ワークスペース依存関係）。
 - `VaultBackend` trait (ADR-019 Phase A)
 - `SqliteVaultBackend` based on `MlockedVec`
 
 ### Changed
+- **L1 強化 (Code Quality)**:
+    - `api-server` の `commerce_engine` 初期化における `.unwrap()` を `.expect()` に置換し、デバッグ性を向上。
+    - `TcpListener::bind` 失敗時のエラーメッセージを詳細化。
+    - `cfg!(debug_assertions)` を `#[cfg(debug_assertions)]` に統一し、コンパイル時判定を最適化 (guardrails, gift_engine)。
+    - `infrastructure` クレイト内のドキュメント警告 (FederationOps, MockJobQueue等) をすべて解消し、警告ゼロを達成。
+- **Phase 28.5: `std::env::set_var` 脱却 [完了]**:
+    - `SqliteVaultBackend::new_with_master_key()` コンストラクタを追加。テスト環境で環境変数操作なしに Master Key を注入可能に。
+    - `AbyssVoiceVault` テストから `std::env::set_var` を完全排除。スレッドセーフかつ並列テスト安全な設計に移行。
 - Refactored `AbyssVoiceVault` to use `SqliteVaultBackend` internally
 - Updated `SECURITY_DESIGN.md` §6.5 with vault abstraction specs.
+
+---
 
 # Changelog
 
@@ -15,19 +36,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-03-23
-
-### Added
-- **Phase 28: Security Hardening & Code Quality (Partial)**:
-    - **Memory Persistence Hardening**: Implemented `MlockedVec` to lock sensitive cryptographic keys and decrypted voice assets in physical memory (`mlock(2)`), preventing swap-out to disk.
-    - **AbyssVoiceVault Protection**: Refactored `AbyssVoiceVault` to use `MlockedVec` for internal caches, satisfying the "H-1" risk item from the Deep Scan.
-- **Phase 27: Security Hardening & Architecture Audit**:
-    - **Scoped Mock Isolation (ADR-015)**: Strictly isolated all mock implementations (`MockAuthManager`, `MockCommerceEngine`, `MockEkycEngine`, `MockJobQueue`, etc.) to `debug` and `test` environments using `#[cfg(any(test, debug_assertions))]`.
-    - **Production Safety Guards**: Rewrote `api-server`, `key-proxy`, and `samsara-hub` initialization to provide fatal error exits in `release` builds instead of silent mock substitution or fallback secrets for critical security / commerce / CORS components (e.g., `API_SERVER_SECRET`, `ALLOWED_ORIGINS`, `JWT_PRIVATE_KEY_B64`).
-    - **Architecture Decision Records (ADRs)**:
-        - **ADR-016: Subscription Engine**: Defined the Stripe-based recurring payment architecture for A2C continuous support.
-        - **ADR-017: Generative Engine**: Planned the multimodal (image, audio, video) generative orchestrator and high-quality provider stack.
-        - **ADR-018: Watchtower App**: Proposed an independent, advanced architecture for the external platform I/O layer.
 
 ## [Unreleased] - 2026-03-22
 
@@ -337,11 +345,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.0]: https://github.com/motivationstudio-llc/aiome/releases/tag/v0.1.0
 
 *Initial Release*
-## [Unreleased]
-### Added
-- `VaultBackend` trait (ADR-019 Phase A)
-- `SqliteVaultBackend` based on `MlockedVec`
-
-### Changed
-- Refactored `AbyssVoiceVault` to use `SqliteVaultBackend` internally
-- Updated `SECURITY_DESIGN.md` §6.5 with vault abstraction specs.

@@ -14,10 +14,10 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_db() -> SqlitePool {
-        let jq = crate::job_queue::SqliteJobQueue::new("sqlite::memory:")
+        let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:")
             .await
             .expect("Failed to create in-memory job queue");
-        jq.get_pool().clone()
+        jq.get_pool().get_sqlite_pool().unwrap().clone()
     }
 
     #[tokio::test]

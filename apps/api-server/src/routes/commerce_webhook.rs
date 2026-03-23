@@ -70,7 +70,7 @@ pub async fn stripe_webhook(
     );
 
     // 5. 冪等性の保証とライセンス付与 (単一トランザクション / Phase 11)
-    let pool = state.job_queue.get_pool();
+    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
     let mut tx = pool.begin().await.map_err(|e| {
         error!("❌ [StripeWebhook] Failed to begin transaction: {}", e);
         AppError::internal("Database error")

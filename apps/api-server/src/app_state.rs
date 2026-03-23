@@ -14,7 +14,7 @@ use infrastructure::circuit_breaker::CircuitBreaker;
 use infrastructure::compliance::ekyc::EkycEngine;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::context_engine::ContextEngine;
-use infrastructure::job_queue::SqliteJobQueue;
+use infrastructure::job_queue::UniversalJobQueue;
 use infrastructure::rate_limiter::AgentRateLimiter;
 use infrastructure::registry::RegistryManager;
 use infrastructure::security::VoiceCoreDrm;
@@ -60,7 +60,7 @@ impl<T> std::ops::Deref for Component<T> {
 #[derive(Clone, Default)]
 pub struct AppState {
     pub health_monitor: Component<Arc<Mutex<HealthMonitor>>>,
-    pub job_queue: Component<Arc<SqliteJobQueue>>,
+    pub job_queue: Component<Arc<UniversalJobQueue>>,
     pub wasm_skill_manager: Component<Arc<WasmSkillManager>>,
     pub skill_forge: Component<Arc<SkillForge>>,
     pub docs_path: String,

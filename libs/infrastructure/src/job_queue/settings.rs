@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
@@ -30,17 +30,29 @@ pub trait SettingsOps {
 }
 
 #[async_trait]
-impl SettingsOps for SqliteJobQueue {
+impl SettingsOps for UniversalJobQueue {
     async fn get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
-        let row = sqlx::query("SELECT value FROM system_settings WHERE key = ?")
-            .bind(key)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
-
-        Ok(row.map(|r| r.get(0)))
+        let q = format!(
+            "SELECT value FROM system_settings WHERE key = {}",
+            self.pool.ph(0)
+        );
+        let opt: Option<String> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(key)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(key)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+        };
+        Ok(opt)
     }
 
     async fn set_setting(
@@ -50,49 +62,58 @@ impl SettingsOps for SqliteJobQueue {
         category: &str,
         is_secret: bool,
     ) -> Result<(), AiomeError> {
-        sqlx::query(
-            "INSERT INTO system_settings (key, value, category, is_secret, updated_at) 
-             VALUES (?, ?, ?, ?, datetime('now'))
-             ON CONFLICT(key) DO UPDATE SET 
-                value = excluded.value, 
-                category = excluded.category, 
-                is_secret = excluded.is_secret,
-                updated_at = datetime('now')",
-        )
-        .bind(key)
-        .bind(value)
-        .bind(category)
-        .bind(is_secret as i32)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
+        let q = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_settings (key, value, category, is_secret, updated_at) VALUES ({0}, {1}, {2}, {3}, {4})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn()),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, category = EXCLUDED.category, is_secret = EXCLUDED.is_secret, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn()),
+        };
+        sql_exec!(&self.pool, &q, key, value, category, is_secret as i32).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Update setting failed: {}", e),
+            }
         })?;
-
         Ok(())
     }
 
     async fn get_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError> {
-        let rows =
-            sqlx::query("SELECT key, value, category, is_secret, updated_at FROM system_settings")
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+        let q = "SELECT key, value, category, is_secret, updated_at FROM system_settings";
+        let entries =
+            match &self.pool {
+                crate::db::DatabasePool::Sqlite(p) => {
+                    let rows = sqlx::query(q).fetch_all(p).await.map_err(|e| {
+                        AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        }
+                    })?;
+                    rows.into_iter()
+                        .map(|row| aiome_core::contracts::SystemSetting {
+                            key: row.get("key"),
+                            value: row.get("value"),
+                            category: row.get("category"),
+                            is_secret: row.get::<i32, _>("is_secret") != 0,
+                            updated_at: row.get("updated_at"),
+                        })
+                        .collect()
+                }
+                crate::db::DatabasePool::Postgres(p) => {
+                    let rows = sqlx::query(q).fetch_all(p).await.map_err(|e| {
+                        AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        }
+                    })?;
+                    rows.into_iter()
+                        .map(|row| aiome_core::contracts::SystemSetting {
+                            key: row.get("key"),
+                            value: row.get("value"),
+                            category: row.get("category"),
+                            is_secret: row.get::<bool, _>("is_secret"),
+                            updated_at: row.get("updated_at"),
+                        })
+                        .collect()
+                }
+            };
 
-        let mut entries = Vec::new();
-        for row in rows {
-            entries.push(aiome_core::contracts::SystemSetting {
-                key: row.get("key"),
-                value: row.get("value"),
-                category: row.get("category"),
-                is_secret: row.get::<i32, _>("is_secret") != 0,
-                updated_at: row.get("updated_at"),
-            });
-        }
         Ok(entries)
     }
 }

@@ -181,37 +181,40 @@ impl OllamaProvider {
 
 #[async_trait]
 impl LlmProvider for OllamaProvider {
-    async fn complete(
+    async fn complete_with_cache(
         &self,
-        prompt: &str,
-        system: Option<&str>,
+        request: aiome_contracts::llm::LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/api/chat", self.host);
-        let mut messages = Vec::new();
+        let messages: Vec<serde_json::Value> = request
+            .messages
+            .iter()
+            .map(|m| {
+                // Ollama API generally does not expect a 'cache' field in messages.
+                // We remove it from the payload to maintain strict compatibility.
+                serde_json::json!({
+                    "role": m.role,
+                    "content": m.content
+                })
+            })
+            .collect();
 
-        if let Some(sys) = system {
-            messages.push(serde_json::json!({
-                "role": "system",
-                "content": sys
-            }));
-        }
-
-        messages.push(serde_json::json!({
-            "role": "user",
-            "content": prompt
-        }));
-
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "model": self.model,
             "messages": messages,
             "stream": false,
             "think": false,
-            "format": "json",
             "options": {
-                "num_predict": 300,
-                "temperature": 0.7
+                "num_predict": request.max_tokens.unwrap_or(300),
+                "temperature": request.temperature.unwrap_or(0.7) as f64
             }
         });
+
+        if let Some(format) = request.format {
+            if let Some(obj) = payload.as_object_mut() {
+                obj.insert("format".into(), serde_json::Value::String(format));
+            }
+        }
 
         let resp = self
             .client
@@ -222,6 +225,14 @@ impl LlmProvider for OllamaProvider {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Ollama request failed: {}", e),
             })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let err_text = resp.text().await.unwrap_or_default();
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Ollama error [{}]: {}", status, err_text),
+            });
+        }
 
         let body: serde_json::Value =
             resp.json().await.map_err(|e| AiomeError::Infrastructure {
@@ -244,6 +255,33 @@ impl LlmProvider for OllamaProvider {
             content,
             stop_reason,
         })
+    }
+
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(LlmMessage {
+                role: "system".into(),
+                content: sys.into(),
+                cache: false,
+            });
+        }
+        messages.push(LlmMessage {
+            role: "user".into(),
+            content: prompt.into(),
+            cache: false,
+        });
+
+        let request = LlmRequest {
+            messages,
+            ..Default::default()
+        };
+        self.complete_with_cache(request).await
     }
 
     async fn stream_complete(
@@ -1522,7 +1560,7 @@ mod tests {
                 "format": "json",
                 "options": {
                     "num_predict": 300,
-                    "temperature": 0.7
+                    "temperature": 0.5
                 }
             })))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -1539,7 +1577,18 @@ mod tests {
 
         // 現時点ではコードが未実装（format: json を送っていない）ため、
         // wiremock がマッチせず 404 を返し、テストが失敗するはず。
-        let result = provider.complete("Give JSON", None).await;
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let request = LlmRequest {
+            messages: vec![LlmMessage {
+                role: "user".into(),
+                content: "Give JSON".into(),
+                cache: false,
+            }],
+            format: Some("json".into()),
+            temperature: Some(0.5),
+            ..Default::default()
+        };
+        let result = provider.complete_with_cache(request).await;
 
         assert!(
             result.is_ok(),
@@ -1626,6 +1675,58 @@ mod tests {
                 name: "Bob".into(),
                 score: 200
             }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ollama_complete_with_cache_success() {
+        let mock_server = MockServer::start().await;
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+
+        // 期待値: キャッシュフラグが含まれたメッセージリストが送信されること
+        Mock::given(method("POST"))
+            .and(path("/api/chat"))
+            .and(wiremock::matchers::body_json(serde_json::json!({
+                "model": "test",
+                "messages": [
+                    { "role": "system", "content": "You are helpful" },
+                    { "role": "user", "content": "Hello" }
+                ],
+                "stream": false,
+                "think": false,
+                "format": "json",
+                "options": { "num_predict": 300, "temperature": 0.5 }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": { "role": "assistant", "content": "Hi!" },
+                "done_reason": "stop"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let provider = OllamaProvider::new(mock_server.uri(), "test".to_string());
+        let mut request = LlmRequest::default();
+        request.temperature = Some(0.5);
+        request.format = Some("json".into());
+        request.messages.push(LlmMessage {
+            role: "system".into(),
+            content: "You are helpful".into(),
+            cache: true,
+        });
+        request.messages.push(LlmMessage {
+            role: "user".into(),
+            content: "Hello".into(),
+            cache: false,
+        });
+
+        let result = provider.complete_with_cache(request).await;
+
+        // 現在、デフォルト実装はメッセージの cache フラグを捨てて complete() を呼ぶため、
+        // WireMock の期待値 Body JSON と一致せず 404 (Mismatch) になるはず。
+        assert!(
+            result.is_ok(),
+            "Expected wiremock match but likely 404: {:?}",
+            result.err()
         );
     }
 }

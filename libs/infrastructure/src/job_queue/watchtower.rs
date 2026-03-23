@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::SqliteJobQueue;
+use super::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
@@ -67,22 +67,24 @@ pub trait WatchtowerOps {
 }
 
 #[async_trait]
-impl WatchtowerOps for SqliteJobQueue {
+impl WatchtowerOps for UniversalJobQueue {
     async fn do_insert_chat_message(
         &self,
         channel_id: &str,
         role: &str,
         content: &str,
     ) -> Result<(), AiomeError> {
-        sqlx::query("INSERT INTO chat_history (channel_id, role, content) VALUES (?, ?, ?)")
-            .bind(channel_id)
-            .bind(role)
-            .bind(content)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
+        let q = format!(
+            "INSERT INTO chat_history (channel_id, role, content) VALUES ({0}, {1}, {2})",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, channel_id, role, content).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Failed to insert chat history: {}", e),
-            })?;
+            }
+        })?;
         Ok(())
     }
 
@@ -91,25 +93,35 @@ impl WatchtowerOps for SqliteJobQueue {
         channel_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT id, role, content FROM chat_history WHERE channel_id = ? AND is_distilled = 0 ORDER BY id DESC LIMIT ?"
-        )
-        .bind(channel_id)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to fetch chat history: {}", e) })?;
-
+        let q = format!("SELECT id, role, content FROM chat_history WHERE channel_id = {0} AND is_distilled = 0 ORDER BY id DESC LIMIT {1}", self.pool.ph(0), self.pool.ph(1));
         let mut messages = Vec::new();
-        for row in rows {
-            let id: i64 = row.get("id");
-            let role: String = row.get("role");
-            let content: String = row.get("content");
-            messages.push(serde_json::json!({
-                "id": id,
-                "role": role,
-                "content": content
-            }));
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(channel_id)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for row in rows {
+                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content") }));
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(channel_id)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for row in rows {
+                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content") }));
+                }
+            }
         }
         messages.reverse();
         Ok(messages)
@@ -119,15 +131,27 @@ impl WatchtowerOps for SqliteJobQueue {
         &self,
         channel_id: &str,
     ) -> Result<Option<String>, AiomeError> {
-        let row = sqlx::query("SELECT summary FROM chat_memory_summaries WHERE channel_id = ?")
-            .bind(channel_id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to get chat memory summary: {}", e),
-            })?;
-
-        Ok(row.map(|r| r.get("summary")))
+        let q = format!(
+            "SELECT summary FROM chat_memory_summaries WHERE channel_id = {}",
+            self.pool.ph(0)
+        );
+        let opt: Option<String> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(channel_id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(channel_id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+        };
+        Ok(opt)
     }
 
     async fn do_update_chat_memory_summary(
@@ -135,38 +159,58 @@ impl WatchtowerOps for SqliteJobQueue {
         channel_id: &str,
         summary: &str,
     ) -> Result<(), AiomeError> {
-        sqlx::query(
-            "INSERT INTO chat_memory_summaries (channel_id, summary, updated_at) 
-             VALUES (?, ?, datetime('now'))
-             ON CONFLICT(channel_id) DO UPDATE SET summary = excluded.summary, updated_at = excluded.updated_at"
-        )
-        .bind(channel_id)
-        .bind(summary)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to update chat memory summary: {}", e) })?;
+        let q = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO chat_memory_summaries (channel_id, summary, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
+        };
+        sql_exec!(&self.pool, &q, channel_id, summary).map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(())
     }
 
     async fn do_fetch_undistilled_chats_by_channel(
         &self,
     ) -> Result<HashMap<String, Vec<(i64, String, String)>>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC"
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to fetch undistilled chats: {}", e) })?;
-
+        let q = "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC";
         let mut map = HashMap::new();
-        for row in rows {
-            let id: i64 = row.get("id");
-            let channel_id: String = row.get("channel_id");
-            let role: String = row.get("role");
-            let content: String = row.get("content");
-            map.entry(channel_id)
-                .or_insert_with(Vec::new)
-                .push((id, role, content));
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows =
+                    sqlx::query(q)
+                        .fetch_all(p)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                for row in rows {
+                    let id: i64 = row.get("id");
+                    let channel_id: String = row.get("channel_id");
+                    let role: String = row.get("role");
+                    let content: String = row.get("content");
+                    map.entry(channel_id)
+                        .or_insert_with(Vec::new)
+                        .push((id, role, content));
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows =
+                    sqlx::query(q)
+                        .fetch_all(p)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                for row in rows {
+                    let id: i64 = row.get("id");
+                    let channel_id: String = row.get("channel_id");
+                    let role: String = row.get("role");
+                    let content: String = row.get("content");
+                    map.entry(channel_id)
+                        .or_insert_with(Vec::new)
+                        .push((id, role, content));
+                }
+            }
         }
         Ok(map)
     }
@@ -176,89 +220,118 @@ impl WatchtowerOps for SqliteJobQueue {
         channel_id: &str,
         up_to_id: i64,
     ) -> Result<(), AiomeError> {
-        sqlx::query("UPDATE chat_history SET is_distilled = 1 WHERE channel_id = ? AND id <= ?")
-            .bind(channel_id)
-            .bind(up_to_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to mark chats as distilled: {}", e),
-            })?;
+        let q = format!(
+            "UPDATE chat_history SET is_distilled = 1 WHERE channel_id = {0} AND id <= {1}",
+            self.pool.ph(0),
+            self.pool.ph(1)
+        );
+        sql_exec!(&self.pool, &q, channel_id, up_to_id).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: e.to_string(),
+            }
+        })?;
         Ok(())
     }
 
     async fn do_purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError> {
-        let result = sqlx::query(
-            "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < datetime('now', ? || ' days')"
-        )
-        .bind(format!("-{}", days))
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to purge old distilled chats: {}", e) })?;
-
-        Ok(result.rows_affected())
+        let ts_expr = self.pool.now_with_dynamic_days_interval(0);
+        let q = format!(
+            "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < {}",
+            ts_expr
+        );
+        let res = sql_exec!(&self.pool, &q, -days).map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
+        Ok(res)
     }
 
     async fn do_fetch_skills_for_distillation(
         &self,
         threshold: i64,
     ) -> Result<Vec<String>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > ?",
-        )
-        .bind(threshold)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to fetch skills for distillation: {}", e),
-        })?;
-
-        Ok(rows.into_iter().map(|r| r.get("related_skill")).collect())
+        let q = format!(
+            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > {}",
+            self.pool.ph(0)
+        );
+        let keys: Vec<String> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(threshold)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                rows.into_iter().map(|r| r.get("related_skill")).collect()
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(threshold)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                rows.into_iter().map(|r| r.get("related_skill")).collect()
+            }
+        };
+        Ok(keys)
     }
 
     async fn do_fetch_raw_karma_for_skill(
         &self,
         skill: &str,
     ) -> Result<Vec<(String, String)>, AiomeError> {
-        let rows = sqlx::query("SELECT id, lesson FROM karma_logs WHERE related_skill = ?")
-            .bind(skill)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fetch raw karma for skill: {}", e),
-            })?;
-
-        Ok(rows
-            .into_iter()
-            .map(|r| (r.get("id"), r.get("lesson")))
-            .collect())
+        let q = format!(
+            "SELECT id, lesson FROM karma_logs WHERE related_skill = {}",
+            self.pool.ph(0)
+        );
+        let pairs: Vec<(String, String)> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(skill)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                rows.into_iter()
+                    .map(|r| (r.get("id"), r.get("lesson")))
+                    .collect()
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(skill)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                rows.into_iter()
+                    .map(|r| (r.get("id"), r.get("lesson")))
+                    .collect()
+            }
+        };
+        Ok(pairs)
     }
 
     async fn do_adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError> {
-        sqlx::query("UPDATE karma_logs SET weight = MAX(0, MIN(100, weight + ?)) WHERE id = ?")
-            .bind(delta)
-            .bind(karma_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
+        let q = format!("UPDATE karma_logs SET weight = CASE WHEN weight + {0} < 0 THEN 0 WHEN weight + {1} > 100 THEN 100 ELSE weight + {2} END WHERE id = {3}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3));
+        sql_exec!(&self.pool, &q, delta, delta, delta, karma_id).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: e.to_string(),
-            })?;
+            }
+        })?;
         Ok(())
     }
 
     async fn do_karma_decay_sweep(&self) -> Result<u64, AiomeError> {
-        let result = sqlx::query(
-            "UPDATE karma_logs SET is_archived = 1
-             WHERE weight < 5
-               AND (last_applied_at IS NULL OR last_applied_at < datetime('now', '-90 days'))
-               AND is_archived = 0",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        let ts_expr = self.pool.now_with_dynamic_days_interval(0);
+        let q = format!("UPDATE karma_logs SET is_archived = 1 WHERE weight < 5 AND (last_applied_at IS NULL OR last_applied_at < {}) AND is_archived = 0", ts_expr);
+        let res = sql_exec!(&self.pool, &q, -90).map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),
         })?;
-        Ok(result.rows_affected())
+        Ok(res)
     }
 
     async fn do_apply_distilled_karma(
@@ -276,60 +349,139 @@ impl WatchtowerOps for SqliteJobQueue {
             .begin()
             .await
             .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to start tx for distillation: {}", e),
+                reason: e.to_string(),
             })?;
-
+        let q1 = format!(
+            "UPDATE karma_logs SET is_archived = 1 WHERE id = {}",
+            self.pool.ph(0)
+        );
         for id in old_karma_ids {
-            // R2 Soft-update: Don't physically delete, mark as archived
-            sqlx::query("UPDATE karma_logs SET is_archived = 1 WHERE id = ?")
-                .bind(id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to archive old karma {}: {}", id, e),
-                })?;
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    sqlx::query(&q1)
+                        .bind(id)
+                        .execute(&mut **t)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    sqlx::query(&q1)
+                        .bind(id)
+                        .execute(&mut **t)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                }
+            }
         }
-
         let new_id = uuid::Uuid::new_v4().to_string();
         let domain = domain.unwrap_or("general");
-        sqlx::query(
-            "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id)
-             VALUES (?, 'Synthesized', ?, ?, 100, ?, datetime('now'), ?, ?, ?)"
-        )
-            .bind(&new_id)
-            .bind(skill)
-            .bind(distilled_lesson)
-            .bind(soul_hash)
-            .bind(domain)
-            .bind(subtopic)
-            .bind(clone_origin_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to insert synthesized karma: {}", e) })?;
-
+        let q2 = format!("INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id) VALUES ({0}, 'Synthesized', {1}, {2}, 100, {3}, {4}, {5}, {6}, {7})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn(), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6));
+        match &mut tx {
+            crate::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query(&q2)
+                    .bind(&new_id)
+                    .bind(skill)
+                    .bind(distilled_lesson)
+                    .bind(soul_hash)
+                    .bind(domain)
+                    .bind(subtopic)
+                    .bind(clone_origin_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            crate::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query(&q2)
+                    .bind(&new_id)
+                    .bind(skill)
+                    .bind(distilled_lesson)
+                    .bind(soul_hash)
+                    .bind(domain)
+                    .bind(subtopic)
+                    .bind(clone_origin_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+        }
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to commit distlillation tx: {}", e),
+            reason: e.to_string(),
         })?;
-
         Ok(())
     }
 
     async fn do_increment_oracle_retry_count(&self, record_id: i64) -> Result<bool, AiomeError> {
-        let row = sqlx::query("UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = ? RETURNING retry_count")
-            .bind(record_id)
-            .fetch_one(&self.pool)
+        let mut tx = self
+            .pool
+            .begin()
             .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to increment oracle retry count: {}", e) })?;
-
-        let count: i64 = row.get("retry_count");
-        if count >= 3 {
-            if let Err(e) = sqlx::query("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?")
-                .bind(record_id)
-                .execute(&self.pool).await {
-                warn!("⚠️ [Watchtower] Failed to execute oracle poison pill: {}", e);
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+        let q1 = format!(
+            "UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = {}",
+            self.pool.ph(0)
+        );
+        let q2 = format!(
+            "SELECT retry_count FROM sns_metrics_history WHERE id = {}",
+            self.pool.ph(0)
+        );
+        let count: i64 = match &mut tx {
+            crate::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query(&q1)
+                    .bind(record_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                sqlx::query(&q2)
+                    .bind(record_id)
+                    .fetch_one(&mut **t)
+                    .await
+                    .map(|r| r.get("retry_count"))
+                    .unwrap_or(0)
             }
+            crate::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query(&q1)
+                    .bind(record_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                sqlx::query(&q2)
+                    .bind(record_id)
+                    .fetch_one(&mut **t)
+                    .await
+                    .map(|r| r.get("retry_count"))
+                    .unwrap_or(0)
+            }
+        };
+
+        if count >= 3 {
+            let q3 = format!("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = {}", self.pool.ph(0));
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q3).bind(record_id).execute(&mut **t).await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q3).bind(record_id).execute(&mut **t).await;
+                }
+            }
+            let _ = tx.commit().await;
             Ok(true)
         } else {
+            let _ = tx.commit().await;
             Ok(false)
         }
     }

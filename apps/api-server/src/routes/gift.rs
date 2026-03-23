@@ -115,7 +115,7 @@ pub async fn send_gift(
     )
     .bind(&order_id)
     .bind(audit_data.to_string())
-    .execute(state.job_queue.get_pool())
+    .execute(state.job_queue.get_pool().get_sqlite_pool_or_err()?)
     .await;
 
     Ok((

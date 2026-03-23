@@ -26,7 +26,8 @@ impl TremendousGiftEngine {
     /// 新しい TremendousGiftEngine を作成する
     pub fn new(api_key: String, sandbox: bool, pool: SqlitePool) -> Self {
         // Double check for production safety (😈 Demon's Advocate Gate 4)
-        if !sandbox && cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        if !sandbox {
             panic!("🚨 [SECURITY] Attempting to use PRODUCTION Tremendous API in a DEBUG build! This is strictly forbidden to prevent accidental real fund usage during development/testing.");
         }
 

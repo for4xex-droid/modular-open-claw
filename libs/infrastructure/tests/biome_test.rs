@@ -7,11 +7,11 @@
 
 use aiome_core::biome::BiomeMessage;
 use aiome_core::traits::JobQueue;
-use infrastructure::job_queue::SqliteJobQueue;
+use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]
 async fn test_biome_dialogue_limit() {
-    let queue = SqliteJobQueue::new("sqlite::memory:").await.unwrap();
+    let queue = UniversalJobQueue::new("sqlite::memory:").await.unwrap();
     let topic_id = "test_dialogue_topic";
 
     // Simulate 10 turns
@@ -47,7 +47,7 @@ async fn test_biome_dialogue_limit() {
     let archived_status: String =
         sqlx::query_scalar("SELECT status FROM biome_topics WHERE topic_id = ?")
             .bind(topic_id)
-            .fetch_one(queue.get_pool())
+            .fetch_one(queue.get_pool().get_sqlite_pool().unwrap())
             .await
             .unwrap();
 

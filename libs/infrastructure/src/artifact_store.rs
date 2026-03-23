@@ -428,7 +428,8 @@ impl ArtifactStore for SqliteArtifactStore {
         )
         .bind(&edge.id).bind(&edge.source_id).bind(&edge.target_id).bind(&edge.source_type)
         .bind(&edge.relation).bind(serde_json::to_string(&edge.metadata).unwrap_or_default())
-        .execute(&self.pool).await
+        .execute(&self.pool)
+        .await
         .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
         Ok(())
     }

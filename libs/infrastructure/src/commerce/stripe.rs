@@ -267,7 +267,7 @@ mod tests {
                 .bind(event_id)
                 .fetch_one(&engine.pool)
                 .await
-                .unwrap();
+                .unwrap_or((0,));
 
         assert_eq!(
             count.0, 1,

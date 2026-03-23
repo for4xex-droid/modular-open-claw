@@ -19,6 +19,24 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
+use tracing::info;
+
+macro_rules! sql_exec {
+    ($pool:expr, $q:expr $(, $bind:expr)*) => {
+        match $pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let mut q = sqlx::query($q);
+                $(q = q.bind($bind);)*
+                q.execute(p).await.map(|r| r.rows_affected())
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let mut q = sqlx::query($q);
+                $(q = q.bind($bind);)*
+                q.execute(p).await.map(|r| r.rows_affected())
+            }
+        }
+    };
+}
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -29,11 +47,13 @@ pub mod crdt;
 mod evaluation;
 mod evolution;
 mod expression;
+/// `federation` モジュール
 pub mod federation;
 mod guardrails;
 mod karma;
 mod karma_maintenance;
 mod migrations;
+mod postgres_init;
 /// `settings` モジュール
 pub mod settings;
 mod swarm;
@@ -55,17 +75,17 @@ use swarm::SwarmOps;
 use trajectory_store::TrajectoryOps;
 use watchtower::WatchtowerOps;
 
-/// Job Queue that utilizes SQLite in WAL Mode to allow multi-threaded queue operations.
+/// Job Queue that utilizes multi-backend (SQLite/Postgres) database.
 #[derive(Clone, Debug)]
-pub struct SqliteJobQueue {
-    pub(crate) pool: SqlitePool,
+pub struct UniversalJobQueue {
+    pub(crate) pool: crate::db::DatabasePool,
     pub(crate) embed_provider: Arc<tokio::sync::RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
     pub(crate) karma_cache: Arc<tokio::sync::RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
 }
 
-impl SqliteJobQueue {
+impl UniversalJobQueue {
     /// `get_pool` を実行する
-    pub fn get_pool(&self) -> &sqlx::SqlitePool {
+    pub fn get_pool(&self) -> &crate::db::DatabasePool {
         &self.pool
     }
 
@@ -74,32 +94,41 @@ impl SqliteJobQueue {
         self.embed_provider.read().await.clone()
     }
 
-    /// Connects to the SQLite database and initializes the WAL mode and schema.
+    /// Connects to the SQLite database by default (Legacy compatibility)
     pub async fn new(db_path: &str) -> Result<Self, AiomeError> {
-        use std::str::FromStr;
-        let options = SqliteConnectOptions::from_str(db_path)
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Invalid db_path {}: {}", db_path, e),
-            })?
-            .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .busy_timeout(Duration::from_millis(5000));
+        if db_path.starts_with("postgres://") || db_path.starts_with("postgresql://") {
+            Self::new_postgres(db_path).await
+        } else {
+            Self::new_sqlite(db_path).await
+        }
+    }
 
-        let pool = SqlitePoolOptions::new()
-            .max_connections(10)
-            .connect_with(options)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to connect to SQLite: {}", e),
-            })?;
+    /// Try to initialize the backend with a SQLite pool explicitly
+    pub async fn new_sqlite(db_path: &str) -> Result<Self, AiomeError> {
+        let pool = crate::db::DatabasePool::new_sqlite(db_path).await?;
+        let instance = Self {
+            pool,
+            embed_provider: Arc::new(tokio::sync::RwLock::new(None)),
+            karma_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+        };
+        DbInitializer::init_db(&instance).await?;
+        Ok(instance)
+    }
 
+    /// Try to initialize the backend with a PostgreSQL pool explicitly
+    pub async fn new_postgres(url: &str) -> Result<Self, AiomeError> {
+        let pool = crate::db::DatabasePool::new_postgres(url).await?;
         let instance = Self {
             pool,
             embed_provider: Arc::new(tokio::sync::RwLock::new(None)),
             karma_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         };
 
-        DbInitializer::init_db(&instance).await?;
+        // Initialize Postgres schema (Initial Phase)
+        if let crate::db::DatabasePool::Postgres(ref p) = instance.pool {
+            postgres_init::PostgresInitializer::init_db(p).await?;
+        }
+
         Ok(instance)
     }
 
@@ -120,7 +149,7 @@ impl SqliteJobQueue {
 }
 
 #[async_trait]
-impl JobQueue for SqliteJobQueue {
+impl JobQueue for UniversalJobQueue {
     async fn enqueue(
         &self,
         category: &str,
@@ -240,15 +269,12 @@ impl JobQueue for SqliteJobQueue {
         content_id: &str,
     ) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET sns_platform = ?, sns_content_id = ?, published_at = ?, updated_at = ? WHERE id = ?")
-            .bind(platform)
-            .bind(content_id)
-            .bind(&now)
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to link SNS data for job {}: {}", job_id, e) })?;
+        let q = format!("UPDATE jobs SET sns_platform = {0}, sns_content_id = {1}, published_at = {2}, updated_at = {3} WHERE id = {4}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4));
+        sql_exec!(&self.pool, &q, platform, content_id, &now, &now, job_id).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Failed to link SNS data for job {}: {}", job_id, e),
+            }
+        })?;
         Ok(())
     }
 
@@ -504,21 +530,40 @@ impl JobQueue for SqliteJobQueue {
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
-        let row =
-            sqlx::query("SELECT turn_count, cooldown_until FROM biome_topics WHERE topic_id = ?")
-                .bind(topic_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
-
-        Ok(row.map(|r| {
-            (
-                r.get("turn_count"),
-                r.get::<Option<String>, _>("cooldown_until"),
+        let row: Option<(i32, Option<String>)> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query(
+                "SELECT turn_count, cooldown_until FROM biome_topics WHERE topic_id = ?",
             )
-        }))
+            .bind(topic_id)
+            .fetch_optional(p)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?
+            .map(|r| {
+                (
+                    r.get("turn_count"),
+                    r.get::<Option<String>, _>("cooldown_until"),
+                )
+            }),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query(
+                "SELECT turn_count, cooldown_until FROM biome_topics WHERE topic_id = $1",
+            )
+            .bind(topic_id)
+            .fetch_optional(p)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?
+            .map(|r| {
+                (
+                    r.get("turn_count"),
+                    r.get::<Option<String>, _>("cooldown_until"),
+                )
+            }),
+        };
+
+        Ok(row)
     }
 
     async fn advance_biome_turn(
@@ -529,14 +574,27 @@ impl JobQueue for SqliteJobQueue {
         let now = chrono::Utc::now();
         let cooldown_until = (now + chrono::Duration::minutes(cooldown_minutes)).to_rfc3339();
 
-        let row = sqlx::query("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until, updated_at) VALUES (?, 'unknown_peer', 'Active', 1, ?, datetime('now')) ON CONFLICT(topic_id) DO UPDATE SET turn_count = turn_count + 1, cooldown_until = excluded.cooldown_until, updated_at = excluded.updated_at RETURNING turn_count")
-            .bind(topic_id)
-            .bind(&cooldown_until)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let q = format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until, updated_at) VALUES ({0}, 'unknown_peer', 'Active', 1, {1}, {2}) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = EXCLUDED.cooldown_until, updated_at = EXCLUDED.updated_at RETURNING turn_count", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn());
+        let turn_count: i32 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(topic_id)
+                .bind(&cooldown_until)
+                .fetch_one(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(topic_id)
+                .bind(&cooldown_until)
+                .fetch_one(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+        };
 
-        Ok(row.get("turn_count"))
+        Ok(turn_count)
     }
 
     async fn fetch_biome_messages(
@@ -544,34 +602,48 @@ impl JobQueue for SqliteJobQueue {
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT * FROM biome_messages WHERE topic_id = ? ORDER BY created_at DESC LIMIT ?",
-        )
-        .bind(topic_id)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
-
-        let messages = rows
-            .into_iter()
-            .map(|row| {
-                serde_json::json!({
-                    "id": row.get::<i64, _>("id"),
-                    "sender_pubkey": row.get::<String, _>("sender_pubkey"),
-                    "recipient_pubkey": row.get::<String, _>("recipient_pubkey"),
-                    "topic_id": row.get::<String, _>("topic_id"),
-                    "content": row.get::<String, _>("content"),
-                    "karma_root_cid": row.get::<String, _>("karma_root_cid"),
-                    "signature": row.get::<String, _>("signature"),
-                    "lamport_clock": row.get::<i64, _>("lamport_clock"),
-                    "encryption": row.get::<String, _>("encryption"),
-                    "created_at": row.get::<Option<String>, _>("created_at"),
-                })
-            })
-            .collect();
+        let messages = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query("SELECT * FROM biome_messages WHERE topic_id = ? ORDER BY created_at DESC LIMIT ?")
+                    .bind(topic_id).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "id": row.get::<i64, _>("id"),
+                            "sender_pubkey": row.get::<String, _>("sender_pubkey"),
+                            "recipient_pubkey": row.get::<String, _>("recipient_pubkey"),
+                            "topic_id": row.get::<String, _>("topic_id"),
+                            "content": row.get::<String, _>("content"),
+                            "karma_root_cid": row.get::<String, _>("karma_root_cid"),
+                            "signature": row.get::<String, _>("signature"),
+                            "lamport_clock": row.get::<i64, _>("lamport_clock"),
+                            "encryption": row.get::<String, _>("encryption"),
+                            "created_at": row.get::<Option<String>, _>("created_at"),
+                        })
+                    })
+                    .collect()
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT * FROM biome_messages WHERE topic_id = $1 ORDER BY created_at DESC LIMIT $2")
+                    .bind(topic_id).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "id": row.get::<i64, _>("id"),
+                            "sender_pubkey": row.get::<String, _>("sender_pubkey"),
+                            "recipient_pubkey": row.get::<String, _>("recipient_pubkey"),
+                            "topic_id": row.get::<String, _>("topic_id"),
+                            "content": row.get::<String, _>("content"),
+                            "karma_root_cid": row.get::<String, _>("karma_root_cid"),
+                            "signature": row.get::<String, _>("signature"),
+                            "lamport_clock": row.get::<i64, _>("lamport_clock"),
+                            "encryption": row.get::<String, _>("encryption"),
+                            "created_at": row.get::<Option<String>, _>("created_at"),
+                        })
+                    })
+                    .collect()
+            }
+        };
 
         Ok(messages)
     }
@@ -580,38 +652,62 @@ impl JobQueue for SqliteJobQueue {
         &self,
         message: &aiome_core::biome::BiomeMessage,
     ) -> Result<(), AiomeError> {
-        sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(&message.sender_pubkey)
-            .bind(&message.recipient_pubkey)
-            .bind(&message.topic_id)
-            .bind(&message.content)
-            .bind(&message.karma_root_cid)
-            .bind(&message.signature)
-            .bind(message.lamport_clock as i64)
-            .bind(&message.encryption)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let q = format!("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7));
+        sql_exec!(
+            &self.pool,
+            &q,
+            &message.sender_pubkey,
+            &message.recipient_pubkey,
+            &message.topic_id,
+            &message.content,
+            &message.karma_root_cid,
+            &message.signature,
+            message.lamport_clock as i64,
+            &message.encryption
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(())
     }
 
     async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
-        let row = sqlx::query("UPDATE biome_peers SET reputation_score = MAX(0, MIN(100, reputation_score + ?)) WHERE pubkey = ? RETURNING reputation_score")
-            .bind(delta)
-            .bind(pubkey)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let q = format!("UPDATE biome_peers SET reputation_score = MAX(0, MIN(100, reputation_score + {0})) WHERE pubkey = {1} RETURNING reputation_score", self.pool.ph(0), self.pool.ph(1));
+        let score: f64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(delta)
+                .bind(pubkey)
+                .fetch_one(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            crate::db::DatabasePool::Postgres(p) => {
+                let q_pg = "UPDATE biome_peers SET reputation_score = GREATEST(0, LEAST(100, reputation_score + $1)) WHERE pubkey = $2 RETURNING reputation_score";
+                sqlx::query_scalar(q_pg)
+                    .bind(delta)
+                    .bind(pubkey)
+                    .fetch_one(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?
+            }
+        };
 
-        Ok(row.get("reputation_score"))
+        Ok(score)
     }
 
     async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
-        sqlx::query("UPDATE biome_topics SET status = 'Archived', updated_at = datetime('now') WHERE topic_id = ?")
-            .bind(topic_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let q = format!(
+            "UPDATE biome_topics SET status = 'Archived', updated_at = {0} WHERE topic_id = {1}",
+            self.pool.now_fn(),
+            self.pool.ph(0)
+        );
+        sql_exec!(&self.pool, &q, topic_id).map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(())
     }
 
@@ -640,7 +736,7 @@ impl JobQueue for SqliteJobQueue {
 }
 
 // Inherent methods (Watchtower / Chat extension)
-impl SqliteJobQueue {
+impl UniversalJobQueue {
     /// `insert_chat_message` を実行する
     pub async fn insert_chat_message(
         &self,
@@ -803,10 +899,13 @@ impl SqliteJobQueue {
     }
 }
 
-// Helper function because `get` on Option panics if type is unexpected,
-// using try_get is safer if column can be NULL.
-pub(crate) fn try_get_optional_string(row: &sqlx::sqlite::SqliteRow, col: &str) -> Option<String> {
-    use sqlx::Row;
+// Helper function for safer column access
+pub(crate) fn try_get_opt<'r, R, T>(row: &'r R, col: &str) -> Option<T>
+where
+    R: sqlx::Row,
+    T: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'a> &'a str: sqlx::ColumnIndex<R>,
+{
     row.try_get(col).ok()
 }
 

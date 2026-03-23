@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use automerge::{transaction::Transactable, AutoCommit, ReadDoc};
@@ -26,7 +26,7 @@ pub trait CrdtOps {
 }
 
 #[async_trait]
-impl CrdtOps for SqliteJobQueue {
+impl CrdtOps for UniversalJobQueue {
     /// [A-4] CRDT Timeline Sync
     /// Merges local timeline with remote timeline using Automerge.
     async fn sync_timeline(
@@ -60,27 +60,46 @@ impl CrdtOps for SqliteJobQueue {
 
         let finalized_blob = local_doc.save();
 
-        sqlx::query("INSERT INTO timeline_checkpoints (id, automerge_blob, last_seq) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET automerge_blob = ?, updated_at = datetime('now')")
-            .bind(hub_id)
-            .bind(&finalized_blob)
-            .bind(0i64)
-            .bind(&finalized_blob)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let _row: Option<i64> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar("SELECT last_lamport_clock FROM peers WHERE peer_id = ?")
+                    .bind(hub_id)
+                    .fetch_optional(p)
+                    .await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar("SELECT last_lamport_clock FROM peers WHERE peer_id = $1")
+                    .bind(hub_id)
+                    .fetch_optional(p)
+                    .await
+            }
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         Ok(finalized_blob)
     }
 
     async fn get_timeline_blob(&self, hub_id: &str) -> Result<Option<Vec<u8>>, AiomeError> {
-        let row = sqlx::query("SELECT automerge_blob FROM timeline_checkpoints WHERE id = ?")
-            .bind(hub_id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        let row: Option<Vec<u8>> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar("SELECT automerge_blob FROM timeline_checkpoints WHERE id = ?")
+                    .bind(hub_id)
+                    .fetch_optional(p)
+                    .await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar("SELECT automerge_blob FROM timeline_checkpoints WHERE id = $1")
+                    .bind(hub_id)
+                    .fetch_optional(p)
+                    .await
+            }
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
-        Ok(row.map(|r| r.get(0)))
+        Ok(row)
     }
 }

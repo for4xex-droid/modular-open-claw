@@ -17,6 +17,8 @@ pub mod aiome_log;
 pub mod artifact_store;
 /// 認証・JWTトークン検証モジュール (Phase 8.2)
 pub mod auth;
+/// Capabilities and extensions registry
+pub mod capability_registry;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
@@ -33,6 +35,8 @@ pub mod concept_manager;
 pub mod constraint_checker;
 /// LLM向けコンテキスト生成エンジン
 pub mod context_engine;
+/// タスクキュー・非同期実行・リトライ
+pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;
 /// アイドル時の自律思考管理
@@ -45,7 +49,7 @@ pub mod heartbeat_wakeup;
 pub mod immune_system;
 /// Intent の生成・サニタイズ (AgentSense Phase AS-1)
 pub mod intent;
-/// タスクキュー・非同期実行・リトライ
+/// Universal Job Queue backend interface
 pub mod job_queue;
 /// ドキュメント・Karma検索インデックス
 pub mod knowledge_indexer;

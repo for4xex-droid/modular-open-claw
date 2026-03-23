@@ -16,6 +16,7 @@ use aiome_contracts::types::AgentStats;
 use async_trait::async_trait;
 use uuid::Uuid;
 
+/// テストおよび開発用の JobQueue モック実装。
 #[cfg(any(test, debug_assertions))]
 pub struct MockJobQueue;
 

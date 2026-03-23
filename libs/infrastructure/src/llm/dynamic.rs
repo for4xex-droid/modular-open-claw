@@ -6,7 +6,7 @@
  */
 
 use crate::circuit_breaker::CircuitBreaker;
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use crate::slo_engine::SloEngine;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider, LlmResponse};
@@ -19,7 +19,7 @@ use tokio_stream::Stream;
 /// `DynamicLlmProvider` 構造体
 pub struct DynamicLlmProvider {
     /// jq
-    pub jq: Arc<SqliteJobQueue>,
+    pub jq: Arc<UniversalJobQueue>,
     /// client
     pub client: reqwest::Client,
     /// fallback_host
@@ -282,7 +282,7 @@ impl DynamicLlmProvider {
 /// `BackgroundLlmProvider` 構造体
 pub struct BackgroundLlmProvider {
     /// jq
-    pub jq: Arc<SqliteJobQueue>,
+    pub jq: Arc<UniversalJobQueue>,
     /// client
     pub client: reqwest::Client,
     /// fallback_model

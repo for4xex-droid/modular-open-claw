@@ -5,8 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::try_get_optional_string;
-use super::SqliteJobQueue;
+use super::try_get_opt;
+use super::UniversalJobQueue;
 use aiome_core::contracts::{ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::JobQueue;
@@ -15,114 +15,193 @@ use sqlx::Row;
 use tracing::{info, warn};
 
 #[async_trait]
+/// フェデレーション（他のノードや Samsara Hub とのデータ同期）を行うためのオペレーションを定義するトレイト。
 pub trait FederationOps {
+    /// 指定された日時以降に更新されたカルマ、免疫ルール、アリーナの対戦履歴をエクスポートする。
     async fn do_export_federated_data(
         &self,
         since: Option<&str>,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError>;
+
+    /// 外部から受信したカルマ、免疫ルール、アリーナの対戦履歴をローカルデータベースにインポートする。
+    /// 署名の検証と Lamport Clock による競合解決を行う。
     async fn do_import_federated_data(
         &self,
         karmas: Vec<FederatedKarma>,
         rules: Vec<ImmuneRule>,
         matches: Vec<ArenaMatch>,
     ) -> Result<(), AiomeError>;
+
+    /// 指定されたピア（他のノード）との最終同期日時を取得する。
     async fn do_get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError>;
+
+    /// 指定されたピアとの最終同期日時を更新または新規登録する。
     async fn do_update_peer_sync_time(
         &self,
         peer_url: &str,
         sync_time: &str,
     ) -> Result<(), AiomeError>;
+
+    /// まだフェデレーション（外部への送信）が行われていないローカルのカルマとルールを取得する。
     async fn do_fetch_unfederated_data(
         &self,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>), AiomeError>;
+
+    /// 指定されたカルマ味方ルールを「フェデレーション済み」としてマークする。
     async fn do_mark_as_federated(
         &self,
         karma_ids: Vec<String>,
         rule_ids: Vec<String>,
     ) -> Result<(), AiomeError>;
+
+    /// ノードの統計情報（カルマ、ジョブ、エージェント自身の状態）を含むメトリクスを取得する。
     async fn do_fetch_federated_metrics(
         &self,
     ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError>;
+
+    /// ノードの最新メトリクスを Samsara Hub にプッシュ送信する。
     async fn do_push_federated_metrics(&self) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
-impl FederationOps for SqliteJobQueue {
+impl FederationOps for UniversalJobQueue {
     async fn do_export_federated_data(
         &self,
         since: Option<&str>,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> {
         let since_ts = since.unwrap_or("1970-01-01T00:00:00");
 
-        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE created_at > ?")
-            .bind(since_ts)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Export Karma failed: {}", e) })?;
-
-        let rules = sqlx::query("SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM immune_rules WHERE created_at > ?")
-            .bind(since_ts)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Export Rules failed: {}", e) })?;
-
-        let matches = sqlx::query("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM arena_history WHERE created_at > ?")
-            .bind(since_ts)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Export Matches failed: {}", e) })?;
-
         let mut fed_karmas = Vec::new();
-        for r in karmas {
-            fed_karmas.push(FederatedKarma {
-                id: r.get("id"),
-                job_id: try_get_optional_string(&r, "job_id"),
-                karma_type: r.get("karma_type"),
-                related_skill: r.get("related_skill"),
-                lesson: r.get("lesson"),
-                weight: r.get::<i64, _>("weight") as i32,
-                soul_version_hash: try_get_optional_string(&r, "soul_version_hash"),
-                created_at: r.get("created_at"),
-                lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                node_id: r.get("node_id"),
-                signature: try_get_optional_string(&r, "signature"),
-                clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
-                generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
-                somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
-            });
-        }
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE created_at > ?")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Karma failed: {}", e) })?;
+                for r in rows {
+                    fed_karmas.push(FederatedKarma {
+                        id: r.get("id"),
+                        job_id: try_get_opt(&r, "job_id"),
+                        karma_type: r.get("karma_type"),
+                        related_skill: r.get("related_skill"),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i64, _>("weight") as i32,
+                        soul_version_hash: try_get_opt(&r, "soul_version_hash"),
+                        created_at: r.get("created_at"),
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                        clone_origin_id: try_get_opt(&r, "clone_origin_id"),
+                        generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
+                        somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE created_at > $1")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Karma failed: {}", e) })?;
+                for r in rows {
+                    fed_karmas.push(FederatedKarma {
+                        id: r.get("id"),
+                        job_id: try_get_opt(&r, "job_id"),
+                        karma_type: r.get("karma_type"),
+                        related_skill: r.get("related_skill"),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i32, _>("weight"),
+                        soul_version_hash: try_get_opt(&r, "soul_version_hash"),
+                        created_at: r.get("created_at"),
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                        clone_origin_id: try_get_opt(&r, "clone_origin_id"),
+                        generation: r.try_get::<i32, _>("generation").map(|g| g as u32).ok(),
+                        somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
+                    });
+                }
+            }
+        };
 
         let mut fed_rules = Vec::new();
-        for r in rules {
-            fed_rules.push(ImmuneRule {
-                id: r.get("id"),
-                pattern: r.get("pattern"),
-                severity: r.get::<i64, _>("severity") as u8,
-                action: r.get("action"),
-                created_at: r.get("created_at"),
-                approval_status: match r.get::<String, _>("status").as_str() {
-                    "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
-                    "Rejected" | "Quarantined" => aiome_core::contracts::ApprovalState::Rejected,
-                    _ => aiome_core::contracts::ApprovalState::Pending,
-                },
-                lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                node_id: r.get("node_id"),
-                signature: try_get_optional_string(&r, "signature"),
-            });
-        }
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query("SELECT id, pattern, severity, action, status, created_at, lamport_clock, node_id, signature FROM immune_rules WHERE created_at > ?")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Rules failed: {}", e) })?;
+                for r in rows {
+                    fed_rules.push(ImmuneRule {
+                        id: r.get("id"),
+                        pattern: r.get("pattern"),
+                        severity: r.get::<i64, _>("severity") as u8,
+                        action: r.get("action"),
+                        created_at: r.get("created_at"),
+                        approval_status: match r.get::<String, _>("status").as_str() {
+                            "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                            "Rejected" | "Quarantined" => {
+                                aiome_core::contracts::ApprovalState::Rejected
+                            }
+                            _ => aiome_core::contracts::ApprovalState::Pending,
+                        },
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT id, pattern, severity, action, status, created_at, lamport_clock, node_id, signature FROM immune_rules WHERE created_at > $1")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Rules failed: {}", e) })?;
+                for r in rows {
+                    fed_rules.push(ImmuneRule {
+                        id: r.get("id"),
+                        pattern: r.get("pattern"),
+                        severity: r.get::<i32, _>("severity") as u8,
+                        action: r.get("action"),
+                        created_at: r.get("created_at"),
+                        approval_status: match r.get::<String, _>("status").as_str() {
+                            "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                            "Rejected" | "Quarantined" => {
+                                aiome_core::contracts::ApprovalState::Rejected
+                            }
+                            _ => aiome_core::contracts::ApprovalState::Pending,
+                        },
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                    });
+                }
+            }
+        };
 
         let mut fed_matches = Vec::new();
-        for r in matches {
-            fed_matches.push(ArenaMatch {
-                id: r.get("id"),
-                skill_a: r.get("skill_a"),
-                skill_b: r.get("skill_b"),
-                topic: r.get("topic"),
-                winner: try_get_optional_string(&r, "winner"),
-                reasoning: r.get("reasoning"),
-                created_at: r.get("created_at"),
-            });
-        }
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM arena_history WHERE created_at > ?")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Matches failed: {}", e) })?;
+                for r in rows {
+                    fed_matches.push(ArenaMatch {
+                        id: r.get("id"),
+                        skill_a: r.get("skill_a"),
+                        skill_b: r.get("skill_b"),
+                        topic: r.get("topic"),
+                        winner: try_get_opt(&r, "winner"),
+                        reasoning: r.get("reasoning"),
+                        created_at: r.get("created_at"),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM arena_history WHERE created_at > $1")
+                    .bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: format!("Export Matches failed: {}", e) })?;
+                for r in rows {
+                    fed_matches.push(ArenaMatch {
+                        id: r.get("id"),
+                        skill_a: r.get("skill_a"),
+                        skill_b: r.get("skill_b"),
+                        topic: r.get("topic"),
+                        winner: try_get_opt(&r, "winner"),
+                        reasoning: r.get("reasoning"),
+                        created_at: r.get("created_at"),
+                    });
+                }
+            }
+        };
 
         Ok((fed_karmas, fed_rules, fed_matches))
     }
@@ -198,23 +277,41 @@ impl FederationOps for SqliteJobQueue {
 
             let _ = self.sync_local_clock(k.lamport_clock).await;
 
-            if let Err(e) = sqlx::query(
-                "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, is_federated, lamport_clock, node_id, signature, clone_origin_id) 
-                 VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
-                 ON CONFLICT(id) DO UPDATE SET 
-                    lesson = excluded.lesson, 
-                    weight = excluded.weight,
-                    lamport_clock = excluded.lamport_clock,
-                    node_id = excluded.node_id,
-                    signature = excluded.signature,
-                    is_federated = 1
-                 WHERE excluded.lamport_clock > karma_logs.lamport_clock OR (excluded.lamport_clock = karma_logs.lamport_clock AND excluded.node_id > karma_logs.node_id)"
-            )
-            .bind(&k.id).bind(&k.karma_type).bind(&k.related_skill).bind(&clean_lesson)
-            .bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at)
-            .bind(k.lamport_clock as i64).bind(&k.node_id).bind(&k.signature).bind(&k.clone_origin_id)
-            .execute(&mut *tx).await {
-                warn!("🛡️ [Federation] SQL Error importing karma {}: {:?}", k.id, e);
+            let q = format!("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, is_federated, lamport_clock, node_id, signature, clone_origin_id) VALUES ({0}, NULL, {1}, {2}, {3}, {4}, {5}, {6}, 1, {7}, {8}, {9}, {10}) ON CONFLICT(id) DO UPDATE SET lesson = excluded.lesson, weight = excluded.weight, lamport_clock = excluded.lamport_clock, node_id = excluded.node_id, signature = excluded.signature, is_federated = 1 WHERE excluded.lamport_clock > karma_logs.lamport_clock OR (excluded.lamport_clock = karma_logs.lamport_clock AND excluded.node_id > karma_logs.node_id)",
+                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10));
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&k.id)
+                        .bind(&k.karma_type)
+                        .bind(&k.related_skill)
+                        .bind(&clean_lesson)
+                        .bind(k.weight as i64)
+                        .bind(&k.soul_version_hash)
+                        .bind(&k.created_at)
+                        .bind(k.lamport_clock as i64)
+                        .bind(&k.node_id)
+                        .bind(&k.signature)
+                        .bind(&k.clone_origin_id)
+                        .execute(&mut **t)
+                        .await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&k.id)
+                        .bind(&k.karma_type)
+                        .bind(&k.related_skill)
+                        .bind(&clean_lesson)
+                        .bind(k.weight as i64)
+                        .bind(&k.soul_version_hash)
+                        .bind(&k.created_at)
+                        .bind(k.lamport_clock as i64)
+                        .bind(&k.node_id)
+                        .bind(&k.signature)
+                        .bind(&k.clone_origin_id)
+                        .execute(&mut **t)
+                        .await;
+                }
             }
         }
 
@@ -250,30 +347,66 @@ impl FederationOps for SqliteJobQueue {
 
             let _ = self.sync_local_clock(r.lamport_clock).await;
 
-            if let Err(e) = sqlx::query(
-                "INSERT INTO immune_rules (id, pattern, severity, action, created_at, is_federated, lamport_clock, node_id, signature, status) 
-                 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, 'Quarantined')
-                 ON CONFLICT(id) DO UPDATE SET 
-                    pattern = excluded.pattern, 
-                    severity = excluded.severity,
-                    action = excluded.action,
-                    lamport_clock = excluded.lamport_clock,
-                    node_id = excluded.node_id,
-                    signature = excluded.signature
-                 WHERE excluded.lamport_clock > immune_rules.lamport_clock OR (excluded.lamport_clock = immune_rules.lamport_clock AND excluded.node_id > immune_rules.node_id)"
-            )
-            .bind(&r.id).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.created_at)
-            .bind(r.lamport_clock as i64).bind(&r.node_id).bind(&r.signature)
-            .execute(&mut *tx).await {
-                warn!("🛡️ [Federation] SQL Error importing rule {}: {:?}", r.id, e);
+            let q = format!("INSERT INTO immune_rules (id, pattern, severity, action, created_at, is_federated, lamport_clock, node_id, signature, status) VALUES ({0}, {1}, {2}, {3}, {4}, 1, {5}, {6}, {7}, 'Quarantined') ON CONFLICT(id) DO UPDATE SET pattern = excluded.pattern, severity = excluded.severity, action = excluded.action, lamport_clock = excluded.lamport_clock, node_id = excluded.node_id, signature = excluded.signature WHERE excluded.lamport_clock > immune_rules.lamport_clock OR (excluded.lamport_clock = immune_rules.lamport_clock AND excluded.node_id > immune_rules.node_id)",
+                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7));
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&r.id)
+                        .bind(&r.pattern)
+                        .bind(r.severity as i64)
+                        .bind(&r.action)
+                        .bind(&r.created_at)
+                        .bind(r.lamport_clock as i64)
+                        .bind(&r.node_id)
+                        .bind(&r.signature)
+                        .execute(&mut **t)
+                        .await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&r.id)
+                        .bind(&r.pattern)
+                        .bind(r.severity as i64)
+                        .bind(&r.action)
+                        .bind(&r.created_at)
+                        .bind(r.lamport_clock as i64)
+                        .bind(&r.node_id)
+                        .bind(&r.signature)
+                        .execute(&mut **t)
+                        .await;
+                }
             }
         }
 
         for m in matches {
-            if let Err(e) = sqlx::query("INSERT INTO arena_history (id, skill_a, skill_b, topic, winner, reasoning, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING")
-                .bind(&m.id).bind(&m.skill_a).bind(&m.skill_b).bind(&m.topic).bind(&m.winner).bind(&m.reasoning).bind(&m.created_at)
-                .execute(&mut *tx).await {
-                warn!("🛡️ [Federation] SQL Error importing arena history {}: {:?}", m.id, e);
+            let q = format!("INSERT INTO arena_history (id, skill_a, skill_b, topic, winner, reasoning, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}) ON CONFLICT(id) DO NOTHING",
+                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6));
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&m.id)
+                        .bind(&m.skill_a)
+                        .bind(&m.skill_b)
+                        .bind(&m.topic)
+                        .bind(&m.winner)
+                        .bind(&m.reasoning)
+                        .bind(&m.created_at)
+                        .execute(&mut **t)
+                        .await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q)
+                        .bind(&m.id)
+                        .bind(&m.skill_a)
+                        .bind(&m.skill_b)
+                        .bind(&m.topic)
+                        .bind(&m.winner)
+                        .bind(&m.reasoning)
+                        .bind(&m.created_at)
+                        .execute(&mut **t)
+                        .await;
+                }
             }
         }
 
@@ -284,15 +417,27 @@ impl FederationOps for SqliteJobQueue {
     }
 
     async fn do_get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError> {
-        let row = sqlx::query("SELECT last_sync_at FROM federation_peers WHERE peer_url = ?")
-            .bind(peer_url)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Get Peer sync time failed: {}", e),
-            })?;
-
-        Ok(row.map(|r| r.get("last_sync_at")))
+        let q = format!(
+            "SELECT last_sync_at FROM federation_peers WHERE peer_url = {}",
+            self.pool.ph(0)
+        );
+        let opt: Option<String> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(peer_url)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(peer_url)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+        };
+        Ok(opt)
     }
 
     async fn do_update_peer_sync_time(
@@ -300,65 +445,136 @@ impl FederationOps for SqliteJobQueue {
         peer_url: &str,
         sync_time: &str,
     ) -> Result<(), AiomeError> {
-        sqlx::query("INSERT INTO federation_peers (peer_url, last_sync_at) VALUES (?, ?) ON CONFLICT(peer_url) DO UPDATE SET last_sync_at = excluded.last_sync_at")
-            .bind(peer_url)
-            .bind(sync_time)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Update Peer sync time failed: {}", e) })?;
+        let cols = ["peer_url", "last_sync_at"];
+        let q = self
+            .pool
+            .upsert_query("federation_peers", "peer_url", &cols, 0);
+        sql_exec!(
+            &self.pool,
+            "INSERT OR REPLACE INTO federation_peers (peer_url, last_sync_at) VALUES (?, ?)",
+            peer_url,
+            sync_time
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(())
     }
 
     async fn do_fetch_unfederated_data(
         &self,
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>), AiomeError> {
-        let karmas = sqlx::query("SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE is_federated = 0")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Fetch unfederated karma failed: {}", e) })?;
-
-        let rules = sqlx::query("SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM immune_rules WHERE is_federated = 0")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("Fetch unfederated rules failed: {}", e) })?;
+        let q_k = "SELECT id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, lamport_clock, node_id, signature, clone_origin_id FROM karma_logs WHERE is_federated = 0";
+        let q_r = "SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature, status FROM immune_rules WHERE is_federated = 0";
 
         let mut fed_karmas = Vec::new();
-        for r in karmas {
-            fed_karmas.push(FederatedKarma {
-                id: r.get("id"),
-                job_id: try_get_optional_string(&r, "job_id"),
-                karma_type: r.get("karma_type"),
-                related_skill: r.get("related_skill"),
-                lesson: r.get("lesson"),
-                weight: r.get::<i64, _>("weight") as i32,
-                soul_version_hash: try_get_optional_string(&r, "soul_version_hash"),
-                created_at: r.get("created_at"),
-                lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                node_id: r.get("node_id"),
-                signature: try_get_optional_string(&r, "signature"),
-                clone_origin_id: try_get_optional_string(&r, "clone_origin_id"),
-                generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
-                somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
-            });
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(q_k).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                for r in rows {
+                    fed_karmas.push(FederatedKarma {
+                        id: r.get("id"),
+                        job_id: try_get_opt(&r, "job_id"),
+                        karma_type: r.get("karma_type"),
+                        related_skill: r.get("related_skill"),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i64, _>("weight") as i32,
+                        soul_version_hash: try_get_opt(&r, "soul_version_hash"),
+                        created_at: r.get("created_at"),
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                        clone_origin_id: try_get_opt(&r, "clone_origin_id"),
+                        generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
+                        somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(q_k).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                for r in rows {
+                    fed_karmas.push(FederatedKarma {
+                        id: r.get("id"),
+                        job_id: try_get_opt(&r, "job_id"),
+                        karma_type: r.get("karma_type"),
+                        related_skill: r.get("related_skill"),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i32, _>("weight"),
+                        soul_version_hash: try_get_opt(&r, "soul_version_hash"),
+                        created_at: r.get("created_at"),
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                        clone_origin_id: try_get_opt(&r, "clone_origin_id"),
+                        generation: r.try_get::<i32, _>("generation").map(|g| g as u32).ok(),
+                        somatic_valence: r.try_get::<f64, _>("somatic_valence").ok(),
+                    });
+                }
+            }
         }
 
         let mut fed_rules = Vec::new();
-        for r in rules {
-            fed_rules.push(ImmuneRule {
-                id: r.get("id"),
-                pattern: r.get("pattern"),
-                severity: r.get::<i64, _>("severity") as u8,
-                action: r.get("action"),
-                created_at: r.get("created_at"),
-                approval_status: match r.get::<String, _>("status").as_str() {
-                    "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
-                    "Rejected" | "Quarantined" => aiome_core::contracts::ApprovalState::Rejected,
-                    _ => aiome_core::contracts::ApprovalState::Pending,
-                },
-                lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                node_id: r.get("node_id"),
-                signature: try_get_optional_string(&r, "signature"),
-            });
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(q_r).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                for r in rows {
+                    fed_rules.push(ImmuneRule {
+                        id: r.get("id"),
+                        pattern: r.get("pattern"),
+                        severity: r.get::<i64, _>("severity") as u8,
+                        action: r.get("action"),
+                        created_at: r.get("created_at"),
+                        approval_status: match r.get::<String, _>("status").as_str() {
+                            "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                            "Rejected" | "Quarantined" => {
+                                aiome_core::contracts::ApprovalState::Rejected
+                            }
+                            _ => aiome_core::contracts::ApprovalState::Pending,
+                        },
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(q_r).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                for r in rows {
+                    fed_rules.push(ImmuneRule {
+                        id: r.get("id"),
+                        pattern: r.get("pattern"),
+                        severity: r.get::<i32, _>("severity") as u8,
+                        action: r.get("action"),
+                        created_at: r.get("created_at"),
+                        approval_status: match r.get::<String, _>("status").as_str() {
+                            "Approved" | "Active" => aiome_core::contracts::ApprovalState::Approved,
+                            "Rejected" | "Quarantined" => {
+                                aiome_core::contracts::ApprovalState::Rejected
+                            }
+                            _ => aiome_core::contracts::ApprovalState::Pending,
+                        },
+                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        node_id: r.get("node_id"),
+                        signature: try_get_opt(&r, "signature"),
+                    });
+                }
+            }
         }
 
         Ok((fed_karmas, fed_rules))
@@ -377,28 +593,32 @@ impl FederationOps for SqliteJobQueue {
                 reason: format!("Mark federated Tx failed: {}", e),
             })?;
 
+        let q_k = format!(
+            "UPDATE karma_logs SET is_federated = 1 WHERE id = {}",
+            self.pool.ph(0)
+        );
+        let q_r = format!(
+            "UPDATE immune_rules SET is_federated = 1 WHERE id = {}",
+            self.pool.ph(0)
+        );
         for id in karma_ids {
-            if let Err(e) = sqlx::query("UPDATE karma_logs SET is_federated = 1 WHERE id = ?")
-                .bind(id.clone())
-                .execute(&mut *tx)
-                .await
-            {
-                warn!(
-                    "🛡️ [Federation] Failed to mark karma {} as federated: {:?}",
-                    id, e
-                );
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q_k).bind(id).execute(&mut **t).await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q_k).bind(id).execute(&mut **t).await;
+                }
             }
         }
         for id in rule_ids {
-            if let Err(e) = sqlx::query("UPDATE immune_rules SET is_federated = 1 WHERE id = ?")
-                .bind(id.clone())
-                .execute(&mut *tx)
-                .await
-            {
-                warn!(
-                    "🛡️ [Federation] Failed to mark rule {} as federated: {:?}",
-                    id, e
-                );
+            match &mut tx {
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q_r).bind(id).execute(&mut **t).await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q_r).bind(id).execute(&mut **t).await;
+                }
             }
         }
 
@@ -414,36 +634,74 @@ impl FederationOps for SqliteJobQueue {
         let stats = <Self as super::evolution::EvolutionOps>::do_get_agent_stats(self).await?;
 
         // 1. Job Metrics
-        let total_completed =
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Completed'")
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0);
-        let total_failed =
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Failed'")
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0);
-        let pending_count =
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM jobs WHERE status = 'Pending'")
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0);
+        let q_jc = "SELECT COUNT(*) FROM jobs WHERE status = 'Completed'";
+        let q_jf = "SELECT COUNT(*) FROM jobs WHERE status = 'Failed'";
+        let q_jp = "SELECT COUNT(*) FROM jobs WHERE status = 'Pending'";
+        let q_kc = "SELECT COUNT(*) FROM karma_logs WHERE is_archived = 0";
+        let q_kw = "SELECT COALESCE(SUM(weight), 0) FROM karma_logs WHERE karma_type = 'Technical' AND is_archived = 0";
+        let q_kcc =
+            "SELECT COUNT(*) FROM karma_logs WHERE karma_type = 'Creative' AND is_archived = 0";
 
-        // 2. Karma Metrics
-        let total_karma =
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM karma_logs WHERE is_archived = 0")
-                .fetch_one(&self.pool)
+        let total_completed = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_jc)
+                .fetch_one(p)
                 .await
-                .unwrap_or(0);
-        let technical_weight = sqlx::query_scalar::<_, i64>("SELECT COALESCE(SUM(weight), 0) FROM karma_logs WHERE karma_type = 'Technical' AND is_archived = 0")
-            .fetch_one(&self.pool).await.unwrap_or(0);
-        let creative_count = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM karma_logs WHERE karma_type = 'Creative' AND is_archived = 0",
-        )
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(0);
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_jc)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
+        let total_failed = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_jf)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_jf)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
+        let pending_count = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_jp)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_jp)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
+        let total_karma = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_kc)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_kc)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
+        let technical_weight = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_kw)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_kw)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
+        let creative_count = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(q_kcc)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(q_kcc)
+                .fetch_one(p)
+                .await
+                .unwrap_or(0),
+        };
 
         // Map shared::watchtower::AgentStats to aiome_contracts::AgentStats
         let contract_stats = aiome_contracts::AgentStats {

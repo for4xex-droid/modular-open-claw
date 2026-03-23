@@ -313,6 +313,10 @@ pub fn build_app(
         )
         .nest("/api/v1/mcp", crate::mcp::router())
         .route(
+            "/api/v1/watchtower/ws",
+            get(routes::watchtower::ws_handler),
+        )
+        .route(
             "/api/agent/feedback",
             post(routes::agent::handle_karma_feedback),
         );

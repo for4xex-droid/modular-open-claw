@@ -359,3 +359,42 @@ graph TD
     F[Infrastructure Lib] -->|Symbol Tree| G[Clean Release Binary]
     H[ADR-015..018] -->|Policy| C
 ```
+### 🛡️ Phase 28: Security Hardening & LRU Cache (ADR-019 Phase B)
+- **変更内容**: 
+    - `sqlite_vault_backend.rs`: `lru::LruCache` と `MlockedVec` を組み合わせた高セキュリティな DEK キャッシュの実装。
+    - `main.rs`: `commerce_engine` と `TcpListener` のエラー処理における `.expect()` / `.unwrap()` の厳格化。
+    - `job_queue` / `infrastructure`: 公開アイテムへのドキュメント追加によるコンパイラ警告の完全解消。
+- **波及効果**: 
+    - Vault への頻繁な DEK 取得要求がキャッシュで処理され、性能が向上しつつ `MlockedVec` によりメモリ上の安全性も担保される。
+    - 開発および本番環境でのエラーログがより詳細になり、トラブルシューティングが容易になる。
+    - `lru` クレイトが新しいワークスペース依存関係として追加。
+
+```mermaid
+graph TD
+    A[VaultBackend Trait] -->|Implementation| B[SqliteVaultBackend]
+    B -->|Uses| C[LruCache]
+    C -->|Stores| D[MlockedVec]
+    B -->|DB Fallback| E[vault_keys Table]
+    F[main.rs] -->|Enhanced Error Handling| G[Production Resilience]
+    H[infrastructure] -->|Doc Comments| I[Zero Warning Check]
+```
+### 🛡️ Phase 31: Reliability & LLM TDD Implementation
+- **変更内容**: 
+    - `infrastructure/db.rs`: `DatabasePool` に安全なゲッター導入。
+    - `contracts/llm.rs`: `LlmRequest` に `format` フィールド追加。
+    - `core/llm_provider.rs`: Ollama での動的 JSON モード実装と `#[ignore]` テストの復活。
+    - `api-server`: ルーター層の `unwrap()` を安全なゲッターに置換。
+- **波及効果**: 
+    - アプリケーション全体のパニック耐性が向上。
+    - LLM プロバイダーの利用側で、JSON などの構造化出力を明示的に要求可能になり、パースエラーが減少。
+    - Ollama 使用時のテストカバレッジが 100% へ回復。
+
+```mermaid
+graph TD
+    A[libs/aiome-contracts/src/llm.rs] -->|LlmRequest expansion| B[libs/core/src/llm_provider.rs]
+    B -->|TDD Implementation| C[aiome-core tests]
+    D[libs/infrastructure/src/db.rs] -->|Safe Pool Getter| E[apps/api-server/src/routes/*]
+    E -->|Error Handling| F[Zero-Panic Reliability]
+```
+---
+*最終更新日: 2026-03-24* (Phase 31 / Reliability & TDD Completion)

@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: aiome-db
+    environment:
+      POSTGRES_DB: aiome
+      POSTGRES_USER: aiome_user
+      POSTGRES_PASSWORD: aiome_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiome_user -d aiome"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: aiome-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aiome.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

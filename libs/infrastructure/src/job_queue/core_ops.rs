@@ -5,8 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::try_get_optional_string;
-use super::SqliteJobQueue;
+use super::try_get_opt;
+use super::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus};
 use async_trait::async_trait;
@@ -53,7 +53,7 @@ pub trait CoreOps {
 }
 
 #[async_trait]
-impl CoreOps for SqliteJobQueue {
+impl CoreOps for UniversalJobQueue {
     async fn do_enqueue(
         &self,
         category: &str,
@@ -72,175 +72,289 @@ impl CoreOps for SqliteJobQueue {
             .unwrap_or_else(|| "{}".to_string());
         let agent_id_str = agent_id.map(|uid| uid.to_string());
 
-        sqlx::query(
-            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        let q = format!(
+            "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4),
+            self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10)
+        );
+
+        sql_exec!(
+            &self.pool,
+            &q,
+            &id,
+            category,
+            topic,
+            style,
+            directives,
+            manifest_json,
+            agent_id_str,
+            JobStatus::Pending.to_string(),
+            priority,
+            &now,
+            &now
         )
-        .bind(&id)
-        .bind(category)
-        .bind(topic)
-        .bind(style)
-        .bind(directives)
-        .bind(manifest_json)
-        .bind(agent_id_str)
-        .bind(JobStatus::Pending.to_string())
-        .bind(priority)
-        .bind(&now)
-        .bind(&now)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to enqueue job: {}", e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to enqueue job: {}", e),
+        })?;
 
         Ok(id)
     }
 
     async fn do_fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
-        let row = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE id = ?"
-        )
-        .bind(job_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to fetch job {}: {}", job_id, e) })?;
-
-        if let Some(r) = row {
-            let id: String = r.get("id");
-            let category: String = r.get("category");
-            let topic: String = r.get("topic");
-            let style: String = r.get("style_name");
-            let karma_directives: Option<String> = try_get_optional_string(&r, "karma_directives");
-            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-            let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
-            let execution_log: Option<String> = try_get_optional_string(&r, "execution_log");
-            let error_message: Option<String> = try_get_optional_string(&r, "error_message");
-            let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
-            let sns_content_id: Option<String> = try_get_optional_string(&r, "sns_content_id");
-            let published_at: Option<String> = try_get_optional_string(&r, "published_at");
-            let output_artifacts: Option<String> = try_get_optional_string(&r, "output_artifacts");
-            let agent_id_str: Option<String> = try_get_optional_string(&r, "agent_id");
-            let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
-            let status_str: String = r.get("status");
-            let status = JobStatus::from_string(&status_str);
-
-            let permission_manifest = r
-                .try_get::<String, _>("permission_manifest")
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok());
-
-            Ok(Some(Job {
-                id,
-                category,
-                topic,
-                style,
-                karma_directives,
-                status,
-                started_at: r.get("started_at"),
-                last_heartbeat: r.get("last_heartbeat"),
-                tech_karma_extracted: tech_karma_extracted != 0,
-                creative_rating,
-                execution_log,
-                error_message,
-                sns_platform,
-                sns_content_id,
-                published_at,
-                output_artifacts,
-                permission_manifest,
-                agent_id,
-                priority: r.get("priority"),
-            }))
-        } else {
-            Ok(None)
+        let q = format!(
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE id = {}",
+            self.pool.ph(0)
+        );
+        macro_rules! map_job_row {
+            ($r:expr) => {{
+                let agent_id_str: Option<String> = try_get_opt($r, "agent_id");
+                let status_str: String = $r.get("status");
+                Job {
+                    id: $r.get("id"),
+                    category: $r.get("category"),
+                    topic: $r.get("topic"),
+                    style: $r.get("style_name"),
+                    karma_directives: try_get_opt($r, "karma_directives"),
+                    status: JobStatus::from_string(&status_str),
+                    started_at: try_get_opt($r, "started_at"),
+                    last_heartbeat: try_get_opt($r, "last_heartbeat"),
+                    tech_karma_extracted: $r.try_get::<i32, _>("tech_karma_extracted").unwrap_or(0)
+                        != 0,
+                    creative_rating: $r.try_get("creative_rating").ok(),
+                    execution_log: try_get_opt($r, "execution_log"),
+                    error_message: try_get_opt($r, "error_message"),
+                    sns_platform: try_get_opt($r, "sns_platform"),
+                    sns_content_id: try_get_opt($r, "sns_content_id"),
+                    published_at: try_get_opt($r, "published_at"),
+                    output_artifacts: try_get_opt($r, "output_artifacts"),
+                    permission_manifest: $r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok()),
+                    agent_id: agent_id_str.and_then(|s| Uuid::parse_str(&s).ok()),
+                    priority: $r.try_get("priority").unwrap_or(0),
+                }
+            }};
         }
+
+        let job = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let r = sqlx::query(&q)
+                    .bind(job_id)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                r.map(|r| map_job_row!(&r))
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let r = sqlx::query(&q)
+                    .bind(job_id)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                r.map(|r| map_job_row!(&r))
+            }
+        };
+
+        Ok(job)
     }
 
     async fn do_dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to start transaction: {}", e),
-            })?;
-
         let placeholders = capable_categories
             .iter()
-            .map(|_| "?")
+            .enumerate()
+            .map(|(i, _)| self.pool.ph(i + 1)) // i+1 because status is $1
             .collect::<Vec<_>>()
             .join(", ");
+
         let query_str = format!(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE status = ? AND category IN ({}) ORDER BY priority DESC, created_at ASC LIMIT 1",
-            placeholders
+            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, tech_karma_extracted, creative_rating, execution_log, error_message, sns_platform, sns_content_id, published_at, output_artifacts, priority FROM jobs WHERE status = {} AND category IN ({}) ORDER BY priority DESC, created_at ASC LIMIT 1",
+            self.pool.ph(0), placeholders
         );
-        let mut query = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
-        for cat in capable_categories {
-            query = query.bind(*cat);
-        }
 
-        let row = query
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fetch pending job: {}", e),
-            })?;
+        let now = Utc::now().to_rfc3339();
+        let update_str = format!(
+            "UPDATE jobs SET status = {0}, started_at = {1}, last_heartbeat = {2}, updated_at = {3} WHERE id = {4} AND status = {5}",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5)
+        );
 
-        if let Some(r) = row {
-            let id: String = r.get("id");
-            let topic: String = r.get("topic");
-            let style: String = r.get("style_name");
-            let karma_directives: Option<String> = try_get_optional_string(&r, "karma_directives");
-            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-            let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
-            let execution_log: Option<String> = try_get_optional_string(&r, "execution_log");
-            let error_message: Option<String> = try_get_optional_string(&r, "error_message");
-            let sns_platform: Option<String> = try_get_optional_string(&r, "sns_platform");
-            let sns_content_id: Option<String> = try_get_optional_string(&r, "sns_content_id");
-            let published_at: Option<String> = try_get_optional_string(&r, "published_at");
-            let output_artifacts: Option<String> = try_get_optional_string(&r, "output_artifacts");
-            let agent_id_str: Option<String> = try_get_optional_string(&r, "agent_id");
-            let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                let mut q = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
+                for cat in capable_categories {
+                    q = q.bind(*cat);
+                }
 
-            let permission_manifest = r
-                .try_get::<String, _>("permission_manifest")
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok());
+                let row =
+                    q.fetch_optional(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                if let Some(r) = row {
+                    let id: String = r.get("id");
+                    let res = sqlx::query(&update_str)
+                        .bind(JobStatus::Processing.to_string())
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&id)
+                        .bind(JobStatus::Pending.to_string())
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    if res.rows_affected() == 0 {
+                        // Conflict! Another worker snatched it.
+                        tx.rollback()
+                            .await
+                            .map_err(|e| AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            })?;
+                        return Ok(None);
+                    }
+                    tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
 
-            let now = Utc::now().to_rfc3339();
-            sqlx::query("UPDATE jobs SET status = ?, started_at = ?, last_heartbeat = ?, updated_at = ? WHERE id = ?")
-                .bind(JobStatus::Processing.to_string())
-                .bind(&now)
-                .bind(&now)
-                .bind(&now)
-                .bind(&id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to update job status: {}", e) })?;
+                    let topic: String = r.get("topic");
+                    let style: String = r.get("style_name");
+                    let karma_directives: Option<String> = try_get_opt(&r, "karma_directives");
+                    let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+                    let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
+                    let execution_log: Option<String> = try_get_opt(&r, "execution_log");
+                    let error_message: Option<String> = try_get_opt(&r, "error_message");
+                    let sns_platform: Option<String> = try_get_opt(&r, "sns_platform");
+                    let sns_content_id: Option<String> = try_get_opt(&r, "sns_content_id");
+                    let published_at: Option<String> = try_get_opt(&r, "published_at");
+                    let output_artifacts: Option<String> = try_get_opt(&r, "output_artifacts");
+                    let agent_id_str: Option<String> = try_get_opt(&r, "agent_id");
+                    let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
+                    let permission_manifest = r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok());
 
-            tx.commit().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to commit transaction: {}", e),
-            })?;
+                    Ok(Some(Job {
+                        id,
+                        category: r.get("category"),
+                        topic,
+                        style,
+                        karma_directives,
+                        status: JobStatus::Processing,
+                        started_at: Some(now.clone()),
+                        last_heartbeat: Some(now),
+                        tech_karma_extracted: tech_karma_extracted != 0,
+                        creative_rating,
+                        execution_log,
+                        error_message,
+                        sns_platform,
+                        sns_content_id,
+                        published_at,
+                        output_artifacts,
+                        permission_manifest,
+                        agent_id,
+                        priority: r.get("priority"),
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                let mut q = sqlx::query(&query_str).bind(JobStatus::Pending.to_string());
+                for cat in capable_categories {
+                    q = q.bind(*cat);
+                }
 
-            Ok(Some(Job {
-                id,
-                category: r.get("category"),
-                topic,
-                style,
-                karma_directives,
-                status: JobStatus::Processing,
-                started_at: Some(now.clone()),
-                last_heartbeat: Some(now),
-                tech_karma_extracted: tech_karma_extracted != 0,
-                creative_rating,
-                execution_log,
-                error_message,
-                sns_platform,
-                sns_content_id,
-                published_at,
-                output_artifacts,
-                permission_manifest,
-                agent_id,
-                priority: r.get("priority"),
-            }))
-        } else {
-            Ok(None)
+                let row =
+                    q.fetch_optional(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                if let Some(r) = row {
+                    let id: String = r.get("id");
+                    let res = sqlx::query(&update_str)
+                        .bind(JobStatus::Processing.to_string())
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&id)
+                        .bind(JobStatus::Pending.to_string())
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    if res.rows_affected() == 0 {
+                        tx.rollback()
+                            .await
+                            .map_err(|e| AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            })?;
+                        return Ok(None);
+                    }
+                    tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+
+                    let topic: String = r.get("topic");
+                    let style: String = r.get("style_name");
+                    let karma_directives: Option<String> = try_get_opt(&r, "karma_directives");
+                    let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+                    let creative_rating: Option<i32> = r.try_get("creative_rating").ok();
+                    let execution_log: Option<String> = try_get_opt(&r, "execution_log");
+                    let error_message: Option<String> = try_get_opt(&r, "error_message");
+                    let sns_platform: Option<String> = try_get_opt(&r, "sns_platform");
+                    let sns_content_id: Option<String> = try_get_opt(&r, "sns_content_id");
+                    let published_at: Option<String> = try_get_opt(&r, "published_at");
+                    let output_artifacts: Option<String> = try_get_opt(&r, "output_artifacts");
+                    let agent_id_str: Option<String> = try_get_opt(&r, "agent_id");
+                    let agent_id = agent_id_str.and_then(|s| Uuid::parse_str(&s).ok());
+
+                    // In Postgres, permission_manifest might be JSONB, so we might need a different deserialization.
+                    // For now, assuming it's stored as JSON string or compatible.
+                    let permission_manifest = r
+                        .try_get::<serde_json::Value, _>("permission_manifest")
+                        .ok()
+                        .and_then(|v| serde_json::from_value(v).ok());
+
+                    Ok(Some(Job {
+                        id,
+                        category: r.get("category"),
+                        topic,
+                        style,
+                        karma_directives,
+                        status: JobStatus::Processing,
+                        started_at: Some(now.clone()),
+                        last_heartbeat: Some(now),
+                        tech_karma_extracted: tech_karma_extracted != 0,
+                        creative_rating,
+                        execution_log,
+                        error_message,
+                        sns_platform,
+                        sns_content_id,
+                        published_at,
+                        output_artifacts,
+                        permission_manifest,
+                        agent_id,
+                        priority: r.get("priority"),
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 
@@ -250,15 +364,19 @@ impl CoreOps for SqliteJobQueue {
         output_artifacts: Option<&str>,
     ) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query(
-            "UPDATE jobs SET status = ?, output_artifacts = ?, updated_at = ? WHERE id = ?",
+        let q =
+            format!(
+            "UPDATE jobs SET status = {0}, output_artifacts = {1}, updated_at = {2} WHERE id = {3}",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
+        );
+        sql_exec!(
+            &self.pool,
+            &q,
+            JobStatus::Completed.to_string(),
+            output_artifacts,
+            &now,
+            job_id
         )
-        .bind(JobStatus::Completed.to_string())
-        .bind(output_artifacts)
-        .bind(&now)
-        .bind(job_id)
-        .execute(&self.pool)
-        .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to complete job {}: {}", job_id, e),
         })?;
@@ -267,34 +385,42 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET status = ?, error_message = ?, updated_at = ? WHERE id = ?")
-            .bind(JobStatus::Failed.to_string())
-            .bind(reason)
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fail job {}: {}", job_id, e),
-            })?;
+        let q =
+            format!(
+            "UPDATE jobs SET status = {0}, error_message = {1}, updated_at = {2} WHERE id = {3}",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
+        );
+        sql_exec!(
+            &self.pool,
+            &q,
+            JobStatus::Failed.to_string(),
+            reason,
+            &now,
+            job_id
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to fail job {}: {}", job_id, e),
+        })?;
         Ok(())
     }
 
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let result = sqlx::query(
-            "UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed: heartbeat timeout exceeded', updated_at = ? 
+        let update_str = format!(
+            "UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed: heartbeat timeout exceeded', updated_at = {0} 
              WHERE status = 'Processing' 
              AND last_heartbeat IS NOT NULL 
-             AND (julianday('now') - julianday(last_heartbeat)) * 24 * 60 > ?"
-        )
-        .bind(&now)
-        .bind(timeout_minutes)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to reclaim zombie jobs: {}", e) })?;
+             AND {1}",
+            self.pool.ph(0),
+            self.pool.interval_minutes_check("last_heartbeat", timeout_minutes)
+        );
 
-        let count = result.rows_affected();
+        let result =
+            sql_exec!(&self.pool, &update_str, &now).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to reclaim zombie jobs: {}", e),
+            })?;
+
+        let count = result;
         if count > 0 {
             tracing::warn!("🧟 Zombie Hunter: Reclaimed {} ghost job(s)", count);
         }
@@ -303,17 +429,17 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let result = sqlx::query(
-            "UPDATE jobs SET creative_rating = ?, updated_at = ? WHERE id = ? AND status IN ('Completed', 'Processing')"
-        )
-        .bind(rating)
-        .bind(&now)
-        .bind(job_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to set creative rating for job {}: {}", job_id, e) })?;
+        let q = format!(
+            "UPDATE jobs SET creative_rating = {0}, updated_at = {1} WHERE id = {2} AND status IN ('Completed', 'Processing')",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)
+        );
+        let result = sql_exec!(&self.pool, &q, rating, &now, job_id).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Failed to set creative rating for job {}: {}", job_id, e),
+            }
+        })?;
 
-        if result.rows_affected() == 0 {
+        if result == 0 {
             return Err(AiomeError::Infrastructure {
                 reason: format!(
                     "Atomic Guard: Job '{}' is not in Completed/Processing state, rating rejected",
@@ -326,100 +452,141 @@ impl CoreOps for SqliteJobQueue {
 
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET last_heartbeat = ?, updated_at = ? WHERE id = ?")
-            .bind(&now)
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to pulse heartbeat for job {}: {}", job_id, e),
-            })?;
+        let q = format!(
+            "UPDATE jobs SET last_heartbeat = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, &now, &now, job_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to pulse heartbeat for job {}: {}", job_id, e),
+        })?;
         Ok(())
     }
 
     async fn do_store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET execution_log = ?, updated_at = ? WHERE id = ?")
-            .bind(log)
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to store execution log for job {}: {}", job_id, e),
-            })?;
+        let q = format!(
+            "UPDATE jobs SET execution_log = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, log, &now, job_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to store execution log for job {}: {}", job_id, e),
+        })?;
         Ok(())
     }
 
     async fn do_purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError> {
-        let result = sqlx::query(
-            "DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < datetime('now', ? || ' days')"
-        )
-        .bind(format!("-{}", days))
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to purge old jobs: {}", e) })?;
+        let q = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!("DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < datetime('now', '-{} days')", days),
+            crate::db::DatabasePool::Postgres(_) => format!("DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < NOW() - INTERVAL '{} days'", days),
+        };
 
-        let purged = result.rows_affected();
-        let _ = sqlx::query("PRAGMA optimize;").execute(&self.pool).await;
+        let result = sql_exec!(&self.pool, &q).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to purge old jobs: {}", e),
+        })?;
+
+        let purged = result;
+        if let Some(p) = self.pool.get_sqlite_pool() {
+            let _ = sqlx::query("PRAGMA optimize;").execute(p).await;
+        }
         Ok(purged)
     }
 
     async fn do_fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, 
+        let q = format!("SELECT id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, started_at, last_heartbeat, 
                      tech_karma_extracted, creative_rating, execution_log, error_message,
                       sns_platform, sns_content_id, published_at, output_artifacts, priority 
               FROM jobs 
-              ORDER BY created_at DESC LIMIT ?"
-        )
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to fetch recent jobs: {}", e) })?;
+              ORDER BY created_at DESC LIMIT {}", self.pool.ph(0));
+
+        macro_rules! map_job_row {
+            ($r:expr) => {{
+                let agent_id_str: Option<String> = try_get_opt($r, "agent_id");
+                let status_str: String = $r.get("status");
+                Job {
+                    id: $r.get("id"),
+                    category: $r.get("category"),
+                    topic: $r.get("topic"),
+                    style: $r.get("style_name"),
+                    karma_directives: try_get_opt($r, "karma_directives"),
+                    status: JobStatus::from_string(&status_str),
+                    started_at: try_get_opt($r, "started_at"),
+                    last_heartbeat: try_get_opt($r, "last_heartbeat"),
+                    tech_karma_extracted: $r.try_get::<i32, _>("tech_karma_extracted").unwrap_or(0)
+                        != 0,
+                    creative_rating: $r.try_get("creative_rating").ok(),
+                    execution_log: try_get_opt($r, "execution_log"),
+                    error_message: try_get_opt($r, "error_message"),
+                    sns_platform: try_get_opt($r, "sns_platform"),
+                    sns_content_id: try_get_opt($r, "sns_content_id"),
+                    published_at: try_get_opt($r, "published_at"),
+                    output_artifacts: try_get_opt($r, "output_artifacts"),
+                    permission_manifest: $r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok()),
+                    agent_id: agent_id_str.and_then(|s| Uuid::parse_str(&s).ok()),
+                    priority: $r.try_get("priority").unwrap_or(0),
+                }
+            }};
+        }
 
         let mut jobs = Vec::new();
-        for r in rows {
-            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-            jobs.push(Job {
-                id: r.get("id"),
-                category: r.get("category"),
-                topic: r.get("topic"),
-                style: r.get("style_name"),
-                karma_directives: try_get_optional_string(&r, "karma_directives"),
-                status: JobStatus::from_string(r.get::<String, _>("status").as_str()),
-                started_at: try_get_optional_string(&r, "started_at"),
-                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
-                tech_karma_extracted: tech_karma_extracted != 0,
-                creative_rating: r.try_get("creative_rating").ok(),
-                execution_log: try_get_optional_string(&r, "execution_log"),
-                error_message: try_get_optional_string(&r, "error_message"),
-                sns_platform: try_get_optional_string(&r, "sns_platform"),
-                sns_content_id: try_get_optional_string(&r, "sns_content_id"),
-                published_at: try_get_optional_string(&r, "published_at"),
-                output_artifacts: try_get_optional_string(&r, "output_artifacts"),
-                agent_id: try_get_optional_string(&r, "agent_id")
-                    .and_then(|s| Uuid::parse_str(&s).ok()),
-                permission_manifest: r
-                    .try_get::<String, _>("permission_manifest")
-                    .ok()
-                    .and_then(|s| serde_json::from_str(&s).ok()),
-                priority: r.get("priority"),
-            });
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    jobs.push(map_job_row!(&r));
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    jobs.push(map_job_row!(&r));
+                }
+            }
         }
         Ok(jobs)
     }
 
     async fn do_get_pending_job_count(&self) -> Result<i64, AiomeError> {
-        let row = sqlx::query("SELECT COUNT(*) as count FROM jobs WHERE status = ?")
-            .bind(JobStatus::Pending.to_string())
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to count pending jobs: {}", e),
-            })?;
-        Ok(row.get("count"))
+        let q = format!(
+            "SELECT COUNT(*) as count FROM jobs WHERE status = {}",
+            self.pool.ph(0)
+        );
+        let count: i64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar(&q)
+                    .bind(JobStatus::Pending.to_string())
+                    .fetch_one(p)
+                    .await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar(&q)
+                    .bind(JobStatus::Pending.to_string())
+                    .fetch_one(p)
+                    .await
+            }
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to count pending jobs: {}", e),
+        })?;
+        Ok(count)
     }
 
     async fn do_get_job_count_since(
@@ -427,60 +594,86 @@ impl CoreOps for SqliteJobQueue {
         since: chrono::DateTime<chrono::Utc>,
     ) -> Result<i64, AiomeError> {
         let since_str = since.to_rfc3339();
-        let row = sqlx::query("SELECT COUNT(*) as count FROM jobs WHERE created_at >= ?")
-            .bind(since_str)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to count jobs since: {}", e),
-            })?;
-        Ok(row.get("count"))
+        let q = format!(
+            "SELECT COUNT(*) as count FROM jobs WHERE created_at >= {}",
+            self.pool.ph(0)
+        );
+        let count: i64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar(&q).bind(since_str).fetch_one(p).await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar(&q).bind(since_str).fetch_one(p).await
+            }
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to count jobs since: {}", e),
+        })?;
+        Ok(count)
     }
 
     async fn do_fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError> {
-        let row = sqlx::query("SELECT retry_count FROM jobs WHERE id = ?")
-            .bind(job_id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fetch retry count: {}", e),
-            })?;
+        let q = format!(
+            "SELECT retry_count FROM jobs WHERE id = {}",
+            self.pool.ph(0)
+        );
+        let count: i64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(job_id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to fetch retry count: {}", e),
+                })?
+                .unwrap_or(0),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(job_id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to fetch retry count: {}", e),
+                })?
+                .unwrap_or(0),
+        };
 
-        if let Some(r) = row {
-            Ok(r.get("retry_count"))
-        } else {
-            Ok(0)
-        }
+        Ok(count)
     }
 
     async fn do_reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError> {
-        sqlx::query("UPDATE jobs SET retry_count = 0 WHERE id = ?")
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to reset retry count: {}", e),
-            })?;
+        let q = format!(
+            "UPDATE jobs SET retry_count = 0 WHERE id = {}",
+            self.pool.ph(0)
+        );
+        sql_exec!(&self.pool, &q, job_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to reset retry count: {}", e),
+        })?;
         Ok(())
     }
 
     async fn do_increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError> {
-        let row = sqlx::query(
-            "UPDATE jobs SET retry_count = retry_count + 1 WHERE id = ? RETURNING retry_count",
-        )
-        .bind(job_id)
-        .fetch_one(&self.pool)
-        .await
+        let q = format!(
+            "UPDATE jobs SET retry_count = retry_count + 1 WHERE id = {} RETURNING retry_count",
+            self.pool.ph(0)
+        );
+        let count: i64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar(&q).bind(job_id).fetch_one(p).await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar(&q).bind(job_id).fetch_one(p).await
+            }
+        }
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to increment job retry count: {}", e),
         })?;
 
-        let count: i64 = row.get("retry_count");
         if count >= 3 {
-            if let Err(e) = sqlx::query("UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill Activated: API continually fails.' WHERE id = ?")
-                .bind(job_id)
-                .execute(&self.pool).await {
-                warn!("⚠️ [CoreOps] Failed to execute poison pill for job {}: {}", job_id, e);
+            let poison_pill = format!("UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill Activated: API continually fails.' WHERE id = {}", self.pool.ph(0));
+            if let Err(e) = sql_exec!(&self.pool, &poison_pill, job_id) {
+                warn!(
+                    "⚠️ [CoreOps] Failed to execute poison pill for job {}: {}",
+                    job_id, e
+                );
             }
             Ok(true)
         } else {
@@ -491,18 +684,20 @@ impl CoreOps for SqliteJobQueue {
     async fn do_storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {
         let threshold_bytes = (threshold_gb * 1024.0 * 1024.0 * 1024.0) as u64;
 
-        // 1. Fetch all jobs with artifacts, ordered by ASC (oldest first)
-        let rows = sqlx::query("SELECT id, output_artifacts FROM jobs WHERE output_artifacts IS NOT NULL AND status IN ('Completed', 'Failed') ORDER BY created_at ASC")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure { reason: format!("GC: failed to fetch artifacts: {}", e) })?;
+        // Fetch all jobs with artifacts
+        let q = "SELECT id, output_artifacts FROM jobs WHERE output_artifacts IS NOT NULL AND status IN ('Completed', 'Failed') ORDER BY created_at ASC";
+        let job_artifacts_raw: Vec<(String, String)> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_as(q).fetch_all(p).await,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_as(q).fetch_all(p).await,
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("GC: failed to fetch artifacts: {}", e),
+        })?;
 
         let mut current_total_size: u64 = 0;
         let mut job_artifacts = Vec::new();
 
-        for row in &rows {
-            let id: String = row.get("id");
-            let artifacts_json: String = row.get("output_artifacts");
+        for (id, artifacts_json) in job_artifacts_raw {
             if let Ok(paths) = serde_json::from_str::<Vec<String>>(&artifacts_json) {
                 let mut job_size = 0;
                 for p in &paths {
@@ -525,6 +720,11 @@ impl CoreOps for SqliteJobQueue {
         let mut target_reduction = current_total_size - threshold_bytes;
         let mut reduced_so_far = 0;
 
+        let clear_q = format!(
+            "UPDATE jobs SET output_artifacts = NULL WHERE id = {}",
+            self.pool.ph(0)
+        );
+
         for (id, paths, size) in job_artifacts {
             if reduced_so_far >= target_reduction {
                 break;
@@ -537,10 +737,7 @@ impl CoreOps for SqliteJobQueue {
             }
 
             // Clear artifact list in DB to prevent re-scanning
-            let _ = sqlx::query("UPDATE jobs SET output_artifacts = NULL WHERE id = ?")
-                .bind(&id)
-                .execute(&self.pool)
-                .await;
+            let _ = sql_exec!(&self.pool, &clear_q, &id);
 
             reduced_so_far += size;
         }

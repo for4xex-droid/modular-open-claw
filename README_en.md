@@ -116,6 +116,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 24: Unified Safety & AI Code Review (Security Hardening)**: Implements **Unified Response Purger (purge_entities)** in `aiome-core` for robust, centralized sanitization of external inputs (RSS, LLM, etc.). Introduces **AI-Driven Code Review (Cleanroom)** to perform security audits on imported skills via LLM, neutralizing malicious logic or "Vampire Attacks" before compilation.
 - 📊 **Phase 24: Periodic Federated Metrics (Global Observability)**: Adds an autonomous background task to push node health, job success rates, and Karma growth to the Samsara Hub every hour. Enables global federation visibility and automated anomaly detection across all Aiome nodes.
 - 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: Strictly isolates testing mock implementations (e.g., `MockAuthManager`) from release builds using conditional compilation (`#[cfg]`). Furthermore, it enforces immediate shutdown (`exit(1)`) via a Fail-Fast mechanism when critical security variables like `API_SERVER_SECRET` or `ALLOWED_ORIGINS` are omitted in production, preventing fallback to insecure defaults and minimizing the attack surface.
+- 🛡️ **Phase 31: Reliability & LLM Structured Output**: Enhanced system robustness by replacing 10+ `.unwrap()` calls with safe error handling in database layers. Formally introduced `format: "json"` support for LLM providers (Ollama), enabling deterministic structured outputs for autonomous agent coordination.
 
 ---
 
@@ -143,8 +144,9 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
 | **LLM Backend** | Gemini Cloud (Front) / Ollama (BG) | Pattern B: ユーザー応答はクラウド、自律タスクはローカル推論 |
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
-| **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
-| **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
+| **Storage** | SQLite (Hash Chain support) | Tamper-resistant memory (Karma) and persistent logs |
+| **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
+| **Last Updated:** | 2026-03-24 | Maintenance & Stability Update |
 
 ---
 
@@ -256,7 +258,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*最終更新: 2026-03-23*
+*Last Updated: 2026-03-24*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::SqliteJobQueue;
+use crate::job_queue::UniversalJobQueue;
 use aiome_core::llm_provider::LlmProvider;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -14,7 +14,7 @@ use tracing::{info, warn};
 /// 短期記憶から長期Karmaへの結晶化エンジン
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
-    job_queue: Arc<SqliteJobQueue>,
+    job_queue: Arc<UniversalJobQueue>,
     semaphore: Arc<Semaphore>,
 }
 
@@ -22,7 +22,7 @@ impl MemoryCrystallizer {
     /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
-        job_queue: Arc<SqliteJobQueue>,
+        job_queue: Arc<UniversalJobQueue>,
         semaphore: Arc<Semaphore>,
     ) -> Self {
         Self {
@@ -95,7 +95,7 @@ impl MemoryCrystallizer {
 mod tests {
     use super::*;
     use crate::job_queue::tests::create_test_queue;
-    use crate::job_queue::SqliteJobQueue;
+    use crate::job_queue::UniversalJobQueue;
     use aiome_core::error::AiomeError;
     use aiome_core::llm_provider::LlmProvider;
     use async_trait::async_trait;
@@ -141,8 +141,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_distillation_cycle() {
-        let (jq, _tmp): (SqliteJobQueue, _) = create_test_queue().await;
-        let pool = jq.get_pool();
+        let (jq, _tmp): (UniversalJobQueue, _) = create_test_queue().await;
+        let pool = jq.get_pool().get_sqlite_pool().unwrap();
 
         // Insert some raw karma for a skill
         for i in 0..15 {

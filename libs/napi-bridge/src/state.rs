@@ -6,22 +6,22 @@
  */
 
 use aiome_core::error::AiomeError;
-use infrastructure::job_queue::SqliteJobQueue;
+use infrastructure::job_queue::UniversalJobQueue;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 
-static DB: OnceCell<Arc<SqliteJobQueue>> = OnceCell::const_new();
+static DB: OnceCell<Arc<UniversalJobQueue>> = OnceCell::const_new();
 static LLM: OnceCell<Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>> =
     OnceCell::const_new();
 static IMMUNE: OnceCell<Arc<infrastructure::immune_system::AdaptiveImmuneSystem>> =
     OnceCell::const_new();
 
 /// `get_db` 関数
-pub async fn get_db() -> Result<&'static Arc<SqliteJobQueue>, AiomeError> {
+pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
     DB.get_or_try_init(|| async {
         let db_path = std::env::var("AIOME_DB_PATH")
             .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
-        let queue = SqliteJobQueue::new(&db_path).await?;
+        let queue = UniversalJobQueue::new(&db_path).await?;
         Ok(Arc::new(queue))
     })
     .await

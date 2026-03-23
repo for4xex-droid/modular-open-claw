@@ -6,8 +6,8 @@
  */
 
 use super::swarm::SwarmOps;
-use super::SqliteJobQueue;
-use super::{cosine_similarity, try_get_optional_string};
+use super::UniversalJobQueue;
+use super::{cosine_similarity, try_get_opt};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus, KarmaEntry, KarmaSearchResult};
 use async_trait::async_trait;
@@ -53,7 +53,7 @@ pub trait KarmaOps {
 }
 
 #[async_trait]
-impl KarmaOps for SqliteJobQueue {
+impl KarmaOps for UniversalJobQueue {
     async fn do_fetch_relevant_karma(
         &self,
         topic: &str,
@@ -73,28 +73,50 @@ impl KarmaOps for SqliteJobQueue {
             }
         }
 
-        // Sprint 3-C: FTS5 Query Sanitization (Red Team R4)
+        // Sprint 3-C: Query Sanitization
         let sanitized_topic = topic.replace('"', "\"\"");
-        let fts_query = format!("\"{}\"", sanitized_topic);
+        let fts_query = if self.pool.is_postgres() {
+            sanitized_topic
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" & ")
+        } else {
+            format!("\"{}\"", sanitized_topic)
+        };
 
         let candidate_limit = limit * 5;
-        let rows = sqlx::query(
-            "SELECT k.id, k.lesson, k.soul_version_hash, k.karma_embedding,
-              (k.weight * 0.1 
-                + (CASE WHEN k.tier = 'HOT' THEN 30.0 WHEN k.tier = 'WARM' THEN 10.0 ELSE 0.0 END)
-                + (CASE WHEN k.rowid IN (SELECT rowid FROM karma_fts WHERE lesson MATCH ?) THEN 50.0 ELSE 0.0 END)) AS sql_weight
+        let weight_expr = self.pool.karma_sql_weight_expr(0);
+        let q = format!(
+            "SELECT k.id, k.lesson, k.soul_version_hash, k.karma_embedding, {} AS sql_weight
              FROM karma_logs k
-             WHERE k.weight > 0 AND k.is_archived = 0 AND (k.related_skill = ? OR k.related_skill = 'global') 
-             ORDER BY sql_weight DESC, k.created_at DESC LIMIT ?"
-        )
-        .bind(&fts_query)
-        .bind(skill_id)
-        .bind(candidate_limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("SQL Karma Query failed: {}", e) })?;
+             WHERE k.weight > 0 AND k.is_archived = 0 AND (k.related_skill = {1} OR k.related_skill = 'global') 
+             ORDER BY sql_weight DESC, k.created_at DESC LIMIT {2}",
+            weight_expr, self.pool.ph(1), self.pool.ph(2)
+        );
 
-        if rows.is_empty() {
+        let count_q = format!(
+            "SELECT COUNT(*) FROM karma_logs k WHERE k.weight > 0 AND k.is_archived = 0 AND (k.related_skill = {0} OR k.related_skill = 'global')",
+            self.pool.ph(0)
+        );
+        let row_count: i64 = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar(&count_q)
+                    .bind(skill_id)
+                    .fetch_one(p)
+                    .await
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                sqlx::query_scalar(&count_q)
+                    .bind(skill_id)
+                    .fetch_one(p)
+                    .await
+            }
+        }
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("SQL Karma Count failed: {}", e),
+        })?;
+
+        if row_count == 0 {
             return Ok(KarmaSearchResult::empty());
         }
 
@@ -107,59 +129,108 @@ impl KarmaOps for SqliteJobQueue {
             stored_embedding: Option<Vec<f64>>,
         }
 
-        let mut candidates: Vec<KarmaCandidate> = rows
-            .iter()
-            .map(|r| {
-                let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
-                let stored_embedding = embedding_bytes.map(|b| {
-                    b.chunks_exact(4)
-                        .map(|chunk| {
-                            let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
-                            f32::from_le_bytes(bytes) as f64
-                        })
-                        .collect()
-                });
+        let mut candidates: Vec<KarmaCandidate> = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(&fts_query)
+                    .bind(skill_id)
+                    .bind(candidate_limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("SQL Karma Query failed: {}", e),
+                    })?;
+                rows.iter()
+                    .map(|r| {
+                        let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
+                        let stored_embedding = embedding_bytes.map(|b| {
+                            b.chunks_exact(4)
+                                .map(|chunk| {
+                                    let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
+                                    f32::from_le_bytes(bytes) as f64
+                                })
+                                .collect()
+                        });
+                        KarmaCandidate {
+                            id: r.get("id"),
+                            lesson: r.get("lesson"),
+                            hash: try_get_opt(r, "soul_version_hash"),
+                            sql_weight: r.get("sql_weight"),
+                            semantic_score: 0.0,
+                            stored_embedding,
+                        }
+                    })
+                    .collect()
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(&fts_query)
+                    .bind(skill_id)
+                    .bind(candidate_limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("SQL Karma Query failed: {}", e),
+                    })?;
+                rows.iter()
+                    .map(|r| {
+                        let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
+                        let stored_embedding = embedding_bytes.map(|b| {
+                            b.chunks_exact(4)
+                                .map(|chunk| {
+                                    let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
+                                    f32::from_le_bytes(bytes) as f64
+                                })
+                                .collect()
+                        });
+                        KarmaCandidate {
+                            id: r.get("id"),
+                            lesson: r.get("lesson"),
+                            hash: try_get_opt(r, "soul_version_hash"),
+                            sql_weight: r.get("sql_weight"),
+                            semantic_score: 0.0,
+                            stored_embedding,
+                        }
+                    })
+                    .collect()
+            }
+        };
 
-                KarmaCandidate {
-                    id: r.get("id"),
-                    lesson: r.get("lesson"),
-                    hash: try_get_optional_string(r, "soul_version_hash"),
-                    sql_weight: r.get("sql_weight"),
-                    semantic_score: 0.0,
-                    stored_embedding,
-                }
-            })
-            .collect();
+        if candidates.is_empty() {
+            return Ok(KarmaSearchResult::empty());
+        }
 
         let mut max_score = 0.0;
         let mut searched_semantically = false;
-        if !rows.is_empty() {
-            if let Some(provider) = self.get_embedding_provider().await {
-                if let Ok(topic_vec_f32) = provider.embed(topic, true).await {
-                    searched_semantically = true;
-                    let topic_vec: Vec<f64> = topic_vec_f32.into_iter().map(|f| f as f64).collect();
-                    for candidate in &mut candidates {
-                        if let Some(ref emb_vec) = candidate.stored_embedding {
-                            let score = cosine_similarity(&topic_vec, emb_vec);
-                            candidate.semantic_score = score;
-                            if score > max_score {
-                                max_score = score;
-                            }
+        if let Some(provider) = self.get_embedding_provider().await {
+            if let Ok(topic_vec_f32) = provider.embed(topic, true).await {
+                searched_semantically = true;
+                let topic_vec: Vec<f64> = topic_vec_f32.into_iter().map(|f| f as f64).collect();
+                for candidate in &mut candidates {
+                    if let Some(ref emb_vec) = candidate.stored_embedding {
+                        let score = cosine_similarity(&topic_vec, emb_vec);
+                        candidate.semantic_score = score;
+                        if score > max_score {
+                            max_score = score;
                         }
                     }
-                    candidates.sort_by(|a, b| {
-                        let score_a = a.semantic_score * 0.7 + (a.sql_weight / 100.0) * 0.3;
-                        let score_b = b.semantic_score * 0.7 + (b.sql_weight / 100.0) * 0.3;
-                        score_b
-                            .partial_cmp(&score_a)
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    });
                 }
+                candidates.sort_by(|a, b| {
+                    let score_a = a.semantic_score * 0.7 + (a.sql_weight / 100.0) * 0.3;
+                    let score_b = b.semantic_score * 0.7 + (b.sql_weight / 100.0) * 0.3;
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
         }
 
         let mut final_entries = Vec::new();
+        let now = Utc::now().to_rfc3339();
+        let mut ids_to_update = Vec::new();
+
         for candidate in candidates.into_iter().take(limit as usize) {
+            ids_to_update.push(candidate.id.clone());
             let mut lesson_text = candidate.lesson;
             if let Some(h) = candidate.hash {
                 if h != current_soul_hash {
@@ -175,18 +246,14 @@ impl KarmaOps for SqliteJobQueue {
             });
         }
 
-        // OOD Check (R3/Sprint 1-A)
-        // Set is_ood = true only if we actually performed a semantic search and found nothing close.
-        // If we only have SQL results, assume they are relevant enough (Backward compatibility/Local mode).
         let is_ood = final_entries.is_empty() || (searched_semantically && max_score < 0.3);
-
         let result = KarmaSearchResult {
             entries: final_entries,
             is_ood,
             max_score,
         };
 
-        // Update Cache (LRU simple: if too large, clear everything for now or just insert)
+        // Update Cache
         {
             let mut cache = self.karma_cache.write().await;
             if cache.len() > 50 {
@@ -195,14 +262,9 @@ impl KarmaOps for SqliteJobQueue {
             cache.insert(cache_key, (result.clone(), Instant::now()));
         }
 
-        let now = Utc::now().to_rfc3339();
-        for r in &rows {
-            let id: String = r.get("id");
-            let _ = sqlx::query("UPDATE karma_logs SET last_applied_at = ?, apply_count = apply_count + 1 WHERE id = ?")
-                .bind(&now)
-                .bind(id)
-                .execute(&self.pool)
-                .await;
+        let update_q = format!("UPDATE karma_logs SET last_applied_at = {0}, apply_count = apply_count + 1 WHERE id = {1}", self.pool.ph(0), self.pool.ph(1));
+        for id in ids_to_update {
+            let _ = sql_exec!(&self.pool, &update_q, &now, &id);
         }
 
         Ok(result)
@@ -222,158 +284,203 @@ impl KarmaOps for SqliteJobQueue {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
 
-        // SEC: Use SwarmOps::do_* directly instead of JobQueue trait methods
-        // to avoid SQLite deadlock (do_get_node_id uses a transaction, and
-        // do_sign_swarm_payload can recursively call do_get_node_id, causing
-        // a single-writer deadlock in SQLite)
         let node_id = self.do_get_node_id().await.unwrap_or_default();
         let clock = self.do_tick_local_clock().await.unwrap_or(0);
         let sign_target = format!("{}:{}:{}", id, lesson, clock);
-        let signature = match self.do_sign_swarm_payload(&sign_target).await {
-            Ok(s) => Some(s),
-            Err(e) => {
-                tracing::warn!("Failed to sign karma payload: {}", e);
-                None
-            }
-        };
+        let signature = self.do_sign_swarm_payload(&sign_target).await.ok();
 
         let mut embedding: Option<Vec<u8>> = None;
         if let Some(provider) = self.get_embedding_provider().await {
             if let Ok(vec) = provider.embed(lesson, false).await {
-                let bytes: Vec<u8> = vec.iter().flat_map(|f| f.to_le_bytes()).collect();
-                embedding = Some(bytes);
-            } else {
-                warn!(
-                    "🧬 [KarmaStore] Failed to generate embedding using {} (ignoring)",
-                    provider.name()
-                );
+                embedding = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
             }
         }
 
         let domain = domain.unwrap_or("general");
+        let q = format!(
+            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic, clone_origin_id) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
+        );
 
-        sqlx::query(
-            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic, clone_origin_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        sql_exec!(
+            &self.pool,
+            &q,
+            &id,
+            job_id,
+            karma_type,
+            skill_id,
+            lesson,
+            soul_hash,
+            &now,
+            embedding,
+            &node_id,
+            clock as i64,
+            signature,
+            domain,
+            subtopic,
+            clone_origin_id
         )
-        .bind(&id)
-        .bind(job_id)
-        .bind(karma_type)
-        .bind(skill_id)
-        .bind(lesson)
-        .bind(soul_hash)
-        .bind(&now)
-        .bind(embedding)
-        .bind(&node_id)
-        .bind(clock as i64)
-        .bind(signature)
-        .bind(domain)
-        .bind(subtopic)
-        .bind(clone_origin_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to store karma for job {}: {}", job_id, e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to store karma: {}", e),
+        })?;
         Ok(())
     }
 
     async fn do_fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT * FROM jobs 
-              WHERE execution_log IS NOT NULL 
-              AND tech_karma_extracted = 0 
-              AND status IN ('Completed', 'Failed') 
-              ORDER BY updated_at ASC LIMIT ?",
-        )
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to fetch undistilled jobs: {}", e),
-        })?;
+        let q = format!(
+            "SELECT * FROM jobs WHERE execution_log IS NOT NULL AND tech_karma_extracted = 0 AND status IN ('Completed', 'Failed') ORDER BY updated_at ASC LIMIT {}",
+            self.pool.ph(0)
+        );
+
+        let rows_sqlite = if let crate::db::DatabasePool::Sqlite(p) = &self.pool {
+            Some(
+                sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?,
+            )
+        } else {
+            None
+        };
+
+        let rows_pg = if let crate::db::DatabasePool::Postgres(p) = &self.pool {
+            Some(
+                sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?,
+            )
+        } else {
+            None
+        };
 
         let mut jobs = Vec::new();
-        for r in rows {
-            let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-            let permission_manifest = match r.try_get::<String, _>("permission_manifest") {
-                Ok(s) => match serde_json::from_str(&s) {
-                    Ok(manifest) => Some(manifest),
-                    Err(e) => {
-                        tracing::warn!("Failed to parse permission_manifest JSON: {}", e);
-                        None
-                    }
-                },
-                Err(e) => {
-                    // Log the error if try_get fails, but it might be expected for older rows
-                    tracing::debug!(
-                        "Failed to get permission_manifest from row (might be missing): {}",
-                        e
-                    );
-                    None
-                }
-            };
-
-            jobs.push(Job {
-                id: r.get("id"),
-                category: r.get("category"),
-                topic: r.get("topic"),
-                style: r.get("style_name"),
-                karma_directives: try_get_optional_string(&r, "karma_directives"),
-                status: JobStatus::from_string(r.get("status")),
-                started_at: try_get_optional_string(&r, "started_at"),
-                last_heartbeat: try_get_optional_string(&r, "last_heartbeat"),
-                tech_karma_extracted: tech_karma_extracted != 0,
-                creative_rating: r.try_get("creative_rating").ok(),
-                execution_log: try_get_optional_string(&r, "execution_log"),
-                error_message: try_get_optional_string(&r, "error_message"),
-                sns_platform: try_get_optional_string(&r, "sns_platform"),
-                sns_content_id: try_get_optional_string(&r, "sns_content_id"),
-                published_at: try_get_optional_string(&r, "published_at"),
-                output_artifacts: try_get_optional_string(&r, "output_artifacts"),
-                permission_manifest,
-                agent_id: None, // In case of older/manual distilled
-                priority: r.get("priority"),
-            });
+        if let Some(rows) = rows_sqlite {
+            for r in rows {
+                let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+                let permission_manifest = r
+                    .try_get::<String, _>("permission_manifest")
+                    .ok()
+                    .and_then(|s| serde_json::from_str(&s).ok());
+                jobs.push(Job {
+                    id: r.get("id"),
+                    category: r.get("category"),
+                    topic: r.get("topic"),
+                    style: r.get("style_name"),
+                    karma_directives: try_get_opt(&r, "karma_directives"),
+                    status: aiome_core::traits::JobStatus::from_string(r.get("status")),
+                    started_at: try_get_opt(&r, "started_at"),
+                    last_heartbeat: try_get_opt(&r, "last_heartbeat"),
+                    tech_karma_extracted: tech_karma_extracted != 0,
+                    creative_rating: r.try_get("creative_rating").ok(),
+                    execution_log: try_get_opt(&r, "execution_log"),
+                    error_message: try_get_opt(&r, "error_message"),
+                    sns_platform: try_get_opt(&r, "sns_platform"),
+                    sns_content_id: try_get_opt(&r, "sns_content_id"),
+                    published_at: try_get_opt(&r, "published_at"),
+                    output_artifacts: try_get_opt(&r, "output_artifacts"),
+                    permission_manifest,
+                    agent_id: None,
+                    priority: r.get("priority"),
+                });
+            }
+        } else if let Some(rows) = rows_pg {
+            for r in rows {
+                let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
+                let permission_manifest = r
+                    .try_get::<serde_json::Value, _>("permission_manifest")
+                    .ok()
+                    .and_then(|v| serde_json::from_value(v).ok());
+                jobs.push(Job {
+                    id: r.get("id"),
+                    category: r.get("category"),
+                    topic: r.get("topic"),
+                    style: r.get("style_name"),
+                    karma_directives: try_get_opt(&r, "karma_directives"),
+                    status: aiome_core::traits::JobStatus::from_string(r.get("status")),
+                    started_at: try_get_opt(&r, "started_at"),
+                    last_heartbeat: try_get_opt(&r, "last_heartbeat"),
+                    tech_karma_extracted: tech_karma_extracted != 0,
+                    creative_rating: r.try_get("creative_rating").ok(),
+                    execution_log: try_get_opt(&r, "execution_log"),
+                    error_message: try_get_opt(&r, "error_message"),
+                    sns_platform: try_get_opt(&r, "sns_platform"),
+                    sns_content_id: try_get_opt(&r, "sns_content_id"),
+                    published_at: try_get_opt(&r, "published_at"),
+                    output_artifacts: try_get_opt(&r, "output_artifacts"),
+                    permission_manifest,
+                    agent_id: None,
+                    priority: r.get("priority"),
+                });
+            }
         }
         Ok(jobs)
     }
 
     async fn do_mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        sqlx::query("UPDATE jobs SET tech_karma_extracted = 1, updated_at = ? WHERE id = ?")
-            .bind(&now)
-            .bind(job_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to mark karma extracted for job {}: {}", job_id, e),
-            })?;
+        let q = format!(
+            "UPDATE jobs SET tech_karma_extracted = 1, updated_at = {0} WHERE id = {1}",
+            self.pool.ph(0),
+            self.pool.ph(1)
+        );
+        sql_exec!(&self.pool, &q, &now, job_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to mark karma extracted: {}", e),
+        })?;
         Ok(())
     }
 
     async fn do_fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let rows = sqlx::query("SELECT * FROM karma_logs ORDER BY created_at DESC LIMIT ?")
-            .bind(limit)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fetch all karma: {}", e),
-            })?;
-
+        let q = format!(
+            "SELECT * FROM karma_logs ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0)
+        );
         let mut results = Vec::new();
-        for r in rows {
-            results.push(serde_json::json!({
-                "id": r.get::<String, _>("id"),
-                "job_id": try_get_optional_string(&r, "job_id"),
-                "skill": r.get::<String, _>("related_skill"),
-                "lesson": r.get::<String, _>("lesson"),
-                "karma_type": r.get::<String, _>("karma_type"),
-                "weight": r.get::<i64, _>("weight"),
-                "soul": try_get_optional_string(&r, "soul_version_hash"),
-                "node_id": r.get::<String, _>("node_id"),
-                "clock": r.get::<i64, _>("lamport_clock"),
-                "signature": try_get_optional_string(&r, "signature"),
-                "last_applied_at": try_get_optional_string(&r, "last_applied_at"),
-                "created_at": r.get::<String, _>("created_at")
-            }));
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    results.push(serde_json::json!({
+                        "id": r.get::<String, _>("id"), "job_id": try_get_opt::<_, String>(&r, "job_id"),
+                        "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
+                        "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "soul": try_get_opt::<_, String>(&r, "soul_version_hash"), "node_id": r.get::<String, _>("node_id"),
+                        "clock": r.get::<i64, _>("lamport_clock"), "signature": try_get_opt::<_, String>(&r, "signature"),
+                        "last_applied_at": try_get_opt::<_, String>(&r, "last_applied_at"), "created_at": r.get::<String, _>("created_at")
+                    }));
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    results.push(serde_json::json!({
+                        "id": r.get::<String, _>("id"), "job_id": try_get_opt::<_, String>(&r, "job_id"),
+                        "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
+                        "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "soul": try_get_opt::<_, String>(&r, "soul_version_hash"), "node_id": r.get::<String, _>("node_id"),
+                        "clock": r.get::<i64, _>("lamport_clock"), "signature": try_get_opt::<_, String>(&r, "signature"),
+                        "last_applied_at": try_get_opt::<_, String>(&r, "last_applied_at"), "created_at": r.get::<String, _>("created_at")
+                    }));
+                }
+            }
         }
         Ok(results)
     }
@@ -383,28 +490,44 @@ impl KarmaOps for SqliteJobQueue {
         limit: i64,
         current_soul_hash: &str,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let rows = sqlx::query(
-            "SELECT * FROM karma_logs 
-             WHERE soul_version_hash IS NULL OR soul_version_hash != ? 
-             ORDER BY created_at DESC LIMIT ?",
-        )
-        .bind(current_soul_hash)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to fetch unincorporated karma: {}", e),
-        })?;
-
+        let q = format!(
+            "SELECT * FROM karma_logs WHERE soul_version_hash IS NULL OR soul_version_hash != {} ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0), self.pool.ph(1)
+        );
         let mut results = Vec::new();
-        for r in rows {
-            results.push(serde_json::json!({
-                "id": r.get::<String, _>("id"),
-                "lesson": r.get::<String, _>("lesson"),
-                "skill": r.get::<String, _>("related_skill"),
-                "type": r.get::<String, _>("karma_type"),
-                "weight": r.get::<i64, _>("weight"),
-            }));
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(current_soul_hash)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    results.push(serde_json::json!({
+                        "id": r.get::<String, _>("id"), "lesson": r.get::<String, _>("lesson"),
+                        "skill": r.get::<String, _>("related_skill"), "type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                    }));
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(current_soul_hash)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    results.push(serde_json::json!({
+                        "id": r.get::<String, _>("id"), "lesson": r.get::<String, _>("lesson"),
+                        "skill": r.get::<String, _>("related_skill"), "type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                    }));
+                }
+            }
         }
         Ok(results)
     }
@@ -415,17 +538,17 @@ impl KarmaOps for SqliteJobQueue {
         new_soul_hash: &str,
     ) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
+        let q = format!(
+            "UPDATE karma_logs SET soul_version_hash = {0}, last_applied_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
         for id in karma_ids {
-            sqlx::query(
-                "UPDATE karma_logs SET soul_version_hash = ?, last_applied_at = ? WHERE id = ?",
-            )
-            .bind(new_soul_hash)
-            .bind(&now)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to mark karma as incorporated: {}", e),
+            sql_exec!(&self.pool, &q, new_soul_hash, &now, id).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                }
             })?;
         }
         Ok(())

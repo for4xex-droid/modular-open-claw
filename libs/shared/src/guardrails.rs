@@ -35,7 +35,8 @@ pub fn validate_input(input: &str) -> ValidationResult {
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(true); // デフォルトは true (Security First)
 
-        if !enforce && cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        if !enforce {
             tracing::warn!("⚠️  Guardrail Security Warning (DevMode): {:?}", result);
             return ValidationResult::Valid;
         }

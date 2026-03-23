@@ -377,6 +377,7 @@ pub mod abyss_voice_vault;
 pub mod crypto;
 /// メモリ上に固定(mlock)されたバイトベクタの実装
 pub mod mlock;
+/// SQLite を使用した Vault Backend の実装。
 pub mod sqlite_vault_backend;
 use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;

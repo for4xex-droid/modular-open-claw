@@ -55,7 +55,7 @@ impl AutonomousDemo {
 
     async fn do_run(state: AppState) -> Result<(), AiomeError> {
         let agent_id = state.system_agent_id;
-        let pool = state.job_queue.get_pool().clone();
+        let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
         // Drop ALL audit triggers on gig tables for the demo duration.
         // Even without transactions, triggers cause write lock contention.

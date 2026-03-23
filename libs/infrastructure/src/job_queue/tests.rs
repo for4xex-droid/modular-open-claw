@@ -7,12 +7,12 @@
 
 //! # Job Queue Tests — The Immortal Proof
 //!
-//! ファイルベース一時 SQLite を使った `SqliteJobQueue` の完全テストスイート。
+//! ファイルベース一時 SQLite を使った `UniversalJobQueue` の完全テストスイート。
 //! 全 15 テストで心臓部の不変性を機械的に保証する。
 
 use super::settings::SettingsOps;
 use super::watchtower::WatchtowerOps;
-use super::SqliteJobQueue;
+use super::UniversalJobQueue;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};
@@ -49,12 +49,12 @@ impl LlmProvider for MockLlmProvider {
 
 /// テスト用のユニーク一時ファイル JobQueue を作成
 /// 各テストが独自のDBファイルを持ち、ロック競合を回避する
-pub(crate) async fn create_test_queue() -> (SqliteJobQueue, tempfile::TempDir) {
+pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
     // SQLite connection string format needed for sqlx
-    let jq = SqliteJobQueue::new(&format!("sqlite://{}", db_path_str))
+    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str))
         .await
         .expect("Failed to create test job queue");
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist
@@ -136,7 +136,7 @@ async fn test_sqlite_job_queue_zombie_reclamation() {
     // Simulate heartbeat timeout
     sqlx::query("UPDATE jobs SET last_heartbeat = datetime('now', '-15 minutes') WHERE id = ?")
         .bind(&job_id)
-        .execute(&jq.pool)
+        .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
@@ -183,7 +183,7 @@ async fn test_sqlite_job_queue_db_purge() {
 
     sqlx::query("UPDATE jobs SET created_at = datetime('now', '-30 days') WHERE id = ?")
         .bind(&job_id)
-        .execute(&jq.pool)
+        .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
@@ -348,7 +348,7 @@ async fn test_sqlite_job_queue_immune_rules() {
         .bind("rm -rf")
         .bind(100i64)
         .bind("Block")
-        .execute(&jq.pool)
+        .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
@@ -357,7 +357,7 @@ async fn test_sqlite_job_queue_immune_rules() {
         .bind("pending-pattern")
         .bind(50i64)
         .bind("Block")
-        .execute(&jq.pool)
+        .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
@@ -498,7 +498,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
         .flat_map(|f| f.to_le_bytes())
         .collect();
     sqlx::query("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, created_at, karma_embedding) VALUES (?, ?, 'Technical', 'skill-1', 'Real Lesson', datetime('now'), ?)")
-        .bind(&id).bind(&job_id).bind(&emb).execute(&jq.pool).await.unwrap();
+        .bind(&id).bind(&job_id).bind(&emb).execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // Closer match (Mock returns 1.0, DB has 1.0 -> score 1.0)
     let result = jq
@@ -543,7 +543,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
 
     // Directly modify DB
     sqlx::query("UPDATE karma_logs SET lesson = 'Modified Lesson'")
-        .execute(&jq.pool)
+        .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
@@ -577,7 +577,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
 
     // Default weight is 100 or inherited. Let's find the id.
     let row = sqlx::query("SELECT id, weight FROM karma_logs LIMIT 1")
-        .fetch_one(&jq.pool)
+        .fetch_one(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
     let kid: String = row.get("id");
@@ -586,7 +586,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
     jq.adjust_karma_weight(&kid, 50).await.unwrap();
     let row_max = sqlx::query("SELECT weight FROM karma_logs WHERE id = ?")
         .bind(&kid)
-        .fetch_one(&jq.pool)
+        .fetch_one(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
     assert_eq!(row_max.get::<i64, _>("weight"), 100);
@@ -595,7 +595,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
     jq.adjust_karma_weight(&kid, -150).await.unwrap();
     let row_min = sqlx::query("SELECT weight FROM karma_logs WHERE id = ?")
         .bind(&kid)
-        .fetch_one(&jq.pool)
+        .fetch_one(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
     assert_eq!(row_min.get::<i64, _>("weight"), 0);
@@ -622,7 +622,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
-    sqlx::query("UPDATE karma_logs SET weight = 2, last_applied_at = datetime('now', '-91 days') WHERE lesson = 'Weak Lesson'").execute(&jq.pool).await.unwrap();
+    sqlx::query("UPDATE karma_logs SET weight = 2, last_applied_at = datetime('now', '-91 days') WHERE lesson = 'Weak Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // 2. Another weak/old memory
     jq.store_karma(
@@ -637,7 +637,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
-    sqlx::query("UPDATE karma_logs SET weight = 3, last_applied_at = datetime('now', '-100 days') WHERE lesson = 'Old Lesson'").execute(&jq.pool).await.unwrap();
+    sqlx::query("UPDATE karma_logs SET weight = 3, last_applied_at = datetime('now', '-100 days') WHERE lesson = 'Old Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // 3. Fresh strong memory
     jq.store_karma(
@@ -666,7 +666,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
-    sqlx::query("UPDATE karma_logs SET weight = 80, last_applied_at = datetime('now', '-200 days') WHERE lesson = 'Old Strong Lesson'").execute(&jq.pool).await.unwrap();
+    sqlx::query("UPDATE karma_logs SET weight = 80, last_applied_at = datetime('now', '-200 days') WHERE lesson = 'Old Strong Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // Run sweep
     let archived = jq.karma_decay_sweep().await.unwrap();
@@ -802,7 +802,7 @@ async fn test_sqlite_settings_secret_masking() {
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].key, "telegram_token");
     assert!(all[0].is_secret);
-    // Since this is the direct test of SqliteJobQueue, we might just be testing if `is_secret` is respected, not necessarily evaluating presentation masking here.
+    // Since this is the direct test of UniversalJobQueue, we might just be testing if `is_secret` is respected, not necessarily evaluating presentation masking here.
     // In our `api-server`, get_settings does `if s.is_secret { s.value = "********" }`.
     // If we want DB-level masking, we'd need to update `fetch_all_settings`. Let's just assert `is_secret` flag.
 }
