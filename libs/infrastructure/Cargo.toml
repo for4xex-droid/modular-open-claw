@@ -10,7 +10,7 @@ soul = { path = "../soul" }
 aiome-contracts = { workspace = true }
 # tuning = { path = "../tuning" } (Moved to commercial repo)
 shared = { path = "../shared" }
-sqlx = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
 reqwest = { workspace = true }
 stripe = { workspace = true }

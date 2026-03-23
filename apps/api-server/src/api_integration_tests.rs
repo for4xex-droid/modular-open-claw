@@ -1466,3 +1466,23 @@ async fn test_treasure_get_recommendations() {
         "Agent resonance should increase after feedback"
     );
 }
+
+#[tokio::test]
+async fn test_autonomous_demo_lifecycle() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    // Start the demo
+    let resp = server
+        .post("/api/v1/demo/start")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+
+    // This should pass now (GREEN)
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json["success"], true);
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Autonomous demo started"));
+}

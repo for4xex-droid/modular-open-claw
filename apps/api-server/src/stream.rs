@@ -459,8 +459,19 @@ pub async fn trigger_system_vitality_stream(
                     }
                 },
                 Ok(event) = rx.recv() => {
-                    if let shared::watchtower::CoreEvent::ProactiveTalk { message, .. } = event {
-                        yield Ok(Event::default().event("proactive_talk").data(message));
+                    match event {
+                        shared::watchtower::CoreEvent::ProactiveTalk { message, .. } => {
+                            yield Ok(Event::default().event("proactive_talk").data(message));
+                        },
+                        shared::watchtower::CoreEvent::PluginEvent { plugin_name, event_type, payload } => {
+                            let data = serde_json::json!({
+                                "plugin_name": plugin_name,
+                                "event_type": event_type,
+                                "payload": payload,
+                            });
+                            yield Ok(Event::default().event("plugin_event").data(data.to_string()));
+                        },
+                        _ => {} // Other events handled by polling above
                     }
                 }
             }

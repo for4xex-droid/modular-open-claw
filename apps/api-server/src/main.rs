@@ -48,6 +48,7 @@ mod api;
 mod api_integration_tests;
 mod app_state;
 mod auth;
+mod autonomous_demo;
 mod docker;
 mod error;
 mod logging;

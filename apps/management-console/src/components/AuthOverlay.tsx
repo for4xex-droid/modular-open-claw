@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldAlert, Zap, Loader2 } from 'lucide-react';
 import { API_BASE } from '../config';
-import { setAuthToken, authenticatedFetch } from '../lib/auth';
+import { setAuthToken } from '../lib/auth';
 
 interface AuthOverlayProps {
     onAuthenticated: () => void;
@@ -21,21 +21,23 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
         setError('');
 
         try {
-            // API Server のヘルスチェックを使用して検証 (KeyProxy も兼ねる)
-            const response = await authenticatedFetch(`${API_BASE}/api/health`, {
+            // 認証が必要なエンドポイントで検証する（/api/health は公開なのでトークン検証にならない）
+            const response = await fetch(`${API_BASE}/api/v1/settings`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
 
-            if (response.ok) {
+            if (response.ok || response.status === 200) {
                 setAuthToken(token);
                 onAuthenticated();
+            } else if (response.status === 401) {
+                setError('Invalid Secret Key. 開発環境では "mock_valid_token_dev" を使用してください。');
             } else {
-                setError('Invalid Secret Key. Access Denied.');
+                setError(`Server Error (${response.status}). API Server が起動しているか確認してください。`);
             }
         } catch (err) {
-            setError('Failed to connect to Abyss Vault. Ensure KeyProxy is running.');
+            setError('Failed to connect to API Server. "cargo run --bin api-server" が起動しているか確認してください。');
         } finally {
             setIsLoading(false);
         }

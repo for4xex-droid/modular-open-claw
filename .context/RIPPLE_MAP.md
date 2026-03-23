@@ -296,3 +296,28 @@ graph TD
 - **波及効果**: 
     - Samsara Hub におけるフェデレーション全体の稼働状況の可視化が自動化。
     - 各ノードの健全性と成長度が自律的に報告されるエコノミー基盤が確立。
+
+### 🔧 Autonomous Demo — SQLite ロック回避 (Phase 25.5 / ADR-014)
+- **変更内容**: 
+    - `apps/api-server/src/autonomous_demo.rs`: 全面書き換え。`gig_engine` の trait メソッド（`accept_bid`, `deliver`, `verify_and_settle`）を排除し、個別 SQL クエリによるトランザクションレス方式に移行。
+    - `libs/infrastructure/src/job_queue/migrations.rs`: audit trigger の初期化順序修正（テーブル作成前に移動）、`DROP TRIGGER IF EXISTS` 追加。
+    - `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md`: 新規 ADR。本番環境への PostgreSQL 移行計画を含む。
+- **波及効果**: 
+    - デモ実行中は gig 関連テーブル（`gig_intents`, `gig_bids`, `escrows`, `gig_deliveries`, `verification_logs`）の audit trigger が一時停止 → 監査ログに欠損が生じる（デモ限定）。
+    - `gig_engine.rs` のスキーマ変更時、`autonomous_demo.rs` のインライン SQL も手動更新が必要（デュアルメンテナンス）。
+    - **本番運用向け**: PostgreSQL 移行、非同期 Audit Logging、SSE 接続共有を将来計画として明文化。
+
+```mermaid
+graph TD
+    A[autonomous_demo.rs] -->|直接SQL| B[SQLitePool]
+    A -.->|呼ばない| C[gig_engine.rs]
+    C -->|pool.begin| B
+    D[SSE Tab 1..N] -->|5秒ごとSELECT| B
+    E[audit trigger] -.->|デモ中 DROP| F[audit_ledger_global]
+    B -->|max_connections=10| G{コネクション枯渇リスク}
+    G -->|対策: 個別クエリ| H[即時解放]
+```
+
+---
+*最終更新日: 2026-03-23* (Phase 25.5 / ADR-014 SQLite Lock Resolution)
+

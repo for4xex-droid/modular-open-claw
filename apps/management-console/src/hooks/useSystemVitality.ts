@@ -10,7 +10,7 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event';
     data: AgentStats | Karma | unknown;
 };
 
@@ -55,11 +55,10 @@ export const useSystemVitality = () => {
             return; // Don't attempt to connect if intentionally paused
         }
 
+        const MAX_RETRIES = 5;
         let retryCount = 0;
-        let timeoutId: any = null;
 
         const connect = async () => {
-            if (timeoutId) clearTimeout(timeoutId);
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
             }
@@ -68,7 +67,7 @@ export const useSystemVitality = () => {
             setConnectionStatus('connecting');
 
             try {
-                await fetchEventSource(`${API_BASE}/api/system/vitality`, {
+                await fetchEventSource(`${API_BASE}/api/stream/vitality`, {
                     method: 'GET',
                     headers: {
                         ...getAuthHeaders(),
@@ -77,23 +76,23 @@ export const useSystemVitality = () => {
                     signal: abortControllerRef.current.signal,
                     onopen: async (response) => {
                         if (response.ok) {
-                            console.log("✨ [SSE] Connection established via custom fetch");
+                            console.log("✨ [SSE] Connection established");
                             setConnectionStatus('connected');
                             retryCount = 0;
-                            return; // everything is fine
+                            return; 
                         }
-                        throw new Error(`Failed to connect to SSE: ${response.status}`);
+                        // Trigger onerror for retry/backoff
+                        throw new Error(`SSE Status ${response.status}`);
                     },
                     onmessage: (msg) => {
                         if (!msg.event || !msg.data) return;
 
-                        // We check if the event is one of our mapped ones
                         const validEvents = [
                             'level_up', 'karma_update', 'inspiration',
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event'
                         ];
 
                         if (validEvents.includes(msg.event)) {
@@ -104,7 +103,6 @@ export const useSystemVitality = () => {
                                 console.error(`Error parsing SSE event ${msg.event}:`, err);
                             }
                         } else if (msg.event === 'ping') {
-                            // RTT calculation: compare server timestamp with client time
                             try {
                                 const serverTime = new Date(msg.data).getTime();
                                 const clientTime = Date.now();
@@ -116,26 +114,30 @@ export const useSystemVitality = () => {
                     onclose: () => {
                         console.warn("⚠️ [SSE] Connection closed from server, retrying...");
                         setConnectionStatus('disconnected');
-                        throw new Error("Connection closed"); // Trigger error to enter retry logic
+                        // No throw here: fetchEventSource will retry internally or end
                     },
                     onerror: (err) => {
-                        console.error("⚠️ [SSE] Connection Error:", err);
                         setConnectionStatus('disconnected');
-                        // Calculate exponential backoff
-                        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-                        retryCount++;
-
-                        // Only retry if not aborted intentionally
-                        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-                            timeoutId = setTimeout(connect, delay);
+                        
+                        if (abortControllerRef.current?.signal.aborted) {
+                           throw err; // Stop if aborted
                         }
 
-                        // Prevent fetchEventSource from running its own internal retry loop
-                        throw err;
+                        if (retryCount >= MAX_RETRIES) {
+                            console.error("❌ [SSE] Max retries reached. Stopping.");
+                            throw err; // Stop fetchEventSource retries
+                        }
+
+                        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                        retryCount++;
+                        console.log(`🔄 [SSE] Error: ${err.message}. Retrying in ${delay}ms (Attempt ${retryCount}/${MAX_RETRIES})`);
+                        
+                        return delay; // Return delay to allow fetchEventSource to retry internally
                     }
                 });
             } catch (err) {
-                // Handled in onerror or abort
+                // Fails when signal is aborted or MAX_RETRIES reached
+                setConnectionStatus('disconnected');
             }
         };
 
@@ -146,7 +148,6 @@ export const useSystemVitality = () => {
                 abortControllerRef.current.abort();
                 abortControllerRef.current = null;
             }
-            if (timeoutId) clearTimeout(timeoutId);
         };
     }, [addEvent, isPaused, retryTrigger]);
 

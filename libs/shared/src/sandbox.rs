@@ -38,7 +38,11 @@ impl PathSandbox {
         // Bastion の Jail ロジックに準拠した検証
         if base_path.exists() {
             let canonical = base_path.canonicalize()?;
-            if !canonical.starts_with(self.get_root()) {
+            let root_canonical = self
+                .get_root()
+                .canonicalize()
+                .unwrap_or_else(|_| self.get_root());
+            if !canonical.starts_with(&root_canonical) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::PermissionDenied,
                     "Access Denied: Path outside of jail (Bastion Guard)",
@@ -50,7 +54,11 @@ impl PathSandbox {
             match base_path.parent() {
                 Some(parent) if parent.exists() => {
                     let parent_canonical = parent.canonicalize()?;
-                    if !parent_canonical.starts_with(self.get_root()) {
+                    let root_canonical = self
+                        .get_root()
+                        .canonicalize()
+                        .unwrap_or_else(|_| self.get_root());
+                    if !parent_canonical.starts_with(&root_canonical) {
                         return Err(std::io::Error::new(
                             std::io::ErrorKind::PermissionDenied,
                             "Access Denied: Parent directory outside of jail",

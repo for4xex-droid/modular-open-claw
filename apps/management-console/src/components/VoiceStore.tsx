@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
+import { API_BASE } from "../config";
+import { authenticatedFetch } from "../lib/auth";
 
 interface VoiceAsset {
   id: string;
@@ -50,9 +52,7 @@ export default function VoiceStore() {
 
   const fetchBalance = async () => {
     try {
-      const res = await fetch("/api/v1/commerce/balance/agent-001", {
-        headers: { "Authorization": "Bearer mock_valid_token_ekyc_verified_user" }
-      });
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/agent-001`);
       if (res.ok) {
         const data = await res.json();
         setBalance(data.coins);
@@ -66,9 +66,7 @@ export default function VoiceStore() {
 
   const fetchVoiceAssets = async () => {
     try {
-      const res = await fetch("/api/v1/voice/list?scope=public", {
-        headers: { "Authorization": "Bearer mock_valid_token_ekyc_verified_user" }
-      });
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/voice/list?scope=public`);
       if (res.ok) {
         const data = await res.json();
         const mappedAssets = data.map((item: any) => ({
@@ -92,12 +90,8 @@ export default function VoiceStore() {
     setPurchasing(asset.id);
     
     try {
-      const res = await fetch("/api/v1/commerce/purchase/agent-001", {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/purchase/agent-001`, {
         method: "POST",
-        headers: {
-          "Authorization": "Bearer mock_valid_token_ekyc_verified_user",
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           asset_id: asset.id,
           amount_coins: asset.price_coins,

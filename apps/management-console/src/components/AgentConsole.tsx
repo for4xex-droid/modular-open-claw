@@ -44,7 +44,7 @@ const AgentConsole: React.FC = () => {
         setActiveKnowledge(null);
 
         try {
-            const response = await authenticatedFetch(`${API_BASE}/api/agent/chat/stream`, {
+            const response = await authenticatedFetch(`${API_BASE}/api/stream/chat`, {
                 method: 'POST',
                 body: JSON.stringify({
                     prompt: currentPrompt,

@@ -13,7 +13,8 @@ import {
   Zap,
   Sparkles,
   Network,
-  Crown
+  Crown,
+  Play
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
@@ -29,6 +30,7 @@ const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
+const DemoView = React.lazy(() => import("./components/DemoView"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 
@@ -169,7 +171,7 @@ function App() {
   const { viewMode } = useViewMode();
 
   const isVisible = (tab: string) => {
-    const beginner = ['dashboard', 'karma', 'expressions', 'settings'];
+    const beginner = ['dashboard', 'demo', 'karma', 'expressions', 'settings'];
     const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome'];
     const advanced = [...intermediate, 'graph', 'audit', 'immune'];
     
@@ -233,6 +235,14 @@ function App() {
               label="Biotope"
               active={activeTab === "dashboard"}
               onClick={() => setActiveTab("dashboard")}
+            />
+          )}
+          {isVisible("demo") && (
+            <NavItem
+              icon={<Play size={20} />}
+              label="Synergy Demo"
+              active={activeTab === "demo"}
+              onClick={() => setActiveTab("demo")}
             />
           )}
           {isVisible("karma") && (
@@ -356,6 +366,7 @@ function App() {
             key={activeTab}
           >
             {activeTab === "dashboard" && "Biotope Overview"}
+            {activeTab === "demo" && "Autonomous Demo"}
             {activeTab === "karma" && "Eternal Chronicle"}
             {activeTab === "graph" && "Resonance Map"}
             {activeTab === "immune" && "Immune System"}
@@ -385,6 +396,7 @@ function App() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} />}
+              {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
               {activeTab === "karma" && <Timeline />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}

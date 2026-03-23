@@ -210,15 +210,15 @@ cargo run --bin samsara-hub
 
 > **Note**: `api-server` と `watchtower` は WebSocket (ws://) を通じて双方向にリアルタイム通信します。対話機能（Discord/Telegram連携）を有効にするには、両方のプロセスを同時に実行してください。
 
-### シナジー体感デモ (Synergy Demonstration)
-Aiome 管理コンソールでは、エージェントの自律的な進化を視覚的に体験できます。
+### Synergy Demonstration
+Explore the autonomous evolution of agents visually in the Aiome Management Console.
 
-1. **Dashboard 起動**: `cargo run -p api-server` を実行。
-2. **アクセス**: ブラウザで `http://localhost:3015` を開く。
-3. **Synergy Panel**: サイドバーの **"Agency Synergy"** から以下のデモを試せます：
-    - **Evolution Pulse**: タスク失敗から教訓（Karma）が蒸留される過程の視覚化。
-    - **Security Shield**: Abyss Vault による API キー強奪試行の物理的阻止。
-    - **Swarm Sync**: 他ノードとの免疫知識（Collective Intelligence）の同期。
+1.  **Autonomous AI Economy Demo (Phase 25)**: A real-time 60-second cycle showing "Intent Generation → Gig Publishing → Delivery → Karma Reward → Evolution."
+2.  **AgentSense (Sense-Reward Loop)**: A learning cycle where agents generate "Wishes" (Intents) and increase "Resonance" via user feedback.
+3.  **Synergy Panel**: Accessed via **"Agency Synergy"** in the sidebar:
+    - **Evolution Pulse**: Visualization of lesson (Karma) distillation from task failures.
+    - **Security Shield**: Physical blocking of API key theft attempts via Abyss Vault.
+    - **Swarm Sync**: Synchronization of collective intelligence with other nodes.
 
 #### 🔑 主な環境変数 (.env)
 - `DISCORD_TOKEN`: Watchtower integration 用。

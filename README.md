@@ -222,8 +222,8 @@ cargo run --bin samsara-hub
 ### シナジー体感デモ (Synergy Demonstration)
 Aiome 管理コンソールでは、エージェントの自律的な進化を視覚的に体験できます。
 
-1.  **Dashboard 起動**: `cargo run -p api-server` を実行。
-2.  **アクセス**: ブラウザで `http://localhost:3015` を開く。
+1.  **Autonomous AI Economy Demo (Phase 25)**: 60秒間で「欲求生成 → ギグ公開 → 受注・納品 → 報酬獲得（Karma） → 進化」という AI 自律経済の全サイクルをリアルタイムにデモ。
+2.  **AgentSense (Sense-Reward Loop)**: エージェントの「欲求（Intent）」を生成し、ユーザーからのフィードバックによって「共鳴度（Resonance）」を高める学習サイクル。
 3.  **Synergy Panel**: サイドバーの **"Agency Synergy"** から以下のデモを試せます：
     - **Evolution Pulse**: タスク失敗から教訓（Karma）が蒸留される過程の視覚化。
     - **Security Shield**: Abyss Vault による API キー強奪試行の物理的阻止。

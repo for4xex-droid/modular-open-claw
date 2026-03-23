@@ -42,6 +42,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 19 | **Web/RSS Content Injection** | **Malicious RSS/Search snippets** | 🔴 High | **Unified Response Purger (purge_entities) (Phase 24)** |
 | 20 | **Malicious Skill Import** | **Skill crafts backdoors/vampire attacks** | 🔴 High | **AI-Driven Code Audit (Cleanroom) (Phase 24)** |
 | 21 | **Federation Blind Spot** | **Node health/metrics unseen by Hub** | 🟡 Mid | **Periodic Federated Metrics Push (Samsara Hub) (Phase 24)** |
+| 22 | **Unauthorized Demo Access** | **Unauthenticated demo trigger** | 🔴 High | **Bearer Auth + MockAuthManager (Phase 25)** |
+| 23 | **SQLite Pool Exhaustion** | **Multi-tab SSE + gig_engine Transactions** | 🔴 High | **Transaction-free Demo SQL (ADR-014) + Audit Trigger Suspension (Phase 25.5)** |
 
 ## 3. Defense Architecture
 
@@ -88,6 +90,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Context Management System**: Prevents "AI hallucination" and "cascade errors." Integrates an immutable dependency map (`RIPPLE_MAP.md`) and Architectural Decision Records (ADRs) directly synced with the API/core code. Forces AI to execute preflight checks and review impact scopes before any source code mutation.
 - **Preserve Intent Strategy (Phase 7.1)**: Utilizes ADR 007 standard for compiler warning suppression (`#[allow(...)]`). This ensures that context or "half-finished" logic is never accidentally deleted by AI agents during refactoring, maintaining a stable and explainable codebase while satisfying strict CI `-D warnings` constraints.
 - **Biome Encryption & DB Recovery (Phase 6.X)**: `AutonomousBiomeEngine` encrypts all node-to-node (P2P) traffic via ChaCha20-Poly1305 symmetric encryption derived from `FEDERATION_SECRET`. `api-server` implements exhaustive error logging for all message/topic insertions (NG-29), ensuring database stability and eliminating silent failures in the Biome protocol.
+- **SQLite Pool Exhaustion Prevention (Phase 25.5 / ADR-014)**: The `AutonomousDemo` orchestrator avoids `gig_engine` trait method calls (which internally use `pool.begin()` transactions) and instead executes individual SQL statements. This prevents connection pool exhaustion when multiple browser tabs maintain concurrent SSE connections. Audit triggers on gig tables are temporarily suspended during demo execution to eliminate cascading WRITE lock contention. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md` for the full production migration plan (PostgreSQL, async audit logging, SSE connection sharing).
 
 ## 5. Comparison with Traditional Systems
 
@@ -99,8 +102,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-22*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 24 Completion)*
+*Last Mutated: 2026-03-23*
+*Managed by: Aiome Sovereign Task Force (Ref: Phase 25.5 — ADR-014 SQLite Lock Resolution)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -124,3 +127,6 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 1. **Master Key (`VAULT_MASTER_KEY`)**: A symmetric 256-bit AES key, provided via environment variable, representing the root of trust. Cached securely in memory via `OnceCell` to minimize environmental reads and securely zeroized.
 2. **Asset Data Keys (DEK)**: A unique 256-bit symmetric key is randomly generated per uploaded asset (e.g. Voice Models) for AES-256-GCM.
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
+
+---
+*最終更新: 2026-03-23 (Phase 25 / Autonomous AI Economy Demo)*

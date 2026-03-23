@@ -28,9 +28,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Audit API: Quarantine Ledger**:
     - Implemented `GET /api/v1/audit/quarantine` to allow the system agent to list and audit quarantined assets.
     - Extended `QuarantineStore` trait and `SqliteQuarantineStore` with `list_assets` capability.
+
+### Fixed
+- **SSE Connection Stability**: Implemented exponential backoff and maximum retry limits (5) in frontend `useSystemVitality` hook to prevent browser connection slot exhaustion and infinite re-auth loops.
+- **Audit Logging**: Fixed `NEW.id` reference error in SQLite triggers for `system_state` and other tables with non-standard primary keys. Added `DROP TRIGGER IF EXISTS` to migration logic for reliable updates.
+- **Path Sandbox**: Fixed `validate_path` in `PathSandbox` by using canonical paths for comparison, preventing incorrect "Out of sandbox" errors on valid relative paths.
+- **Autonomous Demo**: Added automatic database cleanup of gig-related tables before starting a new demo cycle to ensure state consistency.
+- **Autonomous Demo — SQLite Lock (ADR-014)**: Resolved `database is locked (SQLITE_BUSY 517)` errors that halted the demo at Steps 5–7. Root cause: `gig_engine` transactions held exclusive SQLite WRITE locks while audit triggers cascaded additional writes, compounded by SSE multi-tab connection pool exhaustion (`max_connections=10`). Fix: rewrote `autonomous_demo.rs` to use individual SQL queries (no transactions), temporarily disable audit triggers during demo execution, and yield connections between writes. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md`.
+- **Authentication**: Updated `MockAuthManager` to allow `mock_token` for seamless local testing and E2E verification.
 - **OAuth 2.1 Mock Endpoints**:
     - Added stub handlers for `/api/v1/auth/authorize` and `/api/v1/auth/token` in `api-server`.
     - Integrated with `utoipa` for OpenAPI documentation of the authentication flow.
+- **Autonomous AI Economy Demo (Phase 25)**:
+    - Implemented `AutonomousDemo` orchestrator to simulate a 60-second autonomous agent lifecycle.
+    - Added `POST /api/v1/demo/start` endpoint to trigger the autonomous cycle in the background.
+    - Integrated `IntentGenerator`, `GigEngine`, `SwarmOps`, and `Karma` for a complete "Earn & Evolve" demonstration.
+    - Implemented real-time event broadcasting via `PluginEvent` for frontend visualization.
+    - Added TDD-based integration tests to verify the demo API and lifecycle.
+- **Autonomous Demo UI (Phase 25.5)**:
+    - Added `DemoView.tsx` to the Management Console for real-time visualization of the autonomous cycle.
+    - Implemented an animated execution timeline tracking the 8-step process.
+    - Integrated with `useSystemVitality` SSE hook to display live agent stats and karma progression.
+    - Added TDD-based E2E Playwright tests to verify rendering and UI interactions.
 - **Enhanced Mock Authentication**:
     - Updated `MockAuthManager` to support custom `agent_id` via mock tokens (`mock_valid_token_<sub>:<agent_id>`).
     - Standardized separator to `:` to prevent collisions with usernames containing underscores.

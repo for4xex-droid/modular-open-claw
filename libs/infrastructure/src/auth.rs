@@ -157,6 +157,16 @@ impl AuthManager for MockAuthManager {
                 iat: 1600000000,
                 iss: "mock_issuer".to_string(),
             })
+        } else if token == "mock_token" {
+            Ok(AiomeCustomClaims {
+                sub: "dev".to_string(),
+                ekyc_verified: true,
+                agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+                roles: vec!["user".to_string()],
+                exp: 9999999999,
+                iat: 1600000000,
+                iss: "mock_issuer".to_string(),
+            })
         } else {
             Err(AiomeError::SecurityViolation {
                 reason: "Invalid Mock Token".to_string(),

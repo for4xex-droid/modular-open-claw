@@ -21,6 +21,85 @@ pub trait DbInitializer {
 impl DbInitializer for SqliteJobQueue {
     /// The Immortal Samsara Schema (完全不可侵DDL)
     async fn init_db(&self) -> Result<(), AiomeError> {
+        // Essential Audit Infrastructure
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS audit_ledger_global (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                new_data TEXT NOT NULL,
+                prev_hash TEXT NOT NULL,
+                current_hash TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create audit_ledger_global: {}", e),
+        })?;
+
+        let trigger_tables = vec![
+            ("jobs", "id"),
+            ("karma_logs", "id"),
+            ("system_state", "key"),
+            ("ai_artifacts", "id"),
+            ("revenue_splits", "asset_id"),
+            ("gig_intents", "id"),
+            ("gig_bids", "id"),
+            ("escrows", "id"),
+            ("gig_deliveries", "order_id"),
+        ];
+
+        for (table, pk_col) in trigger_tables {
+            // Drop old triggers to ensure we replace them with the new PK-aware logic.
+            // This MUST happen before any INSERT/UPDATE on these tables to avoid "no such column: NEW.id" errors
+            // from lingering faulty triggers in the DB.
+            let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_insert_{}", table))
+                .execute(&self.pool)
+                .await;
+            let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_update_{}", table))
+                .execute(&self.pool)
+                .await;
+
+            let trigger_sql = format!(
+                "CREATE TRIGGER IF NOT EXISTS audit_insert_{0}
+                 AFTER INSERT ON {0}
+                 BEGIN
+                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
+                    VALUES (
+                        '{0}',
+                        'INSERT',
+                        COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'),
+                        '{0}:INSERT:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'),
+                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
+                        hex(randomblob(16))
+                    );
+                 END;",
+                table, pk_col
+            );
+            let _ = sqlx::query(&trigger_sql).execute(&self.pool).await;
+
+            let update_sql = format!(
+                "CREATE TRIGGER IF NOT EXISTS audit_update_{0}
+                 AFTER UPDATE ON {0}
+                 BEGIN
+                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
+                    VALUES (
+                        '{0}',
+                        'UPDATE',
+                        COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'),
+                        '{0}:UPDATE:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'),
+                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
+                        hex(randomblob(16))
+                    );
+                 END;",
+                table, pk_col
+            );
+            let _ = sqlx::query(&update_sql).execute(&self.pool).await;
+        }
+
         // Use CREATE TABLE IF NOT EXISTS to prevent data loss on restart.
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS jobs (
@@ -472,6 +551,7 @@ impl DbInitializer for SqliteJobQueue {
             "ALTER TABLE agent_souls ADD COLUMN anamnesis_json TEXT NOT NULL DEFAULT '{}';",
             "ALTER TABLE agent_souls ADD COLUMN lora_adapter_path TEXT;",
             "ALTER TABLE agent_souls ADD COLUMN lora_base_model TEXT;",
+            "ALTER TABLE agent_souls ADD COLUMN lora_hash TEXT;",
             "ALTER TABLE agent_souls ADD COLUMN last_begging_at TEXT;",
             "ALTER TABLE gig_intents ADD COLUMN category TEXT NOT NULL DEFAULT 'Other';",
         ] {
@@ -890,65 +970,6 @@ impl DbInitializer for SqliteJobQueue {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to create revenue_splits table: {}", e),
         })?;
-
-        // Add triggers to automatically write to the audit ledger and compute hashes via SQLite hex/random or simple concats
-        let trigger_tables = vec![
-            "jobs",
-            "karma_logs",
-            "sns_metrics_history",
-            "system_state",
-            "ai_artifacts",
-            "revenue_splits",
-            "gig_intents",
-            "gig_bids",
-            "escrows",
-            "gig_deliveries",
-        ];
-        for table in trigger_tables {
-            let trigger_sql = format!(
-                "CREATE TRIGGER IF NOT EXISTS audit_insert_{0}
-                 AFTER INSERT ON {0}
-                 BEGIN
-                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
-                    VALUES (
-                        '{0}',
-                        'INSERT',
-                        COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
-                        '{0}:INSERT:' || COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
-                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
-                        hex(randomblob(16))
-                    );
-                 END;", table
-            );
-            if let Err(e) = sqlx::query(&trigger_sql).execute(&self.pool).await {
-                warn!(
-                    "⚠️ [DbInitializer] Failed to create audit_insert trigger for {}: {}",
-                    table, e
-                );
-            }
-
-            let update_sql = format!(
-                "CREATE TRIGGER IF NOT EXISTS audit_update_{0}
-                 AFTER UPDATE ON {0}
-                 BEGIN
-                    INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
-                    VALUES (
-                        '{0}',
-                        'UPDATE',
-                        COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
-                        '{0}:UPDATE:' || COALESCE(CAST(NEW.id AS TEXT), 'UNKNOWN'),
-                        COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'),
-                        hex(randomblob(16))
-                    );
-                 END;", table
-            );
-            if let Err(e) = sqlx::query(&update_sql).execute(&self.pool).await {
-                warn!(
-                    "⚠️ [DbInitializer] Failed to create audit_update trigger for {}: {}",
-                    table, e
-                );
-            }
-        }
 
         // Phase 11: Voice DRM & Economy Ledger (Gate 4 Patch)
         sqlx::query(

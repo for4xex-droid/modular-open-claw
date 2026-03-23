@@ -218,7 +218,8 @@ pub fn build_app(
         .route(
             "/api/v1/settings/identity",
             get(routes::settings::get_identity),
-        );
+        )
+        .route("/api/v1/demo/start", post(routes::demo::start_demo));
 
     #[cfg(debug_assertions)]
     let internal_router = internal_router.route(
