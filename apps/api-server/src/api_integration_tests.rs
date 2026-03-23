@@ -260,7 +260,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         skills_dir.to_str().unwrap(),
     ));
     let artifact_store = Arc::new(infrastructure::artifact_store::SqliteArtifactStore::new(
-        job_queue.get_pool().get_sqlite_pool().unwrap().clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
         artifacts_dir.clone(),
     ));
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
@@ -276,7 +276,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
     let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
-        job_queue.get_pool().get_sqlite_pool().unwrap().clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
     )));
     let intent_generator = Arc::new(infrastructure::intent::IntentGenerator::new(
         context_engine.clone(),
@@ -286,7 +286,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue.get_pool().get_sqlite_pool().unwrap().clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
     ));
     std::env::set_var(
         "VAULT_MASTER_KEY",
@@ -297,7 +297,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::security::VoiceCoreDrm::new(
             "http://localhost:3016".to_string(),
             registry.clone(),
-            job_queue.get_pool().get_sqlite_pool().unwrap().clone(),
+            job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
         )
         .await,
     );
@@ -391,7 +391,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
         gig_engine: Component::new(Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
-            job_queue.get_pool().get_sqlite_pool().unwrap().clone(),
+            job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
             Arc::new(MockCommerceEngine),
             provider.clone(),
             tmp_dir.path().join("gig_artifacts"),

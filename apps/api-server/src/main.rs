@@ -71,7 +71,7 @@ use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     // 0. Initialize Metrics EXPORTER (Q-5)
@@ -198,9 +198,8 @@ async fn main() {
     let artifact_store = infrastructure::artifact_store::SqliteArtifactStore::new(
         job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("ArtifactStore expects SQLite"),
+            .get_sqlite_pool_or_err()?
+            .clone(),
         std::path::PathBuf::from("workspace/artifacts"),
     )
     .with_embeddings(embed_provider.clone());
@@ -237,9 +236,8 @@ async fn main() {
                     key.expose_secret().to_string(),
                     job_queue
                         .get_pool()
-                        .get_sqlite_pool()
-                        .cloned()
-                        .expect("StripeCommerceEngine expects SQLite"),
+                        .get_sqlite_pool_or_err()?
+                        .clone(),
                 )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
             )
         } else {
@@ -281,9 +279,8 @@ async fn main() {
     let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
         job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("SqliteSoulStore expects SQLite"),
+            .get_sqlite_pool_or_err()?
+            .clone(),
     )));
 
     // AgentSense (AS-1)
@@ -337,17 +334,15 @@ async fn main() {
             sandbox,
             job_queue
                 .get_pool()
-                .get_sqlite_pool()
-                .cloned()
-                .expect("TremendousGiftEngine expects SQLite"),
+                .get_sqlite_pool_or_err()?
+                .clone(),
         )) as Arc<dyn GiftEngine>
     };
     let ekyc_session_store = {
         let pool = job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("SqliteEkycSessionStore expects SQLite");
+            .get_sqlite_pool_or_err()?
+            .clone();
         Arc::new(infrastructure::compliance::ekyc_store::SqliteEkycSessionStore::new(pool))
             as Arc<dyn EkycSessionStore>
     };
@@ -380,9 +375,8 @@ async fn main() {
     let quarantine_store = {
         let pool = job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("SqliteQuarantineStore expects SQLite");
+            .get_sqlite_pool_or_err()?
+            .clone();
         let store = infrastructure::compliance::quarantine::SqliteQuarantineStore::new(pool)
             .await
             .expect("🚨 Failed to initialize SqliteQuarantineStore");
@@ -413,9 +407,8 @@ async fn main() {
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
         job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("RegistryManager expects SQLite"),
+            .get_sqlite_pool_or_err()?
+            .clone(),
     ));
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
@@ -424,18 +417,16 @@ async fn main() {
             registry.clone(),
             job_queue
                 .get_pool()
-                .get_sqlite_pool()
-                .cloned()
-                .expect("VoiceCoreDrm expects SQLite"),
+                .get_sqlite_pool_or_err()?
+                .clone(),
         )
         .await,
     );
     let gig_engine = Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
         job_queue
             .get_pool()
-            .get_sqlite_pool()
-            .cloned()
-            .expect("SqliteGigEngine expects SQLite"),
+            .get_sqlite_pool_or_err()?
+            .clone(),
         commerce_engine
             .clone()
             .expect("Commerce Engine must be initialized for Gig Engine"),
@@ -561,11 +552,13 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], 3015));
     info!("🚀 [api-server] Listening on http://{}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await.expect(&format!(
-        "🚨 [api-server] Failed to bind to address http://{}. Check if the port is already in use.",
-        addr
-    ));
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| anyhow::anyhow!(
+        "🚨 [api-server] Failed to bind to address http://{}. Check if the port is already in use. Error: {}",
+        addr, e
+    ))?;
     axum::serve(listener, app)
         .await
-        .expect("🚨 [api-server] Failed to start Axum server");
+        .map_err(|e| anyhow::anyhow!("🚨 [api-server] Failed to start Axum server: {}", e))?;
+
+    Ok(())
 }
