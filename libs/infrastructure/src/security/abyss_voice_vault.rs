@@ -6,6 +6,7 @@
  */
 
 use crate::registry::RegistryManager;
+use crate::security::mlock::MlockedVec;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::voice_vault::VoiceKeyVault;
 use async_trait::async_trait;
@@ -13,7 +14,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 use zeroize::{Zeroize, Zeroizing};
-use crate::security::mlock::MlockedVec;
 
 use sqlx::SqlitePool;
 
@@ -146,12 +146,15 @@ mod tests {
         // 2. 新しい Vault インスタンスを作成（復元の確認）
         // VaultBackend により、restore_keys_from_db を呼ばずとも on-demand fetch で取得可能。
         let registry_clone = Arc::new(RegistryManager::new(
-             // Recovering pool from setup for test purpose
-             sqlx::sqlite::SqlitePoolOptions::new().connect("sqlite::memory:").await.unwrap()
+            // Recovering pool from setup for test purpose
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(),
         )); // In real test, pass the same pool. Let's just create a secondary setup that points to same db.
 
-        let vault2 = setup_vault().await; 
-        
+        let vault2 = setup_vault().await;
+
         // Let's actually share the pool for the test validation since sqlite::memory is per-pool.
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .max_connections(5)

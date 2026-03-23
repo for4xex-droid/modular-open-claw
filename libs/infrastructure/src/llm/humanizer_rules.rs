@@ -36,28 +36,38 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
             // 実際は文脈によるが、最も安全な「、」やスペースへの置換、あるいは削除。
             pattern: Regex::new(r"——|—|─").unwrap(),
             action: HumanizerAction::Replace("、".to_string()),
-            active_contexts: vec![WritingContext::Chat, WritingContext::TechLog, WritingContext::Default],
+            active_contexts: vec![
+                WritingContext::Chat,
+                WritingContext::TechLog,
+                WritingContext::Default,
+            ],
         },
         // 2. チャットボット残留表現
         HumanizerRule {
             name: "chatbot_artifacts",
-            pattern: Regex::new(r"(?x)
+            pattern: Regex::new(
+                r"(?x)
                 お役に立てれば幸いです[！!]*|
                 ご不明な点がございましたら.*?お知らせください[！!]*|
                 その他に[も]?お手伝いできることはありますか[？?]*|
                 お気軽にお申し付けください[！!]*
-            ").unwrap(),
+            ",
+            )
+            .unwrap(),
             action: HumanizerAction::Delete,
             active_contexts: vec![], // All contexts
         },
         // 3. 追従的トーン
         HumanizerRule {
             name: "sycophantic_tone",
-            pattern: Regex::new(r"(?x)
+            pattern: Regex::new(
+                r"(?x)
                 素晴らしい[ご]?質問ですね[！!]*|
                 おっしゃる通りです[！!]*|
                 その通りです[。]*
-            ").unwrap(),
+            ",
+            )
+            .unwrap(),
             action: HumanizerAction::Delete,
             active_contexts: vec![], // All contexts
         },
@@ -66,7 +76,11 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
             name: "excessive_hedging",
             pattern: Regex::new(r"かもしれない可能性がある").unwrap(),
             action: HumanizerAction::Replace("だろう".to_string()),
-            active_contexts: vec![WritingContext::TechLog, WritingContext::Chat, WritingContext::Default],
+            active_contexts: vec![
+                WritingContext::TechLog,
+                WritingContext::Chat,
+                WritingContext::Default,
+            ],
         },
         // 5. フィラー句
         HumanizerRule {

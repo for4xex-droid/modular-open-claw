@@ -3,10 +3,10 @@ use super::writing_context::WritingContext;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{LlmProvider, LlmResponse};
 use async_trait::async_trait;
+use regex::Regex;
 use std::fmt;
 use std::sync::Arc;
 use tracing::{info, warn};
-use regex::Regex;
 
 /// LLMの出力から「AIくささ」を除去するためのミドルウェア
 pub struct HumanizerFilter {
@@ -68,13 +68,20 @@ impl HumanizerFilter {
             if rule.pattern.is_match(&current_text) {
                 match &rule.action {
                     HumanizerAction::Replace(replacement) => {
-                        current_text = rule.pattern.replace_all(&current_text, replacement).to_string();
+                        current_text = rule
+                            .pattern
+                            .replace_all(&current_text, replacement)
+                            .to_string();
                     }
                     HumanizerAction::Delete => {
                         current_text = rule.pattern.replace_all(&current_text, "").to_string();
                     }
                     HumanizerAction::LogWarning => {
-                        warn!("📝 [HumanizerFilter] AI-pattern detected ({}): Rule '{}'", self.context_name(), rule.name);
+                        warn!(
+                            "📝 [HumanizerFilter] AI-pattern detected ({}): Rule '{}'",
+                            self.context_name(),
+                            rule.name
+                        );
                     }
                 }
             }
@@ -102,14 +109,17 @@ impl LlmProvider for HumanizerFilter {
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
         let mut response = self.inner.complete(prompt, system).await?;
-        
+
         // フィルタ適用
         let original_len = response.content.len();
         response.content = self.apply_rules(&response.content);
         let new_len = response.content.len();
 
         if original_len != new_len {
-            info!("📝 [HumanizerFilter] Applied AI-writing filters. Length: {} -> {}", original_len, new_len);
+            info!(
+                "📝 [HumanizerFilter] Applied AI-writing filters. Length: {} -> {}",
+                original_len, new_len
+            );
         }
 
         Ok(response)
@@ -139,8 +149,8 @@ impl LlmProvider for HumanizerFilter {
 
 #[cfg(test)]
 mod tests {
+    use super::super::humanizer_rules::{default_rules_ja, HumanizerAction, HumanizerRule};
     use super::*;
-    use super::super::humanizer_rules::{HumanizerAction, HumanizerRule, default_rules_ja};
     use crate::llm::writing_context::WritingContext;
     use aiome_core::llm_provider::MockLlmProvider;
     use regex::Regex;
@@ -217,8 +227,9 @@ mod tests {
             action: HumanizerAction::Replace("、".to_string()),
             active_contexts: vec![WritingContext::Chat], // Chatのみ有効
         }];
-        
-        let filter_manifesto = HumanizerFilter::new(base.clone(), rules.clone(), WritingContext::Manifesto);
+
+        let filter_manifesto =
+            HumanizerFilter::new(base.clone(), rules.clone(), WritingContext::Manifesto);
         let res1 = filter_manifesto.complete("prompt", None).await.unwrap();
         // Manifestoではルール適用されない
         assert_eq!(res1.content, text);

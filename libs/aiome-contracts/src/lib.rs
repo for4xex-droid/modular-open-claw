@@ -21,8 +21,8 @@ pub mod traits;
 pub mod trajectory;
 pub mod treasure;
 pub mod types;
-pub mod voice_vault;
 pub mod vault_backend;
+pub mod voice_vault;
 
 pub use biome::*;
 pub use commerce::*;

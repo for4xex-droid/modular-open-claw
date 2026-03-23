@@ -371,12 +371,12 @@ impl BastionGuard {
     }
 }
 
-/// メモリ上に固定(mlock)されたバイトベクタの実装
-pub mod mlock;
 /// Abyss Voice Vault (暗号化ボイスアセットの復号管理)
 pub mod abyss_voice_vault;
 /// 暗号化・復号処理のユーティリティ群
 pub mod crypto;
+/// メモリ上に固定(mlock)されたバイトベクタの実装
+pub mod mlock;
 pub mod sqlite_vault_backend;
 use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;

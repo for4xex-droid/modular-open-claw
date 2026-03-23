@@ -471,8 +471,7 @@ async fn main() {
                 let list: Vec<HeaderValue> = origins
                     .split(',')
                     .map(|s| {
-                        HeaderValue::from_str(s.trim())
-                            .expect("Invalid origin in ALLOWED_ORIGINS")
+                        HeaderValue::from_str(s.trim()).expect("Invalid origin in ALLOWED_ORIGINS")
                     })
                     .collect();
                 layer = layer.allow_origin(AllowOrigin::list(list));

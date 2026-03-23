@@ -29,14 +29,19 @@ impl MlockedVec {
                 if mlock(ptr, len) != 0 {
                     // 権限不足やリミット超過の場合は警告。
                     // 開発環境(非root)では失敗することが多いためパニックはさせない。
-                    tracing::warn!("🔐 [Security] mlock() failed. Memory may be swappable. (Check ulimit -l)");
+                    tracing::warn!(
+                        "🔐 [Security] mlock() failed. Memory may be swappable. (Check ulimit -l)"
+                    );
                 } else {
                     locked = true;
                     tracing::debug!("🔐 [Security] Memory locked (mlock) successfully.");
                 }
             }
         }
-        Self { inner: data, locked }
+        Self {
+            inner: data,
+            locked,
+        }
     }
 
     /// メモリ固定に成功したかどうかを返す
@@ -53,8 +58,8 @@ impl MlockedVec {
 impl std::fmt::Debug for MlockedVec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MlockedVec")
-         .field("inner", &"***REDACTED***")
-         .finish()
+            .field("inner", &"***REDACTED***")
+            .finish()
     }
 }
 
@@ -66,7 +71,7 @@ impl Drop for MlockedVec {
         unsafe {
             // 1. ゼロ消去 (Zeroize) - 常に実行
             self.inner.zeroize();
-            
+
             // 2. メモリ固定解除 - 成功していた場合のみ
             if self.locked && len > 0 {
                 if munlock(ptr, len) != 0 {
@@ -106,7 +111,7 @@ mod tests {
     fn test_mlocked_vec_lifecycle() {
         let data = vec![1, 2, 3, 4, 5];
         let m = MlockedVec::new(data.clone());
-        
+
         assert_eq!(*m, data);
         // mlock 成功/失敗によらず機能は維持される
         drop(m);

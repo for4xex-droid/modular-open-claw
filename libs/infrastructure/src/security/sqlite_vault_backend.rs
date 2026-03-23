@@ -71,8 +71,7 @@ impl VaultBackend for SqliteVaultBackend {
 
     async fn store_dek(&self, asset_id: Uuid, dek: &[u8]) -> Result<(), AiomeError> {
         let master = self.get_cached_master_key()?;
-        let encrypted =
-            crate::security::crypto::encrypt_aes256gcm(dek, &master.to_zeroizing())?;
+        let encrypted = crate::security::crypto::encrypt_aes256gcm(dek, &master.to_zeroizing())?;
 
         sqlx::query("INSERT OR REPLACE INTO vault_keys (asset_id, encrypted_key) VALUES (?, ?)")
             .bind(asset_id.to_string())
