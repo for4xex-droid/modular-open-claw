@@ -90,7 +90,7 @@ pub async fn generate_expression(
     }
 
     // 2. Fetch Soul Prompt
-    let soul_prompt = state.soul_mutator.get_active_prompt().await?;
+    let soul_prompt = crate::routes::agent::read_workspace_file("SOUL.md");
 
     // 3. VRAM Arbitration (15-C): Wait for GPU resource availability
     let _permit = tokio::time::timeout(

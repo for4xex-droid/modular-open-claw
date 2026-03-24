@@ -19,6 +19,7 @@ use infrastructure::compliance::ekyc::EkycEngine;
 use infrastructure::compliance::ekyc_store::EkycSessionStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::slo_engine::SloEngine;
+use infrastructure::audit_logger::AsyncAuditLogger;
 use shared::config::AiomeConfig;
 
 use async_trait::async_trait;
@@ -130,6 +131,11 @@ async fn main() -> anyhow::Result<()> {
             std::process::exit(1);
         });
     let job_queue = Arc::new(job_queue);
+
+    let audit_logger = Arc::new(AsyncAuditLogger::new(
+        Arc::new(job_queue.get_pool().clone()),
+        10000, // Process up to 10k items in memory before blocking
+    ));
 
     let system_agent_id = job_queue
         .get_system_agent_id()
@@ -323,7 +329,8 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
             key,
             sandbox,
-            job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+            job_queue.get_pool().clone(),
+            audit_logger.clone(),
         )) as Arc<dyn GiftEngine>
     };
     let ekyc_session_store = {
@@ -458,6 +465,7 @@ async fn main() -> anyhow::Result<()> {
         registry: Component::new(registry),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
+        audit_logger: Component::new(audit_logger),
         affiliate_adapter: Component::new(
             Arc::new(infrastructure::intent::AffiliateAdapter::new()),
         ),

@@ -7,7 +7,7 @@
 
 use super::swarm::SwarmOps;
 use super::UniversalJobQueue;
-use super::{cosine_similarity, try_get_opt};
+use super::cosine_similarity;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus, KarmaEntry, KarmaSearchResult};
 use async_trait::async_trait;
@@ -50,10 +50,70 @@ pub trait KarmaOps {
         karma_ids: Vec<String>,
         new_soul_hash: &str,
     ) -> Result<(), AiomeError>;
+    async fn do_fetch_relevant_karma_by_category(
+        &self,
+        topic: &str,
+        category: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError>;
 }
 
 #[async_trait]
 impl KarmaOps for UniversalJobQueue {
+    async fn do_fetch_relevant_karma_by_category(
+        &self,
+        topic: &str,
+        category: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError> {
+        // Implementation similar to do_fetch_relevant_karma but filtering by category/domain
+        let q = format!(
+            "SELECT id, lesson, weight, domain, subtopic FROM karma_logs WHERE domain = {} ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0),
+            self.pool.ph(1)
+        );
+        let mut items = Vec::new();
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q).bind(category).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                for r in rows {
+                    items.push(KarmaEntry {
+                        id: r.get("id"),
+                        job_id: r.try_get("job_id").ok(),
+                        karma_type: "Synthesized".to_string(),
+                        related_skill: r.try_get("subtopic").ok().unwrap_or_else(|| "general".to_string()),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i64, _>("weight") as i32,
+                        soul_version_hash: None,
+                        created_at: Utc::now().to_rfc3339(),
+                        ..Default::default()
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q).bind(category).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                for r in rows {
+                    items.push(KarmaEntry {
+                        id: r.get("id"),
+                        job_id: r.try_get("job_id").ok(),
+                        karma_type: "Synthesized".to_string(),
+                        related_skill: r.try_get("subtopic").ok().unwrap_or_else(|| "general".to_string()),
+                        lesson: r.get("lesson"),
+                        weight: r.get::<i32, _>("weight"),
+                        soul_version_hash: None,
+                        created_at: Utc::now().to_rfc3339(),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+        Ok(KarmaSearchResult {
+            entries: items,
+            is_ood: false,
+            max_score: 0.0,
+        })
+    }
+
     async fn do_fetch_relevant_karma(
         &self,
         topic: &str,
@@ -154,7 +214,7 @@ impl KarmaOps for UniversalJobQueue {
                         KarmaCandidate {
                             id: r.get("id"),
                             lesson: r.get("lesson"),
-                            hash: try_get_opt(r, "soul_version_hash"),
+                            hash: r.try_get::<String, _>("soul_version_hash").ok(),
                             sql_weight: r.get("sql_weight"),
                             semantic_score: 0.0,
                             stored_embedding,
@@ -186,7 +246,7 @@ impl KarmaOps for UniversalJobQueue {
                         KarmaCandidate {
                             id: r.get("id"),
                             lesson: r.get("lesson"),
-                            hash: try_get_opt(r, "soul_version_hash"),
+                            hash: r.try_get::<String, _>("soul_version_hash").ok(),
                             sql_weight: r.get("sql_weight"),
                             semantic_score: 0.0,
                             stored_embedding,
@@ -243,6 +303,7 @@ impl KarmaOps for UniversalJobQueue {
             final_entries.push(KarmaEntry {
                 id: candidate.id,
                 lesson: lesson_text,
+                ..Default::default()
             });
         }
 
@@ -373,21 +434,23 @@ impl KarmaOps for UniversalJobQueue {
                     category: r.get("category"),
                     topic: r.get("topic"),
                     style: r.get("style_name"),
-                    karma_directives: try_get_opt(&r, "karma_directives"),
-                    status: aiome_core::traits::JobStatus::from_string(r.get("status")),
-                    started_at: try_get_opt(&r, "started_at"),
-                    last_heartbeat: try_get_opt(&r, "last_heartbeat"),
+                    karma_directives: r.try_get("karma_directives").ok(),
+                    status: aiome_core::traits::JobStatus::from_string(r.get::<String, _>("status")),
+                    started_at: r.try_get("started_at").ok(),
+                    last_heartbeat: r.try_get("last_heartbeat").ok(),
                     tech_karma_extracted: tech_karma_extracted != 0,
                     creative_rating: r.try_get("creative_rating").ok(),
-                    execution_log: try_get_opt(&r, "execution_log"),
-                    error_message: try_get_opt(&r, "error_message"),
-                    sns_platform: try_get_opt(&r, "sns_platform"),
-                    sns_content_id: try_get_opt(&r, "sns_content_id"),
-                    published_at: try_get_opt(&r, "published_at"),
-                    output_artifacts: try_get_opt(&r, "output_artifacts"),
+                    execution_log: r.try_get("execution_log").ok(),
+                    error_message: r.try_get("error_message").ok(),
+                    sns_platform: r.try_get("sns_platform").ok(),
+                    sns_content_id: r.try_get("sns_content_id").ok(),
+                    published_at: r.try_get("published_at").ok(),
+                    output_artifacts: r.try_get("output_artifacts").ok(),
                     permission_manifest,
                     agent_id: None,
                     priority: r.get("priority"),
+                    created_at: r.try_get("created_at").unwrap_or_default(),
+                    updated_at: r.try_get("updated_at").unwrap_or_default(),
                 });
             }
         } else if let Some(rows) = rows_pg {
@@ -402,21 +465,23 @@ impl KarmaOps for UniversalJobQueue {
                     category: r.get("category"),
                     topic: r.get("topic"),
                     style: r.get("style_name"),
-                    karma_directives: try_get_opt(&r, "karma_directives"),
-                    status: aiome_core::traits::JobStatus::from_string(r.get("status")),
-                    started_at: try_get_opt(&r, "started_at"),
-                    last_heartbeat: try_get_opt(&r, "last_heartbeat"),
+                    karma_directives: r.try_get("karma_directives").ok(),
+                    status: aiome_core::traits::JobStatus::from_string(r.get::<String, _>("status")),
+                    started_at: r.try_get("started_at").ok(),
+                    last_heartbeat: r.try_get("last_heartbeat").ok(),
                     tech_karma_extracted: tech_karma_extracted != 0,
                     creative_rating: r.try_get("creative_rating").ok(),
-                    execution_log: try_get_opt(&r, "execution_log"),
-                    error_message: try_get_opt(&r, "error_message"),
-                    sns_platform: try_get_opt(&r, "sns_platform"),
-                    sns_content_id: try_get_opt(&r, "sns_content_id"),
-                    published_at: try_get_opt(&r, "published_at"),
-                    output_artifacts: try_get_opt(&r, "output_artifacts"),
+                    execution_log: r.try_get("execution_log").ok(),
+                    error_message: r.try_get("error_message").ok(),
+                    sns_platform: r.try_get("sns_platform").ok(),
+                    sns_content_id: r.try_get("sns_content_id").ok(),
+                    published_at: r.try_get("published_at").ok(),
+                    output_artifacts: r.try_get("output_artifacts").ok(),
                     permission_manifest,
                     agent_id: None,
                     priority: r.get("priority"),
+                    created_at: r.try_get("created_at").unwrap_or_default(),
+                    updated_at: r.try_get("updated_at").unwrap_or_default(),
                 });
             }
         }
@@ -453,12 +518,12 @@ impl KarmaOps for UniversalJobQueue {
                     })?;
                 for r in rows {
                     results.push(serde_json::json!({
-                        "id": r.get::<String, _>("id"), "job_id": try_get_opt::<_, String>(&r, "job_id"),
+                        "id": r.get::<String, _>("id"), "job_id": r.try_get::<String, _>("job_id").ok(),
                         "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
                         "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
-                        "soul": try_get_opt::<_, String>(&r, "soul_version_hash"), "node_id": r.get::<String, _>("node_id"),
-                        "clock": r.get::<i64, _>("lamport_clock"), "signature": try_get_opt::<_, String>(&r, "signature"),
-                        "last_applied_at": try_get_opt::<_, String>(&r, "last_applied_at"), "created_at": r.get::<String, _>("created_at")
+                        "soul": r.try_get::<String, _>("soul_version_hash").ok(), "node_id": r.get::<String, _>("node_id"),
+                        "clock": r.get::<i64, _>("lamport_clock"), "signature": r.try_get::<String, _>("signature").ok(),
+                        "last_applied_at": r.try_get::<String, _>("last_applied_at").ok(), "created_at": r.get::<String, _>("created_at")
                     }));
                 }
             }
@@ -472,12 +537,12 @@ impl KarmaOps for UniversalJobQueue {
                     })?;
                 for r in rows {
                     results.push(serde_json::json!({
-                        "id": r.get::<String, _>("id"), "job_id": try_get_opt::<_, String>(&r, "job_id"),
+                        "id": r.get::<String, _>("id"), "job_id": r.try_get::<String, _>("job_id").ok(),
                         "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
                         "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
-                        "soul": try_get_opt::<_, String>(&r, "soul_version_hash"), "node_id": r.get::<String, _>("node_id"),
-                        "clock": r.get::<i64, _>("lamport_clock"), "signature": try_get_opt::<_, String>(&r, "signature"),
-                        "last_applied_at": try_get_opt::<_, String>(&r, "last_applied_at"), "created_at": r.get::<String, _>("created_at")
+                        "soul": r.try_get::<String, _>("soul_version_hash").ok(), "node_id": r.get::<String, _>("node_id"),
+                        "clock": r.get::<i64, _>("lamport_clock"), "signature": r.try_get::<String, _>("signature").ok(),
+                        "last_applied_at": r.try_get::<String, _>("last_applied_at").ok(), "created_at": r.get::<String, _>("created_at")
                     }));
                 }
             }

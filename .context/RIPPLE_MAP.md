@@ -396,5 +396,14 @@ graph TD
     D[libs/infrastructure/src/db.rs] -->|Safe Pool Getter| E[apps/api-server/src/routes/*]
     E -->|Error Handling| F[Zero-Panic Reliability]
 ```
+
+### 🛡️ Phase 35: PostgreSQL 移行 & デュアルDB検証
+- **変更内容**: 
+    - `api-server` & `samsara-hub`: PostgreSQL 接続・マイグレーション・Audit Trigger の対応。
+    - `sqlite_migrations/20260324000000_init.sql`: `agent_diagnoses` スキーマを同期修正し、`trajectory_store.rs` との差異を解消。
+    - `commerce/gift.rs`: SQLite における `COALESCE(SUM(..), 0.0)` の戻り値型 (f64/REAL) の厳密な方言吸収。
+- **波及効果**: 
+    - `api_integration_tests.rs` を含む全統合テスト(86/86)が、SQLite および PostgreSQL の両環境下で透過的に 100% PASS を達成。
+
 ---
-*最終更新日: 2026-03-24* (Phase 31 / Reliability & TDD Completion)
+*最終更新日: 2026-03-24* (Phase 35 / Dual DB Integration)

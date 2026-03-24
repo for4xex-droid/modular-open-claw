@@ -10,9 +10,9 @@
 //! 定時でトレンドキーワードを取得する。
 //! 外部への通信はすべて reqwest で行い、HTML/URLの除去等の検疫処理（Context Sanitization）を実施する。
 
-use aiome_core::contracts::{TrendRequest, TrendResponse};
-use aiome_core::error::AiomeError;
-use aiome_core::traits::{AgentAct, TrendItem, TrendSource};
+use aiome_contracts::traits::{TrendItem, TrendSource};
+use aiome_contracts::contracts::{TrendRequest, TrendResponse};
+use aiome_contracts::error::AiomeError;
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -210,16 +210,14 @@ impl ExternalTrendSonar {
     }
 }
 
-#[async_trait]
-impl AgentAct for ExternalTrendSonar {
-    type Input = TrendRequest;
-    type Output = TrendResponse;
-
-    async fn execute(
+// AgentAct was removed from traits or consolidated.
+// We remove the impl if it's not found in aiome-contracts.
+// Instead we provide an inherent execute method if needed.
+impl ExternalTrendSonar {
+    pub async fn execute_trend_search(
         &self,
-        input: Self::Input,
-        _jail: &bastion::fs_guard::Jail,
-    ) -> Result<Self::Output, AiomeError> {
+        input: TrendRequest,
+    ) -> Result<TrendResponse, AiomeError> {
         let trends = self.get_trends(&input.category).await?;
         Ok(TrendResponse { items: trends })
     }

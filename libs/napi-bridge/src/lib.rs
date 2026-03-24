@@ -17,6 +17,7 @@ mod state;
 pub use state::*;
 
 use aiome_core::traits::JobQueue;
+use infrastructure::job_queue::WatchtowerOps;
 
 #[napi(object)]
 /// `SubagentSpawnResponse` 構造体
@@ -77,7 +78,7 @@ pub async fn karma_ingest(session_id: String, message_json: String) -> Result<()
     let role = msg.get("role").and_then(|r| r.as_str()).unwrap_or("user");
     let content = msg.get("content").and_then(|c| c.as_str()).unwrap_or("");
 
-    db.insert_chat_message(&session_id, role, content)
+    db.store_chat_message(&session_id, role, content)
         .await
         .map_err(map_err)?;
     Ok(())
@@ -185,7 +186,7 @@ pub async fn karma_compact(
     let db = get_db().await.map_err(map_err)?;
 
     // Memory distillation / Purging old chats
-    db.purge_old_distilled_chats(7).await.map_err(map_err)?; // Purge 7 days old
+    db.do_purge_old_distilled_chats(7).await.map_err(map_err)?; // Purge 7 days old
     db.karma_decay_sweep().await.map_err(map_err)?;
 
     Ok(())

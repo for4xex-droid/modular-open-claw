@@ -16,17 +16,17 @@ use tracing::{error, info, warn};
 
 #[async_trait]
 pub trait ExpressionOps {
-    async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError>;
-    async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
-    async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError>;
-    async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError>;
+    async fn do_store_expression(&self, expression: &Expression) -> Result<(), AiomeError>;
+    async fn do_fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
+    async fn do_get_auto_expression_enabled(&self) -> Result<bool, AiomeError>;
+    async fn do_set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError>;
     /// DP-10: リソース使用量を記録
-    async fn record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError>;
+    async fn do_record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
 impl ExpressionOps for UniversalJobQueue {
-    async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
+    async fn do_store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
         let karma_refs_json =
             serde_json::to_string(&expression.karma_refs).unwrap_or_else(|_| "[]".to_string());
         let avatar_params_json = expression
@@ -67,7 +67,7 @@ impl ExpressionOps for UniversalJobQueue {
         Ok(())
     }
 
-    async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
+    async fn do_fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
         let q = format!("SELECT id, content, emotion, karma_refs, audio_path, duration_ms, avatar_params, created_at, tts_status FROM expressions ORDER BY created_at DESC LIMIT {}", self.pool.ph(0));
         let mut results = Vec::new();
         match &self.pool {
@@ -129,31 +129,18 @@ impl ExpressionOps for UniversalJobQueue {
         Ok(results)
     }
 
-    async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+    async fn do_get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
         let q = format!(
             "SELECT value FROM system_settings WHERE key = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind("auto_expression_enabled")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind("auto_expression_enabled")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, "auto_expression_enabled")
+            .unwrap_or(None)
+            .map(|r| r.0);
         Ok(opt.map(|v| v == "true").unwrap_or(false))
     }
 
-    async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError> {
+    async fn do_set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError> {
         let val = if enabled { "true" } else { "false" };
         let cols = ["key", "value", "category", "is_secret"];
         let q = self.pool.upsert_query("system_settings", "key", &cols, 0);
@@ -171,7 +158,7 @@ impl ExpressionOps for UniversalJobQueue {
         Ok(())
     }
 
-    async fn record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError> {
+    async fn do_record_resource_usage(&self, log: &ResourceUsageLog) -> Result<(), AiomeError> {
         let q = format!("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6));
         sql_exec!(

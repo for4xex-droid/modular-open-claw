@@ -8,8 +8,9 @@
 use crate::circuit_breaker::CircuitBreaker;
 use crate::job_queue::UniversalJobQueue;
 use crate::slo_engine::SloEngine;
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider, LlmResponse};
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmResponse, LlmRequest};
+use aiome_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -60,35 +61,30 @@ impl LlmProvider for DynamicLlmProvider {
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
-                aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "openai" => {
                 let api_key = self.get_api_key("llm_api_key", "openai").await;
-                aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "claude" => {
                 let api_key = self.get_api_key("llm_api_key", "claude").await;
-                aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "lmstudio" => {
                 let host = self
                     .get_host("lm_studio_host", "http://127.0.0.1:1234")
                     .await;
-                aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                provider.complete(prompt, system).await
             }
             _ => {
                 let host = self.get_host("ollama_host", &self.fallback_host).await;
-                aiome_core::llm_provider::OllamaProvider::new(host, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
+                provider.complete(prompt, system).await
             }
         };
 
@@ -160,6 +156,19 @@ impl LlmProvider for DynamicLlmProvider {
     fn name(&self) -> &str {
         "DynamicLlm"
     }
+
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        let mut system = None;
+        let mut prompt = String::new();
+        for m in &request.messages {
+            if m.role == "system" {
+                system = Some(m.content.as_str());
+            } else if m.role == "user" {
+                prompt = m.content.clone();
+            }
+        }
+        self.complete(&prompt, system).await
+    }
 }
 
 #[async_trait]
@@ -212,7 +221,7 @@ impl DynamicLlmProvider {
             })
             .unwrap_or_else(|| "ollama".to_string());
 
-        let model = self
+        let model: String = self
             .jq
             .get_setting_value(&format!("{}llm_model", prefix))
             .await
@@ -330,19 +339,16 @@ impl LlmProvider for BackgroundLlmProvider {
 
         match provider_type.as_str() {
             "gemini" => {
-                aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "openai" => {
-                aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "claude" => {
-                aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                provider.complete(prompt, system).await
             }
             "lmstudio" => {
                 let host = self
@@ -352,9 +358,8 @@ impl LlmProvider for BackgroundLlmProvider {
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
-                aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                provider.complete(prompt, system).await
             }
             _ => {
                 let host = self
@@ -364,9 +369,8 @@ impl LlmProvider for BackgroundLlmProvider {
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| self.fallback_host.clone());
-                aiome_core::llm_provider::OllamaProvider::new(host, model)
-                    .complete(prompt, system)
-                    .await
+                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
+                provider.complete(prompt, system).await
             }
         }
     }
@@ -388,6 +392,19 @@ impl LlmProvider for BackgroundLlmProvider {
 
     fn name(&self) -> &str {
         "BackgroundLlm"
+    }
+
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        let mut system = None;
+        let mut prompt = String::new();
+        for m in &request.messages {
+            if m.role == "system" {
+                system = Some(m.content.as_str());
+            } else if m.role == "user" {
+                prompt = m.content.clone();
+            }
+        }
+        self.complete(&prompt, system).await
     }
 }
 

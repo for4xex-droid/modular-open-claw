@@ -6,8 +6,8 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{LlmResponse, StopReason};
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::{LlmResponse, StopReason};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;
@@ -43,7 +43,7 @@ impl SemanticCache {
     ) -> Result<Option<LlmResponse>, AiomeError> {
         let hash = Self::compute_hash(prompt, system);
 
-        let content_opt = match &self.jq.pool {
+        let content_opt = match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => {
                 let row = sqlx::query("SELECT response, provider_name, model_name FROM llm_response_cache WHERE prompt_hash = ? AND created_at > datetime('now', '-' || ttl_seconds || ' seconds')")
                     .bind(&hash)
@@ -85,7 +85,7 @@ impl SemanticCache {
     ) -> Result<(), AiomeError> {
         let hash = Self::compute_hash(prompt, system);
 
-        match &self.jq.pool {
+        match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query("INSERT OR REPLACE INTO llm_response_cache (prompt_hash, response, provider_name, model_name, ttl_seconds, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))")
                     .bind(&hash)
@@ -124,7 +124,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_semantic_cache_roundtrip() {
-        let jq = Arc::new(UniversalJobQueue::new_sqlite(":memory:").await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(":memory:").await.unwrap());
         let cache = SemanticCache::new(jq);
 
         let prompt = "hello";

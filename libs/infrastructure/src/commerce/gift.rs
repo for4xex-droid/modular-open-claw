@@ -5,12 +5,14 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::audit_logger::{AsyncAuditLogger, AuditEntry};
 use aiome_contracts::commerce::GiftEngine;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::json;
-use sqlx::SqlitePool;
+use crate::db::DatabasePool;
+use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -19,12 +21,13 @@ pub struct TremendousGiftEngine {
     api_key: String,
     base_url: String,
     client: Client,
-    pool: SqlitePool,
+    pool: DatabasePool,
+    audit_logger: Arc<AsyncAuditLogger>,
 }
 
 impl TremendousGiftEngine {
     /// 新しい TremendousGiftEngine を作成する
-    pub fn new(api_key: String, sandbox: bool, pool: SqlitePool) -> Self {
+    pub fn new(api_key: String, sandbox: bool, pool: DatabasePool, audit_logger: Arc<AsyncAuditLogger>) -> Self {
         // Double check for production safety (😈 Demon's Advocate Gate 4)
         #[cfg(debug_assertions)]
         if !sandbox {
@@ -41,6 +44,7 @@ impl TremendousGiftEngine {
             base_url,
             client: aiome_core::http::get_http_client().clone(),
             pool,
+            audit_logger,
         }
     }
 }
@@ -114,6 +118,19 @@ impl GiftEngine for TremendousGiftEngine {
             "✅ [GiftEngine] Gift order created successfully: {}",
             order_id
         );
+        
+        // Log the successful transaction asynchronously
+        self.audit_logger.log_event_sync(AuditEntry {
+            table_name: "gift_transactions".to_string(),
+            operation: "SEND".to_string(),
+            record_id: order_id.clone(),
+            new_data: json!({
+                "recipient_email": recipient_email,
+                "amount_usd": amount_usd,
+                "reason": safe_reason,
+            }),
+        });
+
         Ok(order_id)
     }
 
@@ -156,28 +173,32 @@ impl GiftEngine for TremendousGiftEngine {
         &self,
         agent_id: Uuid,
     ) -> Result<aiome_contracts::commerce::GiftPolicyContext, AiomeError> {
-        use sqlx::Row;
-
-        // Phase 15.2: 監査ログから今日（JST/UTC 混合に注意だが現行はサーバーローカル/UTC）の送信実績を取得
-        let row = sqlx::query(
+        let agent_str = agent_id.to_string();
+        
+        let q = format!(
             "SELECT 
                 COUNT(*) as count, 
-                SUM(json_extract(new_data, '$.amount_usd')) as total
+                COALESCE(SUM(CAST(new_data->>'amount_usd' AS FLOAT)), 0.0) as total
              FROM audit_ledger_global
              WHERE table_name = 'gift_transactions'
                AND operation = 'SEND'
-               AND timestamp >= datetime('now', 'start of day')
-               AND json_extract(new_data, '$.agent_id') = ?",
+               AND timestamp >= CURRENT_DATE
+               AND new_data->>'agent_id' = {}",
+            self.pool.ph(0)
+        );
+
+        // Use generic SQL fetch for dual-dialect support (SQLite & PostgreSQL)
+        let row_opt = crate::sql_fetch_optional!(
+            &self.pool,
+            (i64, f64),
+            &q,
+            &agent_str
         )
-        .bind(agent_id.to_string())
-        .fetch_one(&self.pool)
-        .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to fetch gift audit: {}", e),
         })?;
 
-        let count: i64 = row.get("count");
-        let total: f64 = row.get::<Option<f64>, _>("total").unwrap_or(0.0);
+        let (count, total) = row_opt.unwrap_or((0, 0.0));
 
         // とりあえず日次 5 件 or 合計 $20.0 を上限とする
         let daily_limit_reached = count >= 5 || total >= 20.0;
@@ -194,12 +215,24 @@ impl GiftEngine for TremendousGiftEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlx::SqlitePool;
+    use crate::db::DatabasePool;
+    use crate::audit_logger::AsyncAuditLogger;
 
     async fn setup_test_engine() -> TremendousGiftEngine {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        // 基本的なマイグレーション (audit_ledger_global)
-        sqlx::query("CREATE TABLE audit_ledger_global (id INTEGER PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data TEXT, current_hash TEXT, timestamp TEXT DEFAULT (datetime('now')))").execute(&pool).await.unwrap();
-        TremendousGiftEngine::new("test_key".into(), true, pool)
+        let pool = if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
+            let pg_pool = sqlx::postgres::PgPoolOptions::new().connect(&pg_url).await.unwrap();
+            sqlx::query("CREATE TABLE IF NOT EXISTS audit_ledger_global (id SERIAL PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data JSONB, current_hash TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)").execute(&pg_pool).await.unwrap();
+            sqlx::query("DELETE FROM audit_ledger_global").execute(&pg_pool).await.unwrap();
+            DatabasePool::Postgres(pg_pool)
+        } else {
+            let p = SqlitePool::connect("sqlite::memory:").await.unwrap();
+            sqlx::query("CREATE TABLE audit_ledger_global (id INTEGER PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data TEXT, current_hash TEXT, timestamp TEXT DEFAULT (datetime('now')))").execute(&p).await.unwrap();
+            DatabasePool::Sqlite(p)
+        };
+        
+        let logger = std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+        TremendousGiftEngine::new("test_key".into(), true, pool, logger)
     }
 
     #[tokio::test]
@@ -217,15 +250,21 @@ mod tests {
         if let Err(AiomeError::SecurityViolation { reason }) = result {
             assert!(reason.contains("safety limit"));
         } else {
-            panic!("Expected SecurityViolation");
+            panic!("Expected SecurityViolation but got {:?}", result);
         }
     }
 
     #[tokio::test]
     async fn test_sandbox_url_selection() {
         // sandbox=true の場合は testflight URL になることを確認
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        let sandbox_engine = TremendousGiftEngine::new("key".into(), true, pool);
+        let pool = if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
+            let pg_pool = sqlx::postgres::PgPoolOptions::new().connect(&pg_url).await.unwrap();
+            DatabasePool::Postgres(pg_pool)
+        } else {
+            DatabasePool::Sqlite(SqlitePool::connect("sqlite::memory:").await.unwrap())
+        };
+        let logger = std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+        let sandbox_engine = TremendousGiftEngine::new("key".into(), true, pool, logger);
         assert!(sandbox_engine.base_url.contains("testflight"));
     }
 }

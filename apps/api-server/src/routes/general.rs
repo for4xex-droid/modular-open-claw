@@ -232,8 +232,11 @@ pub async fn get_diagnoses(
     .fetch_all(pool)
     .await;
 
-    let diagnoses = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: format!("DB Error: {}", e),
+    let diagnoses = rows.map_err(|e| {
+        eprintln!("DB Error in get_diagnoses: {:?}", e);
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: format!("DB Error: {}", e),
+        }
     })?;
 
     Ok(Json(diagnoses))

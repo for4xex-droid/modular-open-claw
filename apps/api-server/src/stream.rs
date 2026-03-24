@@ -110,7 +110,7 @@ pub async fn trigger_agent_chat_stream(
         let channel_id = payload.channel_id.unwrap_or_else(|| "default_console".to_string());
 
         // Phase 3-B: Persist user message
-        let _ = state.job_queue.insert_chat_message(&channel_id, "user", &payload.prompt).await;
+        let _ = state.job_queue.store_chat_message(&channel_id, "user", &payload.prompt).await;
 
         // Phase 3-C: Fetch intelligent context
         let (summary, db_history) = state.context_engine.get_intelligent_history(&channel_id, 10).await.unwrap_or((None, Vec::new()));
@@ -313,7 +313,7 @@ pub async fn trigger_agent_chat_stream(
             }
         }
         // Phase 3-D: Persist assistant message and maintain context
-        let _ = state.job_queue.insert_chat_message(&channel_id, "assistant", &full_reply_for_storage).await;
+        let _ = state.job_queue.store_chat_message(&channel_id, "assistant", &full_reply_for_storage).await;
         let ce = state.context_engine.clone();
         let cid = channel_id.clone();
         tokio::spawn(async move {

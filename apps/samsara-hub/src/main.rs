@@ -27,7 +27,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 // Standard imports
 use sqlx::SqlitePool;
-use std::str::FromStr;
+use infrastructure::{sql_exec, sql_fetch_all, sql_fetch_optional};
+// use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
@@ -110,10 +111,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize Unified Database Pool
     let pool = if db_url.starts_with("postgres://") || db_url.starts_with("postgresql://") {
         let p = infrastructure::db::DatabasePool::new_postgres(&db_url).await?;
-        if let Some(pg_pool) = p.get_postgres_pool() {
-            infrastructure::job_queue::PostgresInitializer::init_db(pg_pool).await
-                .map_err(|e| anyhow::anyhow!("Failed to init Postgres for Hub: {}", e))?;
-        }
+        // DatabasePool::new_postgres already handles standard db initialization where appropriate.
         p
     } else {
         infrastructure::db::DatabasePool::new_sqlite(&db_url).await?
@@ -480,11 +478,12 @@ async fn list_topics_handler(
     let query = format!(
         "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
     );
-    
-    let rows = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, TopicRecord>(&query).fetch_all(p).await.unwrap_or_default(),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, TopicRecord>(&query).fetch_all(p).await.unwrap_or_default(),
-    };
+    let rows: Vec<TopicRecord> = sql_fetch_all!(
+        &state.pool,
+        TopicRecord,
+        &query
+    )
+    .unwrap_or_default();
  
     let topics: Vec<serde_json::Value> = rows
         .into_iter()
@@ -557,10 +556,14 @@ async fn create_topic_handler(
         "SELECT COALESCE(SUM(weight), 0) FROM approved_karma WHERE node_id = {} AND karma_type = 'Technical'",
         state.pool.ph(0)
     );
-    let karma_sum = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&karma_query).bind(&req.peer_pubkey).fetch_one(p).await.unwrap_or(0),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(&karma_query).bind(&req.peer_pubkey).fetch_one(p).await.unwrap_or(0),
-    };
+    let karma_sum = infrastructure::sql_fetch_optional!(
+        &state.pool,
+        (i64,),
+        &karma_query,
+        &req.peer_pubkey
+    )
+    .unwrap_or(Some((0,)))
+    .unwrap_or((0,)).0;
 
     info!(
         "🛡️ [Hub] PoK Check for {}: Technical Karma = {}",
@@ -584,10 +587,13 @@ async fn create_topic_handler(
         "INSERT INTO biome_topics (topic_id, peer_pubkey, summary) VALUES ({}, {}, {})",
         state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
     );
-    let res = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&insert_query).bind(&req.topic_id).bind(&req.peer_pubkey).bind(&req.summary).execute(p).await.map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&insert_query).bind(&req.topic_id).bind(&req.peer_pubkey).bind(&req.summary).execute(p).await.map(|_| ()),
-    };
+    let res = infrastructure::sql_exec!(
+        &state.pool,
+        &insert_query,
+        &req.topic_id,
+        &req.peer_pubkey,
+        &req.summary
+    );
 
     match res {
         Ok(_) => {
@@ -634,10 +640,14 @@ async fn biome_relay_handler(
         "SELECT COUNT(*) FROM biome_topics WHERE topic_id = {} AND status = 'Active'",
         state.pool.ph(0)
     );
-    let topic_exists = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&topic_check_query).bind(&msg.topic_id).fetch_one(p).await.map(|c| c > 0).unwrap_or(false),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(&topic_check_query).bind(&msg.topic_id).fetch_one(p).await.map(|c| c > 0).unwrap_or(false),
-    };
+    let topic_exists = infrastructure::sql_fetch_optional!(
+        &state.pool,
+        (i64,),
+        &topic_check_query,
+        &msg.topic_id
+    )
+    .unwrap_or(Some((0,)))
+    .unwrap_or((0,)).0 > 0;
 
     if !topic_exists {
         return (
@@ -707,10 +717,12 @@ async fn biome_relay_handler(
         "INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES ({}, {})",
         state.pool.ph(0), state.pool.ph(1)
     );
-    if let Err(e) = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&relay_insert_query).bind(&msg.recipient_pubkey).bind(&payload_json).execute(p).await.map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&relay_insert_query).bind(&msg.recipient_pubkey).bind(&payload_json).execute(p).await.map(|_| ()),
-    } {
+    if let Err(e) = infrastructure::sql_exec!(
+        &state.pool,
+        &relay_insert_query,
+        &msg.recipient_pubkey,
+        &payload_json
+    ) {
         error!(
             "🛡️ [Relay] Failed to queue biome message for {}: {}",
             msg.recipient_pubkey, e
@@ -722,10 +734,11 @@ async fn biome_relay_handler(
         "UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = {} WHERE topic_id = {}",
         state.pool.now_fn(), state.pool.ph(0)
     );
-    if let Err(e) = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&turn_update_query).bind(&msg.topic_id).execute(p).await.map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&turn_update_query).bind(&msg.topic_id).execute(p).await.map(|_| ()),
-    } {
+    if let Err(e) = infrastructure::sql_exec!(
+        &state.pool,
+        &turn_update_query,
+        &msg.topic_id
+    ) {
             warn!("🛡️ [Relay] Failed to increment turn_count for {}: {}", msg.topic_id, e);
         }
 
@@ -844,10 +857,14 @@ async fn sync_handler(
     // BFT: BAN Check
     // BFT: BAN Check
     let ban_check_query = format!("SELECT is_banned FROM node_reputation WHERE node_id = {}", state.pool.ph(0));
-    let is_banned = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&ban_check_query).bind(&payload.node_id).fetch_one(p).await.map(|b| b == 1).unwrap_or(false),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, bool>(&ban_check_query).bind(&payload.node_id).fetch_one(p).await.unwrap_or(false),
-    };
+    let is_banned = infrastructure::sql_fetch_optional!(
+        &state.pool,
+        (bool,),
+        &ban_check_query,
+        &payload.node_id
+    )
+    .unwrap_or(Some((false,)))
+    .unwrap_or((false,)).0;
  
     if is_banned {
         warn!(
@@ -880,35 +897,46 @@ async fn sync_handler(
          ) WHERE ts > {} ORDER BY ts ASC LIMIT 500",
          state.pool.ph(0)
     );
-    let karmas = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, FederatedKarmaRecord>(&karma_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, FederatedKarmaRecord>(&karma_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-    };
- 
+    let karmas: Vec<FederatedKarmaRecord> = infrastructure::sql_fetch_all!(
+        &state.pool,
+        FederatedKarmaRecord,
+        &karma_sync_query,
+        &since
+    )
+    .unwrap_or_default();
     let rule_sync_query = format!(
         "SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM approved_rules 
          WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500",
          state.pool.ph(0)
     );
-    let rules = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, ImmuneRuleRecord>(&rule_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, ImmuneRuleRecord>(&rule_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-    };
- 
+    let rules: Vec<ImmuneRuleRecord> = infrastructure::sql_fetch_all!(
+        &state.pool,
+        ImmuneRuleRecord,
+        &rule_sync_query,
+        &since
+    )
+    .unwrap_or_default();
     let has_more = karmas.len() == 500 || rules.len() == 500;
     
     let arena_sync_query = format!("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM approved_arena_matches WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500", state.pool.ph(0));
-    let arena_rows = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, ArenaMatchRecord>(&arena_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, ArenaMatchRecord>(&arena_sync_query).bind(&since).fetch_all(p).await.unwrap_or_default(),
-    };
+    let arena_rows: Vec<ArenaMatchRecord> = infrastructure::sql_fetch_all!(
+        &state.pool,
+        ArenaMatchRecord,
+        &arena_sync_query,
+        &since
+    )
+    .unwrap_or_default();
 
     // Fetch latest Automerge Snapshot for this node if it exists
     let snapshot_query = format!("SELECT snapshot_blob FROM timeline_snapshots WHERE node_id = {}", state.pool.ph(0));
-    let snapshot_blob: Option<Vec<u8>> = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, Vec<u8>>(&snapshot_query).bind(&payload.node_id).fetch_optional(p).await.unwrap_or(None),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, Vec<u8>>(&snapshot_query).bind(&payload.node_id).fetch_optional(p).await.unwrap_or(None),
-    };
+    let snapshot_blob: Option<Vec<u8>> = infrastructure::sql_fetch_optional!(
+        &state.pool,
+        (Vec<u8>,),
+        &snapshot_query,
+        &payload.node_id
+    )
+    .unwrap_or(Some((None.unwrap_or_default(),)))
+    .map(|t| t.0);
 
     let _next_cursor: Option<String> = if has_more {
         // Find the latest approved_at for pagination (Keyset Pagination)
@@ -929,6 +957,7 @@ async fn sync_handler(
                 related_skill: k.related_skill,
                 lesson: k.lesson,
                 weight: k.weight as i32,
+                last_applied_at: Some(k.created_at.clone()),
                 created_at: k.created_at,
                 soul_version_hash: k.soul_version_hash,
                 lamport_clock: k.lamport_clock as u64,
@@ -937,6 +966,7 @@ async fn sync_handler(
                 clone_origin_id: k.clone_origin_id,
                 generation: k.generation.map(|g| g as u32),
                 somatic_valence: k.somatic_valence,
+                score: 0.0,
             })
             .collect(),
         new_immune_rules: rules
@@ -1013,10 +1043,14 @@ async fn push_handler(
 
     // BFT: BAN Check
     let ban_check_query = format!("SELECT is_banned FROM node_reputation WHERE node_id = {}", state.pool.ph(0));
-    let is_banned = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&ban_check_query).bind(&payload.node_id).fetch_one(p).await.map(|b| b == 1).unwrap_or(false),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, bool>(&ban_check_query).bind(&payload.node_id).fetch_one(p).await.unwrap_or(false),
-    };
+    let is_banned = infrastructure::sql_fetch_optional!(
+        &state.pool,
+        (bool,),
+        &ban_check_query,
+        &payload.node_id
+    )
+    .unwrap_or(Some((false,)))
+    .unwrap_or((false,)).0;
  
     if is_banned {
         warn!(
@@ -1061,21 +1095,32 @@ async fn push_handler(
              state.pool.ph(4), state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
         );
         
-        let equiv_exists = match &state.pool {
-            infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&equiv_check_query).bind(&k.node_id).bind(k.lamport_clock as i64).bind(&k.lesson).bind(k.weight as i64).bind(&k.node_id).bind(k.lamport_clock as i64).bind(&k.lesson).bind(k.weight as i64).fetch_one(p).await.map(|c| c > 0).unwrap_or(false),
-            infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(&equiv_check_query).bind(&k.node_id).bind(k.lamport_clock as i64).bind(&k.lesson).bind(k.weight as i64).bind(&k.node_id).bind(k.lamport_clock as i64).bind(&k.lesson).bind(k.weight as i64).fetch_one(p).await.map(|c| c > 0).unwrap_or(false),
-        };
- 
+        let equiv_exists = infrastructure::sql_fetch_optional!(
+            &state.pool,
+            (i64,),
+            &equiv_check_query,
+            &k.node_id,
+            &(k.lamport_clock as i64),
+            &k.lesson,
+            &(k.weight as i64),
+            &k.node_id,
+            &(k.lamport_clock as i64),
+            &k.lesson,
+            &(k.weight as i64)
+        )
+        .unwrap_or(Some((0,)))
+        .unwrap_or((0,)).0 > 0;
         if equiv_exists {
             warn!(
                 "🛡️ [BFT] EQUIVOCATION detected from node: {}. Slashing node.",
                 k.node_id
             );
             let slash_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
-            let _ = match &state.pool {
-                infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&slash_query).bind(&k.node_id).execute(p).await.map(|_| ()),
-                infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&slash_query).bind(&k.node_id).execute(p).await.map(|_| ()),
-            };
+            let _ = infrastructure::sql_exec!(
+                &state.pool,
+                &slash_query,
+                &k.node_id
+            );
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1093,8 +1138,8 @@ async fn push_handler(
              state.pool.ph(10), state.pool.ph(11), state.pool.ph(12), state.pool.ph(13)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(ref mut t) => sqlx::query::<sqlx::Sqlite>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Postgres(ref mut t) => sqlx::query::<sqlx::Postgres>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
         };
         if let Err(e) = res {
             warn!("🛡️ [Push] Failed to quarantine karma {}: {}", k.id, e);
@@ -1112,20 +1157,34 @@ async fn push_handler(
              state.pool.ph(0), state.pool.ph(1), state.pool.ph(2), state.pool.ph(3), state.pool.ph(4),
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7), state.pool.ph(8), state.pool.ph(9)
         );
-        let exists = match &state.pool {
-            infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, i64>(&equiv_check_rule_query).bind(&r.node_id).bind(r.lamport_clock as i64).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.node_id).bind(r.lamport_clock as i64).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).fetch_one(p).await.unwrap_or(0),
-            infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, i64>(&equiv_check_rule_query).bind(&r.node_id).bind(r.lamport_clock as i64).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.node_id).bind(r.lamport_clock as i64).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).fetch_one(p).await.unwrap_or(0),
-        };
-
+        let exists = infrastructure::sql_fetch_optional!(
+            &state.pool,
+            (i64,),
+            &equiv_check_rule_query,
+            &r.node_id,
+            &(r.lamport_clock as i64),
+            &r.pattern,
+            &(r.severity as i64),
+            &r.action,
+            &r.node_id,
+            &(r.lamport_clock as i64),
+            &r.pattern,
+            &(r.severity as i64),
+            &r.action
+        )
+        .unwrap_or(Some((0,)))
+        .unwrap_or((0,)).0;
         if exists > 0 {
             warn!(
                 "🛡️ [BFT] EQUIVOCATION detected in RULE from node: {}. Slashing node.",
                 r.node_id
             );
-            let _ = match &state.pool {
-                infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = ?").bind(&r.node_id).execute(p).await.map(|_| ()),
-                infrastructure::db::DatabasePool::Postgres(p) => sqlx::query("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = $1").bind(&r.node_id).execute(p).await.map(|_| ()),
-            };
+            let ban_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
+            let _ = infrastructure::sql_exec!(
+                &state.pool,
+                &ban_query,
+                &r.node_id
+            );
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1217,10 +1276,12 @@ async fn push_handler(
          ON CONFLICT(node_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, reputation_score = node_reputation.reputation_score + 1",
          state.pool.ph(0), state.pool.ph(1)
     );
-    let res = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&reputation_query).bind(&payload.node_id).bind(&received_at_dt).execute(p).await.map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&reputation_query).bind(&payload.node_id).bind(&received_at_dt).execute(p).await.map(|_| ()),
-    };
+    let res = infrastructure::sql_exec!(
+        &state.pool,
+        &reputation_query,
+        &payload.node_id,
+        &received_at_dt
+    );
     if let Err(e) = res {
         warn!("🛡️ [Push] Failed to update node reputation for {}: {}", payload.node_id, e);
     }
@@ -1367,10 +1428,12 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
 
         // 1. Process Quarantined Karma
         let karma_fetch_query = "SELECT * FROM quarantined_karma LIMIT 50";
-        let karmas = match &pool {
-             infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, FederatedKarmaRecord>(karma_fetch_query).fetch_all(p).await.unwrap_or_default(),
-             infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, FederatedKarmaRecord>(karma_fetch_query).fetch_all(p).await.unwrap_or_default(),
-        };
+        let karmas: Vec<FederatedKarmaRecord> = infrastructure::sql_fetch_all!(
+            &pool,
+            FederatedKarmaRecord,
+            karma_fetch_query
+        )
+        .unwrap_or_default();
 
         for k in &karmas {
             let mut valid = false;
@@ -1440,24 +1503,28 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = match &pool {
-                    infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&slash_query).bind(&k.node_id).execute(p).await.map(|_| ()),
-                    infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&slash_query).bind(&k.node_id).execute(p).await.map(|_| ()),
-                };
+                let _ = infrastructure::sql_exec!(
+                    &pool,
+                    &slash_query,
+                    &k.node_id
+                );
                 let delete_malformed_query = format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
-                let _ = match &pool {
-                    infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&delete_malformed_query).bind(&k.id).execute(p).await.map(|_| ()),
-                    infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&delete_malformed_query).bind(&k.id).execute(p).await.map(|_| ()),
-                };
+                let _ = infrastructure::sql_exec!(
+                    &pool,
+                    &delete_malformed_query,
+                    &k.id
+                );
             }
         }
 
         // 2. Process Quarantined Rules
         let rule_fetch_query = "SELECT * FROM quarantined_rules LIMIT 50";
-        let rules = match &pool {
-             infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_as::<_, ImmuneRuleRecord>(rule_fetch_query).fetch_all(p).await.unwrap_or_default(),
-             infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_as::<_, ImmuneRuleRecord>(rule_fetch_query).fetch_all(p).await.unwrap_or_default(),
-        };
+        let rules: Vec<ImmuneRuleRecord> = infrastructure::sql_fetch_all!(
+            &pool,
+            ImmuneRuleRecord,
+            rule_fetch_query
+        )
+        .unwrap_or_default();
 
         for r in &rules {
             let mut valid = false;
@@ -1527,15 +1594,17 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_rule_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = match &pool {
-                    infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&slash_rule_query).bind(&r.node_id).execute(p).await.map(|_| ()),
-                    infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&slash_rule_query).bind(&r.node_id).execute(p).await.map(|_| ()),
-                };
+                let _ = infrastructure::sql_exec!(
+                    &pool,
+                    &slash_rule_query,
+                    &r.node_id
+                );
                 let delete_malformed_rule_query = format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
-                let _ = match &pool {
-                    infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&delete_malformed_rule_query).bind(&r.id).execute(p).await.map(|_| ()),
-                    infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&delete_malformed_rule_query).bind(&r.id).execute(p).await.map(|_| ()),
-                };
+                let _ = infrastructure::sql_exec!(
+                    &pool,
+                    &delete_malformed_rule_query,
+                    &r.id
+                );
             }
         }
 
@@ -1544,18 +1613,18 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
         let karma_evict_query = "DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)";
         let rule_evict_query = "DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)";
         
-        let res_k = match &pool {
-            infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(karma_evict_query).execute(p).await.map(|_| ()),
-            infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(karma_evict_query).execute(p).await.map(|_| ()),
-        };
+        let res_k = infrastructure::sql_exec!(
+            &pool,
+            karma_evict_query
+        );
         if let Err(e) = res_k {
             warn!("⚠️ [SamsaraHub] Karma eviction failed: {}", e);
         }
  
-        let res_r = match &pool {
-            infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(rule_evict_query).execute(p).await.map(|_| ()),
-            infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(rule_evict_query).execute(p).await.map(|_| ()),
-        };
+        let res_r = infrastructure::sql_exec!(
+            &pool,
+            rule_evict_query
+        );
         if let Err(e) = res_r {
             warn!("⚠️ [SamsaraHub] Rule eviction failed: {}", e);
         }

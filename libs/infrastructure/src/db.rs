@@ -251,28 +251,95 @@ impl DatabasePool {
 /// Helper macro to execute a query against either SQLite or PostgreSQL
 #[macro_export]
 macro_rules! sql_exec {
-    ($pool:expr, $sql:expr, $($arg:expr),*) => {{
+    ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
         match $pool {
             $crate::db::DatabasePool::Sqlite(p) => {
                 let res = sqlx::query($sql)
                     $(.bind($arg))*
                     .execute(p)
                     .await;
-                match res {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() }),
-                }
+                res.map(|r| r.rows_affected())
+                   .map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
             }
             $crate::db::DatabasePool::Postgres(p) => {
                 let res = sqlx::query($sql)
                     $(.bind($arg))*
                     .execute(p)
                     .await;
-                match res {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() }),
-                }
+                res.map(|r| r.rows_affected())
+                   .map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
             }
         }
     }};
 }
+
+/// Helper macro to fetch multiple rows and map them using a tuple
+#[macro_export]
+macro_rules! sql_fetch_all {
+    ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_all(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_all(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+/// Helper macro to fetch exactly one row
+#[macro_export]
+macro_rules! sql_fetch_one {
+    ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_one(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_one(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+/// Helper macro to fetch an optional row
+#[macro_export]
+macro_rules! sql_fetch_optional {
+    ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_optional(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_optional(p)
+                    .await;
+                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+

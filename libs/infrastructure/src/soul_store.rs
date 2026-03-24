@@ -341,16 +341,37 @@ impl UniversalSoulStore {
 }
 
 #[async_trait]
+#[async_trait]
 impl aiome_contracts::traits::SoulStore for UniversalSoulStore {
     async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError> {
         if let Some(soul) = self.load_soul(id).await? {
-            // Convert AgentSoul to JSON
             let val = serde_json::to_value(soul).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to serialize Soul to JSON: {}", e),
             })?;
             Ok(Some(val))
         } else {
             Ok(None)
+        }
+    }
+
+    async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError> {
+        let q = format!("INSERT INTO soul_fragments (fragment_yaml, version_hash) VALUES ({}, {})", self.pool.ph(0), self.pool.ph(1));
+        sql_exec!(&self.pool, &q, fragment_yaml, version_hash)?;
+        Ok(())
+    }
+
+    async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> {
+        let q = "SELECT fragment_yaml, version_hash FROM soul_fragments ORDER BY created_at DESC LIMIT 1";
+        use sqlx::Row;
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                Ok(row.map(|r| (r.get(0), r.get(1))))
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                Ok(row.map(|r| (r.get(0), r.get(1))))
+            }
         }
     }
 }

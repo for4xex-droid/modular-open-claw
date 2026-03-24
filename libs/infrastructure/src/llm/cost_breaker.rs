@@ -50,7 +50,7 @@ impl CostCircuitBreaker {
             .unwrap_or(self.default_limit_usd);
 
         // 過去24時間の累計コストを集計
-        let res_opt = match &self.jq.pool {
+        let res_opt = match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-1 day')")
                 .fetch_one(p)
                 .await

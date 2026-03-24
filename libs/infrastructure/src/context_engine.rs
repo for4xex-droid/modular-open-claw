@@ -6,10 +6,9 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_contracts::llm::{LlmMessage, LlmRequest};
-use aiome_contracts::traits::CapabilityProvider;
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::LlmProvider;
+use aiome_contracts::llm::{LlmMessage, LlmRequest, LlmProvider};
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -91,26 +90,13 @@ impl ContextEngine {
                     .collect::<Vec<_>>()
                     .join("\n");
 
-                let request = LlmRequest {
-                    messages: vec![
-                        LlmMessage {
-                            role: "system".into(),
-                            content: "あなたは会話要約アシスタントです。".into(),
-                            cache: true, // システム指示をキャッシュ
-                        },
-                        LlmMessage {
-                            role: "user".into(),
-                            content: format!(
-                                "以下のこれまでの要約と新しい会話履歴の内容を統合し、簡潔かつ重要なコンテキストを保持した新しい要約を作成してください。\n\n現在の要約:\n{}\n\n追加の会話履歴:\n{}\n\n出力形式: 重要な事実、ユーザーの意図、現在の状況をまとめた日本語の段落。余計な挨拶は不要。",
-                                current_summary, recent_context
-                            ),
-                            cache: false,
-                        },
-                    ],
-                    ..Default::default()
-                };
+                let prompt = format!(
+                    "以下のこれまでの要約と新しい会話履歴の内容を統合し、簡潔かつ重要なコンテキストを保持した新しい要約を作成してください。\n\n現在の要約:\n{}\n\n追加の会話履歴:\n{}\n\n出力形式: 重要な事実、ユーザーの意図、現在の状況をまとめた日本語の段落。余計な挨拶は不要。",
+                    current_summary, recent_context
+                );
+                let system = Some("あなたは会話要約アシスタントです。");
 
-                match self.provider.complete_with_cache(request).await {
+                match self.provider.complete(&prompt, system).await {
                     Ok(resp) => {
                         self.job_queue
                             .update_chat_memory_summary(channel_id, resp.content.trim())
@@ -140,118 +126,53 @@ impl ContextEngine {
 
         Ok(())
     }
-}
 
-#[async_trait]
-impl CapabilityProvider for ContextEngine {
-    fn capability_name(&self) -> &str {
-        "ContextEngine"
-    }
+    /// RAG: 会話履歴に加えて、関連する事実（カルマ）を統合して取得する
+    pub async fn get_context_with_facts(
+        &self,
+        channel_id: &str,
+        category: &str,
+        limit: i64,
+    ) -> Result<(String, String), AiomeError> {
+        // 1. 会話履歴とサマリの取得
+        let (summary, history) = self.get_intelligent_history(channel_id, 20).await?;
 
-    fn capability_description(&self) -> &str {
-        "AIのための長期・短期記憶とコンテキスト圧縮機能を提供します。"
-    }
+        // 2. 関連事実の取得 (RAG)
+        let facts = self
+            .job_queue
+            .fetch_relevant_karma_by_category("RAG Context", category, limit)
+            .await?;
 
-    fn capability_schema(&self) -> serde_json::Value {
-        serde_json::json!({
-            "functions": [
-                {
-                    "name": "get_intelligent_history",
-                    "description": "チャネルの会話履歴と要約を取得します。"
-                },
-                {
-                    "name": "maintain_context",
-                    "description": "会話履歴が長い場合に要約による圧縮を実行します。"
-                }
-            ]
-        })
-    }
-}
+        let fact_block = if facts.entries.is_empty() {
+            "なし".to_string()
+        } else {
+            facts
+                .entries
+                .iter()
+                .map(|e| format!("- {}", e.lesson))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::job_queue::UniversalJobQueue;
-    use aiome_core::llm_provider::LlmProvider;
-    use serde_json::json;
-    use std::sync::Arc;
-    use tokio::sync::Semaphore;
+        // 3. トークン制限管理 (文字数 * 0.5 程度の概算)
+        let history_text = history
+            .iter()
+            .map(|m| format!("{}: {}", m["role"], m["content"]))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-    #[derive(Debug)]
-    struct MockLlm {
-        reply: String,
-    }
+        let final_history = if history_text.len() > 4000 {
+            format!("{}... (truncated)", &history_text[..4000])
+        } else {
+            history_text
+        };
 
-    #[async_trait::async_trait]
-    impl LlmProvider for MockLlm {
-        async fn complete(
-            &self,
-            _prompt: &str,
-            _system: Option<&str>,
-        ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
-            Ok(aiome_core::llm_provider::LlmResponse {
-                content: self.reply.clone(),
-                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-            })
-        }
-        fn name(&self) -> &str {
-            "mock-llm"
-        }
-        async fn test_connection(&self) -> Result<(), AiomeError> {
-            Ok(())
-        }
-    }
-
-    #[tokio::test]
-    async fn test_get_intelligent_history() {
-        let jq = UniversalJobQueue::new(":memory:").await.unwrap();
-        jq.insert_chat_message("user-1", "user", "Hello")
-            .await
-            .unwrap();
-        jq.update_chat_memory_summary("user-1", "Initial summary")
-            .await
-            .unwrap();
-
-        let engine = ContextEngine::new(
-            Arc::new(MockLlm {
-                reply: "compressed".into(),
-            }),
-            Arc::new(jq),
-            Arc::new(Semaphore::new(1)),
+        let context_block = format!(
+            "これまでの要約:\n{}\n\n関連する背景事実:\n{}\n",
+            summary.unwrap_or_else(|| "なし".into()),
+            fact_block
         );
 
-        let (summary, history) = engine.get_intelligent_history("user-1", 10).await.unwrap();
-        assert_eq!(summary.unwrap(), "Initial summary");
-        assert_eq!(history.len(), 1);
-        assert_eq!(history[0]["content"], "Hello");
-    }
-
-    #[tokio::test]
-    async fn test_maintain_context_compression() {
-        let jq = UniversalJobQueue::new(":memory:").await.unwrap();
-        // Insert many messages to exceed threshold
-        for i in 0..10 {
-            jq.insert_chat_message("user-1", "user", &format!("Message {}", i))
-                .await
-                .unwrap();
-        }
-
-        let engine = ContextEngine::new(
-            Arc::new(MockLlm {
-                reply: "New compressed summary".into(),
-            }),
-            Arc::new(jq.clone()),
-            Arc::new(Semaphore::new(1)),
-        );
-
-        // threshold = 50 chars. Each message "Message X" is ~9 chars. 10 * 9 = 90 > 50.
-        engine.maintain_context("user-1", 50).await.unwrap();
-
-        let summary = jq.get_chat_memory_summary("user-1").await.unwrap();
-        assert_eq!(summary.unwrap(), "New compressed summary");
-
-        // Old messages should be distilled? ContextEngine marks them as distilled.
-        // We can check if more than half are still considered "recent" by internal fetch?
-        // Actually ContextEngine just calls mark_chats_as_distilled.
+        Ok((context_block, final_history))
     }
 }

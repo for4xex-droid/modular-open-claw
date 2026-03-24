@@ -135,22 +135,9 @@ impl WatchtowerOps for UniversalJobQueue {
             "SELECT summary FROM chat_memory_summaries WHERE channel_id = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind(channel_id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind(channel_id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, channel_id)
+            .unwrap_or(None)
+            .map(|r| r.0);
         Ok(opt)
     }
 
@@ -253,28 +240,11 @@ impl WatchtowerOps for UniversalJobQueue {
             "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > {}",
             self.pool.ph(0)
         );
-        let keys: Vec<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(threshold)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                rows.into_iter().map(|r| r.get("related_skill")).collect()
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(threshold)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                rows.into_iter().map(|r| r.get("related_skill")).collect()
-            }
-        };
+        let keys: Vec<String> = crate::sql_fetch_all!(&self.pool, (String,), &q, threshold)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|r| r.0)
+            .collect();
         Ok(keys)
     }
 
@@ -286,32 +256,7 @@ impl WatchtowerOps for UniversalJobQueue {
             "SELECT id, lesson FROM karma_logs WHERE related_skill = {}",
             self.pool.ph(0)
         );
-        let pairs: Vec<(String, String)> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(skill)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                rows.into_iter()
-                    .map(|r| (r.get("id"), r.get("lesson")))
-                    .collect()
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(skill)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                rows.into_iter()
-                    .map(|r| (r.get("id"), r.get("lesson")))
-                    .collect()
-            }
-        };
+        let pairs: Vec<(String, String)> = crate::sql_fetch_all!(&self.pool, (String, String), &q, skill).unwrap_or_default();
         Ok(pairs)
     }
 

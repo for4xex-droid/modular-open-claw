@@ -122,6 +122,31 @@ pub struct GenerativeRequest {
     pub input_artifact: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema, PartialEq)]
+pub enum ArtifactCategory {
+    Concept,
+    Image,
+    Video,
+    Audio,
+    Document,
+    Other,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArtifactMeta {
+    pub id: String,
+    pub category: ArtifactCategory,
+    pub path: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArtifactEdge {
+    pub from_id: String,
+    pub to_id: String,
+    pub edge_type: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtifactResponse {
     pub output_path: String,
@@ -381,7 +406,7 @@ pub struct FederationSyncRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationSyncResponse {
-    pub new_karmas: Vec<FederatedKarma>,
+    pub new_karmas: Vec<KarmaEntry>,
     pub new_immune_rules: Vec<ImmuneRule>,
     pub new_arena_matches: Vec<ArenaMatch>,
     /// オートマージ用スナップショット（バイナリタイムライン）
@@ -395,35 +420,8 @@ pub struct FederationSyncResponse {
     pub has_more: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct FederatedKarma {
-    pub id: String,
-    pub job_id: Option<String>,
-    pub karma_type: String,
-    pub related_skill: String,
-    pub lesson: String,
-    pub weight: i32,
-    pub created_at: String,
-    pub soul_version_hash: Option<String>,
-
-    // --- Phase 10-B: Swarm Sync & CRDT ---
-    #[serde(default)]
-    pub lamport_clock: u64,
-    #[serde(default)]
-    pub node_id: String,
-    #[serde(default)]
-    pub signature: Option<String>,
-
-    // --- Phase SC-MB: Clone Tracking ---
-    #[serde(default)]
-    pub clone_origin_id: Option<String>,
-
-    // --- Phase Soul Engine v3 ---
-    #[serde(default)]
-    pub generation: Option<u32>,
-    #[serde(default)]
-    pub somatic_valence: Option<f64>,
-}
+pub use crate::traits::KarmaEntry;
+pub type FederatedKarma = KarmaEntry; // Backward compatibility
 
 /// 検疫済みアセットのレコード構造体
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -460,7 +458,7 @@ pub struct KarmaMetrics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationPushRequest {
     pub node_id: String,
-    pub karmas: Vec<FederatedKarma>,
+    pub karmas: Vec<KarmaEntry>,
     pub rules: Vec<ImmuneRule>,
     pub arena_matches: Vec<ArenaMatch>,
     #[serde(default)]
@@ -488,7 +486,7 @@ pub struct FederationHandshake {
 #[serde(tag = "type", content = "data")]
 pub enum HubMessage {
     NewImmuneRule(ImmuneRule),
-    NewKarma(FederatedKarma),
+    NewKarma(KarmaEntry),
     LaggedForceSync {
         server_time: String,
     },

@@ -9,6 +9,8 @@ use crate::app_state::AppState;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::events::CoreEvent;
 use aiome_contracts::traits::JobQueue;
+use infrastructure::db::DatabasePool;
+use infrastructure::sql_exec;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -55,7 +57,7 @@ impl AutonomousDemo {
 
     async fn do_run(state: AppState) -> Result<(), AiomeError> {
         let agent_id = state.system_agent_id;
-        let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
+        let pool = state.job_queue.get_pool().clone();
 
         // Drop ALL audit triggers on gig tables for the demo duration.
         // Even without transactions, triggers cause write lock contention.
@@ -67,12 +69,10 @@ impl AutonomousDemo {
             ("verification_logs", "id"),
         ];
         for (table, _) in &gig_tables {
-            let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_insert_{}", table))
-                .execute(&pool)
-                .await;
-            let _ = sqlx::query(&format!("DROP TRIGGER IF EXISTS audit_update_{}", table))
-                .execute(&pool)
-                .await;
+            let q1 = format!("DROP TRIGGER IF EXISTS audit_insert_{}", table);
+            let q2 = format!("DROP TRIGGER IF EXISTS audit_update_{}", table);
+            let _ = sql_exec!(&pool, &q1);
+            let _ = sql_exec!(&pool, &q2);
         }
 
         // Run demo (result captured so triggers are always restored)
@@ -80,24 +80,30 @@ impl AutonomousDemo {
 
         // Restore triggers regardless of success/failure
         for (table, pk) in &gig_tables {
-            let _ = sqlx::query(&format!(
-                "CREATE TRIGGER IF NOT EXISTS audit_insert_{0} AFTER INSERT ON {0} BEGIN \
-                 INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) \
-                 VALUES ('{0}', 'INSERT', COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
-                 '{0}:INSERT:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
-                 COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'), \
-                 hex(randomblob(16))); END;",
-                table, pk
-            )).execute(&pool).await;
-            let _ = sqlx::query(&format!(
-                "CREATE TRIGGER IF NOT EXISTS audit_update_{0} AFTER UPDATE ON {0} BEGIN \
-                 INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) \
-                 VALUES ('{0}', 'UPDATE', COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
-                 '{0}:UPDATE:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
-                 COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'), \
-                 hex(randomblob(16))); END;",
-                table, pk
-            )).execute(&pool).await;
+            // Note: Postgres uses PL/pgSQL for audit logging now (set up natively),
+            // so this trigger re-creation primarily targets SQLite for the demo.
+            if let DatabasePool::Sqlite(_) = pool {
+                let q_insert = format!(
+                    "CREATE TRIGGER IF NOT EXISTS audit_insert_{0} AFTER INSERT ON {0} BEGIN \
+                     INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) \
+                     VALUES ('{0}', 'INSERT', COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
+                     '{0}:INSERT:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
+                     COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'), \
+                     hex(randomblob(16))); END;",
+                    table, pk
+                );
+                let q_update = format!(
+                    "CREATE TRIGGER IF NOT EXISTS audit_update_{0} AFTER UPDATE ON {0} BEGIN \
+                     INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) \
+                     VALUES ('{0}', 'UPDATE', COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
+                     '{0}:UPDATE:' || COALESCE(CAST(NEW.{1} AS TEXT), 'UNKNOWN'), \
+                     COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'), \
+                     hex(randomblob(16))); END;",
+                    table, pk
+                );
+                let _ = sql_exec!(&pool, &q_insert);
+                let _ = sql_exec!(&pool, &q_update);
+            }
         }
 
         result
@@ -108,7 +114,7 @@ impl AutonomousDemo {
     /// avoiding connection pool exhaustion under heavy SSE load.
     async fn do_run_steps(
         state: &AppState,
-        pool: &sqlx::SqlitePool,
+        pool: &DatabasePool,
         agent_id: Uuid,
     ) -> Result<(), AiomeError> {
         // Phase 0: Cleanup
@@ -125,9 +131,8 @@ impl AutonomousDemo {
             "gig_bids",
             "gig_intents",
         ] {
-            let _ = sqlx::query(&format!("DELETE FROM {}", table))
-                .execute(pool)
-                .await;
+            let q = format!("DELETE FROM {}", table);
+            let _ = sql_exec!(pool, &q);
             sleep(Duration::from_millis(50)).await; // yield between deletes
         }
         sleep(Duration::from_secs(2)).await;
@@ -148,18 +153,23 @@ impl AutonomousDemo {
         .unwrap_or_default();
         let deadline = (Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
 
-        sqlx::query(
+        let q_intent = format!(
             "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')"
+             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, 'Open')",
+            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6)
+        );
+
+        sql_exec!(
+            pool,
+            &q_intent,
+            intent_id.to_string(),
+            agent_id.to_string(),
+            format!("Autonomous Desire: {}", _intent_base.description),
+            &criteria_json,
+            100i64,
+            "Learning",
+            &deadline
         )
-        .bind(intent_id.to_string())
-        .bind(agent_id.to_string())
-        .bind(format!("Autonomous Desire: {}", _intent_base.description))
-        .bind(&criteria_json)
-        .bind(100i64)
-        .bind("Learning")
-        .bind(&deadline)
-        .execute(pool).await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Intent insert: {}", e) })?;
         sleep(Duration::from_secs(5)).await;
 
@@ -175,17 +185,21 @@ impl AutonomousDemo {
         Self::broadcast(state, 4, "SwarmOps: External agent bidding on the task...").await;
         let agent_b_id = Uuid::new_v4();
         let bid_id = Uuid::new_v4();
-        sqlx::query(
+        let q_bid = format!(
             "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'Pending')"
+             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, 'Pending')",
+            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5)
+        );
+        sql_exec!(
+            pool,
+            &q_bid,
+            bid_id.to_string(),
+            intent_id.to_string(),
+            agent_b_id.to_string(),
+            80i64,
+            10i64,
+            10i64
         )
-        .bind(bid_id.to_string())
-        .bind(intent_id.to_string())
-        .bind(agent_b_id.to_string())
-        .bind(80i64)
-        .bind(10i64)
-        .bind(10i64)
-        .execute(pool).await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Bid insert: {}", e) })?;
         sleep(Duration::from_secs(7)).await;
 
@@ -197,35 +211,34 @@ impl AutonomousDemo {
         )
         .await;
         let escrow_id = format!("escrow-{}", Uuid::new_v4());
-        sqlx::query(
+        let q_escrow = format!(
             "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status)
-             VALUES (?, ?, ?, ?, ?, 'Locked')",
+             VALUES ({0}, {1}, {2}, {3}, {4}, 'Locked')",
+            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4)
+        );
+        sql_exec!(
+            pool,
+            &q_escrow,
+            &escrow_id,
+            agent_id.to_string(),
+            agent_b_id.to_string(),
+            intent_id.to_string(),
+            80i64
         )
-        .bind(&escrow_id)
-        .bind(agent_id.to_string())
-        .bind(agent_b_id.to_string())
-        .bind(intent_id.to_string())
-        .bind(80i64)
-        .execute(pool)
-        .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Escrow insert: {}", e),
         })?;
         sleep(Duration::from_millis(100)).await;
 
-        sqlx::query("UPDATE gig_intents SET status = 'Accepted' WHERE id = ?")
-            .bind(intent_id.to_string())
-            .execute(pool)
-            .await
+        let q_intent_acc = format!("UPDATE gig_intents SET status = 'Accepted' WHERE id = {}", pool.ph(0));
+        sql_exec!(pool, &q_intent_acc, intent_id.to_string())
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Intent status: {}", e),
             })?;
         sleep(Duration::from_millis(100)).await;
 
-        sqlx::query("UPDATE gig_bids SET status = 'Accepted' WHERE id = ?")
-            .bind(bid_id.to_string())
-            .execute(pool)
-            .await
+        let q_bid_acc = format!("UPDATE gig_bids SET status = 'Accepted' WHERE id = {}", pool.ph(0));
+        sql_exec!(pool, &q_bid_acc, bid_id.to_string())
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Bid status: {}", e),
             })?;
@@ -240,25 +253,27 @@ impl AutonomousDemo {
         .await;
         let metadata =
             json!({ "insight": "Aiome Protocol is the backbone of the new Musk Economy." });
-        sqlx::query(
+        
+        let q_del = format!(
             "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata)
-             VALUES (?, ?, ?, ?)",
+             VALUES ({0}, {1}, {2}, {3})",
+            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3)
+        );
+        sql_exec!(
+            pool,
+            &q_del,
+            intent_id.to_string(),
+            agent_b_id.to_string(),
+            "demo_result.json",
+            metadata.to_string()
         )
-        .bind(intent_id.to_string())
-        .bind(agent_b_id.to_string())
-        .bind("demo_result.json")
-        .bind(metadata.to_string())
-        .execute(pool)
-        .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Delivery insert: {}", e),
         })?;
         sleep(Duration::from_millis(100)).await;
 
-        sqlx::query("UPDATE gig_intents SET status = 'Delivered' WHERE id = ?")
-            .bind(intent_id.to_string())
-            .execute(pool)
-            .await
+        let q_intent_del = format!("UPDATE gig_intents SET status = 'Delivered' WHERE id = {}", pool.ph(0));
+        sql_exec!(pool, &q_intent_del, intent_id.to_string())
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Delivery status: {}", e),
             })?;
@@ -273,31 +288,31 @@ impl AutonomousDemo {
         .await;
 
         // Verification log
-        sqlx::query(
+        let q_ver = format!(
             "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail)
-             VALUES (?, ?, 'Combined', 1, 1.0, 'JsonSchema check passed. Demo verification auto-approved.')"
+             VALUES ({0}, {1}, 'Combined', 1, 1.0, 'JsonSchema check passed. Demo verification auto-approved.')",
+            pool.ph(0), pool.ph(1)
+        );
+        sql_exec!(
+            pool,
+            &q_ver,
+            Uuid::new_v4().to_string(),
+            intent_id.to_string()
         )
-        .bind(Uuid::new_v4().to_string())
-        .bind(intent_id.to_string())
-        .execute(pool).await
         .map_err(|e| AiomeError::Infrastructure { reason: format!("Verification log: {}", e) })?;
         sleep(Duration::from_millis(100)).await;
 
         // Settle escrow
-        sqlx::query("UPDATE escrows SET status = 'Released' WHERE id = ?")
-            .bind(&escrow_id)
-            .execute(pool)
-            .await
+        let q_esc_rel = format!("UPDATE escrows SET status = 'Released' WHERE id = {}", pool.ph(0));
+        sql_exec!(pool, &q_esc_rel, &escrow_id)
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Escrow release: {}", e),
             })?;
         sleep(Duration::from_millis(100)).await;
 
         // Final status
-        sqlx::query("UPDATE gig_intents SET status = 'Completed' WHERE id = ?")
-            .bind(intent_id.to_string())
-            .execute(pool)
-            .await
+        let q_intent_fin = format!("UPDATE gig_intents SET status = 'Completed' WHERE id = {}", pool.ph(0));
+        sql_exec!(pool, &q_intent_fin, intent_id.to_string())
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Final status: {}", e),
             })?;

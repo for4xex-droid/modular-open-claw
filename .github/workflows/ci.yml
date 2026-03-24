@@ -34,8 +34,26 @@ jobs:
       - name: Clippy (Lint)
         run: cargo clippy --workspace -- -D warnings
 
-      - name: Run Tests
+      - name: Start Test Database
+        run: |
+          docker-compose -f docker-compose.test.yml up -d
+          echo "Waiting for PostgreSQL to be ready..."
+          sleep 10
+          
+      - name: Run Tests (SQLite Backend)
+        env:
+          DATABASE_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
         run: cargo test --workspace
+
+      - name: Run Tests (PostgreSQL Backend)
+        env:
+          DATABASE_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
+          TEST_POSTGRES_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
+        run: cargo test --workspace -- --test-threads=1
+
+      - name: Stop Test Database
+        if: always()
+        run: docker-compose -f docker-compose.test.yml down
 
       - name: Code Coverage
         run: |

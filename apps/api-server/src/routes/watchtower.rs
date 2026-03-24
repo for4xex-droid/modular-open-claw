@@ -139,7 +139,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
     // 2. Persist
     let _ = state
         .job_queue
-        .insert_chat_message(&channel_id, "user", &payload.prompt)
+        .store_chat_message(&channel_id, "user", &payload.prompt)
         .await;
 
     // 3. Build Prompt (minimal version for now)
@@ -204,7 +204,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
             let reply = resp.content.trim().to_string();
             let _ = state
                 .job_queue
-                .insert_chat_message(&channel_id, "assistant", &reply)
+                .store_chat_message(&channel_id, "assistant", &reply)
                 .await;
             let _ = state.event_sender.send(CoreEvent::ChatResponse {
                 response: reply,

@@ -24,31 +24,57 @@ pub trait SwarmOps {
     async fn do_record_global_api_failure(&self) -> Result<i64, AiomeError>;
     async fn do_record_global_api_success(&self) -> Result<(), AiomeError>;
     async fn do_get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
+    // Biome
+    async fn do_get_biome_topic_status(&self, topic_id: &str) -> Result<Option<(i32, Option<String>)>, AiomeError>;
+    async fn do_advance_biome_turn(&self, topic_id: &str, cooldown_minutes: i64) -> Result<i32, AiomeError>;
+    async fn do_fetch_biome_messages(&self, topic_id: &str, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn do_store_biome_message(&self, message: &aiome_contracts::biome::BiomeMessage) -> Result<(), AiomeError>;
+    async fn do_update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
+    async fn do_archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
 impl SwarmOps for UniversalJobQueue {
+    async fn do_get_biome_topic_status(&self, topic_id: &str) -> Result<Option<(i32, Option<String>)>, AiomeError> {
+        let q = format!("SELECT turn_count, status FROM biome_topics WHERE topic_id = {}", self.pool.ph(0));
+        let opt: Option<(i32, String)> = crate::sql_fetch_optional!(&self.pool, (i32, String), &q, topic_id).unwrap_or(None);
+        Ok(opt.map(|(c, s)| (c, Some(s))))
+    }
+    
+    async fn do_advance_biome_turn(&self, topic_id: &str, cooldown_minutes: i64) -> Result<i32, AiomeError> {
+        let q_check = format!("SELECT turn_count FROM biome_topics WHERE topic_id = {}", self.pool.ph(0));
+        let current: i32 = crate::sql_fetch_optional!(&self.pool, (i32,), &q_check, topic_id)
+            .unwrap_or(None)
+            .map(|r| r.0)
+            .unwrap_or(0);
+        
+        let next = current + 1;
+        let q_upsert = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, datetime('now', '+{2} minutes')) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = datetime('now', '+{2} minutes')", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, NOW() + interval '{2} minutes') ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = NOW() + interval '{2} minutes'", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
+        };
+        crate::sql_exec!(&self.pool, &q_upsert, topic_id, 1, cooldown_minutes.to_string())?;
+        Ok(next)
+    }
+    
+    async fn do_fetch_biome_messages(&self, _topic_id: &str, _limit: i64) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+    async fn do_store_biome_message(&self, _message: &aiome_contracts::biome::BiomeMessage) -> Result<(), AiomeError> { Ok(()) }
+    async fn do_update_biome_reputation(&self, _pubkey: &str, _delta: f64) -> Result<f64, AiomeError> { Ok(0.0) }
+    
+    async fn do_archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
+        let q = format!("UPDATE biome_topics SET status = 'Archived' WHERE topic_id = {}", self.pool.ph(0));
+        crate::sql_exec!(&self.pool, &q, topic_id)?;
+        Ok(())
+    }
+
     async fn do_get_node_id(&self) -> Result<String, AiomeError> {
         let q1 = format!(
             "SELECT value FROM system_state WHERE key = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q1)
-                .bind("node_id")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q1)
-                .bind("node_id")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q1, "node_id")
+            .unwrap_or(None)
+            .map(|r| r.0);
 
         if let Some(val) = opt {
             Ok(val)

@@ -5,10 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::contracts::{ConceptRequest, ConceptResponse, LocalizedScript};
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::AgentAct;
+use aiome_contracts::contracts::{ConceptRequest, ConceptResponse, LocalizedScript};
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::LlmProvider;
+use aiome_contracts::traits::AgentAct;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::info;
@@ -44,7 +44,7 @@ impl ConceptManager {
     /// 検察官 (Constitutional Prosecutor) による出力検証
     async fn verify_with_prosecutor(&self, concept: &ConceptResponse) -> Result<(), AiomeError> {
         if let Some(p) = &self.prosecutor_provider {
-            use aiome_core::traits::ConstitutionalValidator;
+            use aiome_contracts::traits::ConstitutionalValidator;
             let validator = crate::validator::DefaultConstitutionalValidator::new(p.clone());
             let concept_summary = format!(
                 "Title: {}\nIntro: {}\nBody: {}\nOutro: {}\nVisuals: {:?}",

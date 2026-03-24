@@ -1,6 +1,9 @@
 ## [Unreleased] - 2026-03-24
 
 ### Added
+- **Phase 35: PostgreSQL 移行 & 最終検証 [完了]**
+    - **Dual DB Testing Infrastructure**: Ensured all 86 integration tests and CI scripts run equivalently on both SQLite and PostgreSQL backends via `TEST_POSTGRES_URL` configuration (`docker-compose.test.yml`).
+    - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing.
 - **Phase 32: DeerFlow Architectural Pattern Integration [完了]**
     - **Middleware Chain**: `SoulPipeline` を Reactive, Deliberative, Meta-cognitive の 3 層ミドルウェア構造に刷新。`async-trait` による拡張性とスレッド安全性を両立。
     - **Progressive Skill Loading**: `WasmSkillManager` に `mtime` ベースのキャッシュ無効化ロジックを導入。WASM ファイルの更新を自動検知し、実行時に最新化。

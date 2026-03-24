@@ -6,7 +6,7 @@
  */
 
 use super::swarm::SwarmOps;
-use super::try_get_opt;
+
 use super::UniversalJobQueue;
 use aiome_core::contracts::{ArenaMatch, ImmuneRule};
 use aiome_core::error::AiomeError;
@@ -115,7 +115,7 @@ impl GuardrailOps for UniversalJobQueue {
                         approval_status,
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
-                        signature: try_get_opt(&r, "signature"),
+                        signature: r.try_get("signature").ok(),
                     });
                 }
             }
@@ -145,7 +145,7 @@ impl GuardrailOps for UniversalJobQueue {
                         approval_status,
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
-                        signature: try_get_opt(&r, "signature"),
+                        signature: r.try_get("signature").ok(),
                     });
                 }
             }
@@ -183,7 +183,7 @@ impl GuardrailOps for UniversalJobQueue {
                         approval_status,
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
-                        signature: try_get_opt(&r, "signature"),
+                        signature: r.try_get("signature").ok(),
                     });
                 }
             }
@@ -213,7 +213,7 @@ impl GuardrailOps for UniversalJobQueue {
                         approval_status,
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
-                        signature: try_get_opt(&r, "signature"),
+                        signature: r.try_get("signature").ok(),
                     });
                 }
             }

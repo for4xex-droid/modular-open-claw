@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::HubState;
+    use crate::HubState;
 
     #[tokio::test]
     async fn test_clock_u32_boundary_failure() {
@@ -51,7 +51,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hub_rest_push_sync_integrity() {
-        use aiome_core::contracts::{FederationPushRequest, FederationSyncRequest, FederatedKarma, FederationPushResponse};
+        use aiome_core::contracts::{FederationPushRequest, FederationSyncRequest, FederatedKarma};
         use axum::response::IntoResponse;
         use axum::extract::State;
         use axum::Json;

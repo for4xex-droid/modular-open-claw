@@ -9,8 +9,8 @@
 //!
 //! SQLite を使用して成果物生成の履歴、エラー、およびセキュリティイベント（ブロック記録）を保存する。
 
-use aiome_core::error::AiomeError;
-use aiome_core::traits::AiomeLogger;
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::traits::AiomeLogger;
 use async_trait::async_trait;
 use sqlx::sqlite::SqlitePool;
 use std::path::PathBuf;

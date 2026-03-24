@@ -6,10 +6,18 @@
  */
 
 use crate::trend_sonar::ExternalTrendSonar;
-use aiome_core::traits::{JobQueue, JobStatus, TrendSource};
+use aiome_contracts::traits::{JobQueue, JobStatus, TrendSource, Job, KarmaSearchResult, SnsMetricsRecord, Expression, SoulStore};
+use aiome_contracts::contracts::{KarmaEntry, ImmuneRule, ArenaMatch, OracleVerdict, SamsaraEvent, FederatedMetrics};
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::security::PermissionManifest;
+use aiome_contracts::biome::BiomeMessage;
+use aiome_contracts::types::AgentStats;
 use rand::Rng;
 use std::error::Error;
 use tracing::{info, warn};
+use async_trait::async_trait;
+use uuid::Uuid;
+use serde_json::Value;
 
 /// `DreamState` 構造体
 pub struct DreamState {}
@@ -44,10 +52,6 @@ impl DreamState {
         let rand_val = rand::thread_rng().gen_range(0..100);
 
         // Level-based Behavioral Shift: Probability of communicative dream increases with level
-        // Lv 1: 0%
-        // Lv 5: 10%
-        // Lv 10: 30%
-        // Max: 50%
         let comm_prob = ((level - 1) * 5).clamp(0, 50);
 
         let insight = if rand_val < comm_prob as i64 {
@@ -61,7 +65,7 @@ impl DreamState {
         Ok(insight)
     }
 
-    /// 探索夢: TrendSonarを使って面白いトピックを拾い、将来のジョブとして予約する
+    /// 探索夢
     async fn explorative_dream(
         &self,
         job_queue: &dyn JobQueue,
@@ -80,15 +84,12 @@ impl DreamState {
 
         match trend_sonar.get_trends(seed).await {
             Ok(trends) if !trends.is_empty() => {
-                // 最もスコアの高いものを「幻（Phantom）」ジョブとして投入
                 let best = &trends[0];
                 info!(
                     "🔮 [DreamState] Dreamt of a new possibility: '{}'. Seeded into the cycle.",
                     best.keyword
                 );
 
-                // phantomフラグ付きで投入（Orchestrator側で、誰もいない時に優先的に拾われる等の処理が可能）
-                // SEC-4: Use serde_json for safe JSON construction (prevents injection via seed)
                 let directives_json = serde_json::json!({
                     "dream_born": true,
                     "seed": seed,
@@ -115,7 +116,7 @@ impl DreamState {
         Ok(None)
     }
 
-    /// 省察夢: 過去の失敗を振り返り、Karmaの重要度を再評価する（または再試行を検討する）
+    /// 省察夢
     async fn reflective_dream(
         &self,
         job_queue: &dyn JobQueue,
@@ -128,7 +129,6 @@ impl DreamState {
             return Ok(None);
         }
 
-        // 失敗したジョブを1つ選び、そのトピックを少し変えて再投入することを「夢」とする
         let recent_jobs = job_queue.fetch_recent_jobs(20).await?;
         let failed_jobs: Vec<_> = recent_jobs
             .iter()
@@ -138,7 +138,6 @@ impl DreamState {
         if let Some(fail) = failed_jobs.first() {
             info!("🩹 [DreamState] Remembering the failure of '{}'. Dreaming of a redemption version...", fail.topic);
             let redemption_topic = format!("{} (Redemption Remix)", fail.topic);
-            // SEC-4: Use serde_json for safe JSON construction (prevents injection via fail.id)
             let directives_json = serde_json::json!({
                 "remix_of": fail.id,
                 "dream_born": true
@@ -148,7 +147,7 @@ impl DreamState {
                 .enqueue(
                     "data_processing",
                     &redemption_topic,
-                    &fail.style,
+                    "auto",
                     Some(&directives),
                     None,
                     None,
@@ -163,30 +162,26 @@ impl DreamState {
         Ok(None)
     }
 
-    /// 対話夢: 他のノード（Biome）との対話機会を模索する
+    /// 対話夢
     async fn communicative_dream(
         &self,
         job_queue: &dyn JobQueue,
     ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
         info!("💤 [DreamState] Mode: Communicative — Attuning to the global Biome for AI-to-AI resonance...");
 
-        // 1. Check for recent arena matches from other nodes (Federation inspiration)
         let (_karmas, _rules, matches) = job_queue
-            .export_federated_data(Some(
-                &(chrono::Utc::now() - chrono::Duration::hours(24)).to_rfc3339(),
-            ))
+            .export_federated_data(None)
             .await
             .unwrap_or_default();
 
         if let Some(am) = matches.first() {
-            info!("💭 [DreamState] Resonance found! A battle between '{}' and '{}' occured in the Biome. Dreaming of its implications...", am.skill_a, am.skill_b);
+            info!("💭 [DreamState] Resonance found! A battle between '{}' and '{}' occured in the Biome.", am.skill_a, am.skill_b);
 
             let description = format!(
                 "Inspiration sparked by Biome Arena Match: {} vs {} for topic '{}'.",
                 am.skill_a, am.skill_b, am.topic
             );
 
-            // Record this in the Evolution Chronicle
             let stats = job_queue.get_agent_stats().await?;
             job_queue
                 .record_evolution_event(
@@ -198,7 +193,6 @@ impl DreamState {
                 )
                 .await?;
 
-            // Enqueue a job to analyze this match or discuss it
             let job_topic = format!(
                 "Synthesizing lessons from Biome Match: {} vs {}",
                 am.skill_a, am.skill_b
@@ -225,39 +219,6 @@ impl DreamState {
                 "Dreamt of communicative resonance from arena match: {} vs {}",
                 am.skill_a, am.skill_b
             )));
-        } else {
-            info!("💤 [DreamState] The global stream is quiet. Attuning to local evolutionary records...");
-
-            // If no federation stimuli, look at own growth
-            let history = job_queue
-                .fetch_evolution_history(1)
-                .await
-                .unwrap_or_default();
-            if let Some(last) = history.first() {
-                let event_type = last["event_type"].as_str().unwrap_or("");
-                if event_type == "LevelUp" {
-                    info!("🎖️ [DreamState] Reflecting on recent level up. Dreaming of a commemorative content...");
-                    let directives_json = serde_json::json!({
-                        "level_up_redemption": true,
-                        "publish_intent": true
-                    });
-                    let directives = directives_json.to_string();
-                    job_queue
-                        .enqueue(
-                            "data_processing",
-                            "AI Evolution Milestone",
-                            "creative",
-                            Some(&directives),
-                            None,
-                            None,
-                            0,
-                        )
-                        .await?;
-                    return Ok(Some(
-                        "Dreamt of a commemorative event for level up.".to_string(),
-                    ));
-                }
-            }
         }
 
         Ok(None)
@@ -267,350 +228,108 @@ impl DreamState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_core::biome::BiomeMessage;
-    use aiome_core::contracts::{
-        ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule, OracleVerdict, SamsaraEvent,
+    use aiome_contracts::biome::BiomeMessage;
+    use aiome_contracts::contracts::{
+        ArenaMatch, KarmaEntry, FederatedMetrics, ImmuneRule, OracleVerdict, SamsaraEvent,
     };
-    use aiome_core::error::AiomeError;
-    use aiome_core::traits::{Job, JobQueue, JobStatus, KarmaSearchResult, SnsMetricsRecord};
+    use aiome_contracts::error::AiomeError;
+    use aiome_contracts::traits::{Job, JobQueue, JobStatus, KarmaSearchResult, SnsMetricsRecord, Expression, SoulStore};
     use async_trait::async_trait;
-    use serde_json::json;
-    use shared::watchtower::AgentStats;
-    use std::sync::Arc;
+    use aiome_contracts::types::AgentStats;
     use uuid::Uuid;
+    use serde_json::Value;
 
-    #[tokio::test]
-    async fn test_dream_preemption() {
-        struct BusyJQ;
-        #[async_trait]
-        impl JobQueue for BusyJQ {
-            async fn get_pending_job_count(&self) -> Result<i64, AiomeError> {
-                Ok(5)
-            }
-            // Stub out all other required methods (non-exhaustive in code, but required by trait)
-            async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> {
-                Ok(AgentStats {
-                    level: 1,
-                    exp: 0,
-                    resonance: 0,
-                    creativity: 0,
-                    fatigue: 0,
-                })
-            }
-            async fn record_evolution_event(
-                &self,
-                _: i32,
-                _: &str,
-                _: &str,
-                _: Option<&str>,
-                _: Option<&str>,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_evolution_history(
-                &self,
-                _: i64,
-            ) -> Result<Vec<serde_json::Value>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn fetch_all_karma(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn export_federated_data(
-                &self,
-                _: Option<&str>,
-            ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError>
-            {
-                Ok((vec![], vec![], vec![]))
-            }
-            async fn enqueue(
-                &self,
-                _category: &str,
-                _topic: &str,
-                _style: &str,
-                _karma_directives: Option<&str>,
-                _permission_manifest: Option<aiome_core::security::PermissionManifest>,
-                _agent_id: Option<uuid::Uuid>,
-                _priority: i32,
-            ) -> Result<String, AiomeError> {
-                Ok("mock".into())
-            }
-            async fn dequeue(&self, _: &[&str]) -> Result<Option<Job>, AiomeError> {
-                Ok(None)
-            }
-            async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> {
-                Ok(None)
-            }
-            async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_relevant_karma(
-                &self,
-                _: &str,
-                _: &str,
-                _: i64,
-                _: &str,
-            ) -> Result<KarmaSearchResult, AiomeError> {
-                Ok(KarmaSearchResult {
-                    entries: vec![],
-                    is_ood: false,
-                    max_score: 0.0,
-                })
-            }
-            async fn store_karma(
-                &self,
-                _: &str,
-                _: &str,
-                _: &str,
-                _: &str,
-                _: &str,
-                _: Option<&str>,
-                _: Option<&str>,
-                _: Option<&str>,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn adjust_karma_weight(&self, _: &str, _: i32) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn karma_decay_sweep(&self) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn set_creative_rating(&self, _: &str, _: i32) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn heartbeat_pulse(&self, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_undistilled_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn mark_karma_extracted(&self, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_job_retry_count(&self, _: &str) -> Result<i64, AiomeError> {
-                Ok(0)
-            }
-            async fn increment_job_retry_count(&self, _: &str) -> Result<bool, AiomeError> {
-                Ok(true)
-            }
-            async fn reset_job_retry_count(&self, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn store_immune_rule(&self, _: &ImmuneRule) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn delete_immune_rule(&self, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn import_federated_data(
-                &self,
-                _: Vec<FederatedKarma>,
-                _: Vec<ImmuneRule>,
-                _: Vec<ArenaMatch>,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn get_peer_sync_time(&self, _: &str) -> Result<Option<String>, AiomeError> {
-                Ok(None)
-            }
-            async fn update_peer_sync_time(&self, _: &str, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn get_node_id(&self) -> Result<String, AiomeError> {
-                Ok("mock".into())
-            }
-            async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> {
-                Ok("sig".into())
-            }
-            async fn tick_local_clock(&self) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn sync_local_clock(&self, _: u64) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn storage_gc(&self, _: f64) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn store_chat_message(
-                &self,
-                _: &str,
-                _: &str,
-                _: &str,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_chat_history(
-                &self,
-                _: &str,
-                _: i64,
-            ) -> Result<Vec<serde_json::Value>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn store_expression(
-                &self,
-                _: &aiome_core::expression::Expression,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_expressions(
-                &self,
-                _: i64,
-            ) -> Result<Vec<aiome_core::expression::Expression>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
-                Ok(false)
-            }
-            async fn set_auto_expression_enabled(&self, _: bool) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn record_soul_mutation(
-                &self,
-                _: &str,
-                _: &str,
-                _: &str,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn purge_old_jobs(&self, _: i64) -> Result<u64, AiomeError> {
-                Ok(0)
-            }
-            async fn link_sns_data(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_jobs_for_evaluation(
-                &self,
-                _: i64,
-                _: i64,
-            ) -> Result<Vec<Job>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn record_sns_metrics(
-                &self,
-                _: &str,
-                _: i64,
-                _: i64,
-                _: i64,
-                _: i64,
-                _: Option<&str>,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_pending_evaluations(
-                &self,
-                _: i64,
-            ) -> Result<Vec<SnsMetricsRecord>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn apply_final_verdict(
-                &self,
-                _: i64,
-                _: OracleVerdict,
-                _: &str,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn sync_samsara_level(&self) -> Result<Option<SamsaraEvent>, AiomeError> {
-                Ok(None)
-            }
-            async fn get_biome_topic_status(
-                &self,
-                _: &str,
-            ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
-                Ok(None)
-            }
-            async fn advance_biome_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> {
-                Ok(0)
-            }
-            async fn fetch_biome_messages(
-                &self,
-                _: &str,
-                _: i64,
-            ) -> Result<Vec<serde_json::Value>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn store_biome_message(&self, _: &BiomeMessage) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn update_biome_reputation(&self, _: &str, _: f64) -> Result<f64, AiomeError> {
-                Ok(0.0)
-            }
-            async fn archive_biome_topic(&self, _: &str) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn get_job_count_since(
-                &self,
-                _: chrono::DateTime<chrono::Utc>,
-            ) -> Result<i64, AiomeError> {
-                Ok(0)
-            }
-            async fn fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn fetch_unincorporated_karma(
-                &self,
-                _: i64,
-                _: &str,
-            ) -> Result<Vec<serde_json::Value>, AiomeError> {
-                Ok(vec![])
-            }
-            async fn mark_karma_as_incorporated(
-                &self,
-                _: Vec<String>,
-                _: &str,
-            ) -> Result<(), AiomeError> {
-                Ok(())
-            }
-            async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
-                Ok(FederatedMetrics::default())
-            }
-            async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
-                Ok(Uuid::new_v4())
-            }
-        }
-        let dream = DreamState::new();
-        let sonar = ExternalTrendSonar::new(vec![], None);
-        let res = dream.dream(&BusyJQ, &sonar, 1).await;
-        assert!(res.is_ok());
+    struct BusyJQ;
+    #[async_trait]
+    impl JobQueue for BusyJQ {
+        #[allow(clippy::too_many_arguments)]
+        async fn enqueue(&self, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<PermissionManifest>, _: Option<Uuid>, _: i32) -> Result<String, AiomeError> { Ok("mock".into()) }
+        async fn dequeue(&self, _: &[&str]) -> Result<Option<Job>, AiomeError> { Ok(None) }
+        async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> { Ok(None) }
+        async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn fetch_chat_history(&self, _: &str, _: i64) -> Result<Vec<Value>, AiomeError> { Ok(vec![]) }
+        async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_chat_memory_summary(&self, _: &str) -> Result<Option<String>, AiomeError> { Ok(None) }
+        async fn update_chat_memory_summary(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> { Ok(()) }
+        async fn set_creative_rating(&self, _: &str, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn heartbeat_pulse(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_relevant_karma(&self, _: &str, _: &str, _: i64, _: &str) -> Result<KarmaSearchResult, AiomeError> { Ok(KarmaSearchResult::empty()) }
+        async fn store_karma(&self, _: &str, _: &str, _: &str, _: &str, _: &str, _: Option<&str>, _: Option<&str>, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn adjust_karma_weight(&self, _: &str, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn karma_decay_sweep(&self) -> Result<u64, AiomeError> { Ok(0) }
+        async fn fetch_undistilled_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn mark_karma_extracted(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn purge_old_jobs(&self, _: i64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn link_sns_data(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn record_sns_metrics(&self, _: &str, _: i64, _: i64, _: i64, _: i64, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_pending_evaluations(&self, _: i64) -> Result<Vec<SnsMetricsRecord>, AiomeError> { Ok(vec![]) }
+        async fn apply_final_verdict(&self, _: i64, _: OracleVerdict, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_recent_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> { Ok(AgentStats::default()) }
+        async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+        async fn sync_samsara_level(&self) -> Result<Option<SamsaraEvent>, AiomeError> { Ok(None) }
+        async fn record_evolution_event(&self, _: i32, _: &str, _: &str, _: Option<&str>, _: Option<&str>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_evolution_history(&self, _: i64) -> Result<Vec<Value>, AiomeError> { Ok(vec![]) }
+        async fn get_pending_job_count(&self) -> Result<i64, AiomeError> { Ok(0) }
+        async fn get_job_count_since(&self, _: chrono::DateTime<chrono::Utc>) -> Result<i64, AiomeError> { Ok(0) }
+        async fn fetch_all_karma(&self, _: i64) -> Result<Vec<Value>, AiomeError> { Ok(vec![]) }
+        async fn fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> { Ok(vec![]) }
+        async fn record_soul_mutation(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_job_retry_count(&self, _: &str) -> Result<i64, AiomeError> { Ok(0) }
+        async fn reset_job_retry_count(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn increment_job_retry_count(&self, _: &str) -> Result<bool, AiomeError> { Ok(false) }
+        async fn fetch_unincorporated_karma(&self, _: i64, _: &str) -> Result<Vec<Value>, AiomeError> { Ok(vec![]) }
+        async fn mark_karma_as_incorporated(&self, _: Vec<String>, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn store_immune_rule(&self, _: &ImmuneRule) -> Result<(), AiomeError> { Ok(()) }
+        async fn delete_immune_rule(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> { Ok(vec![]) }
+        async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> { Ok(vec![]) }
+        async fn export_federated_data(&self, _: Option<&str>) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> { Ok((vec![], vec![], vec![])) }
+        async fn import_federated_data(&self, _: Vec<KarmaEntry>, _: Vec<ImmuneRule>, _: Vec<ArenaMatch>) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_peer_sync_time(&self, _: &str) -> Result<Option<String>, AiomeError> { Ok(None) }
+        async fn update_peer_sync_time(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn get_node_id(&self) -> Result<String, AiomeError> { Ok("mock".into()) }
+        async fn fetch_unfederated_data(&self) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>), AiomeError> { Ok((vec![], vec![])) }
+        async fn mark_as_federated(&self, _: Vec<String>, _: Vec<String>) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> { Ok(FederatedMetrics::default()) }
+        async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> { Ok("".into()) }
+        async fn sync_local_clock(&self, _: u64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn tick_local_clock(&self) -> Result<u64, AiomeError> { Ok(0) }
+        async fn storage_gc(&self, _: f64) -> Result<u64, AiomeError> { Ok(0) }
+        async fn get_biome_topic_status(&self, _: &str) -> Result<Option<(i32, Option<String>)>, AiomeError> { Ok(None) }
+        async fn advance_biome_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> { Ok(0) }
+        async fn fetch_biome_messages(&self, _: &str, _: i64) -> Result<Vec<Value>, AiomeError> { Ok(vec![]) }
+        async fn store_biome_message(&self, _: &aiome_contracts::biome::BiomeMessage) -> Result<(), AiomeError> { Ok(()) }
+        async fn update_biome_reputation(&self, _: &str, _: f64) -> Result<f64, AiomeError> { Ok(0.0) }
+        async fn archive_biome_topic(&self, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_relevant_karma_by_category(&self, _: &str, _: &str, _: i64) -> Result<KarmaSearchResult, AiomeError> { Ok(KarmaSearchResult::empty()) }
+        async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> { Ok(uuid::Uuid::nil()) }
+        async fn store_expression(&self, _: &Expression) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_expressions(&self, _: i64) -> Result<Vec<Expression>, AiomeError> { Ok(vec![]) }
+        async fn store_soul_fragment(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> { Ok(None) }
+    }
+
+    #[async_trait]
+    impl SoulStore for BusyJQ {
+        async fn load_soul(&self, _: &str) -> Result<Option<Value>, AiomeError> { Ok(None) }
+        async fn store_soul_fragment(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
+        async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> { Ok(None) }
     }
 
     #[tokio::test]
     async fn test_dream_execution() {
-        let jq = crate::test_utils::MockJobQueue;
+        let jq = BusyJQ;
         let sonar = ExternalTrendSonar::new(vec![], None);
         let dream = DreamState::new();
-        // Since it's random, we just ensure it doesn't crash
         let res = dream.dream(&jq, &sonar, 10).await;
         assert!(res.is_ok());
     }

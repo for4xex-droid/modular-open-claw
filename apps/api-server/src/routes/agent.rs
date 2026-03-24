@@ -137,10 +137,11 @@ pub fn build_system_instructions(
 
     // RS-5: Augmented Identity from Soul Memory (Dynamic Evolution)
     let soul_dynamic = if let Some(sn) = soul_snapshot {
-        let narrative = sn
-            .narrative_self
-            .as_deref()
-            .unwrap_or("安定したアイデンティティを維持しています。");
+        let narrative = if sn.narrative_self.is_empty() {
+            "安定したアイデンティティを維持しています。"
+        } else {
+            &sn.narrative_self
+        };
         let instinct = if sn.prompt_fragment.is_empty() {
             ""
         } else {
@@ -148,12 +149,13 @@ pub fn build_system_instructions(
         };
         format!(
             "\n[Anamnesis (内省的な自己認識)]\n{}\n\
-             [愛着スタイル: {:?}]\n{}",
+             [愛着スタイル: {}]\n{}",
             narrative, sn.attachment_style, instinct
         )
     } else {
         "".to_string()
     };
+
 
     // Supplemental Context (Lower Priority / Reference Only)
     let user_md = safe_truncate(&read_workspace_file("USER.md"), 20000);
@@ -306,7 +308,7 @@ pub async fn trigger_agent_chat(
     // Phase 3-B: Persist user message
     let _ = state
         .job_queue
-        .insert_chat_message(&channel_id, "user", &payload.prompt)
+        .store_chat_message(&channel_id, "user", &payload.prompt)
         .await;
 
     // Phase 3-C: Fetch intelligent context
@@ -586,7 +588,7 @@ pub async fn trigger_agent_chat(
     // Phase 3-D: Persist assistant message and maintain context
     let _ = state
         .job_queue
-        .insert_chat_message(&channel_id, "assistant", &final_reply)
+        .store_chat_message(&channel_id, "assistant", &final_reply)
         .await;
     let ce = (*state.context_engine).clone();
     let cid = channel_id.clone();
@@ -633,6 +635,8 @@ pub async fn trigger_agent_chat(
                         permission_manifest: None,
                         agent_id: None,
                         priority: 0,
+                        created_at: chrono::Utc::now().to_rfc3339(),
+                        updated_at: chrono::Utc::now().to_rfc3339(),
                     };
 
                     match diagnostics.diagnose(&trajectory, &virtual_job).await {

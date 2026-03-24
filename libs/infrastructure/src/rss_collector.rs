@@ -75,7 +75,7 @@ impl RssCollector {
     }
 
     async fn get_cached_trend(&self, url: &str) -> Result<Option<Vec<TrendItem>>, AiomeError> {
-        let content_opt = match &self.jq.pool {
+        let content_opt = match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => {
                 let row = sqlx::query("SELECT content FROM trend_cache WHERE source_url = ? AND expires_at > datetime('now')")
                     .bind(url)
@@ -115,7 +115,7 @@ impl RssCollector {
         ttl_sec: i64,
     ) -> Result<(), AiomeError> {
         let json = serde_json::to_string(items).unwrap();
-        match &self.jq.pool {
+        match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query("INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))")
                     .bind(url)

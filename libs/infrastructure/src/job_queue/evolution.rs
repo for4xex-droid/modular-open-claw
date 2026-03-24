@@ -45,40 +45,14 @@ pub trait EvolutionOps {
 impl EvolutionOps for UniversalJobQueue {
     async fn do_get_agent_stats(&self) -> Result<shared::watchtower::AgentStats, AiomeError> {
         let q = "SELECT level, exp, resonance, creativity, fatigue FROM agent_stats WHERE id = 1";
-        match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let r =
-                    sqlx::query(q)
-                        .fetch_one(p)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                Ok(shared::watchtower::AgentStats {
-                    level: r.get("level"),
-                    exp: r.get("exp"),
-                    resonance: r.get("resonance"),
-                    creativity: r.get("creativity"),
-                    fatigue: r.get("fatigue"),
-                })
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let r =
-                    sqlx::query(q)
-                        .fetch_one(p)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                Ok(shared::watchtower::AgentStats {
-                    level: r.get("level"),
-                    exp: r.get("exp"),
-                    resonance: r.get("resonance"),
-                    creativity: r.get("creativity"),
-                    fatigue: r.get("fatigue"),
-                })
-            }
-        }
+        let res: (i32, i32, i32, i32, i32) = crate::sql_fetch_one!(&self.pool, (i32, i32, i32, i32, i32), q)?;
+        Ok(shared::watchtower::AgentStats {
+            level: res.0,
+            exp: res.1,
+            resonance: res.2,
+            creativity: res.3,
+            fatigue: res.4,
+        })
     }
 
     async fn do_add_resonance(&self, amount: i32) -> Result<(), AiomeError> {
@@ -137,22 +111,10 @@ impl EvolutionOps for UniversalJobQueue {
         &self,
     ) -> Result<Option<aiome_core::contracts::SamsaraEvent>, AiomeError> {
         let q1 = "SELECT SUM(weight) as total FROM karma_logs WHERE karma_type = 'Technical'";
-        let total_weight: i64 = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query(q1)
-                .fetch_one(p)
-                .await
-                .map(|r| r.get::<Option<i64>, _>("total"))
-                .ok()
-                .flatten()
-                .unwrap_or(0),
-            crate::db::DatabasePool::Postgres(p) => sqlx::query(q1)
-                .fetch_one(p)
-                .await
-                .map(|r| r.get::<Option<i64>, _>("total"))
-                .ok()
-                .flatten()
-                .unwrap_or(0),
-        };
+        let total_weight: i64 = crate::sql_fetch_one!(&self.pool, (Option<i64>,), q1)
+            .map(|r| r.0)
+            .unwrap_or(None)
+            .unwrap_or(0);
 
         let stats = self.do_get_agent_stats().await?;
         let original_level = stats.level;
@@ -196,22 +158,10 @@ impl EvolutionOps for UniversalJobQueue {
         karma_json: Option<&str>,
     ) -> Result<(), AiomeError> {
         let q1 = "SELECT record_hash FROM evolution_chronicle ORDER BY id DESC LIMIT 1";
-        let prev_hash = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query(q1)
-                .fetch_optional(p)
-                .await
-                .map(|o| o.map(|r| r.get::<String, _>("record_hash")))
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "GENESIS".to_string()),
-            crate::db::DatabasePool::Postgres(p) => sqlx::query(q1)
-                .fetch_optional(p)
-                .await
-                .map(|o| o.map(|r| r.get::<String, _>("record_hash")))
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "GENESIS".to_string()),
-        };
+        let prev_hash = crate::sql_fetch_optional!(&self.pool, (String,), q1)
+            .unwrap_or(None)
+            .map(|r| r.0)
+            .unwrap_or_else(|| "GENESIS".to_string());
 
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();

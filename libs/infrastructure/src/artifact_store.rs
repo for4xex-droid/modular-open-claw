@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::EmbeddingProvider;
-use aiome_core::traits::{
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::EmbeddingProvider;
+use aiome_contracts::traits::{
     ArtifactCategory, ArtifactEdge, ArtifactFile, ArtifactMeta, ArtifactStore, CreateArtifactRequest,
 };
 use async_trait::async_trait;
@@ -21,6 +21,13 @@ use uuid::Uuid;
 
 use crate::db::DatabasePool;
 use crate::sql_exec;
+
+fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
+    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if norm_a == 0.0 || norm_b == 0.0 { 0.0 } else { dot / (norm_a * norm_b) }
+}
 
 /// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
 pub struct UniversalArtifactStore {
@@ -328,17 +335,17 @@ impl ArtifactStore for UniversalArtifactStore {
             }
         };
 
-        let mut sim_results = Vec::new();
+        let mut sim_results: Vec<(f64, String)> = Vec::new();
         for (id, emb_bytes) in entries {
-            let emb_vec: Vec<f64> = emb_bytes.chunks_exact(4).map(|c: &[u8]| f32::from_le_bytes(c.try_into().unwrap_or([0,0,0,0])) as f64).collect();
-            let score = crate::job_queue::cosine_similarity(&query_vec_f64, &emb_vec);
+            let emb_vec: Vec<f64> = emb_bytes.chunks_exact(8).map(|c: &[u8]| f64::from_le_bytes(c.try_into().unwrap_or([0,0,0,0,0,0,0,0]))).collect();
+            let score = cosine_similarity(&query_vec_f64, &emb_vec);
             sim_results.push((score, id));
         }
         sim_results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut results = Vec::new();
-        for (_, id) in sim_results.into_iter().take(limit as usize) {
-            if let Some(meta) = self.fetch_artifact(&id).await? {
+        for (_, id_str) in sim_results.into_iter().take(limit as usize) {
+            if let Some(meta) = self.fetch_artifact(&id_str).await? {
                 results.push(meta);
             }
         }

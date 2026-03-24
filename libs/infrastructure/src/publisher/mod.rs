@@ -5,8 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::error::AiomeError;
-use aiome_core::traits::Publisher;
+use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::LlmProvider;
+use aiome_contracts::traits::{Job, JobQueue, JobStatus, Publisher};
 use async_trait::async_trait;
 use std::path::PathBuf;
 use tracing::info;

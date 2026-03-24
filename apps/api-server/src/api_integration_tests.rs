@@ -259,12 +259,8 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         forge_dir.to_str().unwrap(),
         skills_dir.to_str().unwrap(),
     ));
-    let artifact_store = Arc::new(infrastructure::artifact_store::SqliteArtifactStore::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()
-            .unwrap()
-            .clone(),
+    let artifact_store = Arc::new(infrastructure::artifact_store::UniversalArtifactStore::new(
+        job_queue.get_pool().clone(),
         artifacts_dir.clone(),
     ));
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
@@ -279,13 +275,9 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
-    let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()
-            .unwrap()
-            .clone(),
-    )));
+    let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
+        job_queue.get_pool().clone(),
+    ));
     let intent_generator = Arc::new(infrastructure::intent::IntentGenerator::new(
         context_engine.clone(),
         provider.clone(),
@@ -294,11 +286,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()
-            .unwrap()
-            .clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
     ));
     std::env::set_var(
         "VAULT_MASTER_KEY",
@@ -309,11 +297,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::security::VoiceCoreDrm::new(
             "http://localhost:3016".to_string(),
             registry.clone(),
-            job_queue
-                .get_pool()
-                .get_sqlite_pool_or_err()
-                .unwrap()
-                .clone(),
+            job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
         )
         .await,
     );
@@ -406,12 +390,8 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
-        gig_engine: Component::new(Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
-            job_queue
-                .get_pool()
-                .get_sqlite_pool_or_err()
-                .unwrap()
-                .clone(),
+        gig_engine: Component::new(Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
+            job_queue.get_pool().clone(),
             Arc::new(MockCommerceEngine),
             provider.clone(),
             tmp_dir.path().join("gig_artifacts"),
@@ -702,7 +682,10 @@ async fn test_diagnostics_api() {
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
 
-    assert_eq!(resp.status_code(), StatusCode::OK);
+    if resp.status_code() != StatusCode::OK {
+        let err_text = resp.text();
+        panic!("Diagnostics API failed with status: {}, body: {:?}", resp.status_code(), err_text);
+    }
     let json = resp.json::<serde_json::Value>();
     assert!(json.as_array().is_some());
 }
@@ -886,7 +869,7 @@ async fn test_voice_drm_roundtrip() {
     // Reconstruct vault
     let vault = infrastructure::security::abyss_voice_vault::AbyssVoiceVault::new(
         (*registry).clone(),
-        pool,
+        infrastructure::db::DatabasePool::Sqlite(pool),
     );
     vault.restore_keys_from_db().await.unwrap();
 

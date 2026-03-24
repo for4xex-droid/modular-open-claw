@@ -9,6 +9,7 @@ use aiome_contracts::commerce::GiftEngine;
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::{ArtifactStore, JobQueue};
+use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
 use infrastructure::compliance::ekyc::EkycEngine;
@@ -105,5 +106,6 @@ pub struct AppState {
     pub gig_engine: Component<Arc<dyn aiome_contracts::gig::GigEngine>>,
     pub intent_generator: Component<Arc<infrastructure::intent::IntentGenerator>>,
     pub intent_firewall: Component<Arc<infrastructure::intent::IntentFirewall>>,
+    pub audit_logger: Component<Arc<AsyncAuditLogger>>,
     pub affiliate_adapter: Component<Arc<infrastructure::intent::AffiliateAdapter>>,
 }

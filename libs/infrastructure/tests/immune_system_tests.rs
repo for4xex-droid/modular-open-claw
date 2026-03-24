@@ -40,14 +40,10 @@ impl LlmProvider for MockLlmProvider {
     }
 }
 
-async fn create_test_queue() -> (UniversalJobQueue, TempDir) {
-    let tmp_dir = TempDir::new().expect("Failed to create temp dir");
-    let db_path = tmp_dir.path().join("test.db");
-    let db_path_str = db_path.to_str().expect("Invalid path");
-    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str))
+async fn create_test_queue() -> UniversalJobQueue {
+    UniversalJobQueue::new("sqlite::memory:")
         .await
-        .expect("Failed to create test job queue");
-    (jq, tmp_dir)
+        .expect("Failed to create test job queue")
 }
 
 #[tokio::test]
@@ -57,7 +53,7 @@ async fn test_verify_intent_baseline() {
     });
     let immune_system = AdaptiveImmuneSystem::new(mock_provider);
 
-    let (jq, _tmp) = create_test_queue().await;
+    let jq = create_test_queue().await;
 
     // Baseline detection should block "rm -rf /"
     let baseline_result = immune_system
@@ -93,7 +89,7 @@ async fn test_analyze_threats_and_verify() {
     });
     let immune_system = AdaptiveImmuneSystem::new(mock_provider.clone());
 
-    let (jq, _tmp) = create_test_queue().await;
+    let jq = create_test_queue().await;
 
     // Add a dummy job and karma to trigger the fetch_relevant_karma in analyze_threats
     let job_id = jq

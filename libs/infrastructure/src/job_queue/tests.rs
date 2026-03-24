@@ -51,6 +51,18 @@ impl LlmProvider for MockLlmProvider {
 /// 各テストが独自のDBファイルを持ち、ロック競合を回避する
 pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+
+    let _ = dotenvy::dotenv();
+    if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
+        info!("🔧 Bootstrapping Test JobQueue against PostgreSQL");
+        let jq = UniversalJobQueue::new(&pg_url)
+            .await
+            .expect("Failed to create test job queue (Postgres)");
+        
+        // Return dummy TempDir to satisfy the signature
+        return (jq, tmp_dir);
+    }
+
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
     // SQLite connection string format needed for sqlx

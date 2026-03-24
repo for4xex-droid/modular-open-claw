@@ -13,6 +13,8 @@
 #![warn(missing_docs)]
 
 pub mod aiome_log;
+/// 非同期監査ログ用 MPSC キュー (Phase 35 Step 7)
+pub mod audit_logger;
 /// 成果物の永続化・管理
 pub mod artifact_store;
 /// 認証・JWTトークン検証モジュール (Phase 8.2)

@@ -7,7 +7,7 @@
 
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::ConstitutionalValidator;
+use aiome_contracts::traits::{TrendItem, TrendSource};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::info;
@@ -24,9 +24,10 @@ impl DefaultConstitutionalValidator {
     }
 }
 
-#[async_trait]
-impl ConstitutionalValidator for DefaultConstitutionalValidator {
-    async fn verify_constitutional(
+// ConstitutionalValidator trait was removed or moved to core-internal.
+// We keep the struct but remove the trait impl if it's not found in aiome-contracts.
+impl DefaultConstitutionalValidator {
+    pub async fn verify_constitutional(
         &self,
         content: &str,
         principles: &str,
@@ -72,7 +73,6 @@ impl ConstitutionalValidator for DefaultConstitutionalValidator {
                 reason: format!("Constitutional Violation: {}", reason),
             })
         } else {
-            // Handle cases where the LLM output is neither "PASS" nor "FAIL"
             info!(
                 "⚠️ [ConstitutionalValidator] Unexpected verdict format: '{}'. Treating as failure.",
                 verdict

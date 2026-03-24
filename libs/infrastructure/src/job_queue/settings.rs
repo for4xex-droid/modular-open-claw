@@ -14,9 +14,9 @@ use sqlx::Row;
 /// `SettingsOps` トレイト
 pub trait SettingsOps {
     /// 指定キーの設定値を取得する
-    async fn get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
+    async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
     /// 設定値を保存・更新する
-    async fn set_setting(
+    async fn do_set_setting(
         &self,
         key: &str,
         value: &str,
@@ -24,38 +24,25 @@ pub trait SettingsOps {
         is_secret: bool,
     ) -> Result<(), AiomeError>;
     /// 全設定値を一覧取得する
-    async fn get_all_settings(
+    async fn do_get_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError>;
 }
 
 #[async_trait]
 impl SettingsOps for UniversalJobQueue {
-    async fn get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
+    async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
         let q = format!(
             "SELECT value FROM system_settings WHERE key = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind(key)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind(key)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, key)
+            .unwrap_or(None)
+            .map(|r| r.0);
         Ok(opt)
     }
 
-    async fn set_setting(
+    async fn do_set_setting(
         &self,
         key: &str,
         value: &str,
@@ -74,7 +61,7 @@ impl SettingsOps for UniversalJobQueue {
         Ok(())
     }
 
-    async fn get_all_settings(
+    async fn do_get_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError> {
         let q = "SELECT key, value, category, is_secret, updated_at FROM system_settings";
