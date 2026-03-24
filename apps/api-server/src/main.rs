@@ -196,10 +196,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let artifact_store = infrastructure::artifact_store::SqliteArtifactStore::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
         std::path::PathBuf::from("workspace/artifacts"),
     )
     .with_embeddings(embed_provider.clone());
@@ -234,10 +231,7 @@ async fn main() -> anyhow::Result<()> {
             Some(
                 Arc::new(infrastructure::commerce::stripe::StripeCommerceEngine::new(
                     key.expose_secret().to_string(),
-                    job_queue
-                        .get_pool()
-                        .get_sqlite_pool_or_err()?
-                        .clone(),
+                    job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
                 )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
             )
         } else {
@@ -277,10 +271,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Soul (Sense Foundation)
     let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
     )));
 
     // AgentSense (AS-1)
@@ -332,17 +323,11 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
             key,
             sandbox,
-            job_queue
-                .get_pool()
-                .get_sqlite_pool_or_err()?
-                .clone(),
+            job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
         )) as Arc<dyn GiftEngine>
     };
     let ekyc_session_store = {
-        let pool = job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone();
+        let pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
         Arc::new(infrastructure::compliance::ekyc_store::SqliteEkycSessionStore::new(pool))
             as Arc<dyn EkycSessionStore>
     };
@@ -373,10 +358,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     let quarantine_store = {
-        let pool = job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone();
+        let pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
         let store = infrastructure::compliance::quarantine::SqliteQuarantineStore::new(pool)
             .await
             .expect("🚨 Failed to initialize SqliteQuarantineStore");
@@ -405,28 +387,19 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
     ));
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
             std::env::var("ABYSS_VAULT_URL")
                 .unwrap_or_else(|_| "http://localhost:3016".to_string()),
             registry.clone(),
-            job_queue
-                .get_pool()
-                .get_sqlite_pool_or_err()?
-                .clone(),
+            job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
         )
         .await,
     );
     let gig_engine = Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()?
-            .clone(),
+        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
         commerce_engine
             .clone()
             .expect("Commerce Engine must be initialized for Gig Engine"),

@@ -2,9 +2,10 @@
 
 ### Added
 - **Phase 31: 信頼性向上 & LLM TDD 実装 [完了]**
-    - **Database Reliability**: `get_sqlite_pool().unwrap()` を 10 箇所排除し、安全な `get_sqlite_pool_or_err()?` へ置換。PostgreSQL 等の他バックエンド使用時のランタイムパニックを防止。
+    - **Database Reliability**: `get_sqlite_pool().unwrap()` および `expect()` を多数排除し、安全な `get_sqlite_pool_or_err()?` へ置換。PostgreSQL 等の他バックエンド使用時のランタイムパニックを防止。
+    - **API Server Robustness (P0 prep)**: `main.rs` を `anyhow::Result` を返すようにリファクタリング。起動時パニックを排除し、PG移行に向けた安全性を向上。
     - **LLM Structured Output**: `LlmRequest` に `format` フィールドを追加し、Ollama での JSON モードを正式サポート。
-    - **TDD Test Implementation**: `aiome-core` 内の Ollama 関連 2 テストの `#[ignore]` を解除。実機/WireMock 双方での整合性を確認。
+    - **TDD Test Implementation**: `api-server` および `aiome-core` 内の LLM 関連テストの安全性を向上。実機/WireMock 双方での整合性を確認。
 
 ## [Unreleased] - 2026-03-23
 
