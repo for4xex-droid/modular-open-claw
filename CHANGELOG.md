@@ -1,11 +1,21 @@
 ## [Unreleased] - 2026-03-24
 
 ### Added
+- **Phase 32: DeerFlow Architectural Pattern Integration [完了]**
+    - **Middleware Chain**: `SoulPipeline` を Reactive, Deliberative, Meta-cognitive の 3 層ミドルウェア構造に刷新。`async-trait` による拡張性とスレッド安全性を両立。
+    - **Progressive Skill Loading**: `WasmSkillManager` に `mtime` ベースのキャッシュ無効化ロジックを導入。WASM ファイルの更新を自動検知し、実行時に最新化。
+    - **Virtual Path System**: `PathSandbox` に論理パスマッピング機能を統合。`/mnt/workspace` などの仮想パスを物理ディレクトリに安全にバインド。
+    - **Fact Extraction**: `MemoryCrystallizer` に `FactCategory` (Preference, Knowledge, Context, Behavior, Goal) による事実抽出・分類機能を実装。
+    - **Test Utility**: `VerifiedSkill::new_for_test` を追加し、統合テストにおける WASM スキルのモック・検証を容易化。
+
+### Changed
+- **Code Quality & Refactoring**:
+    - `WritingContext` に `#[derive(Default)]` と `#[default]` 属性を追加し、ボイラープレートを削減。
+    - `MlockedVec` の `Drop` 実装における安全な `munlock` 呼び出しの条件判定を最適化。
+    - `SqliteVaultBackend` のマスターキー取得ロジックにおける関数ポインタの直接渡しによる簡略化。
+    - `UniversalJobQueue` 内の SQLite 数値キャスト（`i32`）の整合性を修正。
+
 - **Phase 31: 信頼性向上 & LLM TDD 実装 [完了]**
-    - **Database Reliability**: `get_sqlite_pool().unwrap()` および `expect()` を多数排除し、安全な `get_sqlite_pool_or_err()?` へ置換。PostgreSQL 等の他バックエンド使用時のランタイムパニックを防止。
-    - **API Server Robustness (P0 prep)**: `main.rs` を `anyhow::Result` を返すようにリファクタリング。起動時パニックを排除し、PG移行に向けた安全性を向上。
-    - **LLM Structured Output**: `LlmRequest` に `format` フィールドを追加し、Ollama での JSON モードを正式サポート。
-    - **TDD Test Implementation**: `api-server` および `aiome-core` 内の LLM 関連テストの安全性を向上。実機/WireMock 双方での整合性を確認。
 
 ## [Unreleased] - 2026-03-23
 

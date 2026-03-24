@@ -379,7 +379,8 @@ pub mod crypto;
 pub mod mlock;
 /// SQLite を使用した Vault Backend の実装。
 pub mod sqlite_vault_backend;
-use abyss_voice_vault::AbyssVoiceVault;
+use crate::db::DatabasePool;
+pub use abyss_voice_vault::AbyssVoiceVault;
 use aiome_contracts::voice_vault::VoiceKeyVault;
 use zeroize::Zeroizing;
 
@@ -402,7 +403,7 @@ impl VoiceCoreDrm {
         registry: Arc<RegistryManager>,
         pool: sqlx::SqlitePool,
     ) -> Self {
-        let vault = AbyssVoiceVault::new(registry.clone(), pool);
+        let vault = AbyssVoiceVault::new(registry.clone(), DatabasePool::Sqlite(pool));
         // 起動時に永続化された鍵をリストア (§CISO-1)
         match vault.restore_keys_from_db().await {
             Ok(n) => tracing::info!("🔐 [DRM] {} vault keys restored on startup", n),

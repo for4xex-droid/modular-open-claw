@@ -36,6 +36,7 @@ pub mod constraint_checker;
 /// LLM向けコンテキスト生成エンジン
 pub mod context_engine;
 /// タスクキュー・非同期実行・リトライ
+#[macro_use]
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;

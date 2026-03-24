@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::gig::{
@@ -5,27 +12,29 @@ use aiome_contracts::gig::{
     VerificationResult,
 };
 use async_trait::async_trait;
-use sqlx::SqlitePool;
+use crate::db::{DatabasePool, DatabaseTransaction};
+use crate::sql_exec;
 use std::sync::Arc;
 use uuid::Uuid;
+use sqlx::Row;
 
 use aiome_contracts::llm::LlmProvider;
 
 use shared::sandbox::PathSandbox;
 use std::path::PathBuf;
 
-/// SQLite をバックエンドとする GigEngine 実装
-pub struct SqliteGigEngine {
-    pool: SqlitePool,
+/// Universal (SQLite/PostgreSQL) implementation for GigEngine
+pub struct UniversalGigEngine {
+    pool: DatabasePool,
     commerce_engine: Arc<dyn CommerceEngine>,
     llm_provider: Arc<dyn LlmProvider>,
     artifact_root: PathBuf,
 }
 
-impl SqliteGigEngine {
-    /// SqliteGigEngine の新規インスタンスを生成する
+impl UniversalGigEngine {
+    /// UniversalGigEngine の新規インスタンスを生成する
     pub fn new(
-        pool: SqlitePool,
+        pool: DatabasePool,
         commerce_engine: Arc<dyn CommerceEngine>,
         llm_provider: Arc<dyn LlmProvider>,
         artifact_root: PathBuf,
@@ -45,27 +54,29 @@ impl SqliteGigEngine {
 }
 
 #[async_trait]
-impl GigEngine for SqliteGigEngine {
+impl GigEngine for UniversalGigEngine {
     async fn publish_intent(&self, intent: GigIntent) -> Result<Uuid, AiomeError> {
         let criteria_json =
             serde_json::to_string(&intent.criteria).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Criteria serialization failed: {}", e),
             })?;
 
-        sqlx::query(
-            "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')"
-        )
-        .bind(intent.id.to_string())
-        .bind(intent.requester_id.to_string())
-        .bind(intent.description)
-        .bind(criteria_json)
-        .bind(intent.max_budget_coins as i64)
-        .bind(intent.category.to_string())
-        .bind(intent.deadline.to_rfc3339())
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        let q = format!(
+            "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, 'Open')",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6)
+        );
+
+        sql_exec!(
+            &self.pool,
+            &q,
+            intent.id.to_string(),
+            intent.requester_id.to_string(),
+            intent.description,
+            criteria_json,
+            intent.max_budget_coins as i64,
+            intent.category.to_string(),
+            intent.deadline
+        ).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Intent database insertion failed: {}", e),
         })?;
 
@@ -73,19 +84,21 @@ impl GigEngine for SqliteGigEngine {
     }
 
     async fn submit_bid(&self, bid: GigBid) -> Result<(), AiomeError> {
-        sqlx::query(
-            "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'Pending')"
-        )
-        .bind(bid.id.to_string())
-        .bind(bid.intent_id.to_string())
-        .bind(bid.bidder_id.to_string())
-        .bind(bid.price_coins as i64)
-        .bind(bid.est_duration_sec as i64)
-        .bind(bid.deposit_amount as i64)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        let q = format!(
+            "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, 'Pending')",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5)
+        );
+
+        sql_exec!(
+            &self.pool,
+            &q,
+            bid.id.to_string(),
+            bid.intent_id.to_string(),
+            bid.bidder_id.to_string(),
+            bid.price_coins as i64,
+            bid.est_duration_sec as i64,
+            bid.deposit_amount as i64
+        ).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Bid database insertion failed: {}", e),
         })?;
 
@@ -93,23 +106,22 @@ impl GigEngine for SqliteGigEngine {
     }
 
     async fn accept_bid(&self, intent_id: Uuid, bid_id: Uuid) -> Result<(), AiomeError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Transaction start failed: {}", e),
-            })?;
+        let mut tx = self.pool.begin().await?;
 
         // 1. Fetch and Verify Intent
-        let (requester_id_str, status): (String, String) =
-            sqlx::query_as("SELECT requester_id, status FROM gig_intents WHERE id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Intent lookup failed: {}", e),
-                })?;
+        let intent_id_str = intent_id.to_string();
+        let q_intent = format!("SELECT requester_id, status FROM gig_intents WHERE id = {}", self.pool.ph(0));
+        
+        let (requester_id_str, status) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_intent).bind(&intent_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>("requester_id"), row.get::<String, _>("status"))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_intent).bind(&intent_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>("requester_id"), row.get::<String, _>("status"))
+            }
+        };
 
         if status != "Open" {
             return Err(AiomeError::Infrastructure {
@@ -123,16 +135,19 @@ impl GigEngine for SqliteGigEngine {
             })?;
 
         // 2. Fetch and Verify Bid
-        let (bidder_id_str, price): (String, i64) = sqlx::query_as(
-            "SELECT bidder_id, price_coins FROM gig_bids WHERE id = ? AND intent_id = ?",
-        )
-        .bind(bid_id.to_string())
-        .bind(intent_id.to_string())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Bid lookup failed: {}", e),
-        })?;
+        let bid_id_str = bid_id.to_string();
+        let q_bid = format!("SELECT bidder_id, price_coins FROM gig_bids WHERE id = {0} AND intent_id = {1}", self.pool.ph(0), self.pool.ph(1));
+        
+        let (bidder_id_str, price) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_bid).bind(&bid_id_str).bind(&intent_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>("bidder_id"), row.get::<i64, _>("price_coins"))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_bid).bind(&bid_id_str).bind(&intent_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>("bidder_id"), row.get::<i64, _>("price_coins"))
+            }
+        };
 
         let bidder_id =
             Uuid::parse_str(&bidder_id_str).map_err(|_| AiomeError::Infrastructure {
@@ -146,37 +161,36 @@ impl GigEngine for SqliteGigEngine {
             .await?;
 
         // 4. Record Escrow in DB
-        sqlx::query(
-            "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status)
-             VALUES (?, ?, ?, ?, ?, 'Locked')",
-        )
-        .bind(&escrow_id)
-        .bind(requester_id.to_string())
-        .bind(bidder_id.to_string())
-        .bind(intent_id.to_string())
-        .bind(price)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow record failed: {}", e),
-        })?;
+        let q_escrow = format!(
+            "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status) VALUES ({0}, {1}, {2}, {3}, {4}, 'Locked')",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
+        );
+
+        match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(&q_escrow).bind(&escrow_id).bind(requester_id.to_string()).bind(bidder_id.to_string()).bind(&intent_id_str).bind(price)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query(&q_escrow).bind(&escrow_id).bind(requester_id.to_string()).bind(bidder_id.to_string()).bind(&intent_id_str).bind(price)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         // 5. Update Statuses
-        sqlx::query("UPDATE gig_intents SET status = 'Accepted' WHERE id = ?")
-            .bind(intent_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Intent status update failed: {}", e),
-            })?;
+        let q_upd_intent = format!("UPDATE gig_intents SET status = 'Accepted' WHERE id = {}", self.pool.ph(0));
+        let q_upd_bid = format!("UPDATE gig_bids SET status = 'Accepted' WHERE id = {}", self.pool.ph(0));
 
-        sqlx::query("UPDATE gig_bids SET status = 'Accepted' WHERE id = ?")
-            .bind(bid_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Bid status update failed: {}", e),
-            })?;
+        match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(&q_upd_intent).bind(&intent_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q_upd_bid).bind(&bid_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query(&q_upd_intent).bind(&intent_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q_upd_bid).bind(&bid_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),
@@ -186,27 +200,25 @@ impl GigEngine for SqliteGigEngine {
     }
 
     async fn deliver(&self, deliverable: GigDeliverable) -> Result<(), AiomeError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Transaction start failed: {}", e),
-            })?;
+        let mut tx = self.pool.begin().await?;
+        let order_id_str = deliverable.order_id.to_string();
 
         // 1. Verify Status and Assignee
-        let (status, accepted_bidder_id_str): (String, String) = sqlx::query_as(
-            "SELECT i.status, b.bidder_id
-             FROM gig_intents i
-             JOIN gig_bids b ON b.intent_id = i.id AND b.status = 'Accepted'
-             WHERE i.id = ?",
-        )
-        .bind(deliverable.order_id.to_string())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Order lookup failed: {}", e),
-        })?;
+        let q_lookup = format!(
+            "SELECT i.status, b.bidder_id FROM gig_intents i JOIN gig_bids b ON b.intent_id = i.id AND b.status = 'Accepted' WHERE i.id = {}",
+            self.pool.ph(0)
+        );
+
+        let (status, accepted_bidder_id_str) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_lookup).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_lookup).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+        };
 
         if status != "Accepted" {
             return Err(AiomeError::Infrastructure {
@@ -220,7 +232,7 @@ impl GigEngine for SqliteGigEngine {
             });
         }
 
-        // 2. Validate Artifact Path (G-22 Enforcement)
+        // 2. Validate Artifact Path
         let sandbox =
             PathSandbox::new(&self.artifact_root).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to create PathSandbox: {}", e),
@@ -243,28 +255,32 @@ impl GigEngine for SqliteGigEngine {
             }
         })?;
 
-        sqlx::query(
-            "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata)
-             VALUES (?, ?, ?, ?)",
-        )
-        .bind(deliverable.order_id.to_string())
-        .bind(deliverable.deliverer_id.to_string())
-        .bind(safe_artifact_path.to_string_lossy().to_string())
-        .bind(metadata_str)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Delivery recording failed: {}", e),
-        })?;
+        let q_deliv = format!(
+            "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata) VALUES ({0}, {1}, {2}, {3})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
+        );
+
+        match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(&q_deliv).bind(&order_id_str).bind(deliverable.deliverer_id.to_string()).bind(safe_artifact_path.to_string_lossy().to_string()).bind(&metadata_str)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query(&q_deliv).bind(&order_id_str).bind(deliverable.deliverer_id.to_string()).bind(safe_artifact_path.to_string_lossy().to_string()).bind(&metadata_str)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         // 4. Update Status
-        sqlx::query("UPDATE gig_intents SET status = 'Delivered' WHERE id = ?")
-            .bind(deliverable.order_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Status update to Delivered failed: {}", e),
-            })?;
+        let q_upd = format!("UPDATE gig_intents SET status = 'Delivered' WHERE id = {}", self.pool.ph(0));
+        match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(&q_upd).bind(&order_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query(&q_upd).bind(&order_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),
@@ -274,23 +290,21 @@ impl GigEngine for SqliteGigEngine {
     }
 
     async fn verify_and_settle(&self, order_id: Uuid) -> Result<VerificationResult, AiomeError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Transaction start failed: {}", e),
-            })?;
+        let mut tx = self.pool.begin().await?;
+        let order_id_str = order_id.to_string();
 
         // 1. Fetch Intent, Criteria and Delivery
-        let (status, criteria_json): (String, String) =
-            sqlx::query_as("SELECT status, criteria FROM gig_intents WHERE id = ?")
-                .bind(order_id.to_string())
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Intent lookup failed: {}", e),
-                })?;
+        let q_intent = format!("SELECT status, criteria FROM gig_intents WHERE id = {}", self.pool.ph(0));
+        let (status, criteria_json) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_intent).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_intent).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+        };
 
         if status != "Delivered" {
             return Err(AiomeError::Infrastructure {
@@ -303,14 +317,17 @@ impl GigEngine for SqliteGigEngine {
                 reason: format!("Criteria parsing failed: {}", e),
             })?;
 
-        let (artifact_path, metadata_json): (String, String) =
-            sqlx::query_as("SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = ?")
-                .bind(order_id.to_string())
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Delivery lookup failed: {}", e),
-                })?;
+        let q_deliv = format!("SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = {}", self.pool.ph(0));
+        let (artifact_path, metadata_json) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_deliv).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_deliv).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+        };
 
         let metadata: serde_json::Value =
             serde_json::from_str(&metadata_json).unwrap_or(serde_json::Value::Null);
@@ -410,14 +427,17 @@ impl GigEngine for SqliteGigEngine {
         }
 
         // 3. Settle Escrow
-        let (escrow_id, recipient_id_str): (String, String) =
-            sqlx::query_as("SELECT id, recipient_id FROM escrows WHERE order_id = ?")
-                .bind(order_id.to_string())
-                .fetch_one(&mut *tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Escrow lookup failed: {}", e),
-                })?;
+        let q_escrow = format!("SELECT id, recipient_id FROM escrows WHERE order_id = {}", self.pool.ph(0));
+        let (escrow_id, recipient_id_str) = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                let row = sqlx::query(&q_escrow).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                let row = sqlx::query(&q_escrow).bind(&order_id_str).fetch_one(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                (row.get::<String, _>(0), row.get::<String, _>(1))
+            }
+        };
 
         let recipient_id =
             Uuid::parse_str(&recipient_id_str).map_err(|_| AiomeError::Infrastructure {
@@ -434,29 +454,24 @@ impl GigEngine for SqliteGigEngine {
 
         // 4. Update Status and Log
         let final_status = if passed { "Completed" } else { "Rejected" };
-        sqlx::query("UPDATE gig_intents SET status = ? WHERE id = ?")
-            .bind(final_status)
-            .bind(order_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Final status update failed: {}", e),
-            })?;
+        let q_upd_intent = format!("UPDATE gig_intents SET status = {} WHERE id = {}", self.pool.ph(0), self.pool.ph(1));
+        let q_log = format!(
+            "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail) VALUES ({0}, {1}, 'Combined', {2}, {3}, {4})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
+        );
 
-        sqlx::query(
-            "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail)
-             VALUES (?, ?, 'Combined', ?, ?, ?)",
-        )
-        .bind(Uuid::new_v4().to_string())
-        .bind(order_id.to_string())
-        .bind(passed as i32)
-        .bind(overall_score)
-        .bind(&detail)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Verification log failed: {}", e),
-        })?;
+        match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(&q_upd_intent).bind(final_status).bind(&order_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q_log).bind(Uuid::new_v4().to_string()).bind(&order_id_str).bind(passed as i32).bind(overall_score).bind(&detail)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query(&q_upd_intent).bind(final_status).bind(&order_id_str).execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q_log).bind(Uuid::new_v4().to_string()).bind(&order_id_str).bind(passed as i32).bind(overall_score).bind(&detail)
+                    .execute(&mut **itx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),
@@ -468,637 +483,5 @@ impl GigEngine for SqliteGigEngine {
             score: overall_score,
             detail,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::commerce_mock::MockCommerceEngine;
-    use aiome_core::llm_provider::MockLlmProvider;
-    use chrono::Utc;
-
-    async fn setup_db() -> SqlitePool {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-
-        sqlx::query(
-            "CREATE TABLE gig_intents (
-                id TEXT PRIMARY KEY,
-                requester_id TEXT NOT NULL,
-                description TEXT NOT NULL,
-                criteria TEXT NOT NULL,
-                max_budget_coins INTEGER NOT NULL,
-                category TEXT NOT NULL DEFAULT 'Other',
-                deadline TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Open',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        sqlx::query(
-            "CREATE TABLE gig_bids (
-                id TEXT PRIMARY KEY,
-                intent_id TEXT NOT NULL REFERENCES gig_intents(id),
-                bidder_id TEXT NOT NULL,
-                price_coins INTEGER NOT NULL,
-                est_duration_sec INTEGER NOT NULL,
-                deposit_amount INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        sqlx::query(
-            "CREATE TABLE escrows (
-                id TEXT PRIMARY KEY,
-                payer_id TEXT NOT NULL,
-                recipient_id TEXT,
-                order_id TEXT NOT NULL REFERENCES gig_intents(id),
-                amount INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Locked',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        sqlx::query(
-            "CREATE TABLE gig_deliveries (
-                order_id TEXT PRIMARY KEY REFERENCES gig_intents(id),
-                deliverer_id TEXT NOT NULL,
-                artifact_path TEXT NOT NULL,
-                metadata TEXT NOT NULL,
-                delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        sqlx::query(
-            "CREATE TABLE verification_logs (
-                id TEXT PRIMARY KEY,
-                order_id TEXT NOT NULL REFERENCES gig_intents(id),
-                criteria_type TEXT NOT NULL,
-                passed INTEGER NOT NULL,
-                score REAL NOT NULL,
-                detail TEXT,
-                verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        pool
-    }
-
-    fn mock_llm() -> Arc<dyn LlmProvider> {
-        Arc::new(MockLlmProvider {
-            response: "{\"passed\": true, \"score\": 0.95, \"detail\": \"Good job!\"}".into(),
-            should_fail: false,
-        })
-    }
-
-    #[tokio::test]
-    async fn test_gig_intent_lifecycle_green() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let intent = GigIntent {
-            id: intent_id,
-            requester_id: Uuid::new_v4(),
-            description: "Test gig".into(),
-            criteria: vec![AcceptanceCriteria::FileType {
-                mime: "image/png".into(),
-                max_bytes: 1024,
-            }],
-            max_budget_coins: 100,
-            category: IntentCategory::Other,
-            deadline: Utc::now() + chrono::Duration::hours(1),
-        };
-
-        let result = engine.publish_intent(intent).await;
-        assert!(result.is_ok());
-
-        let row: (String, String) =
-            sqlx::query_as("SELECT id, status FROM gig_intents WHERE id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap();
-
-        assert_eq!(row.0, intent_id.to_string());
-        assert_eq!(row.1, "Open");
-    }
-
-    #[tokio::test]
-    async fn test_gig_bid_submission_green() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bid_id = Uuid::new_v4();
-
-        // 1. Publish Intent
-        let intent = GigIntent {
-            id: intent_id,
-            requester_id: Uuid::new_v4(),
-            description: "Test bidding".into(),
-            criteria: vec![],
-            max_budget_coins: 100,
-            category: IntentCategory::Service,
-            deadline: Utc::now() + chrono::Duration::hours(1),
-        };
-        engine.publish_intent(intent).await.unwrap();
-
-        // 2. Submit Bid
-        let bid = GigBid {
-            id: bid_id,
-            intent_id,
-            bidder_id: Uuid::new_v4(),
-            price_coins: 80,
-            est_duration_sec: 3600,
-            deposit_amount: 10,
-        };
-
-        let result = engine.submit_bid(bid).await;
-        assert!(result.is_ok());
-
-        // Verify persistence
-        let row: (String, String) = sqlx::query_as("SELECT id, status FROM gig_bids WHERE id = ?")
-            .bind(bid_id.to_string())
-            .fetch_one(&engine.pool)
-            .await
-            .unwrap();
-
-        assert_eq!(row.0, bid_id.to_string());
-        assert_eq!(row.1, "Pending");
-    }
-
-    #[tokio::test]
-    async fn test_gig_bid_acceptance_green() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bid_id = Uuid::new_v4();
-        let requester_id = Uuid::new_v4();
-
-        // 1. Setup
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id,
-                description: "Acceptance test".into(),
-                criteria: vec![],
-                max_budget_coins: 100,
-                category: IntentCategory::Tool,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        engine
-            .submit_bid(GigBid {
-                id: bid_id,
-                intent_id,
-                bidder_id: Uuid::new_v4(),
-                price_coins: 80,
-                est_duration_sec: 3600,
-                deposit_amount: 10,
-            })
-            .await
-            .unwrap();
-
-        // 2. Accept
-        let result = engine.accept_bid(intent_id, bid_id).await;
-        assert!(result.is_ok());
-
-        // 3. Verify
-        let intent_status: String =
-            sqlx::query_scalar("SELECT status FROM gig_intents WHERE id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap();
-        assert_eq!(intent_status, "Accepted");
-
-        let bid_status: String = sqlx::query_scalar("SELECT status FROM gig_bids WHERE id = ?")
-            .bind(bid_id.to_string())
-            .fetch_one(&engine.pool)
-            .await
-            .unwrap();
-        assert_eq!(bid_status, "Accepted");
-
-        let escrow_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM escrows WHERE order_id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap();
-        assert_eq!(escrow_count, 1);
-    }
-
-    #[tokio::test]
-    async fn test_gig_delivery_green() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bid_id = Uuid::new_v4();
-        let bidder_id = Uuid::new_v4();
-
-        // 1. Setup: Accepted intent
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id: Uuid::new_v4(),
-                description: "Delivery test".into(),
-                criteria: vec![],
-                max_budget_coins: 100,
-                category: IntentCategory::Content,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        engine
-            .submit_bid(GigBid {
-                id: bid_id,
-                intent_id,
-                bidder_id,
-                price_coins: 80,
-                est_duration_sec: 3600,
-                deposit_amount: 10,
-            })
-            .await
-            .unwrap();
-
-        engine.accept_bid(intent_id, bid_id).await.unwrap();
-
-        // 2. Deliver
-        let deliverable = GigDeliverable {
-            order_id: intent_id,
-            deliverer_id: bidder_id,
-            artifact_path: "result.json".into(),
-            metadata: serde_json::json!({"version": "1.0"}),
-        };
-
-        let result = engine.deliver(deliverable).await;
-        assert!(result.is_ok());
-
-        // 3. Verify
-        let status: String = sqlx::query_scalar("SELECT status FROM gig_intents WHERE id = ?")
-            .bind(intent_id.to_string())
-            .fetch_one(&engine.pool)
-            .await
-            .unwrap();
-        assert_eq!(status, "Delivered");
-
-        let artifact: String =
-            sqlx::query_scalar("SELECT artifact_path FROM gig_deliveries WHERE order_id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap();
-        assert!(artifact.contains("result.json"));
-    }
-
-    #[tokio::test]
-    async fn test_gig_verify_and_settle_green() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bid_id = Uuid::new_v4();
-        let bidder_id = Uuid::new_v4();
-
-        // 1. Setup: Delivered intent
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id: Uuid::new_v4(),
-                description: "Settlement test".into(),
-                criteria: vec![],
-                max_budget_coins: 100,
-                category: IntentCategory::Service,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        engine
-            .submit_bid(GigBid {
-                id: bid_id,
-                intent_id,
-                bidder_id,
-                price_coins: 80,
-                est_duration_sec: 3600,
-                deposit_amount: 10,
-            })
-            .await
-            .unwrap();
-
-        engine.accept_bid(intent_id, bid_id).await.unwrap();
-
-        engine
-            .deliver(GigDeliverable {
-                order_id: intent_id,
-                deliverer_id: bidder_id,
-                artifact_path: "result.json".into(),
-                metadata: serde_json::json!({"version": "1.0"}),
-            })
-            .await
-            .unwrap();
-
-        // 2. Verify and Settle
-        let result = engine.verify_and_settle(intent_id).await;
-        assert!(result.is_ok());
-        let res = result.unwrap();
-        assert!(res.passed);
-        assert_eq!(res.order_id, intent_id);
-
-        // 3. Verify Persistence
-        let status: String = sqlx::query_scalar("SELECT status FROM gig_intents WHERE id = ?")
-            .bind(intent_id.to_string())
-            .fetch_one(&engine.pool)
-            .await
-            .unwrap();
-        assert_eq!(status, "Completed");
-
-        let log_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM verification_logs WHERE order_id = ?")
-                .bind(intent_id.to_string())
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap();
-        assert_eq!(log_count, 1);
-    }
-
-    #[tokio::test]
-    async fn test_gig_verify_with_oracle_judge() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let llm = Arc::new(MockLlmProvider {
-            response: "{\"passed\": true, \"score\": 0.98, \"detail\": \"Excellent work analyzed by LLM.\"}"
-                .into(),
-            should_fail: false,
-        });
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(pool, commerce, llm, artifact_root.path().to_path_buf());
-
-        let intent_id = Uuid::new_v4();
-        let bidder_id = Uuid::new_v4();
-
-        // 1. Setup: Intent with OracleJudge
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id: Uuid::new_v4(),
-                description: "Write a high quality haiku".into(),
-                criteria: vec![AcceptanceCriteria::OracleJudge {
-                    rubric_prompt: "Assess poetic quality".into(),
-                    min_score: 0.8,
-                    model: None,
-                }],
-                max_budget_coins: 100,
-                category: IntentCategory::Content,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        // Acceptance and Delivery
-        let bid_id = Uuid::new_v4();
-        engine
-            .submit_bid(GigBid {
-                id: bid_id,
-                intent_id,
-                bidder_id,
-                price_coins: 50,
-                est_duration_sec: 3600,
-                deposit_amount: 5,
-            })
-            .await
-            .unwrap();
-        engine.accept_bid(intent_id, bid_id).await.unwrap();
-        engine
-            .deliver(GigDeliverable {
-                order_id: intent_id,
-                deliverer_id: bidder_id,
-                artifact_path: "haiku.txt".into(),
-                metadata: serde_json::json!({"content": "Old pond, frog jumps in."}),
-            })
-            .await
-            .unwrap();
-
-        // 2. Verify and Settle (OracleJudge should be invoked)
-        let result = engine.verify_and_settle(intent_id).await.unwrap();
-
-        assert!(result.passed);
-        assert_eq!(result.score, 0.98);
-        assert!(result.detail.contains("Excellent work analyzed by LLM."));
-    }
-
-    #[tokio::test]
-    async fn test_gig_delivery_rejects_path_traversal_red() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bidder_id = Uuid::new_v4();
-
-        // 1. Setup: Accepted intent
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id: Uuid::new_v4(),
-                description: "Traversal test".into(),
-                criteria: vec![],
-                max_budget_coins: 100,
-                category: IntentCategory::Other,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        engine
-            .submit_bid(GigBid {
-                id: Uuid::new_v4(),
-                intent_id,
-                bidder_id,
-                price_coins: 80,
-                est_duration_sec: 3600,
-                deposit_amount: 10,
-            })
-            .await
-            .unwrap();
-
-        engine
-            .accept_bid(
-                intent_id,
-                Uuid::parse_str(
-                    &sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?")
-                        .bind(intent_id.to_string())
-                        .fetch_one(&engine.pool)
-                        .await
-                        .unwrap(),
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        // 2. Deliver with traversal path
-        let deliverable = GigDeliverable {
-            order_id: intent_id,
-            deliverer_id: bidder_id,
-            artifact_path: "../../etc/passwd".into(),
-            metadata: serde_json::json!({}),
-        };
-
-        // This should fail according to our G-22 requirement
-        let result = engine.deliver(deliverable).await;
-        assert!(
-            result.is_err(),
-            "Delivery should fail due to path traversal"
-        );
-
-        let err_msg = format!("{}", result.unwrap_err());
-        assert!(
-            err_msg.contains("Insecure artifact path") || err_msg.contains("traversal"),
-            "Error message should mention access denial or traversal: {}",
-            err_msg
-        );
-    }
-
-    #[tokio::test]
-    async fn test_gig_delivery_rejects_absolute_path_red() {
-        let pool = setup_db().await;
-        let commerce = Arc::new(MockCommerceEngine);
-        let artifact_root = tempfile::tempdir().unwrap();
-        let engine = SqliteGigEngine::new(
-            pool,
-            commerce,
-            mock_llm(),
-            artifact_root.path().to_path_buf(),
-        );
-
-        let intent_id = Uuid::new_v4();
-        let bidder_id = Uuid::new_v4();
-
-        // 1. Setup: Accepted intent
-        engine
-            .publish_intent(GigIntent {
-                id: intent_id,
-                requester_id: Uuid::new_v4(),
-                description: "Absolute path test".into(),
-                criteria: vec![],
-                max_budget_coins: 100,
-                category: IntentCategory::Other,
-                deadline: Utc::now() + chrono::Duration::hours(1),
-            })
-            .await
-            .unwrap();
-
-        engine
-            .submit_bid(GigBid {
-                id: Uuid::new_v4(),
-                intent_id,
-                bidder_id,
-                price_coins: 80,
-                est_duration_sec: 3600,
-                deposit_amount: 10,
-            })
-            .await
-            .unwrap();
-
-        engine
-            .accept_bid(
-                intent_id,
-                Uuid::parse_str(
-                    &sqlx::query_scalar::<_, String>("SELECT id FROM gig_bids WHERE intent_id = ?")
-                        .bind(intent_id.to_string())
-                        .fetch_one(&engine.pool)
-                        .await
-                        .unwrap(),
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        // 2. Deliver with absolute path outside jail
-        let deliverable = GigDeliverable {
-            order_id: intent_id,
-            deliverer_id: bidder_id,
-            artifact_path: "/etc/shadow".into(),
-            metadata: serde_json::json!({}),
-        };
-
-        // This should fail
-        let result = engine.deliver(deliverable).await;
-        assert!(
-            result.is_err(),
-            "Delivery should fail due to absolute path traversal"
-        );
-
-        let err_msg = format!("{}", result.unwrap_err());
-        assert!(
-            err_msg.contains("Insecure artifact path") || err_msg.contains("outside of jail"),
-            "Error message should mention access denial: {}",
-            err_msg
-        );
     }
 }

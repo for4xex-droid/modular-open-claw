@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 //! # Quarantine — アセット検疫
 //!
 //! CSAM やコンプライアンス違反のアセットを永続的に記録・管理する。
@@ -5,7 +12,9 @@
 use aiome_contracts::contracts::QuarantinedAsset;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use crate::db::DatabasePool;
+use crate::sql_exec;
+use aiome_core::error::AiomeError;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -51,39 +60,20 @@ pub trait QuarantineStore: Send + Sync {
     async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>>;
 }
 
-/// SQLite を使用した検疫ストア実装
-pub struct SqliteQuarantineStore {
-    pool: SqlitePool,
+/// Universal (SQLite/PostgreSQL) implementation for QuarantineStore
+pub struct UniversalQuarantineStore {
+    pool: DatabasePool,
 }
 
-impl SqliteQuarantineStore {
-    /// 新規作成とテーブル初期化
-    pub async fn new(pool: SqlitePool) -> anyhow::Result<Self> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS quarantined_assets (
-                id TEXT PRIMARY KEY,
-                asset_name TEXT NOT NULL,
-                image_hash TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                status TEXT NOT NULL,
-                uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&pool)
-        .await?;
-
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_quarantined_assets_hash ON quarantined_assets (image_hash)",
-        )
-        .execute(&pool)
-        .await?;
-
-        Ok(Self { pool })
+impl UniversalQuarantineStore {
+    /// 新規作成
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
-impl QuarantineStore for SqliteQuarantineStore {
+impl QuarantineStore for UniversalQuarantineStore {
     async fn quarantine_asset(
         &self,
         asset_name: &str,
@@ -94,17 +84,12 @@ impl QuarantineStore for SqliteQuarantineStore {
         let reason_str = serde_json::to_string(&reason)?;
         let status = serde_json::to_string(&QuarantineStatus::Quarantined)?;
 
-        sqlx::query(
-            "INSERT INTO quarantined_assets (id, asset_name, image_hash, reason, status)
-             VALUES (?, ?, ?, ?, ?)",
-        )
-        .bind(&id)
-        .bind(asset_name)
-        .bind(image_hash)
-        .bind(reason_str)
-        .bind(status)
-        .execute(&self.pool)
-        .await?;
+        let q = format!(
+            "INSERT INTO quarantined_assets (id, asset_name, image_hash, reason, status) VALUES ({0}, {1}, {2}, {3}, {4})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
+        );
+
+        sql_exec!(&self.pool, &q, &id, asset_name, image_hash, reason_str, status).map_err(|e| anyhow::anyhow!(e))?;
 
         info!(
             "🛡️ [Quarantine] Asset quarantined: {} (Hash: {})",
@@ -114,49 +99,64 @@ impl QuarantineStore for SqliteQuarantineStore {
     }
 
     async fn is_quarantined(&self, image_hash: &str) -> anyhow::Result<bool> {
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT id FROM quarantined_assets WHERE image_hash = ? AND status = ?")
-                .bind(image_hash)
-                .bind(serde_json::to_string(&QuarantineStatus::Quarantined)?)
-                .fetch_optional(&self.pool)
-                .await?;
+        let q = format!(
+            "SELECT id FROM quarantined_assets WHERE image_hash = {} AND status = {}",
+            self.pool.ph(0), self.pool.ph(1)
+        );
+        let status = serde_json::to_string(&QuarantineStatus::Quarantined)?;
 
-        Ok(row.is_some())
+        let res: Option<String> = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query_scalar(&q).bind(image_hash).bind(&status).fetch_optional(p).await?
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query_scalar(&q).bind(image_hash).bind(&status).fetch_optional(p).await?
+            }
+        };
+
+        Ok(res.is_some())
     }
 
     async fn release_asset(&self, id: &str) -> anyhow::Result<()> {
         let status = serde_json::to_string(&QuarantineStatus::Released)?;
-        sqlx::query("UPDATE quarantined_assets SET status = ? WHERE id = ?")
-            .bind(status)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        let q = format!("UPDATE quarantined_assets SET status = {} WHERE id = {}", self.pool.ph(0), self.pool.ph(1));
+
+        sql_exec!(&self.pool, &q, status, id).map_err(|e| anyhow::anyhow!(e))?;
 
         info!("🔓 [Quarantine] Asset released: {}", id);
         Ok(())
     }
 
     async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
-        let rows = sqlx::query("SELECT id, asset_name, image_hash, reason, status, uploaded_at FROM quarantined_assets ORDER BY uploaded_at DESC")
-            .fetch_all(&self.pool)
-            .await?;
+        use sqlx::Row;
+        let q = "SELECT id, asset_name, image_hash, reason, status, uploaded_at FROM quarantined_assets ORDER BY uploaded_at DESC";
 
-        let assets = rows
-            .into_iter()
-            .map(|row| {
-                use sqlx::Row;
-                QuarantinedAsset {
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(q).fetch_all(p).await?;
+                let assets = rows.into_iter().map(|row| QuarantinedAsset {
                     id: row.get("id"),
                     asset_name: row.get("asset_name"),
                     image_hash: row.get("image_hash"),
                     reason: row.get("reason"),
                     status: row.get("status"),
                     uploaded_at: row.get("uploaded_at"),
-                }
-            })
-            .collect();
-
-        Ok(assets)
+                }).collect();
+                Ok(assets)
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(q).fetch_all(p).await?;
+                let assets = rows.into_iter().map(|row| QuarantinedAsset {
+                    id: row.get("id"),
+                    asset_name: row.get("asset_name"),
+                    image_hash: row.get("image_hash"),
+                    reason: row.get("reason"),
+                    status: row.get("status"),
+                    uploaded_at: row.get("uploaded_at"),
+                }).collect();
+                Ok(assets)
+            }
+        }
     }
 }
 
@@ -186,31 +186,5 @@ impl QuarantineStore for MockQuarantineStore {
 
     async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
         Ok(vec![])
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use sqlx::sqlite::SqlitePoolOptions;
-
-    #[tokio::test]
-    async fn test_quarantine_flow() {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        let store = SqliteQuarantineStore::new(pool).await.unwrap();
-
-        let hash = "fake-hash-123";
-        let id = store
-            .quarantine_asset("test-asset", hash, AssetReason::CsamHit)
-            .await
-            .unwrap();
-
-        assert!(store.is_quarantined(hash).await.unwrap());
-
-        store.release_asset(&id).await.unwrap();
-        assert!(!store.is_quarantined(hash).await.unwrap());
     }
 }

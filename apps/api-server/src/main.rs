@@ -195,8 +195,8 @@ async fn main() -> anyhow::Result<()> {
         embed_type,
     );
 
-    let artifact_store = infrastructure::artifact_store::SqliteArtifactStore::new(
-        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+    let artifact_store = infrastructure::artifact_store::UniversalArtifactStore::new(
+        job_queue.get_pool().clone(),
         std::path::PathBuf::from("workspace/artifacts"),
     )
     .with_embeddings(embed_provider.clone());
@@ -270,9 +270,9 @@ async fn main() -> anyhow::Result<()> {
     let federation_secret = federation_secret_raw.map(|s| Arc::new(secrecy::SecretString::from(s)));
 
     // Soul (Sense Foundation)
-    let soul_store = Arc::new(infrastructure::soul_store::SqliteSoulStore::new(Arc::new(
-        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
-    )));
+    let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
+        job_queue.get_pool().clone(),
+    ));
 
     // AgentSense (AS-1)
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
@@ -327,8 +327,8 @@ async fn main() -> anyhow::Result<()> {
         )) as Arc<dyn GiftEngine>
     };
     let ekyc_session_store = {
-        let pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
-        Arc::new(infrastructure::compliance::ekyc_store::SqliteEkycSessionStore::new(pool))
+        let pool = job_queue.get_pool().clone();
+        Arc::new(infrastructure::compliance::ekyc_store::UniversalEkycSessionStore::new(pool))
             as Arc<dyn EkycSessionStore>
     };
     let ekyc_engine = {
@@ -358,10 +358,8 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     let quarantine_store = {
-        let pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
-        let store = infrastructure::compliance::quarantine::SqliteQuarantineStore::new(pool)
-            .await
-            .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize SqliteQuarantineStore: {}", e))?;
+        let pool = job_queue.get_pool().clone();
+        let store = infrastructure::compliance::quarantine::UniversalQuarantineStore::new(pool);
         Arc::new(store) as Arc<dyn QuarantineStore>
     };
     let auth_manager = {
@@ -398,8 +396,8 @@ async fn main() -> anyhow::Result<()> {
         )
         .await,
     );
-    let gig_engine = Arc::new(infrastructure::gig_engine::SqliteGigEngine::new(
-        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+    let gig_engine = Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
+        job_queue.get_pool().clone(),
         commerce_engine
             .clone()
             .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,

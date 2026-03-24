@@ -8,27 +8,30 @@
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::EmbeddingProvider;
 use aiome_core::traits::{
-    ArtifactCategory, ArtifactFile, ArtifactMeta, ArtifactStore, CreateArtifactRequest,
+    ArtifactCategory, ArtifactEdge, ArtifactFile, ArtifactMeta, ArtifactStore, CreateArtifactRequest,
 };
 use async_trait::async_trait;
 use sha2::{Digest, Sha256};
 use shared::sandbox::PathSandbox;
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-/// SQLiteベースのアーティファクトストア
-pub struct SqliteArtifactStore {
-    pool: SqlitePool,
+use crate::db::DatabasePool;
+use crate::sql_exec;
+
+/// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
+pub struct UniversalArtifactStore {
+    pool: DatabasePool,
     base_dir: PathBuf, // workspace/artifacts
     embed_provider: Option<Arc<dyn EmbeddingProvider>>,
 }
 
-impl SqliteArtifactStore {
+impl UniversalArtifactStore {
     /// 新しいインスタンスを生成する
-    pub fn new(pool: SqlitePool, base_dir: PathBuf) -> Self {
+    pub fn new(pool: DatabasePool, base_dir: PathBuf) -> Self {
         Self {
             pool,
             base_dir,
@@ -47,10 +50,60 @@ impl SqliteArtifactStore {
         hasher.update(content);
         format!("{:x}", hasher.finalize())
     }
+
+    // Helper to map Sqlite row to ArtifactMeta
+    fn map_sqlite_row(row: sqlx::sqlite::SqliteRow) -> Result<ArtifactMeta, AiomeError> {
+        let cat_str: String = row.get("category");
+        let tags_json: String = row.get("tags");
+        let manifest_json: String = row.get("file_manifest");
+        let karma_json: String = row.get("karma_refs");
+
+        Ok(ArtifactMeta {
+            id: row.get("id"),
+            title: row.get("title"),
+            category: serde_json::from_str(&format!("\"{}\"", cat_str)).unwrap_or(ArtifactCategory::Report),
+            tags: serde_json::from_str(&tags_json).unwrap_or_default(),
+            created_by: row.get("created_by"),
+            dir_path: row.get("dir_path"),
+            files: serde_json::from_str(&manifest_json).unwrap_or_default(),
+            karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
+            job_ref: row.get("job_ref"),
+            soul_version_hash: row.get("soul_version_hash"),
+            signature: row.get("signature"),
+            text_content: row.get("text_content"),
+            edges: Vec::new(),
+            created_at: row.get("created_at"),
+        })
+    }
+
+    // Helper to map Postgres row to ArtifactMeta
+    fn map_postgres_row(row: sqlx::postgres::PgRow) -> Result<ArtifactMeta, AiomeError> {
+        let cat_str: String = row.get("category");
+        let tags_json: String = row.get("tags");
+        let manifest_json: String = row.get("file_manifest");
+        let karma_json: String = row.get("karma_refs");
+
+        Ok(ArtifactMeta {
+            id: row.get("id"),
+            title: row.get("title"),
+            category: serde_json::from_str(&format!("\"{}\"", cat_str)).unwrap_or(ArtifactCategory::Report),
+            tags: serde_json::from_str(&tags_json).unwrap_or_default(),
+            created_by: row.get("created_by"),
+            dir_path: row.get("dir_path"),
+            files: serde_json::from_str(&manifest_json).unwrap_or_default(),
+            karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
+            job_ref: row.get("job_ref"),
+            soul_version_hash: row.get("soul_version_hash"),
+            signature: row.get("signature"),
+            text_content: row.get("text_content"),
+            edges: Vec::new(),
+            created_at: row.get("created_at"),
+        })
+    }
 }
 
 #[async_trait]
-impl ArtifactStore for SqliteArtifactStore {
+impl ArtifactStore for UniversalArtifactStore {
     async fn save_artifact(
         &self,
         req: CreateArtifactRequest,
@@ -60,7 +113,6 @@ impl ArtifactStore for SqliteArtifactStore {
         let timestamp = chrono::Utc::now();
         let dir_name = format!("{}_{}", timestamp.format("%Y-%m-%d"), &id[..8]);
 
-        // 1. Create directory using PathSandbox for secure jail confinement
         let sandbox = PathSandbox::new(jail.root()).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to initialize sandbox: {}", e),
         })?;
@@ -80,7 +132,6 @@ impl ArtifactStore for SqliteArtifactStore {
         let mut artifact_files = Vec::new();
         let mut manifest_hasher = Sha256::new();
 
-        // 2. Save files and calculate hashes
         for (filename, content, mime_type) in req.files {
             let hash = Self::calculate_hash(&content);
             let file_path = sandbox
@@ -104,417 +155,193 @@ impl ArtifactStore for SqliteArtifactStore {
             artifact_files.push(file_meta);
         }
 
-        let file_manifest_json =
-            serde_json::to_string(&artifact_files).map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to serialize artifact files: {}", e),
-            })?;
-        let tags_json =
-            serde_json::to_string(&req.tags).map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to serialize tags: {}", e),
-            })?;
-        let karma_refs_json =
-            serde_json::to_string(&req.karma_refs).map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to serialize karma refs: {}", e),
-            })?;
+        let file_manifest_json = serde_json::to_string(&artifact_files).unwrap_or_default();
+        let tags_json = serde_json::to_string(&req.tags).unwrap_or_default();
+        let karma_refs_json = serde_json::to_string(&req.karma_refs).unwrap_or_default();
 
-        // SEC-6: Enforce payload size limits (max 500KB total for metadata)
-        if file_manifest_json.len() + tags_json.len() + karma_refs_json.len() > 500 * 1024 {
-            return Err(AiomeError::SecurityViolation {
-                reason: "Artifact metadata exceeds safety limits (500KB)".into(),
-            });
-        }
-
-        // Phase 2: Generate Embedding
         let mut embedding_blob: Option<Vec<u8>> = None;
         if let Some(ref provider) = self.embed_provider {
-            // Include text_content in embedding context for higher semantic quality
-            let context = format!(
-                "{} {:?} {} {}",
-                req.title,
-                req.category,
-                req.tags.join(" "),
-                req.text_content.as_deref().unwrap_or("")
-            );
-            match provider.embed(&context, false).await {
-                Ok(vec) => {
-                    info!(
-                        "🧠 Generated embedding for artifact: {} ({} dims)",
-                        req.title,
-                        vec.len()
-                    );
-                    embedding_blob = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
-                }
-                Err(e) => warn!("⚠️ Failed to generate embedding for {}: {:?}", req.title, e),
+            let context = format!("{} {:?} {} {}", req.title, req.category, req.tags.join(" "), req.text_content.as_deref().unwrap_or(""));
+            if let Ok(vec) = provider.embed(&context, false).await {
+                embedding_blob = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
             }
         }
 
         let signature = format!("{:x}", manifest_hasher.finalize());
+        let cat_str = serde_json::to_string(&req.category).unwrap_or_default().replace("\"", "");
 
-        // 3. Store in SQLite
-        sqlx::query(
+        let q = format!(
             "INSERT INTO ai_artifacts (id, title, category, tags, created_by, dir_path, file_manifest, karma_refs, job_ref, signature, embedding, text_content) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&id)
-        .bind(&req.title)
-        .bind(
-            serde_json::to_string(&req.category)
-                .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to serialize category: {}", e) })?
-                .replace("\"", ""),
-        )
-        .bind(&tags_json)
-        .bind(&req.created_by)
-        .bind(relative_dir.display().to_string())
-        .bind(&file_manifest_json)
-        .bind(&karma_refs_json)
-        .bind(req.job_ref)
-        .bind(&signature)
-        .bind(embedding_blob)
-        .bind(req.text_content)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to store artifact metadata: {}", e) })?;
+             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), 
+            self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), 
+            self.pool.ph(10), self.pool.ph(11)
+        );
 
-        // Phase 1: Store Edges (Provenance DAG)
-        for edge_req in req.parent_refs {
-            let edge_id = Uuid::new_v4().to_string();
-            if let Err(e) = sqlx::query(
-                "INSERT INTO artifact_edges (id, source_id, target_id, source_type, relation, metadata) VALUES (?, ?, ?, ?, ?, ?)"
-            )
-            .bind(&edge_id)
-            .bind(&id)
-            .bind(&edge_req.target_id)
-            .bind(&edge_req.source_type)
-            .bind(&edge_req.relation)
-            .bind(serde_json::to_string(&edge_req.metadata.unwrap_or(serde_json::json!({}))).unwrap_or_default())
-            .execute(&self.pool)
-            .await {
-                warn!("🛡️ [ArtifactStore] Failed to store artifact edge (continuing): {}", e);
-            }
-        }
+        sql_exec!(
+            &self.pool, &q, &id, &req.title, &cat_str, &tags_json, &req.created_by,
+            relative_dir.display().to_string(), &file_manifest_json, &karma_refs_json, 
+            req.job_ref, &signature, embedding_blob, req.text_content
+        )?;
 
-        info!("📦 Artifact saved: {} (ID: {})", req.title, id);
+        info!("📦 Artifact saved: {}", id);
         Ok(id)
     }
 
-    async fn list_artifacts(
-        &self,
-        category: Option<ArtifactCategory>,
-        limit: i64,
-    ) -> Result<Vec<ArtifactMeta>, AiomeError> {
-        let sql = if let Some(ref cat) = category {
-            format!(
-                "SELECT * FROM ai_artifacts WHERE category = ? ORDER BY created_at DESC LIMIT {}",
-                limit
-            )
+    async fn list_artifacts(&self, category: Option<ArtifactCategory>, limit: i64) -> Result<Vec<ArtifactMeta>, AiomeError> {
+        let sql = if category.is_some() {
+            format!("SELECT * FROM ai_artifacts WHERE category = {} ORDER BY created_at DESC LIMIT {}", self.pool.ph(0), limit)
         } else {
-            format!(
-                "SELECT * FROM ai_artifacts ORDER BY created_at DESC LIMIT {}",
-                limit
-            )
+            format!("SELECT * FROM ai_artifacts ORDER BY created_at DESC LIMIT {}", limit)
         };
 
-        let mut query = sqlx::query(&sql);
-        if let Some(ref cat) = category {
-            query = query.bind(
-                serde_json::to_string(cat)
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to serialize category: {}", e),
-                    })?
-                    .replace("\"", ""),
-            );
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let mut query = sqlx::query(&sql);
+                if let Some(ref cat) = category {
+                    query = query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", ""));
+                }
+                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut results = Vec::new();
+                for r in rows { results.push(Self::map_sqlite_row(r)?); }
+                Ok(results)
+            }
+            DatabasePool::Postgres(p) => {
+                let mut query = sqlx::query(&sql);
+                if let Some(ref cat) = category {
+                    query = query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", ""));
+                }
+                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut results = Vec::new();
+                for r in rows { results.push(Self::map_postgres_row(r)?); }
+                Ok(results)
+            }
         }
-
-        let rows = query
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to list artifacts: {}", e),
-            })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(ArtifactMeta {
-                id: row.get("id"),
-                title: row.get("title"),
-                category: serde_json::from_str(&format!(
-                    "\"{}\"",
-                    row.get::<String, _>("category")
-                ))
-                .unwrap_or(ArtifactCategory::Report),
-                tags: serde_json::from_str(row.get("tags")).unwrap_or_default(),
-                created_by: row.get("created_by"),
-                dir_path: row.get("dir_path"),
-                files: serde_json::from_str(row.get("file_manifest")).unwrap_or_default(),
-                karma_refs: serde_json::from_str(row.get("karma_refs")).unwrap_or_default(),
-                job_ref: row.get("job_ref"),
-                soul_version_hash: row.get("soul_version_hash"),
-                signature: row.get("signature"),
-                text_content: row.get("text_content"),
-                edges: Vec::new(), // Populated on-demand or with specific fetch
-                created_at: row.get("created_at"),
-            });
-        }
-
-        Ok(results)
     }
 
     async fn fetch_artifact(&self, id: &str) -> Result<Option<ArtifactMeta>, AiomeError> {
-        let row = sqlx::query("SELECT * FROM ai_artifacts WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to fetch artifact details: {}", e),
-            })?;
+        let q = format!("SELECT * FROM ai_artifacts WHERE id = {}", self.pool.ph(0));
+        let meta = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                if let Some(r) = row { Some(Self::map_sqlite_row(r)?) } else { None }
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                if let Some(r) = row { Some(Self::map_postgres_row(r)?) } else { None }
+            }
+        };
 
-        if let Some(r) = row {
-            let id: String = r.get("id");
-            let edges = self.get_artifact_edges(&id).await.unwrap_or_default();
-
-            Ok(Some(ArtifactMeta {
-                id,
-                title: r.get("title"),
-                category: serde_json::from_str(&format!("\"{}\"", r.get::<String, _>("category")))
-                    .unwrap_or(ArtifactCategory::Report),
-                tags: serde_json::from_str(r.get("tags")).unwrap_or_default(),
-                created_by: r.get("created_by"),
-                dir_path: r.get("dir_path"),
-                files: serde_json::from_str(r.get("file_manifest")).unwrap_or_default(),
-                karma_refs: serde_json::from_str(r.get("karma_refs")).unwrap_or_default(),
-                job_ref: r.get("job_ref"),
-                soul_version_hash: r.get("soul_version_hash"),
-                signature: r.get("signature"),
-                text_content: r.get("text_content"),
-                edges,
-                created_at: r.get("created_at"),
-            }))
-        } else {
-            Ok(None)
-        }
+        if let Some(mut m) = meta {
+            m.edges = self.get_artifact_edges(id).await.unwrap_or_default();
+            Ok(Some(m))
+        } else { Ok(None) }
     }
 
-    async fn read_artifact_file(
-        &self,
-        id: &str,
-        filename: &str,
-        jail: &bastion::fs_guard::Jail,
-    ) -> Result<Vec<u8>, AiomeError> {
-        let meta = self
-            .fetch_artifact(id)
-            .await?
-            .ok_or_else(|| AiomeError::ArtifactNotFound {
-                path: id.to_string(),
-            })?;
-
-        // Ensure the file is actually in the manifest
-        if !meta.files.iter().any(|f| f.name == filename) {
-            return Err(AiomeError::ArtifactNotFound {
-                path: format!("{}/{}", id, filename),
-            });
-        }
-
-        let sandbox = PathSandbox::new(jail.root()).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to initialize sandbox: {}", e),
-        })?;
-
-        let full_path = sandbox
-            .validate_path(Path::new(&meta.dir_path).join(filename))
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Security violation - unauthorized file access: {}", e),
-            })?;
-
-        let content = std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to read artifact file: {}", e),
-        })?;
-
-        Ok(content)
+    async fn read_artifact_file(&self, id: &str, filename: &str, jail: &bastion::fs_guard::Jail) -> Result<Vec<u8>, AiomeError> {
+        let meta = self.fetch_artifact(id).await?.ok_or(AiomeError::ArtifactNotFound { path: id.to_string() })?;
+        let root = jail.root().to_path_buf();
+        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure { reason: format!("Sandbox error: {}", e) })?;
+        let full_path = sandbox.validate_path(Path::new(&meta.dir_path).join(filename)).map_err(|e| AiomeError::Infrastructure { reason: format!("Path error: {}", e) })?;
+        std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure { reason: format!("IO error: {}", e) })
     }
 
-    async fn delete_artifact(
-        &self,
-        id: &str,
-        jail: &bastion::fs_guard::Jail,
-    ) -> Result<(), AiomeError> {
-        let meta = self
-            .fetch_artifact(id)
-            .await?
-            .ok_or_else(|| AiomeError::ArtifactNotFound {
-                path: id.to_string(),
-            })?;
-
-        // 1. Delete files from disk using sandbox
-        let sandbox = PathSandbox::new(jail.root()).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to initialize sandbox: {}", e),
-        })?;
-
-        let full_dir =
-            sandbox
-                .validate_path(&meta.dir_path)
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Security violation - unauthorized directory access: {}", e),
-                })?;
-
-        for file in meta.files {
-            let file_path = full_dir.join(&file.name);
-            let _ = std::fs::remove_file(file_path);
+    async fn delete_artifact(&self, id: &str, jail: &bastion::fs_guard::Jail) -> Result<(), AiomeError> {
+        let meta = self.fetch_artifact(id).await?.ok_or(AiomeError::ArtifactNotFound { path: id.to_string() })?;
+        let root = jail.root().to_path_buf();
+        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure { reason: format!("Sandbox error: {}", e) })?;
+        if let Ok(full_dir) = sandbox.validate_path(&meta.dir_path) {
+            for file in meta.files { let _ = std::fs::remove_file(full_dir.join(&file.name)); }
+            let _ = std::fs::remove_dir(full_dir);
         }
-
-        // 2. Delete directory (if empty)
-        let _ = std::fs::remove_dir(full_dir);
-
-        // 3. Delete from DB
-        if let Err(e) = sqlx::query("DELETE FROM ai_artifacts WHERE id = ?")
-            .bind(id)
-            .execute(&self.pool)
-            .await
-        {
-            warn!(
-                "🛡️ [ArtifactStore] Failed to delete artifact metadata from DB: {}",
-                e
-            );
-        }
-        if let Err(e) =
-            sqlx::query("DELETE FROM artifact_edges WHERE source_id = ? OR target_id = ?")
-                .bind(id)
-                .bind(id)
-                .execute(&self.pool)
-                .await
-        {
-            warn!(
-                "🛡️ [ArtifactStore] Failed to delete artifact edges from DB (continuing): {}",
-                e
-            );
-        }
-
+        let _ = sql_exec!(&self.pool, &format!("DELETE FROM ai_artifacts WHERE id = {}", self.pool.ph(0)), id);
+        let _ = sql_exec!(&self.pool, &format!("DELETE FROM artifact_edges WHERE source_id = {0} OR target_id = {0}", self.pool.ph(0)), id);
         Ok(())
     }
 
-    async fn get_artifact_edges(
-        &self,
-        id: &str,
-    ) -> Result<Vec<aiome_core::traits::ArtifactEdge>, AiomeError> {
-        let rows = sqlx::query("SELECT * FROM artifact_edges WHERE source_id = ? OR target_id = ?")
-            .bind(id)
-            .bind(id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
-
-        let mut edges = Vec::new();
-        for r in rows {
-            edges.push(aiome_core::traits::ArtifactEdge {
-                id: r.get("id"),
-                source_id: r.get("source_id"),
-                target_id: r.get("target_id"),
-                source_type: r.get("source_type"),
-                relation: r.get("relation"),
-                metadata: serde_json::from_str(r.get("metadata"))
-                    .unwrap_or_else(|_| serde_json::json!({})),
-                created_at: r.get("created_at"),
-            });
+    async fn get_artifact_edges(&self, id: &str) -> Result<Vec<ArtifactEdge>, AiomeError> {
+        let q = format!("SELECT * FROM artifact_edges WHERE source_id = {0} OR target_id = {0}", self.pool.ph(0));
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q).bind(id).fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut results = Vec::new();
+                for r in rows {
+                    results.push(ArtifactEdge {
+                        id: r.get("id"),
+                        source_id: r.get("source_id"),
+                        target_id: r.get("target_id"),
+                        source_type: r.get("source_type"),
+                        relation: r.get("relation"),
+                        metadata: serde_json::from_str(&r.get::<String, _>("metadata")).unwrap_or_default(),
+                        created_at: r.get("created_at"),
+                    });
+                }
+                Ok(results)
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q).bind(id).fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut results = Vec::new();
+                for r in rows {
+                    results.push(ArtifactEdge {
+                        id: r.get("id"),
+                        source_id: r.get("source_id"),
+                        target_id: r.get("target_id"),
+                        source_type: r.get("source_type"),
+                        relation: r.get("relation"),
+                        metadata: serde_json::from_str(&r.get::<String, _>("metadata")).unwrap_or_default(),
+                        created_at: r.get("created_at"),
+                    });
+                }
+                Ok(results)
+            }
         }
-        Ok(edges)
     }
 
-    async fn add_artifact_edge(
-        &self,
-        edge: aiome_core::traits::ArtifactEdge,
-    ) -> Result<(), AiomeError> {
-        sqlx::query(
-            "INSERT INTO artifact_edges (id, source_id, target_id, source_type, relation, metadata) VALUES (?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&edge.id).bind(&edge.source_id).bind(&edge.target_id).bind(&edge.source_type)
-        .bind(&edge.relation).bind(serde_json::to_string(&edge.metadata).unwrap_or_default())
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+    async fn add_artifact_edge(&self, edge: ArtifactEdge) -> Result<(), AiomeError> {
+        let q = format!("INSERT INTO artifact_edges (id, source_id, target_id, source_type, relation, metadata) VALUES ({0}, {1}, {2}, {3}, {4}, {5})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5));
+        sql_exec!(&self.pool, &q, &edge.id, &edge.source_id, &edge.target_id, &edge.source_type, &edge.relation, serde_json::to_string(&edge.metadata).unwrap_or_default())?;
         Ok(())
     }
 
-    async fn search_artifacts_semantic(
-        &self,
-        query: &str,
-        category: Option<ArtifactCategory>,
-        limit: i64,
-    ) -> Result<Vec<ArtifactMeta>, AiomeError> {
-        let provider = self
-            .embed_provider
-            .as_ref()
-            .ok_or_else(|| AiomeError::Infrastructure {
-                reason: "Embedding provider not configured for Semantic Search".into(),
-            })?;
-
+    async fn search_artifacts_semantic(&self, query: &str, category: Option<ArtifactCategory>, limit: i64) -> Result<Vec<ArtifactMeta>, AiomeError> {
+        let provider = self.embed_provider.as_ref().ok_or(AiomeError::Infrastructure { reason: "No embed provider".into() })?;
         let query_vec = provider.embed(query, true).await?;
         let query_vec_f64: Vec<f64> = query_vec.iter().map(|&f| f as f64).collect();
 
-        // 1. Build filtered query (SEC-7: Safety-clamp SQL fetch to avoid DoS)
-        let mut sql = "SELECT id, title, category, tags, created_by, dir_path, file_manifest, embedding, text_content, created_at 
-                       FROM ai_artifacts WHERE embedding IS NOT NULL".to_string();
-
-        if category.is_some() {
-            sql.push_str(" AND category = ?");
-        }
+        let mut sql = "SELECT id, embedding FROM ai_artifacts WHERE embedding IS NOT NULL".to_string();
+        if category.is_some() { sql.push_str(&format!(" AND category = {}", self.pool.ph(0))); }
         sql.push_str(" ORDER BY created_at DESC LIMIT 1000");
 
-        let mut db_query = sqlx::query(&sql);
-        if let Some(ref cat) = category {
-            let cat_str = serde_json::to_string(cat)
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to serialize category: {}", e),
-                })?
-                .replace("\"", "");
-            db_query = db_query.bind(cat_str);
-        }
+        let entries = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let mut db_query = sqlx::query(&sql);
+                if let Some(ref cat) = category { db_query = db_query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", "")); }
+                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                rows.into_iter().map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding"))).collect::<Vec<_>>()
+            }
+            DatabasePool::Postgres(p) => {
+                let mut db_query = sqlx::query(&sql);
+                if let Some(ref cat) = category { db_query = db_query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", "")); }
+                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                rows.into_iter().map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding"))).collect::<Vec<_>>()
+            }
+        };
 
-        let rows =
-            db_query
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
-
-        let mut candidates = Vec::new();
-        for r in rows {
-            let emb_bytes: Vec<u8> = r.get("embedding");
-            let emb_vec: Vec<f64> = emb_bytes
-                .chunks_exact(4)
-                .map(|c| {
-                    let bytes: [u8; 4] = c.try_into().unwrap_or([0, 0, 0, 0]);
-                    f32::from_le_bytes(bytes) as f64
-                })
-                .collect();
-
+        let mut sim_results = Vec::new();
+        for (id, emb_bytes) in entries {
+            let emb_vec: Vec<f64> = emb_bytes.chunks_exact(4).map(|c: &[u8]| f32::from_le_bytes(c.try_into().unwrap_or([0,0,0,0])) as f64).collect();
             let score = crate::job_queue::cosine_similarity(&query_vec_f64, &emb_vec);
-            candidates.push((score, r));
+            sim_results.push((score, id));
         }
-
-        candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        sim_results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut results = Vec::new();
-        for (_, r) in candidates.into_iter().take(limit as usize) {
-            results.push(ArtifactMeta {
-                id: r.get("id"),
-                title: r.get("title"),
-                category: serde_json::from_str(&format!("\"{}\"", r.get::<String, _>("category")))
-                    .unwrap_or(ArtifactCategory::Report),
-                tags: serde_json::from_str(r.get("tags")).unwrap_or_default(),
-                created_by: r.get("created_by"),
-                dir_path: r.get("dir_path"),
-                files: serde_json::from_str(r.get("file_manifest")).unwrap_or_default(),
-                karma_refs: Vec::new(),
-                job_ref: None,
-                soul_version_hash: None,
-                signature: None,
-                text_content: r.get("text_content"),
-                edges: Vec::new(),
-                created_at: r.get("created_at"),
-            });
+        for (_, id) in sim_results.into_iter().take(limit as usize) {
+            if let Some(meta) = self.fetch_artifact(&id).await? {
+                results.push(meta);
+            }
         }
-
         Ok(results)
     }
 }

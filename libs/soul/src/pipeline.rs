@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -6,16 +7,139 @@ use crate::engine::SamsaraEngine;
 use crate::error::SoulError;
 use crate::model::{AgentSoul, Experience};
 
-/// 3層パイプライン統合
-pub struct SoulPipeline<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> {
-    pub adapter: A,
-    pub engine: E,
+#[async_trait]
+pub trait SoulMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>: Send + Sync {
+    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError>;
 }
 
-impl<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> SoulPipeline<A, E> {
-    pub fn new(adapter: A, engine: E) -> Self {
-        Self { adapter, engine }
+pub trait SoulMiddlewareNext<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>: Send + Sync {
+    fn run<'a, 'b>(&'a self, ctx: &'b mut SoulContext<'_, A, E>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>>
+    where 'a: 'b;
+}
+
+pub struct SoulContext<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    pub pipeline: &'a SoulPipeline<A, E>,
+    pub soul: &'a mut AgentSoul,
+    pub experience: Experience,
+    pub embedding: Vec<f32>,
+    pub should_continue: bool,
+    pub rebirth_required: bool,
+    pub is_rejected: bool,
+}
+
+struct MiddlewareChain<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    pipeline: &'a SoulPipeline<A, E>,
+    middlewares: &'a [Box<dyn SoulMiddleware<A, E>>],
+    index: usize,
+}
+
+impl<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddlewareNext<A, E> for MiddlewareChain<'a, A, E> {
+    fn run<'b, 'c>(&'b self, ctx: &'c mut SoulContext<'_, A, E>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'c>>
+    where 'b: 'c {
+        Box::pin(async move {
+            if self.index < self.middlewares.len() {
+                let next = MiddlewareChain {
+                    pipeline: self.pipeline,
+                    middlewares: self.middlewares,
+                    index: self.index + 1,
+                };
+                self.middlewares[self.index].process(ctx, &next).await
+            } else {
+                Ok(())
+            }
+        })
     }
+}
+
+/// L1: Reactive Layer Middleware
+struct ReactiveMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    _phantom: std::marker::PhantomData<(A, E)>,
+}
+#[async_trait]
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for ReactiveMiddleware<A, E> {
+    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
+        if let Some(action) = ctx.pipeline.is_rejected_by_reactive_layer(ctx.soul, &ctx.experience, &ctx.embedding) {
+            if let Err(e) = ctx.pipeline.adapter.execute_defense(&action, &ctx.experience.content).await {
+                tracing::warn!("⚠️ [SoulPipeline] Failed to execute defense action: {}", e);
+            }
+            ctx.should_continue = false;
+            return Ok(());
+        }
+        next.run(ctx).await
+    }
+}
+
+/// L2: Deliberative Layer Middleware
+struct DeliberativeMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    _phantom: std::marker::PhantomData<(A, E)>,
+}
+#[async_trait]
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for DeliberativeMiddleware<A, E> {
+    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
+        let prediction = ctx.pipeline.adapter.predict_outcome(ctx.soul, &ctx.experience);
+        
+        let somatic_bias: f64 = if ctx.soul.somatic_markers.is_empty() || ctx.embedding.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = ctx.soul
+                .somatic_markers
+                .iter()
+                .map(|m| m.resonance(&ctx.embedding))
+                .filter(|r| r.abs() > 0.1)
+                .sum();
+            sum / (ctx.soul.somatic_markers.len() as f64)
+        };
+
+        ctx.experience.original_prediction = prediction + (somatic_bias * 0.3);
+
+        ctx.soul.predictive_model.update_plasticity(
+            &ctx.experience.domain,
+            ctx.experience.outcome_valence,
+            ctx.experience.original_prediction,
+        );
+
+        ctx.soul.attachment.update_from_experience(ctx.experience.outcome_valence);
+        ctx.soul.push_experience(ctx.experience.clone());
+
+        next.run(ctx).await
+    }
+}
+
+/// L3: Meta-cognitive Layer Middleware
+struct MetaCognitiveMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    _phantom: std::marker::PhantomData<(A, E)>,
+}
+#[async_trait]
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for MetaCognitiveMiddleware<A, E> {
+    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
+        if ctx.pipeline.engine.is_shock(ctx.soul) {
+            ctx.rebirth_required = true;
+        }
+        next.run(ctx).await
+    }
+}
+
+/// 3層パイプライン統合
+pub struct SoulPipeline<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+    pub adapter: A,
+    pub engine: E,
+    middlewares: Vec<Box<dyn SoulMiddleware<A, E>>>,
+}
+
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulPipeline<A, E> {
+    pub fn new(adapter: A, engine: E) -> Self {
+        Self { 
+            adapter, 
+            engine,
+            middlewares: vec![
+                Box::new(ReactiveMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
+                Box::new(DeliberativeMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
+                Box::new(MetaCognitiveMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
+            ],
+        }
+    }
+    
+    // ... (evaluate_trigger, is_rejected_by_reactive_layer continue below)
 
     fn evaluate_trigger(
         trigger: &crate::defense::DefenseTrigger,
@@ -75,79 +199,56 @@ impl<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> SoulPipeline<A, E> {
         exp: Experience,
     ) -> Pin<Box<dyn Future<Output = Result<Option<AgentSoul>, SoulError>> + Send + 'a>> {
         Box::pin(async move {
-            // Apply temporal decay (Step 6)
             soul.apply_temporal_decay();
 
-            // Pre-fetch embedding ONCE to avoid duplicate API calls (Step 5 Optimization)
             let exp_embedding = self.adapter.embed_experience(&exp).await;
 
-            // L1: Reactive Layer Check
-            if let Some(action) = self.is_rejected_by_reactive_layer(soul, &exp, &exp_embedding) {
-                // Execute defense action (DS-1 fixed)
-                if let Err(e) = self.adapter.execute_defense(&action, &exp.content).await {
-                    tracing::warn!("⚠️ [SoulPipeline] Failed to execute defense action: {}", e);
-                }
+            let mut ctx = SoulContext {
+                pipeline: self,
+                soul,
+                experience: exp,
+                embedding: exp_embedding,
+                should_continue: true,
+                rebirth_required: false,
+                is_rejected: false,
+            };
+
+            let chain = MiddlewareChain {
+                pipeline: self,
+                middlewares: &self.middlewares,
+                index: 0,
+            };
+
+            chain.run(&mut ctx).await?;
+
+            if !ctx.should_continue {
                 return Ok(None);
             }
 
-            // Calculate prediction dynamically (Step 3)
-            let prediction = self.adapter.predict_outcome(soul, &exp);
-            let mut experience = exp;
-
-            // RS-2: Somatic Resonance Bias Calculation
-            let somatic_bias: f64 = if soul.somatic_markers.is_empty() || exp_embedding.is_empty() {
-                0.0
-            } else {
-                let sum: f64 = soul
-                    .somatic_markers
-                    .iter()
-                    .map(|m| m.resonance(&exp_embedding))
-                    .filter(|r| r.abs() > 0.1)
-                    .sum();
-                sum / (soul.somatic_markers.len() as f64)
-            };
-
-            experience.original_prediction = prediction + (somatic_bias * 0.3);
-
-            // L2: Deliberative Layer
-            soul.predictive_model.update_plasticity(
-                &experience.domain,
-                experience.outcome_valence,
-                experience.original_prediction,
-            );
-
-            // Step 1: dynamic attachment update
-            soul.attachment
-                .update_from_experience(experience.outcome_valence);
-
-            soul.push_experience(experience.clone());
-
-            // L1.5: Somatic Marking (感情の刻印) - Step 3 & 5
-            if experience.outcome_valence.abs() > 0.3 {
+            // Somatic Marking (感情の刻印) - Logic preserved from original
+            if ctx.experience.outcome_valence.abs() > 0.3 {
                 let marker = crate::somatic::SomaticMarker::new_clamped(
                     uuid::Uuid::new_v4().to_string(),
-                    exp_embedding.clone(), // Use the pre-fetched embedding (RTT=0)
-                    experience.outcome_valence,
-                    experience.outcome_valence.abs(), // arousal = intensity of emotion
-                    1.0,                              // Fresh intensity
-                    experience.timestamp.clone(),
+                    ctx.embedding.clone(),
+                    ctx.experience.outcome_valence,
+                    ctx.experience.outcome_valence.abs(),
+                    1.0,
+                    ctx.experience.timestamp.clone(),
                 );
-                soul.somatic_markers.push(marker);
+                ctx.soul.somatic_markers.push(marker);
 
-                // Max 100 markers, rotate oldest 50
-                if soul.somatic_markers.len() > 100 {
-                    soul.somatic_markers.drain(0..50);
+                if ctx.soul.somatic_markers.len() > 100 {
+                    ctx.soul.somatic_markers.drain(0..50);
                 }
 
-                // Step 4: Somatic Reflex -> Semantic Defense (RS-4)
-                if experience.outcome_valence < -0.7 {
-                    let trigger = if exp_embedding.is_empty() {
+                if ctx.experience.outcome_valence < -0.7 {
+                    let trigger = if ctx.embedding.is_empty() {
                         crate::defense::DefenseTrigger::Tag(
-                            experience.content.chars().take(50).collect(),
+                            ctx.experience.content.chars().take(50).collect(),
                         )
                     } else {
                         crate::defense::DefenseTrigger::Semantic {
-                            embedding: exp_embedding,
+                            embedding: ctx.embedding.clone(),
                             threshold: 0.92,
                         }
                     };
@@ -156,21 +257,19 @@ impl<A: SoulDomainAdapter, E: SamsaraEngine + Send + Sync> SoulPipeline<A, E> {
                         id: format!("reflex-{}", uuid::Uuid::new_v4()),
                         trigger,
                         action: crate::defense::DefenseAction::Hesitate(2.0),
-                        origin_experience_id: experience.id.clone(),
+                        origin_experience_id: ctx.experience.id.clone(),
                         intensity: 1.0,
                         created_at: chrono::Utc::now().to_rfc3339(),
                     };
                     tracing::warn!("🛡️ [SoulPipeline] Somatic Reflex triggered! Auto-generating semantic defense: {}", auto_defense.id);
-                    soul.defenses.push(auto_defense);
+                    ctx.soul.defenses.push(auto_defense);
                 }
             }
 
-            soul.compute_hash();
+            ctx.soul.compute_hash();
 
-            // L3: Meta-cognitive Layer
-            if self.engine.is_shock(soul) {
-                // Samsara Triggered
-                let new_soul = self.engine.rebirth(soul.clone()).await?;
+            if ctx.rebirth_required {
+                let new_soul = self.engine.rebirth(ctx.soul.clone()).await?;
                 return Ok(Some(new_soul));
             }
 

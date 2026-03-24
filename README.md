@@ -118,6 +118,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 📊 **Phase 24: Periodic Federated Metrics (Global Observability)**: 各 Aiome ノードの健全性、ジョブ成功率、Karma 成長度を 1 時間おきに自律報告するメトリクス Push 機能を実装。Samsara Hub におけるフェデレーション全体の可視化と異常検知を自動化しました。
 - 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: リリースビルドにおけるテスト用のモック実装（`MockAuthManager`等）の混入を条件付きコンパイル (`#[cfg]`) で完全に排除。さらに、本番環境で `API_SERVER_SECRET` や `ALLOWED_ORIGINS` 等の必須セキュリティ変数が未設定の場合、安全でないフォールバック値を使用せず即座にプロセスを終了 (`exit(1)`) させる Fail-Fast 機構を導入し、セキュリティリスクを最小化しました。
 - 🛡️ **Phase 31: 信頼性向上 & LLM 構造化出力 (Reliability & Structured Output)**: データベースアクセスにおける 10 箇所以上の `.unwrap()` 呼び出しを安全なエラーハンドリングへ置換し、PostgreSQL 移行等を見据えた堅牢性を強化。さらに、Ollama などの LLM プロバイダーにおいて JSON 形式出力を強制する `format: "json"` パラメータを正式サポートしました。
+- 🏗️ **Phase 32: DeerFlow Architectural Pattern Integration**: ByteDance の DeerFlow 2.0 から、Middleware Chain (3層思考), Progressive Loading (mtime検知キャッシュ), Virtual Path (論理パスマッピング), Fact Extraction (事実分類抽出) の 4 パターンを完全統合。Rust の高度な型システムによって、自律性と安全性を一段上の次元へ引き上げました。
 
 ---
 
@@ -145,6 +146,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Security Layer** | Abyss Vault (Key Proxy) | APIキーの物理隔離とメモリ保護 (mlockall/zeroize) |
 | **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
 | **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
+| **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）思考パイプライン |
 | **Last Updated:** 2026-03-24
 
 ---

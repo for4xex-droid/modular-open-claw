@@ -11,6 +11,16 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum FactCategory {
+    Preference,
+    Knowledge,
+    Context,
+    Behavior,
+    Goal,
+    General,
+}
+
 /// 短期記憶から長期Karmaへの結晶化エンジン
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
@@ -29,6 +39,7 @@ impl MemoryCrystallizer {
             provider,
             job_queue,
             semaphore,
+            
         }
     }
 
@@ -56,14 +67,25 @@ impl MemoryCrystallizer {
                     .join("\n");
 
                 let prompt = format!(
-                    "以下の技能「{}」に関する生の教訓を抽象化し、3〜5つの本質的な知恵に結晶化してください。\n\n教訓リスト:\n{}\n\n出力形式: 短い箇条書きのみ。余計な説明は不要。日本語で出力せよ。",
+                    "以下の技能「{}」に関する生の教訓を抽象化し、本質的な知恵（Fact）に結晶化してください。\n\
+                    また、各Factに対して以下のカテゴリのいずれかを割り当ててください：\n\
+                    - Preference (ユーザーの好み)\n\
+                    - Knowledge (技術的・一般的な知識)\n\
+                    - Context (現在の状況・背景)\n\
+                    - Behavior (エージェントの振る舞い方)\n\
+                    - Goal (達成すべき目標)\n\n\
+                    教訓リスト:\n{}\n\n\
+                    出力形式: [Category] 内容 の形式で短い箇条書き。日本語で出力せよ。",
                     skill, lessons
                 );
 
                 match self.provider.complete(&prompt, None).await {
                     Ok(resp) => {
-                        let soul_hash = "v1_crystallized";
+                        let soul_hash = "v2_fact_categorized";
                         let ids: Vec<String> = raw_karma.into_iter().map(|(id, _)| id).collect();
+                        
+                        // NOTE: 簡易的に出力からカテゴリをパースして保存する
+                        // 実際には apply_distilled_karma がカテゴリ引数を受けるように拡張が必要
                         self.job_queue
                             .apply_distilled_karma(
                                 &skill,
@@ -75,7 +97,7 @@ impl MemoryCrystallizer {
                                 None,
                             )
                             .await?;
-                        info!("✅ [MemoryCrystallizer] Karma crystallized for {}", skill);
+                        info!("✅ [MemoryCrystallizer] Karma crystallized with facts for {}", skill);
                     }
                     Err(e) => {
                         warn!(

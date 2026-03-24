@@ -742,6 +742,7 @@ impl FederationOps for UniversalJobQueue {
                 karmas: vec![],
                 rules: vec![],
                 arena_matches: vec![],
+                automerge_snapshot: None,
                 metrics: Some(metrics),
             };
 

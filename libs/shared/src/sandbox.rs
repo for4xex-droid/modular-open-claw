@@ -16,13 +16,38 @@ use std::path::{Path, PathBuf};
 /// 許可されたディレクトリ内でのみファイル操作を許可するサンドボックス
 pub struct PathSandbox {
     jail: Jail,
+    virtual_mappings: Vec<(String, PathBuf)>,
 }
 
 impl PathSandbox {
     /// 新規サンドボックスの作成
     pub fn new<P: AsRef<Path>>(allowed_root: P) -> Result<Self, std::io::Error> {
         let jail = Jail::new(allowed_root)?;
-        Ok(Self { jail })
+        Ok(Self {
+            jail,
+            virtual_mappings: Vec::new(),
+        })
+    }
+
+    /// 仮想パスマッピングを追加
+    pub fn with_virtual_mapping<P: AsRef<Path>>(mut self, virtual_prefix: &str, physical_path: P) -> Self {
+        self.virtual_mappings.push((virtual_prefix.to_string(), physical_path.as_ref().to_path_buf()));
+        self
+    }
+
+    /// 仮想パスを物理パスに解決する
+    pub fn resolve_virtual_path(&self, virtual_path: &str) -> Result<PathBuf, std::io::Error> {
+        for (prefix, physical) in &self.virtual_mappings {
+            if virtual_path.starts_with(prefix) {
+                let suffix = &virtual_path[prefix.len()..];
+                let suffix = suffix.trim_start_matches('/');
+                let target = physical.join(suffix);
+                return self.validate_path(target);
+            }
+        }
+        
+        // マッピングがない場合はそのまま検証
+        self.validate_path(virtual_path)
     }
 
     /// パスがサンドボックス内にあるか検証し、安全なフルパスを返す

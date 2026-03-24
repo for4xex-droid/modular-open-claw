@@ -117,6 +117,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 📊 **Phase 24: Periodic Federated Metrics (Global Observability)**: Adds an autonomous background task to push node health, job success rates, and Karma growth to the Samsara Hub every hour. Enables global federation visibility and automated anomaly detection across all Aiome nodes.
 - 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: Strictly isolates testing mock implementations (e.g., `MockAuthManager`) from release builds using conditional compilation (`#[cfg]`). Furthermore, it enforces immediate shutdown (`exit(1)`) via a Fail-Fast mechanism when critical security variables like `API_SERVER_SECRET` or `ALLOWED_ORIGINS` are omitted in production, preventing fallback to insecure defaults and minimizing the attack surface.
 - 🛡️ **Phase 31: Reliability & LLM Structured Output**: Enhanced system robustness by replacing 10+ `.unwrap()` calls with safe error handling in database layers. Formally introduced `format: "json"` support for LLM providers (Ollama), enabling deterministic structured outputs for autonomous agent coordination.
+- 🏗️ **Phase 32: DeerFlow Architectural Pattern Integration**: Integrated 4 key patterns from ByteDance's DeerFlow 2.0: Middleware Chain (3-layer cognition), Progressive Loading (mtime-aware cache), Virtual Path (logical path mapping), and Fact Extraction (categorized fact distillation). Elevated autonomy and security using Rust's advanced type system.
 
 ---
 
@@ -146,7 +147,8 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
 | **Storage** | SQLite (Hash Chain support) | Tamper-resistant memory (Karma) and persistent logs |
 | **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
-| **Last Updated:** | 2026-03-24 | Maintenance & Stability Update |
+| **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) |
+| **Last Updated:** | 2026-03-24 | Phase 32 / DeerFlow Architectural Patterns |
 
 ---
 

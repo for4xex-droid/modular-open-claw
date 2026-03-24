@@ -152,16 +152,46 @@ impl PostgresInitializer {
 
         // 7. Soul Mutation
         sqlx::query(
-            "CREATE TABLE IF NOT EXISTS soul_mutation_history (
-                id SERIAL PRIMARY KEY,
-                old_hash TEXT NOT NULL,
-                new_hash TEXT NOT NULL,
-                mutation_reason TEXT NOT NULL,
+            "CREATE TABLE IF NOT EXISTS soul_mutations (
+                id TEXT PRIMARY KEY,
+                parent_hash TEXT NOT NULL,
+                mutation_diff TEXT NOT NULL,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );"
         ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
-        // 8. Federation & Biome
+        // 8. Agent Souls (moved up to satisfy references if any)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS agent_souls (
+                id TEXT PRIMARY KEY,
+                generation INTEGER NOT NULL,
+                soul_hash TEXT NOT NULL,
+                somatic_markers_json JSONB NOT NULL,
+                defenses_json JSONB NOT NULL,
+                predictive_model_json JSONB NOT NULL,
+                attachment_json JSONB NOT NULL,
+                instinct_json JSONB NOT NULL,
+                anamnesis_json JSONB NOT NULL,
+                experience_buffer_json JSONB,
+                lora_adapter_path TEXT,
+                lora_base_model TEXT,
+                lora_hash TEXT,
+                last_begging_at TIMESTAMPTZ,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS soul_versions (
+                hash TEXT PRIMARY KEY,
+                soul_id TEXT NOT NULL REFERENCES agent_souls(id) ON DELETE CASCADE,
+                parent_hash TEXT,
+                somatic_markers_json JSONB NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        // 9. Federation & Biome
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS federation_peers (
                 peer_url TEXT PRIMARY KEY,
@@ -231,7 +261,7 @@ impl PostgresInitializer {
             );"
         ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
-        // 9. Evolution & Timeline
+        // 10. Evolution & Timeline
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS evolution_chronicle (
                 id SERIAL PRIMARY KEY,
@@ -251,27 +281,6 @@ impl PostgresInitializer {
                 id TEXT PRIMARY KEY,
                 automerge_blob BYTEA NOT NULL,
                 last_seq INTEGER NOT NULL,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );"
-        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-
-        // 10. Soul Engine Storage
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS agent_souls (
-                id TEXT PRIMARY KEY,
-                generation INTEGER NOT NULL,
-                soul_hash TEXT NOT NULL,
-                somatic_markers_json JSONB NOT NULL,
-                defenses_json JSONB NOT NULL,
-                predictive_model_json JSONB NOT NULL,
-                attachment_json JSONB NOT NULL,
-                instinct_json JSONB NOT NULL,
-                anamnesis_json JSONB NOT NULL,
-                experience_buffer_json JSONB,
-                lora_adapter_path TEXT,
-                lora_base_model TEXT,
-                lora_hash TEXT,
-                last_begging_at TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );"
         ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
@@ -507,19 +516,147 @@ impl PostgresInitializer {
         ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
         sqlx::query(
-            "CREATE TABLE IF NOT EXISTS agent_diagnoses (
-                id SERIAL PRIMARY KEY,
-                job_id TEXT NOT NULL UNIQUE REFERENCES jobs(id) ON DELETE CASCADE,
-                critical_failure_step INTEGER,
-                failure_category TEXT,
-                root_cause TEXT,
-                evidence JSONB,
-                self_repair_hint TEXT,
+            "CREATE TABLE IF NOT EXISTS quarantined_assets (
+                asset_id TEXT PRIMARY KEY,
+                original_path TEXT NOT NULL,
+                quarantine_path TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                detected_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        // 15. Diagnostics
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS diagnostic_reports (
+                id TEXT PRIMARY KEY,
+                error_category TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                report TEXT NOT NULL,
                 diagnosed_at TIMESTAMPTZ NOT NULL
             );"
         ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
-        // 15. Extensions
+        // 16. Samsara Hub Specific Tables (Phase 30)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS approved_karma (
+                id TEXT PRIMARY KEY,
+                node_id TEXT NOT NULL,
+                karma_type TEXT NOT NULL,
+                related_skill TEXT NOT NULL,
+                lesson TEXT NOT NULL,
+                weight INTEGER NOT NULL,
+                soul_version_hash TEXT,
+                lamport_clock BIGINT NOT NULL DEFAULT 0,
+                signature TEXT,
+                approved_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL,
+                clone_origin_id TEXT,
+                generation INTEGER,
+                somatic_valence DOUBLE PRECISION
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS quarantined_karma (
+                id TEXT PRIMARY KEY,
+                node_id TEXT NOT NULL,
+                karma_type TEXT NOT NULL,
+                related_skill TEXT NOT NULL,
+                lesson TEXT NOT NULL,
+                weight INTEGER NOT NULL,
+                soul_version_hash TEXT,
+                lamport_clock BIGINT NOT NULL DEFAULT 0,
+                signature TEXT,
+                received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL,
+                clone_origin_id TEXT,
+                generation INTEGER,
+                somatic_valence DOUBLE PRECISION
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS approved_rules (
+                id TEXT PRIMARY KEY,
+                pattern TEXT NOT NULL,
+                severity INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                node_id TEXT NOT NULL,
+                lamport_clock BIGINT NOT NULL DEFAULT 0,
+                signature TEXT,
+                approved_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS quarantined_rules (
+                id TEXT PRIMARY KEY,
+                node_id TEXT NOT NULL,
+                pattern TEXT NOT NULL,
+                severity INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                lamport_clock BIGINT NOT NULL DEFAULT 0,
+                signature TEXT,
+                received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS approved_arena_matches (
+                id TEXT PRIMARY KEY,
+                skill_a TEXT NOT NULL,
+                skill_b TEXT NOT NULL,
+                topic TEXT NOT NULL,
+                winner TEXT,
+                reasoning TEXT,
+                approved_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS quarantined_arena_matches (
+                id TEXT PRIMARY KEY,
+                skill_a TEXT NOT NULL,
+                skill_b TEXT NOT NULL,
+                topic TEXT NOT NULL,
+                winner TEXT,
+                reasoning TEXT,
+                received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ NOT NULL
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS node_reputation (
+                node_id TEXT PRIMARY KEY,
+                reputation_score INTEGER NOT NULL DEFAULT 100,
+                is_banned INTEGER NOT NULL DEFAULT 0,
+                last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS biome_relay_queue (
+                id SERIAL PRIMARY KEY,
+                recipient_pubkey TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                is_delivered INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS hub_timeline (
+                id TEXT PRIMARY KEY,
+                automerge_blob BYTEA NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );"
+        ).execute(pool).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        // 17. Extensions
         sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm;").execute(pool).await.ok();
 
         Ok(())

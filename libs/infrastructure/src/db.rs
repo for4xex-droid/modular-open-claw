@@ -247,3 +247,32 @@ impl DatabasePool {
         }
     }
 }
+
+/// Helper macro to execute a query against either SQLite or PostgreSQL
+#[macro_export]
+macro_rules! sql_exec {
+    ($pool:expr, $sql:expr, $($arg:expr),*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res = sqlx::query($sql)
+                    $(.bind($arg))*
+                    .execute(p)
+                    .await;
+                match res {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() }),
+                }
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res = sqlx::query($sql)
+                    $(.bind($arg))*
+                    .execute(p)
+                    .await;
+                match res {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() }),
+                }
+            }
+        }
+    }};
+}

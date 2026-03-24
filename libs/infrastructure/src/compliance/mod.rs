@@ -20,5 +20,5 @@ pub use ekyc::MockEkycEngine;
 pub use ekyc::{EkycEngine, EkycSession, StripeEkycEngine};
 #[cfg(any(test, debug_assertions))]
 pub use ekyc_store::MockEkycSessionStore;
-pub use ekyc_store::{EkycSessionStore, SqliteEkycSessionStore};
-pub use quarantine::{AssetReason, QuarantineStore, SqliteQuarantineStore};
+pub use ekyc_store::{EkycSessionStore, UniversalEkycSessionStore};
+pub use quarantine::{AssetReason, QuarantineStore, UniversalQuarantineStore};

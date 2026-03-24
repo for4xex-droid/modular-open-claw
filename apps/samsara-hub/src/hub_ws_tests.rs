@@ -19,12 +19,12 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
         .connect("sqlite::memory:")
         .await
         .expect("Failed to create memory db");
-
-    init_hub_db(&pool).await.expect("Failed to init db");
+    let db_pool = infrastructure::db::DatabasePool::Sqlite(pool);
+    init_hub_db(&db_pool).await.expect("Failed to init db");
 
     let (tx, _) = broadcast::channel(100);
     let state = Arc::new(HubState {
-        pool,
+        pool: db_pool,
         secret: secrecy::SecretString::new("test_secret".to_string()),
         auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
         tx,

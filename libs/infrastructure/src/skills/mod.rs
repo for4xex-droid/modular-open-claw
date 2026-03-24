@@ -10,7 +10,8 @@ use extism::{Function, Manifest, Plugin, UserData, Val, ValType};
 use jsonschema::JSONSchema;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
+use std::fs;
 use tracing::{error, info};
 /// `actions_importer` モジュール
 pub mod actions_importer;
@@ -44,6 +45,12 @@ impl VerifiedSkill {
     /// This ensures mathematical safety of the TypeState pattern.
     pub(crate) fn promote(name: String) -> Self {
         Self { name }
+    }
+
+    /// TEST ONLY: Create a verified skill without dry-run.
+    /// This is used for integration tests.
+    pub fn new_for_test<S: Into<String>>(name: S) -> Self {
+        Self { name: name.into() }
     }
 
     /// `name` を実行する
@@ -102,7 +109,7 @@ pub struct WasmSkillManager {
     allowed_root: PathBuf,
     memory_limit_bytes: u64,
     timeout: Duration,
-    wasm_cache: std::sync::RwLock<HashMap<String, Vec<u8>>>,
+    wasm_cache: std::sync::RwLock<HashMap<String, (Vec<u8>, SystemTime)>>,
 }
 
 impl WasmSkillManager {
@@ -227,21 +234,36 @@ impl WasmSkillManager {
         if !wasm_path.exists() {
             return Err(format!("Skill {} not found", skill_name).into());
         }
-        let wasm_bytes = {
+
+        // --- Progressive Loading with mtime check ---
+        let current_mtime = fs::metadata(&wasm_path)
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|_| SystemTime::now());
+
+        let wasm_data = {
             let cache = self.wasm_cache.read().unwrap_or_else(|e| e.into_inner());
-            cache.get(skill_name).cloned()
+            if let Some((data, cached_mtime)) = cache.get(skill_name) {
+                if *cached_mtime == current_mtime {
+                    Some(data.clone())
+                } else {
+                    None // Stale cache
+                }
+            } else {
+                None // No cache
+            }
         };
 
-        let wasm_data = match wasm_bytes {
+        let wasm_data = match wasm_data {
             Some(data) => data,
             None => {
                 let data = std::fs::read(&wasm_path)
                     .map_err(|e| format!("Failed to read WASM {}: {}", skill_name, e))?;
                 let mut cache = self.wasm_cache.write().unwrap_or_else(|e| e.into_inner());
-                cache.insert(skill_name.to_string(), data.clone());
+                cache.insert(skill_name.to_string(), (data.clone(), current_mtime));
                 data
             }
         };
+
 
         // 厳密なサンドボックス設定
         // Phase 13-A: Wrap EVERYTHING in ONE spawn_blocking because extism types are NOT Send

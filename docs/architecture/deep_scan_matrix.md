@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-24T14:51:43.191857
+> Generated at: 2026-03-24T20:11:23.262700
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -131,13 +131,13 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `soul`
 **Traits (Interfaces)**
-- SamsaraEngine, SoulDomainAdapter
+- SamsaraEngine, SoulDomainAdapter, SoulMiddleware, SoulMiddlewareNext
 **Domain Structs**
-- AgentSoul, AnamnesisProfile, AttachmentModel, Defense, DomainModel, Experience, Instinct, InstinctRule, PredictiveModel, SomaticMarker, SoulPipeline
+- AgentSoul, AnamnesisProfile, AttachmentModel, Defense, DomainModel, Experience, Instinct, InstinctRule, PredictiveModel, SomaticMarker, SoulContext, SoulPipeline
 
 ### `infrastructure`
 **Traits (Interfaces)**
 - AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EkycSessionStore, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SwarmOps, TrajectoryOps, TrendAdapter, WatchtowerOps
 **Domain Structs**
-- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AffiliateAdapter, AgentRateLimiter, AgentRxDiagnostics, AiomeLogClient, AssetManifest, AudioHasher, BackgroundLlmProvider, BastionGuard, CapabilityRegistry, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStatus, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, CostBypassSwitch, CostCircuitBreaker, CostStatus, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, EkycSession, ExternalTrendSonar, FallbackRouter, HeartbeatWakeupService, HumanizerFilter, HumanizerRule, IntentFirewall, IntentGenerator, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MlockedVec, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, PostgresInitializer, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, RevenueSplitter, RssCollector, SecurityConfig, SemanticCache, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SqliteArtifactStore, SqliteEkycSessionStore, SqliteGigEngine, SqliteQuarantineStore, SqliteSoulStore, SqliteVaultBackend, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, UniversalJobQueue, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WebSearchAdapter, WorkspaceManager
+- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AffiliateAdapter, AgentRateLimiter, AgentRxDiagnostics, AiomeLogClient, AssetManifest, AudioHasher, BackgroundLlmProvider, BastionGuard, CapabilityRegistry, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStatus, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, CostBypassSwitch, CostCircuitBreaker, CostStatus, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, EkycSession, ExternalTrendSonar, FallbackRouter, HeartbeatWakeupService, HumanizerFilter, HumanizerRule, IntentFirewall, IntentGenerator, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MlockedVec, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, MockJobQueue, MockQuarantineStore, MockXPublisher, Oracle, PostgresInitializer, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, RevenueSplitter, RssCollector, SecurityConfig, SemanticCache, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SoulVersion, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, UniversalArtifactStore, UniversalEkycSessionStore, UniversalGigEngine, UniversalJobQueue, UniversalQuarantineStore, UniversalSoulStore, UniversalVaultBackend, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WebSearchAdapter, WorkspaceManager
 

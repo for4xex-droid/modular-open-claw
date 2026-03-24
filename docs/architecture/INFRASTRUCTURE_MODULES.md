@@ -33,9 +33,9 @@
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 21** で Linux 環境における `runsc` (gVisor) の動的検知・優先実行を実装。 | **強化完了** |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
-| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 24** で `Cleanroom` (AI-Driven Security Audit) によるインポート時監査を統合。 | 実装完了 |
+| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
-| `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および Phase 3 で物理防衛層（Semantic 判定/Reject/Warn アクション）を実行。 | **Phase 3 完了** |
+| `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 32** で刷新された Middleware Chain との連携（Reactive/Deliberative/Meta 判定）。 | **Phase 32 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
@@ -43,10 +43,10 @@
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
-| `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。**Phase 25.5** でトランザクションレス化（ADR-014）: SQLite コネクションプール飽和対策として、個別SQLクエリ方式に全面書き換え。audit trigger の一時無効化を含む。 | **Phase 25.5 完了** |
+| `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 
 ## 備考
-- **Core Domain**: `libs/core/src/lora` に新設された `LoraEngine` は、モデルのメタデータ（ハッシュ等）を管理し、インフラ層の `soul_store` と連携して人格の同一性を維持します。
+- **DeerFlow Integration (Phase 32)**: `SoulPipeline` がミドルウェア形式へリファクタリングされ、`FactCategory` による長期記憶の構造化抽出が実現されました。
 
 ---
-*最終更新: 2026-03-23 (Phase 25.5 / ADR-014 SQLite Lock Resolution)*
+*最終更新: 2026-03-24 (Phase 32 / DeerFlow Architectural Patterns)*

@@ -17,7 +17,8 @@ use zeroize::{Zeroize, Zeroizing};
 
 use sqlx::SqlitePool;
 
-use crate::security::sqlite_vault_backend::SqliteVaultBackend;
+use crate::security::sqlite_vault_backend::UniversalVaultBackend;
+use crate::db::DatabasePool;
 use aiome_contracts::vault_backend::VaultBackend;
 
 /// 物理的に隔離されたキーストレージ (モック実装)
@@ -29,9 +30,9 @@ pub struct AbyssVoiceVault {
 
 impl AbyssVoiceVault {
     /// 新しい Vault インスタンスを作成する
-    pub fn new(registry: Arc<RegistryManager>, pool: SqlitePool) -> Self {
+    pub fn new(registry: Arc<RegistryManager>, pool: DatabasePool) -> Self {
         Self {
-            backend: Arc::new(SqliteVaultBackend::new(pool)),
+            backend: Arc::new(UniversalVaultBackend::new(pool)),
             registry,
         }
     }
@@ -41,11 +42,11 @@ impl AbyssVoiceVault {
     #[cfg(test)]
     pub fn new_with_master_key(
         registry: Arc<RegistryManager>,
-        pool: SqlitePool,
+        pool: DatabasePool,
         master_key_bytes: Vec<u8>,
     ) -> Self {
         Self {
-            backend: Arc::new(SqliteVaultBackend::new_with_master_key(
+            backend: Arc::new(UniversalVaultBackend::new_with_master_key(
                 pool,
                 master_key_bytes,
             )),
@@ -146,7 +147,7 @@ mod tests {
 
         let registry = Arc::new(RegistryManager::new(pool.clone()));
         let vault =
-            AbyssVoiceVault::new_with_master_key(registry, pool.clone(), test_master_key_bytes());
+            AbyssVoiceVault::new_with_master_key(registry, DatabasePool::Sqlite(pool.clone()), test_master_key_bytes());
         (vault, pool)
     }
 
@@ -168,7 +169,7 @@ mod tests {
         // 2. 同一プールを共有する別 Vault インスタンスを作成
         let registry2 = Arc::new(RegistryManager::new(pool.clone()));
         let vault2 =
-            AbyssVoiceVault::new_with_master_key(registry2, pool.clone(), test_master_key_bytes());
+            AbyssVoiceVault::new_with_master_key(registry2, DatabasePool::Sqlite(pool.clone()), test_master_key_bytes());
 
         // 3. ライセンスチェック用のイベントを挿入
         let agent_id = Uuid::new_v4();

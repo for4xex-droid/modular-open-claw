@@ -53,7 +53,8 @@ mod guardrails;
 mod karma;
 mod karma_maintenance;
 mod migrations;
-mod postgres_init;
+pub mod postgres_init;
+pub use postgres_init::PostgresInitializer;
 #[cfg(test)]
 mod postgres_tests;
 /// `settings` モジュール

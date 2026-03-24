@@ -7,23 +7,22 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::soul_store::SqliteSoulStore;
+    use crate::soul_store::UniversalSoulStore;
     use aiome_core::error::AiomeError;
     use soul::AgentSoul;
-    use sqlx::SqlitePool;
-    use std::sync::Arc;
+    use crate::db::DatabasePool;
 
-    async fn setup_db() -> SqlitePool {
+    async fn setup_db() -> DatabasePool {
         let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:")
             .await
             .expect("Failed to create in-memory job queue");
-        jq.get_pool().get_sqlite_pool().unwrap().clone()
+        jq.get_pool().clone()
     }
 
     #[tokio::test]
     async fn test_lora_persistence_roundtrip() -> Result<(), AiomeError> {
         let pool = setup_db().await;
-        let store = SqliteSoulStore::new(Arc::new(pool));
+        let store = UniversalSoulStore::new(pool);
 
         let mut soul = AgentSoul::new("test-agent-1".to_string());
         soul.lora_adapter_path = Some("/path/to/adapter".to_string());
@@ -62,7 +61,7 @@ mod tests {
     async fn test_begging_persistence_roundtrip() -> Result<(), AiomeError> {
         use chrono::{TimeZone, Utc};
         let pool = setup_db().await;
-        let store = SqliteSoulStore::new(Arc::new(pool));
+        let store = UniversalSoulStore::new(pool);
 
         let mut soul = AgentSoul::new("test-agent-begging".to_string());
         // SQLite text precision typically ignores nano-seconds in simple ISO strings, so we use s precision

@@ -12,6 +12,7 @@ chrono = { workspace = true }
 aiome-contracts = { workspace = true }
 uuid = { workspace = true }
 sha2 = "0.10"
+async-trait = "0.1.89"
 
 [lints]
 workspace = true

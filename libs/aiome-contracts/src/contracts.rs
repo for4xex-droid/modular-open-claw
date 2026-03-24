@@ -384,6 +384,9 @@ pub struct FederationSyncResponse {
     pub new_karmas: Vec<FederatedKarma>,
     pub new_immune_rules: Vec<ImmuneRule>,
     pub new_arena_matches: Vec<ArenaMatch>,
+    /// オートマージ用スナップショット（バイナリタイムライン）
+    #[serde(default)]
+    pub automerge_snapshot: Option<Vec<u8>>,
     /// 同期時点のレスポンス側サーバー時刻
     pub server_time: String,
     /// 次のページを取得するためのカーソル（最新の approved_at）
@@ -392,7 +395,7 @@ pub struct FederationSyncResponse {
     pub has_more: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FederatedKarma {
     pub id: String,
     pub job_id: Option<String>,
@@ -459,8 +462,9 @@ pub struct FederationPushRequest {
     pub node_id: String,
     pub karmas: Vec<FederatedKarma>,
     pub rules: Vec<ImmuneRule>,
-    #[serde(default)]
     pub arena_matches: Vec<ArenaMatch>,
+    #[serde(default)]
+    pub automerge_snapshot: Option<Vec<u8>>,
     #[serde(default)]
     pub metrics: Option<FederatedMetrics>,
 }

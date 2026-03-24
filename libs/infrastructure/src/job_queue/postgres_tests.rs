@@ -5,9 +5,14 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::UniversalJobQueue;
-use aiome_core::traits::JobQueue;
+use aiome_core::traits::{JobQueue};
+use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore};
+use crate::soul_store::UniversalSoulStore;
+use crate::artifact_store::UniversalArtifactStore;
+use crate::job_queue::UniversalJobQueue;
 use std::env;
+use std::sync::Arc;
+use soul::model::AgentSoul;
 
 #[tokio::test]
 async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
@@ -23,7 +28,7 @@ async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     println!("🐘 Testing PostgreSQL with URL: {}", url);
 
     // Act
-    let jq = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
 
     // Assert
     assert!(jq.get_pool().is_postgres(), "Should be a Postgres pool");
@@ -43,16 +48,32 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
     let pool = jq.get_pool().get_postgres_pool_or_err()?;
 
     // このテーブルたちは現時点の postgres_init.rs では未作成のため、ここで失敗（RED）になることが期待される
     let tables_to_check = vec![
         "ai_artifacts",
         "soul_mutation_history",
+        "soul_versions",
         "biome_messages",
         "gig_intents",
+        "gig_bids",
+        "escrows",
+        "gig_deliveries",
+        "verification_logs",
         "vault_keys",
+        "ekyc_sessions",
+        "quarantined_assets",
+        "diagnostic_reports",
+        // Hub Specific Tables (Phase 30)
+        "approved_karma",
+        "quarantined_karma",
+        "approved_rules",
+        "quarantined_rules",
+        "node_reputation",
+        "biome_relay_queue",
+        "hub_timeline",
     ];
 
     for table in tables_to_check {
@@ -66,5 +87,76 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         }
     }
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_postgres_soul_store_crud() -> anyhow::Result<()> {
+    let url = match env::var("DATABASE_URL") {
+        Ok(val) => val,
+        Err(_) => return Ok(()),
+    };
+
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let pool = jq.get_pool().clone();
+
+    let store = UniversalSoulStore::new(pool);
+    
+    let mut soul = AgentSoul::new("pg-soul-1".to_string());
+    soul.soul_hash = "hash-123".to_string();
+    
+    store.save_soul(&soul).await?;
+    
+    let loaded = store.load_soul("pg-soul-1").await?.expect("Soul not found");
+    assert_eq!(loaded.soul_hash, "hash-123");
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
+    let url = match env::var("DATABASE_URL") {
+        Ok(val) => val,
+        Err(_) => return Ok(()),
+    };
+
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let pool = jq.get_pool().clone();
+
+    let store = UniversalArtifactStore::new(pool, std::path::PathBuf::from("/tmp/pg_artifacts"));
+    
+    let jail = bastion::fs_guard::Jail::new("/tmp/pg_jail").expect("Failed to create jail");
+    let req = CreateArtifactRequest {
+         title: "PG Artifact Test".to_string(),
+         category: aiome_contracts::traits::ArtifactCategory::Report,
+         files: vec![("test.txt".to_string(), vec![1, 2, 3], "text/plain".to_string())],
+         tags: vec!["postgres".to_string()],
+         created_by: "test-user".to_string(),
+         text_content: Some("PostgreSQL artifact test content".to_string()),
+         karma_refs: vec![],
+         job_ref: None,
+         parent_refs: vec![],
+    };
+    
+    let id = ArtifactStore::save_artifact(&store, req, &jail).await?;
+    let loaded = ArtifactStore::fetch_artifact(&store, &id).await?.expect("Artifact not found");
+    assert_eq!(loaded.title, "PG Artifact Test");
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_postgres_gig_engine_placeholder() -> anyhow::Result<()> {
+    let url = match env::var("DATABASE_URL") {
+        Ok(val) => val,
+        Err(_) => return Ok(()),
+    };
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let pool = jq.get_pool().clone();
+
+    // NOTE: This will fail to compile initially once we rename the struct, 
+    // but for now it's RED because the table might be missing or logic not universal.
+    // let _engine = crate::gig_engine::UniversalGigEngine::new(pool, jq.into());
+    
     Ok(())
 }

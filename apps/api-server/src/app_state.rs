@@ -22,7 +22,7 @@ use infrastructure::skills::forge::SkillForge;
 use infrastructure::skills::WasmSkillManager;
 use infrastructure::slo_engine::SloEngine;
 use infrastructure::soul_mutator::SoulMutator;
-use infrastructure::soul_store::SqliteSoulStore;
+use infrastructure::soul_store::UniversalSoulStore;
 use shared::config::AiomeConfig;
 use shared::health::HealthMonitor;
 use shared::security::SecurityPolicy;
@@ -78,7 +78,7 @@ pub struct AppState {
     pub event_sender: Component<tokio::sync::broadcast::Sender<CoreEvent>>,
     pub context_engine: Component<Arc<ContextEngine>>,
     pub soul_mutator: Component<Arc<SoulMutator>>,
-    pub soul_store: Component<Arc<SqliteSoulStore>>,
+    pub soul_store: Component<Arc<UniversalSoulStore>>,
     pub provider: Component<Arc<dyn LlmProvider + Send + Sync>>,
     pub autonomous_running: Component<Arc<std::sync::atomic::AtomicBool>>,
     pub autonomous_config:
