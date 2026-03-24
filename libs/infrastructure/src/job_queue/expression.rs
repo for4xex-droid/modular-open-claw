@@ -163,7 +163,7 @@ impl ExpressionOps for UniversalJobQueue {
             "auto_expression_enabled",
             val,
             "expression",
-            0 as i32
+            0_i32
         )
         .map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),

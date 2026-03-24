@@ -48,7 +48,7 @@ impl SqliteVaultBackend {
 
     /// キャッシュされた Master Key を取得 (最初の1回目のみパース)
     fn get_cached_master_key(&self) -> Result<MlockedVec, AiomeError> {
-        let key = self.master_key.get_or_try_init(|| get_master_key())?;
+        let key = self.master_key.get_or_try_init(get_master_key)?;
         Ok(key.clone())
     }
 }

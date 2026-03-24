@@ -69,7 +69,7 @@ impl TrajectoryOps for UniversalJobQueue {
             &output_json,
             &step.timestamp,
             &violations_json,
-            is_critical as i32,
+            is_critical,
             &failure_cat
         )
         .map_err(|e| AiomeError::Infrastructure {
