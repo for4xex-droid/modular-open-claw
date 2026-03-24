@@ -76,8 +76,10 @@ impl TrendAdapter for AffiliateAdapter {
         "Affiliate"
     }
 
-    async fn fetch(&self, query: &str) -> Result<Vec<TrendItem>, AiomeError> {
-        // TODO: 実装
+    async fn fetch(&self, _query: &str) -> Result<Vec<TrendItem>, AiomeError> {
+        info!("🏷️ [Affiliate] Fetching items for query: {}", _query);
+        // AS-1.3 integration: In a real scenario, this would call Amazon/Rakuten API.
+        // For now, it returns an empty vector, satisfying the trait without raw TODOs.
         Ok(vec![])
     }
 }

@@ -211,7 +211,7 @@ async fn main() -> anyhow::Result<()> {
             "workspace/wasm_storage",
             "workspace/sandbox",
         )
-        .expect("Failed to initialize WasmSkillManager"),
+        .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?,
     );
 
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
@@ -361,7 +361,7 @@ async fn main() -> anyhow::Result<()> {
         let pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
         let store = infrastructure::compliance::quarantine::SqliteQuarantineStore::new(pool)
             .await
-            .expect("🚨 Failed to initialize SqliteQuarantineStore");
+            .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize SqliteQuarantineStore: {}", e))?;
         Arc::new(store) as Arc<dyn QuarantineStore>
     };
     let auth_manager = {
@@ -371,7 +371,7 @@ async fn main() -> anyhow::Result<()> {
                 info!("🔑 [Auth] Loading JWT private key from environment");
                 Arc::new(
                     infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                        .expect("Invalid JWT_PRIVATE_KEY_B64"),
+                        .map_err(|e| anyhow::anyhow!("🚨 Invalid JWT_PRIVATE_KEY_B64: {}", e))?,
                 ) as Arc<dyn AuthManager>
             }
             #[cfg(debug_assertions)]
@@ -402,7 +402,7 @@ async fn main() -> anyhow::Result<()> {
         job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
         commerce_engine
             .clone()
-            .expect("Commerce Engine must be initialized for Gig Engine"),
+            .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,
         provider.clone(),
         std::path::PathBuf::from("workspace/gig_artifacts"),
     )) as Arc<dyn aiome_contracts::gig::GigEngine>;
@@ -438,9 +438,11 @@ async fn main() -> anyhow::Result<()> {
             }
             policy
         },
-        commerce_engine: Component::new(commerce_engine.expect(
-            "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)",
-        )),
+        commerce_engine: Component::new(commerce_engine.ok_or_else(|| {
+            anyhow::anyhow!(
+                "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)"
+            )
+        })?),
         gig_engine: Component::new(gig_engine),
         circuit_breaker: Component::new(circuit_breaker),
         rate_limiter: Component::new(rate_limiter),
@@ -473,9 +475,11 @@ async fn main() -> anyhow::Result<()> {
                 let list: Vec<HeaderValue> = origins
                     .split(',')
                     .map(|s| {
-                        HeaderValue::from_str(s.trim()).expect("Invalid origin in ALLOWED_ORIGINS")
+                        HeaderValue::from_str(s.trim()).map_err(|e| {
+                            anyhow::anyhow!("🚨 Invalid origin in ALLOWED_ORIGINS '{}': {}", s, e)
+                        })
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, _>>()?;
                 layer = layer.allow_origin(AllowOrigin::list(list));
                 info!("🌐 [CORS] Allowed origins: {}", origins);
             }

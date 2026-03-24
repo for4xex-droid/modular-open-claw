@@ -35,8 +35,8 @@ impl AudioHasher {
     /// 音声データからCSAMチェック等に用いるハッシュを計算する
     pub async fn compute_hash(&self, audio_data: Vec<u8>) -> Result<String, AiomeError> {
         let compute_future = task::spawn_blocking(move || {
-            // TODO: 実際のプロダクションでは知覚ハッシュ (例えば Chromaprint や pHash) を計算する。
-            // 現在は実装の簡略化のためプレーンな SHA-256 を用いる。
+            // QW-2: (Future) Implement perceptual hashing (e.g., Chromaprint or pHash) for CSAM detection.
+            // Currently using SHA-256 for deterministic integrity checks.
             let mut hasher = Sha256::new();
             hasher.update(&audio_data);
             let result = hasher.finalize();

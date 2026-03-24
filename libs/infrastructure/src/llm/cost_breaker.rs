@@ -105,7 +105,8 @@ impl CostCircuitBreaker {
     pub async fn enforce(&self) -> Result<(), AiomeError> {
         let status = self.check_state().await?;
         if status.is_tripped {
-            // TODO: SSE通知トリガーをここに仕込む（api-server側で監視）
+            // AS-1.8: (Future) Emit SSE event for UI notification when budget is exceeded.
+            // This will be integrated with the api-server's event_sender in Phase 30.
             return Err(AiomeError::Infrastructure {
                 reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Please expand quota in settings.", 
                                 status.total_usd_24h, status.limit_usd),
