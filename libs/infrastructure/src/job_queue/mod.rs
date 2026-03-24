@@ -54,6 +54,8 @@ mod karma;
 mod karma_maintenance;
 mod migrations;
 mod postgres_init;
+#[cfg(test)]
+mod postgres_tests;
 /// `settings` モジュール
 pub mod settings;
 mod swarm;
