@@ -9,7 +9,7 @@ use crate::circuit_breaker::CircuitBreaker;
 use crate::job_queue::UniversalJobQueue;
 use crate::slo_engine::SloEngine;
 use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmResponse, LlmRequest};
+use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmRequest, LlmResponse};
 use aiome_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::pin::Pin;
@@ -76,24 +76,40 @@ impl LlmProvider for DynamicLlmProvider {
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
-                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::GeminiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "openai" => {
                 let api_key = self.get_api_key("llm_api_key", "openai").await;
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "claude" => {
                 let api_key = self.get_api_key("llm_api_key", "claude").await;
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "lmstudio" => {
                 let host = self
                     .get_host("lm_studio_host", "http://127.0.0.1:1234")
                     .await;
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                    self.client.clone(),
+                    host,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             _ => {
@@ -104,12 +120,14 @@ impl LlmProvider for DynamicLlmProvider {
         };
 
         let result = self.handle_result(result).await;
-        
+
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = result {
-            self.hook_manager.trigger_post_execute(&request, response).await?;
+            self.hook_manager
+                .trigger_post_execute(&request, response)
+                .await?;
         }
-        
+
         result
     }
 
@@ -197,24 +215,40 @@ impl LlmProvider for DynamicLlmProvider {
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
-                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::GeminiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "openai" => {
                 let api_key = self.get_api_key("llm_api_key", "openai").await;
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "claude" => {
                 let api_key = self.get_api_key("llm_api_key", "claude").await;
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "lmstudio" => {
                 let host = self
                     .get_host("lm_studio_host", "http://127.0.0.1:1234")
                     .await;
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                    self.client.clone(),
+                    host,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             _ => {
@@ -228,7 +262,9 @@ impl LlmProvider for DynamicLlmProvider {
 
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = result {
-            self.hook_manager.trigger_post_execute(&request, response).await?;
+            self.hook_manager
+                .trigger_post_execute(&request, response)
+                .await?;
         }
 
         result
@@ -419,15 +455,27 @@ impl LlmProvider for BackgroundLlmProvider {
         let res = match provider_type.as_str() {
             // ... (keep existing patterns)
             "gemini" => {
-                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::GeminiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "openai" => {
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "claude" => {
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             "lmstudio" => {
@@ -438,7 +486,11 @@ impl LlmProvider for BackgroundLlmProvider {
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                    self.client.clone(),
+                    host,
+                    model,
+                );
                 provider.complete(prompt, system).await
             }
             _ => {
@@ -456,7 +508,9 @@ impl LlmProvider for BackgroundLlmProvider {
 
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = res {
-            self.hook_manager.trigger_post_execute(&request, response).await?;
+            self.hook_manager
+                .trigger_post_execute(&request, response)
+                .await?;
         }
         res
     }
@@ -509,15 +563,27 @@ impl LlmProvider for BackgroundLlmProvider {
 
         let res = match provider_type.as_str() {
             "gemini" => {
-                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::GeminiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "openai" => {
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "claude" => {
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                    self.client.clone(),
+                    api_key,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             "lmstudio" => {
@@ -528,7 +594,11 @@ impl LlmProvider for BackgroundLlmProvider {
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                    self.client.clone(),
+                    host,
+                    model,
+                );
                 provider.complete_with_cache(request.clone()).await
             }
             _ => {
@@ -546,7 +616,9 @@ impl LlmProvider for BackgroundLlmProvider {
 
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = res {
-            self.hook_manager.trigger_post_execute(&request, response).await?;
+            self.hook_manager
+                .trigger_post_execute(&request, response)
+                .await?;
         }
         res
     }

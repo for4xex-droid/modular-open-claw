@@ -27,13 +27,17 @@ async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
 
     let args = Args::parse();
-    
+
     info!("🚀 Initializing Aiome db migration tool");
     info!("Source (SQLite): {}", args.sqlite_url);
     info!("Target (Postgres): {}", args.postgres_url);
 
-    let sqlite_pool = SqlitePool::connect(&args.sqlite_url).await.context("Failed to connect to SQLite")?;
-    let pg_pool = PgPool::connect(&args.postgres_url).await.context("Failed to connect to PostgreSQL")?;
+    let sqlite_pool = SqlitePool::connect(&args.sqlite_url)
+        .await
+        .context("Failed to connect to SQLite")?;
+    let pg_pool = PgPool::connect(&args.postgres_url)
+        .await
+        .context("Failed to connect to PostgreSQL")?;
 
     info!("✅ Connected to both databases. Beginning migration...");
 
@@ -63,7 +67,9 @@ async fn migrate_table_souls(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
         let soul_uuid = uuid::Uuid::parse_str(&soul_id).unwrap_or_default();
         let parent_hash: Option<String> = row.get("parent_hash");
         let sm_str: Option<String> = row.get("somatic_markers");
-        let somatic_markers: serde_json::Value = sm_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_else(|| serde_json::json!({}));
+        let somatic_markers: serde_json::Value = sm_str
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_else(|| serde_json::json!({}));
         let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
         let attachment_style: String = row.get("attachment_style");
         let narrative_self: String = row.get("narrative_self");
@@ -95,7 +101,9 @@ async fn migrate_table_souls(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
 async fn migrate_table_karma_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     use sqlx::Row;
     info!("📦 Migrating karma_ledger...");
-    let rows = sqlx::query("SELECT * FROM karma_ledger").fetch_all(sqlite).await?;
+    let rows = sqlx::query("SELECT * FROM karma_ledger")
+        .fetch_all(sqlite)
+        .await?;
     let mut count = 0;
     for row in rows {
         let id: String = row.get("id");
@@ -108,7 +116,7 @@ async fn migrate_table_karma_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
 
         sqlx::query(
             "INSERT INTO karma_ledger (id, action, actor, amount, created_at, details, signature) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING"
+             VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING",
         )
         .bind(id)
         .bind(action)
@@ -128,7 +136,9 @@ async fn migrate_table_karma_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
 async fn migrate_table_audit_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     use sqlx::Row;
     info!("📦 Migrating audit_ledger_global...");
-    let rows = sqlx::query("SELECT * FROM audit_ledger_global").fetch_all(sqlite).await?;
+    let rows = sqlx::query("SELECT * FROM audit_ledger_global")
+        .fetch_all(sqlite)
+        .await?;
     let mut count = 0;
     for row in rows {
         let event_id: String = row.get("event_id");
@@ -136,7 +146,9 @@ async fn migrate_table_audit_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
         let operation: String = row.get("operation");
         let source_node: String = row.get("source_node");
         let diff_str: Option<String> = row.get("diff_payload");
-        let diff_payload: serde_json::Value = diff_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_else(|| serde_json::json!({}));
+        let diff_payload: serde_json::Value = diff_str
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_else(|| serde_json::json!({}));
         let recorded_at: chrono::DateTime<chrono::Utc> = row.get("recorded_at");
 
         sqlx::query(
@@ -160,7 +172,9 @@ async fn migrate_table_audit_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
 async fn migrate_table_approved_karma(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     use sqlx::Row;
     info!("📦 Migrating approved_karma...");
-    let rows = sqlx::query("SELECT * FROM approved_karma").fetch_all(sqlite).await?;
+    let rows = sqlx::query("SELECT * FROM approved_karma")
+        .fetch_all(sqlite)
+        .await?;
     let mut count = 0;
     for row in rows {
         let id: String = row.get("id");
@@ -209,7 +223,9 @@ async fn migrate_table_approved_karma(sqlite: &SqlitePool, pg: &PgPool) -> Resul
 async fn migrate_table_approved_rules(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     use sqlx::Row;
     info!("📦 Migrating approved_rules...");
-    let rows = sqlx::query("SELECT * FROM approved_rules").fetch_all(sqlite).await?;
+    let rows = sqlx::query("SELECT * FROM approved_rules")
+        .fetch_all(sqlite)
+        .await?;
     let mut count = 0;
     for row in rows {
         let id: String = row.get("id");
@@ -246,7 +262,9 @@ async fn migrate_table_approved_rules(sqlite: &SqlitePool, pg: &PgPool) -> Resul
 async fn migrate_table_approved_arena_matches(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     use sqlx::Row;
     info!("📦 Migrating approved_arena_matches...");
-    let rows = sqlx::query("SELECT * FROM approved_arena_matches").fetch_all(sqlite).await?;
+    let rows = sqlx::query("SELECT * FROM approved_arena_matches")
+        .fetch_all(sqlite)
+        .await?;
     let mut count = 0;
     for row in rows {
         let id: String = row.get("id");
@@ -297,7 +315,7 @@ async fn migrate_table_timeline_snapshots(sqlite: &SqlitePool, pg: &PgPool) -> R
     for row in rows {
         let node_id: String = row.get("node_id");
         let blob: Vec<u8> = row.get("snapshot_blob");
-        
+
         sqlx::query("INSERT INTO timeline_snapshots (node_id, snapshot_blob) VALUES ($1, $2) ON CONFLICT (node_id) DO NOTHING")
             .bind(node_id)
             .bind(blob)

@@ -162,24 +162,27 @@ impl CommerceEngine for StripeCommerceEngine {
         // P0-1: Create or Get Stripe Customer
         // TODO: In production, check soul_store/DB if customer_id already exists for this agent_id.
         // For now, we create a new one to verify the flow.
-        
+
         let desc = format!("Agent Soul: {}", agent_id);
         let mut create_customer = stripe::CreateCustomer::new();
         create_customer.description = Some(&desc);
-        create_customer.metadata = Some(std::collections::HashMap::from([
-            ("agent_id".to_string(), agent_id.to_string()),
-        ]));
+        create_customer.metadata = Some(std::collections::HashMap::from([(
+            "agent_id".to_string(),
+            agent_id.to_string(),
+        )]));
 
         let customer = match stripe::Customer::create(&self.client, create_customer).await {
             Ok(c) => c,
-            Err(e) => return Err(AiomeError::Infrastructure {
-                reason: format!("Stripe Customer creation failed: {}", e),
-            }),
+            Err(e) => {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Stripe Customer creation failed: {}", e),
+                })
+            }
         };
 
         let customer_id = customer.id;
         tracing::info!("✅ [Stripe] Created customer: {}", customer_id);
-        
+
         // Stripe Subscriptions API Call
         let mut create_sub = stripe::CreateSubscription::new(customer_id);
         let plan_id_str = plan_id.to_string();
@@ -187,15 +190,16 @@ impl CommerceEngine for StripeCommerceEngine {
             price: Some(plan_id_str),
             ..Default::default()
         }]);
-        create_sub.metadata = Some(std::collections::HashMap::from([
-            ("agent_id".to_string(), agent_id.to_string()),
-        ]));
+        create_sub.metadata = Some(std::collections::HashMap::from([(
+            "agent_id".to_string(),
+            agent_id.to_string(),
+        )]));
 
         match stripe::Subscription::create(&self.client, create_sub).await {
             Ok(sub) => {
                 tracing::info!("✅ [Stripe] Subscription created: {}", sub.id);
                 Ok(sub.id.to_string())
-            },
+            }
             Err(e) => Err(AiomeError::Infrastructure {
                 reason: format!("Stripe Subscription creation failed: {}", e),
             }),
@@ -369,12 +373,12 @@ mod tests {
         // ここでは「結果の ID は sub_ で始まる必要がある」という暫定的なアサーションで失敗させる。
         // (現在は "sub_mock_stripe" なのでパスするが、実装を 'sub_real_' 等に変える前提)
         let result = engine.create_subscription(agent_id, plan_id).await;
-        
+
         assert!(result.is_ok());
         let sub_id = result.unwrap();
         // 現在の実装は "sub_mock_stripe" を返す
-        assert_eq!(sub_id, "sub_mock_stripe"); 
-        
+        assert_eq!(sub_id, "sub_mock_stripe");
+
         // 実装後はここを「Stripe API によって生成された ID」であることを検証するように変更する。
         // TDD としては、まず「Stripe 連携に必要な情報が不足している場合にエラーを返す」テストを書くのが安全。
     }

@@ -31,6 +31,17 @@ It is provided in compliance with open-source license requirements and as a matt
 
 ---
 
+## Datasets
+
+### AItuber-Personas-Japan
+- **URL**: https://huggingface.co/datasets/DataPilot/AItuber-Personas-Japan
+- **License**: ODC-BY (Open Data Commons Attribution License)
+- **Usage**: AItuber persona seed data (6-axis parameters + streaming theme lists) used to enrich `AnamnesisProfile` initialization and `DreamState` topic generation.
+- **Copyright**: Copyright 2026 DataPilot contributors
+- **Generated with**: Kimi K2.5 (Moonshot AI) via SDG-LOOM pipeline
+
+---
+
 ## Research Papers
 
 ### Trojan's Whisper (Liu et al., 2026)

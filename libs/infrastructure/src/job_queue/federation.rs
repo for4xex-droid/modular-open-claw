@@ -6,7 +6,9 @@
  */
 
 use super::UniversalJobQueue;
-use aiome_core::contracts::{ArenaMatch, FederatedKarma, FederatedMetrics, ImmuneRule, FederationPushRequest};
+use aiome_core::contracts::{
+    ArenaMatch, FederatedKarma, FederatedMetrics, FederationPushRequest, ImmuneRule,
+};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::JobQueue;
 use async_trait::async_trait;
@@ -54,10 +56,16 @@ impl FederationOps for UniversalJobQueue {
         let since_ts = since.unwrap_or("1970-01-01T00:00:00");
         let mut fed_karmas = Vec::new();
         let q_karma = "SELECT * FROM karma_logs WHERE created_at > ?";
-        
+
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(q_karma).bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(q_karma)
+                    .bind(since_ts)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     fed_karmas.push(FederatedKarma {
                         id: r.get("id"),
@@ -69,7 +77,10 @@ impl FederationOps for UniversalJobQueue {
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
                         created_at: r.get("created_at"),
                         last_applied_at: r.try_get("last_applied_at").ok(),
-                        score: r.try_get("weight").map(|w: i64| w as f64 / 100.0).unwrap_or(0.0),
+                        score: r
+                            .try_get("weight")
+                            .map(|w: i64| w as f64 / 100.0)
+                            .unwrap_or(0.0),
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
@@ -80,7 +91,13 @@ impl FederationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(q_karma).bind(since_ts).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(q_karma)
+                    .bind(since_ts)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     fed_karmas.push(FederatedKarma {
                         id: r.get("id"),
@@ -92,7 +109,10 @@ impl FederationOps for UniversalJobQueue {
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
                         created_at: r.get("created_at"),
                         last_applied_at: r.try_get("last_applied_at").ok(),
-                        score: r.try_get("weight").map(|w: i32| w as f64 / 100.0).unwrap_or(0.0),
+                        score: r
+                            .try_get("weight")
+                            .map(|w: i32| w as f64 / 100.0)
+                            .unwrap_or(0.0),
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
@@ -103,7 +123,7 @@ impl FederationOps for UniversalJobQueue {
                 }
             }
         }
-        
+
         // Similarly handle rules and matches - I'll keep the existing logic but fix FederatedKarma
         Ok((fed_karmas, Vec::new(), Vec::new()))
     }

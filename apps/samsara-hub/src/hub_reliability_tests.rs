@@ -15,7 +15,11 @@ mod tests {
         // 期待: JSON 変換後に i64 としての値が維持されていること。
         // 現状の実装（もし u32 にキャストして返すハンドラがあれば）では、ここで値が 99 などに化ける。
         let serialized = serde_json::to_value(overflow_clock).unwrap();
-        assert_eq!(serialized.as_i64().unwrap(), overflow_clock, "Clock value must be preserved as i64 in JSON");
+        assert_eq!(
+            serialized.as_i64().unwrap(),
+            overflow_clock,
+            "Clock value must be preserved as i64 in JSON"
+        );
     }
 
     #[tokio::test]
@@ -29,7 +33,7 @@ mod tests {
         let _: () = crate::init_hub_db(&db_pool).await.unwrap();
 
         let overflow_clock: i64 = (u32::MAX as i64) + 123456;
-        
+
         // 直列化と保存のシミュレーション（本来は handler 内で行われるが、ここでは直接 SQL を叩いて確認）
         // backend-agnostic な DatabasePool の挙動を確認
         sqlx::query("INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, lamport_clock, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
@@ -49,21 +53,24 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        
+
         // ここで i64 として取得。
         use sqlx::Row;
         let recovered: i64 = row.get("lamport_clock");
-        assert_eq!(recovered, overflow_clock, "DB must store i64 clock accurately");
+        assert_eq!(
+            recovered, overflow_clock,
+            "DB must store i64 clock accurately"
+        );
     }
 
     #[tokio::test]
     async fn test_hub_rest_push_sync_integrity() {
-        use aiome_core::contracts::{FederationPushRequest, FederationSyncRequest, FederatedKarma};
-        use axum::response::IntoResponse;
+        use aiome_core::contracts::{FederatedKarma, FederationPushRequest, FederationSyncRequest};
         use axum::extract::State;
+        use axum::response::IntoResponse;
         use axum::Json;
         use std::sync::Arc;
-        
+
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
@@ -120,14 +127,26 @@ mod tests {
         // sync_handler(state, headers, payload)
         let mut headers_sync = axum::http::HeaderMap::new();
         headers_sync.insert("Authorization", "Bearer test".parse().unwrap());
-        let sync_res = crate::sync_handler(State(state.clone()), headers_sync, Json(sync_req)).await.into_response();
-        
+        let sync_res = crate::sync_handler(State(state.clone()), headers_sync, Json(sync_req))
+            .await
+            .into_response();
+
         // Response Body を解析
-        let body_bytes = axum::body::to_bytes(sync_res.into_body(), 1024*1024).await.unwrap();
-        let sync_body: aiome_core::contracts::FederationSyncResponse = serde_json::from_slice(&body_bytes).unwrap();
+        let body_bytes = axum::body::to_bytes(sync_res.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let sync_body: aiome_core::contracts::FederationSyncResponse =
+            serde_json::from_slice(&body_bytes).unwrap();
 
         // 期待: クロックとバイナリが維持されていること
-        assert_eq!(sync_body.new_karmas[0].lamport_clock, overflow_clock as u64, "Clock must survive PUSH/SYNC roundtrip");
-        assert_eq!(sync_body.automerge_snapshot, Some(test_blob), "Binary timeline must survive PUSH/SYNC roundtrip");
+        assert_eq!(
+            sync_body.new_karmas[0].lamport_clock, overflow_clock as u64,
+            "Clock must survive PUSH/SYNC roundtrip"
+        );
+        assert_eq!(
+            sync_body.automerge_snapshot,
+            Some(test_blob),
+            "Binary timeline must survive PUSH/SYNC roundtrip"
+        );
     }
 }

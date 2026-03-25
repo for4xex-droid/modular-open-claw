@@ -7,9 +7,9 @@
 
 use aiome_contracts::traits::SoulStore;
 use aiome_core::error::AiomeError;
-use soul::{self, AgentSoul};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use soul::{self, AgentSoul};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -95,18 +95,39 @@ impl UniversalSoulStore {
                 lora_hash = excluded.lora_hash,
                 last_begging_at = excluded.last_begging_at
             "#,
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3),
-            self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7),
-            self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11),
-            self.pool.ph(12), self.pool.ph(13)
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2),
+            self.pool.ph(3),
+            self.pool.ph(4),
+            self.pool.ph(5),
+            self.pool.ph(6),
+            self.pool.ph(7),
+            self.pool.ph(8),
+            self.pool.ph(9),
+            self.pool.ph(10),
+            self.pool.ph(11),
+            self.pool.ph(12),
+            self.pool.ph(13)
         );
 
         sql_exec!(
-            &self.pool, &q,
-            &soul.id, soul.generation as i64, &soul.soul_hash, markers_json,
-            defenses_json, predictive_json, attachment_json,
-            instinct_json, anamnesis_json, buffer_json,
-            soul.lora_adapter_path.clone(), soul.lora_base_model.clone(), soul.lora_hash.clone(), soul.last_begging_at
+            &self.pool,
+            &q,
+            &soul.id,
+            soul.generation as i64,
+            &soul.soul_hash,
+            markers_json,
+            defenses_json,
+            predictive_json,
+            attachment_json,
+            instinct_json,
+            anamnesis_json,
+            buffer_json,
+            soul.lora_adapter_path.clone(),
+            soul.lora_base_model.clone(),
+            soul.lora_hash.clone(),
+            soul.last_begging_at
         )?;
 
         // Update cache on save
@@ -228,7 +249,11 @@ impl UniversalSoulStore {
     }
 
     // Helper to map Sqlite row to AgentSoul
-    fn map_sqlite_row(&self, r: sqlx::sqlite::SqliteRow, id: &str) -> Result<AgentSoul, AiomeError> {
+    fn map_sqlite_row(
+        &self,
+        r: sqlx::sqlite::SqliteRow,
+        id: &str,
+    ) -> Result<AgentSoul, AiomeError> {
         use sqlx::Row;
         let markers_json: String = r.get("somatic_markers_json");
         let defenses_json: String = r.get("defenses_json");
@@ -257,7 +282,11 @@ impl UniversalSoulStore {
     }
 
     // Helper to map Postgres row to AgentSoul
-    fn map_postgres_row(&self, r: sqlx::postgres::PgRow, id: &str) -> Result<AgentSoul, AiomeError> {
+    fn map_postgres_row(
+        &self,
+        r: sqlx::postgres::PgRow,
+        id: &str,
+    ) -> Result<AgentSoul, AiomeError> {
         use sqlx::Row;
         let markers_json: String = r.get("somatic_markers_json");
         let defenses_json: String = r.get("defenses_json");
@@ -302,24 +331,28 @@ impl UniversalSoulStore {
 
         let soul = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(&q)
-                    .bind(id)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
+                    |e: sqlx::Error| AiomeError::Infrastructure {
                         reason: e.to_string(),
-                    })?;
-                if let Some(r) = row { Some(self.map_sqlite_row(r, id)?) } else { None }
+                    },
+                )?;
+                if let Some(r) = row {
+                    Some(self.map_sqlite_row(r, id)?)
+                } else {
+                    None
+                }
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(&q)
-                    .bind(id)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
+                    |e: sqlx::Error| AiomeError::Infrastructure {
                         reason: e.to_string(),
-                    })?;
-                if let Some(r) = row { Some(self.map_postgres_row(r, id)?) } else { None }
+                    },
+                )?;
+                if let Some(r) = row {
+                    Some(self.map_postgres_row(r, id)?)
+                } else {
+                    None
+                }
             }
         };
 
@@ -329,7 +362,11 @@ impl UniversalSoulStore {
             if cache.is_none() {
                 *cache = Some(SoulSnapshot {
                     attachment_style: format!("{:?}", agent_soul.attachment.style),
-                    narrative_self: agent_soul.anamnesis.narrative_self.clone().unwrap_or_default(),
+                    narrative_self: agent_soul
+                        .anamnesis
+                        .narrative_self
+                        .clone()
+                        .unwrap_or_default(),
                     prompt_fragment: agent_soul.instinct.prompt_fragment.clone(),
                     generation: agent_soul.generation,
                 });
@@ -354,8 +391,16 @@ impl aiome_contracts::traits::SoulStore for UniversalSoulStore {
         }
     }
 
-    async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError> {
-        let q = format!("INSERT INTO soul_fragments (fragment_yaml, version_hash) VALUES ({}, {})", self.pool.ph(0), self.pool.ph(1));
+    async fn store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError> {
+        let q = format!(
+            "INSERT INTO soul_fragments (fragment_yaml, version_hash) VALUES ({}, {})",
+            self.pool.ph(0),
+            self.pool.ph(1)
+        );
         sql_exec!(&self.pool, &q, fragment_yaml, version_hash)?;
         Ok(())
     }
@@ -365,11 +410,19 @@ impl aiome_contracts::traits::SoulStore for UniversalSoulStore {
         use sqlx::Row;
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
                 Ok(row.map(|r| (r.get(0), r.get(1))))
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
                 Ok(row.map(|r| (r.get(0), r.get(1))))
             }
         }

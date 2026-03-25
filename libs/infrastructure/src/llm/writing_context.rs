@@ -8,8 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 /// AiomeのLLM出力コンテキスト。出力先に応じて適用するヒューマナイザールールを切り替えるために使用。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum WritingContext {
     /// ユーザーとの直接対話（Discord Watchtower人格など）
     Chat,
@@ -23,4 +22,3 @@ pub enum WritingContext {
     #[default]
     Default,
 }
-

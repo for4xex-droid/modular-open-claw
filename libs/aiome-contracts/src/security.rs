@@ -5,8 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 /// 🛡️ PermissionManifest
 ///
@@ -48,11 +48,16 @@ pub enum SandboxProfile {
 pub trait RuntimeJail: Send + Sync {
     /// シェルコマンドの実行を検証し、許可されていれば実行する
     async fn safe_exec(&self, cmd: &str) -> Result<String, crate::error::AiomeError> {
-        self.safe_exec_with_profile(cmd, SandboxProfile::Default).await
+        self.safe_exec_with_profile(cmd, SandboxProfile::Default)
+            .await
     }
 
     /// プロファイルを指定してシェルコマンドを実行する
-    async fn safe_exec_with_profile(&self, cmd: &str, profile: SandboxProfile) -> Result<String, crate::error::AiomeError>;
+    async fn safe_exec_with_profile(
+        &self,
+        cmd: &str,
+        profile: SandboxProfile,
+    ) -> Result<String, crate::error::AiomeError>;
 
     /// ファイル書き込みを検証する
     fn check_fs_write(&self, path: &std::path::Path) -> Result<(), crate::error::AiomeError>;
@@ -69,7 +74,10 @@ pub trait RuntimeJail: Send + Sync {
 pub trait AgentHook: Send + Sync + std::fmt::Debug {
     /// LLM呼び出し「前」に実行されるフック。
     /// Err を返すとその呼び出しは中止される（監視・防御用）。
-    async fn on_pre_execute(&self, request: &crate::llm::LlmRequest) -> Result<(), crate::error::AiomeError>;
+    async fn on_pre_execute(
+        &self,
+        request: &crate::llm::LlmRequest,
+    ) -> Result<(), crate::error::AiomeError>;
 
     /// LLM呼び出し「後」に実行されるフック。
     /// レスポンスの検証や、レゾナンスの加算等に使用。

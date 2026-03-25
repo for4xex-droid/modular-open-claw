@@ -45,7 +45,8 @@ pub trait EvolutionOps {
 impl EvolutionOps for UniversalJobQueue {
     async fn do_get_agent_stats(&self) -> Result<shared::watchtower::AgentStats, AiomeError> {
         let q = "SELECT level, exp, resonance, creativity, fatigue FROM agent_stats WHERE id = 1";
-        let res: (i32, i32, i32, i32, i32) = crate::sql_fetch_one!(&self.pool, (i32, i32, i32, i32, i32), q)?;
+        let res: (i32, i32, i32, i32, i32) =
+            crate::sql_fetch_one!(&self.pool, (i32, i32, i32, i32, i32), q)?;
         Ok(shared::watchtower::AgentStats {
             level: res.0,
             exp: res.1,

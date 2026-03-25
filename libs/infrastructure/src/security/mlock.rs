@@ -73,11 +73,10 @@ impl Drop for MlockedVec {
             self.inner.zeroize();
 
             // 2. メモリ固定解除 - 成功していた場合のみ
-            if self.locked && len > 0
-                && munlock(ptr, len) != 0 {
-                    // 失敗してもログのみ
-                    tracing::error!("🚨 [Security] munlock() failed.");
-                }
+            if self.locked && len > 0 && munlock(ptr, len) != 0 {
+                // 失敗してもログのみ
+                tracing::error!("🚨 [Security] munlock() failed.");
+            }
         }
     }
 }

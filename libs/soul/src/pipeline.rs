@@ -15,16 +15,31 @@ use crate::error::SoulError;
 use crate::model::{AgentSoul, Experience};
 
 #[async_trait]
-pub trait SoulMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>: Send + Sync {
-    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError>;
+pub trait SoulMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>:
+    Send + Sync
+{
+    async fn process(
+        &self,
+        ctx: &mut SoulContext<'_, A, E>,
+        next: &(dyn SoulMiddlewareNext<A, E> + '_),
+    ) -> Result<(), SoulError>;
 }
 
-pub trait SoulMiddlewareNext<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>: Send + Sync {
-    fn run<'a, 'b>(&'a self, ctx: &'b mut SoulContext<'_, A, E>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>>
-    where 'a: 'b;
+pub trait SoulMiddlewareNext<
+    A: SoulDomainAdapter + 'static,
+    E: SamsaraEngine + Send + Sync + 'static,
+>: Send + Sync
+{
+    fn run<'a, 'b>(
+        &'a self,
+        ctx: &'b mut SoulContext<'_, A, E>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>>
+    where
+        'a: 'b;
 }
 
-pub struct SoulContext<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+pub struct SoulContext<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+{
     pub pipeline: &'a SoulPipeline<A, E>,
     pub soul: &'a mut AgentSoul,
     pub experience: Experience,
@@ -34,15 +49,23 @@ pub struct SoulContext<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Se
     pub is_rejected: bool,
 }
 
-struct MiddlewareChain<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+struct MiddlewareChain<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+{
     pipeline: &'a SoulPipeline<A, E>,
     middlewares: &'a [Box<dyn SoulMiddleware<A, E>>],
     index: usize,
 }
 
-impl<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddlewareNext<A, E> for MiddlewareChain<'a, A, E> {
-    fn run<'b, 'c>(&'b self, ctx: &'c mut SoulContext<'_, A, E>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'c>>
-    where 'b: 'c {
+impl<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+    SoulMiddlewareNext<A, E> for MiddlewareChain<'a, A, E>
+{
+    fn run<'b, 'c>(
+        &'b self,
+        ctx: &'c mut SoulContext<'_, A, E>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'c>>
+    where
+        'b: 'c,
+    {
         Box::pin(async move {
             if self.index < self.middlewares.len() {
                 let next = MiddlewareChain {
@@ -59,14 +82,29 @@ impl<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'stati
 }
 
 /// L1: Reactive Layer Middleware
-struct ReactiveMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+struct ReactiveMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+{
     _phantom: std::marker::PhantomData<(A, E)>,
 }
 #[async_trait]
-impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for ReactiveMiddleware<A, E> {
-    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
-        if let Some(action) = ctx.pipeline.is_rejected_by_reactive_layer(ctx.soul, &ctx.experience, &ctx.embedding) {
-            if let Err(e) = ctx.pipeline.adapter.execute_defense(&action, &ctx.experience.content).await {
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E>
+    for ReactiveMiddleware<A, E>
+{
+    async fn process(
+        &self,
+        ctx: &mut SoulContext<'_, A, E>,
+        next: &(dyn SoulMiddlewareNext<A, E> + '_),
+    ) -> Result<(), SoulError> {
+        if let Some(action) =
+            ctx.pipeline
+                .is_rejected_by_reactive_layer(ctx.soul, &ctx.experience, &ctx.embedding)
+        {
+            if let Err(e) = ctx
+                .pipeline
+                .adapter
+                .execute_defense(&action, &ctx.experience.content)
+                .await
+            {
                 tracing::warn!("⚠️ [SoulPipeline] Failed to execute defense action: {}", e);
             }
             ctx.should_continue = false;
@@ -77,18 +115,31 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
 }
 
 /// L2: Deliberative Layer Middleware
-struct DeliberativeMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+struct DeliberativeMiddleware<
+    A: SoulDomainAdapter + 'static,
+    E: SamsaraEngine + Send + Sync + 'static,
+> {
     _phantom: std::marker::PhantomData<(A, E)>,
 }
 #[async_trait]
-impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for DeliberativeMiddleware<A, E> {
-    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
-        let prediction = ctx.pipeline.adapter.predict_outcome(ctx.soul, &ctx.experience);
-        
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E>
+    for DeliberativeMiddleware<A, E>
+{
+    async fn process(
+        &self,
+        ctx: &mut SoulContext<'_, A, E>,
+        next: &(dyn SoulMiddlewareNext<A, E> + '_),
+    ) -> Result<(), SoulError> {
+        let prediction = ctx
+            .pipeline
+            .adapter
+            .predict_outcome(ctx.soul, &ctx.experience);
+
         let somatic_bias: f64 = if ctx.soul.somatic_markers.is_empty() || ctx.embedding.is_empty() {
             0.0
         } else {
-            let sum: f64 = ctx.soul
+            let sum: f64 = ctx
+                .soul
                 .somatic_markers
                 .iter()
                 .map(|m| m.resonance(&ctx.embedding))
@@ -113,24 +164,39 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
             ctx.experience.original_prediction,
         );
 
-        ctx.soul.attachment.update_from_experience(ctx.experience.outcome_valence);
+        ctx.soul
+            .attachment
+            .update_from_experience(ctx.experience.outcome_valence);
 
         next.run(ctx).await
     }
 }
 
 /// L3: Meta-cognitive Layer Middleware
-struct MetaCognitiveMiddleware<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+struct MetaCognitiveMiddleware<
+    A: SoulDomainAdapter + 'static,
+    E: SamsaraEngine + Send + Sync + 'static,
+> {
     _phantom: std::marker::PhantomData<(A, E)>,
 }
 #[async_trait]
-impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E> for MetaCognitiveMiddleware<A, E> {
-    async fn process(&self, ctx: &mut SoulContext<'_, A, E>, next: &(dyn SoulMiddlewareNext<A, E> + '_)) -> Result<(), SoulError> {
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E>
+    for MetaCognitiveMiddleware<A, E>
+{
+    async fn process(
+        &self,
+        ctx: &mut SoulContext<'_, A, E>,
+        next: &(dyn SoulMiddlewareNext<A, E> + '_),
+    ) -> Result<(), SoulError> {
         if ctx.pipeline.engine.is_shock(ctx.soul) {
             ctx.rebirth_required = true;
-            ctx.experience.content.push_str("\nMeta: System-wide cognitive shock detected. Rebirth sequence initialized.");
+            ctx.experience.content.push_str(
+                "\nMeta: System-wide cognitive shock detected. Rebirth sequence initialized.",
+            );
         } else {
-            ctx.experience.content.push_str("\nMeta: Stability confirmed within operational bounds.");
+            ctx.experience
+                .content
+                .push_str("\nMeta: Stability confirmed within operational bounds.");
         }
         next.run(ctx).await
     }
@@ -145,13 +211,19 @@ pub struct SoulPipeline<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send 
 
 impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulPipeline<A, E> {
     pub fn new(adapter: A, engine: E) -> Self {
-        Self { 
-            adapter, 
+        Self {
+            adapter,
             engine,
             middlewares: vec![
-                Box::new(ReactiveMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
-                Box::new(DeliberativeMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
-                Box::new(MetaCognitiveMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
+                Box::new(ReactiveMiddleware::<A, E> {
+                    _phantom: std::marker::PhantomData,
+                }),
+                Box::new(DeliberativeMiddleware::<A, E> {
+                    _phantom: std::marker::PhantomData,
+                }),
+                Box::new(MetaCognitiveMiddleware::<A, E> {
+                    _phantom: std::marker::PhantomData,
+                }),
             ],
         }
     }
@@ -160,7 +232,7 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
     pub fn add_middleware(&mut self, middleware: Box<dyn SoulMiddleware<A, E>>) {
         self.middlewares.push(middleware);
     }
-    
+
     // ... (evaluate_trigger, is_rejected_by_reactive_layer continue below)
 
     fn evaluate_trigger(
@@ -431,7 +503,12 @@ mod tests {
         assert_eq!(updated_soul.defenses.len(), 1);
 
         match &updated_soul.defenses[0].trigger {
-            DefenseTrigger::Tag(t) => assert!(updated_soul.experience_buffer.last().unwrap().content.contains(t)),
+            DefenseTrigger::Tag(t) => assert!(updated_soul
+                .experience_buffer
+                .last()
+                .unwrap()
+                .content
+                .contains(t)),
             _ => panic!("Expected Tag fallback trigger"),
         }
 
@@ -471,18 +548,29 @@ mod tests {
             is_rejected: false,
         };
 
-        let middleware = ReactiveMiddleware::<DummyAdapter, DummyEngine> { _phantom: std::marker::PhantomData };
-        
+        let middleware = ReactiveMiddleware::<DummyAdapter, DummyEngine> {
+            _phantom: std::marker::PhantomData,
+        };
+
         struct MockNext;
         impl SoulMiddlewareNext<DummyAdapter, DummyEngine> for MockNext {
-            fn run<'a, 'b>(&'a self, _ctx: &'b mut SoulContext<'_, DummyAdapter, DummyEngine>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>> where 'a: 'b {
+            fn run<'a, 'b>(
+                &'a self,
+                _ctx: &'b mut SoulContext<'_, DummyAdapter, DummyEngine>,
+            ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>>
+            where
+                'a: 'b,
+            {
                 Box::pin(async { Ok(()) })
             }
         }
 
         middleware.process(&mut ctx, &MockNext).await.unwrap();
 
-        assert!(!ctx.should_continue, "Reactive layer should stop processing on rejection");
+        assert!(
+            !ctx.should_continue,
+            "Reactive layer should stop processing on rejection"
+        );
     }
 
     #[tokio::test]
@@ -510,24 +598,47 @@ mod tests {
             is_rejected: false,
         };
 
-        let middleware = DeliberativeMiddleware::<DummyAdapter, DummyEngine> { _phantom: std::marker::PhantomData };
+        let middleware = DeliberativeMiddleware::<DummyAdapter, DummyEngine> {
+            _phantom: std::marker::PhantomData,
+        };
         middleware.process(&mut ctx, &MockNext).await.unwrap();
 
         // 失敗することを期待: 現在の DeliberativeMiddleware は予測値を計算するだけで
         // LLM による深い推論（プロンプト生成）を行っていない。
-        assert!(ctx.experience.content.contains("Deliberation:"), "Deliberative layer should append its reasoning to the content");
-        assert!(ctx.experience.original_prediction > 0.1, "Deliberative layer should apply somatic bias");
+        assert!(
+            ctx.experience.content.contains("Deliberation:"),
+            "Deliberative layer should append its reasoning to the content"
+        );
+        assert!(
+            ctx.experience.original_prediction > 0.1,
+            "Deliberative layer should apply somatic bias"
+        );
     }
 
     #[tokio::test]
     async fn test_meta_cognitive_middleware_shock() {
         let mut soul = AgentSoul::new("test-meta".to_string());
-        
+
         struct ShockEngine;
         impl crate::engine::SamsaraEngine for ShockEngine {
-            fn is_shock(&self, _soul: &AgentSoul) -> bool { true }
-            fn distill<'a>(&'a self, _soul: &'a AgentSoul) -> Pin<Box<dyn Future<Output = Result<crate::instinct::Instinct, SoulError>> + Send + 'a>> { Box::pin(async { Ok(Default::default()) }) }
-            fn rebirth<'a>(&'a self, soul: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> { Box::pin(async { Ok(soul) }) }
+            fn is_shock(&self, _soul: &AgentSoul) -> bool {
+                true
+            }
+            fn distill<'a>(
+                &'a self,
+                _soul: &'a AgentSoul,
+            ) -> Pin<
+                Box<dyn Future<Output = Result<crate::instinct::Instinct, SoulError>> + Send + 'a>,
+            > {
+                Box::pin(async { Ok(Default::default()) })
+            }
+            fn rebirth<'a>(
+                &'a self,
+                soul: AgentSoul,
+            ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>>
+            {
+                Box::pin(async { Ok(soul) })
+            }
         }
 
         let pipeline = SoulPipeline::new(DummyAdapter, ShockEngine);
@@ -541,16 +652,32 @@ mod tests {
             is_rejected: false,
         };
 
-        let middleware = MetaCognitiveMiddleware::<DummyAdapter, ShockEngine> { _phantom: std::marker::PhantomData };
+        let middleware = MetaCognitiveMiddleware::<DummyAdapter, ShockEngine> {
+            _phantom: std::marker::PhantomData,
+        };
         middleware.process(&mut ctx, &MockNext).await.unwrap();
 
-        assert!(ctx.rebirth_required, "Meta-cognitive layer should trigger rebirth on shock");
-        assert!(ctx.experience.content.contains("Meta:"), "Meta-cognitive layer should append its analysis");
+        assert!(
+            ctx.rebirth_required,
+            "Meta-cognitive layer should trigger rebirth on shock"
+        );
+        assert!(
+            ctx.experience.content.contains("Meta:"),
+            "Meta-cognitive layer should append its analysis"
+        );
     }
 
     struct MockNext;
-    impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddlewareNext<A, E> for MockNext {
-        fn run<'a, 'b>(&'a self, _ctx: &'b mut SoulContext<'_, A, E>) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>> where 'a: 'b {
+    impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+        SoulMiddlewareNext<A, E> for MockNext
+    {
+        fn run<'a, 'b>(
+            &'a self,
+            _ctx: &'b mut SoulContext<'_, A, E>,
+        ) -> Pin<Box<dyn Future<Output = Result<(), SoulError>> + Send + 'b>>
+        where
+            'a: 'b,
+        {
             Box::pin(async { Ok(()) })
         }
     }

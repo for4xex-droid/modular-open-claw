@@ -271,7 +271,11 @@ mod tests {
             })))
         }
 
-        async fn store_soul_fragment(&self, _fragment_yaml: &str, _version_hash: &str) -> Result<(), AiomeError> {
+        async fn store_soul_fragment(
+            &self,
+            _fragment_yaml: &str,
+            _version_hash: &str,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
 
@@ -312,12 +316,12 @@ mod tests {
 
         let agent_id = Uuid::new_v4();
         let intent = generator.generate_for_agent(agent_id).await.unwrap();
- 
+
         // This will fail initially because the logic is static
         assert!(
-            intent.description.contains("healing") || 
-            intent.description.contains("peace") ||
-            intent.description.contains("Explore"), 
+            intent.description.contains("healing")
+                || intent.description.contains("peace")
+                || intent.description.contains("Explore"),
             "Anxious agent should receive healing/peaceful intent. Got: {}",
             intent.description
         );

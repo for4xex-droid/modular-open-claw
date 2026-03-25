@@ -174,8 +174,41 @@ impl McpClient {
     }
 }
 
+/// Unified MCP Endpoint that wraps different transport implementations.
+pub enum McpEndpoint {
+    Stdio(Arc<McpClient>),
+    Http(Arc<crate::mcp::http_client::McpHttpClient>),
+}
+
+impl McpEndpoint {
+    pub async fn list_tools(&self) -> Result<Vec<crate::mcp::types::McpTool>> {
+        match self {
+            Self::Stdio(c) => c.list_tools().await,
+            Self::Http(c) => c.list_tools().await,
+        }
+    }
+
+    pub async fn call_tool(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<crate::mcp::types::CallToolResult> {
+        match self {
+            Self::Stdio(c) => c.call_tool(name, arguments).await,
+            Self::Http(c) => c.call_tool(name, arguments).await,
+        }
+    }
+
+    pub fn last_activity(&self) -> std::time::Instant {
+        match self {
+            Self::Stdio(c) => *c.last_activity.read().unwrap(),
+            Self::Http(c) => std::time::Instant::now(), // HTTP is stateless mostly, but we could track it
+        }
+    }
+}
+
 pub struct McpProcessManager {
-    clients: Arc<Mutex<HashMap<String, Arc<McpClient>>>>,
+    clients: Arc<Mutex<HashMap<String, Arc<McpEndpoint>>>>,
 }
 
 impl McpProcessManager {
@@ -185,7 +218,7 @@ impl McpProcessManager {
         }
     }
 
-    pub async fn get_client(&self, id: &str) -> Option<Arc<McpClient>> {
+    pub async fn get_client(&self, id: &str) -> Option<Arc<McpEndpoint>> {
         let clients = self.clients.lock().await;
         clients.get(id).cloned()
     }
@@ -195,15 +228,15 @@ impl McpProcessManager {
         id: String,
         cmd: &str,
         args: Vec<String>,
-    ) -> Result<Arc<McpClient>> {
+    ) -> Result<Arc<McpEndpoint>> {
         let mut clients = self.clients.lock().await;
 
         // Evict oldest if we are at MAX_MCP_PROCESSES limit
-        const MAX_MCP_PROCESSES: usize = 5;
+        const MAX_MCP_PROCESSES: usize = 10; // Increased for more tools
         if clients.len() >= MAX_MCP_PROCESSES && !clients.contains_key(&id) {
             let oldest_id = clients
                 .iter()
-                .min_by_key(|(_, c)| *c.last_activity.read().unwrap())
+                .min_by_key(|(_, c)| c.last_activity())
                 .map(|(k, _)| k.clone());
             if let Some(oldest_id) = oldest_id {
                 info!(
@@ -214,14 +247,24 @@ impl McpProcessManager {
             }
         }
 
-        // Must drop lock before calling spawn because spawn takes time?
-        // We can just keep it or spawn first then lock. Let's spawn first to minimize lock time,
-        // but wait, if we drop lock, we might exceed MAX_MCP_PROCESSES if multiple spawn concurrently.
-        // It's safer to keep the lock, but spawn doesn't "take time" (it's sync OS process creation).
-
         let client = McpClient::spawn(id.clone(), cmd, args)?;
-        clients.insert(id, client.clone());
-        Ok(client)
+        let endpoint = Arc::new(McpEndpoint::Stdio(client));
+        clients.insert(id, endpoint.clone());
+        Ok(endpoint)
+    }
+
+    pub async fn connect_http_server(
+        &self,
+        id: String,
+        url: String,
+        headers: HashMap<String, String>,
+    ) -> Result<Arc<McpEndpoint>> {
+        let mut clients = self.clients.lock().await;
+
+        let client = crate::mcp::http_client::McpHttpClient::new(id.clone(), url, headers);
+        let endpoint = Arc::new(McpEndpoint::Http(Arc::new(client)));
+        clients.insert(id, endpoint.clone());
+        Ok(endpoint)
     }
 
     pub async fn active_client_ids(&self) -> Vec<String> {
@@ -239,7 +282,7 @@ impl McpProcessManager {
         let mut clients = self.clients.lock().await;
         let now = std::time::Instant::now();
         clients.retain(|id, client| {
-            let last_activity = *client.last_activity.read().unwrap();
+            let last_activity = client.last_activity();
             let is_idle = now.duration_since(last_activity) >= timeout;
             if is_idle {
                 info!(
@@ -274,14 +317,16 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_reap_idle() {
         let manager = McpProcessManager::new();
-        let client = manager
+        let endpoint = manager
             .spawn_stdio_server("idle_client".to_string(), "echo", vec![])
             .await
             .unwrap();
 
         // artificially age the client's last_activity
-        if let Ok(mut act) = client.last_activity.write() {
-            *act = std::time::Instant::now() - Duration::from_secs(100);
+        if let McpEndpoint::Stdio(client) = &*endpoint {
+            if let Ok(mut act) = client.last_activity.write() {
+                *act = std::time::Instant::now() - Duration::from_secs(100);
+            }
         }
 
         manager.reap_idle_clients(Duration::from_millis(10)).await;

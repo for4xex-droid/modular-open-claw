@@ -6,8 +6,8 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_contracts::llm::{LlmMessage, LlmRequest, LlmProvider};
 use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest};
 use aiome_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::sync::Arc;

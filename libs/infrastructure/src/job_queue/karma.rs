@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use super::cosine_similarity;
 use super::swarm::SwarmOps;
 use super::UniversalJobQueue;
-use super::cosine_similarity;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus, KarmaEntry, KarmaSearchResult};
 use async_trait::async_trait;
@@ -75,13 +75,23 @@ impl KarmaOps for UniversalJobQueue {
         let mut items = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q).bind(category).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(category)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     items.push(KarmaEntry {
                         id: r.get("id"),
                         job_id: r.try_get("job_id").ok(),
                         karma_type: "Synthesized".to_string(),
-                        related_skill: r.try_get("subtopic").ok().unwrap_or_else(|| "general".to_string()),
+                        related_skill: r
+                            .try_get("subtopic")
+                            .ok()
+                            .unwrap_or_else(|| "general".to_string()),
                         lesson: r.get("lesson"),
                         weight: r.get::<i64, _>("weight") as i32,
                         soul_version_hash: None,
@@ -91,13 +101,23 @@ impl KarmaOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q).bind(category).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(category)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     items.push(KarmaEntry {
                         id: r.get("id"),
                         job_id: r.try_get("job_id").ok(),
                         karma_type: "Synthesized".to_string(),
-                        related_skill: r.try_get("subtopic").ok().unwrap_or_else(|| "general".to_string()),
+                        related_skill: r
+                            .try_get("subtopic")
+                            .ok()
+                            .unwrap_or_else(|| "general".to_string()),
                         lesson: r.get("lesson"),
                         weight: r.get::<i32, _>("weight"),
                         soul_version_hash: None,
@@ -435,7 +455,9 @@ impl KarmaOps for UniversalJobQueue {
                     topic: r.get("topic"),
                     style: r.get("style_name"),
                     karma_directives: r.try_get("karma_directives").ok(),
-                    status: aiome_core::traits::JobStatus::from_string(r.get::<String, _>("status")),
+                    status: aiome_core::traits::JobStatus::from_string(
+                        r.get::<String, _>("status"),
+                    ),
                     started_at: r.try_get("started_at").ok(),
                     last_heartbeat: r.try_get("last_heartbeat").ok(),
                     tech_karma_extracted: tech_karma_extracted != 0,
@@ -466,7 +488,9 @@ impl KarmaOps for UniversalJobQueue {
                     topic: r.get("topic"),
                     style: r.get("style_name"),
                     karma_directives: r.try_get("karma_directives").ok(),
-                    status: aiome_core::traits::JobStatus::from_string(r.get::<String, _>("status")),
+                    status: aiome_core::traits::JobStatus::from_string(
+                        r.get::<String, _>("status"),
+                    ),
                     started_at: r.try_get("started_at").ok(),
                     last_heartbeat: r.try_get("last_heartbeat").ok(),
                     tech_karma_extracted: tech_karma_extracted != 0,

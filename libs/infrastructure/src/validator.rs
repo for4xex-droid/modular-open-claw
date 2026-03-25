@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use aiome_contracts::traits::{TrendItem, TrendSource};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_contracts::traits::{TrendItem, TrendSource};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::info;

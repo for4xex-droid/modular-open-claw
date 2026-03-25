@@ -8,7 +8,8 @@
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::EmbeddingProvider;
 use aiome_contracts::traits::{
-    ArtifactCategory, ArtifactEdge, ArtifactFile, ArtifactMeta, ArtifactStore, CreateArtifactRequest,
+    ArtifactCategory, ArtifactEdge, ArtifactFile, ArtifactMeta, ArtifactStore,
+    CreateArtifactRequest,
 };
 use async_trait::async_trait;
 use sha2::{Digest, Sha256};
@@ -26,7 +27,11 @@ fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
     let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
     let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if norm_a == 0.0 || norm_b == 0.0 { 0.0 } else { dot / (norm_a * norm_b) }
+    if norm_a == 0.0 || norm_b == 0.0 {
+        0.0
+    } else {
+        dot / (norm_a * norm_b)
+    }
 }
 
 /// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
@@ -68,7 +73,8 @@ impl UniversalArtifactStore {
         Ok(ArtifactMeta {
             id: row.get("id"),
             title: row.get("title"),
-            category: serde_json::from_str(&format!("\"{}\"", cat_str)).unwrap_or(ArtifactCategory::Report),
+            category: serde_json::from_str(&format!("\"{}\"", cat_str))
+                .unwrap_or(ArtifactCategory::Report),
             tags: serde_json::from_str(&tags_json).unwrap_or_default(),
             created_by: row.get("created_by"),
             dir_path: row.get("dir_path"),
@@ -93,7 +99,8 @@ impl UniversalArtifactStore {
         Ok(ArtifactMeta {
             id: row.get("id"),
             title: row.get("title"),
-            category: serde_json::from_str(&format!("\"{}\"", cat_str)).unwrap_or(ArtifactCategory::Report),
+            category: serde_json::from_str(&format!("\"{}\"", cat_str))
+                .unwrap_or(ArtifactCategory::Report),
             tags: serde_json::from_str(&tags_json).unwrap_or_default(),
             created_by: row.get("created_by"),
             dir_path: row.get("dir_path"),
@@ -168,59 +175,109 @@ impl ArtifactStore for UniversalArtifactStore {
 
         let mut embedding_blob: Option<Vec<u8>> = None;
         if let Some(ref provider) = self.embed_provider {
-            let context = format!("{} {:?} {} {}", req.title, req.category, req.tags.join(" "), req.text_content.as_deref().unwrap_or(""));
+            let context = format!(
+                "{} {:?} {} {}",
+                req.title,
+                req.category,
+                req.tags.join(" "),
+                req.text_content.as_deref().unwrap_or("")
+            );
             if let Ok(vec) = provider.embed(&context, false).await {
                 embedding_blob = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
             }
         }
 
         let signature = format!("{:x}", manifest_hasher.finalize());
-        let cat_str = serde_json::to_string(&req.category).unwrap_or_default().replace("\"", "");
+        let cat_str = serde_json::to_string(&req.category)
+            .unwrap_or_default()
+            .replace("\"", "");
 
         let q = format!(
             "INSERT INTO ai_artifacts (id, title, category, tags, created_by, dir_path, file_manifest, karma_refs, job_ref, signature, embedding, text_content) 
              VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), 
-            self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), 
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4),
+            self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9),
             self.pool.ph(10), self.pool.ph(11)
         );
 
         sql_exec!(
-            &self.pool, &q, &id, &req.title, &cat_str, &tags_json, &req.created_by,
-            relative_dir.display().to_string(), &file_manifest_json, &karma_refs_json, 
-            req.job_ref, &signature, embedding_blob, req.text_content
+            &self.pool,
+            &q,
+            &id,
+            &req.title,
+            &cat_str,
+            &tags_json,
+            &req.created_by,
+            relative_dir.display().to_string(),
+            &file_manifest_json,
+            &karma_refs_json,
+            req.job_ref,
+            &signature,
+            embedding_blob,
+            req.text_content
         )?;
 
         info!("📦 Artifact saved: {}", id);
         Ok(id)
     }
 
-    async fn list_artifacts(&self, category: Option<ArtifactCategory>, limit: i64) -> Result<Vec<ArtifactMeta>, AiomeError> {
+    async fn list_artifacts(
+        &self,
+        category: Option<ArtifactCategory>,
+        limit: i64,
+    ) -> Result<Vec<ArtifactMeta>, AiomeError> {
         let sql = if category.is_some() {
-            format!("SELECT * FROM ai_artifacts WHERE category = {} ORDER BY created_at DESC LIMIT {}", self.pool.ph(0), limit)
+            format!(
+                "SELECT * FROM ai_artifacts WHERE category = {} ORDER BY created_at DESC LIMIT {}",
+                self.pool.ph(0),
+                limit
+            )
         } else {
-            format!("SELECT * FROM ai_artifacts ORDER BY created_at DESC LIMIT {}", limit)
+            format!(
+                "SELECT * FROM ai_artifacts ORDER BY created_at DESC LIMIT {}",
+                limit
+            )
         };
 
         match &self.pool {
             DatabasePool::Sqlite(p) => {
                 let mut query = sqlx::query(&sql);
                 if let Some(ref cat) = category {
-                    query = query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", ""));
+                    query = query.bind(
+                        serde_json::to_string(cat)
+                            .unwrap_or_default()
+                            .replace("\"", ""),
+                    );
                 }
-                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
                 let mut results = Vec::new();
-                for r in rows { results.push(Self::map_sqlite_row(r)?); }
+                for r in rows {
+                    results.push(Self::map_sqlite_row(r)?);
+                }
                 Ok(results)
             }
             DatabasePool::Postgres(p) => {
                 let mut query = sqlx::query(&sql);
                 if let Some(ref cat) = category {
-                    query = query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", ""));
+                    query = query.bind(
+                        serde_json::to_string(cat)
+                            .unwrap_or_default()
+                            .replace("\"", ""),
+                    );
                 }
-                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = query.fetch_all(p).await.map_err(|e: sqlx::Error| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
                 let mut results = Vec::new();
-                for r in rows { results.push(Self::map_postgres_row(r)?); }
+                for r in rows {
+                    results.push(Self::map_postgres_row(r)?);
+                }
                 Ok(results)
             }
         }
@@ -230,47 +287,117 @@ impl ArtifactStore for UniversalArtifactStore {
         let q = format!("SELECT * FROM ai_artifacts WHERE id = {}", self.pool.ph(0));
         let meta = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
-                if let Some(r) = row { Some(Self::map_sqlite_row(r)?) } else { None }
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
+                    |e: sqlx::Error| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    },
+                )?;
+                if let Some(r) = row {
+                    Some(Self::map_sqlite_row(r)?)
+                } else {
+                    None
+                }
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
-                if let Some(r) = row { Some(Self::map_postgres_row(r)?) } else { None }
+                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
+                    |e: sqlx::Error| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    },
+                )?;
+                if let Some(r) = row {
+                    Some(Self::map_postgres_row(r)?)
+                } else {
+                    None
+                }
             }
         };
 
         if let Some(mut m) = meta {
             m.edges = self.get_artifact_edges(id).await.unwrap_or_default();
             Ok(Some(m))
-        } else { Ok(None) }
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn read_artifact_file(&self, id: &str, filename: &str, jail: &bastion::fs_guard::Jail) -> Result<Vec<u8>, AiomeError> {
-        let meta = self.fetch_artifact(id).await?.ok_or(AiomeError::ArtifactNotFound { path: id.to_string() })?;
+    async fn read_artifact_file(
+        &self,
+        id: &str,
+        filename: &str,
+        jail: &bastion::fs_guard::Jail,
+    ) -> Result<Vec<u8>, AiomeError> {
+        let meta = self
+            .fetch_artifact(id)
+            .await?
+            .ok_or(AiomeError::ArtifactNotFound {
+                path: id.to_string(),
+            })?;
         let root = jail.root().to_path_buf();
-        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure { reason: format!("Sandbox error: {}", e) })?;
-        let full_path = sandbox.validate_path(Path::new(&meta.dir_path).join(filename)).map_err(|e| AiomeError::Infrastructure { reason: format!("Path error: {}", e) })?;
-        std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure { reason: format!("IO error: {}", e) })
+        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Sandbox error: {}", e),
+        })?;
+        let full_path = sandbox
+            .validate_path(Path::new(&meta.dir_path).join(filename))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Path error: {}", e),
+            })?;
+        std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("IO error: {}", e),
+        })
     }
 
-    async fn delete_artifact(&self, id: &str, jail: &bastion::fs_guard::Jail) -> Result<(), AiomeError> {
-        let meta = self.fetch_artifact(id).await?.ok_or(AiomeError::ArtifactNotFound { path: id.to_string() })?;
+    async fn delete_artifact(
+        &self,
+        id: &str,
+        jail: &bastion::fs_guard::Jail,
+    ) -> Result<(), AiomeError> {
+        let meta = self
+            .fetch_artifact(id)
+            .await?
+            .ok_or(AiomeError::ArtifactNotFound {
+                path: id.to_string(),
+            })?;
         let root = jail.root().to_path_buf();
-        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure { reason: format!("Sandbox error: {}", e) })?;
+        let sandbox = PathSandbox::new(&root).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Sandbox error: {}", e),
+        })?;
         if let Ok(full_dir) = sandbox.validate_path(&meta.dir_path) {
-            for file in meta.files { let _ = std::fs::remove_file(full_dir.join(&file.name)); }
+            for file in meta.files {
+                let _ = std::fs::remove_file(full_dir.join(&file.name));
+            }
             let _ = std::fs::remove_dir(full_dir);
         }
-        let _ = sql_exec!(&self.pool, &format!("DELETE FROM ai_artifacts WHERE id = {}", self.pool.ph(0)), id);
-        let _ = sql_exec!(&self.pool, &format!("DELETE FROM artifact_edges WHERE source_id = {0} OR target_id = {0}", self.pool.ph(0)), id);
+        let _ = sql_exec!(
+            &self.pool,
+            &format!("DELETE FROM ai_artifacts WHERE id = {}", self.pool.ph(0)),
+            id
+        );
+        let _ = sql_exec!(
+            &self.pool,
+            &format!(
+                "DELETE FROM artifact_edges WHERE source_id = {0} OR target_id = {0}",
+                self.pool.ph(0)
+            ),
+            id
+        );
         Ok(())
     }
 
     async fn get_artifact_edges(&self, id: &str) -> Result<Vec<ArtifactEdge>, AiomeError> {
-        let q = format!("SELECT * FROM artifact_edges WHERE source_id = {0} OR target_id = {0}", self.pool.ph(0));
+        let q = format!(
+            "SELECT * FROM artifact_edges WHERE source_id = {0} OR target_id = {0}",
+            self.pool.ph(0)
+        );
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q).bind(id).fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows =
+                    sqlx::query(&q)
+                        .bind(id)
+                        .fetch_all(p)
+                        .await
+                        .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 let mut results = Vec::new();
                 for r in rows {
                     results.push(ArtifactEdge {
@@ -279,14 +406,22 @@ impl ArtifactStore for UniversalArtifactStore {
                         target_id: r.get("target_id"),
                         source_type: r.get("source_type"),
                         relation: r.get("relation"),
-                        metadata: serde_json::from_str(&r.get::<String, _>("metadata")).unwrap_or_default(),
+                        metadata: serde_json::from_str(&r.get::<String, _>("metadata"))
+                            .unwrap_or_default(),
                         created_at: r.get("created_at"),
                     });
                 }
                 Ok(results)
             }
             DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q).bind(id).fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows =
+                    sqlx::query(&q)
+                        .bind(id)
+                        .fetch_all(p)
+                        .await
+                        .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 let mut results = Vec::new();
                 for r in rows {
                     results.push(ArtifactEdge {
@@ -295,7 +430,8 @@ impl ArtifactStore for UniversalArtifactStore {
                         target_id: r.get("target_id"),
                         source_type: r.get("source_type"),
                         relation: r.get("relation"),
-                        metadata: serde_json::from_str(&r.get::<String, _>("metadata")).unwrap_or_default(),
+                        metadata: serde_json::from_str(&r.get::<String, _>("metadata"))
+                            .unwrap_or_default(),
                         created_at: r.get("created_at"),
                     });
                 }
@@ -307,37 +443,88 @@ impl ArtifactStore for UniversalArtifactStore {
     async fn add_artifact_edge(&self, edge: ArtifactEdge) -> Result<(), AiomeError> {
         let q = format!("INSERT INTO artifact_edges (id, source_id, target_id, source_type, relation, metadata) VALUES ({0}, {1}, {2}, {3}, {4}, {5})",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5));
-        sql_exec!(&self.pool, &q, &edge.id, &edge.source_id, &edge.target_id, &edge.source_type, &edge.relation, serde_json::to_string(&edge.metadata).unwrap_or_default())?;
+        sql_exec!(
+            &self.pool,
+            &q,
+            &edge.id,
+            &edge.source_id,
+            &edge.target_id,
+            &edge.source_type,
+            &edge.relation,
+            serde_json::to_string(&edge.metadata).unwrap_or_default()
+        )?;
         Ok(())
     }
 
-    async fn search_artifacts_semantic(&self, query: &str, category: Option<ArtifactCategory>, limit: i64) -> Result<Vec<ArtifactMeta>, AiomeError> {
-        let provider = self.embed_provider.as_ref().ok_or(AiomeError::Infrastructure { reason: "No embed provider".into() })?;
+    async fn search_artifacts_semantic(
+        &self,
+        query: &str,
+        category: Option<ArtifactCategory>,
+        limit: i64,
+    ) -> Result<Vec<ArtifactMeta>, AiomeError> {
+        let provider = self
+            .embed_provider
+            .as_ref()
+            .ok_or(AiomeError::Infrastructure {
+                reason: "No embed provider".into(),
+            })?;
         let query_vec = provider.embed(query, true).await?;
         let query_vec_f64: Vec<f64> = query_vec.iter().map(|&f| f as f64).collect();
 
-        let mut sql = "SELECT id, embedding FROM ai_artifacts WHERE embedding IS NOT NULL".to_string();
-        if category.is_some() { sql.push_str(&format!(" AND category = {}", self.pool.ph(0))); }
+        let mut sql =
+            "SELECT id, embedding FROM ai_artifacts WHERE embedding IS NOT NULL".to_string();
+        if category.is_some() {
+            sql.push_str(&format!(" AND category = {}", self.pool.ph(0)));
+        }
         sql.push_str(" ORDER BY created_at DESC LIMIT 1000");
 
         let entries = match &self.pool {
             DatabasePool::Sqlite(p) => {
                 let mut db_query = sqlx::query(&sql);
-                if let Some(ref cat) = category { db_query = db_query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", "")); }
-                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
-                rows.into_iter().map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding"))).collect::<Vec<_>>()
+                if let Some(ref cat) = category {
+                    db_query = db_query.bind(
+                        serde_json::to_string(cat)
+                            .unwrap_or_default()
+                            .replace("\"", ""),
+                    );
+                }
+                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                rows.into_iter()
+                    .map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding")))
+                    .collect::<Vec<_>>()
             }
             DatabasePool::Postgres(p) => {
                 let mut db_query = sqlx::query(&sql);
-                if let Some(ref cat) = category { db_query = db_query.bind(serde_json::to_string(cat).unwrap_or_default().replace("\"", "")); }
-                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| AiomeError::Infrastructure { reason: e.to_string() })?;
-                rows.into_iter().map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding"))).collect::<Vec<_>>()
+                if let Some(ref cat) = category {
+                    db_query = db_query.bind(
+                        serde_json::to_string(cat)
+                            .unwrap_or_default()
+                            .replace("\"", ""),
+                    );
+                }
+                let rows = db_query.fetch_all(p).await.map_err(|e: sqlx::Error| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+                rows.into_iter()
+                    .map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding")))
+                    .collect::<Vec<_>>()
             }
         };
 
         let mut sim_results: Vec<(f64, String)> = Vec::new();
         for (id, emb_bytes) in entries {
-            let emb_vec: Vec<f64> = emb_bytes.chunks_exact(8).map(|c: &[u8]| f64::from_le_bytes(c.try_into().unwrap_or([0,0,0,0,0,0,0,0]))).collect();
+            let emb_vec: Vec<f64> = emb_bytes
+                .chunks_exact(8)
+                .map(|c: &[u8]| {
+                    f64::from_le_bytes(c.try_into().unwrap_or([0, 0, 0, 0, 0, 0, 0, 0]))
+                })
+                .collect();
             let score = cosine_similarity(&query_vec_f64, &emb_vec);
             sim_results.push((score, id));
         }

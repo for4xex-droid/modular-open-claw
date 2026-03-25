@@ -21,6 +21,8 @@ pub enum AssetType {
     Inochi2D,
     /// その他のスキル・プラグイン
     Plugin,
+    /// MCP サーバー (stdio/sse)
+    McpServer,
 }
 
 impl AsRef<str> for AssetType {
@@ -30,6 +32,7 @@ impl AsRef<str> for AssetType {
             AssetType::LoRA => "lora",
             AssetType::Inochi2D => "inochi2d",
             AssetType::Plugin => "plugin",
+            AssetType::McpServer => "mcp",
         }
     }
 }
@@ -49,6 +52,8 @@ pub struct AssetManifest {
     pub description: String,
     /// 価格（コイン換算）
     pub price_coins: u64,
+    /// 追加のメタデータ (JSON) — MCP 構成等
+    pub metadata: Option<serde_json::Value>,
 }
 
 /// Phase 10: Registry
@@ -71,8 +76,8 @@ impl RegistryManager {
 
         let result = sqlx::query(
             r#"
-            INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(manifest.id.to_string())
@@ -81,6 +86,7 @@ impl RegistryManager {
         .bind(&manifest.name)
         .bind(&manifest.description)
         .bind(manifest.price_coins as i64)
+        .bind(manifest.metadata.map(|m| m.to_string()))
         .execute(&self.pool)
         .await;
 
@@ -103,16 +109,17 @@ impl RegistryManager {
 
     /// アセットのメタデータを取得する
     pub async fn get_asset(&self, asset_id: Uuid) -> Result<AssetManifest, AiomeError> {
-        let result = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
-            r#"
-            SELECT id, creator_id, asset_type, name, description, price_coins
+        let result =
+            sqlx::query_as::<_, (String, String, String, String, String, i64, Option<String>)>(
+                r#"
+            SELECT id, creator_id, asset_type, name, description, price_coins, metadata
             FROM asset_registry
             WHERE id = ?
             "#,
-        )
-        .bind(asset_id.to_string())
-        .fetch_optional(&self.pool)
-        .await;
+            )
+            .bind(asset_id.to_string())
+            .fetch_optional(&self.pool)
+            .await;
 
         match result {
             Ok(Some(row)) => {
@@ -120,6 +127,7 @@ impl RegistryManager {
                     "voice" => AssetType::VoiceModel,
                     "lora" => AssetType::LoRA,
                     "inochi2d" => AssetType::Inochi2D,
+                    "mcp" => AssetType::McpServer,
                     _ => AssetType::Plugin,
                 };
 
@@ -130,6 +138,7 @@ impl RegistryManager {
                     name: row.3,
                     description: row.4,
                     price_coins: row.5 as u64,
+                    metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
                 })
             }
             Ok(None) => Err(AiomeError::ArtifactNotFound {
@@ -152,9 +161,9 @@ impl RegistryManager {
 
         let rows_result = if scope == "owned" {
             if let Some(agent) = agent_id {
-                sqlx::query_as::<_, (String, String, String, String, String, i64)>(
+                sqlx::query_as::<_, (String, String, String, String, String, i64, Option<String>)>(
                     r#"
-                    SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins
+                    SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.metadata
                     FROM asset_registry a
                     LEFT JOIN licenses l ON a.id = l.asset_id AND l.agent_id = ? AND l.status = 'active'
                     WHERE a.asset_type = ? AND (a.creator_id = ? OR l.id IS NOT NULL)
@@ -171,9 +180,9 @@ impl RegistryManager {
                 });
             }
         } else {
-            sqlx::query_as::<_, (String, String, String, String, String, i64)>(
+            sqlx::query_as::<_, (String, String, String, String, String, i64, Option<String>)>(
                 r#"
-                SELECT id, creator_id, asset_type, name, description, price_coins
+                SELECT id, creator_id, asset_type, name, description, price_coins, metadata
                 FROM asset_registry
                 WHERE asset_type = ?
                 "#,
@@ -194,6 +203,7 @@ impl RegistryManager {
                         name: row.3,
                         description: row.4,
                         price_coins: row.5 as u64,
+                        metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
                     })
                     .collect();
                 Ok(assets)
@@ -337,6 +347,38 @@ impl RegistryManager {
     }
 }
 
+/// MCP サーバー管理用の拡張
+impl RegistryManager {
+    /// MCP サーバーを登録する (便利メソッド)
+    pub async fn register_mcp_server(
+        &self,
+        creator_id: Uuid,
+        name: &str,
+        description: &str,
+        config: serde_json::Value,
+    ) -> Result<Uuid, AiomeError> {
+        let asset_id = Uuid::new_v4();
+        let manifest = AssetManifest {
+            id: asset_id,
+            creator_id,
+            asset_type: AssetType::McpServer,
+            name: name.to_string(),
+            description: description.to_string(),
+            price_coins: 0,
+            metadata: Some(config),
+        };
+
+        self.register_asset(manifest).await?;
+        Ok(asset_id)
+    }
+
+    /// 登録済みの MCP サーバー一覧を取得する
+    pub async fn list_mcp_servers(&self) -> Result<Vec<AssetManifest>, AiomeError> {
+        self.list_assets_by_type(AssetType::McpServer, None, "public")
+            .await
+    }
+}
+
 #[cfg(test)]
 impl RegistryManager {
     /// テスト用に Pool を取得する
@@ -365,6 +407,7 @@ mod tests {
                 name TEXT NOT NULL,
                 description TEXT,
                 price_coins INTEGER NOT NULL DEFAULT 0,
+                metadata TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
             "#,
@@ -419,12 +462,52 @@ mod tests {
             name: "Premium Voice".into(),
             description: "High quality voice model".into(),
             price_coins: 500,
+            metadata: None,
         };
 
         registry.register_asset(manifest).await.unwrap();
         let fetched = registry.get_asset(asset_id).await.unwrap();
         assert_eq!(fetched.name, "Premium Voice");
         assert_eq!(fetched.price_coins, 500);
+    }
+
+    #[tokio::test]
+    async fn test_registry_register_mcp_server() {
+        let pool = setup_db_for_registry().await;
+        let registry = RegistryManager::new(pool);
+
+        let asset_id = Uuid::new_v4();
+        let metadata = serde_json::json!({
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-everything"],
+            "env": {
+                "DEBUG": "true"
+            }
+        });
+
+        let manifest = AssetManifest {
+            id: asset_id,
+            creator_id: Uuid::new_v4(),
+            asset_type: AssetType::McpServer,
+            name: "Everything Server".into(),
+            description: "A test MCP server".into(),
+            price_coins: 0,
+            metadata: Some(metadata.clone()),
+        };
+
+        // 1. 登録 (現時点では metadata は無視されるはず)
+        registry.register_asset(manifest).await.unwrap();
+
+        // 2. 取得
+        let fetched = registry.get_asset(asset_id).await.unwrap();
+
+        // 3. 検証 (RED: metadata は None のままのはず)
+        assert_eq!(fetched.asset_type.as_ref(), "mcp");
+        assert_eq!(
+            fetched.metadata,
+            Some(metadata),
+            "Metadata should be preserved"
+        );
     }
 
     #[tokio::test]

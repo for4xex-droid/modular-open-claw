@@ -341,5 +341,3 @@ macro_rules! sql_fetch_optional {
         }
     }};
 }
-
-

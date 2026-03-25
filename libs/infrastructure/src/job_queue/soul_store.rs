@@ -14,7 +14,11 @@ use sqlx::Row;
 #[async_trait]
 pub trait SoulStoreOps {
     async fn do_load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError>;
-    async fn do_store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError>;
+    async fn do_store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError>;
     async fn do_fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
 }
 
@@ -24,8 +28,13 @@ impl SoulStore for UniversalJobQueue {
         self.do_load_soul(id).await
     }
 
-    async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError> {
-        self.do_store_soul_fragment(fragment_yaml, version_hash).await
+    async fn store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError> {
+        self.do_store_soul_fragment(fragment_yaml, version_hash)
+            .await
     }
 
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> {
@@ -39,16 +48,26 @@ impl SoulStoreOps for UniversalJobQueue {
         let q = format!("SELECT data_json FROM souls WHERE id = {}", self.pool.ph(0));
         let opt = crate::sql_fetch_optional!(&self.pool, (String,), &q, id).unwrap_or(None);
         if let Some((s,)) = opt {
-            Ok(Some(serde_json::from_str(&s).unwrap_or(serde_json::Value::Null)))
+            Ok(Some(
+                serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
+            ))
         } else {
             Ok(None)
         }
     }
 
-    async fn do_store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError> {
+    async fn do_store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError> {
         let now = chrono::Utc::now().to_rfc3339();
         let q = format!("INSERT INTO soul_fragments (version_hash, fragment_yaml, created_at) VALUES ({}, {}, {})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2));
-        sql_exec!(&self.pool, &q, version_hash, fragment_yaml, &now).map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        sql_exec!(&self.pool, &q, version_hash, fragment_yaml, &now).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: e.to_string(),
+            }
+        })?;
         Ok(())
     }
 

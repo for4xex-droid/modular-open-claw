@@ -621,7 +621,12 @@ impl GeminiProvider {
     }
 
     /// テスト用にベースURLを指定して初期化します
-    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+    pub fn with_base_url(
+        client: reqwest::Client,
+        api_key: String,
+        model: String,
+        base_url: String,
+    ) -> Self {
         Self {
             client,
             api_key,
@@ -633,11 +638,11 @@ impl GeminiProvider {
 
 #[async_trait]
 impl LlmProvider for GeminiProvider {
-    async fn complete_with_cache(
-        &self,
-        request: LlmRequest,
-    ) -> Result<LlmResponse, AiomeError> {
-        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        let base = self
+            .base_url
+            .as_deref()
+            .unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
             "{}/v1beta/models/{}:generateContent",
             base.trim_end_matches('/'),
@@ -769,7 +774,10 @@ impl LlmProvider for GeminiProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
+        let base = self
+            .base_url
+            .as_deref()
+            .unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
             "{}/v1beta/models/{}:streamGenerateContent?alt=sse",
             base.trim_end_matches('/'),
@@ -849,7 +857,6 @@ impl LlmProvider for GeminiProvider {
     }
 }
 
-
 #[async_trait]
 impl EmbeddingProvider for GeminiProvider {
     async fn embed(&self, text: &str, _is_query: bool) -> Result<Vec<f32>, AiomeError> {
@@ -859,7 +866,10 @@ impl EmbeddingProvider for GeminiProvider {
             "gemini-embedding-001".to_string() // Fallback to standard embedding model
         };
 
-        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
+        let base = self
+            .base_url
+            .as_deref()
+            .unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
             "{}/v1beta/models/{}:embedContent",
             base.trim_end_matches('/'),
@@ -938,7 +948,12 @@ impl OpenAiProvider {
         }
     }
 
-    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+    pub fn with_base_url(
+        client: reqwest::Client,
+        api_key: String,
+        model: String,
+        base_url: String,
+    ) -> Self {
         Self {
             client,
             api_key,
@@ -950,10 +965,7 @@ impl OpenAiProvider {
 
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
-    async fn complete_with_cache(
-        &self,
-        request: LlmRequest,
-    ) -> Result<LlmResponse, AiomeError> {
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
         let base = self.base_url.as_deref().unwrap_or("https://api.openai.com");
         let url = format!("{}/v1/chat/completions", base.trim_end_matches('/'));
         let mut messages = Vec::new();
@@ -1160,7 +1172,12 @@ impl ClaudeProvider {
         }
     }
 
-    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+    pub fn with_base_url(
+        client: reqwest::Client,
+        api_key: String,
+        model: String,
+        base_url: String,
+    ) -> Self {
         Self {
             client,
             api_key,
@@ -1172,11 +1189,11 @@ impl ClaudeProvider {
 
 #[async_trait]
 impl LlmProvider for ClaudeProvider {
-    async fn complete_with_cache(
-        &self,
-        request: LlmRequest,
-    ) -> Result<LlmResponse, AiomeError> {
-        let base = self.base_url.as_deref().unwrap_or("https://api.anthropic.com");
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        let base = self
+            .base_url
+            .as_deref()
+            .unwrap_or("https://api.anthropic.com");
         let url = format!("{}/v1/messages", base.trim_end_matches('/'));
         let mut messages = Vec::new();
         let mut system = Vec::new();
@@ -1297,7 +1314,10 @@ impl LlmProvider for ClaudeProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-        let base = self.base_url.as_deref().unwrap_or("https://api.anthropic.com");
+        let base = self
+            .base_url
+            .as_deref()
+            .unwrap_or("https://api.anthropic.com");
         let url = format!("{}/v1/messages", base.trim_end_matches('/'));
 
         let payload = serde_json::json!({
@@ -1947,7 +1967,7 @@ mod tests {
     #[tokio::test]
     async fn test_gemini_complete_with_cache_sends_full_history() {
         let mock_server = MockServer::start().await;
-        
+
         // We expect Gemini API to receive multiple messages in "contents"
         Mock::given(method("POST"))
             .and(path(format!("/v1beta/models/test-model:generateContent")))
@@ -1969,21 +1989,42 @@ mod tests {
             .await;
 
         let client = crate::http::get_http_client().clone();
-        let provider = GeminiProvider::with_base_url(client, "test-key".into(), "test-model".into(), mock_server.uri());
+        let provider = GeminiProvider::with_base_url(
+            client,
+            "test-key".into(),
+            "test-model".into(),
+            mock_server.uri(),
+        );
 
         use aiome_contracts::llm::{LlmMessage, LlmRequest};
         let request = LlmRequest {
             messages: vec![
-                LlmMessage { role: "system".into(), content: "You are a helpful assistant.".into(), cache: false },
-                LlmMessage { role: "user".into(), content: "Hello".into(), cache: false },
-                LlmMessage { role: "assistant".into(), content: "Hi there!".into(), cache: false },
-                LlmMessage { role: "user".into(), content: "Who are you?".into(), cache: false },
+                LlmMessage {
+                    role: "system".into(),
+                    content: "You are a helpful assistant.".into(),
+                    cache: false,
+                },
+                LlmMessage {
+                    role: "user".into(),
+                    content: "Hello".into(),
+                    cache: false,
+                },
+                LlmMessage {
+                    role: "assistant".into(),
+                    content: "Hi there!".into(),
+                    cache: false,
+                },
+                LlmMessage {
+                    role: "user".into(),
+                    content: "Who are you?".into(),
+                    cache: false,
+                },
             ],
             ..Default::default()
         };
 
         let result = provider.complete_with_cache(request).await;
-        
+
         // This will currently FAIL because GeminiProvider uses default complete_with_cache
         // which only extracts the last user message and calls complete("Who are you?", Some("...")).
         // The mock expects the full array in "contents".
@@ -1991,5 +2032,3 @@ mod tests {
         assert_eq!(result.unwrap().content, "I am Aiome.");
     }
 }
-
-

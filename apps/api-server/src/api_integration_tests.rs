@@ -189,7 +189,10 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
         Ok("sub_mock_123".into())
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), aiome_core::error::AiomeError> {
+    async fn cancel_subscription(
+        &self,
+        _subscription_id: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
 
@@ -305,7 +308,11 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
+        job_queue
+            .get_pool()
+            .get_sqlite_pool_or_err()
+            .unwrap()
+            .clone(),
     ));
     std::env::set_var(
         "VAULT_MASTER_KEY",
@@ -316,7 +323,11 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::security::VoiceCoreDrm::new(
             "http://localhost:3016".to_string(),
             registry.clone(),
-            job_queue.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
+            job_queue
+                .get_pool()
+                .get_sqlite_pool_or_err()
+                .unwrap()
+                .clone(),
         )
         .await,
     );
@@ -391,12 +402,101 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 master_email: None,
                 xtts_endpoint: None,
                 xtts_speaker: None,
+                mcp: shared::config::McpConfig::default(),
             });
             // 常にテスト用の一時パスで上書きする
             config.db_path = db_path.to_str().unwrap().to_string();
             config.abyss_vault_path = tmp_dir.path().to_str().unwrap().to_string();
             Arc::new(config)
         }),
+        soul_pipeline: Component::new(Arc::new(infrastructure::soul_pipeline::SoulPipeline::new(
+            provider.clone(),
+            context_engine.clone(),
+            soul_mutator.clone(),
+            wasm_skill_manager.clone(),
+            skill_forge.clone(),
+            artifact_store.clone(),
+            job_queue.clone(),
+            intent_generator.clone(),
+            intent_firewall.clone(),
+            soul_store.clone(),
+            Arc::new(infrastructure::intent::AffiliateAdapter::new()),
+            Arc::new(tokio::sync::Semaphore::new(1)), // llm_semaphore
+            Arc::new(tokio::sync::Semaphore::new(1)), // forge_semaphore
+            Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())), // mcp_sessions
+            Arc::new(mcp::client::McpProcessManager::new()), // mcp_manager
+            Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())), // docker_failures
+            aiome_core::http::get_http_client().clone(), // http_client
+            shared::security::SecurityPolicy::default(), // security_policy
+            commerce_engine.clone(),                  // commerce_engine
+            Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+                "integration-test",
+                infrastructure::circuit_breaker::CircuitBreakerConfig {
+                    failure_threshold: 5,
+                    reset_timeout: std::time::Duration::from_secs(60),
+                },
+            )), // circuit_breaker
+            infrastructure::rate_limiter::AgentRateLimiter::new(5), // rate_limiter
+            Arc::new(infrastructure::slo_engine::SloEngine::new(
+                infrastructure::slo_engine::SloConfig {
+                    error_budget_max: 100,
+                    warning_threshold: 80,
+                },
+                chrono::Duration::hours(24),
+            )), // slo_engine
+            Arc::new(secrecy::SecretString::from("test_secret".to_string())), // api_server_secret
+            Arc::new(secrecy::SecretString::from("test_fed_secret".to_string())), // federation_secret
+            Arc::new(AiomeConfig::load().unwrap_or_else(|_| AiomeConfig {
+                db_path: db_path.to_str().unwrap().to_string(),
+                log_level: "info".to_string(),
+                ollama_host: "".to_string(),
+                ollama_model: "".to_string(),
+                gemini_api_key: None,
+                openai_api_key: None,
+                anthropic_api_key: None,
+                api_server_port: 0,
+                key_proxy_url: "".to_string(),
+                samsara_hub_url: "".to_string(),
+                allowed_origins: vec![],
+                abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
+                tremendous_api_key: None,
+                master_email: None,
+                xtts_endpoint: None,
+                xtts_speaker: None,
+                mcp: shared::config::McpConfig::default(),
+            })), // config
+            Arc::new(MockGiftEngine),                                             // gift_engine
+            Arc::new(infrastructure::compliance::ekyc::MockEkycEngine),           // ekyc_engine
+            Arc::new(infrastructure::compliance::ekyc_store::MockEkycSessionStore), // ekyc_session_store
+            Arc::new(infrastructure::compliance::quarantine::MockQuarantineStore), // quarantine_store
+            Arc::new(infrastructure::auth::MockAuthManager::new()),                // auth_manager
+            uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(), // system_agent_id
+            voice_drm.clone(),                                                      // voice_drm
+            registry.clone(),                                                       // registry
+            Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
+                job_queue.get_pool().clone(),
+                Arc::new(MockCommerceEngine),
+                provider.clone(),
+                tmp_dir.path().join("gig_artifacts"),
+            )), // gig_engine
+            Arc::new(
+                infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
+                    Arc::new(infrastructure::security::BastionGuard::new_internal(
+                        aiome_core::security::PermissionManifest::default(),
+                    )),
+                    false,
+                ),
+            ), // transcription_engine
+        ))),
+        transcription_engine: Component::new(Arc::new(
+            infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
+                Arc::new(infrastructure::security::BastionGuard::new_internal(
+                    aiome_core::security::PermissionManifest::default(),
+                )),
+                false,
+            ),
+        )
+            as Arc<dyn aiome_core::traits::TranscriptionEngine>),
         gift_engine: Component::new(Arc::new(MockGiftEngine)),
         ekyc_engine: Component::new(Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)),
         ekyc_session_store: Component::new(Arc::new(
@@ -409,12 +509,14 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
-        gig_engine: Component::new(Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
-            job_queue.get_pool().clone(),
-            Arc::new(MockCommerceEngine),
-            provider.clone(),
-            tmp_dir.path().join("gig_artifacts"),
-        )) as Arc<dyn aiome_contracts::gig::GigEngine>),
+        gig_engine: Component::new(
+            Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
+                job_queue.get_pool().clone(),
+                Arc::new(MockCommerceEngine),
+                provider.clone(),
+                tmp_dir.path().join("gig_artifacts"),
+            )) as Arc<dyn aiome_contracts::gig::GigEngine>,
+        ),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         soul_store: Component::new(soul_store),
@@ -703,7 +805,11 @@ async fn test_diagnostics_api() {
 
     if resp.status_code() != StatusCode::OK {
         let err_text = resp.text();
-        panic!("Diagnostics API failed with status: {}, body: {:?}", resp.status_code(), err_text);
+        panic!(
+            "Diagnostics API failed with status: {}, body: {:?}",
+            resp.status_code(),
+            err_text
+        );
     }
     let json = resp.json::<serde_json::Value>();
     assert!(json.as_array().is_some());
@@ -791,6 +897,7 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
             name: "Test Asset".to_string(),
             description: "Test".to_string(),
             price_coins: 1000,
+            metadata: None,
         })
         .await
         .unwrap();
@@ -1537,7 +1644,10 @@ async fn test_subscription_lifecycle() {
         .await;
     assert_eq!(status_resp.status_code(), StatusCode::OK);
     let status_json = status_resp.json::<aiome_contracts::commerce::SubscriptionStatus>();
-    assert_eq!(status_json, aiome_contracts::commerce::SubscriptionStatus::Active);
+    assert_eq!(
+        status_json,
+        aiome_contracts::commerce::SubscriptionStatus::Active
+    );
 
     // 3. Cancel Subscription
     let cancel_resp = server
@@ -1545,6 +1655,6 @@ async fn test_subscription_lifecycle() {
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .json(&json!({"subscription_id": "sub_mock_123"}))
         .await;
-    
+
     assert_eq!(cancel_resp.status_code(), StatusCode::OK);
 }

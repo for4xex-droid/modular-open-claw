@@ -7,13 +7,13 @@
 
 use crate::error::AppError;
 use crate::AppState;
+use avatar_engine::proportions::{AvatarDimensions, ProportionsChecker};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use avatar_engine::proportions::{AvatarDimensions, ProportionsChecker};
 use shared::csam::{ImageHasher, LegalStatus};
 use tracing::{error, info, warn};
 
@@ -101,13 +101,13 @@ pub async fn upload_avatar_handler(
     // 3. 頭身チェック (5.5頭身) - ユーザー申告ではなくバイナリから直接抽出 (G-22)
     let dimensions = ProportionsChecker::extract_from_binary(&content_bytes);
     let legal_status = match dimensions {
-        Ok(dim) => {
-            match ProportionsChecker::validate(&dim) {
-                Ok(_) => LegalStatus::General,
-                Err(avatar_engine::proportions::ProportionError::TooYoung(_)) => LegalStatus::Restricted,
-                Err(_) => LegalStatus::Pending,
+        Ok(dim) => match ProportionsChecker::validate(&dim) {
+            Ok(_) => LegalStatus::General,
+            Err(avatar_engine::proportions::ProportionError::TooYoung(_)) => {
+                LegalStatus::Restricted
             }
-        }
+            Err(_) => LegalStatus::Pending,
+        },
         Err(_) => LegalStatus::Pending,
     };
 

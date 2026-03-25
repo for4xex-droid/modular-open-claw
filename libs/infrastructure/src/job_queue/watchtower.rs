@@ -256,7 +256,8 @@ impl WatchtowerOps for UniversalJobQueue {
             "SELECT id, lesson FROM karma_logs WHERE related_skill = {}",
             self.pool.ph(0)
         );
-        let pairs: Vec<(String, String)> = crate::sql_fetch_all!(&self.pool, (String, String), &q, skill).unwrap_or_default();
+        let pairs: Vec<(String, String)> =
+            crate::sql_fetch_all!(&self.pool, (String, String), &q, skill).unwrap_or_default();
         Ok(pairs)
     }
 

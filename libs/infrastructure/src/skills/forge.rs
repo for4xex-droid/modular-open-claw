@@ -129,53 +129,57 @@ serde_json = "1.0"
                 manifest_path.to_string_lossy()
             );
 
-            let res = guard.safe_exec_with_profile(&cmd, SandboxProfile::WasmBuild).await;
+            let res = guard
+                .safe_exec_with_profile(&cmd, SandboxProfile::WasmBuild)
+                .await;
 
             match res {
                 Ok(stdout) => {
                     info!("✅ [SkillForge] Compilation SUCCESS for {}", skill_name);
                     let wasm_file = workspace_dir.join(format!(
-                            "target/wasm32-wasip1/release/{}.wasm",
-                            skill_name.replace('-', "_")
-                        ));
-                        let final_path =
-                            self.skills_output_dir.join(format!("{}.wasm", skill_name));
+                        "target/wasm32-wasip1/release/{}.wasm",
+                        skill_name.replace('-', "_")
+                    ));
+                    let final_path = self.skills_output_dir.join(format!("{}.wasm", skill_name));
 
-                        if !self.skills_output_dir.exists() {
-                            fs::create_dir_all(&self.skills_output_dir)?;
-                        }
-
-                        fs::copy(&wasm_file, &final_path)?;
-                        info!("✅ [SkillForge] Successfully forged skill: {}", skill_name);
-
-                        // 4. Save Metadata
-                        let meta_path = self
-                            .skills_output_dir
-                            .join(format!("{}.meta.json", skill_name));
-                        #[derive(serde::Serialize)]
-                        struct LocalSkillMetadata {
-                            name: String,
-                            description: String,
-                            capabilities: Vec<String>,
-                            inputs: Vec<String>,
-                            outputs: Vec<String>,
-                        }
-                        let meta = LocalSkillMetadata {
-                            name: skill_name.to_string(),
-                            description: description.to_string(),
-                            capabilities: vec!["execute".to_string()],
-                            inputs: vec!["String".to_string()],
-                            outputs: vec!["String".to_string()],
-                        };
-                        let meta_json = serde_json::to_string_pretty(&meta)?;
-                        fs::write(meta_path, meta_json)?;
-
-                        // Discovery D: Success! We keep the workspace for future builds.
-                        return Ok(final_path);
+                    if !self.skills_output_dir.exists() {
+                        fs::create_dir_all(&self.skills_output_dir)?;
                     }
+
+                    fs::copy(&wasm_file, &final_path)?;
+                    info!("✅ [SkillForge] Successfully forged skill: {}", skill_name);
+
+                    // 4. Save Metadata
+                    let meta_path = self
+                        .skills_output_dir
+                        .join(format!("{}.meta.json", skill_name));
+                    #[derive(serde::Serialize)]
+                    struct LocalSkillMetadata {
+                        name: String,
+                        description: String,
+                        capabilities: Vec<String>,
+                        inputs: Vec<String>,
+                        outputs: Vec<String>,
+                    }
+                    let meta = LocalSkillMetadata {
+                        name: skill_name.to_string(),
+                        description: description.to_string(),
+                        capabilities: vec!["execute".to_string()],
+                        inputs: vec!["String".to_string()],
+                        outputs: vec!["String".to_string()],
+                    };
+                    let meta_json = serde_json::to_string_pretty(&meta)?;
+                    fs::write(meta_path, meta_json)?;
+
+                    // Discovery D: Success! We keep the workspace for future builds.
+                    return Ok(final_path);
+                }
                 Err(e) => {
                     let err_str = e.to_string();
-                    error!("❌ [SkillForge] Compilation failed for {}:\n{}", skill_name, err_str);
+                    error!(
+                        "❌ [SkillForge] Compilation failed for {}:\n{}",
+                        skill_name, err_str
+                    );
 
                     if attempt < retry_count {
                         warn!("🔄 [SkillForge] Compilation failed. Continuing retry loop...");

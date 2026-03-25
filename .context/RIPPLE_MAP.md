@@ -478,5 +478,13 @@ graph TD
     I -->|push_experience| J[SqliteSoulStore]
 ```
 
+
+### 🎙️ STT Integration (Phase 38b)
+- **変更内容**: `TranscriptionEngine` トレイト、および `WhisperTranscriptionAdapter` を `infrastructure` に追加。
+- **波及効果**: 
+    - `aiome-contracts/traits.rs`: `TranscriptionEngine` 定義。
+    - `avatar-engine/lip_sync.rs`: `LipSyncFrame::from_segment` 追加により、音声文字起こし結果からの口パク生成が可能。
+    - `api-server/app_state.rs`: `TranscriptionEngine` のインスタンスを保持し、MCP ツールとして公開。
+
 ---
-*最終更新日: 2026-03-25* (Phase 37a / Stripe Subscription & Whisper Integration)
+*最終更新日: 2026-03-25* (Phase 38b / STT Integration)

@@ -17,8 +17,8 @@ use zeroize::{Zeroize, Zeroizing};
 
 use sqlx::SqlitePool;
 
-use crate::security::sqlite_vault_backend::UniversalVaultBackend;
 use crate::db::DatabasePool;
+use crate::security::sqlite_vault_backend::UniversalVaultBackend;
 use aiome_contracts::vault_backend::VaultBackend;
 
 /// 物理的に隔離されたキーストレージ (モック実装)
@@ -146,8 +146,11 @@ mod tests {
         ).execute(&pool).await.unwrap();
 
         let registry = Arc::new(RegistryManager::new(pool.clone()));
-        let vault =
-            AbyssVoiceVault::new_with_master_key(registry, DatabasePool::Sqlite(pool.clone()), test_master_key_bytes());
+        let vault = AbyssVoiceVault::new_with_master_key(
+            registry,
+            DatabasePool::Sqlite(pool.clone()),
+            test_master_key_bytes(),
+        );
         (vault, pool)
     }
 
@@ -168,8 +171,11 @@ mod tests {
 
         // 2. 同一プールを共有する別 Vault インスタンスを作成
         let registry2 = Arc::new(RegistryManager::new(pool.clone()));
-        let vault2 =
-            AbyssVoiceVault::new_with_master_key(registry2, DatabasePool::Sqlite(pool.clone()), test_master_key_bytes());
+        let vault2 = AbyssVoiceVault::new_with_master_key(
+            registry2,
+            DatabasePool::Sqlite(pool.clone()),
+            test_master_key_bytes(),
+        );
 
         // 3. ライセンスチェック用のイベントを挿入
         let agent_id = Uuid::new_v4();

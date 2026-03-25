@@ -9,6 +9,21 @@ use anyhow::{Context, Result};
 use secrecy::SecretString;
 use std::env;
 
+/// MCP Configuration
+#[derive(Clone, Debug)]
+pub struct McpConfig {
+    /// MCP スキルのメタデータ (Markdown) をプロンプトに注入するかどうか
+    pub skill_md_injection: bool,
+}
+
+impl Default for McpConfig {
+    fn default() -> Self {
+        Self {
+            skill_md_injection: false,
+        }
+    }
+}
+
 /// Aiome Core Configuration
 #[derive(Clone, Debug)]
 pub struct AiomeConfig {
@@ -44,6 +59,8 @@ pub struct AiomeConfig {
     pub xtts_endpoint: Option<String>,
     /// XTTSで使用するデフォルト話者ID (Phase 10.1a)
     pub xtts_speaker: Option<String>,
+    /// MCP 設定
+    pub mcp: McpConfig,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -81,6 +98,7 @@ impl Default for AiomeConfig {
             master_email: None,
             xtts_endpoint: Some("http://localhost:18020".to_string()),
             xtts_speaker: Some("p225".to_string()),
+            mcp: McpConfig::default(),
         }
     }
 }
@@ -155,6 +173,11 @@ impl AiomeConfig {
             master_email: env::var("MASTER_EMAIL").ok(),
             xtts_endpoint: env::var("XTTS_ENDPOINT").ok(),
             xtts_speaker: env::var("XTTS_SPEAKER").ok(),
+            mcp: McpConfig {
+                skill_md_injection: env::var("MCP_SKILL_MD_INJECTION")
+                    .map(|s| s.to_lowercase() == "true")
+                    .unwrap_or(false),
+            },
         })
     }
 

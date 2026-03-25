@@ -5,10 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use async_trait::async_trait;
 use crate::db::DatabasePool;
 use crate::sql_exec;
 use aiome_core::error::AiomeError;
+use async_trait::async_trait;
 
 /// eKYCセッションの永続化インターフェース
 #[async_trait]
@@ -45,14 +45,23 @@ impl EkycSessionStore for UniversalEkycSessionStore {
 
     async fn get_session_id(&self, user_id: &str) -> anyhow::Result<Option<String>> {
         use sqlx::Row;
-        let q = format!("SELECT session_id FROM ekyc_sessions WHERE user_id = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT session_id FROM ekyc_sessions WHERE user_id = {}",
+            self.pool.ph(0)
+        );
 
         let res: Option<String> = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                sqlx::query_scalar(&q).bind(user_id).fetch_optional(p).await?
+                sqlx::query_scalar(&q)
+                    .bind(user_id)
+                    .fetch_optional(p)
+                    .await?
             }
             DatabasePool::Postgres(p) => {
-                sqlx::query_scalar(&q).bind(user_id).fetch_optional(p).await?
+                sqlx::query_scalar(&q)
+                    .bind(user_id)
+                    .fetch_optional(p)
+                    .await?
             }
         };
 

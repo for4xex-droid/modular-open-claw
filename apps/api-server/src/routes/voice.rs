@@ -86,16 +86,16 @@ pub async fn upload_voice_handler(
     // 5. 鍵を AbyssVoiceVault に登録 (メモリ + 将来的に永続化)
     state.voice_drm.register_asset_key(asset_id, key).await?;
 
-    // 6. Registry にアセットメタデータ登録
     state
         .registry
         .register_asset(AssetManifest {
             id: asset_id,
             creator_id: agent_id,
             asset_type: AssetType::VoiceModel,
-            name: format!("Voice Model {}", asset_id),
-            description: "User uploaded voice model".into(),
+            name: format!("{}.aivoice", asset_id),
+            description: "Encrypted Voice Asset".to_string(),
             price_coins: 0,
+            metadata: None,
         })
         .await?;
 

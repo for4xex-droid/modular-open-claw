@@ -8,7 +8,7 @@
 use aiome_contracts::commerce::GiftEngine;
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::{ArtifactStore, JobQueue};
+use aiome_core::traits::{ArtifactStore, JobQueue, TranscriptionEngine};
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
@@ -116,4 +116,5 @@ pub struct AppState {
             >,
         >,
     >,
+    pub transcription_engine: Component<Arc<dyn TranscriptionEngine>>,
 }

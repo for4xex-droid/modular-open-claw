@@ -87,7 +87,10 @@ pub trait CommerceEngine: Send + Sync {
     async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), AiomeError>;
 
     /// サブスクリプションのステータスを取得する (P0-1)
-    async fn get_subscription_status(&self, agent_id: Uuid) -> Result<SubscriptionStatus, AiomeError>;
+    async fn get_subscription_status(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<SubscriptionStatus, AiomeError>;
 }
 
 /// サブスクリプションのステータス

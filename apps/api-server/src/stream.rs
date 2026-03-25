@@ -158,7 +158,7 @@ pub async fn trigger_agent_chat_stream(
             knowledge_str.as_deref(),
             economic_context,
             soul_snapshot,
-        );
+        ).await;
 
         let mut turn = 0;
         let max_turns = 15;

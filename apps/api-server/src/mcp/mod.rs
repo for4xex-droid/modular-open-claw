@@ -7,6 +7,7 @@
 
 pub mod client;
 pub mod discovery;
+pub mod http_client;
 pub mod server;
 pub mod types;
 

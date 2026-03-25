@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse};
 use aiome_contracts::security::AgentHook;
-use aiome_contracts::error::AiomeError;
 use async_trait::async_trait;
 use std::fs;
 use std::sync::Arc;
@@ -109,22 +109,30 @@ impl AgentHook for UserLearner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::security::AgentHook;
-    use aiome_contracts::llm::{LlmRequest, LlmResponse, StopReason, LlmProvider};
     use aiome_contracts::error::AiomeError;
+    use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
+    use aiome_contracts::security::AgentHook;
 
     #[derive(Debug)]
     struct MockLlm;
     #[async_trait]
     impl LlmProvider for MockLlm {
-        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: "NO_UPDATE".to_string(), // Test default
                 stop_reason: StopReason::EndTurn,
             })
         }
-        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
-        fn name(&self) -> &str { "mock" }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "mock"
+        }
     }
 
     #[tokio::test]
@@ -132,17 +140,17 @@ mod tests {
         let provider = Arc::new(MockLlm);
         let semaphore = Arc::new(Semaphore::new(1));
         let learner = UserLearner::new(provider, semaphore);
-        
+
         // This will fail to compile because AgentHook is not implemented yet.
         // To make it a "failing runtime test" for TDD, we use a trait object.
         let hook: Box<dyn AgentHook> = Box::new(learner);
-        
+
         let request = LlmRequest::default();
         let response = LlmResponse {
             content: "User likes coffee.".to_string(),
             stop_reason: StopReason::EndTurn,
         };
-        
+
         // RED: on_post_execute should trigger session learning
         let result = hook.on_post_execute(&request, &response).await;
         assert!(result.is_ok());

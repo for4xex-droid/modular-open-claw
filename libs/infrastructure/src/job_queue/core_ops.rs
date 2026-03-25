@@ -49,7 +49,12 @@ pub trait CoreOps {
     async fn do_increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError>;
     async fn do_reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError>;
-    async fn do_publish(&self, content: &str, media_paths: &[std::path::PathBuf], metadata: &serde_json::Value) -> Result<String, AiomeError>;
+    async fn do_publish(
+        &self,
+        content: &str,
+        media_paths: &[std::path::PathBuf],
+        metadata: &serde_json::Value,
+    ) -> Result<String, AiomeError>;
 }
 
 #[async_trait]
@@ -83,7 +88,22 @@ impl CoreOps for UniversalJobQueue {
                 self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10)
             ),
         };
-        sql_exec!(&self.pool, &q, &id, category, topic, style, directives, manifest_json, agent_id_str, "Pending", priority, &now, &now).map(|_| ())?;
+        sql_exec!(
+            &self.pool,
+            &q,
+            &id,
+            category,
+            topic,
+            style,
+            directives,
+            manifest_json,
+            agent_id_str,
+            "Pending",
+            priority,
+            &now,
+            &now
+        )
+        .map(|_| ())?;
         Ok(id)
     }
 
@@ -102,7 +122,8 @@ impl CoreOps for UniversalJobQueue {
                     status: JobStatus::from_string(&status_str),
                     started_at: $r.try_get("started_at").ok(),
                     last_heartbeat: $r.try_get("last_heartbeat").ok(),
-                    tech_karma_extracted: $r.try_get::<i32, _>("tech_karma_extracted").unwrap_or(0) != 0,
+                    tech_karma_extracted: $r.try_get::<i32, _>("tech_karma_extracted").unwrap_or(0)
+                        != 0,
                     creative_rating: $r.try_get("creative_rating").ok(),
                     execution_log: $r.try_get("execution_log").ok(),
                     error_message: $r.try_get("error_message").ok(),
@@ -110,7 +131,10 @@ impl CoreOps for UniversalJobQueue {
                     sns_content_id: $r.try_get("sns_content_id").ok(),
                     published_at: $r.try_get("published_at").ok(),
                     output_artifacts: $r.try_get("output_artifacts").ok(),
-                    permission_manifest: $r.try_get::<String, _>("permission_manifest").ok().and_then(|s| serde_json::from_str(&s).ok()),
+                    permission_manifest: $r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok()),
                     agent_id: agent_id_str.and_then(|s| Uuid::parse_str(&s).ok()),
                     priority: $r.get("priority"),
                     created_at: $r.try_get("created_at").unwrap_or_default(),
@@ -121,18 +145,35 @@ impl CoreOps for UniversalJobQueue {
 
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let r = sqlx::query(&q).bind(job_id).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let r = sqlx::query(&q)
+                    .bind(job_id)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 Ok(r.map(|r| map_job_row!(&r)))
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let r = sqlx::query(&q).bind(job_id).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let r = sqlx::query(&q)
+                    .bind(job_id)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 Ok(r.map(|r| map_job_row!(&r)))
             }
         }
     }
 
     async fn do_dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError> {
-        let placeholders = capable_categories.iter().enumerate().map(|(i, _)| self.pool.ph(i + 1)).collect::<Vec<_>>().join(", ");
+        let placeholders = capable_categories
+            .iter()
+            .enumerate()
+            .map(|(i, _)| self.pool.ph(i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
         let query_str = format!("SELECT * FROM jobs WHERE status = {} AND category IN ({}) ORDER BY priority DESC, created_at ASC LIMIT 1", self.pool.ph(0), placeholders);
         let now = Utc::now().to_rfc3339();
         let update_str = format!("UPDATE jobs SET status = {0}, started_at = {1}, last_heartbeat = {2}, updated_at = {3} WHERE id = {4} AND status = {5}",
@@ -140,43 +181,113 @@ impl CoreOps for UniversalJobQueue {
 
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
                 let mut q = sqlx::query(&query_str).bind("Pending");
-                for cat in capable_categories { q = q.bind(*cat); }
-                let row = q.fetch_optional(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                for cat in capable_categories {
+                    q = q.bind(*cat);
+                }
+                let row =
+                    q.fetch_optional(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 if let Some(r) = row {
                     let id: String = r.get("id");
-                    let res = sqlx::query(&update_str).bind("Processing").bind(&now).bind(&now).bind(&now).bind(&id).bind("Pending").execute(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                    if res.rows_affected() == 0 { tx.rollback().await.ok(); return Ok(None); }
-                    tx.commit().await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                    let res = sqlx::query(&update_str)
+                        .bind("Processing")
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&id)
+                        .bind("Pending")
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    if res.rows_affected() == 0 {
+                        tx.rollback().await.ok();
+                        return Ok(None);
+                    }
+                    tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                     Ok(Some(self.do_fetch_job(&id).await?.unwrap()))
-                } else { Ok(None) }
+                } else {
+                    Ok(None)
+                }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
                 let mut q = sqlx::query(&query_str).bind("Pending");
-                for cat in capable_categories { q = q.bind(*cat); }
-                let row = q.fetch_optional(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                for cat in capable_categories {
+                    q = q.bind(*cat);
+                }
+                let row =
+                    q.fetch_optional(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 if let Some(r) = row {
                     let id: String = r.get("id");
-                    let res = sqlx::query(&update_str).bind("Processing").bind(&now).bind(&now).bind(&now).bind(&id).bind("Pending").execute(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                    if res.rows_affected() == 0 { tx.rollback().await.ok(); return Ok(None); }
-                    tx.commit().await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                    let res = sqlx::query(&update_str)
+                        .bind("Processing")
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&now)
+                        .bind(&id)
+                        .bind("Pending")
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    if res.rows_affected() == 0 {
+                        tx.rollback().await.ok();
+                        return Ok(None);
+                    }
+                    tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                     Ok(Some(self.do_fetch_job(&id).await?.unwrap()))
-                } else { Ok(None) }
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
 
-    async fn do_complete_job(&self, job_id: &str, output_artifacts: Option<&str>) -> Result<(), AiomeError> {
+    async fn do_complete_job(
+        &self,
+        job_id: &str,
+        output_artifacts: Option<&str>,
+    ) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let q = format!("UPDATE jobs SET status = {0}, output_artifacts = {1}, updated_at = {2} WHERE id = {3}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3));
+        let q = format!(
+            "UPDATE jobs SET status = {0}, output_artifacts = {1}, updated_at = {2} WHERE id = {3}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2),
+            self.pool.ph(3)
+        );
         sql_exec!(&self.pool, &q, "Completed", output_artifacts, &now, job_id).map(|_| ())
     }
 
     async fn do_fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let q = format!("UPDATE jobs SET status = {0}, error_message = {1}, updated_at = {2} WHERE id = {3}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3));
+        let q = format!(
+            "UPDATE jobs SET status = {0}, error_message = {1}, updated_at = {2} WHERE id = {3}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2),
+            self.pool.ph(3)
+        );
         sql_exec!(&self.pool, &q, "Failed", reason, &now, job_id).map(|_| ())
     }
 
@@ -188,19 +299,34 @@ impl CoreOps for UniversalJobQueue {
 
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let q = format!("UPDATE jobs SET creative_rating = {0}, updated_at = {1} WHERE id = {2}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2));
+        let q = format!(
+            "UPDATE jobs SET creative_rating = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
         sql_exec!(&self.pool, &q, rating, &now, job_id).map(|_| ())
     }
 
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let q = format!("UPDATE jobs SET last_heartbeat = {0}, updated_at = {1} WHERE id = {2}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2));
+        let q = format!(
+            "UPDATE jobs SET last_heartbeat = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
         sql_exec!(&self.pool, &q, &now, &now, job_id).map(|_| ())
     }
 
     async fn do_store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let q = format!("UPDATE jobs SET execution_log = {0}, updated_at = {1} WHERE id = {2}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2));
+        let q = format!(
+            "UPDATE jobs SET execution_log = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
         sql_exec!(&self.pool, &q, log, &now, job_id).map(|_| ())
     }
 
@@ -213,11 +339,20 @@ impl CoreOps for UniversalJobQueue {
     }
 
     async fn do_fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        let q = format!("SELECT * FROM jobs ORDER BY created_at DESC LIMIT {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT * FROM jobs ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0)
+        );
         let mut jobs = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let agent_id_str: Option<String> = r.try_get("agent_id").ok();
                     jobs.push(Job {
@@ -237,7 +372,10 @@ impl CoreOps for UniversalJobQueue {
                         sns_content_id: r.try_get("sns_content_id").ok(),
                         published_at: r.try_get("published_at").ok(),
                         output_artifacts: r.try_get("output_artifacts").ok(),
-                        permission_manifest: r.try_get::<String, _>("permission_manifest").ok().and_then(|s| serde_json::from_str(&s).ok()),
+                        permission_manifest: r
+                            .try_get::<String, _>("permission_manifest")
+                            .ok()
+                            .and_then(|s| serde_json::from_str(&s).ok()),
                         agent_id: agent_id_str.and_then(|s| Uuid::parse_str(&s).ok()),
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
@@ -246,7 +384,13 @@ impl CoreOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let agent_id_str: Option<String> = r.try_get("agent_id").ok();
                     jobs.push(Job {
@@ -266,7 +410,10 @@ impl CoreOps for UniversalJobQueue {
                         sns_content_id: r.try_get("sns_content_id").ok(),
                         published_at: r.try_get("published_at").ok(),
                         output_artifacts: r.try_get("output_artifacts").ok(),
-                        permission_manifest: r.try_get::<serde_json::Value, _>("permission_manifest").ok().and_then(|v| serde_json::from_value(v).ok()),
+                        permission_manifest: r
+                            .try_get::<serde_json::Value, _>("permission_manifest")
+                            .ok()
+                            .and_then(|v| serde_json::from_value(v).ok()),
                         agent_id: agent_id_str.and_then(|s| Uuid::parse_str(&s).ok()),
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
@@ -278,30 +425,47 @@ impl CoreOps for UniversalJobQueue {
         Ok(jobs)
     }
 
-
     async fn do_get_pending_job_count(&self) -> Result<i64, AiomeError> {
-        let q = format!("SELECT COUNT(*) FROM jobs WHERE status = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT COUNT(*) FROM jobs WHERE status = {}",
+            self.pool.ph(0)
+        );
         crate::sql_fetch_one!(&self.pool, (i64,), &q, "Pending").map(|r| r.0)
     }
 
-    async fn do_get_job_count_since(&self, since: chrono::DateTime<chrono::Utc>) -> Result<i64, AiomeError> {
-        let q = format!("SELECT COUNT(*) FROM jobs WHERE created_at >= {}", self.pool.ph(0));
+    async fn do_get_job_count_since(
+        &self,
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<i64, AiomeError> {
+        let q = format!(
+            "SELECT COUNT(*) FROM jobs WHERE created_at >= {}",
+            self.pool.ph(0)
+        );
         let s = since.to_rfc3339();
         crate::sql_fetch_one!(&self.pool, (i64,), &q, s).map(|r| r.0)
     }
 
     async fn do_fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError> {
-        let q = format!("SELECT retry_count FROM jobs WHERE id = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT retry_count FROM jobs WHERE id = {}",
+            self.pool.ph(0)
+        );
         crate::sql_fetch_one!(&self.pool, (i64,), &q, job_id).map(|r| r.0)
     }
 
     async fn do_increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError> {
-        let q = format!("UPDATE jobs SET retry_count = retry_count + 1 WHERE id = {}", self.pool.ph(0));
+        let q = format!(
+            "UPDATE jobs SET retry_count = retry_count + 1 WHERE id = {}",
+            self.pool.ph(0)
+        );
         sql_exec!(&self.pool, &q, job_id).map(|c| c > 0)
     }
 
     async fn do_reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError> {
-        let q = format!("UPDATE jobs SET retry_count = 0 WHERE id = {}", self.pool.ph(0));
+        let q = format!(
+            "UPDATE jobs SET retry_count = 0 WHERE id = {}",
+            self.pool.ph(0)
+        );
         sql_exec!(&self.pool, &q, job_id).map(|_| ())
     }
 
@@ -310,7 +474,12 @@ impl CoreOps for UniversalJobQueue {
         Ok(0)
     }
 
-    async fn do_publish(&self, _content: &str, _media_paths: &[std::path::PathBuf], _metadata: &serde_json::Value) -> Result<String, AiomeError> {
+    async fn do_publish(
+        &self,
+        _content: &str,
+        _media_paths: &[std::path::PathBuf],
+        _metadata: &serde_json::Value,
+    ) -> Result<String, AiomeError> {
         Ok("mock_content_id".to_string())
     }
 }

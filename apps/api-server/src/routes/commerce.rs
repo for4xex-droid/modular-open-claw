@@ -172,7 +172,9 @@ pub async fn create_subscription(
         }
     })?;
 
-    let sub_id = engine.create_subscription(req.agent_id, &req.plan_id).await?;
+    let sub_id = engine
+        .create_subscription(req.agent_id, &req.plan_id)
+        .await?;
     Ok((
         StatusCode::OK,
         Json(SubscriptionResponse {

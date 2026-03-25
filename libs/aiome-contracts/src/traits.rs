@@ -10,11 +10,11 @@
 //! Framework の4つのツールモジュールのインターフェースを定義する。
 //! 具体実装は `libs/infrastructure` に配置する（依存性逆転の原則）。
 
-use crate::AgentStats;
+use crate::contracts::{ConceptRequest, ConceptResponse};
 use crate::error::AiomeError;
 pub use crate::expression::Expression;
+use crate::AgentStats;
 use async_trait::async_trait;
-use crate::contracts::{ConceptRequest, ConceptResponse};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -130,6 +130,43 @@ pub trait MediaProcessor: Send + Sync {
     async fn get_duration(&self, path: &std::path::Path) -> Result<f32, AiomeError>;
 }
 
+/// 音声文字起こし結果
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TranscriptionResult {
+    /// 全体のテキスト
+    pub text: String,
+    /// 検出された言語 (ISO 639-1)
+    pub language: String,
+    /// 単語レベル/セグメントレベルのタイムスタンプ情報
+    pub segments: Vec<TranscriptionSegment>,
+}
+
+/// 文字起こしのセグメント情報
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TranscriptionSegment {
+    /// テキスト内容
+    pub text: String,
+    /// 開始時間 (秒)
+    pub start: f32,
+    /// 終了時間 (秒)
+    pub end: f32,
+    /// 信頼度 (0.0 - 1.0)
+    pub confidence: f32,
+}
+
+/// 音声文字起こしエンジン (STT)
+#[async_trait]
+pub trait TranscriptionEngine: Send + Sync {
+    /// 音声ファイルを文字起こしする
+    async fn transcribe(
+        &self,
+        audio_path: &std::path::Path,
+    ) -> Result<TranscriptionResult, AiomeError>;
+
+    /// エンジンの健全性（ランタイム/GPU）を確認
+    async fn health_check(&self) -> Result<bool, AiomeError>;
+}
+
 // --- Phase 10: The Automaton ---
 
 /// ジョブステータス
@@ -201,7 +238,6 @@ pub struct Job {
     pub agent_id: Option<uuid::Uuid>,
 }
 
-
 /// ジョブのステータス更新リクエスト
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpdateJobStatusRequest {
@@ -242,7 +278,6 @@ pub struct SnsMetricsRecord {
     pub engagement_rate: Option<f64>,
 }
 
-
 /// ジョブキュー操作 (JobQueue)
 #[async_trait]
 pub trait JobQueue: Send + Sync + std::fmt::Debug {
@@ -266,7 +301,11 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
 
     /// ジョブを完了としてマーク
-    async fn complete_job(&self, job_id: &str, output_artifacts: Option<&str>) -> Result<(), AiomeError>;
+    async fn complete_job(
+        &self,
+        job_id: &str,
+        output_artifacts: Option<&str>,
+    ) -> Result<(), AiomeError>;
 
     /// ジョブを失敗としてマーク
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
@@ -290,7 +329,8 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
 
     /// チャットメモリのサマリ（圧縮された記憶）を取得
-    async fn get_chat_memory_summary(&self, channel_id: &str) -> Result<Option<String>, AiomeError>;
+    async fn get_chat_memory_summary(&self, channel_id: &str)
+        -> Result<Option<String>, AiomeError>;
 
     /// チャットメモリのサマリを更新
     async fn update_chat_memory_summary(
@@ -300,8 +340,11 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
 
     /// 圧縮（蒸留）されたチャットメッセージにフラグを立てる
-    async fn mark_chats_as_distilled(&self, channel_id: &str, last_id: i64)
-        -> Result<(), AiomeError>;
+    async fn mark_chats_as_distilled(
+        &self,
+        channel_id: &str,
+        last_id: i64,
+    ) -> Result<(), AiomeError>;
 
     /// クリエイティブ評価を書き込む
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
@@ -378,10 +421,18 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
 
     /// 評価待ちメトリクスを取得
-    async fn fetch_pending_evaluations(&self, limit: i64) -> Result<Vec<SnsMetricsRecord>, AiomeError>;
+    async fn fetch_pending_evaluations(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<SnsMetricsRecord>, AiomeError>;
 
     /// 最終評価を適用
-    async fn apply_final_verdict(&self, record_id: i64, verdict: crate::contracts::OracleVerdict, soul_hash: &str) -> Result<(), AiomeError>;
+    async fn apply_final_verdict(
+        &self,
+        record_id: i64,
+        verdict: crate::contracts::OracleVerdict,
+        soul_hash: &str,
+    ) -> Result<(), AiomeError>;
 
     /// 最近のジョブを取得
     async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
@@ -395,7 +446,9 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn add_creativity(&self, amount: i32) -> Result<(), AiomeError>;
 
     /// Samsara レベルの同期
-    async fn sync_samsara_level(&self) -> Result<Option<crate::contracts::SamsaraEvent>, AiomeError>;
+    async fn sync_samsara_level(
+        &self,
+    ) -> Result<Option<crate::contracts::SamsaraEvent>, AiomeError>;
 
     /// 進化イベントの記録
     async fn record_evolution_event(
@@ -408,12 +461,18 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
 
     /// 進化履歴の取得
-    async fn fetch_evolution_history(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn fetch_evolution_history(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError>;
 
     /// 待機中ジョブ数
     async fn get_pending_job_count(&self) -> Result<i64, AiomeError>;
     /// 指定期間以降のジョブ数
-    async fn get_job_count_since(&self, since: chrono::DateTime<chrono::Utc>) -> Result<i64, AiomeError>;
+    async fn get_job_count_since(
+        &self,
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<i64, AiomeError>;
 
     /// 全カルマ取得
     async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
@@ -421,7 +480,12 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn fetch_top_performing_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
 
     /// 魂の変異記録
-    async fn record_soul_mutation(&self, old_hash: &str, new_hash: &str, reason: &str) -> Result<(), AiomeError>;
+    async fn record_soul_mutation(
+        &self,
+        old_hash: &str,
+        new_hash: &str,
+        reason: &str,
+    ) -> Result<(), AiomeError>;
 
     /// ジョブリトライカウント
     async fn fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError>;
@@ -429,26 +493,69 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError>;
 
     /// 未組み込みカルマ取得
-    async fn fetch_unincorporated_karma(&self, limit: i64, current_soul_hash: &str) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn fetch_unincorporated_karma(
+        &self,
+        limit: i64,
+        current_soul_hash: &str,
+    ) -> Result<Vec<serde_json::Value>, AiomeError>;
     /// カルマ組み込み済みマーク
-    async fn mark_karma_as_incorporated(&self, karma_ids: Vec<String>, new_soul_hash: &str) -> Result<(), AiomeError>;
+    async fn mark_karma_as_incorporated(
+        &self,
+        karma_ids: Vec<String>,
+        new_soul_hash: &str,
+    ) -> Result<(), AiomeError>;
 
     // --- Phase 12-C: Adaptive Immune System ---
-    async fn store_immune_rule(&self, rule: &crate::contracts::ImmuneRule) -> Result<(), AiomeError>;
+    async fn store_immune_rule(
+        &self,
+        rule: &crate::contracts::ImmuneRule,
+    ) -> Result<(), AiomeError>;
     async fn delete_immune_rule(&self, rule_id: &str) -> Result<(), AiomeError>;
-    async fn fetch_active_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
-    async fn record_arena_match(&self, match_data: &crate::contracts::ArenaMatch) -> Result<(), AiomeError>;
+    async fn fetch_active_immune_rules(
+        &self,
+    ) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
+    async fn record_arena_match(
+        &self,
+        match_data: &crate::contracts::ArenaMatch,
+    ) -> Result<(), AiomeError>;
     async fn get_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
 
     // --- Phase 12-F: Karma Federation ---
-    async fn export_federated_data(&self, since: Option<&str>) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>, Vec<crate::contracts::ArenaMatch>), AiomeError>;
-    async fn import_federated_data(&self, karmas: Vec<KarmaEntry>, rules: Vec<crate::contracts::ImmuneRule>, matches: Vec<crate::contracts::ArenaMatch>) -> Result<(), AiomeError>;
+    async fn export_federated_data(
+        &self,
+        since: Option<&str>,
+    ) -> Result<
+        (
+            Vec<KarmaEntry>,
+            Vec<crate::contracts::ImmuneRule>,
+            Vec<crate::contracts::ArenaMatch>,
+        ),
+        AiomeError,
+    >;
+    async fn import_federated_data(
+        &self,
+        karmas: Vec<KarmaEntry>,
+        rules: Vec<crate::contracts::ImmuneRule>,
+        matches: Vec<crate::contracts::ArenaMatch>,
+    ) -> Result<(), AiomeError>;
     async fn get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError>;
-    async fn update_peer_sync_time(&self, peer_url: &str, sync_time: &str) -> Result<(), AiomeError>;
+    async fn update_peer_sync_time(
+        &self,
+        peer_url: &str,
+        sync_time: &str,
+    ) -> Result<(), AiomeError>;
     async fn get_node_id(&self) -> Result<String, AiomeError>;
-    async fn fetch_unfederated_data(&self) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>), AiomeError>;
-    async fn mark_as_federated(&self, karma_ids: Vec<String>, rule_ids: Vec<String>) -> Result<(), AiomeError>;
-    async fn fetch_federated_metrics(&self) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
+    async fn fetch_unfederated_data(
+        &self,
+    ) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>), AiomeError>;
+    async fn mark_as_federated(
+        &self,
+        karma_ids: Vec<String>,
+        rule_ids: Vec<String>,
+    ) -> Result<(), AiomeError>;
+    async fn fetch_federated_metrics(
+        &self,
+    ) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
 
     // --- Phase 10-B: Swarm Sync & CRDT ---
     async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError>;
@@ -459,15 +566,34 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError>;
 
     // --- Biome ---
-    async fn get_biome_topic_status(&self, topic_id: &str) -> Result<Option<(i32, Option<String>)>, AiomeError>;
-    async fn advance_biome_turn(&self, topic_id: &str, cooldown_minutes: i64) -> Result<i32, AiomeError>;
-    async fn fetch_biome_messages(&self, topic_id: &str, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
-    async fn store_biome_message(&self, message: &crate::biome::BiomeMessage) -> Result<(), AiomeError>;
+    async fn get_biome_topic_status(
+        &self,
+        topic_id: &str,
+    ) -> Result<Option<(i32, Option<String>)>, AiomeError>;
+    async fn advance_biome_turn(
+        &self,
+        topic_id: &str,
+        cooldown_minutes: i64,
+    ) -> Result<i32, AiomeError>;
+    async fn fetch_biome_messages(
+        &self,
+        topic_id: &str,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn store_biome_message(
+        &self,
+        message: &crate::biome::BiomeMessage,
+    ) -> Result<(), AiomeError>;
     async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
     async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
 
     // --- RAG ---
-    async fn fetch_relevant_karma_by_category(&self, topic: &str, category: &str, limit: i64) -> Result<KarmaSearchResult, AiomeError>;
+    async fn fetch_relevant_karma_by_category(
+        &self,
+        topic: &str,
+        category: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError>;
 
     // --- Project NURTURE compliance ---
     async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
@@ -477,21 +603,35 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
 
     // --- Soul Storage ---
-    async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError>;
+    async fn store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError>;
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
 
     // --- Phase 36: Security Hardening ---
     /// セキュリティ監視用のリクエスト回数を取得
-    async fn get_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
+    async fn get_security_request_count(
+        &self,
+        agent_id: Option<uuid::Uuid>,
+    ) -> Result<u32, AiomeError>;
     /// セキュリティ監視用のリクエスト回数をインクリメント
-    async fn increment_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
+    async fn increment_security_request_count(
+        &self,
+        agent_id: Option<uuid::Uuid>,
+    ) -> Result<u32, AiomeError>;
 }
 
 /// Soul Storage Trait
 #[async_trait]
 pub trait SoulStore: Send + Sync {
     async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError>;
-    async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError>;
+    async fn store_soul_fragment(
+        &self,
+        fragment_yaml: &str,
+        version_hash: &str,
+    ) -> Result<(), AiomeError>;
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
 }
 
@@ -630,7 +770,10 @@ pub trait ArtifactStore: Send + Sync {
 #[async_trait]
 pub trait PromptExtractor: Send + Sync {
     /// 実行ログから教訓を抽出する
-    async fn extract_verdict(&self, log: &str) -> Result<crate::contracts::OracleVerdict, AiomeError>;
+    async fn extract_verdict(
+        &self,
+        log: &str,
+    ) -> Result<crate::contracts::OracleVerdict, AiomeError>;
 
     /// 業（Karma）を分類する
     async fn classify_karma(
@@ -656,7 +799,6 @@ pub trait Publisher: Send + Sync {
 
 // LlmProvider is now defined in aiome_contracts::llm (ADR-021)
 
-
 /// 憲法バリデーター (ConstitutionalValidator)
 #[async_trait]
 pub trait ConstitutionalValidator: Send + Sync {
@@ -666,7 +808,11 @@ pub trait ConstitutionalValidator: Send + Sync {
 /// ログ出力インターフェース (AiomeLogger)
 #[async_trait]
 pub trait AiomeLogger: Send + Sync {
-    async fn log_success(&self, artifact_id: &str, output_path: &std::path::PathBuf) -> Result<(), AiomeError>;
+    async fn log_success(
+        &self,
+        artifact_id: &str,
+        output_path: &std::path::PathBuf,
+    ) -> Result<(), AiomeError>;
     async fn log_error(&self, reason: &str) -> Result<(), AiomeError>;
     async fn daily_summary(&self, jail: &bastion::fs_guard::Jail) -> Result<String, AiomeError>;
 }
@@ -677,5 +823,9 @@ pub trait AgentAct: Send + Sync {
     type Input;
     type Output;
 
-    async fn execute(&self, input: Self::Input, jail: &bastion::fs_guard::Jail) -> Result<Self::Output, AiomeError>;
+    async fn execute(
+        &self,
+        input: Self::Input,
+        jail: &bastion::fs_guard::Jail,
+    ) -> Result<Self::Output, AiomeError>;
 }

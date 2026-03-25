@@ -40,7 +40,6 @@ impl MemoryCrystallizer {
             provider,
             job_queue,
             semaphore,
-            
         }
     }
 
@@ -84,7 +83,7 @@ impl MemoryCrystallizer {
                     Ok(resp) => {
                         let _soul_hash = "v2_fact_categorized";
                         let ids: Vec<String> = raw_karma.into_iter().map(|(id, _)| id).collect();
-                        
+
                         // NOTE: 簡易的に出力からカテゴリをパースして保存する
                         // 実際には apply_distilled_karma がカテゴリ引数を受けるように拡張が必要
                         self.job_queue
@@ -98,7 +97,10 @@ impl MemoryCrystallizer {
                                 None,
                             )
                             .await?;
-                        info!("✅ [MemoryCrystallizer] Karma crystallized with facts for {}", skill);
+                        info!(
+                            "✅ [MemoryCrystallizer] Karma crystallized with facts for {}",
+                            skill
+                        );
                     }
                     Err(e) => {
                         warn!(

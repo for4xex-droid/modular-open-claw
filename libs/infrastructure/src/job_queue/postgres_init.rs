@@ -23,7 +23,10 @@ impl PostgresInitializer {
             })?;
 
         // 17. Extensions
-        sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm;").execute(pool).await.ok();
+        sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+            .execute(pool)
+            .await
+            .ok();
 
         Ok(())
     }

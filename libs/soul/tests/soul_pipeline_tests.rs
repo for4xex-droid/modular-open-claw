@@ -301,22 +301,32 @@ async fn test_anamnesis_persists_across_rebirth() {
 
 #[tokio::test]
 async fn test_custom_middleware_injection() {
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
 
     struct TraceMiddleware {
         executed: Arc<AtomicBool>,
     }
     #[async_trait::async_trait]
-    impl<A: soul::adapter::SoulDomainAdapter + 'static, E: soul::engine::SamsaraEngine + Send + Sync + 'static> soul::pipeline::SoulMiddleware<A, E> for TraceMiddleware {
-        async fn process(&self, ctx: &mut soul::pipeline::SoulContext<'_, A, E>, next: &(dyn soul::pipeline::SoulMiddlewareNext<A, E> + '_)) -> Result<(), soul::error::SoulError> {
+    impl<
+            A: soul::adapter::SoulDomainAdapter + 'static,
+            E: soul::engine::SamsaraEngine + Send + Sync + 'static,
+        > soul::pipeline::SoulMiddleware<A, E> for TraceMiddleware
+    {
+        async fn process(
+            &self,
+            ctx: &mut soul::pipeline::SoulContext<'_, A, E>,
+            next: &(dyn soul::pipeline::SoulMiddlewareNext<A, E> + '_),
+        ) -> Result<(), soul::error::SoulError> {
             self.executed.store(true, Ordering::SeqCst);
             next.run(ctx).await
         }
     }
 
     let executed = Arc::new(AtomicBool::new(false));
-    let middleware = TraceMiddleware { executed: executed.clone() };
+    let middleware = TraceMiddleware {
+        executed: executed.clone(),
+    };
 
     let mut pipeline = SoulPipeline::new(MockAdapter, MockEngine);
     // RED: This method does not exist yet!
@@ -327,5 +337,8 @@ async fn test_custom_middleware_injection() {
 
     let _ = pipeline.process_experience(&mut soul, exp).await.unwrap();
 
-    assert!(executed.load(Ordering::SeqCst), "Custom middleware should have been executed");
+    assert!(
+        executed.load(Ordering::SeqCst),
+        "Custom middleware should have been executed"
+    );
 }

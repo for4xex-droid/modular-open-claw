@@ -103,7 +103,7 @@ pub fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
     calls
 }
 
-pub fn build_system_instructions(
+pub async fn build_system_instructions(
     state: &AppState,
     karma_str: &str,
     summary: Option<&str>,
@@ -112,7 +112,7 @@ pub fn build_system_instructions(
     economic_context: Option<aiome_core::commerce::EconomicContext>,
     soul_snapshot: Option<infrastructure::soul_store::SoulSnapshot>,
 ) -> String {
-    let skill_list = state
+    let mut skill_list = state
         .wasm_skill_manager
         .list_skills_with_metadata()
         .iter()
@@ -125,6 +125,27 @@ pub fn build_system_instructions(
         })
         .collect::<Vec<_>>()
         .join("\n");
+
+    // Phase 37b Step 1.5: SKILL.md metadata injection (Dynamic Listing)
+    let mcp_servers = state
+        .registry
+        .list_assets_by_type(infrastructure::registry::AssetType::McpServer, None, "all")
+        .await
+        .unwrap_or_default();
+
+    for mcp in mcp_servers {
+        if !skill_list.is_empty() {
+            skill_list.push('\n');
+        }
+        skill_list.push_str(&format!(
+            "- {}: {}",
+            mcp.name,
+            mcp.description
+                .split('.')
+                .next()
+                .unwrap_or(&mcp.description)
+        ));
+    }
 
     // Core Identity (High Priority)
     let soul_md = safe_truncate(&read_workspace_file("SOUL.md"), 20000);
@@ -155,7 +176,6 @@ pub fn build_system_instructions(
     } else {
         "".to_string()
     };
-
 
     // Supplemental Context (Lower Priority / Reference Only)
     let user_md = safe_truncate(&read_workspace_file("USER.md"), 20000);
@@ -381,7 +401,7 @@ pub async fn trigger_agent_chat(
 
     let soul_snapshot = state.soul_store.get_snapshot().await;
 
-    let system_instructions = build_system_instructions(
+    let instructions = build_system_instructions(
         &state,
         &karma_str,
         summary.as_deref(),
@@ -389,7 +409,8 @@ pub async fn trigger_agent_chat(
         knowledge_str.as_deref(),
         economic_context,
         soul_snapshot,
-    );
+    )
+    .await;
 
     let mut turn = 0;
     let max_turns = 15;
@@ -402,7 +423,7 @@ pub async fn trigger_agent_chat(
     while turn < max_turns {
         let full_prompt = format!(
             "{}\n{}\nUSER: {}\nAI: ",
-            system_instructions,
+            instructions,
             current_history.join("\n"),
             payload.prompt
         );
@@ -420,7 +441,7 @@ pub async fn trigger_agent_chat(
         let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {
             tracing::error!("Failed to acquire LLM permit: {}", e);
             crate::error::AppError(aiome_core::error::AiomeError::Infrastructure {
-                reason: "Service unavailable due to quota/shutdown".into(),
+                reason: "Service unavailable due0 to quota/shutdown".into(),
             })
         })?;
 
@@ -685,4 +706,117 @@ pub async fn handle_karma_feedback(
         .await?;
 
     Ok(Json(serde_json::json!({"status": "success"})))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app_state::Component;
+    use infrastructure::job_queue::UniversalJobQueue;
+    use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
+    use infrastructure::skills::WasmSkillManager;
+    use std::sync::Arc;
+
+    async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
+        let tmp_dir = tempfile::TempDir::new().unwrap();
+        let db_path = tmp_dir.path().join("test_agent.db");
+        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
+
+        let jq = Arc::new(UniversalJobQueue::new(&pool_url).await.unwrap());
+        let registry = Arc::new(RegistryManager::new(
+            jq.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
+        ));
+
+        // Setup WASM Skill Manager in a tmp dir
+        let skills_dir = tmp_dir.path().join("skills");
+        let sandbox_dir = tmp_dir.path().join("sandbox");
+        std::fs::create_dir_all(&skills_dir).unwrap();
+        std::fs::create_dir_all(&sandbox_dir).unwrap();
+
+        let wsm = Arc::new(
+            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
+                .unwrap(),
+        );
+
+        let state = crate::AppState {
+            registry: Component::new(registry),
+            wasm_skill_manager: Component::new(wsm),
+            job_queue: Component::new(jq),
+            config: Component::new(Arc::new(shared::config::AiomeConfig::default())),
+            ..Default::default()
+        };
+
+        (state, tmp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_build_system_instructions_includes_mcp_servers() {
+        let (state, _tmp) = setup_test_state().await;
+
+        // 1. Register a fake MCP server
+        let mcp_manifest = AssetManifest {
+            id: uuid::Uuid::new_v4(),
+            creator_id: uuid::Uuid::new_v4(),
+            asset_type: AssetType::McpServer,
+            name: "mcp-weather-server".to_string(),
+            description: "A server that provides weather info via MCP".to_string(),
+            price_coins: 0,
+            metadata: Some(serde_json::json!({
+                "command": "node",
+                "args": ["weather.js"]
+            })),
+        };
+        state.registry.register_asset(mcp_manifest).await.unwrap();
+
+        // 2. Build instructions
+        let instructions = build_system_instructions(
+            &state,
+            "no karma",
+            None,
+            Some("Aiome".to_string()),
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        // 3. Verify (This should FAIL currently as McpServers are ignored in build_system_instructions)
+        assert!(
+            instructions.contains("mcp-weather-server"),
+            "Instructions should contain registered MCP server name"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_describe_skill_returns_markdown_for_mcp() {
+        let (state, _tmp) = setup_test_state().await;
+
+        let mcp_name = "mcp-search-server";
+        let mcp_manifest = AssetManifest {
+            id: uuid::Uuid::new_v4(),
+            creator_id: uuid::Uuid::new_v4(),
+            asset_type: AssetType::McpServer,
+            name: mcp_name.to_string(),
+            description: "Search the web via MCP".to_string(),
+            price_coins: 0,
+            metadata: Some(serde_json::json!({
+                "command": "python",
+                "args": ["search.py"]
+            })),
+        };
+        state.registry.register_asset(mcp_manifest).await.unwrap();
+
+        // Describe it
+        let description = skill_handler::describe_skill(mcp_name, &state).await;
+
+        // Verify it returns Markdown (This should FAIL currently as describe_skill only knows WASM skills)
+        assert!(
+            description.contains("# Skill: mcp-search-server"),
+            "Should return Markdown header"
+        );
+        assert!(
+            description.contains("## Description"),
+            "Should contain Description section"
+        );
+    }
 }

@@ -31,8 +31,15 @@ impl PathSandbox {
     }
 
     /// 仮想パスマッピングを追加
-    pub fn with_virtual_mapping<P: AsRef<Path>>(mut self, virtual_prefix: &str, physical_path: P) -> Self {
-        self.virtual_mappings.push((virtual_prefix.to_string(), physical_path.as_ref().to_path_buf()));
+    pub fn with_virtual_mapping<P: AsRef<Path>>(
+        mut self,
+        virtual_prefix: &str,
+        physical_path: P,
+    ) -> Self {
+        self.virtual_mappings.push((
+            virtual_prefix.to_string(),
+            physical_path.as_ref().to_path_buf(),
+        ));
         self
     }
 
@@ -46,7 +53,7 @@ impl PathSandbox {
                 return self.validate_path(target);
             }
         }
-        
+
         // マッピングがない場合はそのまま検証
         self.validate_path(virtual_path)
     }

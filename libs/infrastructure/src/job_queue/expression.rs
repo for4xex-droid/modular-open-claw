@@ -134,9 +134,10 @@ impl ExpressionOps for UniversalJobQueue {
             "SELECT value FROM system_settings WHERE key = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, "auto_expression_enabled")
-            .unwrap_or(None)
-            .map(|r| r.0);
+        let opt: Option<String> =
+            crate::sql_fetch_optional!(&self.pool, (String,), &q, "auto_expression_enabled")
+                .unwrap_or(None)
+                .map(|r| r.0);
         Ok(opt.map(|v| v == "true").unwrap_or(false))
     }
 

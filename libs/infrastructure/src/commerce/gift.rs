@@ -6,12 +6,12 @@
  */
 
 use crate::audit_logger::{AsyncAuditLogger, AuditEntry};
+use crate::db::DatabasePool;
 use aiome_contracts::commerce::GiftEngine;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::json;
-use crate::db::DatabasePool;
 use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -27,7 +27,12 @@ pub struct TremendousGiftEngine {
 
 impl TremendousGiftEngine {
     /// 新しい TremendousGiftEngine を作成する
-    pub fn new(api_key: String, sandbox: bool, pool: DatabasePool, audit_logger: Arc<AsyncAuditLogger>) -> Self {
+    pub fn new(
+        api_key: String,
+        sandbox: bool,
+        pool: DatabasePool,
+        audit_logger: Arc<AsyncAuditLogger>,
+    ) -> Self {
         // Double check for production safety (😈 Demon's Advocate Gate 4)
         #[cfg(debug_assertions)]
         if !sandbox {
@@ -118,7 +123,7 @@ impl GiftEngine for TremendousGiftEngine {
             "✅ [GiftEngine] Gift order created successfully: {}",
             order_id
         );
-        
+
         // Log the successful transaction asynchronously
         self.audit_logger.log_event_sync(AuditEntry {
             table_name: "gift_transactions".to_string(),
@@ -174,7 +179,7 @@ impl GiftEngine for TremendousGiftEngine {
         agent_id: Uuid,
     ) -> Result<aiome_contracts::commerce::GiftPolicyContext, AiomeError> {
         let agent_str = agent_id.to_string();
-        
+
         let q = format!(
             "SELECT 
                 COUNT(*) as count, 
@@ -188,15 +193,12 @@ impl GiftEngine for TremendousGiftEngine {
         );
 
         // Use generic SQL fetch for dual-dialect support (SQLite & PostgreSQL)
-        let row_opt = crate::sql_fetch_optional!(
-            &self.pool,
-            (i64, f64),
-            &q,
-            &agent_str
-        )
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to fetch gift audit: {}", e),
-        })?;
+        let row_opt =
+            crate::sql_fetch_optional!(&self.pool, (i64, f64), &q, &agent_str).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to fetch gift audit: {}", e),
+                }
+            })?;
 
         let (count, total) = row_opt.unwrap_or((0, 0.0));
 
@@ -215,23 +217,30 @@ impl GiftEngine for TremendousGiftEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::SqlitePool;
-    use crate::db::DatabasePool;
     use crate::audit_logger::AsyncAuditLogger;
+    use crate::db::DatabasePool;
+    use sqlx::SqlitePool;
 
     async fn setup_test_engine() -> TremendousGiftEngine {
         let pool = if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
-            let pg_pool = sqlx::postgres::PgPoolOptions::new().connect(&pg_url).await.unwrap();
+            let pg_pool = sqlx::postgres::PgPoolOptions::new()
+                .connect(&pg_url)
+                .await
+                .unwrap();
             sqlx::query("CREATE TABLE IF NOT EXISTS audit_ledger_global (id SERIAL PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data JSONB, current_hash TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)").execute(&pg_pool).await.unwrap();
-            sqlx::query("DELETE FROM audit_ledger_global").execute(&pg_pool).await.unwrap();
+            sqlx::query("DELETE FROM audit_ledger_global")
+                .execute(&pg_pool)
+                .await
+                .unwrap();
             DatabasePool::Postgres(pg_pool)
         } else {
             let p = SqlitePool::connect("sqlite::memory:").await.unwrap();
             sqlx::query("CREATE TABLE audit_ledger_global (id INTEGER PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data TEXT, current_hash TEXT, timestamp TEXT DEFAULT (datetime('now')))").execute(&p).await.unwrap();
             DatabasePool::Sqlite(p)
         };
-        
-        let logger = std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+
+        let logger =
+            std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
         TremendousGiftEngine::new("test_key".into(), true, pool, logger)
     }
 
@@ -258,12 +267,16 @@ mod tests {
     async fn test_sandbox_url_selection() {
         // sandbox=true の場合は testflight URL になることを確認
         let pool = if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
-            let pg_pool = sqlx::postgres::PgPoolOptions::new().connect(&pg_url).await.unwrap();
+            let pg_pool = sqlx::postgres::PgPoolOptions::new()
+                .connect(&pg_url)
+                .await
+                .unwrap();
             DatabasePool::Postgres(pg_pool)
         } else {
             DatabasePool::Sqlite(SqlitePool::connect("sqlite::memory:").await.unwrap())
         };
-        let logger = std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+        let logger =
+            std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
         let sandbox_engine = TremendousGiftEngine::new("key".into(), true, pool, logger);
         assert!(sandbox_engine.base_url.contains("testflight"));
     }

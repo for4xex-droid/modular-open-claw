@@ -9,9 +9,9 @@ use crate::app_state::AppState;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::events::CoreEvent;
 use aiome_contracts::traits::JobQueue;
+use chrono::Utc;
 use infrastructure::db::DatabasePool;
 use infrastructure::sql_exec;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Duration;
@@ -170,7 +170,9 @@ impl AutonomousDemo {
             "Learning",
             &deadline
         )
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Intent insert: {}", e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Intent insert: {}", e),
+        })?;
         sleep(Duration::from_secs(5)).await;
 
         // Step 2: Trend Analysis
@@ -200,7 +202,9 @@ impl AutonomousDemo {
             10i64,
             10i64
         )
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Bid insert: {}", e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Bid insert: {}", e),
+        })?;
         sleep(Duration::from_secs(7)).await;
 
         // Step 5: Acceptance Simulation (individual queries, NO transaction)
@@ -214,7 +218,11 @@ impl AutonomousDemo {
         let q_escrow = format!(
             "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status)
              VALUES ({0}, {1}, {2}, {3}, {4}, 'Locked')",
-            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4)
+            pool.ph(0),
+            pool.ph(1),
+            pool.ph(2),
+            pool.ph(3),
+            pool.ph(4)
         );
         sql_exec!(
             pool,
@@ -230,18 +238,26 @@ impl AutonomousDemo {
         })?;
         sleep(Duration::from_millis(100)).await;
 
-        let q_intent_acc = format!("UPDATE gig_intents SET status = 'Accepted' WHERE id = {}", pool.ph(0));
-        sql_exec!(pool, &q_intent_acc, intent_id.to_string())
-            .map_err(|e| AiomeError::Infrastructure {
+        let q_intent_acc = format!(
+            "UPDATE gig_intents SET status = 'Accepted' WHERE id = {}",
+            pool.ph(0)
+        );
+        sql_exec!(pool, &q_intent_acc, intent_id.to_string()).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Intent status: {}", e),
-            })?;
+            }
+        })?;
         sleep(Duration::from_millis(100)).await;
 
-        let q_bid_acc = format!("UPDATE gig_bids SET status = 'Accepted' WHERE id = {}", pool.ph(0));
-        sql_exec!(pool, &q_bid_acc, bid_id.to_string())
-            .map_err(|e| AiomeError::Infrastructure {
+        let q_bid_acc = format!(
+            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {}",
+            pool.ph(0)
+        );
+        sql_exec!(pool, &q_bid_acc, bid_id.to_string()).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Bid status: {}", e),
-            })?;
+            }
+        })?;
         sleep(Duration::from_secs(5)).await;
 
         // Step 6: Delivery Simulation (individual queries, NO transaction)
@@ -253,11 +269,14 @@ impl AutonomousDemo {
         .await;
         let metadata =
             json!({ "insight": "Aiome Protocol is the backbone of the new Musk Economy." });
-        
+
         let q_del = format!(
             "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata)
              VALUES ({0}, {1}, {2}, {3})",
-            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3)
+            pool.ph(0),
+            pool.ph(1),
+            pool.ph(2),
+            pool.ph(3)
         );
         sql_exec!(
             pool,
@@ -272,11 +291,15 @@ impl AutonomousDemo {
         })?;
         sleep(Duration::from_millis(100)).await;
 
-        let q_intent_del = format!("UPDATE gig_intents SET status = 'Delivered' WHERE id = {}", pool.ph(0));
-        sql_exec!(pool, &q_intent_del, intent_id.to_string())
-            .map_err(|e| AiomeError::Infrastructure {
+        let q_intent_del = format!(
+            "UPDATE gig_intents SET status = 'Delivered' WHERE id = {}",
+            pool.ph(0)
+        );
+        sql_exec!(pool, &q_intent_del, intent_id.to_string()).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Delivery status: {}", e),
-            })?;
+            }
+        })?;
         sleep(Duration::from_secs(7)).await;
 
         // Step 7: Settlement & Evolution (individual queries, NO transaction)
@@ -299,23 +322,31 @@ impl AutonomousDemo {
             Uuid::new_v4().to_string(),
             intent_id.to_string()
         )
-        .map_err(|e| AiomeError::Infrastructure { reason: format!("Verification log: {}", e) })?;
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Verification log: {}", e),
+        })?;
         sleep(Duration::from_millis(100)).await;
 
         // Settle escrow
-        let q_esc_rel = format!("UPDATE escrows SET status = 'Released' WHERE id = {}", pool.ph(0));
-        sql_exec!(pool, &q_esc_rel, &escrow_id)
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Escrow release: {}", e),
-            })?;
+        let q_esc_rel = format!(
+            "UPDATE escrows SET status = 'Released' WHERE id = {}",
+            pool.ph(0)
+        );
+        sql_exec!(pool, &q_esc_rel, &escrow_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Escrow release: {}", e),
+        })?;
         sleep(Duration::from_millis(100)).await;
 
         // Final status
-        let q_intent_fin = format!("UPDATE gig_intents SET status = 'Completed' WHERE id = {}", pool.ph(0));
-        sql_exec!(pool, &q_intent_fin, intent_id.to_string())
-            .map_err(|e| AiomeError::Infrastructure {
+        let q_intent_fin = format!(
+            "UPDATE gig_intents SET status = 'Completed' WHERE id = {}",
+            pool.ph(0)
+        );
+        sql_exec!(pool, &q_intent_fin, intent_id.to_string()).map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Final status: {}", e),
-            })?;
+            }
+        })?;
         sleep(Duration::from_millis(300)).await;
 
         // Resonance and XP boost

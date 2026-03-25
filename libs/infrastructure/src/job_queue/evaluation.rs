@@ -8,7 +8,7 @@
 use super::UniversalJobQueue;
 use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
-use aiome_core::traits::{Job, JobStatus, SnsMetricsRecord, JobQueue};
+use aiome_core::traits::{Job, JobQueue, JobStatus, SnsMetricsRecord};
 use async_trait::async_trait;
 use sqlx::Row;
 use tracing::warn;
@@ -81,7 +81,9 @@ impl EvaluationOps for UniversalJobQueue {
               AND published_at <= {0}
               AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = {1})
               ORDER BY published_at ASC LIMIT {2}",
-            now_interval, self.pool.ph(1), self.pool.ph(2)
+            now_interval,
+            self.pool.ph(1),
+            self.pool.ph(2)
         );
 
         let mut jobs = Vec::new();
@@ -93,10 +95,15 @@ impl EvaluationOps for UniversalJobQueue {
                     .bind(limit)
                     .fetch_all(p)
                     .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-                    let permission_manifest = r.try_get::<String, _>("permission_manifest").ok().and_then(|s| serde_json::from_str(&s).ok());
+                    let permission_manifest = r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok());
                     jobs.push(Job {
                         id: r.get("id"),
                         category: r.get("category"),
@@ -129,10 +136,15 @@ impl EvaluationOps for UniversalJobQueue {
                     .bind(limit)
                     .fetch_all(p)
                     .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-                    let permission_manifest = r.try_get::<serde_json::Value, _>("permission_manifest").ok().and_then(|v| serde_json::from_value(v).ok());
+                    let permission_manifest = r
+                        .try_get::<serde_json::Value, _>("permission_manifest")
+                        .ok()
+                        .and_then(|v| serde_json::from_value(v).ok());
                     jobs.push(Job {
                         id: r.get("id"),
                         category: r.get("category"),
@@ -171,14 +183,38 @@ impl EvaluationOps for UniversalJobQueue {
         comments_count: i64,
         raw_comments: Option<&str>,
     ) -> Result<(), AiomeError> {
-        let engagement_rate = if views > 0 { (likes as f64 / views as f64) * 100.0 } else { 0.0 };
-        let hard_metric_score = if engagement_rate >= 10.0 { 1.0 } else if engagement_rate >= 5.0 { 0.5 } else if engagement_rate >= 1.0 { 0.0 } else { -0.5 };
+        let engagement_rate = if views > 0 {
+            (likes as f64 / views as f64) * 100.0
+        } else {
+            0.0
+        };
+        let hard_metric_score = if engagement_rate >= 10.0 {
+            1.0
+        } else if engagement_rate >= 5.0 {
+            0.5
+        } else if engagement_rate >= 1.0 {
+            0.0
+        } else {
+            -0.5
+        };
 
         let q = format!(
             "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.now_fn()
         );
-        sql_exec!(&self.pool, &q, job_id, milestone_days, views, likes, comments_count, raw_comments, hard_metric_score, engagement_rate).map(|_| ())
+        sql_exec!(
+            &self.pool,
+            &q,
+            job_id,
+            milestone_days,
+            views,
+            likes,
+            comments_count,
+            raw_comments,
+            hard_metric_score,
+            engagement_rate
+        )
+        .map(|_| ())
     }
 
     async fn do_fetch_pending_evaluations(
@@ -226,28 +262,76 @@ impl EvaluationOps for UniversalJobQueue {
         verdict: OracleVerdict,
         soul_hash: &str,
     ) -> Result<(), AiomeError> {
-        let mut tx = self.pool.begin().await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
         let q1 = format!("UPDATE sns_metrics_history SET alignment_score = {0}, growth_score = {1}, lesson = {2}, should_evolve = {3}, oracle_reason = {4}, is_finalized = 1 WHERE id = {5}",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5));
 
         match &mut tx {
             crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q1).bind(verdict.alignment_score).bind(verdict.growth_score).bind(&verdict.lesson).bind(verdict.should_evolve as i32).bind(&verdict.reasoning).bind(record_id).execute(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q1)
+                    .bind(verdict.alignment_score)
+                    .bind(verdict.growth_score)
+                    .bind(&verdict.lesson)
+                    .bind(verdict.should_evolve as i32)
+                    .bind(&verdict.reasoning)
+                    .bind(record_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
             crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q1).bind(verdict.alignment_score).bind(verdict.growth_score).bind(&verdict.lesson).bind(verdict.should_evolve as i32).bind(&verdict.reasoning).bind(record_id).execute(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                sqlx::query(&q1)
+                    .bind(verdict.alignment_score)
+                    .bind(verdict.growth_score)
+                    .bind(&verdict.lesson)
+                    .bind(verdict.should_evolve as i32)
+                    .bind(&verdict.reasoning)
+                    .bind(record_id)
+                    .execute(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
         }
 
         let q2 = format!("SELECT j.id, j.topic, j.style_name, h.milestone_days FROM jobs j JOIN sns_metrics_history h ON j.id = h.job_id WHERE h.id = {}", self.pool.ph(0));
         let (job_id, style_name, milestone_days) = match &mut tx {
             crate::db::DatabaseTransaction::Sqlite(t) => {
-                let r = sqlx::query(&q2).bind(record_id).fetch_one(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                (r.get::<String, _>("id"), r.get::<String, _>("style_name"), r.get::<i64, _>("milestone_days"))
+                let r = sqlx::query(&q2)
+                    .bind(record_id)
+                    .fetch_one(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                (
+                    r.get::<String, _>("id"),
+                    r.get::<String, _>("style_name"),
+                    r.get::<i64, _>("milestone_days"),
+                )
             }
             crate::db::DatabaseTransaction::Postgres(t) => {
-                let r = sqlx::query(&q2).bind(record_id).fetch_one(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                (r.get::<String, _>("id"), r.get::<String, _>("style_name"), r.get::<i64, _>("milestone_days"))
+                let r = sqlx::query(&q2)
+                    .bind(record_id)
+                    .fetch_one(&mut **t)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                (
+                    r.get::<String, _>("id"),
+                    r.get::<String, _>("style_name"),
+                    r.get::<i64, _>("milestone_days"),
+                )
             }
         };
 
@@ -255,23 +339,65 @@ impl EvaluationOps for UniversalJobQueue {
             let avg_score = (verdict.alignment_score + verdict.growth_score) / 2.0;
             let weight = ((avg_score * 100.0) as i64).clamp(0, 100);
             let karma_id = Uuid::new_v4().to_string();
-            let (domain, subtopic) = verdict.classification.as_ref().map(|c| (Some(c.domain.as_str()), Some(c.subtopic.as_str()))).unwrap_or((None, None));
+            let (domain, subtopic) = verdict
+                .classification
+                .as_ref()
+                .map(|c| (Some(c.domain.as_str()), Some(c.subtopic.as_str())))
+                .unwrap_or((None, None));
             let q3 = format!("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
                 self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.now_fn(), self.pool.ph(7), self.pool.ph(8));
             match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => { sqlx::query(&q3).bind(&karma_id).bind(&job_id).bind("Synthesized").bind(&style_name).bind(&verdict.lesson).bind(weight).bind(soul_hash).bind(domain.unwrap_or("general")).bind(subtopic).execute(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?; }
-                crate::db::DatabaseTransaction::Postgres(t) => { sqlx::query(&q3).bind(&karma_id).bind(&job_id).bind("Synthesized").bind(&style_name).bind(&verdict.lesson).bind(weight).bind(soul_hash).bind(domain.unwrap_or("general")).bind(subtopic).execute(&mut **t).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?; }
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    sqlx::query(&q3)
+                        .bind(&karma_id)
+                        .bind(&job_id)
+                        .bind("Synthesized")
+                        .bind(&style_name)
+                        .bind(&verdict.lesson)
+                        .bind(weight)
+                        .bind(soul_hash)
+                        .bind(domain.unwrap_or("general"))
+                        .bind(subtopic)
+                        .execute(&mut **t)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    sqlx::query(&q3)
+                        .bind(&karma_id)
+                        .bind(&job_id)
+                        .bind("Synthesized")
+                        .bind(&style_name)
+                        .bind(&verdict.lesson)
+                        .bind(weight)
+                        .bind(soul_hash)
+                        .bind(domain.unwrap_or("general"))
+                        .bind(subtopic)
+                        .execute(&mut **t)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                }
             }
         }
 
         if verdict.should_evolve {
             let q4 = format!("UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = {} WHERE id = 1", self.pool.now_fn());
             match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => { let _ = sqlx::query(&q4).execute(&mut **t).await; }
-                crate::db::DatabaseTransaction::Postgres(t) => { let _ = sqlx::query(&q4).execute(&mut **t).await; }
+                crate::db::DatabaseTransaction::Sqlite(t) => {
+                    let _ = sqlx::query(&q4).execute(&mut **t).await;
+                }
+                crate::db::DatabaseTransaction::Postgres(t) => {
+                    let _ = sqlx::query(&q4).execute(&mut **t).await;
+                }
             }
         }
-        tx.commit().await.map_err(|e| AiomeError::Infrastructure { reason: format!("Failed to commit evaluation: {}", e) })?;
+        tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to commit evaluation: {}", e),
+        })?;
         Ok(())
     }
 
@@ -280,10 +406,19 @@ impl EvaluationOps for UniversalJobQueue {
         let mut jobs = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-                    let permission_manifest = r.try_get::<String, _>("permission_manifest").ok().and_then(|s| serde_json::from_str(&s).ok());
+                    let permission_manifest = r
+                        .try_get::<String, _>("permission_manifest")
+                        .ok()
+                        .and_then(|s| serde_json::from_str(&s).ok());
                     jobs.push(Job {
                         id: r.get("id"),
                         category: r.get("category"),
@@ -310,10 +445,19 @@ impl EvaluationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q).bind(limit).fetch_all(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
                 for r in rows {
                     let tech_karma_extracted: i32 = r.get("tech_karma_extracted");
-                    let permission_manifest = r.try_get::<serde_json::Value, _>("permission_manifest").ok().and_then(|v| serde_json::from_value(v).ok());
+                    let permission_manifest = r
+                        .try_get::<serde_json::Value, _>("permission_manifest")
+                        .ok()
+                        .and_then(|v| serde_json::from_value(v).ok());
                     jobs.push(Job {
                         id: r.get("id"),
                         category: r.get("category"),

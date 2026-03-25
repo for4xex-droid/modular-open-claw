@@ -13,13 +13,15 @@ use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::commerce::GiftEngine;
 use aiome_contracts::commerce::GiftPolicyContext;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
+use aiome_core::traits::TranscriptionEngine;
+use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
 use infrastructure::compliance::ekyc::EkycEngine;
 use infrastructure::compliance::ekyc_store::EkycSessionStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::slo_engine::SloEngine;
-use infrastructure::audit_logger::AsyncAuditLogger;
+use infrastructure::whisper_transcription::WhisperTranscriptionAdapter;
 use shared::config::AiomeConfig;
 
 use async_trait::async_trait;
@@ -163,15 +165,17 @@ async fn main() -> anyhow::Result<()> {
 
     let http_client = aiome_core::http::get_http_client().clone();
 
-    let sandbox = Arc::new(shared::sandbox::PathSandbox::new("workspace")
-        .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize PathSandbox: {}", e))?);
+    let sandbox = Arc::new(
+        shared::sandbox::PathSandbox::new("workspace")
+            .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize PathSandbox: {}", e))?,
+    );
 
     let mut hook_manager = infrastructure::security::hook_manager::HookManager::new();
     let behavior_monitor = infrastructure::security::behavior_monitor::BehaviorMonitor::new(
         job_queue.clone(),
         sandbox.clone(),
         None, // Global system limit
-        100
+        100,
     );
     hook_manager.add_hook(Arc::new(behavior_monitor));
     let hook_manager = Arc::new(hook_manager);
@@ -307,10 +311,10 @@ async fn main() -> anyhow::Result<()> {
         "You are the Core Soul Engine. Process experiences and distill wisdom.".to_string(),
     );
     let mut soul_pipeline = soul::pipeline::SoulPipeline::new(soul_adapter, samsara_engine);
-    
+
     // Register WhisperMiddleware (L2.5)
     soul_pipeline.add_middleware(Box::new(
-        infrastructure::llm::whisper_middleware::WhisperMiddleware::new()
+        infrastructure::llm::whisper_middleware::WhisperMiddleware::new(),
     ));
     let soul_pipeline = Arc::new(soul_pipeline);
 
@@ -428,6 +432,19 @@ async fn main() -> anyhow::Result<()> {
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
         job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
     ));
+
+    // [A-3] MCP Discovery: Automated server discovery and registration
+    {
+        let mcp_manager = mcp_manager.clone();
+        let registry = registry.clone();
+        tokio::spawn(async move {
+            info!("🔍 [MCP Discovery] Starting automated server discovery...");
+            if let Err(e) = mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
+                error!("🚨 [MCP Discovery] Failed during initial discovery: {}", e);
+            }
+        });
+    }
+
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
             std::env::var("ABYSS_VAULT_URL")
@@ -445,6 +462,19 @@ async fn main() -> anyhow::Result<()> {
         provider.clone(),
         std::path::PathBuf::from("workspace/gig_artifacts"),
     )) as Arc<dyn aiome_contracts::gig::GigEngine>;
+
+    // [Step 1.7] Initialize TranscriptionEngine
+    let stt_enabled = std::env::var("AIOME_STT_ENABLED")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    let transcription_engine: Arc<dyn TranscriptionEngine> =
+        Arc::new(WhisperTranscriptionAdapter::new(
+            Arc::new(infrastructure::security::BastionGuard::new_internal(
+                aiome_core::security::PermissionManifest::default(),
+            )),
+            stt_enabled,
+        ));
 
     let state = AppState {
         health_monitor: Component::new(health_monitor),
@@ -504,6 +534,7 @@ async fn main() -> anyhow::Result<()> {
             Arc::new(infrastructure::intent::AffiliateAdapter::new()),
         ),
         soul_pipeline: Component::new(soul_pipeline),
+        transcription_engine: Component::new(transcription_engine),
     };
 
     let cors_layer = {

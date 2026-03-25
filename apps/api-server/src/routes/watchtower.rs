@@ -187,7 +187,8 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         None,
         economic_context,
         None,
-    );
+    )
+    .await;
     let full_prompt = format!("{}\nUSER: {}\nAI: ", system_instructions, payload.prompt);
 
     let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {

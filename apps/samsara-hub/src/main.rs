@@ -26,8 +26,8 @@ use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 // Standard imports
-use sqlx::SqlitePool;
 use infrastructure::{sql_exec, sql_fetch_all, sql_fetch_optional};
+use sqlx::SqlitePool;
 // use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -215,8 +215,6 @@ async fn shutdown_signal(token: CancellationToken) {
     token.cancel();
 }
 
-
-
 async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<()> {
     match pool {
         infrastructure::db::DatabasePool::Sqlite(p) => {
@@ -237,8 +235,11 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     generation INTEGER,
                     somatic_valence REAL
                 );",
-            ).execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_karma (
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_karma (
                     id TEXT PRIMARY KEY,
                     node_id TEXT NOT NULL,
                     karma_type TEXT NOT NULL,
@@ -253,8 +254,12 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     clone_origin_id TEXT,
                     generation INTEGER,
                     somatic_valence REAL
-                );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS approved_rules (
+                );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS approved_rules (
                     id TEXT PRIMARY KEY,
                     pattern TEXT NOT NULL,
                     severity INTEGER NOT NULL,
@@ -264,8 +269,12 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     signature TEXT,
                     approved_at TEXT,
                     created_at TEXT NOT NULL
-                );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_rules (
+                );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_rules (
                     id TEXT PRIMARY KEY,
                     node_id TEXT NOT NULL,
                     pattern TEXT NOT NULL,
@@ -275,12 +284,24 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     signature TEXT,
                     received_at TEXT,
                     created_at TEXT NOT NULL
-                );").execute(p).await?;
-            sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_karma_at ON approved_karma(approved_at);").execute(p).await?;
-            sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_rules_at ON approved_rules(approved_at);").execute(p).await?;
+                );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_approved_karma_at ON approved_karma(approved_at);",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_approved_rules_at ON approved_rules(approved_at);",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_karma_node_clock ON quarantined_karma(node_id, lamport_clock);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_rules_node_clock ON quarantined_rules(node_id, lamport_clock);").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS approved_arena_matches (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS approved_arena_matches (
                 id TEXT PRIMARY KEY,
                 skill_a TEXT NOT NULL,
                 skill_b TEXT NOT NULL,
@@ -289,8 +310,12 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 reasoning TEXT,
                 approved_at TEXT,
                 created_at TEXT NOT NULL
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_arena_matches (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_arena_matches (
                 id TEXT PRIMARY KEY,
                 skill_a TEXT NOT NULL,
                 skill_b TEXT NOT NULL,
@@ -299,17 +324,25 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 reasoning TEXT,
                 received_at TEXT,
                 created_at TEXT NOT NULL
-            );").execute(p).await?;
+            );",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_arena_at ON approved_arena_matches(approved_at);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_a_karma_node_clock ON approved_karma(node_id, lamport_clock);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_a_rules_node_clock ON approved_rules(node_id, lamport_clock);").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS node_reputation (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS node_reputation (
                 node_id TEXT PRIMARY KEY,
                 reputation_score INTEGER NOT NULL DEFAULT 100,
                 is_banned INTEGER NOT NULL DEFAULT 0,
                 last_seen_at TEXT NOT NULL
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS biome_topics (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS biome_topics (
                 topic_id TEXT PRIMARY KEY,
                 peer_pubkey TEXT NOT NULL,
                 summary TEXT,
@@ -317,30 +350,46 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 turn_count INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS biome_relay_queue (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS biome_relay_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipient_pubkey TEXT NOT NULL,
                 payload TEXT NOT NULL,
                 is_delivered INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
-            );").execute(p).await?;
+            );",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_relay_recipient ON biome_relay_queue(recipient_pubkey) WHERE is_delivered = 0;").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS hub_timeline (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS hub_timeline (
                 id TEXT PRIMARY KEY,
                 automerge_blob BLOB NOT NULL,
                 updated_at TEXT DEFAULT (datetime('now'))
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS timeline_snapshots (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS timeline_snapshots (
                 node_id TEXT PRIMARY KEY,
                 snapshot_blob BLOB NOT NULL,
                 received_at TEXT NOT NULL
-            );").execute(p).await?;
-        },
+            );",
+            )
+            .execute(p)
+            .await?;
+        }
         infrastructure::db::DatabasePool::Postgres(p) => {
             // Postgres schema is primarily handled by PostgresInitializer, but we ensure basic Hub tables exist.
             // Note: PostgresInitializer::init_db is called earlier in main for other tables.
-            sqlx::query("CREATE TABLE IF NOT EXISTS approved_karma (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS approved_karma (
                     id TEXT PRIMARY KEY,
                     node_id TEXT NOT NULL,
                     karma_type TEXT NOT NULL,
@@ -356,8 +405,11 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     generation INTEGER,
                     somatic_valence REAL
                 );",
-            ).execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_karma (
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_karma (
                     id TEXT PRIMARY KEY,
                     node_id TEXT NOT NULL,
                     karma_type TEXT NOT NULL,
@@ -373,8 +425,11 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     generation INTEGER,
                     somatic_valence REAL
                 );",
-            ).execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS approved_rules (
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS approved_rules (
                     id TEXT PRIMARY KEY,
                     pattern TEXT NOT NULL,
                     severity INTEGER NOT NULL,
@@ -385,8 +440,11 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     approved_at TIMESTAMP,
                     created_at TIMESTAMP NOT NULL
                 );",
-            ).execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_rules (
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_rules (
                     id TEXT PRIMARY KEY,
                     node_id TEXT NOT NULL,
                     pattern TEXT NOT NULL,
@@ -397,12 +455,23 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                     received_at TIMESTAMP,
                     created_at TIMESTAMP NOT NULL
                 );",
-            ).execute(p).await?;
-            sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_karma_at ON approved_karma(approved_at);").execute(p).await?;
-            sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_rules_at ON approved_rules(approved_at);").execute(p).await?;
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_approved_karma_at ON approved_karma(approved_at);",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE INDEX IF NOT EXISTS idx_approved_rules_at ON approved_rules(approved_at);",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_karma_node_clock ON quarantined_karma(node_id, lamport_clock);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_q_rules_node_clock ON quarantined_rules(node_id, lamport_clock);").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS approved_arena_matches (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS approved_arena_matches (
                 id TEXT PRIMARY KEY,
                 skill_a TEXT NOT NULL,
                 skill_b TEXT NOT NULL,
@@ -411,8 +480,12 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 reasoning TEXT,
                 approved_at TIMESTAMP,
                 created_at TIMESTAMP NOT NULL
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS quarantined_arena_matches (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS quarantined_arena_matches (
                 id TEXT PRIMARY KEY,
                 skill_a TEXT NOT NULL,
                 skill_b TEXT NOT NULL,
@@ -421,17 +494,25 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 reasoning TEXT,
                 received_at TIMESTAMP,
                 created_at TIMESTAMP NOT NULL
-            );").execute(p).await?;
+            );",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_approved_arena_at ON approved_arena_matches(approved_at);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_a_karma_node_clock ON approved_karma(node_id, lamport_clock);").execute(p).await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_a_rules_node_clock ON approved_rules(node_id, lamport_clock);").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS node_reputation (
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS node_reputation (
                 node_id TEXT PRIMARY KEY,
                 reputation_score INTEGER NOT NULL DEFAULT 100,
                 is_banned INTEGER NOT NULL DEFAULT 0,
                 last_seen_at TIMESTAMP NOT NULL
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS biome_topics (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS biome_topics (
                 topic_id TEXT PRIMARY KEY,
                 peer_pubkey TEXT NOT NULL,
                 summary TEXT,
@@ -439,14 +520,21 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
                 turn_count INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );").execute(p).await?;
-            sqlx::query("CREATE TABLE IF NOT EXISTS biome_relay_queue (
+            );",
+            )
+            .execute(p)
+            .await?;
+            sqlx::query(
+                "CREATE TABLE IF NOT EXISTS biome_relay_queue (
                 id SERIAL PRIMARY KEY,
                 recipient_pubkey TEXT NOT NULL,
                 payload TEXT NOT NULL,
                 is_delivered INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );").execute(p).await?;
+            );",
+            )
+            .execute(p)
+            .await?;
             sqlx::query("CREATE INDEX IF NOT EXISTS idx_biome_relay_recipient ON biome_relay_queue(recipient_pubkey) WHERE is_delivered = 0;").execute(p).await?;
             sqlx::query("CREATE TABLE IF NOT EXISTS hub_timeline (id TEXT PRIMARY KEY, automerge_blob BYTEA NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)").execute(p).await?;
             sqlx::query("CREATE TABLE IF NOT EXISTS federated_metrics (node_id TEXT NOT NULL, metrics_json TEXT NOT NULL, received_at TEXT NOT NULL, PRIMARY KEY (node_id, received_at))").execute(p).await?;
@@ -478,13 +566,9 @@ async fn list_topics_handler(
     let query = format!(
         "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
     );
-    let rows: Vec<TopicRecord> = sql_fetch_all!(
-        &state.pool,
-        TopicRecord,
-        &query
-    )
-    .unwrap_or_default();
- 
+    let rows: Vec<TopicRecord> =
+        sql_fetch_all!(&state.pool, TopicRecord, &query).unwrap_or_default();
+
     let topics: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|row| {
@@ -556,14 +640,11 @@ async fn create_topic_handler(
         "SELECT COALESCE(SUM(weight), 0) FROM approved_karma WHERE node_id = {} AND karma_type = 'Technical'",
         state.pool.ph(0)
     );
-    let karma_sum = infrastructure::sql_fetch_optional!(
-        &state.pool,
-        (i64,),
-        &karma_query,
-        &req.peer_pubkey
-    )
-    .unwrap_or(Some((0,)))
-    .unwrap_or((0,)).0;
+    let karma_sum =
+        infrastructure::sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey)
+            .unwrap_or(Some((0,)))
+            .unwrap_or((0,))
+            .0;
 
     info!(
         "🛡️ [Hub] PoK Check for {}: Technical Karma = {}",
@@ -585,7 +666,9 @@ async fn create_topic_handler(
     // 3. Insert Topic
     let insert_query = format!(
         "INSERT INTO biome_topics (topic_id, peer_pubkey, summary) VALUES ({}, {}, {})",
-        state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
+        state.pool.ph(0),
+        state.pool.ph(1),
+        state.pool.ph(2)
     );
     let res = infrastructure::sql_exec!(
         &state.pool,
@@ -640,14 +723,12 @@ async fn biome_relay_handler(
         "SELECT COUNT(*) FROM biome_topics WHERE topic_id = {} AND status = 'Active'",
         state.pool.ph(0)
     );
-    let topic_exists = infrastructure::sql_fetch_optional!(
-        &state.pool,
-        (i64,),
-        &topic_check_query,
-        &msg.topic_id
-    )
-    .unwrap_or(Some((0,)))
-    .unwrap_or((0,)).0 > 0;
+    let topic_exists =
+        infrastructure::sql_fetch_optional!(&state.pool, (i64,), &topic_check_query, &msg.topic_id)
+            .unwrap_or(Some((0,)))
+            .unwrap_or((0,))
+            .0
+            > 0;
 
     if !topic_exists {
         return (
@@ -715,7 +796,8 @@ async fn biome_relay_handler(
     let payload_json = serde_json::to_string(&msg).unwrap_or_default();
     let relay_insert_query = format!(
         "INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES ({}, {})",
-        state.pool.ph(0), state.pool.ph(1)
+        state.pool.ph(0),
+        state.pool.ph(1)
     );
     if let Err(e) = infrastructure::sql_exec!(
         &state.pool,
@@ -728,19 +810,19 @@ async fn biome_relay_handler(
             msg.recipient_pubkey, e
         );
     }
- 
+
     // Update Turn Count in Topic (State Channel)
     let turn_update_query = format!(
         "UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = {} WHERE topic_id = {}",
-        state.pool.now_fn(), state.pool.ph(0)
+        state.pool.now_fn(),
+        state.pool.ph(0)
     );
-    if let Err(e) = infrastructure::sql_exec!(
-        &state.pool,
-        &turn_update_query,
-        &msg.topic_id
-    ) {
-            warn!("🛡️ [Relay] Failed to increment turn_count for {}: {}", msg.topic_id, e);
-        }
+    if let Err(e) = infrastructure::sql_exec!(&state.pool, &turn_update_query, &msg.topic_id) {
+        warn!(
+            "🛡️ [Relay] Failed to increment turn_count for {}: {}",
+            msg.topic_id, e
+        );
+    }
 
     (
         StatusCode::ACCEPTED,
@@ -856,7 +938,10 @@ async fn sync_handler(
 
     // BFT: BAN Check
     // BFT: BAN Check
-    let ban_check_query = format!("SELECT is_banned FROM node_reputation WHERE node_id = {}", state.pool.ph(0));
+    let ban_check_query = format!(
+        "SELECT is_banned FROM node_reputation WHERE node_id = {}",
+        state.pool.ph(0)
+    );
     let is_banned = infrastructure::sql_fetch_optional!(
         &state.pool,
         (bool,),
@@ -864,8 +949,9 @@ async fn sync_handler(
         &payload.node_id
     )
     .unwrap_or(Some((false,)))
-    .unwrap_or((false,)).0;
- 
+    .unwrap_or((false,))
+    .0;
+
     if is_banned {
         warn!(
             "🛡️ [BFT] Rejecting sync from BANNED node: {}",
@@ -909,26 +995,21 @@ async fn sync_handler(
          WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500",
          state.pool.ph(0)
     );
-    let rules: Vec<ImmuneRuleRecord> = infrastructure::sql_fetch_all!(
-        &state.pool,
-        ImmuneRuleRecord,
-        &rule_sync_query,
-        &since
-    )
-    .unwrap_or_default();
+    let rules: Vec<ImmuneRuleRecord> =
+        infrastructure::sql_fetch_all!(&state.pool, ImmuneRuleRecord, &rule_sync_query, &since)
+            .unwrap_or_default();
     let has_more = karmas.len() == 500 || rules.len() == 500;
-    
+
     let arena_sync_query = format!("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM approved_arena_matches WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500", state.pool.ph(0));
-    let arena_rows: Vec<ArenaMatchRecord> = infrastructure::sql_fetch_all!(
-        &state.pool,
-        ArenaMatchRecord,
-        &arena_sync_query,
-        &since
-    )
-    .unwrap_or_default();
+    let arena_rows: Vec<ArenaMatchRecord> =
+        infrastructure::sql_fetch_all!(&state.pool, ArenaMatchRecord, &arena_sync_query, &since)
+            .unwrap_or_default();
 
     // Fetch latest Automerge Snapshot for this node if it exists
-    let snapshot_query = format!("SELECT snapshot_blob FROM timeline_snapshots WHERE node_id = {}", state.pool.ph(0));
+    let snapshot_query = format!(
+        "SELECT snapshot_blob FROM timeline_snapshots WHERE node_id = {}",
+        state.pool.ph(0)
+    );
     let snapshot_blob: Option<Vec<u8>> = infrastructure::sql_fetch_optional!(
         &state.pool,
         (Vec<u8>,),
@@ -1042,7 +1123,10 @@ async fn push_handler(
     }
 
     // BFT: BAN Check
-    let ban_check_query = format!("SELECT is_banned FROM node_reputation WHERE node_id = {}", state.pool.ph(0));
+    let ban_check_query = format!(
+        "SELECT is_banned FROM node_reputation WHERE node_id = {}",
+        state.pool.ph(0)
+    );
     let is_banned = infrastructure::sql_fetch_optional!(
         &state.pool,
         (bool,),
@@ -1050,8 +1134,9 @@ async fn push_handler(
         &payload.node_id
     )
     .unwrap_or(Some((false,)))
-    .unwrap_or((false,)).0;
- 
+    .unwrap_or((false,))
+    .0;
+
     if is_banned {
         warn!(
             "🛡️ [BFT] Rejecting push from BANNED node: {}",
@@ -1094,7 +1179,7 @@ async fn push_handler(
              state.pool.ph(0), state.pool.ph(1), state.pool.ph(2), state.pool.ph(3),
              state.pool.ph(4), state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
         );
-        
+
         let equiv_exists = infrastructure::sql_fetch_optional!(
             &state.pool,
             (i64,),
@@ -1109,18 +1194,15 @@ async fn push_handler(
             &(k.weight as i64)
         )
         .unwrap_or(Some((0,)))
-        .unwrap_or((0,)).0 > 0;
+        .unwrap_or((0,))
+        .0 > 0;
         if equiv_exists {
             warn!(
                 "🛡️ [BFT] EQUIVOCATION detected from node: {}. Slashing node.",
                 k.node_id
             );
             let slash_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
-            let _ = infrastructure::sql_exec!(
-                &state.pool,
-                &slash_query,
-                &k.node_id
-            );
+            let _ = infrastructure::sql_exec!(&state.pool, &slash_query, &k.node_id);
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1138,8 +1220,46 @@ async fn push_handler(
              state.pool.ph(10), state.pool.ph(11), state.pool.ph(12), state.pool.ph(13)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(ref mut t) => sqlx::query::<sqlx::Sqlite>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(ref mut t) => sqlx::query::<sqlx::Postgres>(&quarantine_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(&k.created_at).bind(k.lamport_clock as i64).bind(&k.signature).bind(&received_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(ref mut t) => {
+                sqlx::query::<sqlx::Sqlite>(&quarantine_karma_query)
+                    .bind(&k.id)
+                    .bind(&k.node_id)
+                    .bind(&k.karma_type)
+                    .bind(&k.related_skill)
+                    .bind(&k.lesson)
+                    .bind(k.weight as i64)
+                    .bind(&k.soul_version_hash)
+                    .bind(&k.created_at)
+                    .bind(k.lamport_clock as i64)
+                    .bind(&k.signature)
+                    .bind(&received_at_dt)
+                    .bind(&k.clone_origin_id)
+                    .bind(k.generation.map(|v| v as i64))
+                    .bind(k.somatic_valence)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
+            infrastructure::db::DatabaseTransaction::Postgres(ref mut t) => {
+                sqlx::query::<sqlx::Postgres>(&quarantine_karma_query)
+                    .bind(&k.id)
+                    .bind(&k.node_id)
+                    .bind(&k.karma_type)
+                    .bind(&k.related_skill)
+                    .bind(&k.lesson)
+                    .bind(k.weight as i64)
+                    .bind(&k.soul_version_hash)
+                    .bind(&k.created_at)
+                    .bind(k.lamport_clock as i64)
+                    .bind(&k.signature)
+                    .bind(&received_at_dt)
+                    .bind(&k.clone_origin_id)
+                    .bind(k.generation.map(|v| v as i64))
+                    .bind(k.somatic_valence)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
         };
         if let Err(e) = res {
             warn!("🛡️ [Push] Failed to quarantine karma {}: {}", k.id, e);
@@ -1173,18 +1293,15 @@ async fn push_handler(
             &r.action
         )
         .unwrap_or(Some((0,)))
-        .unwrap_or((0,)).0;
+        .unwrap_or((0,))
+        .0;
         if exists > 0 {
             warn!(
                 "🛡️ [BFT] EQUIVOCATION detected in RULE from node: {}. Slashing node.",
                 r.node_id
             );
             let ban_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
-            let _ = infrastructure::sql_exec!(
-                &state.pool,
-                &ban_query,
-                &r.node_id
-            );
+            let _ = infrastructure::sql_exec!(&state.pool, &ban_query, &r.node_id);
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1200,8 +1317,36 @@ async fn push_handler(
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7), state.pool.ph(8)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&quarantine_rule_query).bind(&r.id).bind(&r.node_id).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.created_at).bind(r.lamport_clock as i64).bind(&r.signature).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&quarantine_rule_query).bind(&r.id).bind(&r.node_id).bind(&r.pattern).bind(r.severity as i64).bind(&r.action).bind(&r.created_at).bind(r.lamport_clock as i64).bind(&r.signature).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query::<sqlx::Sqlite>(&quarantine_rule_query)
+                    .bind(&r.id)
+                    .bind(&r.node_id)
+                    .bind(&r.pattern)
+                    .bind(r.severity as i64)
+                    .bind(&r.action)
+                    .bind(&r.created_at)
+                    .bind(r.lamport_clock as i64)
+                    .bind(&r.signature)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
+            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query::<sqlx::Postgres>(&quarantine_rule_query)
+                    .bind(&r.id)
+                    .bind(&r.node_id)
+                    .bind(&r.pattern)
+                    .bind(r.severity as i64)
+                    .bind(&r.action)
+                    .bind(&r.created_at)
+                    .bind(r.lamport_clock as i64)
+                    .bind(&r.signature)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
         };
         if let Err(e) = res {
             warn!("🛡️ [Push] Failed to quarantine rule {}: {}", r.id, e);
@@ -1217,8 +1362,34 @@ async fn push_handler(
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&quarantine_arena_query).bind(&a.id).bind(&a.skill_a).bind(&a.skill_b).bind(&a.topic).bind(&a.winner).bind(&a.reasoning).bind(&a.created_at).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&quarantine_arena_query).bind(&a.id).bind(&a.skill_a).bind(&a.skill_b).bind(&a.topic).bind(&a.winner).bind(&a.reasoning).bind(&a.created_at).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query::<sqlx::Sqlite>(&quarantine_arena_query)
+                    .bind(&a.id)
+                    .bind(&a.skill_a)
+                    .bind(&a.skill_b)
+                    .bind(&a.topic)
+                    .bind(&a.winner)
+                    .bind(&a.reasoning)
+                    .bind(&a.created_at)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
+            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query::<sqlx::Postgres>(&quarantine_arena_query)
+                    .bind(&a.id)
+                    .bind(&a.skill_a)
+                    .bind(&a.skill_b)
+                    .bind(&a.topic)
+                    .bind(&a.winner)
+                    .bind(&a.reasoning)
+                    .bind(&a.created_at)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
         };
         if let Err(e) = res {
             warn!("🛡️ [Push] Failed to quarantine arena match {}: {}", a.id, e);
@@ -1233,11 +1404,30 @@ async fn push_handler(
             state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&snapshot_query).bind(&payload.node_id).bind(snapshot).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&snapshot_query).bind(&payload.node_id).bind(snapshot).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query::<sqlx::Sqlite>(&snapshot_query)
+                    .bind(&payload.node_id)
+                    .bind(snapshot)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
+            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query::<sqlx::Postgres>(&snapshot_query)
+                    .bind(&payload.node_id)
+                    .bind(snapshot)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
         };
         if let Err(e) = res {
-            warn!("🛡️ [Push] Failed to store timeline snapshot from {}: {}", payload.node_id, e);
+            warn!(
+                "🛡️ [Push] Failed to store timeline snapshot from {}: {}",
+                payload.node_id, e
+            );
         }
     }
 
@@ -1248,8 +1438,24 @@ async fn push_handler(
             state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&metrics_query).bind(&payload.node_id).bind(&metrics_json).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
-            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&metrics_query).bind(&payload.node_id).bind(&metrics_json).bind(&received_at_dt).execute(&mut **t).await.map(|_| ()),
+            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                sqlx::query::<sqlx::Sqlite>(&metrics_query)
+                    .bind(&payload.node_id)
+                    .bind(&metrics_json)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
+            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                sqlx::query::<sqlx::Postgres>(&metrics_query)
+                    .bind(&payload.node_id)
+                    .bind(&metrics_json)
+                    .bind(&received_at_dt)
+                    .execute(&mut **t)
+                    .await
+                    .map(|_| ())
+            }
         };
         if let Err(e) = res {
             warn!(
@@ -1283,7 +1489,10 @@ async fn push_handler(
         &received_at_dt
     );
     if let Err(e) = res {
-        warn!("🛡️ [Push] Failed to update node reputation for {}: {}", payload.node_id, e);
+        warn!(
+            "🛡️ [Push] Failed to update node reputation for {}: {}",
+            payload.node_id, e
+        );
     }
 
     // 📣 Real-time Broadcast to all connected nodes (Relay Sync)
@@ -1428,12 +1637,9 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
 
         // 1. Process Quarantined Karma
         let karma_fetch_query = "SELECT * FROM quarantined_karma LIMIT 50";
-        let karmas: Vec<FederatedKarmaRecord> = infrastructure::sql_fetch_all!(
-            &pool,
-            FederatedKarmaRecord,
-            karma_fetch_query
-        )
-        .unwrap_or_default();
+        let karmas: Vec<FederatedKarmaRecord> =
+            infrastructure::sql_fetch_all!(&pool, FederatedKarmaRecord, karma_fetch_query)
+                .unwrap_or_default();
 
         for k in &karmas {
             let mut valid = false;
@@ -1466,17 +1672,71 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                              pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7), pool.ph(8), pool.ph(9), pool.ph(10), pool.ph(11), pool.ph(12), pool.ph(13)
                         );
                         let res = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&approve_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(k.lamport_clock as i64).bind(&k.signature).bind(&k.created_at).bind(&approved_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&approve_karma_query).bind(&k.id).bind(&k.node_id).bind(&k.karma_type).bind(&k.related_skill).bind(&k.lesson).bind(k.weight as i64).bind(&k.soul_version_hash).bind(k.lamport_clock as i64).bind(&k.signature).bind(&k.created_at).bind(&approved_at_dt).bind(&k.clone_origin_id).bind(k.generation.map(|v| v as i64)).bind(k.somatic_valence).execute(&mut **t).await.map(|_| ()),
+                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                                sqlx::query::<sqlx::Sqlite>(&approve_karma_query)
+                                    .bind(&k.id)
+                                    .bind(&k.node_id)
+                                    .bind(&k.karma_type)
+                                    .bind(&k.related_skill)
+                                    .bind(&k.lesson)
+                                    .bind(k.weight as i64)
+                                    .bind(&k.soul_version_hash)
+                                    .bind(k.lamport_clock as i64)
+                                    .bind(&k.signature)
+                                    .bind(&k.created_at)
+                                    .bind(&approved_at_dt)
+                                    .bind(&k.clone_origin_id)
+                                    .bind(k.generation.map(|v| v as i64))
+                                    .bind(k.somatic_valence)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
+                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                                sqlx::query::<sqlx::Postgres>(&approve_karma_query)
+                                    .bind(&k.id)
+                                    .bind(&k.node_id)
+                                    .bind(&k.karma_type)
+                                    .bind(&k.related_skill)
+                                    .bind(&k.lesson)
+                                    .bind(k.weight as i64)
+                                    .bind(&k.soul_version_hash)
+                                    .bind(k.lamport_clock as i64)
+                                    .bind(&k.signature)
+                                    .bind(&k.created_at)
+                                    .bind(&approved_at_dt)
+                                    .bind(&k.clone_origin_id)
+                                    .bind(k.generation.map(|v| v as i64))
+                                    .bind(k.somatic_valence)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
                         };
                         if let Err(e) = res {
-                            warn!("🛡️ [ApprovalWorker] Failed to insert approved karma {}: {}", k.id, e);
+                            warn!(
+                                "🛡️ [ApprovalWorker] Failed to insert approved karma {}: {}",
+                                k.id, e
+                            );
                         }
 
-                        let delete_quarantine_query = format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
+                        let delete_quarantine_query =
+                            format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
                         let res_del = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&delete_quarantine_query).bind(&k.id).execute(&mut **t).await.map(|_| ()),
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&delete_quarantine_query).bind(&k.id).execute(&mut **t).await.map(|_| ()),
+                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                                sqlx::query::<sqlx::Sqlite>(&delete_quarantine_query)
+                                    .bind(&k.id)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
+                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                                sqlx::query::<sqlx::Postgres>(&delete_quarantine_query)
+                                    .bind(&k.id)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
                         };
                         if let Err(e) = res_del {
                             warn!(
@@ -1503,28 +1763,18 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(
-                    &pool,
-                    &slash_query,
-                    &k.node_id
-                );
-                let delete_malformed_query = format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(
-                    &pool,
-                    &delete_malformed_query,
-                    &k.id
-                );
+                let _ = infrastructure::sql_exec!(&pool, &slash_query, &k.node_id);
+                let delete_malformed_query =
+                    format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
+                let _ = infrastructure::sql_exec!(&pool, &delete_malformed_query, &k.id);
             }
         }
 
         // 2. Process Quarantined Rules
         let rule_fetch_query = "SELECT * FROM quarantined_rules LIMIT 50";
-        let rules: Vec<ImmuneRuleRecord> = infrastructure::sql_fetch_all!(
-            &pool,
-            ImmuneRuleRecord,
-            rule_fetch_query
-        )
-        .unwrap_or_default();
+        let rules: Vec<ImmuneRuleRecord> =
+            infrastructure::sql_fetch_all!(&pool, ImmuneRuleRecord, rule_fetch_query)
+                .unwrap_or_default();
 
         for r in &rules {
             let mut valid = false;
@@ -1557,17 +1807,61 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                              pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7), pool.ph(8)
                         );
                         let res = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&approve_rule_query).bind(&r.id).bind(&r.pattern).bind(r.severity).bind(&r.action).bind(&r.node_id).bind(r.lamport_clock).bind(&r.signature).bind(&r.created_at).bind(&approved_at_dt).execute(&mut **t).await.map(|_| ()),
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&approve_rule_query).bind(&r.id).bind(&r.pattern).bind(r.severity).bind(&r.action).bind(&r.node_id).bind(r.lamport_clock).bind(&r.signature).bind(&r.created_at).bind(&approved_at_dt).execute(&mut **t).await.map(|_| ()),
+                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                                sqlx::query::<sqlx::Sqlite>(&approve_rule_query)
+                                    .bind(&r.id)
+                                    .bind(&r.pattern)
+                                    .bind(r.severity)
+                                    .bind(&r.action)
+                                    .bind(&r.node_id)
+                                    .bind(r.lamport_clock)
+                                    .bind(&r.signature)
+                                    .bind(&r.created_at)
+                                    .bind(&approved_at_dt)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
+                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                                sqlx::query::<sqlx::Postgres>(&approve_rule_query)
+                                    .bind(&r.id)
+                                    .bind(&r.pattern)
+                                    .bind(r.severity)
+                                    .bind(&r.action)
+                                    .bind(&r.node_id)
+                                    .bind(r.lamport_clock)
+                                    .bind(&r.signature)
+                                    .bind(&r.created_at)
+                                    .bind(&approved_at_dt)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
                         };
                         if let Err(e) = res {
-                            warn!("🛡️ [ApprovalWorker] Failed to insert approved rule {}: {}", r.id, e);
+                            warn!(
+                                "🛡️ [ApprovalWorker] Failed to insert approved rule {}: {}",
+                                r.id, e
+                            );
                         }
 
-                        let delete_quarantine_rule_query = format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
+                        let delete_quarantine_rule_query =
+                            format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
                         let res_del = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => sqlx::query::<sqlx::Sqlite>(&delete_quarantine_rule_query).bind(&r.id).execute(&mut **t).await.map(|_| ()),
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => sqlx::query::<sqlx::Postgres>(&delete_quarantine_rule_query).bind(&r.id).execute(&mut **t).await.map(|_| ()),
+                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                                sqlx::query::<sqlx::Sqlite>(&delete_quarantine_rule_query)
+                                    .bind(&r.id)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
+                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                                sqlx::query::<sqlx::Postgres>(&delete_quarantine_rule_query)
+                                    .bind(&r.id)
+                                    .execute(&mut **t)
+                                    .await
+                                    .map(|_| ())
+                            }
                         };
                         if let Err(e) = res_del {
                             warn!(
@@ -1594,17 +1888,10 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_rule_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(
-                    &pool,
-                    &slash_rule_query,
-                    &r.node_id
-                );
-                let delete_malformed_rule_query = format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(
-                    &pool,
-                    &delete_malformed_rule_query,
-                    &r.id
-                );
+                let _ = infrastructure::sql_exec!(&pool, &slash_rule_query, &r.node_id);
+                let delete_malformed_rule_query =
+                    format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
+                let _ = infrastructure::sql_exec!(&pool, &delete_malformed_rule_query, &r.id);
             }
         }
 
@@ -1612,19 +1899,13 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
         // Keep ONLY the last 1,000,000 Records
         let karma_evict_query = "DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)";
         let rule_evict_query = "DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)";
-        
-        let res_k = infrastructure::sql_exec!(
-            &pool,
-            karma_evict_query
-        );
+
+        let res_k = infrastructure::sql_exec!(&pool, karma_evict_query);
         if let Err(e) = res_k {
             warn!("⚠️ [SamsaraHub] Karma eviction failed: {}", e);
         }
- 
-        let res_r = infrastructure::sql_exec!(
-            &pool,
-            rule_evict_query
-        );
+
+        let res_r = infrastructure::sql_exec!(&pool, rule_evict_query);
         if let Err(e) = res_r {
             warn!("⚠️ [SamsaraHub] Rule eviction failed: {}", e);
         }
@@ -1708,12 +1989,27 @@ async fn timeline_sync_handler(
     }
 
     // Load or Init Hub Master Doc
-    let timeline_fetch_query = format!("SELECT automerge_blob FROM hub_timeline WHERE id = {}", state.pool.ph(0));
+    let timeline_fetch_query = format!(
+        "SELECT automerge_blob FROM hub_timeline WHERE id = {}",
+        state.pool.ph(0)
+    );
     let blob_opt = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query).bind(&payload.hub_id).fetch_optional(p).await.unwrap_or(None),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query).bind(&payload.hub_id).fetch_optional(p).await.unwrap_or(None),
+        infrastructure::db::DatabasePool::Sqlite(p) => {
+            sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
+                .bind(&payload.hub_id)
+                .fetch_optional(p)
+                .await
+                .unwrap_or(None)
+        }
+        infrastructure::db::DatabasePool::Postgres(p) => {
+            sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
+                .bind(&payload.hub_id)
+                .fetch_optional(p)
+                .await
+                .unwrap_or(None)
+        }
     };
-    
+
     let mut hub_doc = match blob_opt {
         Some(blob) => AutoCommit::load(&blob).unwrap_or_else(|_| AutoCommit::new()),
         None => AutoCommit::new(),
@@ -1745,15 +2041,27 @@ async fn timeline_sync_handler(
     let timeline_persist_query = format!(
         "INSERT INTO hub_timeline (id, automerge_blob) VALUES ({}, {}) 
          ON CONFLICT(id) DO UPDATE SET automerge_blob = EXCLUDED.automerge_blob, updated_at = {}",
-         state.pool.ph(0), state.pool.ph(1), state.pool.now_fn()
+        state.pool.ph(0),
+        state.pool.ph(1),
+        state.pool.now_fn()
     );
     let res = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&timeline_persist_query).bind(&payload.hub_id).bind(&finalized_blob).execute(p).await.map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&timeline_persist_query).bind(&payload.hub_id).bind(&finalized_blob).execute(p).await.map(|_| ()),
+        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&timeline_persist_query)
+            .bind(&payload.hub_id)
+            .bind(&finalized_blob)
+            .execute(p)
+            .await
+            .map(|_| ()),
+        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&timeline_persist_query)
+            .bind(&payload.hub_id)
+            .bind(&finalized_blob)
+            .execute(p)
+            .await
+            .map(|_| ()),
     };
     if let Err(e) = res {
-            error!("🛡️ [Timeline] Failed to persist hub timeline: {}", e);
-        }
+        error!("🛡️ [Timeline] Failed to persist hub timeline: {}", e);
+    }
 
     (
         StatusCode::OK,
@@ -1832,6 +2140,6 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         .with_state(state)
 }
 
+mod hub_reliability_tests;
 #[cfg(test)]
 mod hub_ws_tests;
-mod hub_reliability_tests;

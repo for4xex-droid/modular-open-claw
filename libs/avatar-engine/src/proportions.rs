@@ -11,7 +11,9 @@ use thiserror::Error;
 /// Proportion validation errors
 #[derive(Debug, Error)]
 pub enum ProportionError {
-    #[error("Avatar is too young (proportion rule violation): {0} heads. Minimum 5.5 heads required.")]
+    #[error(
+        "Avatar is too young (proportion rule violation): {0} heads. Minimum 5.5 heads required."
+    )]
     TooYoung(f32),
     #[error("Invalid metadata: {0}")]
     InvalidMetadata(String),
@@ -38,7 +40,9 @@ impl ProportionsChecker {
         }
 
         if dimensions.head_height_meters <= 0.0 {
-            return Err(ProportionError::InvalidMetadata("Head height must be positive".into()));
+            return Err(ProportionError::InvalidMetadata(
+                "Head height must be positive".into(),
+            ));
         }
 
         let ratio = dimensions.total_height_meters / dimensions.head_height_meters;
@@ -54,10 +58,10 @@ impl ProportionsChecker {
     /// [G-22] Extract dimensions directly from binary data (VRM/GLB).
     /// This prevents metadata spoofing.
     pub fn extract_from_binary(data: &[u8]) -> Result<AvatarDimensions, ProportionError> {
-        // [SIMPLIFIED FOR TDD] 
+        // [SIMPLIFIED FOR TDD]
         // Real implementation would use gltf-rs to find 'head' and 'leftFoot'/'rightFoot' bones.
         // Here we simulate it by looking for VRM headers.
-        
+
         if data.starts_with(b"glTF") {
             // Check for VRM extension in the JSON chunk
             let data_str = String::from_utf8_lossy(data);
@@ -71,8 +75,10 @@ impl ProportionsChecker {
                 });
             }
         }
-        
-        Err(ProportionError::InvalidMetadata("Unsupported or invalid avatar format".into()))
+
+        Err(ProportionError::InvalidMetadata(
+            "Unsupported or invalid avatar format".into(),
+        ))
     }
 }
 
@@ -120,7 +126,7 @@ mod tests {
     fn test_extract_from_binary_vrm() {
         let mut data = b"glTF".to_vec();
         data.extend_from_slice(b"some_json_with_VRMC_vrm_extension");
-        
+
         let res = ProportionsChecker::extract_from_binary(&data);
         assert!(res.is_ok());
         let dim = res.unwrap();

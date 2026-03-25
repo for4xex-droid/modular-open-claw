@@ -98,7 +98,8 @@ pub struct BastionGuard {
 impl RuntimeJail for BastionGuard {
     /// シェルコマンドの実行を検証し、許可されていれば実行する
     async fn safe_exec(&self, cmd_str: &str) -> Result<String, AiomeError> {
-        self.safe_exec_with_profile(cmd_str, SandboxProfile::Default).await
+        self.safe_exec_with_profile(cmd_str, SandboxProfile::Default)
+            .await
     }
 
     /// プロファイルを指定してシェルコマンドを実行する
@@ -107,7 +108,10 @@ impl RuntimeJail for BastionGuard {
         cmd_str: &str,
         profile: SandboxProfile,
     ) -> Result<String, AiomeError> {
-        info!("🛡️ [BastionGuard] 検証中 (Profile: {:?}): {}", profile, cmd_str);
+        info!(
+            "🛡️ [BastionGuard] 検証中 (Profile: {:?}): {}",
+            profile, cmd_str
+        );
 
         // 1. マニフェスト・チェック
         if !self.is_system_internal && !self.manifest.allow_shell_execution {
@@ -230,7 +234,14 @@ impl RuntimeJail for BastionGuard {
                     }
                     _ => "(version 1) (allow default)",
                 };
-                ("sandbox-exec", vec!["-p".to_string(), profile_str.to_string(), binary.to_string()])
+                (
+                    "sandbox-exec",
+                    vec![
+                        "-p".to_string(),
+                        profile_str.to_string(),
+                        binary.to_string(),
+                    ],
+                )
             } else {
                 (binary, vec![])
             }
@@ -362,12 +373,12 @@ impl BastionGuard {
 
 /// Abyss Voice Vault (暗号化ボイスアセットの復号管理)
 pub mod abyss_voice_vault;
-/// 🪝 フック管理基盤 (Phase 36)
-pub mod hook_manager;
 /// 🛡️ 行動監視（Trojan's Whisper §7.3）
 pub mod behavior_monitor;
 /// 暗号化・復号処理のユーティリティ群
 pub mod crypto;
+/// 🪝 フック管理基盤 (Phase 36)
+pub mod hook_manager;
 /// メモリ上に固定(mlock)されたバイトベクタの実装
 pub mod mlock;
 /// SQLite を使用した Vault Backend の実装。
@@ -613,11 +624,15 @@ mod tests {
         let guard = BastionGuard::new(manifest);
 
         // 1. Default profile should work for 'ls'
-        let res = guard.safe_exec_with_profile("ls", SandboxProfile::Default).await;
+        let res = guard
+            .safe_exec_with_profile("ls", SandboxProfile::Default)
+            .await;
         assert!(res.is_ok(), "Default profile failed: {:?}", res.err());
 
         // 2. Strict profile should work for 'ls' if manifest allows shell (but network/write are restricted by logic)
-        let res = guard.safe_exec_with_profile("ls", SandboxProfile::Strict).await;
+        let res = guard
+            .safe_exec_with_profile("ls", SandboxProfile::Strict)
+            .await;
         assert!(res.is_ok(), "Strict profile failed: {:?}", res.err());
 
         // 3. Strict profile should REJECT if manifest has network/write enabled (Logic check in Phase 36.5)
@@ -627,7 +642,12 @@ mod tests {
             ..Default::default()
         };
         let guard_unsafe = BastionGuard::new(manifest_unsafe);
-        let res = guard_unsafe.safe_exec_with_profile("ls", SandboxProfile::Strict).await;
-        assert!(res.is_err(), "Strict profile should have rejected unsafe manifest");
+        let res = guard_unsafe
+            .safe_exec_with_profile("ls", SandboxProfile::Strict)
+            .await;
+        assert!(
+            res.is_err(),
+            "Strict profile should have rejected unsafe manifest"
+        );
     }
 }

@@ -7,6 +7,7 @@
 
 use super::types::*;
 use crate::AppState;
+use avatar_engine::lip_sync::LipSyncFrame;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -15,6 +16,7 @@ use axum::{
 };
 use futures_util::stream::Stream;
 use std::collections::HashMap;
+use std::path::Path;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -118,6 +120,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
             let skill_metas = state.wasm_skill_manager.list_skills_with_metadata();
             let mut tools = Vec::new();
 
+            // 1. Register Wasm Skills
             for meta in skill_metas {
                 if is_skill_whitelisted(&meta.name) {
                     tools.push(McpTool {
@@ -129,6 +132,22 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     });
                 }
             }
+
+            // 2. Register Native STT Tool (Phase 38b)
+            tools.push(McpTool {
+                name: "transcribe".to_string(),
+                description: Some("Transcribe audio file to text and generate LipSync frames using insanely-fast-whisper.".to_string()),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "audio_path": {
+                            "type": "string",
+                            "description": "Path to the audio file (e.g. .wav, .mp3)"
+                        }
+                    },
+                    "required": ["audio_path"]
+                }),
+            });
 
             JsonRpcResponse {
                 jsonrpc: "2.0".into(),
@@ -162,27 +181,82 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
             }
 
             info!("🛠️ [MCP] Tool invocation: {}", name);
-            // Re-use logic from skill_handler
-            let result = crate::skill_handler::execute_wasm_skill(
-                name,
-                &arguments.to_string(),
-                state,
-                None,
-                0,
-            )
-            .await;
 
-            JsonRpcResponse {
-                jsonrpc: "2.0".into(),
-                id,
-                result: Some(
-                    serde_json::to_value(CallToolResult {
-                        content: vec![McpContent::Text { text: result }],
-                        is_error: false,
-                    })
-                    .unwrap_or_default(),
-                ),
-                error: None,
+            if name == "transcribe" {
+                // Handled via Native TranscriptionEngine
+                let audio_path_str = arguments
+                    .get("audio_path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if audio_path_str.is_empty() {
+                    return JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: "Missing audio_path".into(),
+                            data: None,
+                        }),
+                    };
+                }
+
+                match state
+                    .transcription_engine
+                    .transcribe(Path::new(audio_path_str))
+                    .await
+                {
+                    Ok(result) => {
+                        let mut lip_sync_frames = Vec::new();
+                        for segment in &result.segments {
+                            let frame = LipSyncFrame::from_segment(segment);
+                            lip_sync_frames.push(frame);
+                        }
+                        JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: Some(serde_json::json!({
+                                "content": [{"type": "text", "text": result.text}],
+                                "segments": result.segments,
+                                "lipSync": lip_sync_frames
+                            })),
+                            error: None,
+                        }
+                    }
+                    Err(e) => JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32603,
+                            message: format!("Transcription failed: {:?}", e),
+                            data: None,
+                        }),
+                    },
+                }
+            } else {
+                // Handled via Wasm Skill
+                let result_text = crate::skill_handler::execute_wasm_skill(
+                    name,
+                    &arguments.to_string(),
+                    state,
+                    None,
+                    0,
+                )
+                .await;
+
+                JsonRpcResponse {
+                    jsonrpc: "2.0".into(),
+                    id,
+                    result: Some(
+                        serde_json::to_value(CallToolResult {
+                            content: vec![McpContent::Text { text: result_text }],
+                            is_error: false,
+                        })
+                        .unwrap_or_default(),
+                    ),
+                    error: None,
+                }
             }
         }
         _ => JsonRpcResponse {
@@ -201,7 +275,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
 fn is_skill_whitelisted(name: &str) -> bool {
     // Phase 17 Strict Review: RBAC Whitelist
     match name {
-        "fs_reader" | "MarketDataFetcher" | "StringRepeater" => true,
+        "fs_reader" | "MarketDataFetcher" | "StringRepeater" | "transcribe" => true,
         "terminal_exec" | "fs_writer" | "forge_publish" => false, // Protected internal tools
         _ => false,
     }

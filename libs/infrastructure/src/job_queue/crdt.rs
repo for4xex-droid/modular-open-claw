@@ -60,7 +60,10 @@ impl CrdtOps for UniversalJobQueue {
 
         let finalized_blob = local_doc.save();
 
-        let q = format!("SELECT last_lamport_clock FROM peers WHERE peer_id = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT last_lamport_clock FROM peers WHERE peer_id = {}",
+            self.pool.ph(0)
+        );
         let _row: Option<i64> = crate::sql_fetch_optional!(&self.pool, (i64,), &q, hub_id)
             .unwrap_or(None)
             .map(|r| r.0);
@@ -69,7 +72,10 @@ impl CrdtOps for UniversalJobQueue {
     }
 
     async fn get_timeline_blob(&self, hub_id: &str) -> Result<Option<Vec<u8>>, AiomeError> {
-        let q = format!("SELECT automerge_blob FROM timeline_checkpoints WHERE id = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT automerge_blob FROM timeline_checkpoints WHERE id = {}",
+            self.pool.ph(0)
+        );
         let row: Option<Vec<u8>> = crate::sql_fetch_optional!(&self.pool, (Vec<u8>,), &q, hub_id)
             .unwrap_or(None)
             .map(|r| r.0);

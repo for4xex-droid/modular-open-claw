@@ -9,12 +9,12 @@
 //!
 //! CSAM やコンプライアンス違反のアセットを永続的に記録・管理する。
 
-use aiome_contracts::contracts::QuarantinedAsset;
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use crate::db::DatabasePool;
 use crate::sql_exec;
+use aiome_contracts::contracts::QuarantinedAsset;
 use aiome_core::error::AiomeError;
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -89,7 +89,8 @@ impl QuarantineStore for UniversalQuarantineStore {
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
         );
 
-        sql_exec!(&self.pool, &q, &id, asset_name, image_hash, reason_str, status).map_err(|e| anyhow::anyhow!(e))?;
+        sql_exec!(&self.pool, &q, &id, asset_name, image_hash, reason_str, status)
+            .map_err(|e| anyhow::anyhow!(e))?;
 
         info!(
             "🛡️ [Quarantine] Asset quarantined: {} (Hash: {})",
@@ -101,16 +102,25 @@ impl QuarantineStore for UniversalQuarantineStore {
     async fn is_quarantined(&self, image_hash: &str) -> anyhow::Result<bool> {
         let q = format!(
             "SELECT id FROM quarantined_assets WHERE image_hash = {} AND status = {}",
-            self.pool.ph(0), self.pool.ph(1)
+            self.pool.ph(0),
+            self.pool.ph(1)
         );
         let status = serde_json::to_string(&QuarantineStatus::Quarantined)?;
 
         let res: Option<String> = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                sqlx::query_scalar(&q).bind(image_hash).bind(&status).fetch_optional(p).await?
+                sqlx::query_scalar(&q)
+                    .bind(image_hash)
+                    .bind(&status)
+                    .fetch_optional(p)
+                    .await?
             }
             DatabasePool::Postgres(p) => {
-                sqlx::query_scalar(&q).bind(image_hash).bind(&status).fetch_optional(p).await?
+                sqlx::query_scalar(&q)
+                    .bind(image_hash)
+                    .bind(&status)
+                    .fetch_optional(p)
+                    .await?
             }
         };
 
@@ -119,7 +129,11 @@ impl QuarantineStore for UniversalQuarantineStore {
 
     async fn release_asset(&self, id: &str) -> anyhow::Result<()> {
         let status = serde_json::to_string(&QuarantineStatus::Released)?;
-        let q = format!("UPDATE quarantined_assets SET status = {} WHERE id = {}", self.pool.ph(0), self.pool.ph(1));
+        let q = format!(
+            "UPDATE quarantined_assets SET status = {} WHERE id = {}",
+            self.pool.ph(0),
+            self.pool.ph(1)
+        );
 
         sql_exec!(&self.pool, &q, status, id).map_err(|e| anyhow::anyhow!(e))?;
 
@@ -134,26 +148,32 @@ impl QuarantineStore for UniversalQuarantineStore {
         match &self.pool {
             DatabasePool::Sqlite(p) => {
                 let rows = sqlx::query(q).fetch_all(p).await?;
-                let assets = rows.into_iter().map(|row| QuarantinedAsset {
-                    id: row.get("id"),
-                    asset_name: row.get("asset_name"),
-                    image_hash: row.get("image_hash"),
-                    reason: row.get("reason"),
-                    status: row.get("status"),
-                    uploaded_at: row.get("uploaded_at"),
-                }).collect();
+                let assets = rows
+                    .into_iter()
+                    .map(|row| QuarantinedAsset {
+                        id: row.get("id"),
+                        asset_name: row.get("asset_name"),
+                        image_hash: row.get("image_hash"),
+                        reason: row.get("reason"),
+                        status: row.get("status"),
+                        uploaded_at: row.get("uploaded_at"),
+                    })
+                    .collect();
                 Ok(assets)
             }
             DatabasePool::Postgres(p) => {
                 let rows = sqlx::query(q).fetch_all(p).await?;
-                let assets = rows.into_iter().map(|row| QuarantinedAsset {
-                    id: row.get("id"),
-                    asset_name: row.get("asset_name"),
-                    image_hash: row.get("image_hash"),
-                    reason: row.get("reason"),
-                    status: row.get("status"),
-                    uploaded_at: row.get("uploaded_at"),
-                }).collect();
+                let assets = rows
+                    .into_iter()
+                    .map(|row| QuarantinedAsset {
+                        id: row.get("id"),
+                        asset_name: row.get("asset_name"),
+                        image_hash: row.get("image_hash"),
+                        reason: row.get("reason"),
+                        status: row.get("status"),
+                        uploaded_at: row.get("uploaded_at"),
+                    })
+                    .collect();
                 Ok(assets)
             }
         }

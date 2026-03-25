@@ -265,15 +265,41 @@ pub async fn execute_wasm_skill(
 }
 
 pub async fn describe_skill(skill_name: &str, state: &AppState) -> String {
+    // 1. WASM スキルのメタデータを確認
     if let Some(meta) = state.wasm_skill_manager.get_metadata(skill_name) {
-        format!(
-            "[Detail for {}]\nDescription: {}\nOperations: {:?}\nInput Schema: {:?}\nPermissions: {:?}",
-            skill_name, meta.description, meta.capabilities, meta.inputs, meta.permissions
-        )
-    } else {
-        format!(
-            "[Skill {} not found or has no detailed metadata]",
-            skill_name
-        )
+        let input_schema = meta
+            .inputs
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "{}".to_string());
+        return format!(
+            "# Skill: {}\n\n## Description\n{}\n\n## Capabilities\n{:?}\n\n## Input Schema\n```json\n{}\n```\n\n## Permissions\n{:?}",
+            skill_name, meta.description, meta.capabilities, input_schema, meta.permissions
+        );
     }
+
+    // 2. MCP サーバーのメタデータを Registry から確認
+    let mcp_servers = state
+        .registry
+        .list_assets_by_type(infrastructure::registry::AssetType::McpServer, None, "all")
+        .await
+        .unwrap_or_default();
+
+    if let Some(mcp) = mcp_servers.into_iter().find(|a| a.name == skill_name) {
+        let metadata_display = mcp
+            .metadata
+            .as_ref()
+            .map(|m| serde_json::to_string_pretty(m).unwrap_or_default())
+            .unwrap_or_else(|| "No additional metadata".to_string());
+
+        return format!(
+            "# Skill: {}\n\n## Description\n{}\n\n## Metadata (Configuration)\n```json\n{}\n```\n\nNote: Use [CallSkill: {}, {{...}}] to invoke this MCP tool.",
+            mcp.name, mcp.description, metadata_display, mcp.name
+        );
+    }
+
+    format!(
+        "# Skill Not Found\n\nスキル `{}` は WASM または MCP レジストリに見つかりませんでした。",
+        skill_name
+    )
 }

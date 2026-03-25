@@ -13,10 +13,10 @@
 #![warn(missing_docs)]
 
 pub mod aiome_log;
-/// 非同期監査ログ用 MPSC キュー (Phase 35 Step 7)
-pub mod audit_logger;
 /// 成果物の永続化・管理
 pub mod artifact_store;
+/// 非同期監査ログ用 MPSC キュー (Phase 35 Step 7)
+pub mod audit_logger;
 /// 認証・JWTトークン検証モジュール (Phase 8.2)
 pub mod auth;
 /// Capabilities and extensions registry
@@ -91,6 +91,7 @@ pub mod trend_sonar;
 pub mod user_learner;
 /// 入出力データの検証
 pub mod validator;
+pub mod whisper_transcription;
 pub mod workspace_manager;
 
 mod soul_store_tests;

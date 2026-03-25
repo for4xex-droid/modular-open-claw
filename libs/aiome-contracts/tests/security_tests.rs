@@ -1,6 +1,13 @@
-use aiome_contracts::security::AgentHook;
-use aiome_contracts::llm::{LlmRequest, LlmResponse};
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use aiome_contracts::error::AiomeError;
+use aiome_contracts::llm::{LlmRequest, LlmResponse};
+use aiome_contracts::security::AgentHook;
 use async_trait::async_trait;
 
 #[derive(Debug)]

@@ -7,10 +7,10 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::db::DatabasePool;
     use crate::soul_store::UniversalSoulStore;
     use aiome_core::error::AiomeError;
     use soul::AgentSoul;
-    use crate::db::DatabasePool;
 
     async fn setup_db() -> DatabasePool {
         let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:")

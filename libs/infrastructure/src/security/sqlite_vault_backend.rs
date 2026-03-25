@@ -5,12 +5,12 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::db::DatabasePool;
+use crate::sql_exec;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::vault_backend::VaultBackend;
 use async_trait::async_trait;
 use lru::LruCache;
-use crate::db::DatabasePool;
-use crate::sql_exec;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
 use uuid::Uuid;
@@ -86,11 +86,26 @@ impl VaultBackend for UniversalVaultBackend {
         // 2. DB から取得
         let master = self.get_cached_master_key()?;
         let asset_id_str = asset_id.to_string();
-        let q = format!("SELECT encrypted_key FROM vault_keys WHERE asset_id = {}", self.pool.ph(0));
+        let q = format!(
+            "SELECT encrypted_key FROM vault_keys WHERE asset_id = {}",
+            self.pool.ph(0)
+        );
 
         let encrypted: Option<Vec<u8>> = match &self.pool {
-            DatabasePool::Sqlite(p) => sqlx::query_scalar(&q).bind(&asset_id_str).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?,
-            DatabasePool::Postgres(p) => sqlx::query_scalar(&q).bind(&asset_id_str).fetch_optional(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?,
+            DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(&asset_id_str)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
+            DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(&asset_id_str)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?,
         };
 
         let encrypted = encrypted.ok_or_else(|| AiomeError::ArtifactNotFound {
@@ -115,10 +130,14 @@ impl VaultBackend for UniversalVaultBackend {
         let master = self.get_cached_master_key()?;
         let encrypted = crate::security::crypto::encrypt_aes256gcm(dek, &master.to_zeroizing())?;
 
-        let q = self.pool.upsert_query("vault_keys", "asset_id", &["asset_id", "encrypted_key"], 0);
+        let q = self
+            .pool
+            .upsert_query("vault_keys", "asset_id", &["asset_id", "encrypted_key"], 0);
 
-        sql_exec!(&self.pool, &q, asset_id.to_string(), &encrypted).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("vault_keys INSERT: {}", e),
+        sql_exec!(&self.pool, &q, asset_id.to_string(), &encrypted).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("vault_keys INSERT: {}", e),
+            }
         })?;
 
         // キャッシュに保存/更新 (§CISO-1)
@@ -133,8 +152,22 @@ impl VaultBackend for UniversalVaultBackend {
         self.get_cached_master_key()?;
         let q = "SELECT 1";
         match &self.pool {
-            DatabasePool::Sqlite(p) => { sqlx::query(q).execute(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?; }
-            DatabasePool::Postgres(p) => { sqlx::query(q).execute(p).await.map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?; }
+            DatabasePool::Sqlite(p) => {
+                sqlx::query(q)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query(q)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
         }
         Ok(())
     }
