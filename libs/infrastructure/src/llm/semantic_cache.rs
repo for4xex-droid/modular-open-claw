@@ -6,6 +6,8 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
+use crate::polar_quant::PolarQuantEncoder;
+use crate::vector_ops::{StandardVectorOps, VectorOps};
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::{LlmResponse, StopReason};
 use sha2::{Digest, Sha256};
@@ -43,31 +45,101 @@ impl SemanticCache {
     ) -> Result<Option<LlmResponse>, AiomeError> {
         let hash = Self::compute_hash(prompt, system);
 
-        let content_opt = match &self.jq.get_pool() {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let row = sqlx::query("SELECT response, provider_name, model_name FROM llm_response_cache WHERE prompt_hash = ? AND created_at > datetime('now', '-' || ttl_seconds || ' seconds')")
-                    .bind(&hash)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                row.map(|r| r.get::<String, _>(0))
+        // 1. 完全一致 (Hash) を優先
+        let pool = self.jq.get_pool();
+        let exact_q = format!(
+            "SELECT response FROM llm_response_cache WHERE prompt_hash = {} AND created_at > {}",
+            pool.ph(0),
+            if pool.is_sqlite() {
+                "datetime('now', '-' || ttl_seconds || ' seconds')"
+            } else {
+                "NOW() - (ttl_seconds || ' seconds')::interval"
             }
-            crate::db::DatabasePool::Postgres(p) => {
-                let row = sqlx::query("SELECT response, provider_name, model_name FROM llm_response_cache WHERE prompt_hash = $1 AND created_at > NOW() - (ttl_seconds || ' seconds')::interval")
-                    .bind(&hash)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-                row.map(|r| r.get::<String, _>(0))
-            }
+        );
+
+        let hash_match: Option<String> = match &pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&exact_q)
+                .bind(&hash)
+                .fetch_optional(p)
+                .await
+                .ok()
+                .flatten(),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&exact_q)
+                .bind(&hash)
+                .fetch_optional(p)
+                .await
+                .ok()
+                .flatten(),
         };
 
-        if let Some(content) = content_opt {
-            debug!("🎯 [SemanticCache] Hit! Hash: {}", hash);
+        if let Some(content) = hash_match {
+            debug!("🎯 [SemanticCache] Exact Hit! Hash: {}", hash);
             return Ok(Some(LlmResponse {
                 content,
-                stop_reason: StopReason::EndTurn, // キャッシュからはEndTurn固定
+                stop_reason: StopReason::EndTurn,
             }));
+        }
+
+        // 2. セマンティック一致 (Vector)
+        if let Some(provider) = self.jq.get_embedding_provider().await {
+            if let Ok(query_vec_f32) = provider.embed(prompt, true).await {
+                let query_vec: Vec<f64> = query_vec_f32.iter().map(|&f| f as f64).collect();
+                let semantic_q = "SELECT response, prompt_embedding FROM llm_response_cache WHERE prompt_embedding IS NOT NULL ORDER BY created_at DESC LIMIT 100";
+
+                let encoder = PolarQuantEncoder::new(4, 32);
+
+                let hit = match &pool {
+                    crate::db::DatabasePool::Sqlite(p) => {
+                        if let Ok(rows) = sqlx::query(semantic_q).fetch_all(p).await {
+                            let mut best: Option<String> = None;
+                            for row in rows {
+                                let emb_bytes: Vec<u8> = row.get("prompt_embedding");
+                                if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
+                                    let emb_vec = encoder.decode(&emb_bytes, 768);
+                                    let score =
+                                        StandardVectorOps::cosine_similarity(&query_vec, &emb_vec);
+                                    if score > 0.95 {
+                                        best = Some(row.get("response"));
+                                        info!("🧠 [SemanticCache] Semantic Hit (Sqlite)! Score: {:.4}", score);
+                                        break;
+                                    }
+                                }
+                            }
+                            best
+                        } else {
+                            None
+                        }
+                    }
+                    crate::db::DatabasePool::Postgres(p) => {
+                        if let Ok(rows) = sqlx::query(semantic_q).fetch_all(p).await {
+                            let mut best: Option<String> = None;
+                            for row in rows {
+                                let emb_bytes: Vec<u8> = row.get("prompt_embedding");
+                                if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
+                                    let emb_vec = encoder.decode(&emb_bytes, 768);
+                                    let score =
+                                        StandardVectorOps::cosine_similarity(&query_vec, &emb_vec);
+                                    if score > 0.95 {
+                                        best = Some(row.get("response"));
+                                        info!("🧠 [SemanticCache] Semantic Hit (Postgres)! Score: {:.4}", score);
+                                        break;
+                                    }
+                                }
+                            }
+                            best
+                        } else {
+                            None
+                        }
+                    }
+                };
+
+                if let Some(content) = hit {
+                    return Ok(Some(LlmResponse {
+                        content,
+                        stop_reason: StopReason::EndTurn,
+                    }));
+                }
+            }
         }
 
         Ok(None)
@@ -84,29 +156,25 @@ impl SemanticCache {
         ttl_seconds: i64,
     ) -> Result<(), AiomeError> {
         let hash = Self::compute_hash(prompt, system);
+        let mut embedding: Option<Vec<u8>> = None;
 
-        match &self.jq.get_pool() {
+        if let Some(provider) = self.jq.get_embedding_provider().await {
+            if let Ok(vec) = provider.embed(prompt, false).await {
+                let encoder = PolarQuantEncoder::new(4, 32);
+                let vec_f64: Vec<f64> = vec.into_iter().map(|f| f as f64).collect();
+                embedding = Some(encoder.encode(&vec_f64));
+            }
+        }
+
+        let pool = self.jq.get_pool();
+        match &pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                sqlx::query("INSERT OR REPLACE INTO llm_response_cache (prompt_hash, response, provider_name, model_name, ttl_seconds, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))")
-                    .bind(&hash)
-                    .bind(&response.content)
-                    .bind(provider_name)
-                    .bind(model_name)
-                    .bind(ttl_seconds)
-                    .execute(p)
-                    .await
-                    .map(|_| ())
+                sqlx::query("INSERT OR REPLACE INTO llm_response_cache (prompt_hash, response, provider_name, model_name, ttl_seconds, prompt_embedding, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))")
+                    .bind(&hash).bind(&response.content).bind(provider_name).bind(model_name).bind(ttl_seconds).bind(embedding).execute(p).await.map(|_| ())
             }
             crate::db::DatabasePool::Postgres(p) => {
-                sqlx::query("INSERT INTO llm_response_cache (prompt_hash, response, provider_name, model_name, ttl_seconds, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (prompt_hash) DO UPDATE SET response = EXCLUDED.response, ttl_seconds = EXCLUDED.ttl_seconds, created_at = EXCLUDED.created_at")
-                    .bind(&hash)
-                    .bind(&response.content)
-                    .bind(provider_name)
-                    .bind(model_name)
-                    .bind(ttl_seconds)
-                    .execute(p)
-                    .await
-                    .map(|_| ())
+                sqlx::query("INSERT INTO llm_response_cache (prompt_hash, response, provider_name, model_name, ttl_seconds, prompt_embedding, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW()) ON CONFLICT (prompt_hash) DO UPDATE SET response = EXCLUDED.response, ttl_seconds = EXCLUDED.ttl_seconds, prompt_embedding = EXCLUDED.prompt_embedding, created_at = EXCLUDED.created_at")
+                    .bind(&hash).bind(&response.content).bind(provider_name).bind(model_name).bind(ttl_seconds).bind(embedding).execute(p).await.map(|_| ())
             }
         }
         .map_err(|e| AiomeError::Infrastructure {

@@ -62,6 +62,8 @@ pub mod llm;
 pub mod memory_crystallizer;
 /// 高度な論理推論エンジン
 pub mod oracle;
+/// TurboQuant PolarQuant エンコーダ (Phase 39)
+pub mod polar_quant;
 /// 成果物のSNS自動投稿
 pub mod publisher;
 /// エージェント別のレート制限 (G-2)
@@ -91,6 +93,8 @@ pub mod trend_sonar;
 pub mod user_learner;
 /// 入出力データの検証
 pub mod validator;
+/// ベクトル演算の統一インターフェース (Phase 39)
+pub mod vector_ops;
 pub mod whisper_transcription;
 pub mod workspace_manager;
 

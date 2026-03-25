@@ -61,19 +61,11 @@ pub use self::watchtower::WatchtowerOps;
 use crate::db::DatabasePool;
 use crate::job_queue::migrations::DbInitializer;
 
-// Re-export cosine_similarity if needed by karma.rs
+// Re-export cosine_similarity via StandardVectorOps for backward compatibility or direct use
+pub use crate::vector_ops::{StandardVectorOps, VectorOps};
+
 pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
-    if a.len() != b.len() || a.is_empty() {
-        return 0.0;
-    }
-    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
-    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if norm_a == 0.0 || norm_b == 0.0 {
-        0.0
-    } else {
-        dot / (norm_a * norm_b)
-    }
+    StandardVectorOps::cosine_similarity(a, b)
 }
 
 /// `UniversalJobQueue` 構造体

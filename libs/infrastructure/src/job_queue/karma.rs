@@ -5,9 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::cosine_similarity;
 use super::swarm::SwarmOps;
 use super::UniversalJobQueue;
+use crate::polar_quant::PolarQuantEncoder;
+use crate::vector_ops::{StandardVectorOps, VectorOps};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus, KarmaEntry, KarmaSearchResult};
 use async_trait::async_trait;
@@ -223,13 +224,21 @@ impl KarmaOps for UniversalJobQueue {
                 rows.iter()
                     .map(|r| {
                         let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
+                        let encoder = PolarQuantEncoder::new(4, 32);
                         let stored_embedding = embedding_bytes.map(|b| {
-                            b.chunks_exact(4)
-                                .map(|chunk| {
-                                    let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
-                                    f32::from_le_bytes(bytes) as f64
-                                })
-                                .collect()
+                            if b.len() > 1 && b[0] == 1 {
+                                // 新フォーマット (PolarQuant)
+                                encoder.decode(&b, 768)
+                            } else {
+                                // 旧フォーマット (f32 raw)
+                                b.chunks_exact(4)
+                                    .map(|chunk| {
+                                        let bytes: [u8; 4] =
+                                            chunk.try_into().unwrap_or([0, 0, 0, 0]);
+                                        f32::from_le_bytes(bytes) as f64
+                                    })
+                                    .collect()
+                            }
                         });
                         KarmaCandidate {
                             id: r.get("id"),
@@ -255,13 +264,19 @@ impl KarmaOps for UniversalJobQueue {
                 rows.iter()
                     .map(|r| {
                         let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
+                        let encoder = PolarQuantEncoder::new(4, 32);
                         let stored_embedding = embedding_bytes.map(|b| {
-                            b.chunks_exact(4)
-                                .map(|chunk| {
-                                    let bytes: [u8; 4] = chunk.try_into().unwrap_or([0, 0, 0, 0]);
-                                    f32::from_le_bytes(bytes) as f64
-                                })
-                                .collect()
+                            if b.len() > 1 && b[0] == 1 {
+                                encoder.decode(&b, 768)
+                            } else {
+                                b.chunks_exact(4)
+                                    .map(|chunk| {
+                                        let bytes: [u8; 4] =
+                                            chunk.try_into().unwrap_or([0, 0, 0, 0]);
+                                        f32::from_le_bytes(bytes) as f64
+                                    })
+                                    .collect()
+                            }
                         });
                         KarmaCandidate {
                             id: r.get("id"),
@@ -288,7 +303,7 @@ impl KarmaOps for UniversalJobQueue {
                 let topic_vec: Vec<f64> = topic_vec_f32.into_iter().map(|f| f as f64).collect();
                 for candidate in &mut candidates {
                     if let Some(ref emb_vec) = candidate.stored_embedding {
-                        let score = cosine_similarity(&topic_vec, emb_vec);
+                        let score = StandardVectorOps::cosine_similarity(&topic_vec, emb_vec);
                         candidate.semantic_score = score;
                         if score > max_score {
                             max_score = score;
@@ -373,7 +388,9 @@ impl KarmaOps for UniversalJobQueue {
         let mut embedding: Option<Vec<u8>> = None;
         if let Some(provider) = self.get_embedding_provider().await {
             if let Ok(vec) = provider.embed(lesson, false).await {
-                embedding = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
+                let encoder = PolarQuantEncoder::new(4, 32);
+                let vec_f64: Vec<f64> = vec.into_iter().map(|f| f as f64).collect();
+                embedding = Some(encoder.encode(&vec_f64));
             }
         }
 

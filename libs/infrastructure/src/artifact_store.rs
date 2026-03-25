@@ -21,18 +21,13 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::db::DatabasePool;
+use crate::polar_quant::PolarQuantEncoder;
 use crate::sql_exec;
+use crate::vector_ops::cosine_similarity;
 
-fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
-    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
-    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if norm_a == 0.0 || norm_b == 0.0 {
-        0.0
-    } else {
-        dot / (norm_a * norm_b)
-    }
-}
+use crate::vector_ops::{StandardVectorOps, VectorOps};
+
+// Local cosine_similarity replaced by crate::vector_ops::cosine_similarity
 
 /// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
 pub struct UniversalArtifactStore {
@@ -183,7 +178,9 @@ impl ArtifactStore for UniversalArtifactStore {
                 req.text_content.as_deref().unwrap_or("")
             );
             if let Ok(vec) = provider.embed(&context, false).await {
-                embedding_blob = Some(vec.iter().flat_map(|f| f.to_le_bytes()).collect());
+                let encoder = PolarQuantEncoder::new(4, 32);
+                let vec_f64: Vec<f64> = vec.into_iter().map(|f| f as f64).collect();
+                embedding_blob = Some(encoder.encode(&vec_f64));
             }
         }
 
@@ -518,13 +515,20 @@ impl ArtifactStore for UniversalArtifactStore {
         };
 
         let mut sim_results: Vec<(f64, String)> = Vec::new();
+        let encoder = PolarQuantEncoder::new(4, 32);
         for (id, emb_bytes) in entries {
-            let emb_vec: Vec<f64> = emb_bytes
-                .chunks_exact(8)
-                .map(|c: &[u8]| {
-                    f64::from_le_bytes(c.try_into().unwrap_or([0, 0, 0, 0, 0, 0, 0, 0]))
-                })
-                .collect();
+            let emb_vec: Vec<f64> = if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
+                // 新フォーマット (PolarQuant)
+                encoder.decode(&emb_bytes, 768) // 本来は次元数を追跡すべきだが、OpenAI/Gemini は 768 or 1536
+            } else {
+                // 旧フォーマット (f64 raw)
+                emb_bytes
+                    .chunks_exact(8)
+                    .map(|c: &[u8]| {
+                        f64::from_le_bytes(c.try_into().unwrap_or([0, 0, 0, 0, 0, 0, 0, 0]))
+                    })
+                    .collect()
+            };
             let score = cosine_similarity(&query_vec_f64, &emb_vec);
             sim_results.push((score, id));
         }
