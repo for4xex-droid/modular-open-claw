@@ -145,7 +145,7 @@ impl ProjectKnowledgeIndexer {
         }
 
         // 2. Chunk and Save
-        let chunks = self.chunk_markdown(&content);
+        let chunks: Vec<(String, String)> = Self::chunk_markdown(&content);
         for (i, (title, chunk_content)) in chunks.into_iter().enumerate() {
             let artifact_title = if title.is_empty() {
                 format!("Knowledge: {} (Part {})", rel_path, i + 1)
@@ -183,7 +183,8 @@ impl ProjectKnowledgeIndexer {
         Ok(())
     }
 
-    fn chunk_markdown(&self, content: &str) -> Vec<(String, String)> {
+    /// Markdown をセクションごとに分割する (OSS インデクサー等で再利用)
+    pub fn chunk_markdown(content: &str) -> Vec<(String, String)> {
         let mut chunks = Vec::new();
         let mut current_title = String::new();
         let mut current_chunk = Vec::new();

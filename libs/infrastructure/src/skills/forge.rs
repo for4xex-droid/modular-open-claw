@@ -5,10 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::security::{BastionGuard, SandboxProfile};
-use aiome_core::security::{PermissionManifest, RuntimeJail};
+use crate::llm::utils::extract_code_block;
+use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
+use aiome_contracts::llm::LlmProvider;
+use aiome_core::error::AiomeError;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tracing::{error, info, warn};
 
 #[derive(Clone)]
@@ -67,6 +70,7 @@ serde_json = "1.0"
         initial_rust_code: &str,
         retry_count: u32,
         description: &str,
+        llm: Option<Arc<dyn LlmProvider>>,
     ) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
         // Security Gate: Ensure forge is enabled
         let enabled = std::env::var("SKILL_FORGE_ENABLED")
@@ -103,7 +107,7 @@ serde_json = "1.0"
         fs::write(&cargo_toml_path, updated_cargo)?;
 
         // 3. Compile Loop (G11 Support: Stderr results will be used for self-healing)
-        let rust_code = initial_rust_code.to_string();
+        let mut rust_code = initial_rust_code.to_string();
         for attempt in 0..=retry_count {
             info!(
                 "🛠️ [SkillForge] Compiling {} (Attempt {}/{})",
@@ -134,7 +138,7 @@ serde_json = "1.0"
                 .await;
 
             match res {
-                Ok(stdout) => {
+                Ok(_stdout) => {
                     info!("✅ [SkillForge] Compilation SUCCESS for {}", skill_name);
                     let wasm_file = workspace_dir.join(format!(
                         "target/wasm32-wasip1/release/{}.wasm",
@@ -171,7 +175,6 @@ serde_json = "1.0"
                     let meta_json = serde_json::to_string_pretty(&meta)?;
                     fs::write(meta_path, meta_json)?;
 
-                    // Discovery D: Success! We keep the workspace for future builds.
                     return Ok(final_path);
                 }
                 Err(e) => {
@@ -182,7 +185,23 @@ serde_json = "1.0"
                     );
 
                     if attempt < retry_count {
-                        warn!("🔄 [SkillForge] Compilation failed. Continuing retry loop...");
+                        if let Some(ref provider) = llm {
+                            warn!(
+                                "🔄 [SkillForge] Attempting AI Self-Heal for {} (Attempt {})",
+                                skill_name,
+                                attempt + 1
+                            );
+                            match self.fix_code_with_llm(provider, &rust_code, &err_str).await {
+                                Ok(fixed_code) => {
+                                    rust_code = fixed_code;
+                                    continue;
+                                }
+                                Err(fix_err) => {
+                                    error!("❌ [SkillForge] AI Self-Heal FAILED: {:?}", fix_err);
+                                }
+                            }
+                        }
+                        warn!("🔄 [SkillForge] Falling back to standard retry...");
                         continue;
                     } else {
                         return Err(format!(
@@ -197,6 +216,34 @@ serde_json = "1.0"
         }
 
         Err("Maximum retry attempts reached without success.".into())
+    }
+
+    async fn fix_code_with_llm(
+        &self,
+        llm: &Arc<dyn LlmProvider>,
+        original_code: &str,
+        error_log: &str,
+    ) -> Result<String, AiomeError> {
+        let prompt = format!(
+            "You are a Rust compiler expert. The following code failed to compile:\n\n\
+            CODE:\n```rust\n{}\n```\n\n\
+            ERROR LOG:\n{}\n\n\
+            Please FIX the code to resolve the compilation error. \n\
+            Output ONLY the fixed Rust code block.",
+            original_code, error_log
+        );
+
+        let response =
+            llm.complete(&prompt, None)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("AI fix request failed: {}", e),
+                })?;
+
+        // 共通ユーティリティを使用してコードブロックを抽出
+        let code = extract_code_block(&response.content);
+
+        Ok(code)
     }
 
     fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {

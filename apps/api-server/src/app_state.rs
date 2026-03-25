@@ -117,4 +117,5 @@ pub struct AppState {
         >,
     >,
     pub transcription_engine: Component<Arc<dyn TranscriptionEngine>>,
+    pub task_dispatcher: Component<Arc<infrastructure::task_orchestrator::TaskDispatcher>>,
 }

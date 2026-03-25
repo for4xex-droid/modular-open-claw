@@ -488,3 +488,46 @@ graph TD
 
 ---
 *最終更新日: 2026-03-25* (Phase 38b / STT Integration)
+
+### 🛡️ Phase 42: Multi-Agent Orchestration Evolution
+- **変更内容**: 
+    - `task_orchestrator.rs`: `TaskEvent` トレイト、`TaskConductor` トレイト、および `TaskDispatcher` による自律イベントディスパッチの実装。
+    - `oss_orchestrator.rs`: 既存の `OssIntegrationOrchestrator` を `TaskConductor` に適合させ、非同期イベントストリームによる進捗通知機能（SSE Ready）を追加。
+- **波及効果**: 
+    - モノリシックだった自律型インテグレーション・プロセスが、細粒度で可観測性の高いイベント駆動バックグラウンドタスクへ分離。
+    - バックグラウンド実行の進行状況を `tokio::sync::broadcast` により複数クライアント（UI、CLI等）へリアルタイムにプッシュするためのアーキテクチャ基盤が完成。
+
+```mermaid
+graph TD
+    A[TaskDispatcher] -->|Polls| B[JobQueue]
+    B -->|Dequeue| C[Job]
+    A -->|Spawns| D[TaskConductor]
+    D -->|Executes| C
+    D -->|Streams| E[TaskEvent::Progress]
+    E -->|Broadcast| F[SSE / CLI Observers]
+```
+
+---
+*最終更新日: 2026-03-26* (Phase 43 / Shadow Clone Integration)
+
+### 👥 Phase 43: Shadow Clone × Cmux Integration
+- **変更内容**: 
+    - `infrastructure/docker_conductor.rs`: `TaskConductor` の新規実装。5層防御（セマフォ、課金、Bastion、タイムアウト、浄化）の統合。
+    - `infrastructure/task_orchestrator.rs`: `TaskEvent` への `conductor_id` 追加。
+    - `api-server/routes/agent.rs`: `[DelegateDocker]` 処理を `JobQueue` を用いた完全非同期ディスパッチへ移行。
+    - `api-server/app_state.rs` & `main.rs`: `TaskDispatcher` の初期化、`DockerConductor` の登録、およびグレースフルシャットダウン用 `CancellationToken` のバインド。
+    - `api-server/stream.rs`: `CoreEvent` に `TaskProgress/Completed/Failed` を追加し、SSE 配信を実現。
+- **波及効果**: 
+    - LLM 応答のブロッキングが解消され、バックグラウンドでの影分身実行が可観測な状態で運用可能に。
+    - `api_integration_tests.rs` における `AppState` の初期化不整合を解消。
+
+```mermaid
+graph TD
+    A[Agent Chat Loop] -->|Async Enqueue| B[JobQueue]
+    B -->|TaskDispatcher| C[DockerConductor]
+    C -->|Execute| D[BastionGuard / runsc]
+    C -->|Progress Event| E[TaskDispatcher Loop]
+    E -->|CoreEvent| F[SSE Stream]
+    F -->|Real-time UI| G[Cmux Frontend]
+```
+

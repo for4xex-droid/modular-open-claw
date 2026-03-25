@@ -24,6 +24,10 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
     - **役割**: 内面的な感情変遷（Karma）を現実世界に出力するための物理インターフェース。
     - **特徴**: `ExpressionEngine` が OpenAI の TTS 等と連動し、自律的に感情こもった音声を生成。さらに、生成された感情パラメータは Inochi2D/VRM などアバター表現用の `avatar_params` へ直ちへ同期されます。
 
+4.  **Collective Intelligence Layer (Shadow Clone / Multi-Agent)**:
+    - **役割**: 複雑な並列タスク（コード生成、調査、分析）を一時的な分身（Worker）に委託し、エージェント自身の思考リソースを解放。
+    - **特徴**: `TaskDispatcher` と `DockerConductor` により、安全なサンドボックス内で並列エージェントを起動。非同期イベントストリーム経由で、本体エージェントへ進捗をリアルタイムにフィードバックします。
+
 ---
 
 ## ⚙️ 進化パラメーター (Evolution Stats)
@@ -46,5 +50,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-25
+最終更新: 2026-03-26 (Phase 43 / Shadow Clone Integration)
 Aiome Development Team

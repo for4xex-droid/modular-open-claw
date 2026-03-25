@@ -15,6 +15,7 @@ pub mod fallback_router;
 pub mod proxy;
 /// `semantic_cache` モジュール
 pub mod semantic_cache;
+pub mod utils;
 
 /// `humanizer_filter` モジュール
 pub mod humanizer_filter;

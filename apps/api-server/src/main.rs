@@ -103,6 +103,13 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let cancel_token = tokio_util::sync::CancellationToken::new();
+    let cancel_token_clone = cancel_token.clone();
+    tokio::spawn(async move {
+        if let Ok(_) = tokio::signal::ctrl_c().await {
+            tracing::info!("🛑 [api-server] Received Ctrl-C, triggering shutdown...");
+            cancel_token_clone.cancel();
+        }
+    });
     let plugin_registry = plugin_loader::PluginRegistry::new();
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -476,6 +483,32 @@ async fn main() -> anyhow::Result<()> {
             stt_enabled,
         ));
 
+    // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
+    let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
+        job_queue.clone(),
+        std::time::Duration::from_millis(100),
+        Some(event_sender.clone()),
+    );
+    // Register DockerConductor
+    let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(
+        commerce_engine.clone(),
+    ));
+    task_dispatcher.register_conductor(docker_conductor);
+
+    let task_dispatcher = Arc::new(task_dispatcher);
+
+    // Spawn the loop
+    let dispatcher_for_bg = task_dispatcher.clone();
+    let cancel_for_dispatcher = cancel_token.clone();
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = dispatcher_for_bg.run_dispatch_loop() => {}
+            _ = cancel_for_dispatcher.cancelled() => {
+                tracing::info!("🛑 [TaskDispatcher] Shutting down cleanly...");
+            }
+        }
+    });
+
     let state = AppState {
         health_monitor: Component::new(health_monitor),
         job_queue: Component::new(job_queue.clone()),
@@ -535,6 +568,7 @@ async fn main() -> anyhow::Result<()> {
         ),
         soul_pipeline: Component::new(soul_pipeline),
         transcription_engine: Component::new(transcription_engine),
+        task_dispatcher: Component::new(task_dispatcher),
     };
 
     let cors_layer = {
@@ -605,7 +639,13 @@ async fn main() -> anyhow::Result<()> {
         "🚨 [api-server] Failed to bind to address http://{}. Check if the port is already in use. Error: {}",
         addr, e
     ))?;
+
+    let cancel_serve = cancel_token.clone();
     axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            cancel_serve.cancelled().await;
+            tracing::info!("🛑 [api-server] Graceful shutdown triggered.");
+        })
         .await
         .map_err(|e| anyhow::anyhow!("🚨 [api-server] Failed to start Axum server: {}", e))?;
 

@@ -75,6 +75,7 @@ impl Cleanroom {
                             &source,
                             3, // Retries
                             &manifest.l1.trigger_description,
+                            self.provider.clone(),
                         )
                         .await
                         .map_err(|e| anyhow::anyhow!("Forge failed: {}", e))?;
@@ -97,6 +98,7 @@ impl Cleanroom {
                         &bridge_code,
                         1,
                         &manifest.l1.trigger_description,
+                        self.provider.clone(),
                     )
                     .await
                     .map_err(|e| anyhow::anyhow!("Forge failed: {}", e))?;

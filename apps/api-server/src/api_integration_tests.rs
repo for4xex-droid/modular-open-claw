@@ -457,6 +457,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )
             as Arc<dyn aiome_core::traits::TranscriptionEngine>),
+        task_dispatcher: Component::default(),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

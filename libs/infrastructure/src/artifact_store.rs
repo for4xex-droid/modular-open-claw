@@ -126,6 +126,11 @@ impl ArtifactStore for UniversalArtifactStore {
             reason: format!("Failed to initialize sandbox: {}", e),
         })?;
 
+        let artifacts_base = jail.root().join("artifacts");
+        if !artifacts_base.exists() {
+            let _ = std::fs::create_dir_all(&artifacts_base);
+        }
+
         let relative_dir = Path::new("artifacts").join(&dir_name);
         let full_dir =
             sandbox

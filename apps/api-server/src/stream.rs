@@ -471,6 +471,29 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("plugin_event").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::TaskProgress { job_id, conductor_id, message, percent } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "conductor_id": conductor_id,
+                                "message": message,
+                                "percent": percent,
+                            });
+                            yield Ok(Event::default().event("task_progress").data(data.to_string()));
+                        },
+                        shared::watchtower::CoreEvent::TaskCompleted { job_id, result, .. } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "result": result,
+                            });
+                            yield Ok(Event::default().event("task_completed").data(data.to_string()));
+                        },
+                        shared::watchtower::CoreEvent::TaskFailed { job_id, error } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "error": error,
+                            });
+                            yield Ok(Event::default().event("task_failed").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

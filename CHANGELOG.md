@@ -1,6 +1,15 @@
 ## [Unreleased] - 2026-03-25
 
 ### Added
+- **Phase 43: Shadow Clone × Cmux Integration [完了]**
+    - **DockerConductor Implementation**: 影分身タスクの安全実行を司る Conductor を実装。5層の多層防御（セマフォによる Fork Bomb 防御、CommerceEngine による自律課金、BastionGuard による厳格なサンドボックス、タイムアウト監視、出力浄化）を統合。
+    - **Async Shadow Clone Dispatch**: `agent.rs` の同期実行を廃止し、`JobQueue` を用いた完全非同期ディスパッチへ移行。LLM は分身の起動を待たずに即座に応答可能に。
+    - **SSE Progress Streaming**: 内部の `TaskEvent` を `CoreEvent` にブリッジし、SSE 経由でフロントエンド（Cmux）へ分身の進捗（Progress/Completed/Failed）をリアルタイム配信する仕組みを構築。
+    - **Graceful Shutdown**: API サーバーの終了シグナルに `TaskDispatcher` の停止処理を連動させ、仕掛かり中の非同期タスクの安全な終了を実現。
+- **Phase 42: Multi-Agent Orchestration Evolution [完了]**
+    - **TaskEvent & TaskConductor Traits**: Defined strict boundaries for background execution and observability tracking (`Spawned`, `Progress`, `Completed`, `Failed`).
+    - **TaskDispatcher**: Implemented an event-driven `tokio::sync::broadcast` stream to asynchronously monitor agent progress without blocking, achieving a pull-based UI architecture.
+    - **OssIntegrationOrchestrator Refactoring**: Adapted the monolithic integration flow into an observable `TaskConductor`, enabling granular job tracking.
 - **Phase 37a: Stripe Subscription & Whisper Integration [完了]**
     - **Stripe Subscriptions API**: `StripeCommerceEngine` に `create_subscription` および `cancel_subscription` を実装。UUID ベースの顧客管理とメタデータ連携、およびテスト環境用の `sk_test_mock` バイパスモードを導入。
     - **Whisper Inner Monologue**: `SoulPipeline` の L2.5 層として `WhisperMiddleware` を追加。経験の価数 (Valence) が閾値を超えた際、AIが「内なる声 (Whisper)」という独自のログを生成し自己省察を記録。

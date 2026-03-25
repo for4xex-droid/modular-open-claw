@@ -55,9 +55,19 @@ impl VectorOps for StandardVectorOps {
         }
     }
 
-    fn approximate_dot_product(_a_compressed: &[u8], _b: &[f64], _dim: usize) -> f64 {
-        // Phase 39 では未実装
-        0.0
+    fn approximate_dot_product(a_compressed: &[u8], b: &[f64], dim: usize) -> f64 {
+        if a_compressed.len() < dim || b.len() < dim {
+            return 0.0;
+        }
+
+        // 8-bit quantization approximation: [0, 255] -> [-1.0, 1.0]
+        // val = (byte / 127.5) - 1.0
+        let mut sum = 0.0;
+        for i in 0..dim {
+            let a_val = (a_compressed[i] as f64 / 127.5) - 1.0;
+            sum += a_val * b[i];
+        }
+        sum
     }
 }
 
@@ -84,5 +94,17 @@ mod tests {
         let v2: Vec<f32> = vec![1.0, 1.0];
         let sim = StandardVectorOps::cosine_similarity_f32(&v1, &v2);
         assert!((sim - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_approximate_dot_product() {
+        let dim = 4;
+        // 127.5 is 0.0, 255 is 1.0, 0 is -1.0
+        let a_compressed = vec![255, 0, 128, 255]; // [1.0, -1.0, ~0.0, 1.0]
+        let b = vec![1.0, 1.0, 1.0, 1.0];
+
+        let dot = StandardVectorOps::approximate_dot_product(&a_compressed, &b, dim);
+        // 1.0*1.0 + (-1.0)*1.0 + (0.0)*1.0 + 1.0*1.0 = 1.0
+        assert!(dot > 0.9 && dot < 1.1);
     }
 }

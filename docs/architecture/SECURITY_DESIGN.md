@@ -49,6 +49,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 26 | **Unauthorized Frontend Requests**| **CORS misconfiguration (AllowOrigin::any)** | 🔴 High | **Strict ALLOWED_ORIGINS Enforcement (Phase 27)** |
 | 27 | **Runtime Database Panic** | **unwrap() on Pool in PG mode** | 🟡 Mid | **Safe DatabasePool Getters (Phase 31)** |
 | 28 | **LLM Format Mismatch** | **JSON expected, Text received** | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
+| 29 | **Shadow Clone Hijacking** | **Docker Bomb / Secret Exfiltration** | 🔴 High | **5-Layer Shadow Defense (Semaphore, Commerce, Bastion, Timeout, Purge) (Phase 43)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -59,6 +60,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
 - **Unified Response Purger (Phase 24)**: Implements `purge_entities` in `aiome-core` to provide robust, multi-step sanitization for all external inputs, including RSS feeds, Web Search results, and LLM outputs. It centralizes regex patterns, HTML decoding, and tag stripping to prevent XSS and script injection at the core layer.
+- **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
@@ -66,6 +68,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.
 - **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
+- **5-Layer Shadow Sandbox (Phase 43)**: `DockerConductor` enforces five progressive security layers for sub-agent delegation: 1) **Fork Bomb Protection** (Semaphore limit: 3), 2) **Economic Binding** (Validation via `CommerceEngine`), 3) **Absolute Sterilization** (Pre-execution environment isolation), 4) **BastionGuard Strict** (Read-only root, no network by default), and 5) **Technical Timeout** (300s hard kill).
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
@@ -135,4 +138,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-25 (Phase 36.5 / Ultimate Security Hardening & AgentHook)*
+*最終更新: 2026-03-26 (Phase 43 / Shadow Clone Integration & Cmux Synergy)*

@@ -42,6 +42,7 @@ pub mod context_engine;
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;
+pub mod docker_conductor;
 /// アイドル時の自律思考管理
 pub mod dream_state;
 /// AIギグ・エコノミー受発注エンジン
@@ -62,6 +63,11 @@ pub mod llm;
 pub mod memory_crystallizer;
 /// 高度な論理推論エンジン
 pub mod oracle;
+pub mod oss_ast_analyzer;
+pub mod oss_orchestrator;
+/// 外部リポジトリの自動クローン・RAGインデックス化
+pub mod oss_repository_indexer;
+pub mod oss_type_matcher;
 /// TurboQuant PolarQuant エンコーダ (Phase 39)
 pub mod polar_quant;
 /// 成果物のSNS自動投稿
@@ -88,6 +94,7 @@ pub mod soul_adapter;
 pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
+pub mod task_orchestrator;
 pub mod trend_sonar;
 /// ユーザー行動パターン学習
 pub mod user_learner;

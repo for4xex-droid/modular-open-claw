@@ -45,7 +45,13 @@ pub async fn execute_forge_command(
 
                     match state
                         .skill_forge
-                        .forge_skill(&req.skill_name, &req.initial_rust_code, 3, &req.description)
+                        .forge_skill(
+                            &req.skill_name,
+                            &req.initial_rust_code,
+                            3,
+                            &req.description,
+                            None,
+                        )
                         .await
                     {
                         Ok(_) => Ok(format!(

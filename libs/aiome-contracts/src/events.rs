@@ -45,6 +45,17 @@ pub enum CoreEvent {
         event_type: String,
         payload: serde_json::Value,
     },
+    /// Phase 43: cmux Task Dispatcher 連携イベント
+    TaskProgress {
+        job_id: String,
+        conductor_id: String,
+        message: String,
+        percent: Option<u8>,
+    },
+    TaskFailed {
+        job_id: String,
+        error: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

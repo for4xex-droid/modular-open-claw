@@ -521,62 +521,45 @@ pub async fn trigger_agent_chat(
                                 task: String,
                             }
                             if let Ok(req) = serde_json::from_str::<DockerReq>(json_str) {
-                                info!("🐳 [AgentLoop] Delegating task to Docker Shadow Worker...");
-                                let res = docker::delegator::delegate_docker_worker(
-                                    &req.agent_yaml,
-                                    &req.task,
-                                )
-                                .await;
+                                info!("🐳 [AgentLoop] Delegating task to Docker Shadow Worker (Async Dispatch)...");
 
-                                // Stream A-1: Karma Feedback Loop
-                                // 1. Fetch consecutive failures for this agent
-                                let agent_key = req.agent_yaml.clone();
-                                let consecutive = {
-                                    let fails = state.docker_failures.read().await;
-                                    *fails.get(&agent_key).unwrap_or(&0)
-                                };
+                                // Phase 43: Complete Asynchronous Dispatch
+                                let payload = serde_json::json!({
+                                    "agent_id": auth.agent_id.to_string(),
+                                    "agent_yaml_content": req.agent_yaml,
+                                    "task_prompt": req.task,
+                                    "parent_channel_id": channel_id.clone(),
+                                });
 
-                                // 2. Classify error and store karma if needed
-                                let (_weight, k_type, lesson) =
-                                    docker::karma_bridge::KarmaBridge::distill_karma(
-                                        &res,
-                                        consecutive,
-                                    );
+                                let enqueue_result = state
+                                    .job_queue
+                                    .enqueue(
+                                        "shadow_clone".into(),
+                                        &payload.to_string(),
+                                        "docker".into(),
+                                        None,
+                                        None,
+                                        Some(auth.agent_id),
+                                        1,
+                                    )
+                                    .await;
 
-                                // 3. Update failure counter
-                                {
-                                    let mut fails = state.docker_failures.write().await;
-                                    if res.is_success() {
-                                        fails.remove(&agent_key);
-                                    } else {
-                                        let count = fails.entry(agent_key).or_insert(0);
-                                        *count = (*count + 1).min(10); // Cap at 10 to avoid excessive penalties
+                                match enqueue_result {
+                                    Ok(job_id) => {
+                                        let msg = format!("[Docker Delegation Task Enqueued (Job ID: {}). The shadow clone is running asynchronously in background.]", job_id);
+                                        skill_results.push(msg);
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            "🚨 Failed to enqueue docker delegation task: {}",
+                                            e
+                                        );
+                                        skill_results.push(format!(
+                                            "[Docker Delegation Task Failed to Enqueue: {}]",
+                                            e
+                                        ));
                                     }
                                 }
-
-                                if !res.is_success() {
-                                    let _ = state
-                                        .job_queue
-                                        .store_karma(
-                                            "watchtower_chat_job", // Virtual job_id
-                                            "docker_agent",
-                                            &lesson,
-                                            &k_type,
-                                            "v1_genesis",
-                                            None,
-                                            None,
-                                            None,
-                                        )
-                                        .await;
-                                }
-
-                                let display_res = if res.is_success() {
-                                    format!("Success ({}ms):\n{}", res.duration_ms, res.stdout)
-                                } else {
-                                    format!("Failed (Code {}): {}", res.exit_code, res.stderr)
-                                };
-                                skill_results
-                                    .push(format!("[Docker Delegation Result: {}]", display_res));
                             }
                         }
                     }
