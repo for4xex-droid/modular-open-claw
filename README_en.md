@@ -121,6 +121,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 36/36.5: Ultimate Security & Inner Monologue**: Engineered strict isolation profiles (`SandboxProfile`) compatible with gVisor (`runsc`) and Apple Sandbox limits. Introduced `HookManager` to govern autonomous learning loops (`UserLearner`).
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: Implemented **Shadow Clone** capability for delegating complex tasks to Docker-based sub-agents. Secured by 5-layer defense (Semaphore, Commerce, Bastion, Timeout, Purge) and features asynchronous orchestration with real-time SSE progress feedback.
 - 🛑 **Phase 44: Shadow Clone Job Control & Task History**: Implemented Job Cancellation API (`/api/v1/jobs/:id/cancel`) and Task Logs API (`/api/v1/jobs/:id/logs`), enabling users to manually halt running Shadow Clones. Integrates `CancellationToken` for safe async task interruption and deterministic Docker container cleanup.
+- 🛰️ **Phase 2 (ADR-024): Trajectory Persistence & Autonomous Job Decomposition**: Implemented automatic sub-job dispatching based on planner breakdown into the `JobQueue`. Furthermore, execution trajectories are now persisted in SQLite with `job_id` and `tool_name` context, enabling full causal tracing of agent thoughts and actions.
 
 ---
 

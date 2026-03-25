@@ -122,6 +122,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 36/36.5: Ultimate Security & Inner Monologue**: gVisor (`runsc`) や MacOS サンドボックス機構と連携する `SandboxProfile` を実装し、あらゆる動的コード実行をコンテナ/OSレベルで隔離。また、`HookManager` を用いた自律学習タスク (`UserLearner`) のライフサイクル管理を導入。
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: 複雑なタスクを Docker ベースの「分身エージェント」へ委ねる **Shadow Clone** 機能を実装。5層の多層防御（セマフォ、課金、BastionGuard、タイムアウト、浄化）により安全性を担保しつつ、非同期実行と SSE によるリアルタイム進捗通知を実現しました。
 - 🛑 **Phase 44: Shadow Clone Job Control & Task History**: ユーザーが実行中の Shadow Clone（影分身）を任意に停止できるジョブキャンセル API (`/api/v1/jobs/:id/cancel`) およびリアルタイムログ取得 API (`/api/v1/jobs/:id/logs`) を実装。CancellationToken による安全な非同期タスク中断と、Docker コンテナの確定的クリーンアップを統合。
+- 🛰️ **Phase 2 (ADR-024): 実行軌跡の永続化と自律的ジョブ分解**: プランナーによるタスク分解結果を個別のサブジョブとして `JobQueue` に自動投入する機能を実装。さらに、各ステップの実行軌跡（Trajectory）を `job_id` および `tool_name` 込みで SQLite に永続化し、エージェントの思考と行動の因果関係を追跡可能にしました。
 
 ---
 

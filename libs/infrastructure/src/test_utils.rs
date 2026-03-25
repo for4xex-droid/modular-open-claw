@@ -365,6 +365,18 @@ pub mod mock_job_queue {
         ) -> Result<u32, AiomeError> {
             Ok(1)
         }
+        async fn store_trajectory_step(
+            &self,
+            _: aiome_contracts::trajectory::TrajectoryStep,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_trajectory_steps(
+            &self,
+            _: &str,
+        ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+            Ok(Vec::new())
+        }
     }
 
     #[async_trait]

@@ -38,16 +38,16 @@
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
-| `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
+| `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。**ADR-024 Phase 2** で `job_id` および `tool_name` による詳細な追跡に対応。 | **機能拡張完了** |
 | `trend_sonar` | 外部トレンドの収集（Web/RSS）と LLM による評価・選別。マルチソース集約とインテリジェントな選別を実現。**Phase 24** で `purge_entities` による統合サニタイズへ移行。 | **強化完了** |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。 | **Phase 43 完了** |
+| `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。**ADR-024 Phase 2** でプランに基づくサブジョブ投入機能を統合。 | **Phase 43 完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-26 (Phase 44 / Job Control & Task History)*
+*最終更新: 2026-03-26 (Phase 2 ADR-024 / Trajectory Persistence)*

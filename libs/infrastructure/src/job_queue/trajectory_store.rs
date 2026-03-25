@@ -56,8 +56,11 @@ impl TrajectoryOps for UniversalJobQueue {
         let failure_cat = step.failure_category.map(|c| c.to_string());
         let is_critical = if step.is_critical_failure { 1 } else { 0 };
 
-        let q = format!("INSERT INTO trajectory_steps (job_id, step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9));
+        let step_cat = serde_json::to_string(&step.step_category)
+            .unwrap_or_else(|_| "\"General\"".to_string());
+
+        let q = format!("INSERT INTO trajectory_steps (job_id, step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12));
         sql_exec!(
             &self.pool,
             &q,
@@ -70,7 +73,10 @@ impl TrajectoryOps for UniversalJobQueue {
             &step.timestamp,
             &violations_json,
             is_critical,
-            &failure_cat
+            &failure_cat,
+            &step.reasoning,
+            &step.parent_step_id,
+            &step_cat
         )
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to record trajectory step: {}", e),
@@ -79,7 +85,7 @@ impl TrajectoryOps for UniversalJobQueue {
     }
 
     async fn do_fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
-        let q = format!("SELECT step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category FROM trajectory_steps WHERE job_id = {} ORDER BY step_id ASC", self.pool.ph(0));
+        let q = format!("SELECT step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category FROM trajectory_steps WHERE job_id = {} ORDER BY step_id ASC", self.pool.ph(0));
         let mut steps = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
@@ -97,6 +103,7 @@ impl TrajectoryOps for UniversalJobQueue {
                     let failure_cat_str: Option<String> = row.get("failure_category");
                     steps.push(TrajectoryStep {
                         step_id: row.get::<i64, _>("step_id") as u32,
+                        job_id: Some(job_id.to_string()),
                         action: row.get("action"),
                         tool_name: row.get("tool_name"),
                         input: serde_json::from_str(&input_str).unwrap_or(serde_json::Value::Null),
@@ -107,6 +114,10 @@ impl TrajectoryOps for UniversalJobQueue {
                             .unwrap_or_default(),
                         is_critical_failure: row.get::<i64, _>("is_critical_failure") != 0,
                         failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
+                        reasoning: row.get("reasoning"),
+                        parent_step_id: row.get("parent_step_id"),
+                        step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
+                            .unwrap_or_default(),
                     });
                 }
             }
@@ -125,6 +136,7 @@ impl TrajectoryOps for UniversalJobQueue {
                     let failure_cat_str: Option<String> = row.get("failure_category");
                     steps.push(TrajectoryStep {
                         step_id: row.get::<i32, _>("step_id") as u32,
+                        job_id: Some(job_id.to_string()),
                         action: row.get("action"),
                         tool_name: row.get("tool_name"),
                         input: serde_json::from_str(&input_str).unwrap_or(serde_json::Value::Null),
@@ -135,6 +147,10 @@ impl TrajectoryOps for UniversalJobQueue {
                             .unwrap_or_default(),
                         is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
                         failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
+                        reasoning: row.get("reasoning"),
+                        parent_step_id: row.get("parent_step_id"),
+                        step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
+                            .unwrap_or_default(),
                     });
                 }
             }

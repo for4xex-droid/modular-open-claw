@@ -318,12 +318,18 @@ impl CoreOps for UniversalJobQueue {
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
         let q = format!(
-            "UPDATE jobs SET creative_rating = {0}, updated_at = {1} WHERE id = {2}",
+            "UPDATE jobs SET creative_rating = {0}, updated_at = {1} WHERE id = {2} AND status != 'Pending'",
             self.pool.ph(0),
             self.pool.ph(1),
             self.pool.ph(2)
         );
-        sql_exec!(&self.pool, &q, rating, &now, job_id).map(|_| ())
+        let rows = sql_exec!(&self.pool, &q, rating, &now, job_id)?;
+        if rows == 0 {
+            return Err(AiomeError::Infrastructure {
+                reason: "Atomic Guard: Cannot rate pending job".to_string(),
+            });
+        }
+        Ok(())
     }
 
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError> {
@@ -472,11 +478,28 @@ impl CoreOps for UniversalJobQueue {
     }
 
     async fn do_increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError> {
-        let q = format!(
+        let q1 = format!(
             "UPDATE jobs SET retry_count = retry_count + 1 WHERE id = {}",
             self.pool.ph(0)
         );
-        sql_exec!(&self.pool, &q, job_id).map(|c| c > 0)
+        sql_exec!(&self.pool, &q1, job_id)?;
+
+        let q2 = format!(
+            "SELECT retry_count FROM jobs WHERE id = {}",
+            self.pool.ph(0)
+        );
+        let count: i64 = crate::sql_fetch_one!(&self.pool, (i64,), &q2, job_id).map(|r| r.0)?;
+
+        if count >= 3 {
+            let now = Utc::now().to_rfc3339();
+            let q3 = format!(
+                "UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill: Too many retries', updated_at = {0} WHERE id = {1}",
+                self.pool.ph(0), self.pool.ph(1)
+            );
+            sql_exec!(&self.pool, &q3, &now, job_id)?;
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     async fn do_reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError> {

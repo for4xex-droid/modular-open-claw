@@ -68,10 +68,36 @@ impl std::str::FromStr for FailureCategory {
     }
 }
 
+/// 📂 ステップカテゴリ (ADR-024)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum StepCategory {
+    /// 既存の汎用ステップ
+    General,
+    /// 仮説生成（ADR-023 連携）
+    Hypothesis,
+    /// ツール選択（①連携）
+    ToolSelection,
+    /// 計画策定（③連携）
+    Planning,
+    /// 実行
+    Execution,
+    /// 自己レビュー（ADR-023 連携）
+    Review,
+    /// 最終判断
+    Decision,
+}
+
+impl Default for StepCategory {
+    fn default() -> Self {
+        Self::General
+    }
+}
+
 /// 📉 軌跡（Trajectory）の1ステップ
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrajectoryStep {
     pub step_id: u32,
+    pub job_id: Option<String>,
     pub action: String,
     pub tool_name: Option<String>,
     pub input: serde_json::Value,
@@ -80,6 +106,14 @@ pub struct TrajectoryStep {
     pub constraint_violations: Vec<ConstraintViolation>,
     pub is_critical_failure: bool,
     pub failure_category: Option<FailureCategory>,
+
+    // --- ADR-024 拡張フィールド ---
+    /// 「なぜこの行動を選んだか」の推論理由
+    pub reasoning: Option<String>,
+    /// 因果関係の親ステップ ID
+    pub parent_step_id: Option<String>,
+    /// ステップの種別カテゴリ
+    pub step_category: StepCategory,
 }
 
 /// ⛓️ 制約違反の証拠

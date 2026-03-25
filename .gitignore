@@ -10,6 +10,7 @@
 
 # Local data & temporary results
 /workspace/
+/libs/infrastructure/workspace/artifacts/
 /resources/bgm/
 *.db
 *.db-journal

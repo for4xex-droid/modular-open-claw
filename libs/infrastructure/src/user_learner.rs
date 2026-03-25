@@ -14,19 +14,37 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
+use serde::{Deserialize, Serialize};
+
+/// ユーザーの構造化プロファイル
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UserProfile {
+    pub name: String,
+    pub preferences: Vec<String>,
+    pub aesthetic_style: Option<String>,
+    pub interaction_style: Option<String>,
+    pub traits: std::collections::HashMap<String, String>,
+}
+
 /// ユーザー行動パターンの学習エンジン
 #[derive(Debug)]
 pub struct UserLearner {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
+    pub profile: std::sync::RwLock<UserProfile>,
 }
 
 impl UserLearner {
     /// 新しいインスタンスを生成する
-    pub fn new(provider: Arc<dyn LlmProvider + Send + Sync>, semaphore: Arc<Semaphore>) -> Self {
+    pub fn new(
+        provider: Arc<dyn LlmProvider + Send + Sync>,
+        semaphore: Arc<Semaphore>,
+        profile: UserProfile,
+    ) -> Self {
         Self {
             provider,
             semaphore,
+            profile: std::sync::RwLock::new(profile),
         }
     }
 
@@ -139,10 +157,9 @@ mod tests {
     async fn test_user_learner_implements_agent_hook() {
         let provider = Arc::new(MockLlm);
         let semaphore = Arc::new(Semaphore::new(1));
-        let learner = UserLearner::new(provider, semaphore);
+        let learner = UserLearner::new(provider, semaphore, UserProfile::default());
 
-        // This will fail to compile because AgentHook is not implemented yet.
-        // To make it a "failing runtime test" for TDD, we use a trait object.
+        // AgentHook を実装していることを確認
         let hook: Box<dyn AgentHook> = Box::new(learner);
 
         let request = LlmRequest::default();

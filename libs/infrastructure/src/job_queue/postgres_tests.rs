@@ -5,14 +5,14 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::traits::{JobQueue};
-use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore};
-use crate::soul_store::UniversalSoulStore;
 use crate::artifact_store::UniversalArtifactStore;
 use crate::job_queue::UniversalJobQueue;
+use crate::soul_store::UniversalSoulStore;
+use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore};
+use aiome_core::traits::JobQueue;
+use soul::model::AgentSoul;
 use std::env;
 use std::sync::Arc;
-use soul::model::AgentSoul;
 
 #[tokio::test]
 async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
@@ -34,7 +34,9 @@ async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     assert!(jq.get_pool().is_postgres(), "Should be a Postgres pool");
 
     // Simple CRUD to verify 'jobs' and 'karma_logs' tables (already exist in postgres_init.rs)
-    let job_id = jq.enqueue("Test", "PG Topic", "PG Style", None, None, None, 0).await?;
+    let job_id = jq
+        .enqueue("Test", "PG Topic", "PG Style", None, None, None, 0)
+        .await?;
     let job = jq.fetch_job(&job_id).await?.expect("Job not found in PG");
     assert_eq!(job.topic, "PG Topic");
 
@@ -77,13 +79,15 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
     ];
 
     for table in tables_to_check {
-        let exists: bool = sqlx::query_scalar("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)")
-            .bind(table)
-            .fetch_one(pool)
-            .await?;
-        
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
+        )
+        .bind(table)
+        .fetch_one(pool)
+        .await?;
+
         if !exists {
-             anyhow::bail!("Table '{}' is missing in PostgreSQL. Please implement migration in postgres_init.rs.", table);
+            anyhow::bail!("Table '{}' is missing in PostgreSQL. Please implement migration in postgres_init.rs.", table);
         }
     }
 
@@ -101,15 +105,15 @@ async fn test_postgres_soul_store_crud() -> anyhow::Result<()> {
     let pool = jq.get_pool().clone();
 
     let store = UniversalSoulStore::new(pool);
-    
+
     let mut soul = AgentSoul::new("pg-soul-1".to_string());
     soul.soul_hash = "hash-123".to_string();
-    
+
     store.save_soul(&soul).await?;
-    
+
     let loaded = store.load_soul("pg-soul-1").await?.expect("Soul not found");
     assert_eq!(loaded.soul_hash, "hash-123");
-    
+
     Ok(())
 }
 
@@ -124,24 +128,30 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
     let pool = jq.get_pool().clone();
 
     let store = UniversalArtifactStore::new(pool, std::path::PathBuf::from("/tmp/pg_artifacts"));
-    
+
     let jail = bastion::fs_guard::Jail::new("/tmp/pg_jail").expect("Failed to create jail");
     let req = CreateArtifactRequest {
-         title: "PG Artifact Test".to_string(),
-         category: aiome_contracts::traits::ArtifactCategory::Report,
-         files: vec![("test.txt".to_string(), vec![1, 2, 3], "text/plain".to_string())],
-         tags: vec!["postgres".to_string()],
-         created_by: "test-user".to_string(),
-         text_content: Some("PostgreSQL artifact test content".to_string()),
-         karma_refs: vec![],
-         job_ref: None,
-         parent_refs: vec![],
+        title: "PG Artifact Test".to_string(),
+        category: aiome_contracts::traits::ArtifactCategory::Report,
+        files: vec![(
+            "test.txt".to_string(),
+            vec![1, 2, 3],
+            "text/plain".to_string(),
+        )],
+        tags: vec!["postgres".to_string()],
+        created_by: "test-user".to_string(),
+        text_content: Some("PostgreSQL artifact test content".to_string()),
+        karma_refs: vec![],
+        job_ref: None,
+        parent_refs: vec![],
     };
-    
+
     let id = ArtifactStore::save_artifact(&store, req, &jail).await?;
-    let loaded = ArtifactStore::fetch_artifact(&store, &id).await?.expect("Artifact not found");
+    let loaded = ArtifactStore::fetch_artifact(&store, &id)
+        .await?
+        .expect("Artifact not found");
     assert_eq!(loaded.title, "PG Artifact Test");
-    
+
     Ok(())
 }
 
@@ -154,9 +164,9 @@ async fn test_postgres_gig_engine_placeholder() -> anyhow::Result<()> {
     let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
     let pool = jq.get_pool().clone();
 
-    // NOTE: This will fail to compile initially once we rename the struct, 
+    // NOTE: This will fail to compile initially once we rename the struct,
     // but for now it's RED because the table might be missing or logic not universal.
     // let _engine = crate::gig_engine::UniversalGigEngine::new(pool, jq.into());
-    
+
     Ok(())
 }

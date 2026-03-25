@@ -1422,6 +1422,88 @@
         ]
       }
     },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "POST /api/v1/jobs/:id/cancel",
+        "operationId": "cancel_job_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/logs": {
+      "get": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "GET /api/v1/jobs/:id/logs",
+        "operationId": "get_job_logs_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status and logs",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "tags": [

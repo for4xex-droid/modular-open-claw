@@ -462,6 +462,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 job_queue.clone(),
                 std::time::Duration::from_millis(100),
                 None,
+                None,
+                None,
             ),
         )),
     };

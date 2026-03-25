@@ -312,7 +312,7 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
 
     /// ジョブを失敗としてマーク
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
-    
+
     /// ジョブをキャンセル（中止）としてマーク
     async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
 
@@ -627,6 +627,18 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
         &self,
         agent_id: Option<uuid::Uuid>,
     ) -> Result<u32, AiomeError>;
+
+    // --- Phase 13: Autonomous Agentic Base ---
+    /// 実行軌跡（Trajectory）のステップを保存する
+    async fn store_trajectory_step(
+        &self,
+        step: crate::trajectory::TrajectoryStep,
+    ) -> Result<(), AiomeError>;
+    /// 指定されたジョブに関連する実行軌跡を取得する
+    async fn fetch_trajectory_steps(
+        &self,
+        job_id: &str,
+    ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
 }
 
 /// Soul Storage Trait
@@ -834,4 +846,29 @@ pub trait AgentAct: Send + Sync {
         input: Self::Input,
         jail: &bastion::fs_guard::Jail,
     ) -> Result<Self::Output, AiomeError>;
+}
+
+/// 自律的ツール発見エンジン (Phase 13: Autonomous Tool Discovery)
+///
+/// 実行時に利用可能なスキルや API を動的に探索し、タスクの実行に最適なツールを提案する。
+#[async_trait]
+pub trait ToolDiscoveryEngine: Send + Sync {
+    /// 利用可能なツールのメタデータを取得する
+    async fn discover_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError>;
+    /// 指示に基づいて最適なツールのセットを提案する
+    async fn suggest_tools(&self, instruction: &str) -> Result<Vec<String>, AiomeError>;
+}
+
+/// 戦略的計画エンジン (Phase 13: Strategic Planning)
+///
+/// 抽象的な Goal を具体的な TrajectoryStep のリスト（ツリー）に分解し、
+/// エージェントの長期的な行動計画を策定する。
+#[async_trait]
+pub trait StrategicPlanner: Send + Sync {
+    /// Goal を実行可能なステップに分解する
+    async fn plan_goal(
+        &self,
+        goal: &str,
+        context: serde_json::Value,
+    ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
 }

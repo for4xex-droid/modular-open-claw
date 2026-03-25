@@ -45,6 +45,11 @@ pub mod taxonomy;
 pub mod trajectory_store;
 pub mod watchtower;
 
+#[cfg(test)]
+mod postgres_tests;
+#[cfg(test)]
+mod tests;
+
 pub use self::core_ops::CoreOps;
 pub use self::evaluation::EvaluationOps;
 pub use self::evolution::EvolutionOps;
@@ -582,6 +587,26 @@ impl JobQueue for UniversalJobQueue {
         agent_id: Option<Uuid>,
     ) -> Result<u32, AiomeError> {
         self.do_increment_security_request_count(agent_id).await
+    }
+
+    async fn store_trajectory_step(
+        &self,
+        step: aiome_contracts::trajectory::TrajectoryStep,
+    ) -> Result<(), AiomeError> {
+        let job_id = step
+            .job_id
+            .clone()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Missing job_id in TrajectoryStep".to_string(),
+            })?;
+        self.do_record_step(&job_id, step).await
+    }
+
+    async fn fetch_trajectory_steps(
+        &self,
+        job_id: &str,
+    ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+        self.do_fetch_trajectory(job_id).await
     }
 }
 

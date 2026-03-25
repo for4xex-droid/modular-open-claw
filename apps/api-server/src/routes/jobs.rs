@@ -2,14 +2,14 @@
  * Aiome - Job Management API Handlers
  */
 
+use crate::error::AppError;
+use crate::AppState;
+use aiome_core::traits::JobQueue;
 use axum::{
     extract::{Path, State},
     response::Json,
 };
 use serde_json::{json, Value};
-use crate::AppState;
-use crate::error::AppError;
-use aiome_core::traits::JobQueue;
 
 /// POST /api/v1/jobs/:id/cancel
 #[utoipa::path(
@@ -32,9 +32,12 @@ pub async fn cancel_job_handler(
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    // Component implements Deref, so we can use it directly. 
+    // Component implements Deref, so we can use it directly.
     // It will panic if not initialized, but that's standard for critical components in this repo.
-    state.task_dispatcher.cancel_job(&job_id).await
+    state
+        .task_dispatcher
+        .cancel_job(&job_id)
+        .await
         .map_err(AppError::from)?;
 
     Ok(Json(json!({"success": true})))
@@ -61,20 +64,22 @@ pub async fn get_job_logs_handler(
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let job = state.job_queue.fetch_job(&job_id).await
+    let job = state
+        .job_queue
+        .fetch_job(&job_id)
+        .await
         .map_err(AppError::from)?;
 
     match job {
-        Some(job) => {
-            Ok(Json(json!({
-                "job_id": job.id,
-                "status": job.status,
-                "logs": job.execution_log,
-                "error": job.error_message,
-            })))
-        },
+        Some(job) => Ok(Json(json!({
+            "job_id": job.id,
+            "status": job.status,
+            "logs": job.execution_log,
+            "error": job.error_message,
+        }))),
         None => Err(aiome_contracts::error::AiomeError::ArtifactNotFound {
             path: format!("job:{}", job_id),
-        }.into()),
+        }
+        .into()),
     }
 }

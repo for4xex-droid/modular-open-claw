@@ -17,6 +17,8 @@ use tracing::{error, info};
 pub mod actions_importer;
 /// `cleanroom` モジュール
 pub mod cleanroom;
+/// `discovery` モジュール
+pub mod discovery;
 /// `forge` モジュール
 pub mod forge;
 /// `importer` モジュール

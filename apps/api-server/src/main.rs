@@ -49,13 +49,13 @@ use utoipa::OpenApi;
 mod api;
 #[cfg(test)]
 mod api_integration_tests;
-#[cfg(test)]
-mod job_management_tests;
 mod app_state;
 mod auth;
 mod autonomous_demo;
 mod docker;
 mod error;
+#[cfg(test)]
+mod job_management_tests;
 mod logging;
 mod mcp;
 mod plugin_loader;
@@ -490,6 +490,8 @@ async fn main() -> anyhow::Result<()> {
         job_queue.clone(),
         std::time::Duration::from_millis(100),
         Some(event_sender.clone()),
+        None,
+        None,
     );
     // Register DockerConductor
     let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(

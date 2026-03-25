@@ -4320,6 +4320,7 @@ dependencies = [
  "bastion-core",
  "chrono",
  "contracts",
+ "dotenvy",
  "ed25519-dalek",
  "extism",
  "extism-convert",

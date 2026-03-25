@@ -202,6 +202,9 @@ pub async fn execute_wasm_skill(
         constraint_violations: vec![],
         is_critical_failure: false,
         failure_category: None,
+        reasoning: None,
+        parent_step_id: None,
+        step_category: aiome_core::trajectory::StepCategory::Execution,
     };
 
     let result_str = match unverified.verify(&state.wasm_skill_manager).await {

@@ -8,10 +8,13 @@
 use aiome_contracts::traits::{Job, JobQueue, JobStatus};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
+use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info};
+
+pub mod planner;
 
 /// Task orchestration event. Provides observability (like cmux read-screen).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -65,7 +68,11 @@ pub struct TaskDispatcher {
     event_tx: broadcast::Sender<TaskEvent>,
     poll_interval: Duration,
     core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
-    active_jobs: Arc<tokio::sync::RwLock<std::collections::HashMap<String, tokio_util::sync::CancellationToken>>>,
+    active_jobs: Arc<
+        tokio::sync::RwLock<std::collections::HashMap<String, tokio_util::sync::CancellationToken>>,
+    >,
+    tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
+    planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
 }
 
 impl TaskDispatcher {
@@ -74,6 +81,8 @@ impl TaskDispatcher {
         job_queue: Arc<dyn JobQueue>,
         poll_interval: Duration,
         core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+        tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
+        planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -119,6 +128,8 @@ impl TaskDispatcher {
             poll_interval,
             core_event_tx,
             active_jobs: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            tool_discovery,
+            planner,
         }
     }
 
@@ -139,7 +150,7 @@ impl TaskDispatcher {
     /// Cancel a running job
     pub async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
         info!("🛑 Attempting to cancel job: {}", job_id);
-        
+
         // 1. Mark as cancelled in DB first to prevent re-pickup if it fails later
         self.job_queue.cancel_job(job_id).await?;
 
@@ -147,16 +158,16 @@ impl TaskDispatcher {
         let mut active = self.active_jobs.write().await;
         if let Some(token) = active.remove(job_id) {
             token.cancel();
-            
+
             // 3. Trigger conductor-level cleanup
-            // We need to find which conductor was running it. 
+            // We need to find which conductor was running it.
             // For now, we notify ALL conductors to cancel it if they have it.
             for conductor in &self.conductors {
                 let _ = conductor.cancel(job_id).await;
             }
             Ok(())
         } else {
-            // Not running locally, but maybe Pending? 
+            // Not running locally, but maybe Pending?
             // In that case, the DB mark was enough.
             Ok(())
         }
@@ -175,10 +186,24 @@ impl TaskDispatcher {
 
             let categories_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
 
-            // Try to dequeue a job
             match self.job_queue.dequeue(&categories_refs).await {
                 Ok(Some(job)) => {
                     info!("📥 Dequeued job: {} (category: {})", job.id, job.category);
+
+                    // --- Phase 13: Strategic Planning ---
+                    if job.category == "Goal" {
+                        if let Some(planner) = &self.planner {
+                            info!(
+                                "🎯 Goal detected for job {}. Starting Strategic Planning...",
+                                job.id
+                            );
+                            if let Err(e) = self.process_goal_job(job.clone()).await {
+                                error!("❌ Planning failed for job {}: {:?}", job.id, e);
+                                let _ = self.job_queue.fail_job(&job.id, &e.to_string()).await;
+                            }
+                            continue; // Skip normal conduction for Goal
+                        }
+                    }
 
                     // Find a suitable conductor
                     if let Some(conductor) = self
@@ -210,7 +235,7 @@ impl TaskDispatcher {
                         // Create cancellation token for this job
                         let cancellation_token = tokio_util::sync::CancellationToken::new();
                         let job_token = cancellation_token.clone();
-                        
+
                         {
                             let mut active = self.active_jobs.write().await;
                             active.insert(job_id.clone(), cancellation_token);
@@ -252,7 +277,7 @@ impl TaskDispatcher {
                                     }
                                 }
                             }
-                            
+
                             // Cleanup active job entry
                             let mut active = active_jobs_clone.write().await;
                             active.remove(&job_id);
@@ -279,6 +304,73 @@ impl TaskDispatcher {
 
             tokio::time::sleep(self.poll_interval).await;
         }
+    }
+
+    async fn process_goal_job(&self, job: Job) -> Result<(), AiomeError> {
+        let planner = self
+            .planner
+            .as_ref()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "StrategicPlanner is not configured".to_string(),
+            })?;
+
+        // 1. Plan the goal
+        let context = json!({
+            "job_id": job.id,
+            "topic": job.topic,
+        });
+
+        // Use topic or karma_directives as the instruction
+        let instruction = if job.topic.is_empty() {
+            job.karma_directives.as_deref().unwrap_or("No instruction")
+        } else {
+            &job.topic
+        };
+
+        let steps: Vec<aiome_contracts::trajectory::TrajectoryStep> =
+            planner.plan_goal(instruction, context).await?;
+
+        info!("📋 Goal {} decomposed into {} steps.", job.id, steps.len());
+
+        // 2. Store steps and Enqueue sub-jobs
+        for mut step in steps {
+            step.job_id = Some(job.id.clone());
+            self.job_queue.store_trajectory_step(step.clone()).await?;
+
+            // Enqueue sub-job derived from the step
+            info!("➕ Enqueueing sub-job: {} for goal {}", step.action, job.id);
+
+            let directives = if step.input.is_null() {
+                None
+            } else {
+                Some(step.input.to_string())
+            };
+
+            self.job_queue
+                .enqueue(
+                    "Task", // Execute as a normal task
+                    &step.action,
+                    "auto",
+                    directives.as_deref(),
+                    None, // Inherit permissions or use default
+                    None, // agent_id
+                    0,    // priority
+                )
+                .await?;
+        }
+
+        // 3. Complete the Goal job
+        self.job_queue
+            .complete_job(&job.id, Some("Planned and Decomposed"))
+            .await?;
+
+        // Notify via event
+        let _ = self.event_tx.send(TaskEvent::Completed {
+            job_id: job.id,
+            result: "Goal planned successfully".to_string(),
+        });
+
+        Ok(())
     }
 }
 
@@ -662,7 +754,19 @@ mod tests {
             &self,
             _: Option<uuid::Uuid>,
         ) -> Result<u32, AiomeError> {
-            unimplemented!()
+            Ok(0)
+        }
+        async fn store_trajectory_step(
+            &self,
+            _: aiome_contracts::trajectory::TrajectoryStep,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_trajectory_steps(
+            &self,
+            _: &str,
+        ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+            Ok(Vec::new())
         }
     }
 
@@ -704,7 +808,8 @@ mod tests {
             completed: std::sync::Mutex::new(false),
         });
 
-        let mut dispatcher = TaskDispatcher::new(queue.clone(), Duration::from_millis(10), None);
+        let mut dispatcher =
+            TaskDispatcher::new(queue.clone(), Duration::from_millis(10), None, None, None);
         dispatcher.register_conductor(Arc::new(TestConductor));
 
         let mut rx = dispatcher.subscribe_events();

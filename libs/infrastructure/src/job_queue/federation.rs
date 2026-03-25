@@ -166,7 +166,27 @@ impl FederationOps for UniversalJobQueue {
     async fn do_fetch_federated_metrics(
         &self,
     ) -> Result<aiome_core::contracts::FederatedMetrics, AiomeError> {
-        Ok(FederatedMetrics::default())
+        use crate::job_queue::evolution::EvolutionOps;
+        let stats = self.do_get_agent_stats().await?;
+
+        let q_jobs = "SELECT COUNT(*) FROM jobs WHERE status = 'Completed'";
+        let total_completed: i64 =
+            crate::sql_fetch_one!(&self.pool, (i64,), q_jobs).map(|r| r.0)?;
+
+        let q_karma = "SELECT COUNT(*) FROM karma_logs";
+        let total_karma: i64 = crate::sql_fetch_one!(&self.pool, (i64,), q_karma).map(|r| r.0)?;
+
+        Ok(FederatedMetrics {
+            stats,
+            job_metrics: aiome_core::contracts::JobMetrics {
+                total_completed: total_completed as i64,
+                ..Default::default()
+            },
+            karma_metrics: aiome_core::contracts::KarmaMetrics {
+                total_count: total_karma as i64,
+                ..Default::default()
+            },
+        })
     }
 
     async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {

@@ -1,6 +1,12 @@
 ## [Unreleased] - 2026-03-26
 
 ### Added
+- **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [完了]**
+    - **Trajectory Expansion**: `TrajectoryStep` に `job_id` および `tool_name` フィールドを追加。タスクの実行軌跡と特定のジョブ・ツールの紐付けを可能に。
+    - **JobQueue Persistence**: `JobQueue` トレイトに `store_trajectory_step` および `fetch_trajectory_steps` を追加。SQLite 実装 (`UniversalJobQueue`) で永続化をサポート。
+    - **Sub-job Dispatching**: `TaskDispatcher` において、`Goal` ジョブを受け取った際にプランナーが生成したステップを個別のサブジョブとして `enqueue` するロジックを実装。
+    - **Mock Infrastructure Recovery**: 変更に伴う `test_utils`, `soul_mutator`, `dream_state`, `immune_system` 内の MockJobQueue 実装を全て最新化。
+
 - **Phase 44: Shadow Clone Job Control & Task History [完了]**
     - **Job Cancellation API**: `POST /api/v1/jobs/:id/cancel` を実装。実行中の影分身タスクを `CancellationToken` を介して安全に停止可能。
     - **Task History & Logs API**: `GET /api/v1/jobs/:id/logs` を実装。ジョブの実行ステータス、エラーメッセージ、および詳細な実行ログの取得に対応。

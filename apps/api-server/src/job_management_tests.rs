@@ -9,7 +9,7 @@ use serde_json::json;
 #[tokio::test]
 async fn test_job_cancel_non_existent() {
     let (server, _state, _tmp) = create_test_server().await;
-    
+
     // G-24: POST /api/v1/jobs/:id/cancel
     let response = server
         .post("/api/v1/jobs/non-existent-id/cancel")
@@ -24,7 +24,7 @@ async fn test_job_cancel_non_existent() {
 #[tokio::test]
 async fn test_job_logs_non_existent() {
     let (server, _state, _tmp) = create_test_server().await;
-    
+
     // G-25: GET /api/v1/jobs/:id/logs
     let response = server
         .get("/api/v1/jobs/non-existent-id/logs")

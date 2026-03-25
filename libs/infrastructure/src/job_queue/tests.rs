@@ -58,7 +58,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         let jq = UniversalJobQueue::new(&pg_url)
             .await
             .expect("Failed to create test job queue (Postgres)");
-        
+
         // Return dummy TempDir to satisfy the signature
         return (jq, tmp_dir);
     }
@@ -99,7 +99,7 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
         .await
         .unwrap()
         .expect("Should dequeue job");
-    assert_eq!(job.status, JobStatus::Processing);
+    assert_eq!(job.status, JobStatus::InProgress);
     assert!(job.started_at.is_some());
 
     jq.complete_job(&job.id, Some("[\"artifact.txt\"]"))
@@ -497,7 +497,7 @@ impl EmbeddingProvider for MockEmbedProvider {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_ood_detection() {
     let (mut jq, _tmp) = create_test_queue().await;
-    jq = jq.with_embeddings(Arc::new(MockEmbedProvider));
+    jq.set_embedding_provider(Arc::new(MockEmbedProvider)).await;
 
     let job_id = jq
         .enqueue("Task", "Real Topic", "Style", None, None, None, 0)
@@ -774,14 +774,14 @@ async fn test_sqlite_settings_crud() {
     let (jq, _tmp) = create_test_queue().await;
 
     // Test set and get
-    jq.set_setting("llm_model", "test-model-1", "llm", false)
+    jq.update_setting("llm_model", "test-model-1", "llm", false)
         .await
         .expect("Failed to set");
     let val = jq.get_setting_value("llm_model").await.unwrap();
     assert_eq!(val, Some("test-model-1".to_string()));
 
     // Test overwrite
-    jq.set_setting("llm_model", "test-model-2", "llm", false)
+    jq.update_setting("llm_model", "test-model-2", "llm", false)
         .await
         .expect("Failed to overwrite");
     let val2 = jq.get_setting_value("llm_model").await.unwrap();
@@ -799,7 +799,7 @@ async fn test_sqlite_settings_secret_masking() {
     let (jq, _tmp) = create_test_queue().await;
 
     // Set a secret
-    jq.set_setting("telegram_token", "super-secret-123", "system", true)
+    jq.update_setting("telegram_token", "super-secret-123", "system", true)
         .await
         .expect("Failed to set secret");
 
@@ -822,7 +822,7 @@ async fn test_sqlite_settings_secret_masking() {
 #[tokio::test]
 async fn test_sqlite_trajectory_store() {
     use aiome_core::trajectory::{
-        AgentDiagnosis, FailureCategory, TrajectoryStep, TrajectoryStore,
+        AgentDiagnosis, FailureCategory, StepCategory, TrajectoryStep, TrajectoryStore,
     };
     let (jq, _tmp) = create_test_queue().await;
 
@@ -843,6 +843,7 @@ async fn test_sqlite_trajectory_store() {
     // 1. Record Step
     let step = TrajectoryStep {
         step_id: 1,
+        job_id: Some(job_id.clone()),
         action: "test_action".into(),
         tool_name: Some("test_tool".into()),
         input: serde_json::json!({ "arg": 1 }),
@@ -851,6 +852,9 @@ async fn test_sqlite_trajectory_store() {
         constraint_violations: vec![],
         is_critical_failure: false,
         failure_category: None,
+        reasoning: Some("Strategic planning for expansion".into()),
+        parent_step_id: Some("step-0".into()),
+        step_category: StepCategory::Planning,
     };
 
     jq.record_step(&job_id, step.clone())
@@ -866,6 +870,12 @@ async fn test_sqlite_trajectory_store() {
     assert_eq!(trajectory.len(), 1);
     assert_eq!(trajectory[0].action, "test_action");
     assert_eq!(trajectory[0].tool_name, Some("test_tool".into()));
+    assert_eq!(
+        trajectory[0].reasoning,
+        Some("Strategic planning for expansion".into())
+    );
+    assert_eq!(trajectory[0].parent_step_id, Some("step-0".into()));
+    assert_eq!(trajectory[0].step_category, StepCategory::Planning);
 
     // 3. Store Diagnosis
     let diagnosis = AgentDiagnosis {
@@ -912,11 +922,12 @@ async fn test_sqlite_expression_tts_status() {
         created_at: Utc::now().to_rfc3339(),
     };
 
-    ExpressionOps::store_expression(&jq, &expr)
+    jq.do_store_expression(&expr)
         .await
         .expect("Failed to store expression");
 
-    let fetched = ExpressionOps::fetch_expressions(&jq, 10)
+    let fetched = jq
+        .do_fetch_expressions(10)
         .await
         .expect("Failed to fetch expressions");
     assert_eq!(fetched.len(), 1);
@@ -928,11 +939,12 @@ async fn test_sqlite_expression_tts_status() {
     updated.tts_status = TtsStatus::Ready;
     updated.audio_path = Some("path/to/audio.wav".into());
 
-    ExpressionOps::store_expression(&jq, &updated)
+    jq.do_store_expression(&updated)
         .await
         .expect("Failed to update expression");
 
-    let refetched = ExpressionOps::fetch_expressions(&jq, 10)
+    let refetched = jq
+        .do_fetch_expressions(10)
         .await
         .expect("Failed to fetch expressions");
     assert_eq!(refetched.len(), 1);
