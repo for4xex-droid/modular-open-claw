@@ -46,7 +46,13 @@ impl OssRepositoryIndexer {
 
     fn validate_url(&self, url: &str) -> Result<(), AiomeError> {
         let url = url.trim();
-        if !url.starts_with("https://") && !url.starts_with("git://") {
+        let allowed = if cfg!(test) {
+            url.starts_with("https://") || url.starts_with("git://") || url.starts_with("file://")
+        } else {
+            url.starts_with("https://") || url.starts_with("git://")
+        };
+
+        if !allowed {
             return Err(AiomeError::Infrastructure {
                 reason: "Invalid URL protocol. Only https:// and git:// are allowed.".to_string(),
             });

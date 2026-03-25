@@ -207,6 +207,8 @@ impl McpEndpoint {
     }
 }
 
+const MAX_MCP_PROCESSES: usize = 10;
+
 pub struct McpProcessManager {
     clients: Arc<Mutex<HashMap<String, Arc<McpEndpoint>>>>,
 }
@@ -232,7 +234,6 @@ impl McpProcessManager {
         let mut clients = self.clients.lock().await;
 
         // Evict oldest if we are at MAX_MCP_PROCESSES limit
-        const MAX_MCP_PROCESSES: usize = 10; // Increased for more tools
         if clients.len() >= MAX_MCP_PROCESSES && !clients.contains_key(&id) {
             let oldest_id = clients
                 .iter()
@@ -304,14 +305,18 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_max_processes() {
         let manager = McpProcessManager::new();
-        for i in 0..6 {
+        // Spawn more than the limit to trigger eviction
+        for i in 0..(MAX_MCP_PROCESSES + 1) {
             manager
                 .spawn_stdio_server(format!("client{}", i), "echo", vec![])
                 .await
                 .unwrap();
         }
         let clients = manager.active_client_ids().await;
-        assert!(clients.len() <= 5, "Should not exceed MAX_MCP_PROCESSES");
+        assert!(
+            clients.len() <= MAX_MCP_PROCESSES,
+            "Should not exceed MAX_MCP_PROCESSES"
+        );
     }
 
     #[tokio::test]
