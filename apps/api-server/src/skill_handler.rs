@@ -192,6 +192,7 @@ pub async fn execute_wasm_skill(
     };
 
     let mut step = aiome_core::trajectory::TrajectoryStep {
+        job_id: job_id.map(|s| s.to_string()),
         step_id,
         action: "execute_wasm_skill".into(),
         tool_name: Some(skill_name.into()),
