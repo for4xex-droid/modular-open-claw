@@ -119,6 +119,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: リリースビルドにおけるテスト用のモック実装（`MockAuthManager`等）の混入を条件付きコンパイル (`#[cfg]`) で完全に排除。さらに、本番環境で `API_SERVER_SECRET` や `ALLOWED_ORIGINS` 等の必須セキュリティ変数が未設定の場合、安全でないフォールバック値を使用せず即座にプロセスを終了 (`exit(1)`) させる Fail-Fast 機構を導入し、セキュリティリスクを最小化しました。
 - 🛡️ **Phase 31: 信頼性向上 & LLM 構造化出力 (Reliability & Structured Output)**: データベースアクセスにおける 10 箇所以上の `.unwrap()` 呼び出しを安全なエラーハンドリングへ置換し、PostgreSQL 移行等を見据えた堅牢性を強化。さらに、Ollama などの LLM プロバイダーにおいて JSON 形式出力を強制する `format: "json"` パラメータを正式サポートしました。
 - 🏗️ **Phase 32: DeerFlow Architectural Pattern Integration**: ByteDance の DeerFlow 2.0 から、Middleware Chain (3層思考), Progressive Loading (mtime検知キャッシュ), Virtual Path (論理パスマッピング), Fact Extraction (事実分類抽出) の 4 パターンを完全統合。Rust の高度な型システムによって、自律性と安全性を一段上の次元へ引き上げました。
+- 🛡️ **Phase 36/36.5: Ultimate Security Hardening & Inner Monologue**: gVisor (`runsc`) や MacOS サンドボックス機構と連携する `SandboxProfile` を実装し、あらゆる動的コード実行をコンテナ/OSレベルで隔離。また、`HookManager` を用いた自律学習タスク (`UserLearner`) のライフサイクル管理、およびエージェントの「内なる声」を記録する `WhisperMiddleware` を追加しました。
 
 ---
 

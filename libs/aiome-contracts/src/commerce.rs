@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use crate::error::AiomeError;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -68,6 +75,33 @@ pub trait CommerceEngine: Send + Sync {
         event_type: &str,
         payload: &serde_json::Value,
     ) -> Result<(), AiomeError>;
+
+    /// サブスクリプションを作成する (P0-1)
+    async fn create_subscription(
+        &self,
+        agent_id: Uuid,
+        plan_id: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// サブスクリプションをキャンセルする (P0-1)
+    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), AiomeError>;
+
+    /// サブスクリプションのステータスを取得する (P0-1)
+    async fn get_subscription_status(&self, agent_id: Uuid) -> Result<SubscriptionStatus, AiomeError>;
+}
+
+/// サブスクリプションのステータス
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionStatus {
+    /// 有効
+    Active,
+    /// キャンセル済み（期間終了まで有効）
+    Cancelled,
+    /// 支払い待ち・遅延
+    PastDue,
+    /// 未登録
+    None,
 }
 
 /// 経済コンテキスト

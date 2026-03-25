@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use crate::{
     AppState, QuotaState, Router, auth_middleware, get, handle_llm_complete, handle_llm_embed,
     handle_llm_stream, post,

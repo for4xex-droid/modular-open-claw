@@ -9,6 +9,7 @@ pub mod asset_manifest;
 pub mod lip_sync;
 pub mod loader;
 pub mod physics;
+pub mod proportions;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

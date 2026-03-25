@@ -5,13 +5,17 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::llm_provider::LlmProvider;
+use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse};
+use aiome_contracts::security::AgentHook;
+use aiome_contracts::error::AiomeError;
+use async_trait::async_trait;
 use std::fs;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
 /// ユーザー行動パターンの学習エンジン
+#[derive(Debug)]
 pub struct UserLearner {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
@@ -76,5 +80,71 @@ impl UserLearner {
             }
         }
         Ok(false)
+    }
+}
+
+#[async_trait]
+impl AgentHook for UserLearner {
+    async fn on_pre_execute(&self, _request: &LlmRequest) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn on_post_execute(
+        &self,
+        request: &LlmRequest,
+        response: &LlmResponse,
+    ) -> Result<(), AiomeError> {
+        // 会話の断片（リクエストメッセージの最後とレスポンス）から学習を試みる
+        let mut summary = String::new();
+        if let Some(m) = request.messages.last() {
+            summary.push_str(&format!("User: {}\n", m.content));
+        }
+        summary.push_str(&format!("Assistant: {}\n", response.content));
+
+        let _ = self.learn_from_session(&summary).await;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aiome_contracts::security::AgentHook;
+    use aiome_contracts::llm::{LlmRequest, LlmResponse, StopReason, LlmProvider};
+    use aiome_contracts::error::AiomeError;
+
+    #[derive(Debug)]
+    struct MockLlm;
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+            Ok(LlmResponse {
+                content: "NO_UPDATE".to_string(), // Test default
+                stop_reason: StopReason::EndTurn,
+            })
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+        fn name(&self) -> &str { "mock" }
+    }
+
+    #[tokio::test]
+    async fn test_user_learner_implements_agent_hook() {
+        let provider = Arc::new(MockLlm);
+        let semaphore = Arc::new(Semaphore::new(1));
+        let learner = UserLearner::new(provider, semaphore);
+        
+        // This will fail to compile because AgentHook is not implemented yet.
+        // To make it a "failing runtime test" for TDD, we use a trait object.
+        let hook: Box<dyn AgentHook> = Box::new(learner);
+        
+        let request = LlmRequest::default();
+        let response = LlmResponse {
+            content: "User likes coffee.".to_string(),
+            stop_reason: StopReason::EndTurn,
+        };
+        
+        // RED: on_post_execute should trigger session learning
+        let result = hook.on_post_execute(&request, &response).await;
+        assert!(result.is_ok());
     }
 }

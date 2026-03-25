@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use serde::{Deserialize, Serialize};
 
 /// AiomeのLLM出力コンテキスト。出力先に応じて適用するヒューマナイザールールを切り替えるために使用。

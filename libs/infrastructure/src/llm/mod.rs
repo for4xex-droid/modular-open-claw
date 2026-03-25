@@ -22,3 +22,5 @@ pub mod humanizer_filter;
 pub mod humanizer_rules;
 /// `writing_context` モジュール
 pub mod writing_context;
+/// `whisper_middleware` モジュール
+pub mod whisper_middleware;

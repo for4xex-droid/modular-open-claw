@@ -28,6 +28,7 @@ graph TD
         key-proxy[key-proxy]
         management-console[management-console]
         watchtower[watchtower]
+        aiome-migrate[aiome-migrate]
     end
 
     subgraph Libs
@@ -69,6 +70,8 @@ graph TD
     watchtower --> infrastructure
     watchtower --> shared
     soul --> aiome-contracts
+    aiome-migrate --> aiome-core
+    aiome-migrate --> infrastructure
 ```
 
 ## 4. Directory Map (Crates)
@@ -90,12 +93,13 @@ graph TD
 | `watchtower` | `apps/watchtower` | (Core Module) |
 | `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
 | `soul` | `libs/soul` | (Core Module) |
+| `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
 ```text
-API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, TTS_PROVIDER, TTS_ENDPOINT, XTTS_ENDPOINT, XTTS_SPEAKER, STRIPE_TEST_MODE, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, VAULT_MASTER_KEY, AIOME_DB_PATH, SAMSARA_HUB_REST, SAMSARA_HUB_WS, EKYC_RETURN_URL, QUARANTINE_DIR, FORGE_DOCKER_IMAGE
+API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, TTS_PROVIDER, TTS_ENDPOINT, XTTS_ENDPOINT, XTTS_SPEAKER, STRIPE_TEST_MODE, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, VAULT_MASTER_KEY, DATABASE_URL, SAMSARA_HUB_REST, SAMSARA_HUB_WS, EKYC_RETURN_URL, QUARANTINE_DIR, FORGE_DOCKER_IMAGE
 ```
 
 ---
-*Last Auto-Generated: 2026-03-24 UTC*
+*Last Auto-Generated: 2026-03-25 UTC*

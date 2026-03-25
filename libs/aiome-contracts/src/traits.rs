@@ -245,7 +245,7 @@ pub struct SnsMetricsRecord {
 
 /// ジョブキュー操作 (JobQueue)
 #[async_trait]
-pub trait JobQueue: Send + Sync {
+pub trait JobQueue: Send + Sync + std::fmt::Debug {
     /// 新しいジョブをキューに追加
     #[allow(clippy::too_many_arguments)]
     async fn enqueue(
@@ -479,6 +479,12 @@ pub trait JobQueue: Send + Sync {
     // --- Soul Storage ---
     async fn store_soul_fragment(&self, fragment_yaml: &str, version_hash: &str) -> Result<(), AiomeError>;
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
+
+    // --- Phase 36: Security Hardening ---
+    /// セキュリティ監視用のリクエスト回数を取得
+    async fn get_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
+    /// セキュリティ監視用のリクエスト回数をインクリメント
+    async fn increment_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
 }
 
 /// Soul Storage Trait
@@ -648,25 +654,8 @@ pub trait Publisher: Send + Sync {
     fn platform_name(&self) -> &str;
 }
 
-/// [Phase 10-B] LLM プロバイダー・トレイト (LlmProvider)
-#[async_trait]
-pub trait LlmProvider: Send + Sync + std::fmt::Debug {
-    /// テキスト生成リクエスト
-    async fn complete(
-        &self,
-        prompt: &str,
-        system: Option<&str>,
-    ) -> Result<crate::llm::LlmResponse, AiomeError>;
+// LlmProvider is now defined in aiome_contracts::llm (ADR-021)
 
-    /// [Phase 10-C] 接続テスト
-    async fn test_connection(&self) -> Result<(), AiomeError>;
-
-    /// プロバイダー名を取得
-    fn name(&self) -> &str;
-
-    /// コーパスから回答を生成する（RAG）
-    async fn complete_with_cache(&self, request: crate::llm::LlmRequest) -> Result<crate::llm::LlmResponse, AiomeError>;
-}
 
 /// 憲法バリデーター (ConstitutionalValidator)
 #[async_trait]

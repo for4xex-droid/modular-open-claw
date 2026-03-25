@@ -84,6 +84,7 @@ mod tests {
         fn name(&self) -> &str { "mock" }
     }
 
+    #[derive(Debug)]
     struct MockJobQueue {
         karma_lessons: Vec<String>,
         stats: AgentStats,
@@ -165,6 +166,9 @@ mod tests {
         async fn fetch_expressions(&self, _: i64) -> Result<Vec<Expression>, AiomeError> { Ok(vec![]) }
         async fn store_soul_fragment(&self, _: &str, _: &str) -> Result<(), AiomeError> { Ok(()) }
         async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> { Ok(None) }
+
+        async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> { Ok(0) }
+        async fn increment_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> { Ok(1) }
     }
 
     #[async_trait]

@@ -15,7 +15,9 @@ use serde_json;
 use std::pin::Pin;
 use tokio_stream::Stream;
 
-pub use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmResponse, StopReason};
+pub use aiome_contracts::llm::{
+    EmbeddingProvider, LlmMessage, LlmProvider, LlmRequest, LlmResponse, StopReason,
+};
 
 // --- 実装 ---
 
@@ -604,6 +606,7 @@ pub struct GeminiProvider {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    base_url: Option<String>,
 }
 
 impl GeminiProvider {
@@ -613,30 +616,83 @@ impl GeminiProvider {
             client,
             api_key,
             model,
+            base_url: None,
+        }
+    }
+
+    /// テスト用にベースURLを指定して初期化します
+    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+        Self {
+            client,
+            api_key,
+            model,
+            base_url: Some(base_url),
         }
     }
 }
 
 #[async_trait]
 impl LlmProvider for GeminiProvider {
-    async fn complete(
+    async fn complete_with_cache(
         &self,
-        prompt: &str,
-        system: Option<&str>,
+        request: LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
+        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+            "{}/v1beta/models/{}:generateContent",
+            base.trim_end_matches('/'),
             self.model
         );
 
-        let payload = serde_json::json!({
-            "contents": [{
-                "parts": [{ "text": prompt }]
-            }],
-            "system_instruction": system.map(|s| {
-                serde_json::json!({ "parts": [{ "text": s }] })
-            })
+        let mut contents = Vec::new();
+        let mut system_instruction = None;
+
+        for m in request.messages {
+            match m.role.as_str() {
+                "system" => {
+                    system_instruction = Some(serde_json::json!({
+                        "parts": [{ "text": m.content }]
+                    }));
+                }
+                "assistant" | "model" => {
+                    contents.push(serde_json::json!({
+                        "role": "model",
+                        "parts": [{ "text": m.content }]
+                    }));
+                }
+                _ => {
+                    // Default to user role
+                    contents.push(serde_json::json!({
+                        "role": "user",
+                        "parts": [{ "text": m.content }]
+                    }));
+                }
+            }
+        }
+
+        let mut payload = serde_json::json!({
+            "contents": contents
         });
+
+        if let Some(sys) = system_instruction {
+            payload["system_instruction"] = sys;
+        }
+
+        // Add generation config if needed
+        let mut config = serde_json::json!({});
+        if let Some(temp) = request.temperature {
+            config["temperature"] = serde_json::json!(temp);
+        }
+        if let Some(max_tokens) = request.max_tokens {
+            config["maxOutputTokens"] = serde_json::json!(max_tokens);
+        }
+        if let Some(stop) = request.stop_sequences {
+            config["stopSequences"] = serde_json::json!(stop);
+        }
+
+        if !config.as_object().unwrap().is_empty() {
+            payload["generationConfig"] = config;
+        }
 
         let resp = self
             .client
@@ -681,13 +737,42 @@ impl LlmProvider for GeminiProvider {
         })
     }
 
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(LlmMessage {
+                role: "system".into(),
+                content: sys.into(),
+                cache: false,
+            });
+        }
+        messages.push(LlmMessage {
+            role: "user".into(),
+            content: prompt.into(),
+            cache: false,
+        });
+
+        let request = LlmRequest {
+            messages,
+            ..Default::default()
+        };
+        self.complete_with_cache(request).await
+    }
+
     async fn stream_complete(
         &self,
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
+        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?alt=sse",
+            "{}/v1beta/models/{}:streamGenerateContent?alt=sse",
+            base.trim_end_matches('/'),
             self.model
         );
 
@@ -764,6 +849,7 @@ impl LlmProvider for GeminiProvider {
     }
 }
 
+
 #[async_trait]
 impl EmbeddingProvider for GeminiProvider {
     async fn embed(&self, text: &str, _is_query: bool) -> Result<Vec<f32>, AiomeError> {
@@ -773,8 +859,10 @@ impl EmbeddingProvider for GeminiProvider {
             "gemini-embedding-001".to_string() // Fallback to standard embedding model
         };
 
+        let base = self.base_url.as_deref().unwrap_or("https://generativelanguage.googleapis.com");
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:embedContent",
+            "{}/v1beta/models/{}:embedContent",
+            base.trim_end_matches('/'),
             embedding_model
         );
 
@@ -836,6 +924,7 @@ pub struct OpenAiProvider {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    base_url: Option<String>,
 }
 
 impl OpenAiProvider {
@@ -845,30 +934,55 @@ impl OpenAiProvider {
             client,
             api_key,
             model,
+            base_url: None,
+        }
+    }
+
+    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+        Self {
+            client,
+            api_key,
+            model,
+            base_url: Some(base_url),
         }
     }
 }
 
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
-    async fn complete(
+    async fn complete_with_cache(
         &self,
-        prompt: &str,
-        system: Option<&str>,
+        request: LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
-        let url = "https://api.openai.com/v1/chat/completions";
+        let base = self.base_url.as_deref().unwrap_or("https://api.openai.com");
+        let url = format!("{}/v1/chat/completions", base.trim_end_matches('/'));
         let mut messages = Vec::new();
 
-        if let Some(sys) = system {
-            messages.push(serde_json::json!({ "role": "system", "content": sys }));
+        for m in request.messages {
+            // OpenAI handles "system" role in the same messages array
+            messages.push(serde_json::json!({
+                "role": m.role,
+                "content": m.content
+            }));
         }
-        messages.push(serde_json::json!({ "role": "user", "content": prompt }));
 
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "model": self.model,
             "messages": messages,
-            "temperature": 0.7
+            "temperature": request.temperature.unwrap_or(0.7)
         });
+
+        if let Some(max_tokens) = request.max_tokens {
+            payload["max_tokens"] = serde_json::json!(max_tokens);
+        }
+        if let Some(stop) = request.stop_sequences {
+            payload["stop"] = serde_json::json!(stop);
+        }
+        if let Some(format) = request.format {
+            if format == "json" {
+                payload["response_format"] = serde_json::json!({ "type": "json_object" });
+            }
+        }
 
         let resp = self
             .client
@@ -913,12 +1027,40 @@ impl LlmProvider for OpenAiProvider {
         })
     }
 
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(LlmMessage {
+                role: "system".into(),
+                content: sys.into(),
+                cache: false,
+            });
+        }
+        messages.push(LlmMessage {
+            role: "user".into(),
+            content: prompt.into(),
+            cache: false,
+        });
+
+        let request = LlmRequest {
+            messages,
+            ..Default::default()
+        };
+        self.complete_with_cache(request).await
+    }
+
     async fn stream_complete(
         &self,
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-        let url = "https://api.openai.com/v1/chat/completions";
+        let base = self.base_url.as_deref().unwrap_or("https://api.openai.com");
+        let url = format!("{}/v1/chat/completions", base.trim_end_matches('/'));
         let mut messages = Vec::new();
 
         if let Some(sys) = system {
@@ -1004,6 +1146,7 @@ pub struct ClaudeProvider {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    base_url: Option<String>,
 }
 
 impl ClaudeProvider {
@@ -1013,33 +1156,76 @@ impl ClaudeProvider {
             client,
             api_key,
             model,
+            base_url: None,
+        }
+    }
+
+    pub fn with_base_url(client: reqwest::Client, api_key: String, model: String, base_url: String) -> Self {
+        Self {
+            client,
+            api_key,
+            model,
+            base_url: Some(base_url),
         }
     }
 }
 
 #[async_trait]
 impl LlmProvider for ClaudeProvider {
-    async fn complete(
+    async fn complete_with_cache(
         &self,
-        prompt: &str,
-        system: Option<&str>,
+        request: LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
-        let url = "https://api.anthropic.com/v1/messages";
+        let base = self.base_url.as_deref().unwrap_or("https://api.anthropic.com");
+        let url = format!("{}/v1/messages", base.trim_end_matches('/'));
+        let mut messages = Vec::new();
+        let mut system = Vec::new();
 
-        let payload = serde_json::json!({
+        for m in request.messages {
+            let mut content_block = serde_json::json!({
+                "type": "text",
+                "text": m.content
+            });
+            if m.cache {
+                content_block["cache_control"] = serde_json::json!({ "type": "ephemeral" });
+            }
+
+            match m.role.as_str() {
+                "system" => {
+                    system.push(content_block);
+                }
+                _ => {
+                    messages.push(serde_json::json!({
+                        "role": m.role,
+                        "content": [content_block]
+                    }));
+                }
+            }
+        }
+
+        let mut payload = serde_json::json!({
             "model": self.model,
-            "max_tokens": 4096,
-            "system": system,
-            "messages": [
-                { "role": "user", "content": prompt }
-            ]
+            "max_tokens": request.max_tokens.unwrap_or(4096),
+            "messages": messages
         });
+
+        if !system.is_empty() {
+            payload["system"] = serde_json::json!(system);
+        }
+
+        if let Some(temp) = request.temperature {
+            payload["temperature"] = serde_json::json!(temp);
+        }
+        if let Some(stop) = request.stop_sequences {
+            payload["stop_sequences"] = serde_json::json!(stop);
+        }
 
         let resp = self
             .client
             .post(url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
+            .header("anthropic-beta", "prompt-caching-2024-07-31")
             .json(&payload)
             .send()
             .await
@@ -1079,12 +1265,40 @@ impl LlmProvider for ClaudeProvider {
         })
     }
 
+    async fn complete(
+        &self,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmResponse, AiomeError> {
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(LlmMessage {
+                role: "system".into(),
+                content: sys.into(),
+                cache: false,
+            });
+        }
+        messages.push(LlmMessage {
+            role: "user".into(),
+            content: prompt.into(),
+            cache: false,
+        });
+
+        let request = LlmRequest {
+            messages,
+            ..Default::default()
+        };
+        self.complete_with_cache(request).await
+    }
+
     async fn stream_complete(
         &self,
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
-        let url = "https://api.anthropic.com/v1/messages";
+        let base = self.base_url.as_deref().unwrap_or("https://api.anthropic.com");
+        let url = format!("{}/v1/messages", base.trim_end_matches('/'));
 
         let payload = serde_json::json!({
             "model": self.model,
@@ -1729,4 +1943,53 @@ mod tests {
             result.err()
         );
     }
+
+    #[tokio::test]
+    async fn test_gemini_complete_with_cache_sends_full_history() {
+        let mock_server = MockServer::start().await;
+        
+        // We expect Gemini API to receive multiple messages in "contents"
+        Mock::given(method("POST"))
+            .and(path(format!("/v1beta/models/test-model:generateContent")))
+            .and(wiremock::matchers::body_json(serde_json::json!({
+                "contents": [
+                    { "role": "user", "parts": [{ "text": "Hello" }] },
+                    { "role": "model", "parts": [{ "text": "Hi there!" }] },
+                    { "role": "user", "parts": [{ "text": "Who are you?" }] }
+                ],
+                "system_instruction": { "parts": [{ "text": "You are a helpful assistant." }] }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "candidates": [{
+                    "content": { "parts": [{ "text": "I am Aiome." }] },
+                    "finishReason": "STOP"
+                }]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = crate::http::get_http_client().clone();
+        let provider = GeminiProvider::with_base_url(client, "test-key".into(), "test-model".into(), mock_server.uri());
+
+        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        let request = LlmRequest {
+            messages: vec![
+                LlmMessage { role: "system".into(), content: "You are a helpful assistant.".into(), cache: false },
+                LlmMessage { role: "user".into(), content: "Hello".into(), cache: false },
+                LlmMessage { role: "assistant".into(), content: "Hi there!".into(), cache: false },
+                LlmMessage { role: "user".into(), content: "Who are you?".into(), cache: false },
+            ],
+            ..Default::default()
+        };
+
+        let result = provider.complete_with_cache(request).await;
+        
+        // This will currently FAIL because GeminiProvider uses default complete_with_cache
+        // which only extracts the last user message and calls complete("Who are you?", Some("...")).
+        // The mock expects the full array in "contents".
+        assert!(result.is_ok(), "Request failed: {:?}", result.err());
+        assert_eq!(result.unwrap().content, "I am Aiome.");
+    }
 }
+
+

@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-24T23:41:06.553275
+> Generated at: 2026-03-25T20:01:29.370433
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -104,6 +104,8 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/llm/embed`
 - `/api/v1/llm/stream`
 
+### `aiome-migrate`
+
 ## 📚 LIBS (Core Domain & Infrastructure)
 ### `core`
 **Domain Structs**
@@ -121,11 +123,11 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 **Traits (Interfaces)**
 - LipSyncProvider
 **Domain Structs**
-- AssetManifest, AvatarParameters, EmotionToParameterMapper, Inochi2dLoader, InxModel, LipSyncFrame, PhysicsConfig, PhysicsSimulator
+- AssetManifest, AvatarDimensions, AvatarParameters, EmotionToParameterMapper, Inochi2dLoader, InxModel, LipSyncFrame, PhysicsConfig, PhysicsSimulator, ProportionsChecker
 
 ### `aiome-contracts`
 **Traits (Interfaces)**
-- AgentAct, AiomeLogger, AiomePlugin, ArtifactStore, CapabilityProvider, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, GigEngine, JobQueue, LlmProvider, MediaProcessor, PromptExtractor, Publisher, RuntimeJail, SoulStore, TrajectoryStore, TrendSource, VaultBackend, VoiceKeyVault
+- AgentAct, AgentHook, AiomeLogger, AiomePlugin, ArtifactStore, CapabilityProvider, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, GigEngine, JobQueue, LlmProvider, MediaProcessor, PromptExtractor, Publisher, RuntimeJail, SoulStore, TrajectoryStore, TrendSource, VaultBackend, VoiceKeyVault
 **Domain Structs**
 - AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, ContextEntry, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, GigBid, GigDeliverable, GigIntent, ImmuneRule, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, LlmJobResponse, LlmMessage, LlmRequest, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, SnsMetricsRecord, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TreasureFeedback, TreasureItem, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, UpdateJobStatusRequest, VerificationResult, WorkflowRequest, WorkflowResponse
 
@@ -137,7 +139,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `infrastructure`
 **Traits (Interfaces)**
-- AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EkycSessionStore, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SettingsOps, SoulStoreOps, SwarmOps, TrajectoryOps, TrendAdapter, WatchtowerOps
+- AuthManager, ChannelBridge, CoreOps, CrdtOps, DbInitializer, EkycEngine, EkycSessionStore, EvaluationOps, EvolutionOps, ExpressionOps, FederationOps, GuardrailOps, KarmaOps, QuarantineStore, SecurityOps, SettingsOps, SoulStoreOps, SwarmOps, TrajectoryOps, TrendAdapter, WatchtowerOps
 **Domain Structs**
-- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AffiliateAdapter, AgentRateLimiter, AgentRxDiagnostics, AiomeLogClient, AssetManifest, AudioHasher, BackgroundLlmProvider, BastionGuard, CapabilityRegistry, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStatus, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, CostBypassSwitch, CostCircuitBreaker, CostStatus, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, EkycSession, ExternalTrendSonar, FallbackRouter, HeartbeatWakeupService, HumanizerFilter, HumanizerRule, IntentFirewall, IntentGenerator, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MlockedVec, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, MockJobQueue, MockLlm, MockQuarantineStore, MockSoulStore, MockXPublisher, Oracle, PostgresInitializer, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, RevenueSplitter, RssCollector, SecurityConfig, SemanticCache, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SoulVersion, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, UniversalArtifactStore, UniversalEkycSessionStore, UniversalGigEngine, UniversalJobQueue, UniversalQuarantineStore, UniversalSoulStore, UniversalVaultBackend, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WebSearchAdapter, WorkspaceManager
+- AbyssVoiceVault, ActionsImporter, AdaptiveImmuneSystem, AffiliateAdapter, AgentRateLimiter, AgentRxDiagnostics, AiomeLogClient, AssetManifest, AsyncAuditLogger, AudioHasher, AuditEntry, BackgroundLlmProvider, BastionGuard, BehaviorMonitor, CapabilityRegistry, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStatus, Cleanroom, ConceptManager, ConstraintChecker, ContextEngine, CoreDomainAdapter, CostBypassSwitch, CostCircuitBreaker, CostStatus, DefaultConstitutionalValidator, DefaultSamsaraEngine, DiscordBridge, DreamState, DynamicLlmProvider, EkycSession, ExternalTrendSonar, FallbackRouter, HeartbeatWakeupService, HookManager, HumanizerFilter, HumanizerRule, IntentFirewall, IntentGenerator, JwtAuthManager, KarmaTaxonomy, L1Metadata, L2Metadata, L3Metadata, MemoryCrystallizer, MlockedVec, MockAuthManager, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, MockJobQueue, MockLlm, MockQuarantineStore, MockSoulStore, MockXPublisher, Oracle, PostgresInitializer, ProjectKnowledgeIndexer, ProxyLlmProvider, PublishPipeline, RegistryManager, RevenueSplitter, RssCollector, SecurityConfig, SemanticCache, SkillArena, SkillForge, SkillImporter, SkillManifest, SkillMetadata, SkillPerformance, SloConfig, SloEngine, SoulMutator, SoulSnapshot, SoulVersion, StripeCommerceEngine, StripeEkycEngine, TelegramBridge, TremendousGiftEngine, UniversalArtifactStore, UniversalEkycSessionStore, UniversalGigEngine, UniversalJobQueue, UniversalQuarantineStore, UniversalSoulStore, UniversalVaultBackend, UnverifiedSkill, UserLearner, VerifiedSkill, VoiceCoreDrm, WasmSkillManager, WebSearchAdapter, WhisperMiddleware, WorkspaceManager
 

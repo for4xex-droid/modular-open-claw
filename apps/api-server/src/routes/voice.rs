@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use crate::{app_state::AppState, auth::Authenticated, error::AppError};
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use infrastructure::registry::{AssetManifest, AssetType};

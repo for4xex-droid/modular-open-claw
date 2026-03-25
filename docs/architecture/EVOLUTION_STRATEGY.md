@@ -17,12 +17,12 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
     - **役割**: ユーザー応答、Agent Consoleでの対話、高度な論理推論。
     - **特徴**: Gemini 2.5 Flash を使用し、高速かつ低コストなレスポンスを提供。
 2.  **Personality Layer (Ollama / Background)**:
-    - **役割**: 自律タスク（Soul Mutator、脅威分析、免疫システム）、動的LoRAモデルチューニングの自律的な反映。
-    - **特徴**: ローカルの Ollama (qwen3.5:9b) を使用し、無料でバックグラウンド実行します。`lora_adapter_path` 等の変更を検知するとAI自身が自律的にカスタムModelfileを作って再ビルドする能力を持ちます。
+    - **役割**: 自律タスク（Soul Mutator、脅威分析、免疫システム）、動的LoRAモデルチューニングの自律的な反映、および `HookManager` 経由の `UserLearner` による振り返り学習。
+    - **特徴**: ローカルの Ollama (qwen3.5:9b) を使用し、無料でバックグラウンド実行します。`lora_adapter_path` 等の変更を検知するとAI自身が自律的にカスタムModelfileを作って再ビルドする能力を持ちます。毎セッション実行後には `AgentHook::on_post_execute` を通じて自律的な反省ログ（WhisperMiddleware）を蓄積します。
 
-3.  **Physical Expression Layer (TTS / ComfyUI)**:
+3.  **Physical Expression Layer (TTS / ComfyUI / Avatar)**:
     - **役割**: 内面的な感情変遷（Karma）を現実世界に出力するための物理インターフェース。
-    - **特徴**: `ExpressionEngine` が OpenAI の TTS 等と連動し、自律的に感情こもった音声をローカルファイル（MP3）へ書き出し、人間との直接的な共鳴を図ります。
+    - **特徴**: `ExpressionEngine` が OpenAI の TTS 等と連動し、自律的に感情こもった音声を生成。さらに、生成された感情パラメータは Inochi2D/VRM などアバター表現用の `avatar_params` へ直ちへ同期されます。
 
 ---
 
@@ -46,5 +46,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-19
+最終更新: 2026-03-25
 Aiome Development Team

@@ -328,7 +328,12 @@ impl WasmSkillManager {
                     let handle = plugin.memory_handle(cmd_ptr).ok_or_else(|| extism::Error::msg("Invalid memory handle"))?;
                     let cmd_str: String = plugin.memory_str(handle).map_err(|e: extism::Error| e)?.to_string();
                     let guard = BastionGuard::new(host_exec_permissions.clone());
-                    match guard.safe_exec(&cmd_str) {
+                    let runtime = tokio::runtime::Handle::current();
+                    let res = runtime.block_on(async {
+                        guard.safe_exec(&cmd_str).await
+                    });
+
+                    match res {
                         Ok(stdout_str) => {
                             let stdout_bytes = stdout_str.as_bytes();
                             let mem = plugin.memory_alloc(stdout_bytes.len() as u64)?;

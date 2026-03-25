@@ -1,6 +1,19 @@
-## [Unreleased] - 2026-03-24
+## [Unreleased] - 2026-03-25
 
 ### Added
+- **License Compliance Hardening**
+    - `NOTICE` file (Apache 2.0 §4(d) compliance)
+    - `THIRD_PARTY_NOTICES.md` with attribution for AutoResearchClaw, MetaClaw, Inochi2D, and Trojan's Whisper research
+    - `scripts/license_check.py` — automated 11-point license compliance test suite
+    - Copyright headers added to 49 `.rs` files that were missing them
+    - `license` field added to 3 `Cargo.toml` files (`aiome-migrate`, `avatar-engine`, `soul`)
+- **Phase 36.5: gVisor Sandbox & CSAM Pipeline [完了]**
+    - **SandboxProfile API**: Added `SandboxProfile` enum and updated `BastionGuard::safe_exec_with_profile` for fine-grained isolation control (WasmRun, WasmBuild, PythonForge).
+    - **CSAM Binary Verification**: Integrated `ProportionsChecker` directly into the Avatar upload binary parsing to prevent illegal asset distribution.
+    - **AgentHook Lifecycle**: `UserLearner` integrated via `HookManager`, allowing the agent to self-reflect and learn via `on_post_execute` after each session.
+    - **Stripe Commerce Update**: Extended `CommerceEngine` with `SubscriptionStatus`, `create_subscription`, `cancel_subscription` in preparation for Phase 37.
+    - **Inner Monologue**: Developed `WhisperMiddleware` within `SoulPipeline` (L2.5) to capture introspective reflections based on outcome valence.
+    - **Deep Scan Validation**: Completed AST Matrix structural validation across infrastructure to ensure absolute compliance with Project NURTURE requirements.
 - **Phase 35: PostgreSQL 移行 & 最終検証 [完了]**
     - **Dual DB Testing Infrastructure**: Ensured all 86 integration tests and CI scripts run equivalently on both SQLite and PostgreSQL backends via `TEST_POSTGRES_URL` configuration (`docker-compose.test.yml`).
     - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing.

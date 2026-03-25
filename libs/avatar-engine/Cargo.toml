@@ -2,6 +2,7 @@
 name = "avatar-engine"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 authors = ["motivationstudio LLC <motivationstudio.llc@gmail.com>"]
 description = "Aiome physical manifestation and 2D asset routing engine (Inochi2D & VRM compatible)"
 

@@ -14,6 +14,7 @@ use bastion::fs_guard::Jail;
 use std::path::{Path, PathBuf};
 
 /// 許可されたディレクトリ内でのみファイル操作を許可するサンドボックス
+#[derive(Debug)]
 pub struct PathSandbox {
     jail: Jail,
     virtual_mappings: Vec<(String, PathBuf)>,

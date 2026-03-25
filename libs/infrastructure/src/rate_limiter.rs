@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use governor::clock::DefaultClock;
 use governor::{
     state::keyed::DashMapStateStore, state::InMemoryState, Quota, RateLimiter as GovRateLimiter,

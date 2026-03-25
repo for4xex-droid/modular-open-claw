@@ -42,6 +42,7 @@ pub mod taxonomy;
 pub mod crdt;
 pub mod migrations;
 pub mod postgres_init;
+pub mod security;
 
 use crate::db::DatabasePool;
 use crate::job_queue::migrations::DbInitializer;
@@ -57,6 +58,7 @@ pub use self::expression::ExpressionOps;
 pub use self::settings::SettingsOps;
 pub use self::soul_store::SoulStoreOps;
 pub use self::watchtower::WatchtowerOps;
+pub use self::security::SecurityOps;
 
 // Re-export cosine_similarity if needed by karma.rs
 pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
@@ -369,6 +371,14 @@ impl JobQueue for UniversalJobQueue {
     }
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> {
         self.do_fetch_latest_soul_fragment().await
+    }
+
+    async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
+        self.do_get_security_request_count(agent_id).await
+    }
+
+    async fn increment_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
+        self.do_increment_security_request_count(agent_id).await
     }
 }
 

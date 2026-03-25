@@ -62,7 +62,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
-- **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution is strictly walled off from wildcard host access.
+- **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.
 - **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
@@ -135,4 +135,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-24 (Phase 31 / 信頼性向上 & TDD 完遂)*
+*最終更新: 2026-03-25 (Phase 36.5 / Ultimate Security Hardening & AgentHook)*

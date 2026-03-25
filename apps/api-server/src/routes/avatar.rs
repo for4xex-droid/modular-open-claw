@@ -13,7 +13,8 @@ use axum::{
 };
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use shared::csam::{ImageHasher, LegalStatus, ProportionsChecker};
+use avatar_engine::proportions::{AvatarDimensions, ProportionsChecker};
+use shared::csam::{ImageHasher, LegalStatus};
 use tracing::{error, info, warn};
 
 #[derive(Deserialize, Serialize, utoipa::ToSchema)]
@@ -97,11 +98,17 @@ pub async fn upload_avatar_handler(
         "CLEAN".to_string()
     };
 
-    // 3. 頭身チェック (5.5頭身)
-    let legal_status = if let (Some(hh), Some(th)) = (req.head_height, req.total_height) {
-        ProportionsChecker::verify_proportions(hh, th)
-    } else {
-        LegalStatus::Pending
+    // 3. 頭身チェック (5.5頭身) - ユーザー申告ではなくバイナリから直接抽出 (G-22)
+    let dimensions = ProportionsChecker::extract_from_binary(&content_bytes);
+    let legal_status = match dimensions {
+        Ok(dim) => {
+            match ProportionsChecker::validate(&dim) {
+                Ok(_) => LegalStatus::General,
+                Err(avatar_engine::proportions::ProportionError::TooYoung(_)) => LegalStatus::Restricted,
+                Err(_) => LegalStatus::Pending,
+            }
+        }
+        Err(_) => LegalStatus::Pending,
     };
 
     let overall_safe = identity_verified && !is_csam_hit && legal_status != LegalStatus::Restricted;

@@ -407,3 +407,51 @@ graph TD
 
 ---
 *最終更新日: 2026-03-24* (Phase 35 / Dual DB Integration)
+
+### 🛡️ Phase 36: Security Hardening & AgentHook
+- **変更内容**: 
+    - `security.rs`: `BastionGuard::safe_exec_with_profile` に `SandboxProfile` ベースの粒度制御を追加。
+    - `security/hook_manager.rs`: `HookManager` による `AgentHook` の一元管理。`on_pre_execute` / `on_post_execute` トリガー。
+    - `security/behavior_monitor.rs`: `BehaviorMonitor` — LLM 呼び出し前後のリクエスト数制限とスロットリング。
+    - `user_learner.rs`: `AgentHook` トレイト実装。`on_post_execute` から `learn_from_session` を自律起動。
+    - `skills/cleanroom.rs`: 多層サンドボックス（imports 検疫 → AI コードレビュー → gVisor 実行）の強化。
+- **波及効果**: 
+    - `DynamicLlmProvider` が `HookManager` を保持し、全 LLM 呼び出しに pre/post フックが適用される。
+    - `SkillForge` のビルドプロセスで `BastionGuard::safe_exec_with_profile(WasmBuild)` が強制適用。
+    - エージェントが会話を重ねるごとに `USER.md` が自動学習更新される適応サイクルが確立。
+
+```mermaid
+graph TD
+    A[DynamicLlmProvider] -->|pre/post| B[HookManager]
+    B -->|Hook| C[BehaviorMonitor]
+    B -->|Hook| D[UserLearner]
+    D -->|learn_from_session| E[USER.md]
+    F[SkillForge] -->|safe_exec_with_profile| G[BastionGuard]
+    G -->|SandboxProfile::WasmBuild| H[sandbox-exec / runsc]
+```
+
+### 🛡️ Phase 36.5: gVisor Sandbox & CSAM Pipeline
+- **変更内容**: 
+    - `security.rs` (contracts): `SandboxProfile` enum (Default, PythonForge, WasmRun, WasmBuild, ForgeBuild, Strict)。
+    - `security.rs` (infrastructure): `BastionGuard` の async 化、`security_zombie` による 60 秒タイムアウト制御。
+    - `avatar.rs` (api-server): `ProportionsChecker::extract_from_binary` によるバイナリベース CSAM 判定の統合。
+    - `commerce.rs` (contracts): `CommerceEngine` にサブスクリプション管理メソッド追加 (`create_subscription`, `cancel_subscription`, `get_subscription_status`)。`SubscriptionStatus` enum 新設。
+    - `llm/whisper_middleware.rs` (infrastructure): `WhisperMiddleware` — SoulPipeline L2.5 層の新規実装。
+- **波及効果**: 
+    - `MockCommerceEngine` / `StripeCommerceEngine` にサブスクリプション対応が必要（実装済み）。
+    - `core/commerce.rs` が `SubscriptionStatus` を再エクスポート。
+    - `SoulPipeline::new()` への `WhisperMiddleware` 登録は Phase 37a で実施予定。
+
+```mermaid
+graph TD
+    A[SandboxProfile enum] -->|Policy| B[BastionGuard]
+    B -->|60s timeout| C[security_zombie]
+    D[CommerceEngine] -->|Extension| E[create_subscription]
+    D -->|Extension| F[cancel_subscription]
+    D -->|Extension| G[get_subscription_status]
+    H[WhisperMiddleware] -->|L2.5| I[SoulPipeline]
+    J[ProportionsChecker] -->|Binary Analysis| K[avatar upload route]
+```
+
+---
+*最終更新日: 2026-03-25* (Phase 36.5 / Security + Subscription + WhisperMiddleware)

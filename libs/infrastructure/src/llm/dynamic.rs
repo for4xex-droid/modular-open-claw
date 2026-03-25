@@ -37,6 +37,8 @@ pub struct DynamicLlmProvider {
     pub circuit_breaker: Arc<CircuitBreaker>,
     /// slo_engine
     pub slo_engine: Arc<SloEngine>,
+    /// hook_manager
+    pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
 }
 
 #[async_trait]
@@ -46,9 +48,22 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        // --- Day 1: Cost Control ---
         let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
         cost_breaker.enforce().await?;
+
+        // --- Phase 36: Security Hooks ---
+        let request = LlmRequest {
+            messages: vec![aiome_contracts::llm::LlmMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+                cache: false,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: None,
+        };
+        self.hook_manager.trigger_pre_execute(&request).await?;
 
         let (provider_type, model) = self.resolve_config(false).await;
 
@@ -88,7 +103,14 @@ impl LlmProvider for DynamicLlmProvider {
             }
         };
 
-        self.handle_result(result).await
+        let result = self.handle_result(result).await;
+        
+        // --- Phase 36: Post Hooks ---
+        if let Ok(ref response) = result {
+            self.hook_manager.trigger_post_execute(&request, response).await?;
+        }
+        
+        result
     }
 
     async fn stream_complete(
@@ -158,16 +180,58 @@ impl LlmProvider for DynamicLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let mut system = None;
-        let mut prompt = String::new();
-        for m in &request.messages {
-            if m.role == "system" {
-                system = Some(m.content.as_str());
-            } else if m.role == "user" {
-                prompt = m.content.clone();
-            }
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        cost_breaker.enforce().await?;
+
+        // --- Phase 36: Security Hooks ---
+        self.hook_manager.trigger_pre_execute(&request).await?;
+
+        let (provider_type, model) = self.resolve_config(false).await;
+
+        if let Err(e) = self.circuit_breaker.check_state().await {
+            return Err(AiomeError::Infrastructure {
+                reason: e.to_string(),
+            });
         }
-        self.complete(&prompt, system).await
+
+        let result = match provider_type.as_str() {
+            "gemini" => {
+                let api_key = self.get_api_key("llm_api_key", "gemini").await;
+                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            "openai" => {
+                let api_key = self.get_api_key("llm_api_key", "openai").await;
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            "claude" => {
+                let api_key = self.get_api_key("llm_api_key", "claude").await;
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            "lmstudio" => {
+                let host = self
+                    .get_host("lm_studio_host", "http://127.0.0.1:1234")
+                    .await;
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            _ => {
+                let host = self.get_host("ollama_host", &self.fallback_host).await;
+                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+        };
+
+        let result = self.handle_result(result).await;
+
+        // --- Phase 36: Post Hooks ---
+        if let Ok(ref response) = result {
+            self.hook_manager.trigger_post_execute(&request, response).await?;
+        }
+
+        result
     }
 }
 
@@ -304,6 +368,8 @@ pub struct BackgroundLlmProvider {
     pub openai_api_key: Option<secrecy::SecretString>,
     /// Anthropic APIキー（SecretStringで保護）
     pub anthropic_api_key: Option<secrecy::SecretString>,
+    /// hook_manager
+    pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
 }
 
 #[async_trait]
@@ -313,9 +379,22 @@ impl LlmProvider for BackgroundLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        // --- Day 1: Cost Control ---
         let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
         cost_breaker.enforce().await?;
+
+        // --- Phase 36: Security Hooks ---
+        let request = LlmRequest {
+            messages: vec![aiome_contracts::llm::LlmMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+                cache: false,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: None,
+        };
+        self.hook_manager.trigger_pre_execute(&request).await?;
 
         let provider_type = self
             .jq
@@ -337,7 +416,8 @@ impl LlmProvider for BackgroundLlmProvider {
 
         let api_key = self.resolve_bg_api_key().await;
 
-        match provider_type.as_str() {
+        let res = match provider_type.as_str() {
+            // ... (keep existing patterns)
             "gemini" => {
                 let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
                 provider.complete(prompt, system).await
@@ -372,7 +452,13 @@ impl LlmProvider for BackgroundLlmProvider {
                 let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
                 provider.complete(prompt, system).await
             }
+        };
+
+        // --- Phase 36: Post Hooks ---
+        if let Ok(ref response) = res {
+            self.hook_manager.trigger_post_execute(&request, response).await?;
         }
+        res
     }
 
     async fn stream_complete(
@@ -395,16 +481,74 @@ impl LlmProvider for BackgroundLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let mut system = None;
-        let mut prompt = String::new();
-        for m in &request.messages {
-            if m.role == "system" {
-                system = Some(m.content.as_str());
-            } else if m.role == "user" {
-                prompt = m.content.clone();
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        cost_breaker.enforce().await?;
+
+        // --- Phase 36: Security Hooks ---
+        self.hook_manager.trigger_pre_execute(&request).await?;
+
+        let provider_type = self
+            .jq
+            .get_setting_value("bg_llm_provider")
+            .await
+            .ok()
+            .flatten()
+            .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
+            .unwrap_or_else(|| "ollama".to_string());
+
+        let model = self
+            .jq
+            .get_setting_value("bg_llm_model")
+            .await
+            .ok()
+            .flatten()
+            .or_else(|| std::env::var("BG_LLM_MODEL").ok())
+            .unwrap_or_else(|| self.fallback_model.clone());
+
+        let api_key = self.resolve_bg_api_key().await;
+
+        let res = match provider_type.as_str() {
+            "gemini" => {
+                let provider = aiome_core::llm_provider::GeminiProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
             }
+            "openai" => {
+                let provider = aiome_core::llm_provider::OpenAiProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            "claude" => {
+                let provider = aiome_core::llm_provider::ClaudeProvider::new(self.client.clone(), api_key, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            "lmstudio" => {
+                let host = self
+                    .jq
+                    .get_setting_value("lm_studio_host")
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
+                let provider = aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+            _ => {
+                let host = self
+                    .jq
+                    .get_setting_value("ollama_host")
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| self.fallback_host.clone());
+                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
+                provider.complete_with_cache(request.clone()).await
+            }
+        };
+
+        // --- Phase 36: Post Hooks ---
+        if let Ok(ref response) = res {
+            self.hook_manager.trigger_post_execute(&request, response).await?;
         }
-        self.complete(&prompt, system).await
+        res
     }
 }
 

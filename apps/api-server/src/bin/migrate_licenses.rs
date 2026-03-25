@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 // migrate_licenses.rs
 use sqlx::{sqlite::SqlitePoolOptions, Row};
 use std::env;

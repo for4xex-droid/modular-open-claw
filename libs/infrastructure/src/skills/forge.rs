@@ -5,6 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::security::{BastionGuard, SandboxProfile};
+use aiome_core::security::{PermissionManifest, RuntimeJail};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
@@ -56,20 +58,7 @@ serde_json = "1.0"
         Ok(())
     }
 
-    /// macOS Seatbelt (sandbox-exec) 用のプロファイル生成
-    pub(crate) fn generate_seatbelt_profile(&self, temp_dir: &Path) -> String {
-        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        format!(
-            r#"(version 1)
-(allow default)
-(deny file-write* (subpath "{current_dir}"))
-(allow file-write* (subpath "{temp_dir}"))
-(allow file-write* (subpath "/tmp") (subpath "/private/tmp"))
-"#,
-            current_dir = current_dir.to_string_lossy(),
-            temp_dir = temp_dir.to_string_lossy()
-        )
-    }
+    /// 既存の Seatbelt プロファイル生成ロジックは BastionGuard に統合
 
     /// 新しいスキルを生成し、コンパイルする (自己修復ループ付き)
     pub async fn forge_skill(
@@ -128,35 +117,24 @@ serde_json = "1.0"
 
             let abs_workspace =
                 std::fs::canonicalize(&workspace_dir).unwrap_or(workspace_dir.clone());
-            let profile_content = self.generate_seatbelt_profile(&abs_workspace);
-            let profile_path = workspace_dir.join("forge.sb");
-            fs::write(&profile_path, profile_content)?;
-            let abs_profile_path = std::fs::canonicalize(&profile_path).unwrap_or(profile_path);
-            let abs_manifest_path = abs_workspace.join("Cargo.toml");
+            let manifest_path = abs_workspace.join("Cargo.toml");
 
-            let args = vec![
-                "-f".to_string(),
-                abs_profile_path.to_string_lossy().to_string(),
-                "cargo".to_string(),
-                "build".to_string(),
-                "--manifest-path".to_string(),
-                abs_manifest_path.to_string_lossy().to_string(),
-                "--target".to_string(),
-                "wasm32-wasip1".to_string(),
-                "--release".to_string(),
-            ];
+            let guard = BastionGuard::new_internal(PermissionManifest {
+                allow_shell_execution: true,
+                ..Default::default()
+            });
 
-            let output = crate::security_zombie::run_with_timeout_vec(
-                "sandbox-exec",
-                args,
-                std::time::Duration::from_secs(120),
-            )
-            .await;
+            let cmd = format!(
+                "cargo build --manifest-path \"{}\" --target wasm32-wasip1 --release",
+                manifest_path.to_string_lossy()
+            );
 
-            match output {
-                Ok(output) => {
-                    if output.status.success() {
-                        let wasm_file = workspace_dir.join(format!(
+            let res = guard.safe_exec_with_profile(&cmd, SandboxProfile::WasmBuild).await;
+
+            match res {
+                Ok(stdout) => {
+                    info!("✅ [SkillForge] Compilation SUCCESS for {}", skill_name);
+                    let wasm_file = workspace_dir.join(format!(
                             "target/wasm32-wasip1/release/{}.wasm",
                             skill_name.replace('-', "_")
                         ));
@@ -194,32 +172,21 @@ serde_json = "1.0"
 
                         // Discovery D: Success! We keep the workspace for future builds.
                         return Ok(final_path);
-                    } else {
-                        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                        error!(
-                            "❌ [SkillForge] Compilation failed for {}:\n{}",
-                            skill_name, stderr
-                        );
-
-                        if attempt < retry_count {
-                            warn!("🔄 [SkillForge] Compilation failed. Continuing retry loop...");
-                            // In real-time self-healing, the agent would update rust_code here.
-                            // For now, we just loop to fulfill the retry_count logic correctly (Discovery D).
-                            continue;
-                        } else {
-                            return Err(format!(
-                                "Compilation failed after {} attempts. Stderr: {}",
-                                retry_count + 1,
-                                stderr
-                            )
-                            .into());
-                        }
                     }
-                }
                 Err(e) => {
-                    error!("❌ [SkillForge] Command execution error: {}", e);
-                    if attempt >= retry_count {
-                        return Err(format!("Process error: {}", e).into());
+                    let err_str = e.to_string();
+                    error!("❌ [SkillForge] Compilation failed for {}:\n{}", skill_name, err_str);
+
+                    if attempt < retry_count {
+                        warn!("🔄 [SkillForge] Compilation failed. Continuing retry loop...");
+                        continue;
+                    } else {
+                        return Err(format!(
+                            "Compilation failed after {} attempts. Error: {}",
+                            retry_count + 1,
+                            err_str
+                        )
+                        .into());
                     }
                 }
             }

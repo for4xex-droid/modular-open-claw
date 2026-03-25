@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::error::AiomeError;
 use async_trait::async_trait;
@@ -135,6 +142,28 @@ impl CommerceEngine for StripeCommerceEngine {
                 })
             }
         }
+    }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: Uuid,
+        _plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        // P0-1: Future implementation with Stripe Subscriptions
+        Ok("sub_mock_stripe".into())
+    }
+
+    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), AiomeError> {
+        // P0-1: Future implementation
+        Ok(())
+    }
+
+    async fn get_subscription_status(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<aiome_contracts::commerce::SubscriptionStatus, AiomeError> {
+        // P0-1: Future implementation
+        Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
     }
 }
 

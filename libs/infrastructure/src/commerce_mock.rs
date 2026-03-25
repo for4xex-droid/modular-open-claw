@@ -101,6 +101,25 @@ impl CommerceEngine for MockCommerceEngine {
         );
         Ok(())
     }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: Uuid,
+        _plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        Ok(format!("sub_{}", Uuid::new_v4()))
+    }
+
+    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn get_subscription_status(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<aiome_core::commerce::SubscriptionStatus, AiomeError> {
+        Ok(aiome_core::commerce::SubscriptionStatus::Active)
+    }
 }
 
 #[cfg(test)]
@@ -121,8 +140,24 @@ mod tests {
         let result = engine.escrow_release(&escrow_id, agent_id).await;
         assert!(result.is_ok());
 
-        // 3. Refund escrow (Should fail to compile)
+        // 3. Refund escrow
         let refund_result = engine.escrow_refund(&escrow_id).await;
         assert!(refund_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_mock_subscription_lifecycle() {
+        let engine = MockCommerceEngine;
+        let agent_id = Uuid::new_v4();
+        let plan_id = "premium_monthly";
+
+        // RED: This will fail to compile
+        let sub_id = engine.create_subscription(agent_id, plan_id).await.unwrap();
+        assert!(!sub_id.is_empty());
+
+        let status = engine.get_subscription_status(agent_id).await.unwrap();
+        assert_eq!(status, aiome_core::commerce::SubscriptionStatus::Active);
+
+        engine.cancel_subscription(&sub_id).await.unwrap();
     }
 }

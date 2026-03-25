@@ -163,6 +163,19 @@ async fn main() -> anyhow::Result<()> {
 
     let http_client = aiome_core::http::get_http_client().clone();
 
+    let sandbox = Arc::new(shared::sandbox::PathSandbox::new("workspace")
+        .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize PathSandbox: {}", e))?);
+
+    let mut hook_manager = infrastructure::security::hook_manager::HookManager::new();
+    let behavior_monitor = infrastructure::security::behavior_monitor::BehaviorMonitor::new(
+        job_queue.clone(),
+        sandbox.clone(),
+        None, // Global system limit
+        100
+    );
+    hook_manager.add_hook(Arc::new(behavior_monitor));
+    let hook_manager = Arc::new(hook_manager);
+
     let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
         jq: job_queue.clone(),
         client: http_client.clone(),
@@ -173,16 +186,18 @@ async fn main() -> anyhow::Result<()> {
         anthropic_api_key: config.anthropic_api_key.clone(),
         circuit_breaker: circuit_breaker.clone(),
         slo_engine: slo_engine.clone(),
+        hook_manager: hook_manager.clone(),
     });
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
         jq: job_queue.clone(),
         client: http_client.clone(),
-        fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
+        fallback_host: config.ollama_host.clone(),
         gemini_api_key: config.gemini_api_key.clone(),
         openai_api_key: config.openai_api_key.clone(),
         anthropic_api_key: config.anthropic_api_key.clone(),
+        hook_manager: hook_manager.clone(),
     });
 
     let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
