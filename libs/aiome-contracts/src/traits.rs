@@ -177,6 +177,7 @@ pub enum JobStatus {
     InProgress,
     Completed,
     Failed,
+    Cancelled,
     Quarantined,
     Archived,
 }
@@ -188,6 +189,7 @@ impl JobStatus {
             JobStatus::InProgress => "InProgress",
             JobStatus::Completed => "Completed",
             JobStatus::Failed => "Failed",
+            JobStatus::Cancelled => "Cancelled",
             JobStatus::Quarantined => "Quarantined",
             JobStatus::Archived => "Archived",
         }
@@ -198,6 +200,7 @@ impl JobStatus {
             "InProgress" | "Processing" => JobStatus::InProgress,
             "Completed" => JobStatus::Completed,
             "Failed" => JobStatus::Failed,
+            "Cancelled" => JobStatus::Cancelled,
             "Quarantined" => JobStatus::Quarantined,
             "Archived" => JobStatus::Archived,
             _ => JobStatus::Pending,
@@ -309,6 +312,9 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
 
     /// ジョブを失敗としてマーク
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
+    
+    /// ジョブをキャンセル（中止）としてマーク
+    async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
 
     /// タイムアウトしたジョブを回収
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;

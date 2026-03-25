@@ -50,5 +50,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-26 (Phase 43 / Shadow Clone Integration)
+最終更新: 2026-03-26 (Phase 44 / Job Control & Task History)
 Aiome Development Team

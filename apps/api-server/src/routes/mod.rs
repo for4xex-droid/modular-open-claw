@@ -19,6 +19,7 @@ pub mod general;
 pub mod gift;
 pub mod gig;
 pub mod inochi2d;
+pub mod jobs;
 pub mod karma;
 pub mod settings;
 pub mod skill;

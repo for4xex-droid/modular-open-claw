@@ -161,8 +161,11 @@ impl TaskConductor for DockerConductor {
         }
 
         // Execution
+        // SEC-FIX: Use deterministic container name to allow easier management/cancellation
+        let container_name = format!("aiome-job-{}", job.id);
         let cmd = format!(
-            "docker agent run --exec --json {} --prompt-b64 {}",
+            "docker agent run --name {} --exec --json {} --prompt-b64 {}",
+            container_name,
             yaml_path.display(),
             task_prompt_b64
         );
@@ -229,5 +232,24 @@ impl TaskConductor for DockerConductor {
         );
 
         Ok(clean_output)
+    }
+
+    async fn cancel(&self, job_id: &str) -> Result<(), AiomeError> {
+        let container_name = format!("aiome-job-{}", job_id);
+        info!("🐳 [DockerConductor] Cancelling container: {}", container_name);
+        
+        // Attempt to stop and remove the container
+        let cmd = format!("docker stop {}", container_name);
+        match self.bastion.safe_exec_with_profile(&cmd, SandboxProfile::Default).await {
+            Ok(_) => {
+                info!("✅ [DockerConductor] Container {} stopped successfully.", container_name);
+                // Also try to remove it
+                let _ = self.bastion.safe_exec_with_profile(&format!("docker rm {}", container_name), SandboxProfile::Default).await;
+            },
+            Err(e) => {
+                warn!("⚠️ [DockerConductor] Failed to stop container {}: {:?}", container_name, e);
+            }
+        }
+        Ok(())
     }
 }

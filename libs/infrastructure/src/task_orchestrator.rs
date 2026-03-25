@@ -51,6 +51,11 @@ pub trait TaskConductor: Send + Sync {
         job: Job,
         progress_tx: mpsc::Sender<TaskEvent>,
     ) -> Result<String, AiomeError>;
+
+    /// Cancel the execution of a specific job
+    async fn cancel(&self, _job_id: &str) -> Result<(), AiomeError> {
+        Ok(()) // Default implementation: do nothing
+    }
 }
 
 /// The Task Dispatcher (Manager). Monitors the JobQueue and dispatches tasks to Conductors.
@@ -60,6 +65,7 @@ pub struct TaskDispatcher {
     event_tx: broadcast::Sender<TaskEvent>,
     poll_interval: Duration,
     core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+    active_jobs: Arc<tokio::sync::RwLock<std::collections::HashMap<String, tokio_util::sync::CancellationToken>>>,
 }
 
 impl TaskDispatcher {
@@ -112,6 +118,7 @@ impl TaskDispatcher {
             event_tx,
             poll_interval,
             core_event_tx,
+            active_jobs: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         }
     }
 
@@ -127,6 +134,32 @@ impl TaskDispatcher {
     /// Get a receiver subscribing to TaskEvents
     pub fn subscribe_events(&self) -> broadcast::Receiver<TaskEvent> {
         self.event_tx.subscribe()
+    }
+
+    /// Cancel a running job
+    pub async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
+        info!("🛑 Attempting to cancel job: {}", job_id);
+        
+        // 1. Mark as cancelled in DB first to prevent re-pickup if it fails later
+        self.job_queue.cancel_job(job_id).await?;
+
+        // 2. Trigger task-level cancellation
+        let mut active = self.active_jobs.write().await;
+        if let Some(token) = active.remove(job_id) {
+            token.cancel();
+            
+            // 3. Trigger conductor-level cleanup
+            // We need to find which conductor was running it. 
+            // For now, we notify ALL conductors to cancel it if they have it.
+            for conductor in &self.conductors {
+                let _ = conductor.cancel(job_id).await;
+            }
+            Ok(())
+        } else {
+            // Not running locally, but maybe Pending? 
+            // In that case, the DB mark was enough.
+            Ok(())
+        }
     }
 
     /// Run the dispatch loop. This should be spawned as a background task.
@@ -174,30 +207,55 @@ impl TaskDispatcher {
                             }
                         });
 
+                        // Create cancellation token for this job
+                        let cancellation_token = tokio_util::sync::CancellationToken::new();
+                        let job_token = cancellation_token.clone();
+                        
+                        {
+                            let mut active = self.active_jobs.write().await;
+                            active.insert(job_id.clone(), cancellation_token);
+                        }
+
                         // Spawn the actual task conductor
                         let conductor_clone = conductor.clone();
+                        let active_jobs_clone = self.active_jobs.clone();
                         tokio::spawn(async move {
-                            match conductor_clone.conduct(job, progress_tx.clone()).await {
-                                Ok(res) => {
-                                    let _ = job_queue_clone.complete_job(&job_id, Some(&res)).await;
-                                    let _ = progress_tx
-                                        .send(TaskEvent::Completed {
-                                            job_id: job_id.clone(),
-                                            result: res,
-                                        })
-                                        .await;
+                            tokio::select! {
+                                _ = job_token.cancelled() => {
+                                    info!("⏹️ Job {} was cancelled.", job_id);
+                                    let _ = progress_tx.send(TaskEvent::Failed {
+                                        job_id: job_id.clone(),
+                                        error: "Cancelled by user".to_string(),
+                                    }).await;
                                 }
-                                Err(e) => {
-                                    error!("Task {} failed: {:?}", job_id, e);
-                                    let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
-                                    let _ = progress_tx
-                                        .send(TaskEvent::Failed {
-                                            job_id,
-                                            error: e.to_string(),
-                                        })
-                                        .await;
+                                result = conductor_clone.conduct(job, progress_tx.clone()) => {
+                                    match result {
+                                        Ok(res) => {
+                                            let _ = job_queue_clone.complete_job(&job_id, Some(&res)).await;
+                                            let _ = progress_tx
+                                                .send(TaskEvent::Completed {
+                                                    job_id: job_id.clone(),
+                                                    result: res,
+                                                })
+                                                .await;
+                                        }
+                                        Err(e) => {
+                                            error!("Task {} failed: {:?}", job_id, e);
+                                            let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
+                                            let _ = progress_tx
+                                                .send(TaskEvent::Failed {
+                                                    job_id: job_id.clone(),
+                                                    error: e.to_string(),
+                                                })
+                                                .await;
+                                        }
+                                    }
                                 }
                             }
+                            
+                            // Cleanup active job entry
+                            let mut active = active_jobs_clone.write().await;
+                            active.remove(&job_id);
                         });
 
                         // Validation Fix ③: Adaptive polling. Check again immediately if we found a job.
@@ -266,6 +324,9 @@ mod tests {
             Ok(())
         }
         async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {

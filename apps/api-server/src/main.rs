@@ -49,6 +49,8 @@ use utoipa::OpenApi;
 mod api;
 #[cfg(test)]
 mod api_integration_tests;
+#[cfg(test)]
+mod job_management_tests;
 mod app_state;
 mod auth;
 mod autonomous_demo;

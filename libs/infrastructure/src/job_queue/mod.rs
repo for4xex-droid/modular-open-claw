@@ -194,6 +194,9 @@ impl JobQueue for UniversalJobQueue {
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError> {
         self.do_fail_job(job_id, reason).await
     }
+    async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
+        self.do_cancel_job(job_id).await
+    }
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         self.do_reclaim_zombie_jobs(timeout_minutes).await
     }

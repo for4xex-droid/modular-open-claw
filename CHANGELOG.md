@@ -1,4 +1,12 @@
-## [Unreleased] - 2026-03-25
+## [Unreleased] - 2026-03-26
+
+### Added
+- **Phase 44: Shadow Clone Job Control & Task History [完了]**
+    - **Job Cancellation API**: `POST /api/v1/jobs/:id/cancel` を実装。実行中の影分身タスクを `CancellationToken` を介して安全に停止可能。
+    - **Task History & Logs API**: `GET /api/v1/jobs/:id/logs` を実装。ジョブの実行ステータス、エラーメッセージ、および詳細な実行ログの取得に対応。
+    - **Deterministic Container Management**: `DockerConductor` において `aiome-job-{id}` 形式の確定的な命名規約を採用し、キャンセル時の確実なコンテナ停止（`docker stop` / `docker rm`）を保証。
+    - **Robust Error Handling**: ジョブ未検出時の 404 レポンス（`ArtifactNotFound` へのマッピング）をインフラ層から API 層まで一貫して実装。
+    - **TaskDispatcher Evolution**: `active_jobs` マップによる実行中タスクの動的追跡と、`JobQueue` へのキャンセルシグナル伝搬を統合。
 
 ### Added
 - **Phase 43: Shadow Clone × Cmux Integration [完了]**

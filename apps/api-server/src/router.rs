@@ -176,6 +176,14 @@ pub fn build_app(
         .route(
             "/api/synergy/graph",
             get(routes::karma::synergy_graph_handler),
+        )
+        .route(
+            "/api/v1/jobs/:id/cancel",
+            post(routes::jobs::cancel_job_handler),
+        )
+        .route(
+            "/api/v1/jobs/:id/logs",
+            get(routes::jobs::get_job_logs_handler),
         );
 
     #[cfg(debug_assertions)]

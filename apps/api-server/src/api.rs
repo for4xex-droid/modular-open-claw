@@ -23,6 +23,9 @@ use utoipa::OpenApi;
         // Agent
         crate::routes::agent::trigger_agent_chat,
         crate::routes::agent::handle_karma_feedback,
+        // Jobs
+        crate::routes::jobs::cancel_job_handler,
+        crate::routes::jobs::get_job_logs_handler,
         // Karma
         crate::routes::karma::get_karma_stream,
         crate::routes::karma::synergy_graph_handler,

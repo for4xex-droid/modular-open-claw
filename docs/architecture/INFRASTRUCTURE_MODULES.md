@@ -50,4 +50,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-26 (Phase 43 / Shadow Clone × Cmux Integration)*
+*最終更新: 2026-03-26 (Phase 44 / Job Control & Task History)*

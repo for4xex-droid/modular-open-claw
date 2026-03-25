@@ -121,7 +121,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🏗️ **Phase 32: DeerFlow Architectural Pattern Integration**: ByteDance の DeerFlow 2.0 から、Middleware Chain (3層思考), Progressive Loading (mtime検知キャッシュ), Virtual Path (論理パスマッピング), Fact Extraction (事実分類抽出) の 4 パターンを完全統合。Rust の高度な型システムによって、自律性と安全性を一段上の次元へ引き上げました。
 - 🛡️ **Phase 36/36.5: Ultimate Security & Inner Monologue**: gVisor (`runsc`) や MacOS サンドボックス機構と連携する `SandboxProfile` を実装し、あらゆる動的コード実行をコンテナ/OSレベルで隔離。また、`HookManager` を用いた自律学習タスク (`UserLearner`) のライフサイクル管理を導入。
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: 複雑なタスクを Docker ベースの「分身エージェント」へ委ねる **Shadow Clone** 機能を実装。5層の多層防御（セマフォ、課金、BastionGuard、タイムアウト、浄化）により安全性を担保しつつ、非同期実行と SSE によるリアルタイム進捗通知を実現しました。
-- 💸 **Phase 37a: Stripe Subscription & Agentic Introspection**: Stripe API（モック＋実環境）と連動する完全自律型のサブスクリプション管理エンジン (`StripeCommerceEngine`) を実装。同時に、`SoulPipeline` の L2.5 層に `WhisperMiddleware` を統合し、エージェントが自らの経験に基づいた「内なる声 (Inner Monologue)」を自己省察ログとして永続化する仕組みを確立しました。
+- 🛑 **Phase 44: Shadow Clone Job Control & Task History**: ユーザーが実行中の Shadow Clone（影分身）を任意に停止できるジョブキャンセル API (`/api/v1/jobs/:id/cancel`) およびリアルタイムログ取得 API (`/api/v1/jobs/:id/logs`) を実装。CancellationToken による安全な非同期タスク中断と、Docker コンテナの確定的クリーンアップを統合。
 
 ---
 
@@ -150,8 +150,8 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Storage** | SQLite (Hash Chain対応) | 改ざん耐性を持つ記憶（Karma）とログの永続化 |
 | **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
-| **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲 |
-| **Last Updated:** 2026-03-26
+| **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
+| **Last Updated:** | 2026-03-26 | Phase 44 / Job Control & Task History |
 
 ---
 

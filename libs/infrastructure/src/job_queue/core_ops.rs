@@ -34,6 +34,7 @@ pub trait CoreOps {
         output_artifacts: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn do_fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
+    async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
@@ -289,6 +290,23 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(3)
         );
         sql_exec!(&self.pool, &q, "Failed", reason, &now, job_id).map(|_| ())
+    }
+
+    async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
+        let now = Utc::now().to_rfc3339();
+        let q = format!(
+            "UPDATE jobs SET status = {0}, updated_at = {1} WHERE id = {2} AND status IN ('Pending', 'Processing')",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        let rows = sql_exec!(&self.pool, &q, "Cancelled", &now, job_id)?;
+        if rows == 0 {
+            return Err(AiomeError::ArtifactNotFound {
+                path: format!("job:{}", job_id),
+            });
+        }
+        Ok(())
     }
 
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {

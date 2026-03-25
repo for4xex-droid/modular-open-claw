@@ -73,6 +73,9 @@ pub mod mock_job_queue {
         async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
             Ok(0)
         }

@@ -239,7 +239,7 @@ impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
     }
 }
 
-async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
+pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
 
@@ -457,7 +457,13 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )
             as Arc<dyn aiome_core::traits::TranscriptionEngine>),
-        task_dispatcher: Component::default(),
+        task_dispatcher: Component::new(Arc::new(
+            infrastructure::task_orchestrator::TaskDispatcher::new(
+                job_queue.clone(),
+                std::time::Duration::from_millis(100),
+                None,
+            ),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -475,7 +481,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     (TestServer::new(app).unwrap(), state, tmp_dir)
 }
 
-fn test_bearer() -> String {
+pub fn test_bearer() -> String {
     // MockAuthManager accepts "mock_valid_token_<sub>"
     "Bearer mock_valid_token_test_user".to_string()
 }

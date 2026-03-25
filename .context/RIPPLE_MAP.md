@@ -531,3 +531,22 @@ graph TD
     F -->|Real-time UI| G[Cmux Frontend]
 ```
 
+### 🛡️ Phase 44: Job Control & Task History
+- **変更内容**: 
+    - `task_orchestrator.rs`: `TaskDispatcher` に `active_jobs` (CancellationToken) 管理を追加。
+    - `docker_conductor.rs`: `cancel` メソッドの実装と確定的コンテナクリーンアップの実装。
+    - `routes/jobs.rs`: ジョブ管理エンドポイント（Cancel / Logs）の新規実装。
+    - `job_queue/core_ops.rs`: `do_cancel_job` における存在確認の厳格化。
+- **波及効果**: 
+    - ユーザーがフロントエンドから実行中の影分身を任意に停止・監視可能になる。
+    - 不正なジョブ ID や完了済みのジョブに対する操作が適切に 404/400 エラーとして処理される。
+
+```mermaid
+graph TD
+    A[API Server / jobs.rs] -->|Cancel Signal| B[TaskDispatcher]
+    B -->|CancellationToken| C[Async Task Loop]
+    B -->|Conductor::cancel| D[DockerConductor]
+    D -->|Docker CLI| E[Container Cleanup]
+    A -->|Fetch Logs| F[JobQueue]
+    F -->|Query| G[jobs Table]
+```
