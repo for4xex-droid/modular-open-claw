@@ -13,6 +13,7 @@ use infrastructure::auth::AuthManager;
 use serde_json::json;
 use serial_test::serial;
 use shared::config::AiomeConfig;
+use soul::SoulPipeline;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -336,6 +337,19 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(5);
 
+    let soul_adapter = infrastructure::soul_adapter::CoreDomainAdapter::new(
+        job_queue.clone(),
+        None, // embedding_provider
+    );
+    let samsara_engine = infrastructure::samsara_engine::DefaultSamsaraEngine::new(
+        provider.clone(),
+        "test distillator".to_string(),
+    );
+    let audit_logger = Arc::new(infrastructure::audit_logger::AsyncAuditLogger::new(
+        job_queue.get_pool().clone().into(),
+        100,
+    ));
+
     let state = AppState {
         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
         job_queue: Component::new(job_queue.clone()),
@@ -352,13 +366,14 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         event_sender: Component::new(tokio::sync::broadcast::channel(10).0),
         context_engine: Component::new(context_engine),
         soul_mutator: Component::new(soul_mutator),
+        soul_store: Component::new(soul_store),
+        provider: Component::new(provider.clone()),
         autonomous_running: Component::new(autonomous_running),
         autonomous_config: Component::new(autonomous_config),
-        provider: Component::new(provider.clone()),
+        http_client: Component::new(aiome_core::http::get_http_client().clone()),
         docker_failures: Component::new(Arc::new(tokio::sync::RwLock::new(
             std::collections::HashMap::new(),
         ))),
-        http_client: Component::new(aiome_core::http::get_http_client().clone()),
         security_policy: shared::security::SecurityPolicy::default(),
         commerce_engine: Component::new(commerce_engine.clone()),
         circuit_breaker: Component::new(Arc::new(
@@ -385,7 +400,7 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             "test_fed_secret".to_string(),
         ))),
         config: Component::new({
-            let mut config = AiomeConfig::load().unwrap_or_else(|_| AiomeConfig {
+            let config = AiomeConfig {
                 db_path: db_path.to_str().unwrap().to_string(),
                 log_level: "info".to_string(),
                 ollama_host: "".to_string(),
@@ -403,100 +418,9 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 xtts_endpoint: None,
                 xtts_speaker: None,
                 mcp: shared::config::McpConfig::default(),
-            });
-            // 常にテスト用の一時パスで上書きする
-            config.db_path = db_path.to_str().unwrap().to_string();
-            config.abyss_vault_path = tmp_dir.path().to_str().unwrap().to_string();
+            };
             Arc::new(config)
         }),
-        soul_pipeline: Component::new(Arc::new(infrastructure::soul_pipeline::SoulPipeline::new(
-            provider.clone(),
-            context_engine.clone(),
-            soul_mutator.clone(),
-            wasm_skill_manager.clone(),
-            skill_forge.clone(),
-            artifact_store.clone(),
-            job_queue.clone(),
-            intent_generator.clone(),
-            intent_firewall.clone(),
-            soul_store.clone(),
-            Arc::new(infrastructure::intent::AffiliateAdapter::new()),
-            Arc::new(tokio::sync::Semaphore::new(1)), // llm_semaphore
-            Arc::new(tokio::sync::Semaphore::new(1)), // forge_semaphore
-            Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())), // mcp_sessions
-            Arc::new(mcp::client::McpProcessManager::new()), // mcp_manager
-            Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())), // docker_failures
-            aiome_core::http::get_http_client().clone(), // http_client
-            shared::security::SecurityPolicy::default(), // security_policy
-            commerce_engine.clone(),                  // commerce_engine
-            Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
-                "integration-test",
-                infrastructure::circuit_breaker::CircuitBreakerConfig {
-                    failure_threshold: 5,
-                    reset_timeout: std::time::Duration::from_secs(60),
-                },
-            )), // circuit_breaker
-            infrastructure::rate_limiter::AgentRateLimiter::new(5), // rate_limiter
-            Arc::new(infrastructure::slo_engine::SloEngine::new(
-                infrastructure::slo_engine::SloConfig {
-                    error_budget_max: 100,
-                    warning_threshold: 80,
-                },
-                chrono::Duration::hours(24),
-            )), // slo_engine
-            Arc::new(secrecy::SecretString::from("test_secret".to_string())), // api_server_secret
-            Arc::new(secrecy::SecretString::from("test_fed_secret".to_string())), // federation_secret
-            Arc::new(AiomeConfig::load().unwrap_or_else(|_| AiomeConfig {
-                db_path: db_path.to_str().unwrap().to_string(),
-                log_level: "info".to_string(),
-                ollama_host: "".to_string(),
-                ollama_model: "".to_string(),
-                gemini_api_key: None,
-                openai_api_key: None,
-                anthropic_api_key: None,
-                api_server_port: 0,
-                key_proxy_url: "".to_string(),
-                samsara_hub_url: "".to_string(),
-                allowed_origins: vec![],
-                abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
-                tremendous_api_key: None,
-                master_email: None,
-                xtts_endpoint: None,
-                xtts_speaker: None,
-                mcp: shared::config::McpConfig::default(),
-            })), // config
-            Arc::new(MockGiftEngine),                                             // gift_engine
-            Arc::new(infrastructure::compliance::ekyc::MockEkycEngine),           // ekyc_engine
-            Arc::new(infrastructure::compliance::ekyc_store::MockEkycSessionStore), // ekyc_session_store
-            Arc::new(infrastructure::compliance::quarantine::MockQuarantineStore), // quarantine_store
-            Arc::new(infrastructure::auth::MockAuthManager::new()),                // auth_manager
-            uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(), // system_agent_id
-            voice_drm.clone(),                                                      // voice_drm
-            registry.clone(),                                                       // registry
-            Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
-                job_queue.get_pool().clone(),
-                Arc::new(MockCommerceEngine),
-                provider.clone(),
-                tmp_dir.path().join("gig_artifacts"),
-            )), // gig_engine
-            Arc::new(
-                infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
-                    Arc::new(infrastructure::security::BastionGuard::new_internal(
-                        aiome_core::security::PermissionManifest::default(),
-                    )),
-                    false,
-                ),
-            ), // transcription_engine
-        ))),
-        transcription_engine: Component::new(Arc::new(
-            infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
-                Arc::new(infrastructure::security::BastionGuard::new_internal(
-                    aiome_core::security::PermissionManifest::default(),
-                )),
-                false,
-            ),
-        )
-            as Arc<dyn aiome_core::traits::TranscriptionEngine>),
         gift_engine: Component::new(Arc::new(MockGiftEngine)),
         ekyc_engine: Component::new(Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)),
         ekyc_session_store: Component::new(Arc::new(
@@ -519,11 +443,20 @@ async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         ),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
-        soul_store: Component::new(soul_store),
+        audit_logger: Component::new(audit_logger),
         affiliate_adapter: Component::new(
             Arc::new(infrastructure::intent::AffiliateAdapter::new()),
         ),
-        ..Default::default()
+        soul_pipeline: Component::new(Arc::new(SoulPipeline::new(soul_adapter, samsara_engine))),
+        transcription_engine: Component::new(Arc::new(
+            infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
+                Arc::new(infrastructure::security::BastionGuard::new_internal(
+                    aiome_core::security::PermissionManifest::default(),
+                )),
+                false,
+            ),
+        )
+            as Arc<dyn aiome_core::traits::TranscriptionEngine>),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
