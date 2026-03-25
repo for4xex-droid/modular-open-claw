@@ -108,4 +108,12 @@ pub struct AppState {
     pub intent_firewall: Component<Arc<infrastructure::intent::IntentFirewall>>,
     pub audit_logger: Component<Arc<AsyncAuditLogger>>,
     pub affiliate_adapter: Component<Arc<infrastructure::intent::AffiliateAdapter>>,
+    pub soul_pipeline: Component<
+        Arc<
+            soul::pipeline::SoulPipeline<
+                infrastructure::soul_adapter::CoreDomainAdapter,
+                infrastructure::samsara_engine::DefaultSamsaraEngine,
+            >,
+        >,
+    >,
 }

@@ -59,6 +59,18 @@ pub fn build_app(
                     .rate_limit(1, std::time::Duration::from_secs(2)), // 1 purchase per 2s
             ),
         )
+        .route(
+            "/api/v1/commerce/subscription/create",
+            axum::routing::post(routes::commerce::create_subscription),
+        )
+        .route(
+            "/api/v1/commerce/subscription/cancel",
+            axum::routing::post(routes::commerce::cancel_subscription),
+        )
+        .route(
+            "/api/v1/commerce/subscription/:agent_id",
+            axum::routing::get(routes::commerce::get_subscription_status),
+        )
         .route("/api/v1/logs", get(routes::general::get_logs))
         .route(
             "/api/v1/gift/send/:agent_id",

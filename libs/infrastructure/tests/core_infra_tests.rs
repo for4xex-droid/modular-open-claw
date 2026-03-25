@@ -103,23 +103,23 @@ async fn test_bastion_guard_enforcement() {
     // 1. Blocked by default manifest
     let manifest = PermissionManifest::default();
     let guard = BastionGuard::new(manifest);
-    assert!(guard.safe_exec("ls").is_err()); // allow_shell_execution is false
+    assert!(guard.safe_exec("ls").await.is_err()); // allow_shell_execution is false
 
     // 2. Blocked by injection filter
     let mut manifest = PermissionManifest::default();
     manifest.allow_shell_execution = true;
     let guard = BastionGuard::new(manifest);
-    assert!(guard.safe_exec("ls && cat /etc/passwd").is_err());
+    assert!(guard.safe_exec("ls && cat /etc/passwd").await.is_err());
 
     // 3. Blocked by sensitive path
-    assert!(guard.safe_exec("cat /etc/shadow").is_err());
+    assert!(guard.safe_exec("cat /etc/passwd").await.is_err());
 
     // 4. Blocked by non-whitelisted binary
-    assert!(guard.safe_exec("rm -rf .").is_err());
+    assert!(guard.safe_exec("rm -rf .").await.is_err());
 
     // 5. Success with allowed binary (ls)
     // Note: This actually runs 'ls' on the host, which is usually fine for tests.
-    let result = guard.safe_exec("ls");
+    let result = guard.safe_exec("ls").await;
     assert!(
         result.is_ok(),
         "safe_exec failed with: {:?}",

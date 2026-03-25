@@ -11,7 +11,7 @@
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
-| `commerce` | 外部決済・ギフトAPI（Tremendous等）との自律的な商用連携基盤。**Phase 16** で `RevenueSplitter` による売上分配（80/20）を実装。 | **Phase 16 完了** |
+| `commerce` | 外部決済・ギフトAPI（Tremendous等）及び Stripe との自律的な商用連携基盤。**Phase 37a** で実機環境連携（create/cancel_subscription）と webhook 冪等性を実装。 | **Phase 37a 完了** |
 | `commerce_mock` | 決済フローのカルシウム（テスト用途）。 | 実装完了 |
 | `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
 | `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
@@ -35,7 +35,7 @@
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
-| `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 32** で刷新された Middleware Chain との連携（Reactive/Deliberative/Meta 判定）。 | **Phase 32 完了** |
+| `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。 | **新規実装** |
@@ -46,7 +46,7 @@
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 
 ## 備考
-- **DeerFlow Integration (Phase 32)**: `SoulPipeline` がミドルウェア形式へリファクタリングされ、`FactCategory` による長期記憶の構造化抽出が実現されました。
+- **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-24 (Phase 32 / DeerFlow Architectural Patterns)*
+*最終更新: 2026-03-25 (Phase 37a / Stripe Subscription & Whisper Integration)*

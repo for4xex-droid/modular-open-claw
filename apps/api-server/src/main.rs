@@ -249,9 +249,11 @@ async fn main() -> anyhow::Result<()> {
 
         if let Some(key) = stripe_key {
             use secrecy::ExposeSecret;
+            let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
             Some(
                 Arc::new(infrastructure::commerce::stripe::StripeCommerceEngine::new(
                     key.expose_secret().to_string(),
+                    webhook_secret,
                     job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
                 )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
             )
@@ -294,6 +296,23 @@ async fn main() -> anyhow::Result<()> {
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
         job_queue.get_pool().clone(),
     ));
+
+    // Phase 37a: Step 2 - SoulPipeline Initialization
+    let soul_adapter = infrastructure::soul_adapter::CoreDomainAdapter::new(
+        job_queue.clone(),
+        Some(embed_provider.clone()),
+    );
+    let samsara_engine = infrastructure::samsara_engine::DefaultSamsaraEngine::new(
+        bg_provider.clone(),
+        "You are the Core Soul Engine. Process experiences and distill wisdom.".to_string(),
+    );
+    let mut soul_pipeline = soul::pipeline::SoulPipeline::new(soul_adapter, samsara_engine);
+    
+    // Register WhisperMiddleware (L2.5)
+    soul_pipeline.add_middleware(Box::new(
+        infrastructure::llm::whisper_middleware::WhisperMiddleware::new()
+    ));
+    let soul_pipeline = Arc::new(soul_pipeline);
 
     // AgentSense (AS-1)
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
@@ -484,6 +503,7 @@ async fn main() -> anyhow::Result<()> {
         affiliate_adapter: Component::new(
             Arc::new(infrastructure::intent::AffiliateAdapter::new()),
         ),
+        soul_pipeline: Component::new(soul_pipeline),
     };
 
     let cors_layer = {

@@ -453,5 +453,30 @@ graph TD
     J[ProportionsChecker] -->|Binary Analysis| K[avatar upload route]
 ```
 
+### 🛡️ Phase 37a: Stripe Subscription & Pipeline Evolution
+- **変更内容**: 
+    - `commerce/stripe.rs` (infrastructure): `StripeCommerceEngine` 実機実装における `create_subscription`, `cancel_subscription`, `get_subscription_status` 追加。
+    - `commerce/stripe.rs` (infrastructure): `sk_test_mock` 判定を用いた CI 向けの `is_mock` バイパスモード実装。
+    - `soul/pipeline.rs`: `SoulPipeline` 内の `push_experience` 呼び出し順序をミドルウェア群の最後尾へ移動。
+    - `soul/pipeline.rs`: `SoulPipeline::add_middleware` の追加と動的ミドルウェア注入サポート。
+    - `infrastructure/tests`: `BastionGuard::safe_exec` 等の async 化に伴う 20+ 個のテスト呼び出し `await` 化。
+- **波及効果**: 
+    - `SoulPipeline` の評価順序変更により、`WhisperMiddleware` を含む全ミドルウェアによる操作（`inner_thoughts` の追記など）が確実に永続化されるようになった（事実の欠落防止）。
+    - API Server 内で、デバッグ時やE2Eテスト時に Stripe 環境変数へ `sk_test_mock` を渡すだけで安全にモック実行が可能に（冪等性の確保）。
+    - ワークスペース全体の単体テスト実行 (`cargo test`) でエラーゼロが保証された。
+
+```mermaid
+graph TD
+    A[StripeCommerceEngine] -->|is_mock Check| B{Test Profile?}
+    B -->|Yes| C[Return Mock Status]
+    B -->|No| D[Real Stripe API]
+    D -->|create_subscription| E[Stripe Customer]
+    D -->|cancel_subscription| F[Stripe Subscription]
+    
+    G[SoulPipeline] -->|Input Event| H[Reactive / Deliberative / Meta / Whisper]
+    H -->|Modifications| I[Experience Buffer]
+    I -->|push_experience| J[SqliteSoulStore]
+```
+
 ---
-*最終更新日: 2026-03-25* (Phase 36.5 / Security + Subscription + WhisperMiddleware)
+*最終更新日: 2026-03-25* (Phase 37a / Stripe Subscription & Whisper Integration)

@@ -114,7 +114,6 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
         );
 
         ctx.soul.attachment.update_from_experience(ctx.experience.outcome_valence);
-        ctx.soul.push_experience(ctx.experience.clone());
 
         next.run(ctx).await
     }
@@ -155,6 +154,11 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
                 Box::new(MetaCognitiveMiddleware::<A, E> { _phantom: std::marker::PhantomData }),
             ],
         }
+    }
+
+    /// 外部ミドルウェアを追加する (P0-1)
+    pub fn add_middleware(&mut self, middleware: Box<dyn SoulMiddleware<A, E>>) {
+        self.middlewares.push(middleware);
     }
     
     // ... (evaluate_trigger, is_rejected_by_reactive_layer continue below)
@@ -242,6 +246,9 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
             if !ctx.should_continue {
                 return Ok(None);
             }
+
+            // Commit experience to buffer after all middlewares have completed their enhancements
+            ctx.soul.push_experience(ctx.experience.clone());
 
             // Somatic Marking (感情の刻印) - Logic preserved from original
             if ctx.experience.outcome_valence.abs() > 0.3 {

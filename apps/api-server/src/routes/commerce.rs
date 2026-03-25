@@ -138,3 +138,81 @@ pub async fn execute_purchase(
         }),
     ))
 }
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct CreateSubscriptionRequest {
+    #[schema(value_type = String)]
+    pub agent_id: Uuid,
+    pub plan_id: String,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SubscriptionResponse {
+    pub subscription_id: String,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct CancelSubscriptionRequest {
+    pub subscription_id: String,
+}
+
+/// [POST] /api/v1/commerce/subscription/create
+pub async fn create_subscription(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Json(req): Json<CreateSubscriptionRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if req.agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    let sub_id = engine.create_subscription(req.agent_id, &req.plan_id).await?;
+    Ok((
+        StatusCode::OK,
+        Json(SubscriptionResponse {
+            subscription_id: sub_id,
+        }),
+    ))
+}
+
+/// [POST] /api/v1/commerce/subscription/cancel
+pub async fn cancel_subscription(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Json(req): Json<CancelSubscriptionRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    engine.cancel_subscription(&req.subscription_id).await?;
+    Ok(StatusCode::OK)
+}
+
+/// [GET] /api/v1/commerce/subscription/:agent_id
+pub async fn get_subscription_status(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(agent_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    let status = engine.get_subscription_status(agent_id).await?;
+    Ok(Json(status))
+}

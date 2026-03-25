@@ -180,6 +180,25 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
     async fn escrow_refund(&self, _order_id: &str) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: uuid::Uuid,
+        _plan_id: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("sub_mock_123".into())
+    }
+
+    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn get_subscription_status(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<aiome_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError> {
+        Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
+    }
 }
 
 #[derive(Debug)]
@@ -1488,4 +1507,44 @@ async fn test_autonomous_demo_lifecycle() {
         .as_str()
         .unwrap()
         .contains("Autonomous demo started"));
+}
+
+#[tokio::test]
+async fn test_subscription_lifecycle() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // 1. Create Subscription
+    let payload = json!({
+        "agent_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "price_gold_monthly"
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/subscription/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json["subscription_id"], "sub_mock_123");
+
+    // 2. Get Status
+    let status_resp = server
+        .get("/api/v1/commerce/subscription/00000000-0000-0000-0000-000000000001")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+    assert_eq!(status_resp.status_code(), StatusCode::OK);
+    let status_json = status_resp.json::<aiome_contracts::commerce::SubscriptionStatus>();
+    assert_eq!(status_json, aiome_contracts::commerce::SubscriptionStatus::Active);
+
+    // 3. Cancel Subscription
+    let cancel_resp = server
+        .post("/api/v1/commerce/subscription/cancel")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({"subscription_id": "sub_mock_123"}))
+        .await;
+    
+    assert_eq!(cancel_resp.status_code(), StatusCode::OK);
 }

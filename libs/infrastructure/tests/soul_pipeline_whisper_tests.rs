@@ -1,0 +1,58 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+use std::sync::Arc;
+use aiome_core::llm_provider::{LlmProvider, LlmResponse};
+use aiome_core::error::AiomeError;
+use async_trait::async_trait;
+use soul::model::{AgentSoul, Experience};
+use soul::pipeline::SoulPipeline;
+use infrastructure::soul_adapter::CoreDomainAdapter;
+use infrastructure::samsara_engine::DefaultSamsaraEngine;
+use infrastructure::llm::whisper_middleware::WhisperMiddleware;
+
+#[derive(Debug)]
+struct MockLlm;
+
+#[async_trait]
+impl LlmProvider for MockLlm {
+    fn name(&self) -> &str { "MockLlm" }
+    async fn test_connection(&self) -> Result<(), AiomeError> { Ok(()) }
+    async fn complete(&self, _prompt: &str, _system: Option<&str>) -> Result<LlmResponse, AiomeError> {
+        Ok(LlmResponse {
+            content: "[]".to_string(),
+            stop_reason: aiome_contracts::StopReason::EndTurn,
+        })
+    }
+}
+
+#[tokio::test]
+async fn test_soul_pipeline_with_whisper_integration() {
+    let mock_llm = Arc::new(MockLlm);
+    let adapter = CoreDomainAdapter::new(
+        Arc::new(infrastructure::job_queue::UniversalJobQueue::new(":memory:").await.unwrap()),
+        None,
+    );
+    let engine = DefaultSamsaraEngine::new(mock_llm, "test".to_string());
+    
+    let mut pipeline = SoulPipeline::new(adapter, engine);
+    pipeline.add_middleware(Box::new(WhisperMiddleware::new()));
+    
+    let mut soul = AgentSoul::new("test-agent".into());
+    let exp = Experience {
+        content: "User asked for a subscription.".to_string(),
+        outcome_valence: 0.5, // Positive valence should trigger a specific whisper
+        ..Default::default()
+    };
+    
+    let _ = pipeline.process_experience(&mut soul, exp).await.unwrap();
+    
+    // Check if the experience in the buffer has the whisper thought
+    let processed_exp = soul.experience_buffer.last().expect("Experience should be in buffer");
+    assert!(processed_exp.content.contains("Whisper:"), "Processed experience should contain whisper thought");
+    assert!(processed_exp.content.contains("I'm starting to understand this user better"), "Should contain positive whisper");
+}

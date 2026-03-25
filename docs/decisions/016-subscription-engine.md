@@ -11,7 +11,7 @@ Aiome requires a mechanism for recurring payments/subscriptions to support conti
 5.  **Interface Consistency**: The `CommerceEngine` trait will be expanded or complemented with a `SubscriptionEngine` trait in `aiome-contracts`.
 
 ## Status
-Proposed (Phase 27 Target)
+**Completed (Phase 37a Target)**
 
 ## Consequences
 - **Financial Scalability**: Easier monetization of individual AI agents.

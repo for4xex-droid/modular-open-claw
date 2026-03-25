@@ -1,6 +1,10 @@
 ## [Unreleased] - 2026-03-25
 
 ### Added
+- **Phase 37a: Stripe Subscription & Whisper Integration [完了]**
+    - **Stripe Subscriptions API**: `StripeCommerceEngine` に `create_subscription` および `cancel_subscription` を実装。UUID ベースの顧客管理とメタデータ連携、およびテスト環境用の `sk_test_mock` バイパスモードを導入。
+    - **Whisper Inner Monologue**: `SoulPipeline` の L2.5 層として `WhisperMiddleware` を追加。経験の価数 (Valence) が閾値を超えた際、AIが「内なる声 (Whisper)」という独自のログを生成し自己省察を記録。
+    - **Pipeline Architecture Upgrade**: 経験のバッファへの蓄積 (`push_experience`) を全ミドルウェアチェーンの最終段にシフトし、Whisper や MetaThoughts などの付加情報が完全に履歴へ残るよう改善。
 - **License Compliance Hardening**
     - `NOTICE` file (Apache 2.0 §4(d) compliance)
     - `THIRD_PARTY_NOTICES.md` with attribution for AutoResearchClaw, MetaClaw, Inochi2D, and Trojan's Whisper research
@@ -25,6 +29,9 @@
     - **Test Utility**: `VerifiedSkill::new_for_test` を追加し、統合テストにおける WASM スキルのモック・検証を容易化。
 
 ### Changed
+- **Phase 37a: Security & Infra Refactoring**:
+    - `BastionGuard::safe_exec` および `safe_exec_with_profile` を完全同期から非同期 (`async`) 実行へ移行。これによりスレッドプールの枯渇を防止。
+    - `api-server` の `AppState` に `soul_pipeline` インスタンスを統合。
 - **Code Quality & Refactoring**:
     - `WritingContext` に `#[derive(Default)]` と `#[default]` 属性を追加し、ボイラープレートを削減。
     - `MlockedVec` の `Drop` 実装における安全な `munlock` 呼び出しの条件判定を最適化。

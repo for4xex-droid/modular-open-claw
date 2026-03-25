@@ -118,7 +118,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 27: Architectural Mock Isolation & Fail-Fast Mechanisms**: Strictly isolates testing mock implementations (e.g., `MockAuthManager`) from release builds using conditional compilation (`#[cfg]`). Furthermore, it enforces immediate shutdown (`exit(1)`) via a Fail-Fast mechanism when critical security variables like `API_SERVER_SECRET` or `ALLOWED_ORIGINS` are omitted in production, preventing fallback to insecure defaults and minimizing the attack surface.
 - 🛡️ **Phase 31: Reliability & LLM Structured Output**: Enhanced system robustness by replacing 10+ `.unwrap()` calls with safe error handling in database layers. Formally introduced `format: "json"` support for LLM providers (Ollama), enabling deterministic structured outputs for autonomous agent coordination.
 - 🏗️ **Phase 32: DeerFlow Architectural Pattern Integration**: Integrated 4 key patterns from ByteDance's DeerFlow 2.0: Middleware Chain (3-layer cognition), Progressive Loading (mtime-aware cache), Virtual Path (logical path mapping), and Fact Extraction (categorized fact distillation). Elevated autonomy and security using Rust's advanced type system.
-- 🛡️ **Phase 36/36.5: Ultimate Security Hardening & Inner Monologue**: Engineered strict isolation profiles (`SandboxProfile`) compatible with gVisor (`runsc`) and Apple Sandbox limits, enforcing absolute containment of dynamic execution. Introduced `HookManager` to govern autonomous learning loops (`UserLearner`) post-execution, and implemented `WhisperMiddleware` as an L2.5 cognitive layer for introspective agentic reflections.
+- 🛡️ **Phase 36/36.5: Ultimate Security & Inner Monologue**: Engineered strict isolation profiles (`SandboxProfile`) compatible with gVisor (`runsc`) and Apple Sandbox limits. Introduced `HookManager` to govern autonomous learning loops (`UserLearner`).
+- 💸 **Phase 37a: Stripe Subscription & Agentic Introspection**: Implemented `StripeCommerceEngine` with full subscription lifecycle management capabilities (create/cancel) via Stripe API (including `sk_test_mock` support). Integrated `WhisperMiddleware` into the `SoulPipeline` (L2.5) to capture and persist introspective agentic reflections ("Inner Monologue") based on experience valences.
 
 ---
 
@@ -148,8 +149,8 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Media Engine** | ComfyUI / FFmpeg | 高度な画像・動画・音声の自律生成 |
 | **Storage** | SQLite (Hash Chain support) | Tamper-resistant memory (Karma) and persistent logs |
 | **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
-| **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) |
-| **Last Updated:** | 2026-03-24 | Phase 32 / DeerFlow Architectural Patterns |
+| **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
+| **Last Updated:** | 2026-03-25 | Phase 37a / Stripe Subscription & Whisper Integration |
 
 ---
 
@@ -261,7 +262,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-24*
+*Last Updated: 2026-03-25*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---
