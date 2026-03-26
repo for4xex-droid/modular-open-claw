@@ -141,8 +141,10 @@ mod tests {
             _system: Option<&str>,
         ) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
-                content: "NO_UPDATE".to_string(), // Test default
-                stop_reason: StopReason::EndTurn,
+                content: "[]".to_string(),
+                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -164,8 +166,10 @@ mod tests {
 
         let request = LlmRequest::default();
         let response = LlmResponse {
-            content: "User likes coffee.".to_string(),
-            stop_reason: StopReason::EndTurn,
+            content: "[]".to_string(), // Mock for inference
+            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         };
 
         // RED: on_post_execute should trigger session learning

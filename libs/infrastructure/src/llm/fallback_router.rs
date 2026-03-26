@@ -65,7 +65,12 @@ impl LlmProvider for FallbackRouter {
             match self.primary.complete(prompt, system).await {
                 Ok(resp) => {
                     self.circuit_breaker.record_success().await;
-                    return Ok(resp);
+                    return Ok(LlmResponse {
+                        content: resp.content,
+                        stop_reason: resp.stop_reason,
+                        reasoning: resp.reasoning,
+                        metadata: resp.metadata,
+                    });
                 }
                 Err(e) => {
                     tracing::warn!(

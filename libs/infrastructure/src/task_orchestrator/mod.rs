@@ -480,10 +480,18 @@ mod tests {
         async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
             unimplemented!()
         }
-        async fn get_chat_memory_summary(&self, _: &str) -> Result<Option<String>, AiomeError> {
+        async fn get_chat_memory_summary(
+            &self,
+            _: &str,
+        ) -> Result<Option<(String, Option<String>)>, AiomeError> {
             unimplemented!()
         }
-        async fn update_chat_memory_summary(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+        async fn update_chat_memory_summary(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), AiomeError> {
             unimplemented!()
         }
         async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> {

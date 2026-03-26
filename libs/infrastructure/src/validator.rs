@@ -144,6 +144,8 @@ mod tests {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.verdict.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {

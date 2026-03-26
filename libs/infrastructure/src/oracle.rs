@@ -111,7 +111,15 @@ mod tests {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.response.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
             })
+        }
+        async fn complete_with_cache(
+            &self,
+            _request: aiome_contracts::llm::LlmRequest,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+            self.complete("", None).await
         }
 
         async fn test_connection(&self) -> Result<(), AiomeError> {

@@ -197,7 +197,15 @@ mod tests {
             Ok(LlmResponse {
                 content: self.reply.clone(),
                 stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
             })
+        }
+        async fn complete_with_cache(
+            &self,
+            _request: aiome_contracts::llm::LlmRequest,
+        ) -> Result<LlmResponse, AiomeError> {
+            self.complete("", None).await
         }
         fn name(&self) -> &str {
             "mock-llm"
@@ -250,10 +258,18 @@ mod tests {
         async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn get_chat_memory_summary(&self, _: &str) -> Result<Option<String>, AiomeError> {
+        async fn get_chat_memory_summary(
+            &self,
+            _: &str,
+        ) -> Result<Option<(String, Option<String>)>, AiomeError> {
             Ok(None)
         }
-        async fn update_chat_memory_summary(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+        async fn update_chat_memory_summary(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> {

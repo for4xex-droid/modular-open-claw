@@ -109,6 +109,7 @@ mod tests {
             max_tokens: None,
             stop_sequences: None,
             format: None,
+            metadata: None,
         };
 
         // Should be blocked because increment (1) > limit (0)
@@ -132,12 +133,15 @@ mod tests {
             max_tokens: None,
             stop_sequences: None,
             format: None,
+            metadata: None,
         };
 
         // Normal response
         let ok_response = LlmResponse {
-            content: "Hello world".to_string(),
-            stop_reason: StopReason::EndTurn,
+            content: "{\"safe\": true}".into(),
+            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         };
         assert!(monitor
             .on_post_execute(&request, &ok_response)
@@ -148,6 +152,8 @@ mod tests {
         let bad_response = LlmResponse {
             content: "Here is your file: /etc/passwd".to_string(),
             stop_reason: StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         };
         let res = monitor.on_post_execute(&request, &bad_response).await;
         assert!(res.is_err());

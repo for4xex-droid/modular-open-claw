@@ -148,11 +148,13 @@ pub async fn karma_fetch_relevant(session_id: String, _limit: u32) -> Result<Str
     let db = get_db().await.map_err(map_err)?;
     // fetch relevant karmas for the session (requires embedding provider wiring in future)
     // for now we fetch recent jobs/summaries associated to the session
-    let summary = db
+    let summary_data = db
         .get_chat_memory_summary(&session_id)
         .await
-        .unwrap_or(Some("".to_string()));
-    Ok(summary.unwrap_or_else(String::new))
+        .map_err(map_err)?;
+
+    let summary_text = summary_data.map(|(s, _)| s).unwrap_or_default();
+    Ok(summary_text)
 }
 
 #[napi]

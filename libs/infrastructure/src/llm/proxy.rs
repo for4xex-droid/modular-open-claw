@@ -32,7 +32,10 @@ struct ProxyRequest {
 
 #[derive(Deserialize)]
 struct ProxyResponse {
-    result: String,
+    content: String,
+    stop_reason: aiome_contracts::llm::StopReason,
+    reasoning: Option<String>,
+    metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 impl ProxyLlmProvider {
@@ -88,10 +91,10 @@ impl LlmProvider for ProxyLlmProvider {
         })?;
 
         Ok(aiome_core::llm_provider::LlmResponse {
-            content: body.result,
-            stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            content: body.content,
+            stop_reason: body.stop_reason,
+            reasoning: body.reasoning,
+            metadata: body.metadata,
         })
     }
 

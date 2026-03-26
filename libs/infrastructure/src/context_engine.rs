@@ -98,8 +98,11 @@ impl ContextEngine {
 
         Ok(LlmRequest {
             messages,
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: None,
             metadata: Some(metadata),
-            ..Default::default()
         })
     }
 

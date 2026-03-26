@@ -86,6 +86,7 @@ mod tests {
             max_tokens: None,
             stop_sequences: None,
             format: None,
+            metadata: None,
         };
 
         manager
