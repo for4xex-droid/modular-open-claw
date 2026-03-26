@@ -149,6 +149,8 @@ impl OllamaProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -256,6 +258,8 @@ impl LlmProvider for OllamaProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -514,6 +518,8 @@ impl LlmProvider for AbyssVaultProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -601,6 +607,9 @@ impl LlmProvider for AbyssVaultProvider {
 // --- Cloud Provider Implementations ---
 
 /// Google Gemini Provider
+/// Gemini Interactions API スキル実装 (Phase 5)
+pub mod interactions;
+
 #[derive(Debug, Clone)]
 pub struct GeminiProvider {
     client: reqwest::Client,
@@ -739,6 +748,8 @@ impl LlmProvider for GeminiProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -948,6 +959,7 @@ impl OpenAiProvider {
         }
     }
 
+    /// OpenAI API互換のプロバイダをベースURL指定で初期化します
     pub fn with_base_url(
         client: reqwest::Client,
         api_key: String,
@@ -1036,6 +1048,8 @@ impl LlmProvider for OpenAiProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -1172,6 +1186,7 @@ impl ClaudeProvider {
         }
     }
 
+    /// Claude APIプロバイダをベースURL指定で初期化します
     pub fn with_base_url(
         client: reqwest::Client,
         api_key: String,
@@ -1279,6 +1294,8 @@ impl LlmProvider for ClaudeProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -1474,6 +1491,8 @@ impl LlmProvider for LmStudioProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
+            reasoning: None,
+            metadata: None,
         })
     }
 
@@ -1688,6 +1707,8 @@ impl LlmProvider for MockLlmProvider {
                 self.response.clone()
             },
             stop_reason: StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         })
     }
     async fn stream_complete(

@@ -167,6 +167,7 @@ impl ProjectKnowledgeIndexer {
                 text_content: Some(chunk_content),
                 job_ref: None,
                 parent_refs: vec![],
+                is_protected: false,
             };
 
             self.artifact_store.save_artifact(req, jail).await?;

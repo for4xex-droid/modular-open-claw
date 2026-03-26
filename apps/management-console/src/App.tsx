@@ -31,6 +31,7 @@ const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipel
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
+const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 
@@ -172,7 +173,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome', 'causal'];
     const advanced = [...intermediate, 'graph', 'audit', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -259,6 +260,14 @@ function App() {
               label="Resonance Map"
               active={activeTab === "graph"}
               onClick={() => setActiveTab("graph")}
+            />
+          )}
+          {isVisible("causal") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label="Causal Trace"
+              active={activeTab === "causal"}
+              onClick={() => setActiveTab("causal")}
             />
           )}
           {isVisible("artifacts") && (
@@ -377,6 +386,7 @@ function App() {
             {activeTab === "expressions" && "AI Self-Expression Pipeline"}
             {activeTab === "biome" && "Biome Collaborative Lab"}
             {activeTab === "store" && "Creator Voice Store"}
+            {activeTab === "causal" && "Causal Reasoning Trace"}
             {activeTab === "settings" && "System Settings"}
           </motion.h2>
 
@@ -407,6 +417,7 @@ function App() {
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}
+              {activeTab === "causal" && <CausalVisualizer />}
               {activeTab === "settings" && <SettingsPage />}
             </motion.div>
           </React.Suspense>

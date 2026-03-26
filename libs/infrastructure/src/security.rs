@@ -21,6 +21,8 @@ pub struct SecurityConfig {
     pub allowed_binaries: Vec<String>,
     /// workspace_root
     pub workspace_root: std::path::PathBuf,
+    /// vault_path (Phase 3: DRM 隔離領域)
+    pub vault_path: Option<std::path::PathBuf>,
 }
 
 impl Default for SecurityConfig {
@@ -52,6 +54,7 @@ impl Default for SecurityConfig {
                 "docker".to_string(),
             ],
             workspace_root: std::path::PathBuf::from("workspace"),
+            vault_path: None,
         }
     }
 }
@@ -70,12 +73,22 @@ impl SecurityConfig {
                         "🛡️ [SecurityConfig] Loaded whitelist from ~/.aiome/config/security.json."
                     );
                     config.workspace_root = workspace_root;
+                    // AiomeConfig との整合性を取るため、環境変数からも取得を試みる
+                    if config.vault_path.is_none() {
+                        let vault = std::env::var("VAULT_PATH")
+                            .unwrap_or_else(|_| "~/.aiome/vault".to_string());
+                        let expanded = shared::os_utils::expand_home(&vault);
+                        config.vault_path = Some(std::path::PathBuf::from(expanded));
+                    }
                     return config;
                 }
             }
         }
         let mut config = Self::default();
         config.workspace_root = workspace_root;
+        let vault = std::env::var("VAULT_PATH").unwrap_or_else(|_| "~/.aiome/vault".to_string());
+        let expanded = shared::os_utils::expand_home(&vault);
+        config.vault_path = Some(std::path::PathBuf::from(expanded));
         config
     }
 }
@@ -189,10 +202,35 @@ impl RuntimeJail for BastionGuard {
             };
 
             for p in potential_paths {
-                if let Err(e) = sandbox.validate_path(p) {
+                let mut path_allowed = false;
+
+                // Check against Workspace Sandbox
+                if sandbox.validate_path(p).is_ok() {
+                    path_allowed = true;
+                }
+
+                // Check against Vault Sandbox (if configured)
+                if !path_allowed {
+                    if let Some(vault_root) = &GLOBAL_SECURITY_CONFIG.vault_path {
+                        if let Ok(vault_sandbox) = shared::sandbox::PathSandbox::new(vault_root) {
+                            if vault_sandbox.validate_path(p).is_ok() {
+                                // 隔離制限チェック: protected マニフェストが必要か？
+                                // Phase 3 では DRM パスの読み取りには allow_filesystem_read が必要とする
+                                if self.is_system_internal || self.manifest.allow_filesystem_write {
+                                    // Vault は書き込みも制限対象
+                                    path_allowed = true;
+                                } else {
+                                    warn!("🛡️ [BastionGuard] Access to vault path '{}' blocked: missing permissions.", p);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !path_allowed {
                     error!(
-                        "🛡️ [BastionGuard] Blocked access to unauthorized path: {} (Reason: {})",
-                        p, e
+                        "🛡️ [BastionGuard] Blocked access to unauthorized path: {}",
+                        p
                     );
                     return Err(AiomeError::Infrastructure {
                         reason: format!(

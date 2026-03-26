@@ -48,8 +48,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 25 | **Insecure Default Secrets** | **Fallback API_SERVER_SECRET** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 27)** |
 | 26 | **Unauthorized Frontend Requests**| **CORS misconfiguration (AllowOrigin::any)** | 🔴 High | **Strict ALLOWED_ORIGINS Enforcement (Phase 27)** |
 | 27 | **Runtime Database Panic** | **unwrap() on Pool in PG mode** | 🟡 Mid | **Safe DatabasePool Getters (Phase 31)** |
-| 28 | **LLM Format Mismatch** | **JSON expected, Text received** | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
-| 29 | **Shadow Clone Hijacking** | **Docker Bomb / Secret Exfiltration** | 🔴 High | **5-Layer Shadow Defense (Semaphore, Commerce, Bastion, Timeout, Purge) (Phase 43)** |
+| 28 | LLM Format Mismatch | JSON expected, Text received | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
+| 29 | Shadow Clone Hijacking | Docker Bomb / Secret Exfiltration | 🔴 High | **5-Layer Shadow Defense (Semaphore, Commerce, Bastion, Timeout, Purge) (Phase 43)** |
+| 30 | **Gemini Session Hijacking**| **Context Poisoning via interaction_id** | 🔴 High | **Interaction ID Validation + Trait-Based Provider Isolation (Phase 5)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -69,6 +70,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
 - **5-Layer Shadow Sandbox (Phase 43)**: `DockerConductor` enforces five progressive security layers for sub-agent delegation: 1) **Fork Bomb Protection** (Semaphore limit: 3), 2) **Economic Binding** (Validation via `CommerceEngine`), 3) **Absolute Sterilization** (Pre-execution environment isolation), 4) **BastionGuard Strict** (Read-only root, no network by default), and 5) **Technical Timeout** (300s hard kill).
+- **Hybrid Context Isolation (Phase 5)**: `InteractionsGeminiProvider` isolates conversation state per session using `interaction_id`. This prevents cross-session context leakage and ensures that the agent's "chain of thought" (Reasoning Log) is tied to specific, authenticated job contexts within the `TrajectoryStore`.
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
@@ -138,4 +140,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-26 (Phase 44 / Job Control & Task History)*
+*最終更新: 2026-03-26 (Phase 5 / Gemini Interactions API Foundation)*

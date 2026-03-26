@@ -82,3 +82,25 @@ export interface TreasureFeedback {
     action: string;
     metadata?: Record<string, any>;
 }
+
+export interface TrajectoryStep {
+    step_id: number;
+    job_id?: string;
+    action: string;
+    tool_name?: string;
+    input: any;
+    output: any;
+    timestamp: string;
+    reasoning?: string;
+    parent_step_id?: string;
+    step_category: string;
+    completion_criteria?: string;
+}
+
+export interface AgentDiagnosis {
+    critical_failure_step: number;
+    category: string;
+    root_cause: string;
+    self_repair_hint: string;
+    diagnosed_at: string;
+}

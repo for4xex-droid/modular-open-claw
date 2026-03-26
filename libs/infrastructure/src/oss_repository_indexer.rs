@@ -187,6 +187,7 @@ impl OssRepositoryIndexer {
                         text_content: Some(chunk_content),
                         job_ref: None,
                         parent_refs: vec![],
+                        is_protected: false,
                     };
                     if let Err(e) = self.artifact_store.save_artifact(req, &jail).await {
                         error!(
@@ -215,6 +216,7 @@ impl OssRepositoryIndexer {
                     text_content: Some(content),
                     job_ref: None,
                     parent_refs: vec![],
+                    is_protected: false,
                 };
                 if let Err(e) = self.artifact_store.save_artifact(req, &jail).await {
                     error!(

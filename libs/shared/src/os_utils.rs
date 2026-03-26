@@ -55,9 +55,25 @@ pub fn prevent_spotlight_indexing(path: &Path) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-/// プロセスの優先度を上げる（Nice値の変更）
-pub fn raise_process_priority() {
-    // POSIX nice 値の変更は libc 等が必要だが、
-    // ここでは概念的な実装に留めるか、Command で実行する。
-    // 長時間稼働には標準的な優先度で十分な場合が多い。
+/// パス中の `~` をユーザーのホームディレクトリに展開する
+pub fn expand_home<P: AsRef<Path>>(path: P) -> std::path::PathBuf {
+    let path = path.as_ref();
+    if !path.starts_with("~") {
+        return path.to_path_buf();
+    }
+
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"));
+    match home {
+        Ok(home_dir) => {
+            let mut expanded = std::path::PathBuf::from(home_dir);
+            if path == Path::new("~") {
+                expanded
+            } else {
+                // `~` の後の `/` をスキップして結合
+                expanded.push(path.strip_prefix("~").unwrap());
+                expanded
+            }
+        }
+        Err(_) => path.to_path_buf(), // ホームが見つからない場合はそのまま
+    }
 }

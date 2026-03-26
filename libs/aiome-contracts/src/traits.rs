@@ -335,14 +335,17 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
 
     /// チャットメモリのサマリ（圧縮された記憶）を取得
-    async fn get_chat_memory_summary(&self, channel_id: &str)
-        -> Result<Option<String>, AiomeError>;
+    async fn get_chat_memory_summary(
+        &self,
+        channel_id: &str,
+    ) -> Result<Option<(String, Option<String>)>, AiomeError>;
 
     /// チャットメモリのサマリを更新
     async fn update_chat_memory_summary(
         &self,
         channel_id: &str,
         summary: &str,
+        last_interaction_id: Option<&str>,
     ) -> Result<(), AiomeError>;
 
     /// 圧縮（蒸留）されたチャットメッセージにフラグを立てる
@@ -730,6 +733,8 @@ pub struct CreateArtifactRequest {
     pub text_content: Option<String>,
     pub job_ref: Option<String>,
     pub parent_refs: Vec<ArtifactEdgeInput>,
+    #[serde(default)]
+    pub is_protected: bool, // Phase 3: DRM 隔離フラグ
 }
 
 /// アーティファクト・ストレージ・トレイト
@@ -829,7 +834,7 @@ pub trait AiomeLogger: Send + Sync {
     async fn log_success(
         &self,
         artifact_id: &str,
-        output_path: &std::path::PathBuf,
+        output_path: &std::path::Path,
     ) -> Result<(), AiomeError>;
     async fn log_error(&self, reason: &str) -> Result<(), AiomeError>;
     async fn daily_summary(&self, jail: &bastion::fs_guard::Jail) -> Result<String, AiomeError>;

@@ -417,6 +417,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 master_email: None,
                 xtts_endpoint: None,
                 xtts_speaker: None,
+                vault_path: tmp_dir.path().join("vault").to_str().unwrap().to_string(),
                 mcp: shared::config::McpConfig::default(),
             };
             Arc::new(config)
@@ -457,15 +458,28 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )
             as Arc<dyn aiome_core::traits::TranscriptionEngine>),
-        task_dispatcher: Component::new(Arc::new(
-            infrastructure::task_orchestrator::TaskDispatcher::new(
+        task_dispatcher: {
+            let validator = Arc::new(
+                infrastructure::validator::DefaultConstitutionalValidator::new(provider.clone()),
+            );
+            let dispatcher = Arc::new(infrastructure::task_orchestrator::TaskDispatcher::new(
                 job_queue.clone(),
-                std::time::Duration::from_millis(100),
-                None,
-                None,
-                None,
-            ),
-        )),
+                std::time::Duration::from_millis(10),
+                None, // core_event_tx
+                None, // tool_discovery
+                None, // planner
+                Some(validator),
+                Some(tmp_dir.path().join("SOUL.md")),
+            ));
+
+            // G-22 Fix: Spawn dispatcher loop in background for integration tests
+            let dispatcher_clone = dispatcher.clone();
+            tokio::spawn(async move {
+                dispatcher_clone.run_dispatch_loop().await;
+            });
+
+            Component::new(dispatcher)
+        },
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

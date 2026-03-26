@@ -26,6 +26,8 @@ use utoipa::OpenApi;
         // Jobs
         crate::routes::jobs::cancel_job_handler,
         crate::routes::jobs::get_job_logs_handler,
+        crate::routes::jobs::get_trajectory_handler,
+        crate::routes::jobs::get_diagnosis_handler,
         // Karma
         crate::routes::karma::get_karma_stream,
         crate::routes::karma::synergy_graph_handler,
@@ -112,7 +114,12 @@ use utoipa::OpenApi;
             aiome_contracts::gig::GigDeliverable,
             aiome_contracts::gig::VerificationResult,
             aiome_contracts::gig::AcceptanceCriteria,
-            aiome_contracts::gig::GigOrderStatus
+            aiome_contracts::gig::GigOrderStatus,
+            aiome_core::trajectory::TrajectoryStep,
+            aiome_core::trajectory::AgentDiagnosis,
+            aiome_core::trajectory::FailureCategory,
+            aiome_core::trajectory::StepCategory,
+            aiome_core::trajectory::ConstraintViolation,
         )
     ),
     info(

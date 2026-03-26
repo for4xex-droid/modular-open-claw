@@ -8,20 +8,13 @@
 use anyhow::{Context, Result};
 use secrecy::SecretString;
 use std::env;
+use std::path::PathBuf;
 
 /// MCP Configuration
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct McpConfig {
     /// MCP スキルのメタデータ (Markdown) をプロンプトに注入するかどうか
     pub skill_md_injection: bool,
-}
-
-impl Default for McpConfig {
-    fn default() -> Self {
-        Self {
-            skill_md_injection: false,
-        }
-    }
 }
 
 /// Aiome Core Configuration
@@ -51,6 +44,8 @@ pub struct AiomeConfig {
     pub allowed_origins: Vec<String>,
     /// DRM保護（Abyss Vault）の物理パス
     pub abyss_vault_path: String,
+    /// 隔離領域（Protected Area / Vault）の物理パス (Phase 3)
+    pub vault_path: PathBuf,
     /// Tremendous APIキー
     pub tremendous_api_key: Option<SecretString>,
     /// 管理者・ギフト受取用メールアドレス
@@ -78,6 +73,8 @@ pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
 pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
 /// Abyss Vaultのデフォルトパス
 pub const DEFAULT_ABYSS_VAULT_PATH: &str = "~/.aiome/abyss_vault";
+/// 隔離領域のデフォルトパス
+pub const DEFAULT_VAULT_PATH: &str = "~/.aiome/vault";
 
 impl Default for AiomeConfig {
     fn default() -> Self {
@@ -94,6 +91,7 @@ impl Default for AiomeConfig {
             samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
             allowed_origins: vec!["http://localhost:1420".to_string()],
             abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
+            vault_path: crate::os_utils::expand_home(DEFAULT_VAULT_PATH),
             tremendous_api_key: None,
             master_email: None,
             xtts_endpoint: Some("http://localhost:18020".to_string()),
@@ -136,6 +134,9 @@ impl AiomeConfig {
 
         let abyss_vault_path =
             env::var("ABYSS_VAULT_PATH").unwrap_or_else(|_| DEFAULT_ABYSS_VAULT_PATH.to_string());
+        let vault_path = crate::os_utils::expand_home(
+            env::var("VAULT_PATH").unwrap_or_else(|_| DEFAULT_VAULT_PATH.to_string()),
+        );
 
         // Load and immediately remove sensitive API keys
         let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|key| {
@@ -166,6 +167,7 @@ impl AiomeConfig {
             samsara_hub_url,
             allowed_origins,
             abyss_vault_path,
+            vault_path,
             tremendous_api_key: env::var("TREMENDOUS_API_KEY").ok().map(|key| {
                 env::remove_var("TREMENDOUS_API_KEY");
                 SecretString::from(key)
@@ -184,5 +186,22 @@ impl AiomeConfig {
     /// ヘルパー: 環境変数からURLを取得し、なければデフォルトを返す
     pub fn get_url(env_name: &str, default: &str) -> String {
         env::var(env_name).unwrap_or_else(|_| default.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_config_has_vault_path_expansion() {
+        // Mock HOME for consistency
+        std::env::set_var("HOME", "/Users/aiome_test");
+        let config = AiomeConfig::default();
+        assert_eq!(
+            config.vault_path,
+            PathBuf::from("/Users/aiome_test/.aiome/vault")
+        );
     }
 }

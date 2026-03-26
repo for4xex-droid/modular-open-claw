@@ -421,12 +421,15 @@ pub async fn trigger_agent_chat(
     let mut total_steps = 0;
 
     while turn < max_turns {
-        let full_prompt = format!(
-            "{}\n{}\nUSER: {}\nAI: ",
-            instructions,
-            current_history.join("\n"),
-            payload.prompt
-        );
+        // 🛡️ [Hybrid Context] prepare_hybrid_request を使用
+        let mut request = state
+            .context_engine
+            .prepare_hybrid_request(&channel_id, &payload.prompt, Some(&instructions))
+            .await?;
+
+        // 既存の履歴も追加（必要に応じて）
+        // ただし、Interactions API を使う場合は messages よりも interaction_id が優先されるべき
+        // 今回は単純化のため、messages も含めるが、プロバイダー側でフィルタリングする設計とする
 
         // Phase 6.9: Prevent API abuse & Bind Economy (NG-25 Fix)
         if let Some(engine) = state.commerce_engine.as_opt() {
@@ -447,11 +450,17 @@ pub async fn trigger_agent_chat(
 
         match timeout(
             Duration::from_secs(300),
-            provider.complete(&full_prompt, None),
+            provider.complete_with_cache(request.clone()),
         )
         .await
         {
             Ok(Ok(resp)) => {
+                // 🛡️ [Hybrid Context] interaction_id の同期
+                let _ = state
+                    .context_engine
+                    .process_hybrid_response(&channel_id, &resp)
+                    .await;
+
                 let reply = resp.content.trim().to_string();
                 final_reply = reply.clone();
                 let mut skill_results = Vec::new();
@@ -463,7 +472,7 @@ pub async fn trigger_agent_chat(
                         .execute_autonomous_purchase(
                             auth.agent_id,
                             inference_id,
-                            serde_json::json!({"action": "inference", "tokens": full_prompt.len()}),
+                            serde_json::json!({"action": "inference", "request": format!("{:?}", request)}),
                         )
                         .await
                     {

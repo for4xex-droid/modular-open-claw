@@ -90,6 +90,8 @@ impl LlmProvider for ProxyLlmProvider {
         Ok(aiome_core::llm_provider::LlmResponse {
             content: body.result,
             stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         })
     }
 

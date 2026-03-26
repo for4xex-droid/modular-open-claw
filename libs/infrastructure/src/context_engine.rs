@@ -7,12 +7,32 @@
 
 use crate::job_queue::UniversalJobQueue;
 use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest};
+use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
 use aiome_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
+
+/// コンテキストバジェットの設定
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ContextBudget {
+    pub max_summary_chars: usize,
+    pub max_karma_chars: usize,
+    pub max_history_chars: usize,
+    pub reserved_system_chars: usize,
+}
+
+impl Default for ContextBudget {
+    fn default() -> Self {
+        Self {
+            max_summary_chars: 1000,
+            max_karma_chars: 2000,
+            max_history_chars: 4000,
+            reserved_system_chars: 500,
+        }
+    }
+}
 
 /// LLM向けコンテキスト生成エンジン
 pub struct ContextEngine {
@@ -35,13 +55,94 @@ impl ContextEngine {
         }
     }
 
+    /// LLM 呼び出しのための最終的な LlmRequest を構築する (Hybrid Context 対応)
+    pub async fn prepare_hybrid_request(
+        &self,
+        channel_id: &str,
+        prompt: &str,
+        system: Option<&str>,
+    ) -> Result<LlmRequest, AiomeError> {
+        // 1. セッション要約と直近の interaction_id を取得
+        let (summary, interaction_id) = self
+            .job_queue
+            .get_chat_memory_summary(channel_id)
+            .await?
+            .unwrap_or_else(|| ("なし".to_string(), None));
+
+        // 2. メッセージの構築
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(LlmMessage {
+                role: "system".to_string(),
+                content: format!("{}\n\nこれまでの会話要約: {}", sys, summary),
+                cache: true,
+            });
+        } else {
+            messages.push(LlmMessage {
+                role: "system".to_string(),
+                content: format!("これまでの会話要約: {}", summary),
+                cache: true,
+            });
+        }
+        messages.push(LlmMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+            cache: false,
+        });
+
+        // 3. メタデータに interaction_id をセット
+        let mut metadata = std::collections::HashMap::new();
+        if let Some(id) = interaction_id {
+            metadata.insert("interaction_id".to_string(), id);
+        }
+
+        Ok(LlmRequest {
+            messages,
+            metadata: Some(metadata),
+            ..Default::default()
+        })
+    }
+
+    /// LLM レスポンスを受け取り、必要に応じて interaction_id を同期する
+    pub async fn process_hybrid_response(
+        &self,
+        channel_id: &str,
+        response: &LlmResponse,
+    ) -> Result<(), AiomeError> {
+        if let Some(ref metadata) = response.metadata {
+            if let Some(new_interaction_id) = metadata.get("interaction_id") {
+                // 現在の要約を取得して interaction_id だけ更新
+                let (summary, _) = self
+                    .job_queue
+                    .get_chat_memory_summary(channel_id)
+                    .await?
+                    .unwrap_or_else(|| ("なし".to_string(), None));
+
+                self.job_queue
+                    .update_chat_memory_summary(channel_id, &summary, Some(new_interaction_id))
+                    .await?;
+
+                info!(
+                    "🛰️ [ContextEngine] Interaction ID synchronized: {} for {}",
+                    new_interaction_id, channel_id
+                );
+            }
+        }
+        Ok(())
+    }
+
     /// Fetches the intelligent context for a channel (Summary + Recent turns)
     pub async fn get_intelligent_history(
         &self,
         channel_id: &str,
         max_recent_turns: i64,
     ) -> Result<(Option<String>, Vec<serde_json::Value>), AiomeError> {
-        let summary = self.job_queue.get_chat_memory_summary(channel_id).await?;
+        let (summary, _interaction_id) = self
+            .job_queue
+            .get_chat_memory_summary(channel_id)
+            .await?
+            .map(|(s, i)| (Some(s), i))
+            .unwrap_or((None, None));
         let history = self
             .job_queue
             .fetch_chat_history(channel_id, max_recent_turns)
@@ -75,11 +176,12 @@ impl ContextEngine {
                     channel_id
                 );
 
-                let current_summary = self
+                let (current_summary, current_interaction_id) = self
                     .job_queue
                     .get_chat_memory_summary(channel_id)
                     .await?
-                    .unwrap_or_else(|| "なし".to_string());
+                    .map(|(s, i)| (s, i))
+                    .unwrap_or_else(|| ("なし".to_string(), None));
 
                 // Take the oldest half of messages to compress
                 let compress_count = all_recent.len() / 2;
@@ -99,7 +201,11 @@ impl ContextEngine {
                 match self.provider.complete(&prompt, system).await {
                     Ok(resp) => {
                         self.job_queue
-                            .update_chat_memory_summary(channel_id, resp.content.trim())
+                            .update_chat_memory_summary(
+                                channel_id,
+                                resp.content.trim(),
+                                current_interaction_id.as_deref(),
+                            )
                             .await?;
 
                         // Mark compressed messages as distilled
@@ -174,5 +280,70 @@ impl ContextEngine {
         );
 
         Ok((context_block, final_history))
+    }
+
+    /// バジェット管理されたコンテキスト取得 (Phase 3.6 implementation)
+    pub async fn fetch_budgeted_context(
+        &self,
+        channel_id: &str,
+        category: &str,
+        budget: ContextBudget,
+    ) -> Result<(String, String), AiomeError> {
+        info!(
+            "🧠 [ContextEngine] Fetching budgeted context for category: {}",
+            category
+        );
+
+        // 1. 要約の取得 (Summary Budget)
+        let (summary, _interaction_id) = self
+            .job_queue
+            .get_chat_memory_summary(channel_id)
+            .await?
+            .unwrap_or_else(|| ("なし".to_string(), None));
+
+        let safe_summary = if summary.len() > budget.max_summary_chars {
+            format!("{}... (truncated)", &summary[..budget.max_summary_chars])
+        } else {
+            summary
+        };
+
+        // 2. 関連カルマの取得 (Karma Budget)
+        // limit を多くして取得し、バジェットに収まるようにトリミング
+        let karma = self
+            .job_queue
+            .fetch_relevant_karma_by_category("Context Search", category, 10)
+            .await?;
+        let mut karma_text = String::new();
+        for entry in karma.entries {
+            let line = format!("- {}\n", entry.lesson);
+            if karma_text.len() + line.len() > budget.max_karma_chars {
+                break;
+            }
+            karma_text.push_str(&line);
+        }
+
+        // 3. 会話履歴の取得 (History Budget)
+        let history = self.job_queue.fetch_chat_history(channel_id, 20).await?;
+        let mut history_text = String::new();
+        // 直近のメッセージから順にバジェットに詰め込む
+        for m in history.iter().rev() {
+            let line = format!("{}: {}\n", m["role"], m["content"].as_str().unwrap_or(""));
+            if history_text.len() + line.len() > budget.max_history_chars {
+                break;
+            }
+            history_text = format!("{}{}", line, history_text); // 前に追加 (時系列維持)
+        }
+
+        let context_block = format!(
+            "### Current Knowledge Summary\n{}\n\n### Relevant Background\n{}",
+            safe_summary,
+            if karma_text.is_empty() {
+                "None identified.".to_string()
+            } else {
+                karma_text
+            }
+        );
+
+        Ok((context_block, history_text))
     }
 }

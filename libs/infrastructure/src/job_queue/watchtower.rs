@@ -28,11 +28,12 @@ pub trait WatchtowerOps {
     async fn do_get_chat_memory_summary(
         &self,
         channel_id: &str,
-    ) -> Result<Option<String>, AiomeError>;
+    ) -> Result<Option<(String, Option<String>)>, AiomeError>;
     async fn do_update_chat_memory_summary(
         &self,
         channel_id: &str,
         summary: &str,
+        last_interaction_id: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn do_fetch_undistilled_chats_by_channel(
         &self,
@@ -130,14 +131,14 @@ impl WatchtowerOps for UniversalJobQueue {
     async fn do_get_chat_memory_summary(
         &self,
         channel_id: &str,
-    ) -> Result<Option<String>, AiomeError> {
+    ) -> Result<Option<(String, Option<String>)>, AiomeError> {
         let q = format!(
-            "SELECT summary FROM chat_memory_summaries WHERE channel_id = {}",
+            "SELECT summary, last_interaction_id FROM chat_memory_summaries WHERE channel_id = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, channel_id)
-            .unwrap_or(None)
-            .map(|r| r.0);
+        let opt: Option<(String, Option<String>)> =
+            crate::sql_fetch_optional!(&self.pool, (String, Option<String>), &q, channel_id)
+                .unwrap_or(None);
         Ok(opt)
     }
 
@@ -145,13 +146,16 @@ impl WatchtowerOps for UniversalJobQueue {
         &self,
         channel_id: &str,
         summary: &str,
+        last_interaction_id: Option<&str>,
     ) -> Result<(), AiomeError> {
         let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO chat_memory_summaries (channel_id, summary, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3}) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, last_interaction_id = EXCLUDED.last_interaction_id, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
         };
-        sql_exec!(&self.pool, &q, channel_id, summary).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
+        sql_exec!(&self.pool, &q, channel_id, summary, last_interaction_id).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: e.to_string(),
+            }
         })?;
         Ok(())
     }

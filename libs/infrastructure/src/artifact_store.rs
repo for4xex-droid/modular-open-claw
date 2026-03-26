@@ -32,7 +32,8 @@ use crate::vector_ops::{StandardVectorOps, VectorOps};
 /// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
 pub struct UniversalArtifactStore {
     pool: DatabasePool,
-    base_dir: PathBuf, // workspace/artifacts
+    base_dir: PathBuf,           // workspace/artifacts
+    vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     embed_provider: Option<Arc<dyn EmbeddingProvider>>,
 }
 
@@ -42,8 +43,15 @@ impl UniversalArtifactStore {
         Self {
             pool,
             base_dir,
+            vault_path: None,
             embed_provider: None,
         }
+    }
+
+    /// 隔離領域を設定する
+    pub fn with_vault(mut self, path: PathBuf) -> Self {
+        self.vault_path = Some(path);
+        self
     }
 
     /// 埋め込みプロバイダを設定する
@@ -122,11 +130,23 @@ impl ArtifactStore for UniversalArtifactStore {
         let timestamp = chrono::Utc::now();
         let dir_name = format!("{}_{}", timestamp.format("%Y-%m-%d"), &id[..8]);
 
-        let sandbox = PathSandbox::new(jail.root()).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to initialize sandbox: {}", e),
-        })?;
+        // Phase 3: Protected Area 判定
+        let current_base_dir = if req.is_protected {
+            self.vault_path
+                .as_ref()
+                .cloned()
+                .unwrap_or_else(|| jail.root().to_path_buf())
+        } else {
+            jail.root().to_path_buf()
+        };
 
-        let artifacts_base = jail.root().join("artifacts");
+        // サンドボックスを現在のベースディレクトリ（workspace または vault）で初期化
+        let sandbox =
+            PathSandbox::new(&current_base_dir).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to initialize sandbox: {}", e),
+            })?;
+
+        let artifacts_base = current_base_dir.join("artifacts");
         if !artifacts_base.exists() {
             let _ = std::fs::create_dir_all(&artifacts_base);
         }

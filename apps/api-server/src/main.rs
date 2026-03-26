@@ -485,6 +485,9 @@ async fn main() -> anyhow::Result<()> {
             stt_enabled,
         ));
 
+    let validator = Arc::new(
+        infrastructure::validator::DefaultConstitutionalValidator::new(bg_provider.clone()),
+    );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
@@ -492,6 +495,8 @@ async fn main() -> anyhow::Result<()> {
         Some(event_sender.clone()),
         None,
         None,
+        Some(validator.clone()),
+        Some(std::path::PathBuf::from("workspace/SOUL.md")),
     );
     // Register DockerConductor
     let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(

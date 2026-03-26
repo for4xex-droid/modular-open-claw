@@ -29,6 +29,12 @@ pub struct LoraEngine {
     pub models: Vec<LoraModel>,
 }
 
+impl Default for LoraEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoraEngine {
     /// 新規LoRAエンジンを生成する
     pub fn new() -> Self {

@@ -16,6 +16,7 @@ Aiome の LLM プロバイダーは、**Infrastructure Layer** (`libs/infrastruc
 libs/infrastructure/src/llm/
 ├── mod.rs           ← モジュール宣言
 ├── proxy.rs         ← ProxyLlmProvider (Abyss Vault 経由)
+├── interactions.rs  ← InteractionsGeminiProvider (Phase 5: ステートフル REST API)
 └── dynamic.rs       ← DynamicLlmProvider / BackgroundLlmProvider (★ 本ドキュメント)
 ```
 
@@ -144,6 +145,7 @@ graph TB
         DP[DynamicLlmProvider]
         BP[BackgroundLlmProvider]
         PP[ProxyLlmProvider]
+        IG[InteractionsGeminiProvider]
     end
 
     subgraph "Core Layer (Traits)"
@@ -158,7 +160,7 @@ graph TB
     end
 
     subgraph "External"
-        Gemini[Gemini Cloud]
+        Gemini[Gemini Cloud REST / Interactions]
         OpenAI[OpenAI]
         Claude[Claude]
         Ollama[Ollama Local]
@@ -173,6 +175,8 @@ graph TB
     BP --> LT
     BP --> ET
     PP --> LT
+    DP --> IG
+    IG --> Gemini
 
     AC --> DP
     AC --> BP
@@ -225,10 +229,16 @@ graph TB
 `LlmRequest` に `format` フィールドが追加されました。
 - Ollama: `format: "json"` が指定された場合、`format: "json"` パラメータをリクエストに付与し、LLM に JSON 形式での出力を強制します。
 
+### 3.8 Gemini Interactions API 統合 (Phase 5 実装)
+`InteractionsGeminiProvider` は、Google Gemini の REST ベースの Interactions API を使用します。
+- **Stateful Sessions**: `interaction_id` を介してサーバーサイドで会話コンテキストを維持。フロントエンドからのコンテキスト送信量を削減。
+- **Hybrid Context Sync**: `ContextEngine` および `TrajectoryStore` と連携し、DB に同期保存された履歴に基づいた再構築とフェイルオーバーを実現。
+- **Reasoning Log Persistence**: LLM が生成した内部思考（Reasoning）を透過的に取得・永続化し、デバッグと透明性を向上。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-03-24 (Phase 31 / 信頼性向上 & 構造化出力対応)*
+*最終更新: 2026-03-26 (Phase 5 / Gemini Interactions API 対応)*
 
 ---
 

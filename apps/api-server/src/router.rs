@@ -184,6 +184,14 @@ pub fn build_app(
         .route(
             "/api/v1/jobs/:id/logs",
             get(routes::jobs::get_job_logs_handler),
+        )
+        .route(
+            "/api/v1/trajectory/:id",
+            get(routes::jobs::get_trajectory_handler),
+        )
+        .route(
+            "/api/v1/trajectory/:id/diagnosis",
+            get(routes::jobs::get_diagnosis_handler),
         );
 
     #[cfg(debug_assertions)]

@@ -508,7 +508,27 @@ graph TD
 ```
 
 ---
-*最終更新日: 2026-03-26* (Phase 43 / Shadow Clone Integration)
+### 🛡️ Phase 5: Gemini Interactions API Integration
+- **変更内容**: 
+    - `interactions.rs`: Gemini Interactions API プロバイダーの実装。
+    - `contracts/trajectory.rs`: `TrajectoryStep` への `interaction_id` 追加。
+    - `contracts/llm.rs`: `LlmRequest` / `LlmResponse` への `metadata` / `reasoning` 追加。
+    - `trajectory_store.rs`: DB 永続化ロジックの更新。
+- **波及効果**: 
+    - `dynamic.rs`, `fallback_router.rs`, `semantic_cache.rs`, `planner.rs` 等、LLM リクエスト/レスポンスを扱う全てのコンポーネントで初期化コードの修正（Ripple Effect）が発生。
+    - `ContextEngine` がセッション ID を追跡可能になり、ハイブリッド履歴管理が確立。
+
+```mermaid
+graph TD
+    A[interactions.rs] -->|Provider| B[DynamicLlmProvider]
+    B -->|Request/Response| C[contracts/llm.rs]
+    C -->|Ripple| D[semantic_cache.rs]
+    C -->|Ripple| E[fallback_router.rs]
+    F[trajectory_store.rs] -->|Persistence| G[interaction_id]
+```
+
+---
+*最終更新日: 2026-03-26* (Phase 5 Foundation Integration)
 
 ### 👥 Phase 43: Shadow Clone × Cmux Integration
 - **変更内容**: 

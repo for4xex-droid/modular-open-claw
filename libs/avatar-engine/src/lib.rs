@@ -36,49 +36,64 @@ pub struct EmotionToParameterMapper {
 impl Default for EmotionToParameterMapper {
     fn default() -> Self {
         let mut mappings = HashMap::new();
-
-        let mut excited = AvatarParameters::default();
-        excited.eye_open_l = 1.0;
-        excited.eye_open_r = 1.0;
-        excited.mouth_open = 0.7;
-        excited.eyebrow_y = 0.3;
-        excited.physics_intensity = 1.5;
-        mappings.insert("excited".to_string(), excited);
-
-        let mut curious = AvatarParameters::default();
-        curious.eye_open_l = 0.9;
-        curious.eye_open_r = 0.9;
-        curious.mouth_open = 0.3;
-        curious.eyebrow_y = 0.5;
-        curious.angle_x = 15.0; // tilt
-        curious.physics_intensity = 1.0;
-        mappings.insert("curious".to_string(), curious);
-
-        let mut sad = AvatarParameters::default();
-        sad.eye_open_l = 0.4;
-        sad.eye_open_r = 0.4;
-        sad.mouth_open = 0.1;
-        sad.eyebrow_y = -0.5;
-        sad.angle_x = -5.0;
-        sad.physics_intensity = 0.5;
-        mappings.insert("sad".to_string(), sad);
-
-        let mut angry = AvatarParameters::default();
-        angry.eye_open_l = 0.7;
-        angry.eye_open_r = 0.7;
-        angry.mouth_open = 0.5;
-        angry.eyebrow_y = -0.8;
-        angry.physics_intensity = 2.0;
-        mappings.insert("angry".to_string(), angry);
-
-        let mut reflective = AvatarParameters::default();
-        reflective.eye_open_l = 0.6;
-        reflective.eye_open_r = 0.6;
-        reflective.mouth_open = 0.0;
-        reflective.eyebrow_y = 0.0;
-        reflective.angle_x = 5.0;
-        reflective.physics_intensity = 0.3;
-        mappings.insert("reflective".to_string(), reflective);
+        mappings.insert(
+            "excited".to_string(),
+            AvatarParameters {
+                eye_open_l: 1.0,
+                eye_open_r: 1.0,
+                mouth_open: 0.7,
+                eyebrow_y: 0.3,
+                physics_intensity: 1.5,
+                ..Default::default()
+            },
+        );
+        mappings.insert(
+            "curious".to_string(),
+            AvatarParameters {
+                eye_open_l: 0.9,
+                eye_open_r: 0.9,
+                mouth_open: 0.3,
+                eyebrow_y: 0.5,
+                angle_x: 15.0,
+                physics_intensity: 1.0,
+                ..Default::default()
+            },
+        );
+        mappings.insert(
+            "sad".to_string(),
+            AvatarParameters {
+                eye_open_l: 0.4,
+                eye_open_r: 0.4,
+                mouth_open: 0.1,
+                eyebrow_y: -0.5,
+                angle_x: -5.0,
+                physics_intensity: 0.5,
+                ..Default::default()
+            },
+        );
+        mappings.insert(
+            "angry".to_string(),
+            AvatarParameters {
+                eye_open_l: 0.7,
+                eye_open_r: 0.7,
+                mouth_open: 0.5,
+                eyebrow_y: -0.8,
+                physics_intensity: 2.0,
+                ..Default::default()
+            },
+        );
+        mappings.insert(
+            "reflective".to_string(),
+            AvatarParameters {
+                eye_open_l: 0.6,
+                eye_open_r: 0.6,
+                mouth_open: 0.0,
+                eyebrow_y: 0.0,
+                angle_x: 5.0,
+                physics_intensity: 0.3,
+                ..Default::default()
+            },
+        );
 
         Self { mappings }
     }

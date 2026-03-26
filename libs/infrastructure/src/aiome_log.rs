@@ -91,7 +91,7 @@ impl AiomeLogger for AiomeLogClient {
     async fn log_success(
         &self,
         artifact_id: &str,
-        output_path: &PathBuf,
+        output_path: &std::path::Path,
     ) -> Result<(), AiomeError> {
         let prev_hash = self.get_last_hash().await;
         let artifact = Some(artifact_id);

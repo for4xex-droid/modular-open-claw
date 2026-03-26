@@ -224,15 +224,16 @@ impl JobQueue for UniversalJobQueue {
     async fn get_chat_memory_summary(
         &self,
         channel_id: &str,
-    ) -> Result<Option<String>, AiomeError> {
+    ) -> Result<Option<(String, Option<String>)>, AiomeError> {
         self.do_get_chat_memory_summary(channel_id).await
     }
     async fn update_chat_memory_summary(
         &self,
         channel_id: &str,
         summary: &str,
+        last_interaction_id: Option<&str>,
     ) -> Result<(), AiomeError> {
-        self.do_update_chat_memory_summary(channel_id, summary)
+        self.do_update_chat_memory_summary(channel_id, summary, last_interaction_id)
             .await
     }
     async fn mark_chats_as_distilled(

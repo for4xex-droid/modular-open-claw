@@ -5,6 +5,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_core::traits::JobQueue;
+use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
 use axum::{
     extract::{Path, State},
     response::Json,
@@ -79,6 +80,75 @@ pub async fn get_job_logs_handler(
         }))),
         None => Err(aiome_contracts::error::AiomeError::ArtifactNotFound {
             path: format!("job:{}", job_id),
+        }
+        .into()),
+    }
+}
+
+/// GET /api/v1/trajectory/:job_id
+#[utoipa::path(
+    get,
+    path = "/api/v1/trajectory/{id}",
+    responses(
+        (status = 200, description = "Execution trajectory for the job", body = Vec<TrajectoryStep>),
+        (status = 404, description = "Job not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    params(
+        ("id" = String, Path, description = "Job ID")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+pub async fn get_trajectory_handler(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Path(job_id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    let steps = state
+        .job_queue
+        .fetch_trajectory(&job_id)
+        .await
+        .map_err(AppError::from)?;
+
+    Ok(Json(json!({
+        "job_id": job_id,
+        "steps": steps,
+    })))
+}
+
+/// GET /api/v1/trajectory/:job_id/diagnosis
+#[utoipa::path(
+    get,
+    path = "/api/v1/trajectory/{id}/diagnosis",
+    responses(
+        (status = 200, description = "Self-diagnosis report for a failed job", body = AgentDiagnosis),
+        (status = 404, description = "No diagnosis found for this job"),
+        (status = 500, description = "Internal server error")
+    ),
+    params(
+        ("id" = String, Path, description = "Job ID")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+pub async fn get_diagnosis_handler(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Path(job_id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    let diagnosis = state
+        .job_queue
+        .fetch_diagnosis(&job_id)
+        .await
+        .map_err(AppError::from)?;
+
+    match diagnosis {
+        Some(d) => Ok(Json(json!(d))),
+        None => Err(aiome_contracts::error::AiomeError::ArtifactNotFound {
+            path: format!("diagnosis:{}", job_id),
         }
         .into()),
     }

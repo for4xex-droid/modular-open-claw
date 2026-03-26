@@ -122,6 +122,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: Implemented **Shadow Clone** capability for delegating complex tasks to Docker-based sub-agents. Secured by 5-layer defense (Semaphore, Commerce, Bastion, Timeout, Purge) and features asynchronous orchestration with real-time SSE progress feedback.
 - 🛑 **Phase 44: Shadow Clone Job Control & Task History**: Implemented Job Cancellation API (`/api/v1/jobs/:id/cancel`) and Task Logs API (`/api/v1/jobs/:id/logs`), enabling users to manually halt running Shadow Clones. Integrates `CancellationToken` for safe async task interruption and deterministic Docker container cleanup.
 - 🛰️ **Phase 2 (ADR-024): Trajectory Persistence & Autonomous Job Decomposition**: Implemented automatic sub-job dispatching based on planner breakdown into the `JobQueue`. Furthermore, execution trajectories are now persisted in SQLite with `job_id` and `tool_name` context, enabling full causal tracing of agent thoughts and actions.
+- 🛰️ **Phase 5: Gemini Interactions API Integration (Hybrid Context Sync)**: Integrated the Google Gemini Interactions API to synchronize server-side session states with local histories. Achieved ultimate hybrid context management with automatic local LLM failover while preserving chain-of-thought continuity.
 
 ---
 
@@ -153,7 +154,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
-| **Last Updated:** | 2026-03-26 | Phase 44 / Job Control & Task History |
+| **Last Updated:** | 2026-03-26 | Phase 5 / Gemini Interactions API Foundation |
 ---
 
 ## 🛰️ 実行コンポーネント

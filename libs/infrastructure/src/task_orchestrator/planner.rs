@@ -65,6 +65,8 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                     constraint_violations: Vec::new(),
                     is_critical_failure: false,
                     failure_category: None,
+                    completion_criteria: v["completion_criteria"].as_str().map(|s| s.to_string()),
+                    interaction_id: None,
                 });
                 current_step_id += 1;
             }
@@ -86,6 +88,8 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                 constraint_violations: Vec::new(),
                 is_critical_failure: false,
                 failure_category: None,
+                completion_criteria: None,
+                interaction_id: None,
             });
         }
 

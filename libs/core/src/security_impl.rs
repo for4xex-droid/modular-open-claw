@@ -74,7 +74,7 @@ pub fn purge_entities(input: &str) -> String {
 
     // 6. Final safety: Purge any lone brackets or leftover entities
     text = decode_html_entities(&text).to_string();
-    text = text.replace('<', "").replace('>', "");
+    text = text.replace(['<', '>'], "");
 
     // 7. Collapse whitespace
     text = WS_RE.replace_all(&text, " ").to_string();

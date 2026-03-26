@@ -144,6 +144,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
         karma_refs: vec![],
         job_ref: None,
         parent_refs: vec![],
+        is_protected: false,
     };
 
     let id = ArtifactStore::save_artifact(&store, req, &jail).await?;

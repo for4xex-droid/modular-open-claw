@@ -62,6 +62,7 @@ impl LlmProvider for DynamicLlmProvider {
             max_tokens: None,
             stop_sequences: None,
             format: None,
+            metadata: None,
         };
         self.hook_manager.trigger_pre_execute(&request).await?;
 
@@ -76,12 +77,14 @@ impl LlmProvider for DynamicLlmProvider {
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
-                let provider = aiome_core::llm_provider::GeminiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete(prompt, system).await
+                // InteractionsGeminiProvider を優先的に使用 (Phase 5)
+                let provider =
+                    aiome_core::llm_provider::interactions::InteractionsGeminiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model,
+                    );
+                provider.complete_with_cache(request.clone()).await
             }
             "openai" => {
                 let api_key = self.get_api_key("llm_api_key", "openai").await;
@@ -215,11 +218,12 @@ impl LlmProvider for DynamicLlmProvider {
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
-                let provider = aiome_core::llm_provider::GeminiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
+                let provider =
+                    aiome_core::llm_provider::interactions::InteractionsGeminiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model,
+                    );
                 provider.complete_with_cache(request.clone()).await
             }
             "openai" => {
@@ -429,6 +433,7 @@ impl LlmProvider for BackgroundLlmProvider {
             max_tokens: None,
             stop_sequences: None,
             format: None,
+            metadata: None,
         };
         self.hook_manager.trigger_pre_execute(&request).await?;
 

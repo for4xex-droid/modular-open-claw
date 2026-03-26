@@ -105,6 +105,7 @@ pub mod vector_ops;
 pub mod whisper_transcription;
 pub mod workspace_manager;
 
+mod artifact_store_tests;
 mod soul_store_tests;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;

@@ -109,6 +109,7 @@ pub struct SkillMetadata {
 pub struct WasmSkillManager {
     skills_dir: PathBuf,
     allowed_root: PathBuf,
+    vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     memory_limit_bytes: u64,
     timeout: Duration,
     wasm_cache: std::sync::RwLock<HashMap<String, (Vec<u8>, SystemTime)>>,
@@ -128,10 +129,17 @@ impl WasmSkillManager {
         Ok(Self {
             skills_dir,
             allowed_root,
+            vault_path: None,
             memory_limit_bytes: 10 * 1024 * 1024, // 10MB default
             timeout: Duration::from_millis(5000), // 5s default
             wasm_cache: std::sync::RwLock::new(HashMap::new()),
         })
+    }
+
+    /// 隔離領域を設定する
+    pub fn with_vault<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.vault_path = Some(path.as_ref().to_path_buf());
+        self
     }
 
     /// `with_limits` を実行する
@@ -276,6 +284,7 @@ impl WasmSkillManager {
         let metadata = self.get_metadata(skill_name);
         let allowed_root_clone = self.allowed_root.clone();
         let timeout = self.timeout;
+        let vault_path_clone = self.vault_path.clone();
         let skills_dir_parent = self.skills_dir.parent().map(|p| p.to_path_buf());
 
         let result = tokio::task::spawn_blocking(move || {
@@ -354,6 +363,7 @@ impl WasmSkillManager {
 
             let host_write_permissions = metadata.as_ref().map(|m| m.permissions.clone()).unwrap_or_default();
             let allowed_root_for_write = allowed_root_clone.clone();
+            let vault_path_for_write = vault_path_clone.clone(); // Use the local clone
             let host_write_fn = Function::new(
                 "host_write",
                 [ValType::I64],
@@ -390,7 +400,19 @@ impl WasmSkillManager {
                                     };
                                     let final_path = canon_parent.join(file_name);
                                     let p_str = final_path.to_string_lossy().to_lowercase();
-                                    if !final_path.starts_with(&allowed_root_for_write) {
+
+                                    let mut path_allowed = final_path.starts_with(&allowed_root_for_write);
+
+                                    // Check against Vault if workspace missed
+                                    if !path_allowed {
+                                        if let Some(vault_root) = &vault_path_for_write {
+                                            if final_path.starts_with(vault_root) {
+                                                path_allowed = true;
+                                            }
+                                        }
+                                    }
+
+                                    if !path_allowed {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Path traversal blocked." }).to_string()
                                     } else if p_str.contains(".env") || p_str.contains(".git") || p_str.contains("config/security.json") {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Access to sensitive internal file is forbidden." }).to_string()

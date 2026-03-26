@@ -855,6 +855,7 @@ async fn test_sqlite_trajectory_store() {
         reasoning: Some("Strategic planning for expansion".into()),
         parent_step_id: Some("step-0".into()),
         step_category: StepCategory::Planning,
+        completion_criteria: Some("Plan decomposed into sub-steps".into()),
     };
 
     jq.record_step(&job_id, step.clone())

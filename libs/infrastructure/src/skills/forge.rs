@@ -62,7 +62,6 @@ serde_json = "1.0"
     }
 
     /// 既存の Seatbelt プロファイル生成ロジックは BastionGuard に統合
-
     /// 新しいスキルを生成し、コンパイルする (自己修復ループ付き)
     pub async fn forge_skill(
         &self,

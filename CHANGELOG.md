@@ -1,6 +1,11 @@
 ## [Unreleased] - 2026-03-26
 
 ### Added
+- **Phase 5: Gemini Interactions API 統合基盤 [完了]**
+    - **InteractionsGeminiProvider**: Gemini Interactions API (REST) へのステートフル接続、指数バックオフ再試行、および Ollama への自動フェイルオーバー機能を実装。
+    - **Hybrid Context Management**: Gemini 側のセッションステート (`interaction_id`) とローカル SQLite の履歴同期の第1段階を実装。
+    - **Schema Expansion**: `TrajectoryStep` および `chat_memory_summaries` に `interaction_id` フィールドを追加。SQLite/Postgres 両方で推論ログの永続化に対応。
+    - **Structural Refactoring**: `LlmRequest` / `LlmResponse` へのメタデータ・推論ログ用フィールド追加に伴うシステム全体（Orchestrator, Proxy, Cache等）の初期化コードを修正。
 - **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [完了]**
     - **Trajectory Expansion**: `TrajectoryStep` に `job_id` および `tool_name` フィールドを追加。タスクの実行軌跡と特定のジョブ・ツールの紐付けを可能に。
     - **JobQueue Persistence**: `JobQueue` トレイトに `store_trajectory_step` および `fetch_trajectory_steps` を追加。SQLite 実装 (`UniversalJobQueue`) で永続化をサポート。

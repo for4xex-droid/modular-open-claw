@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 /// 🛡️ AgentRx 失敗カテゴリ (Taxonomy)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
 pub enum FailureCategory {
     /// 計画されたステップに従わなかった、または不要な追加アクションを行った
     PlanAdherenceFailure,
@@ -69,9 +69,10 @@ impl std::str::FromStr for FailureCategory {
 }
 
 /// 📂 ステップカテゴリ (ADR-024)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default, utoipa::ToSchema)]
 pub enum StepCategory {
     /// 既存の汎用ステップ
+    #[default]
     General,
     /// 仮説生成（ADR-023 連携）
     Hypothesis,
@@ -87,14 +88,8 @@ pub enum StepCategory {
     Decision,
 }
 
-impl Default for StepCategory {
-    fn default() -> Self {
-        Self::General
-    }
-}
-
 /// 📉 軌跡（Trajectory）の1ステップ
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TrajectoryStep {
     pub step_id: u32,
     pub job_id: Option<String>,
@@ -114,10 +109,14 @@ pub struct TrajectoryStep {
     pub parent_step_id: Option<String>,
     /// ステップの種別カテゴリ
     pub step_category: StepCategory,
+    /// 完了条件（Task Contract）
+    pub completion_criteria: Option<String>,
+    /// Gemini Interaction ID (ADR-024 Phase 5)
+    pub interaction_id: Option<String>,
 }
 
 /// ⛓️ 制約違反の証拠
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ConstraintViolation {
     pub constraint_name: String,
     pub expected: String,
@@ -126,7 +125,7 @@ pub struct ConstraintViolation {
 }
 
 /// 🧠 エージェントの自己診断結果
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AgentDiagnosis {
     pub critical_failure_step: u32,
     pub category: FailureCategory,

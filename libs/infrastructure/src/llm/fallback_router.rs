@@ -89,6 +89,8 @@ impl LlmProvider for FallbackRouter {
                 Ok(LlmResponse {
                     content: "{\"text\": \"ごめんなさい、ちょっと接続が不安定みたい。あとでまた話しかけてね！\", \"emotion\": \"neutral\", \"action\": \"none\"}".to_string(),
                     stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
                 })
             }
         }

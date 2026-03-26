@@ -53,6 +53,8 @@ pub struct LlmRequest {
     pub stop_sequences: Option<Vec<String>>,
     /// 出力フォーマット (例: "json")
     pub format: Option<String>,
+    /// プロバイダー固有のメタデータ (例: "previous_interaction_id")
+    pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 /// LLMからの構造化レスポンス
@@ -62,6 +64,10 @@ pub struct LlmResponse {
     pub content: String,
     /// 停止理由
     pub stop_reason: StopReason,
+    /// モデルの推論理由（思考プロセス）
+    pub reasoning: Option<String>,
+    /// プロバイダー固有のメタデータ (例: "interaction_id")
+    pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 /// LLMプロバイダーの共通インターフェース

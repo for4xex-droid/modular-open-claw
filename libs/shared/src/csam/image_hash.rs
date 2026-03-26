@@ -34,6 +34,12 @@ pub struct ImageHasher {
     hasher: img_hash::Hasher,
 }
 
+impl Default for ImageHasher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ImageHasher {
     /// `ImageHasher` の新しいインスタンスを作成する
     pub fn new() -> Self {
@@ -56,7 +62,7 @@ impl ImageHasher {
     /// 既知の有害ハッシュリストとの照合 (初期実装はモック)
     pub fn is_blacklisted(&self, hash_base64: &str) -> bool {
         // TODO: 将来的にデータベースや外部API (PhotoDNA) と連携
-        let mock_blacklist = vec!["dummy_malicious_hash_value_12345"];
+        let mock_blacklist = ["dummy_malicious_hash_value_12345"];
         mock_blacklist.contains(&hash_base64)
     }
 

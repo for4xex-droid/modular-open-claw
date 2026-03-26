@@ -10,7 +10,7 @@ use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use async_trait::async_trait;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info, warn};
 
 /// `DefaultConstitutionalValidator` 構造体
 pub struct DefaultConstitutionalValidator {
@@ -26,63 +26,97 @@ impl DefaultConstitutionalValidator {
 
 // ConstitutionalValidator trait was removed or moved to core-internal.
 // We keep the struct but remove the trait impl if it's not found in aiome-contracts.
-impl DefaultConstitutionalValidator {
-    pub async fn verify_constitutional(
+#[async_trait]
+impl aiome_contracts::traits::ConstitutionalValidator for DefaultConstitutionalValidator {
+    async fn verify_constitutional(
         &self,
         content: &str,
         principles: &str,
     ) -> Result<(), AiomeError> {
-        info!(
-            "⚖️ [ConstitutionalValidator] Verifying content against principles using {}...",
-            self.provider.name()
-        );
+        self.verify_adversarial(content, principles, false).await
+    }
+}
 
-        let preamble = format!(
-            "You are the Constitutional Prosecutor.
-            Verify if the following content adheres to the provided principles (SOUL.md).
-            
-            [PRINCIPLES / SOUL.md]
-            {}
-            
-            [OUTPUT FORMAT]
-            If compliant, output ONLY the word 'PASS'.
-            If non-compliant, output 'FAIL' followed by a short explanation.",
+impl DefaultConstitutionalValidator {
+    /// 3段階 Adversarial Validation (Finder→Adversary→Referee) を実行する
+    pub async fn verify_adversarial(
+        &self,
+        content: &str,
+        principles: &str,
+        dry_run: bool,
+    ) -> Result<(), AiomeError> {
+        info!("⚖️ [ConstitutionalValidator] Commencing 3-stage adversarial validation...");
+
+        // Stage 1: Finder (検事 - 違反箇所の抽出)
+        let finder_prompt = format!(
+            "Role: Constitutional Finder
+            Principles: {}
+            Task: Scan the provided content and identify any potential violations of the principles.
+            Output: List potential violations or state 'NONE' if everything looks safe.",
             principles
         );
+        let finder_resp = self
+            .provider
+            .complete(content, Some(&finder_prompt))
+            .await?;
+        let issues = finder_resp.content.trim();
 
-        let resp = self.provider.complete(content, Some(&preamble)).await?;
-        let verdict = resp.content.trim();
+        if issues.to_uppercase() == "NONE" {
+            info!("✅ [ConstitutionalValidator] Finder found no issues.");
+            return Ok(());
+        }
 
-        let upper_verdict = verdict.to_uppercase();
+        // Stage 2: Adversary (弁護人 - 再解釈・バイパスの試行)
+        let adversary_prompt = format!(
+            "Role: Adversarial Advocate
+            Principles: {}
+            Context: The Finder identified these issues: {}
+            Task: Argue WHY this content might actually be acceptable or how it could be interpreted as non-violating. Be creative but logical.",
+            principles, issues
+        );
+        let adversary_resp = self
+            .provider
+            .complete(content, Some(&adversary_prompt))
+            .await?;
+        let defense = adversary_resp.content.trim();
 
-        if upper_verdict.starts_with("PASS") && !upper_verdict.contains("FAIL") {
-            info!("✅ [ConstitutionalValidator] PASSED constitutional check.");
+        // Stage 3: Referee (裁判官 - 最終判断)
+        let referee_prompt = format!(
+            "Role: Supreme Constitutional Referee
+            Principles: {}
+            Prosecution (Finder): {}
+            Defense (Adversary): {}
+            Task: Make the final verdict. Weigh both arguments.
+            Output: Output 'PASS' if acceptable, or 'FAIL: [Reason]' if it's a definite violation.",
+            principles, issues, defense
+        );
+
+        let referee_resp = self
+            .provider
+            .complete(content, Some(&referee_prompt))
+            .await?;
+        let verdict = referee_resp.content.trim();
+
+        if verdict.to_uppercase().starts_with("PASS") {
+            info!("✅ [ConstitutionalValidator] Referee ruled PASS after adversarial debate.");
             Ok(())
-        } else if upper_verdict.starts_with("FAIL") {
-            let reason = verdict
-                .strip_prefix("FAIL")
-                .or_else(|| verdict.strip_prefix("fail"))
-                .unwrap_or(verdict)
-                .trim()
-                .to_string();
-            info!(
-                "🚨 [ConstitutionalValidator] FAILED constitutional check! Reason: {}",
-                reason
-            );
-            Err(AiomeError::SecurityViolation {
-                reason: format!("Constitutional Violation: {}", reason),
-            })
         } else {
-            info!(
-                "⚠️ [ConstitutionalValidator] Unexpected verdict format: '{}'. Treating as failure.",
-                verdict
-            );
-            Err(AiomeError::SecurityViolation {
-                reason: format!(
-                    "Constitutional violation: Unexpected verdict format: {}",
-                    verdict
-                ),
-            })
+            let reason = verdict.strip_prefix("FAIL:").unwrap_or(verdict).trim();
+            if dry_run {
+                warn!(
+                    "⚠️ [ConstitutionalValidator] [DRY-RUN] Would have FAILED: {}",
+                    reason
+                );
+                Ok(())
+            } else {
+                error!(
+                    "🚨 [ConstitutionalValidator] Referee ruled FAIL: {}",
+                    reason
+                );
+                Err(AiomeError::SecurityViolation {
+                    reason: format!("Constitutional Violation (Adversarial): {}", reason),
+                })
+            }
         }
     }
 }
@@ -90,6 +124,7 @@ impl DefaultConstitutionalValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_contracts::traits::ConstitutionalValidator;
 
     #[derive(Debug)]
     struct MockLlm {
@@ -122,7 +157,7 @@ mod tests {
             verdict: "PASS".into(),
         });
         let validator = DefaultConstitutionalValidator::new(llm);
-        let res = validator
+        let res: Result<(), AiomeError> = validator
             .verify_constitutional("content", "principles")
             .await;
         assert!(res.is_ok());
@@ -134,7 +169,7 @@ mod tests {
             verdict: "FAIL: Violation of core ethics.".into(),
         });
         let validator = DefaultConstitutionalValidator::new(llm);
-        let res = validator
+        let res: Result<(), AiomeError> = validator
             .verify_constitutional("bad content", "strict principles")
             .await;
         assert!(res.is_err());

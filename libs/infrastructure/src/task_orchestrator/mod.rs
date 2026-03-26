@@ -73,6 +73,8 @@ pub struct TaskDispatcher {
     >,
     tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
     planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
+    validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+    soul_path: Option<std::path::PathBuf>,
 }
 
 impl TaskDispatcher {
@@ -83,6 +85,8 @@ impl TaskDispatcher {
         core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
         tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
         planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
+        validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+        soul_path: Option<std::path::PathBuf>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -130,6 +134,8 @@ impl TaskDispatcher {
             active_jobs: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
             tool_discovery,
             planner,
+            validator,
+            soul_path,
         }
     }
 
@@ -329,6 +335,46 @@ impl TaskDispatcher {
 
         let steps: Vec<aiome_contracts::trajectory::TrajectoryStep> =
             planner.plan_goal(instruction, context).await?;
+
+        // --- Phase 3: Constitutional Validation ---
+        if let Some(validator) = &self.validator {
+            info!(
+                "⚖️ Validating plan for goal {} against constitution...",
+                job.id
+            );
+            let plan_summary = steps
+                .iter()
+                .map(|s| format!("- {}", s.action))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            let principles = if let Some(path) = &self.soul_path {
+                tokio::fs::read_to_string(path)
+                    .await
+                    .unwrap_or_else(|_| "No principles found.".to_string())
+            } else {
+                "No principles found.".to_string()
+            };
+
+            if let Err(e) = validator
+                .verify_constitutional(&plan_summary, &principles)
+                .await
+            {
+                error!(
+                    "🚨 Plan for goal {} REJECTED by ConstitutionalValidator: {:?}",
+                    job.id, e
+                );
+                let _ = self
+                    .job_queue
+                    .fail_job(&job.id, &format!("Constitutional Violation: {}", e))
+                    .await;
+                return Err(e);
+            }
+            info!(
+                "✅ Plan for goal {} PASSED constitutional validation.",
+                job.id
+            );
+        }
 
         info!("📋 Goal {} decomposed into {} steps.", job.id, steps.len());
 
@@ -808,8 +854,15 @@ mod tests {
             completed: std::sync::Mutex::new(false),
         });
 
-        let mut dispatcher =
-            TaskDispatcher::new(queue.clone(), Duration::from_millis(10), None, None, None);
+        let mut dispatcher = TaskDispatcher::new(
+            queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
         let mut rx = dispatcher.subscribe_events();
