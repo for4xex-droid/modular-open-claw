@@ -281,11 +281,11 @@ pub struct SnsMetricsRecord {
     pub engagement_rate: Option<f64>,
 }
 
-/// ジョブキュー操作 (JobQueue)
+// --- Domain-Specific Traits (Refactored from JobQueue God Trait) ---
+
+/// 1. ジョブ管理 (TaskRegistry)
 #[async_trait]
-pub trait JobQueue: Send + Sync + std::fmt::Debug {
-    /// 新しいジョブをキューに追加
-    #[allow(clippy::too_many_arguments)]
+pub trait TaskRegistry: Send + Sync + std::fmt::Debug {
     async fn enqueue(
         &self,
         category: &str,
@@ -297,275 +297,120 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
         priority: i32,
     ) -> Result<String, AiomeError>;
 
-    /// 待機中のジョブを1件取得
     async fn dequeue(&self, capable_categories: &[&str]) -> Result<Option<Job>, AiomeError>;
-
-    /// ジョブの詳細を取得
     async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError>;
-
-    /// ジョブを完了としてマーク
-    async fn complete_job(
-        &self,
-        job_id: &str,
-        output_artifacts: Option<&str>,
-    ) -> Result<(), AiomeError>;
-
-    /// ジョブを失敗としてマーク
+    async fn complete_job(&self, job_id: &str, output_artifacts: Option<&str>) -> Result<(), AiomeError>;
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
-
-    /// ジョブをキャンセル（中止）としてマーク
     async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
-
-    /// タイムアウトしたジョブを回収
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
-
-    /// 指定チャネルの会話履歴を取得 (ContextEngine 用)
-    async fn fetch_chat_history(
-        &self,
-        channel_id: &str,
-        limit: i64,
-    ) -> Result<Vec<serde_json::Value>, AiomeError>;
-
-    /// チャットメッセージを保存
-    async fn store_chat_message(
-        &self,
-        channel_id: &str,
-        role: &str,
-        content: &str,
-    ) -> Result<(), AiomeError>;
-
-    /// チャットメモリのサマリ（圧縮された記憶）を取得
-    async fn get_chat_memory_summary(
-        &self,
-        channel_id: &str,
-    ) -> Result<Option<(String, Option<String>)>, AiomeError>;
-
-    /// チャットメモリのサマリを更新
-    async fn update_chat_memory_summary(
-        &self,
-        channel_id: &str,
-        summary: &str,
-        last_interaction_id: Option<&str>,
-    ) -> Result<(), AiomeError>;
-
-    /// 圧縮（蒸留）されたチャットメッセージにフラグを立てる
-    async fn mark_chats_as_distilled(
-        &self,
-        channel_id: &str,
-        last_id: i64,
-    ) -> Result<(), AiomeError>;
-
-    /// クリエイティブ評価を書き込む
-    async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
-
-    /// ワーカーの生存報告 (Heartbeat)
-    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
-
-    /// 実行ログを途中で追記保存する
-    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError>;
-
-    /// 関連するカルマ（教訓）をトピックベースで検索する
-    async fn fetch_relevant_karma(
-        &self,
-        topic: &str,
-        skill_id: &str,
-        limit: i64,
-        current_soul_hash: &str,
-    ) -> Result<KarmaSearchResult, AiomeError>;
-
-    /// 教訓 (Karma) を永続化する
-    #[allow(clippy::too_many_arguments)]
-    async fn store_karma(
-        &self,
-        job_id: &str,
-        skill_id: &str,
-        lesson: &str,
-        karma_type: &str,
-        soul_hash: &str,
-        domain: Option<&str>,
-        subtopic: Option<&str>,
-        clone_origin_id: Option<&str>,
-    ) -> Result<(), AiomeError>;
-
-    /// Karma の重みを調整（強化/減衰）する
-    async fn adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError>;
-
-    /// 時間経過による Karma の自然減衰を実行する
-    async fn karma_decay_sweep(&self) -> Result<u64, AiomeError>;
-
-    /// まだ蒸留（教訓抽出）されていない完了済みジョブを取得
-    async fn fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
-
-    /// ジョブを蒸留済みとしてマークする
-    async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError>;
-
-    /// 古いジョブ履歴を物理削除する
-    async fn purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError>;
-
-    /// ジョブとSNS投稿データをリンクする
-    async fn link_sns_data(
-        &self,
-        job_id: &str,
-        platform: &str,
-        content_id: &str,
-    ) -> Result<(), AiomeError>;
-
-    /// 定期評価が必要なジョブを取得する (Milestone-based)
-    async fn fetch_jobs_for_evaluation(
-        &self,
-        milestone_days: i64,
-        limit: i64,
-    ) -> Result<Vec<Job>, AiomeError>;
-
-    /// SNSのメトリクス（閲覧数、いいね数、コメント等）を記録する
-    #[allow(clippy::too_many_arguments)]
-    async fn record_sns_metrics(
-        &self,
-        job_id: &str,
-        milestone_days: i64,
-        views: i64,
-        likes: i64,
-        comments_count: i64,
-        raw_comments: Option<&str>,
-    ) -> Result<(), AiomeError>;
-
-    /// 評価待ちメトリクスを取得
-    async fn fetch_pending_evaluations(
-        &self,
-        limit: i64,
-    ) -> Result<Vec<SnsMetricsRecord>, AiomeError>;
-
-    /// 最終評価を適用
-    async fn apply_final_verdict(
-        &self,
-        record_id: i64,
-        verdict: crate::contracts::OracleVerdict,
-        soul_hash: &str,
-    ) -> Result<(), AiomeError>;
-
-    /// 最近のジョブを取得
-    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
-
-    /// エージェント統計を取得
-    async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError>;
-
-    /// 各種経験値・共鳴の追加
-    async fn add_resonance(&self, amount: i32) -> Result<(), AiomeError>;
-    async fn add_tech_exp(&self, amount: i32) -> Result<(), AiomeError>;
-    async fn add_creativity(&self, amount: i32) -> Result<(), AiomeError>;
-
-    /// Samsara レベルの同期
-    async fn sync_samsara_level(
-        &self,
-    ) -> Result<Option<crate::contracts::SamsaraEvent>, AiomeError>;
-
-    /// 進化イベントの記録
-    async fn record_evolution_event(
-        &self,
-        level: i32,
-        event_type: &str,
-        description: &str,
-        inspiration: Option<&str>,
-        karma_json: Option<&str>,
-    ) -> Result<(), AiomeError>;
-
-    /// 進化履歴の取得
-    async fn fetch_evolution_history(
-        &self,
-        limit: i64,
-    ) -> Result<Vec<serde_json::Value>, AiomeError>;
-
-    /// 待機中ジョブ数
     async fn get_pending_job_count(&self) -> Result<i64, AiomeError>;
-    /// 指定期間以降のジョブ数
-    async fn get_job_count_since(
-        &self,
-        since: chrono::DateTime<chrono::Utc>,
-    ) -> Result<i64, AiomeError>;
-
-    /// 全カルマ取得
-    async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
-    /// トップパフォーマンスジョブ取得
+    async fn get_job_count_since(&self, since: chrono::DateTime<chrono::Utc>) -> Result<i64, AiomeError>;
+    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
     async fn fetch_top_performing_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
-
-    /// 魂の変異記録
-    async fn record_soul_mutation(
-        &self,
-        old_hash: &str,
-        new_hash: &str,
-        reason: &str,
-    ) -> Result<(), AiomeError>;
-
-    /// ジョブリトライカウント
     async fn fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError>;
     async fn reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError>;
+    async fn purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError>;
+    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
+}
 
-    /// 未組み込みカルマ取得
-    async fn fetch_unincorporated_karma(
-        &self,
-        limit: i64,
-        current_soul_hash: &str,
-    ) -> Result<Vec<serde_json::Value>, AiomeError>;
-    /// カルマ組み込み済みマーク
-    async fn mark_karma_as_incorporated(
-        &self,
-        karma_ids: Vec<String>,
-        new_soul_hash: &str,
-    ) -> Result<(), AiomeError>;
+/// 2. 監査・実行軌跡 (AuditStore)
+#[async_trait]
+pub trait AuditStore: Send + Sync + std::fmt::Debug {
+    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError>;
+    async fn store_trajectory_step(&self, step: crate::trajectory::TrajectoryStep) -> Result<(), AiomeError>;
+    async fn fetch_trajectory_steps(&self, job_id: &str) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
+    async fn get_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
+    async fn increment_security_request_count(&self, agent_id: Option<uuid::Uuid>) -> Result<u32, AiomeError>;
+}
 
-    // --- Phase 12-C: Adaptive Immune System ---
-    async fn store_immune_rule(
-        &self,
-        rule: &crate::contracts::ImmuneRule,
-    ) -> Result<(), AiomeError>;
+/// 3. 対話履歴・短期記憶 (ChatStore)
+#[async_trait]
+pub trait ChatStore: Send + Sync + std::fmt::Debug {
+    async fn fetch_chat_history(&self, channel_id: &str, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn store_chat_message(&self, channel_id: &str, role: &str, content: &str) -> Result<(), AiomeError>;
+    async fn get_chat_memory_summary(&self, channel_id: &str) -> Result<Option<(String, Option<String>)>, AiomeError>;
+    async fn update_chat_memory_summary(&self, channel_id: &str, summary: &str, last_interaction_id: Option<&str>) -> Result<(), AiomeError>;
+    async fn mark_chats_as_distilled(&self, channel_id: &str, last_id: i64) -> Result<(), AiomeError>;
+}
+
+/// 4. 教育・教訓・長期記憶 (KarmaRegistry)
+#[async_trait]
+pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
+    async fn fetch_relevant_karma(&self, topic: &str, skill_id: &str, limit: i64, current_soul_hash: &str) -> Result<KarmaSearchResult, AiomeError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn store_karma(&self, job_id: &str, skill_id: &str, lesson: &str, karma_type: &str, soul_hash: &str, domain: Option<&str>, subtopic: Option<&str>, clone_origin_id: Option<&str>) -> Result<(), AiomeError>;
+    async fn adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError>;
+    async fn karma_decay_sweep(&self) -> Result<u64, AiomeError>;
+    async fn fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
+    async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn fetch_unincorporated_karma(&self, limit: i64, current_soul_hash: &str) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn mark_karma_as_incorporated(&self, karma_ids: Vec<String>, new_soul_hash: &str) -> Result<(), AiomeError>;
+    async fn fetch_relevant_karma_by_category(&self, topic: &str, category: &str, limit: i64) -> Result<KarmaSearchResult, AiomeError>;
+}
+
+/// 5. エージェント進化・統計 (AgentEvolver)
+#[async_trait]
+pub trait AgentEvolver: Send + Sync + std::fmt::Debug {
+    async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError>;
+    async fn add_resonance(&self, amount: i32) -> Result<(), AiomeError>;
+    async fn add_tech_exp(&self, amount: i32) -> Result<(), AiomeError>;
+    async fn add_creativity(&self, amount: i32) -> Result<(), AiomeError>;
+    async fn sync_samsara_level(&self) -> Result<Option<crate::contracts::SamsaraEvent>, AiomeError>;
+    async fn record_evolution_event(&self, level: i32, event_type: &str, description: &str, inspiration: Option<&str>, karma_json: Option<&str>) -> Result<(), AiomeError>;
+    async fn fetch_evolution_history(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn record_soul_mutation(&self, old_hash: &str, new_hash: &str, reason: &str) -> Result<(), AiomeError>;
+}
+
+/// 6. 適応型免疫システム (ImmuneSystemOps)
+#[async_trait]
+pub trait ImmuneSystemOps: Send + Sync + std::fmt::Debug {
+    async fn store_immune_rule(&self, rule: &crate::contracts::ImmuneRule) -> Result<(), AiomeError>;
     async fn delete_immune_rule(&self, rule_id: &str) -> Result<(), AiomeError>;
-    async fn fetch_active_immune_rules(
-        &self,
-    ) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
-    async fn record_arena_match(
-        &self,
-        match_data: &crate::contracts::ArenaMatch,
-    ) -> Result<(), AiomeError>;
+    async fn fetch_active_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
+    async fn record_arena_match(&self, match_data: &crate::contracts::ArenaMatch) -> Result<(), AiomeError>;
     async fn get_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
+}
 
-    // --- Phase 12-F: Karma Federation ---
-    async fn export_federated_data(
-        &self,
-        since: Option<&str>,
-    ) -> Result<
-        (
-            Vec<KarmaEntry>,
-            Vec<crate::contracts::ImmuneRule>,
-            Vec<crate::contracts::ArenaMatch>,
-        ),
-        AiomeError,
-    >;
-    async fn import_federated_data(
-        &self,
-        karmas: Vec<KarmaEntry>,
-        rules: Vec<crate::contracts::ImmuneRule>,
-        matches: Vec<crate::contracts::ArenaMatch>,
-    ) -> Result<(), AiomeError>;
+/// 7. 教訓連携 (FederationOps)
+#[async_trait]
+pub trait FederationRegistry: Send + Sync + std::fmt::Debug {
+    async fn export_federated_data(&self, since: Option<&str>) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>, Vec<crate::contracts::ArenaMatch>), AiomeError>;
+    async fn import_federated_data(&self, karmas: Vec<KarmaEntry>, rules: Vec<crate::contracts::ImmuneRule>, matches: Vec<crate::contracts::ArenaMatch>) -> Result<(), AiomeError>;
     async fn get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError>;
-    async fn update_peer_sync_time(
-        &self,
-        peer_url: &str,
-        sync_time: &str,
-    ) -> Result<(), AiomeError>;
+    async fn update_peer_sync_time(&self, peer_url: &str, sync_time: &str) -> Result<(), AiomeError>;
     async fn get_node_id(&self) -> Result<String, AiomeError>;
-    async fn fetch_unfederated_data(
-        &self,
-    ) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>), AiomeError>;
-    async fn mark_as_federated(
-        &self,
-        karma_ids: Vec<String>,
-        rule_ids: Vec<String>,
-    ) -> Result<(), AiomeError>;
-    async fn fetch_federated_metrics(
-        &self,
-    ) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
+    async fn fetch_unfederated_data(&self) -> Result<(Vec<KarmaEntry>, Vec<crate::contracts::ImmuneRule>), AiomeError>;
+    async fn mark_as_federated(&self, karma_ids: Vec<String>, rule_ids: Vec<String>) -> Result<(), AiomeError>;
+    async fn fetch_federated_metrics(&self) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
+}
 
+/// 8. バイオーム (BiomeRegistry)
+#[async_trait]
+pub trait BiomeRegistry: Send + Sync + std::fmt::Debug {
+    async fn get_biome_topic_status(&self, topic_id: &str) -> Result<Option<(i32, Option<String>)>, AiomeError>;
+    async fn advance_biome_turn(&self, topic_id: &str, cooldown_minutes: i64) -> Result<i32, AiomeError>;
+    async fn fetch_biome_messages(&self, topic_id: &str, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError>;
+    async fn store_biome_message(&self, message: &crate::biome::BiomeMessage) -> Result<(), AiomeError>;
+    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
+    async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
+}
+
+/// 統合ジョブキュー (Composite Trait)
+#[async_trait]
+pub trait JobQueue: 
+    TaskRegistry + 
+    AuditStore + 
+    ChatStore + 
+    KarmaRegistry + 
+    AgentEvolver + 
+    ImmuneSystemOps + 
+    FederationRegistry + 
+    BiomeRegistry + 
+    SoulStore
+{
     // --- Phase 10-B: Swarm Sync & CRDT ---
     async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError>;
     async fn sync_local_clock(&self, remote_clock: u64) -> Result<u64, AiomeError>;
@@ -574,74 +419,12 @@ pub trait JobQueue: Send + Sync + std::fmt::Debug {
     // --- GC & Storage ---
     async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError>;
 
-    // --- Biome ---
-    async fn get_biome_topic_status(
-        &self,
-        topic_id: &str,
-    ) -> Result<Option<(i32, Option<String>)>, AiomeError>;
-    async fn advance_biome_turn(
-        &self,
-        topic_id: &str,
-        cooldown_minutes: i64,
-    ) -> Result<i32, AiomeError>;
-    async fn fetch_biome_messages(
-        &self,
-        topic_id: &str,
-        limit: i64,
-    ) -> Result<Vec<serde_json::Value>, AiomeError>;
-    async fn store_biome_message(
-        &self,
-        message: &crate::biome::BiomeMessage,
-    ) -> Result<(), AiomeError>;
-    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
-    async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
-
-    // --- RAG ---
-    async fn fetch_relevant_karma_by_category(
-        &self,
-        topic: &str,
-        category: &str,
-        limit: i64,
-    ) -> Result<KarmaSearchResult, AiomeError>;
-
     // --- Project NURTURE compliance ---
     async fn get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
 
     // --- Expression ---
     async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError>;
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
-
-    // --- Soul Storage ---
-    async fn store_soul_fragment(
-        &self,
-        fragment_yaml: &str,
-        version_hash: &str,
-    ) -> Result<(), AiomeError>;
-    async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
-
-    // --- Phase 36: Security Hardening ---
-    /// セキュリティ監視用のリクエスト回数を取得
-    async fn get_security_request_count(
-        &self,
-        agent_id: Option<uuid::Uuid>,
-    ) -> Result<u32, AiomeError>;
-    /// セキュリティ監視用のリクエスト回数をインクリメント
-    async fn increment_security_request_count(
-        &self,
-        agent_id: Option<uuid::Uuid>,
-    ) -> Result<u32, AiomeError>;
-
-    // --- Phase 13: Autonomous Agentic Base ---
-    /// 実行軌跡（Trajectory）のステップを保存する
-    async fn store_trajectory_step(
-        &self,
-        step: crate::trajectory::TrajectoryStep,
-    ) -> Result<(), AiomeError>;
-    /// 指定されたジョブに関連する実行軌跡を取得する
-    async fn fetch_trajectory_steps(
-        &self,
-        job_id: &str,
-    ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
 }
 
 /// Soul Storage Trait
@@ -876,4 +659,49 @@ pub trait StrategicPlanner: Send + Sync {
         goal: &str,
         context: serde_json::Value,
     ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
+}
+
+/// 9. LoRA 生成エンジン
+#[async_trait]
+pub trait LoraEngine: Send + Sync + std::fmt::Debug {
+    /// 特定の LoRA アセットを使用してテキストを生成（モックまたは特定実装）
+    async fn complete_with_lora(
+        &self,
+        prompt: &str,
+        lora_id: &str,
+    ) -> Result<crate::llm::LlmResponse, AiomeError>;
+    async fn health_check(&self) -> Result<bool, AiomeError>;
+}
+
+/// 10. TTS (Text-to-Speech) プロバイダー
+#[async_trait]
+pub trait TtsProvider: Send + Sync + std::fmt::Debug {
+    /// テキストを音声データに変換
+    async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError>;
+    async fn health_check(&self) -> Result<bool, AiomeError>;
+}
+
+/// 11. Live セッションマネージャー (Gemini 3.1 Flash Live)
+#[async_trait]
+pub trait LiveSessionManager: Send + Sync + std::fmt::Debug {
+    /// 新しいストリーミングセッションを開始
+    async fn create_session(
+        &self,
+        config: crate::live_types::ThinkingLevel,
+    ) -> Result<String, AiomeError>;
+    /// セッションを終了
+    async fn close_session(&self, session_id: &str) -> Result<(), AiomeError>;
+    /// 音声データを送信 (GAP-4)
+    async fn send_audio(&self, session_id: &str, pcm_data: &[u8]) -> Result<(), AiomeError>;
+    /// テキストを送信 (GAP-4)
+    async fn send_text(&self, session_id: &str, text: &str) -> Result<(), AiomeError>;
+    /// イベントを受信 (GAP-4)
+    async fn receive_events(&self, session_id: &str) -> Result<Vec<crate::live_types::LiveEvent>, AiomeError>;
+}
+
+/// 12. ニュース・情報サービス
+#[async_trait]
+pub trait NewsService: Send + Sync + std::fmt::Debug {
+    /// 最新のトレンドやニュースを収集
+    async fn fetch_latest(&self, query: &str) -> Result<Vec<serde_json::Value>, AiomeError>;
 }

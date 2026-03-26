@@ -33,6 +33,9 @@ pub struct SoulSnapshot {
     pub narrative_self: String,
     pub prompt_fragment: String,
     pub generation: u32,
+    pub lora_adapter_path: Option<String>,
+    pub lora_base_model: Option<String>,
+    pub lora_hash: Option<String>,
 }
 
 /// Soul 永続化ストア (Universal: SQLite/PostgreSQL 対応)
@@ -71,6 +74,9 @@ impl UniversalSoulStore {
         let instinct_json = serde_json::to_string(&soul.instinct).unwrap_or_default();
         let anamnesis_json = serde_json::to_string(&soul.anamnesis).unwrap_or_default();
         let buffer_json = serde_json::to_string(&soul.experience_buffer).unwrap_or_default();
+        let semantic_json = serde_json::to_string(&soul.semantic_index).unwrap_or_default();
+        let persona_boundaries_json =
+            serde_json::to_string(&soul.persona_boundaries).unwrap_or_default();
 
         let q = format!(
             r#"
@@ -78,8 +84,9 @@ impl UniversalSoulStore {
                 id, generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model, lora_hash, last_begging_at
-            ) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13})
+                lora_adapter_path, lora_base_model, lora_hash, last_begging_at,
+                semantic_index_json, persona_boundaries_json
+            ) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15})
             ON CONFLICT(id) DO UPDATE SET
                 generation = excluded.generation,
                 soul_hash = excluded.soul_hash,
@@ -93,7 +100,9 @@ impl UniversalSoulStore {
                 lora_adapter_path = excluded.lora_adapter_path,
                 lora_base_model = excluded.lora_base_model,
                 lora_hash = excluded.lora_hash,
-                last_begging_at = excluded.last_begging_at
+                last_begging_at = excluded.last_begging_at,
+                semantic_index_json = excluded.semantic_index_json,
+                persona_boundaries_json = excluded.persona_boundaries_json
             "#,
             self.pool.ph(0),
             self.pool.ph(1),
@@ -108,7 +117,9 @@ impl UniversalSoulStore {
             self.pool.ph(10),
             self.pool.ph(11),
             self.pool.ph(12),
-            self.pool.ph(13)
+            self.pool.ph(13),
+            self.pool.ph(14),
+            self.pool.ph(15)
         );
 
         sql_exec!(
@@ -127,7 +138,9 @@ impl UniversalSoulStore {
             soul.lora_adapter_path.clone(),
             soul.lora_base_model.clone(),
             soul.lora_hash.clone(),
-            soul.last_begging_at
+            soul.last_begging_at,
+            semantic_json,
+            persona_boundaries_json
         )?;
 
         // Update cache on save
@@ -138,6 +151,9 @@ impl UniversalSoulStore {
                 narrative_self: soul.anamnesis.narrative_self.clone().unwrap_or_default(),
                 prompt_fragment: soul.instinct.prompt_fragment.clone(),
                 generation: soul.generation,
+                lora_adapter_path: soul.lora_adapter_path.clone(),
+                lora_base_model: soul.lora_base_model.clone(),
+                lora_hash: soul.lora_hash.clone(),
             });
         }
 
@@ -262,6 +278,8 @@ impl UniversalSoulStore {
         let instinct_json: String = r.get("instinct_json");
         let anamnesis_json: String = r.get("anamnesis_json");
         let buffer_json: String = r.get("experience_buffer_json");
+        let semantic_json: Option<String> = r.try_get("semantic_index_json").ok();
+        let persona_json: Option<String> = r.try_get("persona_boundaries_json").ok();
 
         Ok(AgentSoul {
             id: id.to_string(),
@@ -278,6 +296,12 @@ impl UniversalSoulStore {
             lora_base_model: r.get("lora_base_model"),
             lora_hash: r.get("lora_hash"),
             last_begging_at: r.get("last_begging_at"),
+            semantic_index: semantic_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
+            persona_boundaries: persona_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
         })
     }
 
@@ -295,6 +319,8 @@ impl UniversalSoulStore {
         let instinct_json: String = r.get("instinct_json");
         let anamnesis_json: String = r.get("anamnesis_json");
         let buffer_json: String = r.get("experience_buffer_json");
+        let semantic_json: Option<String> = r.try_get("semantic_index_json").ok();
+        let persona_json: Option<String> = r.try_get("persona_boundaries_json").ok();
 
         Ok(AgentSoul {
             id: id.to_string(),
@@ -311,6 +337,12 @@ impl UniversalSoulStore {
             lora_base_model: r.get("lora_base_model"),
             lora_hash: r.get("lora_hash"),
             last_begging_at: r.get("last_begging_at"),
+            semantic_index: semantic_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
+            persona_boundaries: persona_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
         })
     }
 
@@ -322,7 +354,8 @@ impl UniversalSoulStore {
                 generation, soul_hash, somatic_markers_json,
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
-                lora_adapter_path, lora_base_model, lora_hash, last_begging_at
+                lora_adapter_path, lora_base_model, lora_hash, last_begging_at,
+                semantic_index_json, persona_boundaries_json
             FROM agent_souls
             WHERE id = {}
             "#,
@@ -369,6 +402,9 @@ impl UniversalSoulStore {
                         .unwrap_or_default(),
                     prompt_fragment: agent_soul.instinct.prompt_fragment.clone(),
                     generation: agent_soul.generation,
+                    lora_adapter_path: agent_soul.lora_adapter_path.clone(),
+                    lora_base_model: agent_soul.lora_base_model.clone(),
+                    lora_hash: agent_soul.lora_hash.clone(),
                 });
             }
         }

@@ -7,7 +7,7 @@
 
 use crate::routes::agent::AgentChatRequest;
 use crate::AppState;
-use aiome_core::traits::JobQueue;
+use aiome_core::traits::*; 
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -117,7 +117,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
 async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyhow::Result<()> {
     use crate::routes::agent::{build_system_instructions, read_workspace_file};
-    use aiome_core::traits::JobQueue;
+    use aiome_core::traits::*; 
     use std::time::Duration;
     use tokio::time::timeout;
 

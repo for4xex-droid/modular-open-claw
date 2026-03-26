@@ -68,6 +68,12 @@ impl SamsaraEngine for MockEngine {
             Ok(soul)
         })
     }
+    fn dream<'a>(
+        &'a self,
+        soul: AgentSoul,
+    ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> {
+        Box::pin(async move { Ok(soul) })
+    }
 }
 
 #[tokio::test]

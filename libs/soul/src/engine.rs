@@ -26,6 +26,13 @@ pub trait SamsaraEngine: Send + Sync {
         soul: AgentSoul,
     ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>>;
 
+    /// 記憶の圧密（Consolidation Dream）を実行する
+    /// 短期体験を長期記憶（SemanticSummary）に圧縮し、魂を再構成する。
+    fn dream<'a>(
+        &'a self,
+        soul: AgentSoul,
+    ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>>;
+
     /// 衝撃判定（PredictiveModelの予測誤差が閾値超過等）
     fn is_shock(&self, soul: &AgentSoul) -> bool {
         soul.predictive_model

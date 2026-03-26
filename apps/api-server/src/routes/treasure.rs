@@ -6,7 +6,7 @@
 use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
-use aiome_contracts::traits::JobQueue;
+use aiome_contracts::traits::{AgentEvolver, JobQueue};
 use aiome_contracts::treasure::{TreasureFeedback, TreasureItem};
 use axum::{
     extract::{Path, State},

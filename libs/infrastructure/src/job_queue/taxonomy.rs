@@ -38,7 +38,16 @@ Domains:
 
 Constraint: Output ONLY raw JSON. No markdown blocks."#;
 
-        let prompt = format!("Lesson: \"{}\"", lesson);
+        // VULN-62: Sanitize input to prevent prompt injection
+        let max_len = 5000;
+        let sanitized_lesson = if lesson.len() > max_len {
+            &lesson[..max_len]
+        } else {
+            lesson
+        };
+        let sanitized_lesson = sanitized_lesson.replace('"', "'").replace('\\', " ");
+        
+        let prompt = format!("Lesson: \"{}\"", sanitized_lesson);
 
         match provider.complete(&prompt, Some(system_prompt)).await {
             Ok(resp) => {
@@ -51,7 +60,7 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
                     .trim_end_matches("```")
                     .trim();
 
-                serde_json::from_str::<KarmaClassification>(clean_json).map_err(|e| {
+                let mut taxonomy = serde_json::from_str::<KarmaClassification>(clean_json).map_err(|e| {
                     tracing::warn!(
                         "🧬 [Taxonomy] JSON Parse Error: {}. Raw: {}",
                         e,
@@ -60,7 +69,16 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
                     AiomeError::Infrastructure {
                         reason: format!("Invalid classification format: {}", e),
                     }
-                })
+                })?;
+
+                // VULN-62: Strict domain whitelisting to prevent hallucinatory domains
+                let valid_domains = ["Technical", "Creative", "Governance", "Social", "Meta"];
+                if !valid_domains.contains(&taxonomy.domain.as_str()) {
+                    tracing::warn!("🧬 [Taxonomy] Invalid domain returned from LLM: {}", taxonomy.domain);
+                    taxonomy.domain = "General".to_string(); // Fallback
+                }
+                
+                Ok(taxonomy)
             }
             Err(e) => Err(e),
         }

@@ -6,7 +6,7 @@
  */
 
 use aiome_core::biome::BiomeMessage;
-use aiome_core::traits::JobQueue;
+use aiome_contracts::traits::BiomeRegistry;
 use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]

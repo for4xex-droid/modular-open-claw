@@ -8,7 +8,7 @@
 use crate::artifact_store::UniversalArtifactStore;
 use crate::job_queue::UniversalJobQueue;
 use crate::soul_store::UniversalSoulStore;
-use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore};
+use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore, TaskRegistry};
 use aiome_core::traits::JobQueue;
 use soul::model::AgentSoul;
 use std::env;

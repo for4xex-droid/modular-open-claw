@@ -6,7 +6,7 @@
  */
 
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::JobQueue;
+use aiome_core::traits::{AgentEvolver, ChatStore, JobQueue, KarmaRegistry, TaskRegistry};
 use axum::{
     extract::{Json, State},
     response::sse::{Event, KeepAlive, Sse},

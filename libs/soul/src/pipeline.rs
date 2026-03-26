@@ -47,6 +47,7 @@ pub struct SoulContext<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Se
     pub should_continue: bool,
     pub rebirth_required: bool,
     pub is_rejected: bool,
+    pub recalled_experiences: Vec<Experience>,
 }
 
 struct MiddlewareChain<'a, A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
@@ -142,8 +143,8 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
                 .soul
                 .somatic_markers
                 .iter()
-                .map(|m| m.resonance(&ctx.embedding))
-                .filter(|r| r.abs() > 0.1)
+                .map(|m: &crate::somatic::SomaticMarker| m.resonance(&ctx.embedding))
+                .filter(|r: &f64| r.abs() > 0.1)
                 .sum();
             sum / (ctx.soul.somatic_markers.len() as f64)
         };
@@ -301,11 +302,13 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
                 pipeline: self,
                 soul,
                 experience: exp,
-                embedding: exp_embedding,
+                embedding: exp_embedding.clone(),
                 should_continue: true,
                 rebirth_required: false,
                 is_rejected: false,
+                recalled_experiences: Vec::new(),
             };
+            ctx.experience.embedding = Some(exp_embedding);
 
             let chain = MiddlewareChain {
                 pipeline: self,
@@ -391,6 +394,8 @@ mod tests {
             outcome_valence: 0.0,
             timestamp: chrono::Utc::now().to_rfc3339(),
             original_prediction: 0.0,
+            is_core_memory: false,
+            embedding: None,
         };
 
         let triggers = vec![
@@ -451,6 +456,18 @@ mod tests {
         > {
             Box::pin(async { Ok(soul) })
         }
+        fn dream<'a>(
+            &'a self,
+            soul: AgentSoul,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<AgentSoul, crate::error::SoulError>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async { Ok(soul) })
+        }
     }
 
     struct DummyAdapter;
@@ -494,6 +511,8 @@ mod tests {
             outcome_valence: -0.8, // Triggers reflex
             timestamp: chrono::Utc::now().to_rfc3339(),
             original_prediction: 0.0,
+            is_core_memory: false,
+            embedding: None,
         };
 
         let _ = pipeline.process_experience(&mut soul, exp.clone()).await;
@@ -546,6 +565,7 @@ mod tests {
             should_continue: true,
             rebirth_required: false,
             is_rejected: false,
+            recalled_experiences: Vec::new(),
         };
 
         let middleware = ReactiveMiddleware::<DummyAdapter, DummyEngine> {
@@ -596,6 +616,7 @@ mod tests {
             should_continue: true,
             rebirth_required: false,
             is_rejected: false,
+            recalled_experiences: Vec::new(),
         };
 
         let middleware = DeliberativeMiddleware::<DummyAdapter, DummyEngine> {
@@ -639,6 +660,13 @@ mod tests {
             {
                 Box::pin(async { Ok(soul) })
             }
+            fn dream<'a>(
+                &'a self,
+                soul: AgentSoul,
+            ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>>
+            {
+                Box::pin(async { Ok(soul) })
+            }
         }
 
         let pipeline = SoulPipeline::new(DummyAdapter, ShockEngine);
@@ -650,6 +678,7 @@ mod tests {
             should_continue: true,
             rebirth_required: false,
             is_rejected: false,
+            recalled_experiences: Vec::new(),
         };
 
         let middleware = MetaCognitiveMiddleware::<DummyAdapter, ShockEngine> {

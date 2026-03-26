@@ -8,7 +8,7 @@
 use crate::job_queue::UniversalJobQueue;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
-use aiome_contracts::traits::JobQueue;
+use aiome_contracts::traits::{ChatStore, JobQueue, KarmaRegistry};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Semaphore;

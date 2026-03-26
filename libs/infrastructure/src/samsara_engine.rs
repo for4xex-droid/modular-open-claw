@@ -244,6 +244,115 @@ impl SamsaraEngine for DefaultSamsaraEngine {
             Ok(new_soul)
         })
     }
+
+    fn dream<'a>(
+        &'a self,
+        soul: AgentSoul,
+    ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> {
+        Box::pin(async move {
+            let mut new_soul = soul;
+            tracing::info!(
+                "🌙 [SamsaraEngine] Starting Consolidation Dream for soul id {}...",
+                new_soul.id
+            );
+
+            // Phase 1: Orient
+            let exp_count = new_soul.experience_buffer.len();
+            if exp_count < 5 {
+                tracing::info!(
+                    "   [SamsaraEngine] Not enough experiences for consolidation ({} < 5). Skipping.",
+                    exp_count
+                );
+                return Ok(new_soul);
+            }
+
+            // Phase 2: Gather Signal (非核記憶かつ未圧縮の体験を最大10件抽出)
+            let batch_size = 10;
+            let target_indices: Vec<usize> = new_soul
+                .experience_buffer
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| !e.is_core_memory)
+                .map(|(i, _)| i)
+                .take(batch_size)
+                .collect();
+
+            if target_indices.is_empty() {
+                return Ok(new_soul);
+            }
+
+            let mut target_experiences = Vec::new();
+            for &idx in &target_indices {
+                target_experiences.push(new_soul.experience_buffer[idx].clone());
+            }
+            let experiences_json = serde_json::to_string(&target_experiences).unwrap_or_default();
+
+            // Phase 3: Compress (Semantic Summary 生成)
+            let compress_prompt = format!(
+                "Analyze the following recent experiences of an AI agent and compress them into a single 'SemanticSummary'.\n\
+                 Experiences:\n{}\n\
+                 Output a JSON object with:\n\
+                 - \"topic\": A short label for this group of memories\n\
+                 - \"compressed_insight\": A distilled lesson or observation\n\
+                 - \"valence_avg\": Average emotional valence (float -1.0 to 1.0)\n\
+                 Output ONLY JSON.",
+                experiences_json
+            );
+
+            match tokio::time::timeout(
+                tokio::time::Duration::from_secs(30),
+                self.provider.complete(&compress_prompt, None),
+            )
+            .await
+            {
+                Ok(Ok(resp)) => {
+                    let cleaned = resp
+                        .content
+                        .replace("```json", "")
+                        .replace("```", "")
+                        .trim()
+                        .to_string();
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&cleaned) {
+                        let summary = soul::model::SemanticSummary {
+                            topic: val
+                                .get("topic")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("General")
+                                .to_string(),
+                            compressed_insight: val
+                                .get("compressed_insight")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            original_experience_ids: target_experiences
+                                .iter()
+                                .map(|e| e.id.clone())
+                                .collect(),
+                            valence_avg: val.get("valence_avg").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                            created_at: chrono::Utc::now().to_rfc3339(),
+                            embedding: vec![],
+                        };
+                        new_soul.semantic_index.push(summary);
+
+                        // Phase 4: Update (原子的な削除による競合回避)
+                        let ids_to_remove: std::collections::HashSet<String> =
+                            target_experiences.iter().map(|e| e.id.clone()).collect();
+                        new_soul
+                            .experience_buffer
+                            .retain(|e| !ids_to_remove.contains(&e.id));
+
+                        tracing::info!(
+                            "   [SamsaraEngine] Consolidation successful. {} experiences compressed into summary.",
+                            target_experiences.len()
+                        );
+                    }
+                }
+                _ => tracing::warn!("   [SamsaraEngine] Consolidation LLM failed or timed out."),
+            }
+
+            Ok(new_soul)
+        })
+    }
 }
 
 #[cfg(test)]

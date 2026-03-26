@@ -111,6 +111,53 @@ impl PathSandbox {
     fn get_root(&self) -> PathBuf {
         self.jail.root().to_path_buf()
     }
+
+    /// VULN-64 防御: LoRA パスの厳格なバリデーション
+    /// - URLスキームの禁止 (http://, https:// など)
+    /// - 絶対パスの禁止 (ルートからの指定禁止)
+    /// - /loras/ プレフィックスの強制、.. トラバーサルの禁止
+    /// - 拡張子が .safetensors (または .bin) であることの強制
+    pub fn validate_lora_path(path: &str) -> Result<PathBuf, std::io::Error> {
+        let p = Path::new(path);
+
+        if path.contains("://") || path.starts_with("http") {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "VULN-64: Network URLs are not allowed for LoRA paths",
+            ));
+        }
+        
+        if p.is_absolute() || path.starts_with('/') {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "VULN-64: Absolute paths are not allowed for LoRA paths",
+            ));
+        }
+
+        if path.contains("..") {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "VULN-64: Path traversal is not allowed",
+            ));
+        }
+
+        if !path.starts_with("loras/") {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "VULN-64: LoRA paths must be within the 'loras/' directory",
+            ));
+        }
+
+        let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
+        if ext != "safetensors" && ext != "bin" {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "VULN-64: Only .safetensors or .bin extensions are allowed for LoRA models",
+            ));
+        }
+
+        Ok(p.to_path_buf())
+    }
 }
 
 #[cfg(test)]

@@ -109,7 +109,27 @@ impl CostCircuitBreaker {
             // This will be integrated with the api-server's event_sender in Phase 30.
             return Err(AiomeError::Infrastructure {
                 reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Please expand quota in settings.", 
-                                status.total_usd_24h, status.limit_usd),
+                                 status.total_usd_24h, status.limit_usd),
+            });
+        }
+        Ok(())
+    }
+
+    /// セッション単位のコスト制限を確認 (GAP-6)
+    pub async fn enforce_session_limit(&self, session_id: &str, current_session_cost: f64) -> Result<(), AiomeError> {
+        let limit = self
+            .jq
+            .get_setting_value("cost_limit_per_session")
+            .await
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.50); // デフォルト $0.50
+
+        if current_session_cost >= limit {
+            warn!("🚨 [CostCircuitBreaker] Session {} cost ${:.4} exceeds limit ${:.4}", session_id, current_session_cost, limit);
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Session cost limit exceeded: ${:.4} >= ${:.4}", current_session_cost, limit),
             });
         }
         Ok(())
@@ -151,5 +171,25 @@ impl CostBypassSwitch {
             amount_usd
         );
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::job_queue::UniversalJobQueue;
+
+    #[tokio::test]
+    async fn test_session_cost_limit_green() {
+        let jq = Arc::new(UniversalJobQueue::new("sqlite::memory:").await.unwrap());
+        let breaker = CostCircuitBreaker::new(jq.clone(), 10.0);
+        
+        // 通常範囲内 ($0.10) は OK
+        let result = breaker.enforce_session_limit("session_123", 0.1).await;
+        assert!(result.is_ok());
+
+        // デフォルト制限 ($0.50) を超えるとエラー
+        let result = breaker.enforce_session_limit("session_456", 0.6).await;
+        assert!(result.is_err());
     }
 }

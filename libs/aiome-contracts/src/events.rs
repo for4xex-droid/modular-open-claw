@@ -56,6 +56,21 @@ pub enum CoreEvent {
         job_id: String,
         error: String,
     },
+    /// Phase 6: Live API からの音声チャンク
+    LiveAudioChunk {
+        session_id: String,
+        data: Vec<u8>,
+    },
+    /// Phase 6: Live API からのリアルタイム文字起こし
+    LiveTranscript {
+        session_id: String,
+        text: String,
+        is_final: bool,
+    },
+    /// Phase 6: Live API ターン完了
+    LiveTurnEnd {
+        session_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

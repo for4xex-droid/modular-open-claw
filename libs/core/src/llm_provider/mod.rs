@@ -609,6 +609,7 @@ impl LlmProvider for AbyssVaultProvider {
 /// Google Gemini Provider
 /// Gemini Interactions API スキル実装 (Phase 5)
 pub mod interactions;
+pub mod live_session;
 
 #[derive(Debug, Clone)]
 pub struct GeminiProvider {

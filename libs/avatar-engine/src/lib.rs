@@ -10,6 +10,7 @@ pub mod lip_sync;
 pub mod loader;
 pub mod physics;
 pub mod proportions;
+pub mod resampler;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

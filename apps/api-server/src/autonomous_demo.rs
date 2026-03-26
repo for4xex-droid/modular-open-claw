@@ -8,7 +8,7 @@
 use crate::app_state::AppState;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::events::CoreEvent;
-use aiome_contracts::traits::JobQueue;
+use aiome_core::traits::{AgentEvolver, JobQueue};
 use chrono::Utc;
 use infrastructure::db::DatabasePool;
 use infrastructure::sql_exec;

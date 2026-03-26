@@ -11,7 +11,9 @@ use aiome_contracts::contracts::{
 };
 use aiome_contracts::security::PermissionManifest;
 use aiome_contracts::traits::{
-    Expression, Job, JobQueue, JobStatus, KarmaSearchResult, Publisher, SnsMetricsRecord,
+    AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
+    ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
+    SnsMetricsRecord, TaskRegistry,
 };
 use aiome_contracts::types::AgentStats;
 use aiome_core::error::AiomeError;
@@ -80,6 +82,31 @@ pub struct UniversalJobQueue {
     pub karma_cache: Arc<RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
     pub llm: Option<Arc<dyn LlmProvider>>,
     pub embed_provider: Arc<RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
+}
+
+#[async_trait]
+impl JobQueue for UniversalJobQueue {
+    async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError> {
+        self.do_sign_swarm_payload(payload).await
+    }
+    async fn sync_local_clock(&self, remote_time: u64) -> Result<u64, AiomeError> {
+        self.do_sync_local_clock(remote_time).await
+    }
+    async fn tick_local_clock(&self) -> Result<u64, AiomeError> {
+        self.do_tick_local_clock().await
+    }
+    async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {
+        self.do_storage_gc(threshold_gb).await
+    }
+    async fn get_system_agent_id(&self) -> Result<Uuid, AiomeError> {
+        self.do_get_system_agent_id().await
+    }
+    async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
+        self.do_store_expression(expression).await
+    }
+    async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
+        self.do_fetch_expressions(limit).await
+    }
 }
 
 impl UniversalJobQueue {
@@ -161,7 +188,7 @@ impl UniversalJobQueue {
 }
 
 #[async_trait]
-impl JobQueue for UniversalJobQueue {
+impl TaskRegistry for UniversalJobQueue {
     async fn enqueue(
         &self,
         category: &str,
@@ -205,6 +232,77 @@ impl JobQueue for UniversalJobQueue {
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         self.do_reclaim_zombie_jobs(timeout_minutes).await
     }
+    async fn get_pending_job_count(&self) -> Result<i64, AiomeError> {
+        self.do_get_pending_job_count().await
+    }
+    async fn get_job_count_since(
+        &self,
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<i64, AiomeError> {
+        self.do_get_job_count_since(since).await
+    }
+    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
+        self.do_fetch_recent_jobs(limit).await
+    }
+    async fn fetch_top_performing_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
+        self.do_fetch_top_performing_jobs(limit).await
+    }
+    async fn fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError> {
+        self.do_fetch_job_retry_count(job_id).await
+    }
+    async fn reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError> {
+        self.do_reset_job_retry_count(job_id).await
+    }
+    async fn increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError> {
+        self.do_increment_job_retry_count(job_id).await
+    }
+    async fn purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError> {
+        self.do_purge_old_jobs(days).await
+    }
+    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError> {
+        self.do_heartbeat_pulse(job_id).await
+    }
+    async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
+        self.do_set_creative_rating(job_id, rating).await
+    }
+}
+
+#[async_trait]
+impl AuditStore for UniversalJobQueue {
+    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
+        self.do_store_execution_log(job_id, log).await
+    }
+    async fn store_trajectory_step(
+        &self,
+        step: aiome_contracts::trajectory::TrajectoryStep,
+    ) -> Result<(), AiomeError> {
+        let job_id = step
+            .job_id
+            .clone()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Missing job_id in TrajectoryStep".to_string(),
+            })?;
+        self.do_record_step(&job_id, step).await
+    }
+    async fn fetch_trajectory_steps(
+        &self,
+        job_id: &str,
+    ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+        self.do_fetch_trajectory(job_id).await
+    }
+    async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
+        self.do_get_security_request_count(agent_id).await
+    }
+    async fn increment_security_request_count(
+        &self,
+        agent_id: Option<Uuid>,
+    ) -> Result<u32, AiomeError> {
+        self.do_increment_security_request_count(agent_id).await
+    }
+}
+
+#[async_trait]
+impl ChatStore for UniversalJobQueue {
     async fn fetch_chat_history(
         &self,
         channel_id: &str,
@@ -220,7 +318,6 @@ impl JobQueue for UniversalJobQueue {
     ) -> Result<(), AiomeError> {
         self.do_insert_chat_message(channel_id, role, content).await
     }
-
     async fn get_chat_memory_summary(
         &self,
         channel_id: &str,
@@ -243,15 +340,10 @@ impl JobQueue for UniversalJobQueue {
     ) -> Result<(), AiomeError> {
         self.do_mark_chats_as_distilled(channel_id, before_id).await
     }
-    async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
-        self.do_set_creative_rating(job_id, rating).await
-    }
-    async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError> {
-        self.do_heartbeat_pulse(job_id).await
-    }
-    async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
-        self.do_store_execution_log(job_id, log).await
-    }
+}
+
+#[async_trait]
+impl KarmaRegistry for UniversalJobQueue {
     async fn fetch_relevant_karma(
         &self,
         topic: &str,
@@ -297,62 +389,38 @@ impl JobQueue for UniversalJobQueue {
     async fn mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError> {
         self.do_mark_karma_extracted(job_id).await
     }
-    async fn purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError> {
-        self.do_purge_old_jobs(days).await
+    async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+        self.do_fetch_all_karma(limit).await
     }
-    async fn link_sns_data(
-        &self,
-        job_id: &str,
-        platform: &str,
-        content_id: &str,
-    ) -> Result<(), AiomeError> {
-        self.do_link_sns_data(job_id, platform, content_id).await
-    }
-    async fn fetch_jobs_for_evaluation(
-        &self,
-        milestone_days: i64,
-        limit: i64,
-    ) -> Result<Vec<Job>, AiomeError> {
-        self.do_fetch_jobs_for_evaluation(milestone_days, limit)
-            .await
-    }
-    async fn record_sns_metrics(
-        &self,
-        job_id: &str,
-        milestone_days: i64,
-        views: i64,
-        likes: i64,
-        comments_count: i64,
-        raw_comments: Option<&str>,
-    ) -> Result<(), AiomeError> {
-        self.do_record_sns_metrics(
-            job_id,
-            milestone_days,
-            views,
-            likes,
-            comments_count,
-            raw_comments,
-        )
-        .await
-    }
-    async fn fetch_pending_evaluations(
+    async fn fetch_unincorporated_karma(
         &self,
         limit: i64,
-    ) -> Result<Vec<SnsMetricsRecord>, AiomeError> {
-        self.do_fetch_pending_evaluations(limit).await
-    }
-    async fn apply_final_verdict(
-        &self,
-        record_id: i64,
-        verdict: OracleVerdict,
-        soul_hash: &str,
-    ) -> Result<(), AiomeError> {
-        self.do_apply_final_verdict(record_id, verdict, soul_hash)
+        current_soul_hash: &str,
+    ) -> Result<Vec<serde_json::Value>, AiomeError> {
+        self.do_fetch_unincorporated_karma(limit, current_soul_hash)
             .await
     }
-    async fn fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        self.do_fetch_recent_jobs(limit).await
+    async fn mark_karma_as_incorporated(
+        &self,
+        karma_ids: Vec<String>,
+        new_soul_hash: &str,
+    ) -> Result<(), AiomeError> {
+        self.do_mark_karma_as_incorporated(karma_ids, new_soul_hash)
+            .await
     }
+    async fn fetch_relevant_karma_by_category(
+        &self,
+        topic: &str,
+        category: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError> {
+        self.do_fetch_relevant_karma_by_category(topic, category, limit)
+            .await
+    }
+}
+
+#[async_trait]
+impl AgentEvolver for UniversalJobQueue {
     async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> {
         let s = self.do_get_agent_stats().await?;
         Ok(AgentStats {
@@ -392,21 +460,6 @@ impl JobQueue for UniversalJobQueue {
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
         self.do_fetch_evolution_history(limit).await
     }
-    async fn get_pending_job_count(&self) -> Result<i64, AiomeError> {
-        self.do_get_pending_job_count().await
-    }
-    async fn get_job_count_since(
-        &self,
-        since: chrono::DateTime<chrono::Utc>,
-    ) -> Result<i64, AiomeError> {
-        self.do_get_job_count_since(since).await
-    }
-    async fn fetch_all_karma(&self, limit: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
-        self.do_fetch_all_karma(limit).await
-    }
-    async fn fetch_top_performing_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        self.do_fetch_top_performing_jobs(limit).await
-    }
     async fn record_soul_mutation(
         &self,
         old_hash: &str,
@@ -416,31 +469,10 @@ impl JobQueue for UniversalJobQueue {
         self.do_record_soul_mutation(old_hash, new_hash, reason)
             .await
     }
-    async fn fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError> {
-        self.do_fetch_job_retry_count(job_id).await
-    }
-    async fn reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError> {
-        self.do_reset_job_retry_count(job_id).await
-    }
-    async fn increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError> {
-        self.do_increment_job_retry_count(job_id).await
-    }
-    async fn fetch_unincorporated_karma(
-        &self,
-        limit: i64,
-        current_soul_hash: &str,
-    ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        self.do_fetch_unincorporated_karma(limit, current_soul_hash)
-            .await
-    }
-    async fn mark_karma_as_incorporated(
-        &self,
-        karma_ids: Vec<String>,
-        new_soul_hash: &str,
-    ) -> Result<(), AiomeError> {
-        self.do_mark_karma_as_incorporated(karma_ids, new_soul_hash)
-            .await
-    }
+}
+
+#[async_trait]
+impl ImmuneSystemOps for UniversalJobQueue {
     async fn store_immune_rule(&self, rule: &ImmuneRule) -> Result<(), AiomeError> {
         self.do_store_immune_rule(rule).await
     }
@@ -456,6 +488,10 @@ impl JobQueue for UniversalJobQueue {
     async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
         self.do_get_immune_rules().await
     }
+}
+
+#[async_trait]
+impl FederationRegistry for UniversalJobQueue {
     async fn export_federated_data(
         &self,
         since: Option<&str>,
@@ -506,18 +542,10 @@ impl JobQueue for UniversalJobQueue {
     async fn fetch_federated_metrics(&self) -> Result<FederatedMetrics, AiomeError> {
         self.do_fetch_federated_metrics().await
     }
-    async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError> {
-        self.do_sign_swarm_payload(payload).await
-    }
-    async fn sync_local_clock(&self, remote_time: u64) -> Result<u64, AiomeError> {
-        self.do_sync_local_clock(remote_time).await
-    }
-    async fn tick_local_clock(&self) -> Result<u64, AiomeError> {
-        self.do_tick_local_clock().await
-    }
-    async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {
-        self.do_storage_gc(threshold_gb).await
-    }
+}
+
+#[async_trait]
+impl BiomeRegistry for UniversalJobQueue {
     async fn get_biome_topic_status(
         &self,
         topic_id: &str,
@@ -527,9 +555,9 @@ impl JobQueue for UniversalJobQueue {
     async fn advance_biome_turn(
         &self,
         topic_id: &str,
-        expires_in_mins: i64,
+        cooldown_minutes: i64,
     ) -> Result<i32, AiomeError> {
-        self.do_advance_biome_turn(topic_id, expires_in_mins).await
+        self.do_advance_biome_turn(topic_id, cooldown_minutes).await
     }
     async fn fetch_biome_messages(
         &self,
@@ -540,74 +568,15 @@ impl JobQueue for UniversalJobQueue {
     }
     async fn store_biome_message(
         &self,
-        msg: &aiome_contracts::biome::BiomeMessage,
+        message: &aiome_contracts::biome::BiomeMessage,
     ) -> Result<(), AiomeError> {
-        self.do_store_biome_message(msg).await
+        self.do_store_biome_message(message).await
     }
-    async fn update_biome_reputation(
-        &self,
-        agent_node_id: &str,
-        delta: f64,
-    ) -> Result<f64, AiomeError> {
-        self.do_update_biome_reputation(agent_node_id, delta).await
+    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
+        self.do_update_biome_reputation(pubkey, delta).await
     }
     async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
         self.do_archive_biome_topic(topic_id).await
-    }
-    async fn fetch_relevant_karma_by_category(
-        &self,
-        topic: &str,
-        category: &str,
-        limit: i64,
-    ) -> Result<KarmaSearchResult, AiomeError> {
-        self.do_fetch_relevant_karma_by_category(topic, category, limit)
-            .await
-    }
-    async fn get_system_agent_id(&self) -> Result<Uuid, AiomeError> {
-        self.do_get_system_agent_id().await
-    }
-    async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
-        self.do_store_expression(expression).await
-    }
-    async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
-        self.do_fetch_expressions(limit).await
-    }
-    async fn store_soul_fragment(&self, fragment: &str, hash: &str) -> Result<(), AiomeError> {
-        self.do_store_soul_fragment(fragment, hash).await
-    }
-    async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> {
-        self.do_fetch_latest_soul_fragment().await
-    }
-
-    async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
-        self.do_get_security_request_count(agent_id).await
-    }
-
-    async fn increment_security_request_count(
-        &self,
-        agent_id: Option<Uuid>,
-    ) -> Result<u32, AiomeError> {
-        self.do_increment_security_request_count(agent_id).await
-    }
-
-    async fn store_trajectory_step(
-        &self,
-        step: aiome_contracts::trajectory::TrajectoryStep,
-    ) -> Result<(), AiomeError> {
-        let job_id = step
-            .job_id
-            .clone()
-            .ok_or_else(|| AiomeError::Infrastructure {
-                reason: "Missing job_id in TrajectoryStep".to_string(),
-            })?;
-        self.do_record_step(&job_id, step).await
-    }
-
-    async fn fetch_trajectory_steps(
-        &self,
-        job_id: &str,
-    ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
-        self.do_fetch_trajectory(job_id).await
     }
 }
 

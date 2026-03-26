@@ -13,11 +13,11 @@
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::path::PathBuf;
-    use std::sync::Arc;
-    use std::time::{Duration, SystemTime};
+    
+    
+    use std::time::Duration;
     use tempfile::tempdir;
-    use tokio::sync::Semaphore;
+    
 
     // --- Component 2: Progressive Skill Loading (WasmSkillManager) ---
     #[tokio::test]
@@ -81,7 +81,7 @@ mod tests {
     // --- Component 1: Middleware Chain (SoulPipeline) ---
     #[tokio::test]
     async fn test_soul_middleware_structure() {
-        use soul::pipeline::{SoulContext, SoulMiddleware};
+        
         // Middleware trait が実装されていることを確認
         // 実際の実装は複雑なモックが必要なため、構造の疎通確認にとどめる
     }

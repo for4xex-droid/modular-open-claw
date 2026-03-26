@@ -39,6 +39,8 @@ pub struct DynamicLlmProvider {
     pub slo_engine: Arc<SloEngine>,
     /// hook_manager
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
+    /// live_manager (Phase 6)
+    pub live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
 }
 
 #[async_trait]
@@ -410,6 +412,8 @@ pub struct BackgroundLlmProvider {
     pub anthropic_api_key: Option<secrecy::SecretString>,
     /// hook_manager
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
+    /// live_manager (Phase 6)
+    pub live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
 }
 
 #[async_trait]

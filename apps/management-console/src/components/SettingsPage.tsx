@@ -349,6 +349,7 @@ const SettingsPage: React.FC = () => {
                             placeholder="1234567890..."
                             onBlur={(v) => update_setting_handler(v, 'discord_chat_channel_id', 'channel')}
                             saving={saving === 'discord_chat_channel_id'}
+                            isPassword={true}
                         />
                         <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.5rem 0' }} />
                         <VaultProtectionItem label="Telegram Token" />
@@ -358,6 +359,7 @@ const SettingsPage: React.FC = () => {
                             placeholder="-1001234567..."
                             onBlur={(v) => update_setting_handler(v, 'telegram_chat_id', 'channel')}
                             saving={saving === 'telegram_chat_id'}
+                            isPassword={true}
                         />
 
                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
@@ -646,7 +648,7 @@ const SecretUpdater: React.FC = () => {
     );
 };
 
-const SettingInput: React.FC<{ label: string, value: string, placeholder?: string, onBlur: (v: string) => void, saving?: boolean }> = ({ label, value, placeholder, onBlur, saving }) => {
+const SettingInput: React.FC<{ label: string, value: string, placeholder?: string, onBlur: (v: string) => void, saving?: boolean, isPassword?: boolean }> = ({ label, value, placeholder, onBlur, saving, isPassword }) => {
     const [local, setLocal] = useState(value);
     useEffect(() => setLocal(value), [value]);
 
@@ -657,7 +659,7 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
             <input
-                type="text"
+                type={isPassword ? "password" : "text"}
                 value={local}
                 placeholder={placeholder}
                 onChange={(e) => setLocal(e.target.value)}

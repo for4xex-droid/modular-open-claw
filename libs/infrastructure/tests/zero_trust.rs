@@ -17,6 +17,7 @@ async fn test_proxy_llm_provider_flow() {
         "http://127.0.0.1:9999".to_string(),
         "daemon".to_string(),
         "gemini".to_string(),
+        None,
     );
 
     // Test a simple completion
@@ -31,6 +32,7 @@ async fn test_unauthorized_caller() {
         "http://127.0.0.1:9999".to_string(),
         "hacker".to_string(),
         "gemini".to_string(),
+        None,
     );
     let res = provider.complete("hello", None).await;
 

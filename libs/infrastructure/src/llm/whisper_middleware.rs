@@ -50,6 +50,16 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
             tracing::info!("🧠 [WhisperMiddleware] Thought appended to experience.");
         }
 
+        // 想起された記憶（Recalled Experiences）の反映
+        if !ctx.recalled_experiences.is_empty() {
+            let recalled_ids: Vec<String> = ctx.recalled_experiences
+                .iter()
+                .map(|e| e.id.chars().take(8).collect())
+                .collect();
+            let recall_thought = format!("\nWhisper: Recalling relevant patterns from past interactions: [{}]. Applying these contexts to current response.", recalled_ids.join(", "));
+            ctx.experience.content.push_str(&recall_thought);
+        }
+
         next.run(ctx).await
     }
 }
@@ -74,10 +84,10 @@ mod tests {
         {
             Box::pin(async { Ok(Default::default()) })
         }
-        fn rebirth<'a>(
-            &'a self,
-            soul: AgentSoul,
-        ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> {
+        fn rebirth<'a>(&'a self, soul: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> {
+            Box::pin(async { Ok(soul) })
+        }
+        fn dream<'a>(&'a self, soul: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, SoulError>> + Send + 'a>> {
             Box::pin(async { Ok(soul) })
         }
     }
@@ -126,6 +136,7 @@ mod tests {
             should_continue: true,
             rebirth_required: false,
             is_rejected: false,
+            recalled_experiences: Vec::new(),
         };
 
         struct MockNext;

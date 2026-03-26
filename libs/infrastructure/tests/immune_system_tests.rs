@@ -7,13 +7,12 @@
 
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::JobQueue;
+use aiome_contracts::traits::{KarmaRegistry, TaskRegistry};
 use async_trait::async_trait;
 use infrastructure::immune_system::AdaptiveImmuneSystem;
 use infrastructure::job_queue::UniversalJobQueue;
 use std::sync::Arc;
 
-use tempfile::TempDir;
 
 #[derive(Debug, Clone)]
 struct MockLlmProvider {

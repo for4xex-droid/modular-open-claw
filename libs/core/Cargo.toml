@@ -34,6 +34,8 @@ sha2 = "0.10.9"
 ammonia = "4.1.2"
 html-escape = "0.2"
 regex = "1.12.3"
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+futures-util = "0.3"
 
 [dev-dependencies]
 wiremock = { workspace = true }

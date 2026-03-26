@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-03-26T23:23:07.883121
+> Generated at: 2026-03-27T04:04:50.393584
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -116,7 +116,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 ## 📚 LIBS (Core Domain & Infrastructure)
 ### `core`
 **Domain Structs**
-- AbyssVaultProvider, AutonomousBiomeEngine, AutonomousConfig, ClaudeProvider, DialogueManager, ExpressionEngine, GeminiProvider, InteractionsGeminiProvider, JobBudget, LmStudioProvider, LoraEngine, LoraModel, MockLlmProvider, OllamaProvider, OpenAiProvider, RuriProvider, TtsWorker
+- AbyssVaultProvider, AutonomousBiomeEngine, AutonomousConfig, ClaudeProvider, DialogueManager, ExpressionEngine, GeminiProvider, InteractionsGeminiProvider, JobBudget, LiveSessionProvider, LmStudioProvider, LoraEngine, LoraModel, MockLlmProvider, OllamaProvider, OpenAiProvider, RuriProvider, TtsWorker
 
 ### `napi-bridge`
 **Domain Structs**
@@ -130,19 +130,19 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 **Traits (Interfaces)**
 - LipSyncProvider
 **Domain Structs**
-- AssetManifest, AvatarDimensions, AvatarParameters, EmotionToParameterMapper, Inochi2dLoader, InxModel, LipSyncFrame, PhysicsConfig, PhysicsSimulator, ProportionsChecker
+- AssetManifest, AvatarDimensions, AvatarParameters, EmotionToParameterMapper, Inochi2dLoader, InxModel, LipSyncFrame, PcmResampler, PhysicsConfig, PhysicsSimulator, ProportionsChecker
 
 ### `aiome-contracts`
 **Traits (Interfaces)**
-- AgentAct, AgentHook, AiomeLogger, AiomePlugin, ArtifactStore, CapabilityProvider, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, GenerativeEngine, GiftEngine, GigEngine, JobQueue, LlmProvider, MediaProcessor, PromptExtractor, Publisher, RuntimeJail, SoulStore, StrategicPlanner, ToolDiscoveryEngine, TrajectoryStore, TranscriptionEngine, TrendSource, VaultBackend, VoiceKeyVault
+- AgentAct, AgentEvolver, AgentHook, AiomeLogger, AiomePlugin, ArtifactStore, AuditStore, BiomeRegistry, CapabilityProvider, ChatStore, CommerceEngine, ConstitutionalValidator, EmbeddingProvider, FederationRegistry, GenerativeEngine, GiftEngine, GigEngine, ImmuneSystemOps, JobQueue, KarmaRegistry, LiveSessionManager, LlmProvider, LoraEngine, MediaProcessor, NewsService, PromptExtractor, Publisher, RuntimeJail, SoulStore, StrategicPlanner, TaskRegistry, ToolDiscoveryEngine, TrajectoryStore, TranscriptionEngine, TrendSource, TtsProvider, VaultBackend, VoiceKeyVault
 **Domain Structs**
-- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, ContextEntry, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, GigBid, GigDeliverable, GigIntent, ImmuneRule, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, LlmJobResponse, LlmMessage, LlmRequest, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, SnsMetricsRecord, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TranscriptionResult, TranscriptionSegment, TreasureFeedback, TreasureItem, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, UpdateJobStatusRequest, VerificationResult, WorkflowRequest, WorkflowResponse
+- AgentDiagnosis, AgentStats, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, BudgetExhaustedError, ConceptRequest, ConceptResponse, ConstraintViolation, ContextEntry, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EconomicContext, Expression, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, GenerativeRequest, GiftPolicyContext, GiftRequest, GigBid, GigDeliverable, GigIntent, ImmuneRule, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, LiveFunctionCall, LiveFunctionResponse, LiveToolCall, LiveToolResponse, LlmJobResponse, LlmMessage, LlmRequest, LlmResponse, LocalizedScript, LogEntry, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, OracleVerdict, OutputArtifact, PermissionManifest, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, SnsMetricsRecord, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TranscriptionResult, TranscriptionSegment, TreasureFeedback, TreasureItem, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, UpdateJobStatusRequest, VerificationResult, WorkflowRequest, WorkflowResponse
 
 ### `soul`
 **Traits (Interfaces)**
 - SamsaraEngine, SoulDomainAdapter, SoulMiddleware, SoulMiddlewareNext
 **Domain Structs**
-- AgentSoul, AnamnesisProfile, AttachmentModel, Defense, DomainModel, Experience, Instinct, InstinctRule, PredictiveModel, SomaticMarker, SoulContext, SoulPipeline
+- AgentSoul, AnamnesisProfile, AttachmentModel, BoundingGuard, Defense, DomainModel, Experience, Instinct, InstinctRule, PersonaBoundaries, PredictiveModel, SemanticRecaller, SemanticSummary, SomaticMarker, SoulContext, SoulPipeline
 
 ### `infrastructure`
 **Traits (Interfaces)**

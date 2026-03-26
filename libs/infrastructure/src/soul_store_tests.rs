@@ -81,4 +81,33 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_soul_snapshot_lora_cache_sync() -> Result<(), AiomeError> {
+        let pool = setup_db().await;
+        let store = UniversalSoulStore::new(pool);
+
+        let mut soul = AgentSoul::new("test-cache-lora".to_string());
+        soul.lora_hash = Some("sha256:lora789".to_string());
+        soul.lora_adapter_path = Some("/path/to/lora789".to_string());
+        soul.lora_base_model = Some("sdxl-v1-0".to_string());
+
+        // Save soul (this should update the cache)
+        store.save_soul(&soul).await?;
+
+        // Get snapshot from cache
+        let snapshot = store
+            .get_snapshot()
+            .await
+            .expect("Snapshot should be in cache");
+
+        assert_eq!(snapshot.lora_hash, Some("sha256:lora789".to_string()));
+        assert_eq!(
+            snapshot.lora_adapter_path,
+            Some("/path/to/lora789".to_string())
+        );
+        assert_eq!(snapshot.lora_base_model, Some("sdxl-v1-0".to_string()));
+
+        Ok(())
+    }
 }

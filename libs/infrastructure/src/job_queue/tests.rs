@@ -13,6 +13,10 @@
 use super::settings::SettingsOps;
 use super::watchtower::WatchtowerOps;
 use super::UniversalJobQueue;
+use aiome_contracts::traits::{
+    AgentEvolver, AuditStore, BiomeRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
+    TaskRegistry,
+};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};

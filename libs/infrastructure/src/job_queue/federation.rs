@@ -10,7 +10,7 @@ use aiome_core::contracts::{
     ArenaMatch, FederatedKarma, FederatedMetrics, FederationPushRequest, ImmuneRule,
 };
 use aiome_core::error::AiomeError;
-use aiome_core::traits::JobQueue;
+use aiome_core::traits::{AgentEvolver, JobQueue};
 use async_trait::async_trait;
 use sqlx::Row;
 use tracing::{info, warn};

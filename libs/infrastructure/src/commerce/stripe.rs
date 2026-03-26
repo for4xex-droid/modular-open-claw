@@ -223,6 +223,16 @@ impl CommerceEngine for StripeCommerceEngine {
         // P0-1: Future implementation
         Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
     }
+
+    async fn transfer(
+        &self,
+        _from_id: Uuid,
+        _to_id: Uuid,
+        _amount: u64,
+    ) -> Result<String, AiomeError> {
+        // P0-1: Mock implementation for Stripe
+        Ok("tx_stripe_transfer_mock".into())
+    }
 }
 
 #[cfg(test)]

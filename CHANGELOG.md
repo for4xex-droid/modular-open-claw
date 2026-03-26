@@ -7,6 +7,14 @@
     - **Schema Expansion**: `TrajectoryStep` および `chat_memory_summaries` に `interaction_id` フィールドを追加。SQLite/Postgres 両方で推論ログの永続化に対応。
     - **Infrastructure Resilience**: スキーマ変更に伴う全モック実装 (`test_utils`, `soul_mutator`, `dream_state`, `immune_system`) および `napi-bridge` のトレイト適合性を確保。
     - **Fix**: `20260326000003` ミグレーションにおける `trajectory_steps` テーブルのカラム重複定義（reasoning等）を削除し、統合テストのパニックを解消。
+### Fixed
+- **SQLite Migration Conflict**: `trajectory_steps` テーブルへの重複したカラム追加（`reasoning` 等）を解消し、初期化パニックを修正。
+- **Infrastructure Test Regression**: `test_sqlite_trajectory_store` のデータ不整合を修正。
+- **Security G-21 (Vault Isolation)**: `BastionGuard` において、通常スキルが Vault 領域へアクセス可能だった脆弱性を修正。アクセスをシステム内部プロセスのみに制限。
+
+### Security
+- **Deep Scan (AST Phase)**: プロジェクト全域の AST 診断を実施。G-19〜G-23 の充足を確認および G-21 の論理的脆弱性を特定・修正完了。
+- **Payload Limit Enforcement**: 画像や音声のアップロードルートに最適化された Request Body 制限（50MB/500MB）を適用。
 - **Structural Refactoring**: `LlmRequest` / `LlmResponse` へのメタデータ・推論ログ用フィールド追加に伴うシステム全体（Orchestrator, Proxy, Cache等）の初期化コードを修正。
 - **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [完了]**
     - **Trajectory Expansion**: `TrajectoryStep` に `job_id` および `tool_name` フィールドを追加。タスクの実行軌跡と特定のジョブ・ツールの紐付けを可能に。
@@ -44,13 +52,16 @@
 - **Phase 36.5: gVisor Sandbox & CSAM Pipeline [完了]**
     - **SandboxProfile API**: Added `SandboxProfile` enum and updated `BastionGuard::safe_exec_with_profile` for fine-grained isolation control (WasmRun, WasmBuild, PythonForge).
     - **CSAM Binary Verification**: Integrated `ProportionsChecker` directly into the Avatar upload binary parsing to prevent illegal asset distribution.
-    - **AgentHook Lifecycle**: `UserLearner` integrated via `HookManager`, allowing the agent to self-reflect and learn via `on_post_execute` after each session.
+    - **AgentHook Lifecycle**: `UserLearner` integrated via `HookManager`, allowing the agent to self-reflect and learn via `on_post_execute` after each session。
     - **Stripe Commerce Update**: Extended `CommerceEngine` with `SubscriptionStatus`, `create_subscription`, `cancel_subscription` in preparation for Phase 37.
     - **Inner Monologue**: Developed `WhisperMiddleware` within `SoulPipeline` (L2.5) to capture introspective reflections based on outcome valence.
     - **Deep Scan Validation**: Completed AST Matrix structural validation across infrastructure to ensure absolute compliance with Project NURTURE requirements.
+- **Security**: G-21 Vault isolation hardening (Restricted /vault access to internal processes).
+- **Core**: G-14 SoulSnapshot LoRA metadata synchronization (Cached LoRA config in snapshot).
+- **Audit**: Conducted comprehensive Deep Scan (AST Matrix) and verified all Project NURTURE Gates.
 - **Phase 35: PostgreSQL 移行 & 最終検証 [完了]**
     - **Dual DB Testing Infrastructure**: Ensured all 86 integration tests and CI scripts run equivalently on both SQLite and PostgreSQL backends via `TEST_POSTGRES_URL` configuration (`docker-compose.test.yml`).
-    - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing.
+    - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing。
 - **Phase 32: DeerFlow Architectural Pattern Integration [完了]**
     - **Middleware Chain**: `SoulPipeline` を Reactive, Deliberative, Meta-cognitive の 3 層ミドルウェア構造に刷新。`async-trait` による拡張性とスレッド安全性を両立。
     - **Progressive Skill Loading**: `WasmSkillManager` に `mtime` ベースのキャッシュ無効化ロジックを導入。WASM ファイルの更新を自動検知し、実行時に最新化。

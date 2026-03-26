@@ -16,7 +16,9 @@ use napi_derive::napi;
 mod state;
 pub use state::*;
 
-use aiome_core::traits::JobQueue;
+use aiome_core::traits::{
+    AgentEvolver, ChatStore, ImmuneSystemOps, JobQueue, KarmaRegistry, TaskRegistry,
+};
 use infrastructure::job_queue::WatchtowerOps;
 
 #[napi(object)]

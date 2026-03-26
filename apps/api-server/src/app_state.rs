@@ -118,4 +118,9 @@ pub struct AppState {
     >,
     pub transcription_engine: Component<Arc<dyn TranscriptionEngine>>,
     pub task_dispatcher: Component<Arc<infrastructure::task_orchestrator::TaskDispatcher>>,
+    // --- Phase 0-4 Expansion ---
+    pub lora_engine: Component<Arc<dyn aiome_contracts::traits::LoraEngine>>,
+    pub tts_provider: Component<Arc<dyn aiome_contracts::traits::TtsProvider>>,
+    pub news_service: Component<Arc<dyn aiome_contracts::traits::NewsService>>,
+    pub live_session_manager: Component<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
 }

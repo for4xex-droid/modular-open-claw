@@ -56,57 +56,55 @@ impl MemoryCrystallizer {
                 );
                 let raw_karma = self.job_queue.do_fetch_raw_karma_for_skill(&skill).await?;
 
-                if raw_karma.is_empty() {
-                    continue;
-                }
+                // VULN-63: OOM Prevention - process in batches of 50 to avoid massive string allocation
+                for raw_karma_chunk in raw_karma.chunks(50) {
+                    let lessons = raw_karma_chunk
+                        .iter()
+                        .map(|(_, lesson)| format!("- {}", lesson))
+                        .collect::<Vec<_>>()
+                        .join("\n");
 
-                let lessons = raw_karma
-                    .iter()
-                    .map(|(_, lesson)| format!("- {}", lesson))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                    let prompt = format!(
+                        "以下の技能「{}」に関する生の教訓を抽象化し、本質的な知恵（Fact）に結晶化してください。\n\
+                        また、各Factに対して以下のカテゴリのいずれかを割り当ててください：\n\
+                        - Preference (ユーザーの好み)\n\
+                        - Knowledge (技術的・一般的な知識)\n\
+                        - Context (現在の状況・背景)\n\
+                        - Behavior (エージェントの振る舞い方)\n\
+                        - Goal (達成すべき目標)\n\n\
+                        教訓リスト:\n{}\n\n\
+                        出力形式: [Category] 内容 の形式で短い箇条書き。日本語で出力せよ。",
+                        skill, lessons
+                    );
 
-                let prompt = format!(
-                    "以下の技能「{}」に関する生の教訓を抽象化し、本質的な知恵（Fact）に結晶化してください。\n\
-                    また、各Factに対して以下のカテゴリのいずれかを割り当ててください：\n\
-                    - Preference (ユーザーの好み)\n\
-                    - Knowledge (技術的・一般的な知識)\n\
-                    - Context (現在の状況・背景)\n\
-                    - Behavior (エージェントの振る舞い方)\n\
-                    - Goal (達成すべき目標)\n\n\
-                    教訓リスト:\n{}\n\n\
-                    出力形式: [Category] 内容 の形式で短い箇条書き。日本語で出力せよ。",
-                    skill, lessons
-                );
+                    match self.provider.complete(&prompt, None).await {
+                        Ok(resp) => {
+                            let _soul_hash = "v2_fact_categorized";
+                            let ids: Vec<String> = raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
 
-                match self.provider.complete(&prompt, None).await {
-                    Ok(resp) => {
-                        let _soul_hash = "v2_fact_categorized";
-                        let ids: Vec<String> = raw_karma.into_iter().map(|(id, _)| id).collect();
-
-                        // NOTE: 簡易的に出力からカテゴリをパースして保存する
-                        // 実際には apply_distilled_karma がカテゴリ引数を受けるように拡張が必要
-                        self.job_queue
-                            .do_apply_distilled_karma(
-                                &skill,
-                                &resp.content,
-                                &ids,
-                                "v1",
-                                None,
-                                None,
-                                None,
-                            )
-                            .await?;
-                        info!(
-                            "✅ [MemoryCrystallizer] Karma crystallized with facts for {}",
-                            skill
-                        );
-                    }
-                    Err(e) => {
-                        warn!(
-                            "⚠️ [MemoryCrystallizer] Failed to crystallize karma for {}: {:?}",
-                            skill, e
-                        );
+                            self.job_queue
+                                .do_apply_distilled_karma(
+                                    &skill,
+                                    &resp.content,
+                                    &ids,
+                                    "v1",
+                                    None,
+                                    None,
+                                    None,
+                                )
+                                .await?;
+                            info!(
+                                "✅ [MemoryCrystallizer] Karma crystallized with facts for {} (Batch of {})",
+                                skill,
+                                ids.len()
+                            );
+                        }
+                        Err(e) => {
+                            warn!(
+                                "⚠️ [MemoryCrystallizer] Failed to crystallize karma chunk for {}: {:?}",
+                                skill, e
+                            );
+                        }
                     }
                 }
             }

@@ -167,33 +167,6 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
     ) -> Result<String, aiome_core::error::AiomeError> {
         Ok("lic".into())
     }
-    fn verify_signature(
-        &self,
-        _payload: &str,
-        _sig_header: &str,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-    async fn process_webhook(
-        &self,
-        _event_id: &str,
-        _event_type: &str,
-        _payload: &serde_json::Value,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-
-    async fn escrow_release(
-        &self,
-        _order_id: &str,
-        _payee_id: uuid::Uuid,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-
-    async fn escrow_refund(&self, _order_id: &str) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
 
     async fn create_subscription(
         &self,
@@ -215,6 +188,44 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
         _agent_id: uuid::Uuid,
     ) -> Result<aiome_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError> {
         Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
+    }
+
+    async fn transfer(
+        &self,
+        _from_id: uuid::Uuid,
+        _to_id: uuid::Uuid,
+        _amount: u64,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("transfer_ok".to_string())
+    }
+
+    async fn escrow_refund(&self, _order_id: &str) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    fn verify_signature(
+        &self,
+        _payload: &str,
+        _sig_header: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn process_webhook(
+        &self,
+        _event_id: &str,
+        _event_type: &str,
+        _payload: &serde_json::Value,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn escrow_release(
+        &self,
+        _escrow_id: &str,
+        _recipient_id: uuid::Uuid,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
     }
 }
 
@@ -493,6 +504,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
             Component::new(dispatcher)
         },
+        lora_engine: Component::default(),
+        tts_provider: Component::default(),
+        news_service: Component::default(),
+        live_session_manager: Component::default(),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1556,9 +1571,9 @@ async fn test_treasure_get_recommendations() {
     // Check if resonance increased (via AgentStats)
     let stats: aiome_contracts::types::AgentStats = state
         .job_queue
-        .get_agent_stats()
+        .do_get_agent_stats()
         .await
-        .expect("Failed to get agent stats");
+        .expect("Failed to get initialized stats");
     assert!(
         stats.resonance > 0,
         "Agent resonance should increase after feedback"
