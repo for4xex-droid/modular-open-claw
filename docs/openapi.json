@@ -1671,6 +1671,95 @@
         ]
       }
     },
+    "/api/v1/trajectory/{id}": {
+      "get": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "GET /api/v1/trajectory/:job_id",
+        "operationId": "get_trajectory_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Execution trajectory for the job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrajectoryStep"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/trajectory/{id}/diagnosis": {
+      "get": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "GET /api/v1/trajectory/:job_id/diagnosis",
+        "operationId": "get_diagnosis_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Self-diagnosis report for a failed job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDiagnosis"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No diagnosis found for this job"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/trends": {
       "get": {
         "tags": [
@@ -1955,6 +2044,43 @@
           }
         }
       },
+      "AgentDiagnosis": {
+        "type": "object",
+        "description": "🧠 エージェントの自己診断結果",
+        "required": [
+          "critical_failure_step",
+          "category",
+          "root_cause",
+          "evidence",
+          "self_repair_hint",
+          "diagnosed_at"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FailureCategory"
+          },
+          "critical_failure_step": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "diagnosed_at": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstraintViolation"
+            }
+          },
+          "root_cause": {
+            "type": "string"
+          },
+          "self_repair_hint": {
+            "type": "string"
+          }
+        }
+      },
       "ApprovalState": {
         "type": "string",
         "description": "自己防衛フェーズの状態",
@@ -2024,6 +2150,32 @@
           }
         }
       },
+      "ConstraintViolation": {
+        "type": "object",
+        "description": "⛓️ 制約違反の証拠",
+        "required": [
+          "constraint_name",
+          "expected",
+          "actual",
+          "severity"
+        ],
+        "properties": {
+          "actual": {
+            "type": "string"
+          },
+          "constraint_name": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
       "DiagnosisResponse": {
         "type": "object",
         "required": [
@@ -2082,6 +2234,21 @@
             "type": "string"
           }
         }
+      },
+      "FailureCategory": {
+        "type": "string",
+        "description": "🛡️ AgentRx 失敗カテゴリ (Taxonomy)",
+        "enum": [
+          "PlanAdherenceFailure",
+          "InventionOfNewInformation",
+          "InvalidInvocation",
+          "MisinterpretationOfOutput",
+          "IntentPlanMisalignment",
+          "UnderSpecifiedIntent",
+          "IntentNotSupported",
+          "GuardrailsTriggered",
+          "SystemFailure"
+        ]
       },
       "GiftPolicyResponse": {
         "type": "object",
@@ -2690,6 +2857,19 @@
           }
         }
       },
+      "StepCategory": {
+        "type": "string",
+        "description": "📂 ステップカテゴリ (ADR-024)",
+        "enum": [
+          "General",
+          "Hypothesis",
+          "ToolSelection",
+          "Planning",
+          "Execution",
+          "Review",
+          "Decision"
+        ]
+      },
       "SystemSetting": {
         "type": "object",
         "description": "System Setting entry for Management Console",
@@ -2757,6 +2937,98 @@
           },
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "TrajectoryStep": {
+        "type": "object",
+        "description": "📉 軌跡（Trajectory）の1ステップ",
+        "required": [
+          "step_id",
+          "action",
+          "input",
+          "output",
+          "timestamp",
+          "constraint_violations",
+          "is_critical_failure",
+          "step_category"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "completion_criteria": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "完了条件（Task Contract）"
+          },
+          "constraint_violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstraintViolation"
+            }
+          },
+          "failure_category": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              }
+            ]
+          },
+          "input": {},
+          "interaction_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Gemini Interaction ID (ADR-024 Phase 5)"
+          },
+          "is_critical_failure": {
+            "type": "boolean"
+          },
+          "job_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "output": {},
+          "parent_step_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "因果関係の親ステップ ID"
+          },
+          "reasoning": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "「なぜこの行動を選んだか」の推論理由"
+          },
+          "step_category": {
+            "$ref": "#/components/schemas/StepCategory",
+            "description": "ステップの種別カテゴリ"
+          },
+          "step_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

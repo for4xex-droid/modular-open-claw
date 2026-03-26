@@ -6,6 +6,7 @@
     - **Hybrid Context Management**: Gemini 側のセッションステート (`interaction_id`) とローカル SQLite の履歴同期の第1段階を実装。
     - **Schema Expansion**: `TrajectoryStep` および `chat_memory_summaries` に `interaction_id` フィールドを追加。SQLite/Postgres 両方で推論ログの永続化に対応。
     - **Infrastructure Resilience**: スキーマ変更に伴う全モック実装 (`test_utils`, `soul_mutator`, `dream_state`, `immune_system`) および `napi-bridge` のトレイト適合性を確保。
+    - **Fix**: `20260326000003` ミグレーションにおける `trajectory_steps` テーブルのカラム重複定義（reasoning等）を削除し、統合テストのパニックを解消。
 - **Structural Refactoring**: `LlmRequest` / `LlmResponse` へのメタデータ・推論ログ用フィールド追加に伴うシステム全体（Orchestrator, Proxy, Cache等）の初期化コードを修正。
 - **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [完了]**
     - **Trajectory Expansion**: `TrajectoryStep` に `job_id` および `tool_name` フィールドを追加。タスクの実行軌跡と特定のジョブ・ツールの紐付けを可能に。

@@ -499,15 +499,15 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let plugin_registry = plugin_loader::PluginRegistry::new();
     let metrics_handle = GLOBAL_METRICS_HANDLE.clone();
-
     let app = build_app(
         state.clone(),
         cors_layer,
-        "static",
+        tmp_dir.path().join("static").to_str().unwrap(),
         plugin_registry,
         metrics_handle,
     );
-    (TestServer::new(app).unwrap(), state, tmp_dir)
+    let server = TestServer::new(app).expect("Failed to create TestServer");
+    (server, state, tmp_dir)
 }
 
 pub fn test_bearer() -> String {
