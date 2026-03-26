@@ -30,7 +30,15 @@ impl LlmProvider for MockLlmProvider {
         Ok(aiome_core::llm_provider::LlmResponse {
             content: self.json_response.clone(),
             stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         })
+    }
+    async fn complete_with_cache(
+        &self,
+        _request: aiome_contracts::llm::LlmRequest,
+    ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        self.complete("", None).await
     }
     fn name(&self) -> &str {
         "Mock"

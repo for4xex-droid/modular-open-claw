@@ -85,10 +85,18 @@ pub mod mock_job_queue {
         async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn get_chat_memory_summary(&self, _: &str) -> Result<Option<String>, AiomeError> {
+        async fn get_chat_memory_summary(
+            &self,
+            _: &str,
+        ) -> Result<Option<(String, Option<String>)>, AiomeError> {
             Ok(None)
         }
-        async fn update_chat_memory_summary(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+        async fn update_chat_memory_summary(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> {
@@ -397,7 +405,12 @@ pub mod mock_job_queue {
     #[async_trait]
     impl LlmProvider for MockLlm {
         async fn complete(&self, _: &str, _: Option<&str>) -> Result<LlmResponse, AiomeError> {
-            unimplemented!()
+            Ok(LlmResponse {
+                content: "mock".to_string(),
+                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {
             Ok(())
@@ -409,7 +422,12 @@ pub mod mock_job_queue {
             &self,
             _: aiome_contracts::llm::LlmRequest,
         ) -> Result<LlmResponse, AiomeError> {
-            unimplemented!()
+            Ok(LlmResponse {
+                content: "mock".to_string(),
+                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
         }
     }
 }

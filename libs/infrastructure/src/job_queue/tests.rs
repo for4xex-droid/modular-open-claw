@@ -37,7 +37,20 @@ impl LlmProvider for MockLlmProvider {
         Ok(aiome_core::llm_provider::LlmResponse {
             content: self.json_response.clone(),
             stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         })
+    }
+    async fn complete_with_cache(
+        &self,
+        request: aiome_contracts::llm::LlmRequest,
+    ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+        let content = request
+            .messages
+            .last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+        self.complete(content, None).await
     }
     async fn test_connection(&self) -> Result<(), AiomeError> {
         Ok(())
@@ -845,17 +858,18 @@ async fn test_sqlite_trajectory_store() {
         step_id: 1,
         job_id: Some(job_id.clone()),
         action: "test_action".into(),
-        tool_name: Some("test_tool".into()),
-        input: serde_json::json!({ "arg": 1 }),
-        output: serde_json::json!({ "res": 1 }),
-        timestamp: "2026-03-17T00:00:00Z".into(),
+        tool_name: None,
+        input: serde_json::json!({}),
+        output: serde_json::json!({}),
+        timestamp: Utc::now().to_rfc3339(),
         constraint_violations: vec![],
         is_critical_failure: false,
         failure_category: None,
-        reasoning: Some("Strategic planning for expansion".into()),
-        parent_step_id: Some("step-0".into()),
-        step_category: StepCategory::Planning,
-        completion_criteria: Some("Plan decomposed into sub-steps".into()),
+        reasoning: None,
+        parent_step_id: None,
+        step_category: aiome_core::trajectory::StepCategory::General,
+        completion_criteria: None,
+        interaction_id: None,
     };
 
     jq.record_step(&job_id, step.clone())

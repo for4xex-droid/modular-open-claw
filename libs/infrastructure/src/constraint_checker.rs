@@ -144,6 +144,7 @@ mod tests {
             parent_step_id: None,
             step_category: Default::default(),
             completion_criteria: None,
+            interaction_id: None,
         };
 
         let violations = checker.evaluate_step(&step);
@@ -179,6 +180,7 @@ mod tests {
             parent_step_id: None,
             step_category: Default::default(),
             completion_criteria: None,
+            interaction_id: None,
         };
 
         let violations = checker.evaluate_step(&step);
