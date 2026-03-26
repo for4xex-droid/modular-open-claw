@@ -57,7 +57,20 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         Ok(aiome_contracts::LlmResponse {
             content,
             stop_reason: aiome_contracts::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
         })
+    }
+    async fn complete_with_cache(
+        &self,
+        request: aiome_contracts::llm::LlmRequest,
+    ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
+        let content = request
+            .messages
+            .last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+        self.complete(content, None).await
     }
     async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
@@ -417,7 +430,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 master_email: None,
                 xtts_endpoint: None,
                 xtts_speaker: None,
-                vault_path: tmp_dir.path().join("vault").to_str().unwrap().to_string(),
+                vault_path: tmp_dir.path().join("vault"),
                 mcp: shared::config::McpConfig::default(),
             };
             Arc::new(config)
