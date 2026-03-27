@@ -327,10 +327,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
 
     let job_queue = Arc::new(
-        infrastructure::job_queue::UniversalJobQueue::new(&format!(
-            "sqlite://{}",
-            db_path.to_str().unwrap()
-        ))
+        infrastructure::job_queue::UniversalJobQueue::new(
+            &format!("sqlite://{}", db_path.to_str().unwrap()),
+            None,
+        )
         .await
         .expect("Failed to create test job queue"),
     );
@@ -540,7 +540,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             as Arc<dyn aiome_core::traits::TranscriptionEngine>),
         task_dispatcher: {
             let validator = Arc::new(
-                infrastructure::validator::DefaultConstitutionalValidator::new(provider.clone()),
+                infrastructure::validator::DefaultConstitutionalValidator::new(
+                    provider.clone(),
+                    None,
+                ),
             );
             let dispatcher = Arc::new(infrastructure::task_orchestrator::TaskDispatcher::new(
                 job_queue.clone(),
@@ -1319,10 +1322,10 @@ async fn test_fallback_router_failover() {
     let db_path = tmp_dir.path().join("test_failover.db");
 
     let job_queue = Arc::new(
-        infrastructure::job_queue::UniversalJobQueue::new(&format!(
-            "sqlite://{}",
-            db_path.to_str().unwrap()
-        ))
+        infrastructure::job_queue::UniversalJobQueue::new(
+            &format!("sqlite://{}", db_path.to_str().unwrap()),
+            None,
+        )
         .await
         .expect("Failed to create test job queue"),
     );

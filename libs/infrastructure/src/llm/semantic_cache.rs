@@ -196,7 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_semantic_cache_roundtrip() {
-        let jq = Arc::new(UniversalJobQueue::new(":memory:").await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(":memory:", None).await.unwrap());
         let cache = SemanticCache::new(jq);
 
         let prompt = "hello";

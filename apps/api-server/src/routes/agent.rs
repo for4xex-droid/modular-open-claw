@@ -714,7 +714,7 @@ mod tests {
         let db_path = tmp_dir.path().join("test_agent.db");
         let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
 
-        let jq = Arc::new(UniversalJobQueue::new(&pool_url).await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None).await.unwrap());
         let registry = Arc::new(RegistryManager::new(
             jq.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
         ));

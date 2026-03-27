@@ -72,7 +72,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
     let _ = dotenvy::dotenv();
     if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
         info!("🔧 Bootstrapping Test JobQueue against PostgreSQL");
-        let jq = UniversalJobQueue::new(&pg_url)
+        let jq = UniversalJobQueue::new(&pg_url, None)
             .await
             .expect("Failed to create test job queue (Postgres)");
 
@@ -83,7 +83,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
     // SQLite connection string format needed for sqlx
-    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str))
+    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str), None)
         .await
         .expect("Failed to create test job queue");
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist
@@ -1016,4 +1016,45 @@ async fn test_fetch_federated_metrics() {
     assert_eq!(metrics.stats.level, 1);
     assert_eq!(metrics.job_metrics.total_completed, 0);
     assert_eq!(metrics.karma_metrics.total_count, 0);
+}
+
+#[tokio::test]
+async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
+    use crate::slm_bridge::SlmBridge;
+    let (mut jq, _tmp) = create_test_queue().await;
+
+    // SlmBridge を注入
+    let slm = Arc::new(SlmBridge::new());
+    jq.slm_bridge = Some(slm.clone());
+
+    let job_id = jq
+        .enqueue("Task", "GC Test", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+
+    // 1. 低重要度の記憶を模したデータを挿入
+    let low_importance_content = "redundant log fragment 12345 non-essential";
+    jq.store_karma(
+        &job_id,
+        "skill-1",
+        low_importance_content,
+        "Technical",
+        "hash-gc",
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    // 2. Sweep 実行
+    let archived = jq.karma_decay_sweep().await.unwrap();
+    info!("Poincare GC archived {} entries", archived);
+
+    // 3. アーカイブ後の検索
+    let res = jq
+        .fetch_relevant_karma("redundant log", "skill-1", 10, "hash-gc")
+        .await
+        .unwrap();
+    info!("Remaining entries after GC: {}", res.entries.len());
 }

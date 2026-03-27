@@ -51,7 +51,7 @@ async fn test_soul_pipeline_with_whisper_integration() {
     let mock_llm = Arc::new(MockLlm);
     let adapter = CoreDomainAdapter::new(
         Arc::new(
-            infrastructure::job_queue::UniversalJobQueue::new(":memory:")
+            infrastructure::job_queue::UniversalJobQueue::new(":memory:", None)
                 .await
                 .unwrap(),
         ),

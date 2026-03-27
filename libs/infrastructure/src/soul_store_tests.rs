@@ -13,7 +13,7 @@ mod tests {
     use soul::AgentSoul;
 
     async fn setup_db() -> DatabasePool {
-        let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:")
+        let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:", None)
             .await
             .expect("Failed to create in-memory job queue");
         jq.get_pool().clone()

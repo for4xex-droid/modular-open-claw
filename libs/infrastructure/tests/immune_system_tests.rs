@@ -47,7 +47,7 @@ impl LlmProvider for MockLlmProvider {
 }
 
 async fn create_test_queue() -> UniversalJobQueue {
-    UniversalJobQueue::new("sqlite::memory:")
+    UniversalJobQueue::new("sqlite::memory:", None)
         .await
         .expect("Failed to create test job queue")
 }

@@ -45,7 +45,7 @@ impl ConceptManager {
     async fn verify_with_prosecutor(&self, concept: &ConceptResponse) -> Result<(), AiomeError> {
         if let Some(p) = &self.prosecutor_provider {
             use aiome_contracts::traits::ConstitutionalValidator;
-            let validator = crate::validator::DefaultConstitutionalValidator::new(p.clone());
+            let validator = crate::validator::DefaultConstitutionalValidator::new(p.clone(), None);
             let concept_summary = format!(
                 "Title: {}\nIntro: {}\nBody: {}\nOutro: {}\nVisuals: {:?}",
                 concept.title,

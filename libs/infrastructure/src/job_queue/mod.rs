@@ -82,6 +82,7 @@ pub struct UniversalJobQueue {
     pub karma_cache: Arc<RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
     pub llm: Option<Arc<dyn LlmProvider>>,
     pub embed_provider: Arc<RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
+    pub slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
 }
 
 #[async_trait]
@@ -110,7 +111,10 @@ impl JobQueue for UniversalJobQueue {
 }
 
 impl UniversalJobQueue {
-    pub async fn new(path: &str) -> Result<Self, AiomeError> {
+    pub async fn new(
+        path: &str,
+        slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
+    ) -> Result<Self, AiomeError> {
         let pool = if path.starts_with("postgres://") || path.starts_with("postgresql://") {
             let pg_pool =
                 sqlx::PgPool::connect(path)
@@ -141,6 +145,7 @@ impl UniversalJobQueue {
             karma_cache: Arc::new(RwLock::new(HashMap::new())),
             llm: None,
             embed_provider: Arc::new(RwLock::new(None)),
+            slm_bridge,
         };
 
         if this.pool.is_sqlite() {
@@ -164,6 +169,7 @@ impl UniversalJobQueue {
             karma_cache: Arc::new(RwLock::new(HashMap::new())),
             llm: None,
             embed_provider: Arc::new(RwLock::new(None)),
+            slm_bridge: None,
         }
     }
 
@@ -416,6 +422,32 @@ impl KarmaRegistry for UniversalJobQueue {
     ) -> Result<KarmaSearchResult, AiomeError> {
         self.do_fetch_relevant_karma_by_category(topic, category, limit)
             .await
+    }
+
+    async fn recall_from_slm(
+        &self,
+        query: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError> {
+        if let Some(bridge) = &self.slm_bridge {
+            let slm_results = bridge.recall(query, limit).await?;
+            let mut entries = Vec::new();
+            for res in slm_results {
+                entries.push(aiome_contracts::traits::KarmaEntry {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    lesson: res.content,
+                    karma_type: "SLM_Geometric".to_string(),
+                    ..Default::default()
+                });
+            }
+            Ok(KarmaSearchResult {
+                entries,
+                is_ood: false, // SLM は幾何スコアを返すため、必要に応じてここで OOD 判定可能
+                max_score: 0.0,
+            })
+        } else {
+            Ok(KarmaSearchResult::empty())
+        }
     }
 }
 

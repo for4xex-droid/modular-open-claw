@@ -11,7 +11,9 @@ use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]
 async fn test_biome_dialogue_limit() {
-    let queue = UniversalJobQueue::new("sqlite::memory:").await.unwrap();
+    let queue = UniversalJobQueue::new("sqlite::memory:", None)
+        .await
+        .unwrap();
     let topic_id = "test_dialogue_topic";
 
     // Simulate 10 turns

@@ -403,3 +403,11 @@ pub async fn watchtower_init() -> Result<()> {
 pub fn watchtower_shutdown() {
     tracing::info!("Watchtower shutdown.");
 }
+
+#[napi]
+/// `karma_geodesic_importance` 関数 (Phase 4: Poincare GC)
+pub async fn karma_geodesic_importance(query: String) -> Result<f64> {
+    let slm = get_slm_bridge().await.map_err(map_err)?;
+    let importance = slm.calculate_importance(&query).await.map_err(map_err)?;
+    Ok(importance)
+}

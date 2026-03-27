@@ -15,13 +15,19 @@ static LLM: OnceCell<Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync
     OnceCell::const_new();
 static IMMUNE: OnceCell<Arc<infrastructure::immune_system::AdaptiveImmuneSystem>> =
     OnceCell::const_new();
+static SLM_BRIDGE: OnceCell<Arc<infrastructure::slm_bridge::SlmBridge>> = OnceCell::const_new();
 
-/// `get_db` 関数
 pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
     DB.get_or_try_init(|| async {
         let db_path = std::env::var("AIOME_DB_PATH")
             .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
-        let queue = UniversalJobQueue::new(&db_path).await?;
+
+        // SLM Bridge の初期化
+        let slm = get_slm_bridge().await?;
+
+        let mut queue = UniversalJobQueue::new(&db_path, Some(slm.clone())).await?;
+        queue.slm_bridge = Some(slm.clone());
+
         Ok(Arc::new(queue))
     })
     .await
@@ -135,6 +141,17 @@ pub async fn get_immune(
             let immune_system =
                 infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone());
             Ok(Arc::new(immune_system))
+        })
+        .await
+}
+
+/// `get_slm_bridge` 関数
+pub async fn get_slm_bridge(
+) -> Result<&'static Arc<infrastructure::slm_bridge::SlmBridge>, AiomeError> {
+    SLM_BRIDGE
+        .get_or_try_init(|| async {
+            let bridge = infrastructure::slm_bridge::SlmBridge::new();
+            Ok(Arc::new(bridge))
         })
         .await
 }

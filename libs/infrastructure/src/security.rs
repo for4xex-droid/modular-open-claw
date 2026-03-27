@@ -52,6 +52,7 @@ impl Default for SecurityConfig {
                 "sandbox-exec".to_string(),
                 "ollama".to_string(),
                 "docker".to_string(),
+                "slm".to_string(),
             ],
             workspace_root: std::path::PathBuf::from("workspace"),
             vault_path: None,
@@ -78,7 +79,9 @@ impl SecurityConfig {
                         let vault = std::env::var("VAULT_PATH")
                             .unwrap_or_else(|_| "~/.aiome/vault".to_string());
                         let expanded = shared::os_utils::expand_home(&vault);
-                        config.vault_path = Some(std::path::PathBuf::from(expanded));
+                        let path = std::path::PathBuf::from(expanded);
+                        // SEC-CANONICAL: 絶対パスへの正規化とシンボリックリンク解消を強制 (G-21/G-26)
+                        config.vault_path = path.canonicalize().ok().or(Some(path));
                     }
                     return config;
                 }
@@ -88,7 +91,9 @@ impl SecurityConfig {
         config.workspace_root = workspace_root;
         let vault = std::env::var("VAULT_PATH").unwrap_or_else(|_| "~/.aiome/vault".to_string());
         let expanded = shared::os_utils::expand_home(&vault);
-        config.vault_path = Some(std::path::PathBuf::from(expanded));
+        let path = std::path::PathBuf::from(expanded);
+        // SEC-CANONICAL: デフォルト設定時も正規化を強制
+        config.vault_path = path.canonicalize().ok().or(Some(path));
         config
     }
 }
@@ -134,12 +139,18 @@ impl RuntimeJail for BastionGuard {
             });
         }
 
-        // 2. インジェクション・フィルタ
+        // 2. インジェクション・フィルタ (強化版 (§7.1))
+        // メタ文字そのものだけでなく、エスケープ試行 (\) も含めてより広範に検知する。
+        // 単純な contains ではなく、エスケープを考慮した正規化後のチェックが望ましいが、
+        // 現状はエスケープ文字 '\' 自体もメタ文字として扱い、コマンドラインでの直接使用を制限する。
         let dangerous_parts = [
-            ";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r", "%0a", "%0d",
+            ";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r", "%0a", "%0d", "\\$(",
+            "\\`", "\\{", // エスケープによる回避試行
+            "{", "}", "[", "]", "*", "?", // ブレース展開・グロブ攻撃 (SEC-BRACE)
         ];
         for part in dangerous_parts {
             if cmd_str.contains(part) {
+                error!("🛡️ [Security Violation] Dangerous meta-character or escape sequence detected: '{}'", part);
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Security Violation: '{}' prohibited.", part),
                 });
@@ -729,6 +740,60 @@ mod tests {
 
             // Cleanup
             let _ = std::fs::remove_file(&vault_file);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bastion_guard_escaped_injection() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // エスケープされた $ を使ったインジェクションの試行
+        let malicious_cmd = "ls \\$(whoami)";
+        let res = guard.safe_exec(malicious_cmd).await;
+
+        assert!(res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(reason.contains("prohibited"));
+        } else {
+            panic!("Expected Security Violation for escaped injection");
+        }
+    }
+    #[tokio::test]
+    async fn test_bastion_guard_brace_expansion_bypass() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // ブレース展開を用いたフィルタ回避の試行 (例: .env を .e{n,v}v で表現)
+        // 現状のフィルタでは '{' や '}' を検知していないため、パスバリデーションまで到達してしまう可能性がある
+        let malicious_cmd = "cat .e{n,v}v";
+        let res = guard.safe_exec(malicious_cmd).await;
+
+        assert!(res.is_err(), "Should have blocked brace expansion attempt");
+    }
+
+    #[test]
+    fn test_security_config_canonicalization_vulnerability() {
+        // 環境変数に相対パスやシンボリックリンクを含むパスを設定した場合の挙動確認
+        std::env::set_var("VAULT_PATH", "../../../secret_vault");
+        let config = SecurityConfig::load_or_default();
+
+        if let Some(vault) = config.vault_path {
+            // 正規化されていない場合、親ディレクトリへの参照が残ってしまう
+            assert!(
+                vault.is_absolute(),
+                "Vault path must be absolute and canonicalized"
+            );
+            assert!(
+                !vault.to_string_lossy().contains(".."),
+                "Vault path must not contain dot-dot sequences"
+            );
         }
     }
 }

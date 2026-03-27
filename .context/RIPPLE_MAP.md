@@ -612,5 +612,24 @@ graph TD
     H[TaskDispatcher] -->|Causal Linking| F
 ```
 
+### 🧬 Phase 4 (ADR-025): Poincare Memory Lifecycle & GC
+- **変更内容**: 
+    - `slm_bridge.rs`: SLM CLI との通信ブリッジ実装。バッチ処理対応。
+    - `watchtower.rs`: `do_karma_decay_sweep` における Poincare GC ロジックの統合。
+    - `validator.rs`: `ConstitutionalValidator` での `SlmBridge` 利用。
+    - `main.rs` & `api_integration_tests.rs`: `UniversalJobQueue` への `SlmBridge` 注入（シグネチャ変更）。
+- **波及効果**: 
+    - 全ての `UniversalJobQueue::new` 呼び出し箇所（api-server, 統合テスト）で引数修正が必要。
+    - 記憶の自動アーカイブ（重要度 < 0.3）がバックグラウンドで開始。
+
+```mermaid
+graph TD
+    A[watchtower.rs] -->|Batch importance calculation| B[slm_bridge.rs]
+    B -->|Command execute| C[slm CLI]
+    A -->|UPDATE is_archived| D[karma_logs table]
+    E[ConstitutionalValidator] -->|Logical check| B
+    F[main.rs] -->|Injection| A
+```
+
 ---
-*最終更新日: 2026-03-27* (Phase 15 Agentic Foundation Expansion Integration)
+*最終更新日: 2026-03-27* (Phase 4 / Poincare Memory Lifecycle & GC Integration)

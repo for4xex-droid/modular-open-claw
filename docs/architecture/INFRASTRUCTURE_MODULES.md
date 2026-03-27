@@ -23,7 +23,7 @@
 | `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。Phase 2b で Soul Pipeline と統合済。 | **機能強化** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
-| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 24** で `FederationOps` による統計メトリクスの自律報告を実装。 | **強化完了** |
+| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 4** で `WatchtowerOps` による Poincare GC（バッチ処理対応）を実装。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。**Phase 13.3** で Gemini 2.0 Flash Live 用の `LiveSessionManager` を統合。Ollama の LoRA 動的ビルダも統合済。 | **第3世代進化** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
@@ -34,6 +34,7 @@
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
+| `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
@@ -42,7 +43,7 @@
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。**ADR-024 Phase 2** で `job_id` および `tool_name` による詳細な追跡に対応。 | **機能拡張完了** |
 | `trend_sonar` | 外部トレンドの収集（Web/RSS）と LLM による評価・選別。マルチソース集約とインテリジェントな選別を実現。**Phase 24** で `purge_entities` による統合サニタイズへ移行。 | **強化完了** |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
-| `validator` | 入出力データの形式と安全性の検証。 | 実装完了 |
+| `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 | `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。**ADR-024 Phase 2** でプランに基づくサブジョブ投入機能を統合。 | **Phase 43 完了** |
@@ -51,4 +52,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*
+*最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)*

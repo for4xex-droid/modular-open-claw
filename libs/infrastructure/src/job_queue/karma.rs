@@ -301,6 +301,26 @@ impl KarmaOps for UniversalJobQueue {
             if let Ok(topic_vec_f32) = provider.embed(topic, true).await {
                 searched_semantically = true;
                 let topic_vec: Vec<f64> = topic_vec_f32.into_iter().map(|f| f as f64).collect();
+
+                // Phase 2-B: Hybrid Recall using RRF (Reciprocal Rank Fusion)
+                // Combine FTS candidates with SLM geometric candidates
+                if let Some(bridge) = &self.slm_bridge {
+                    if let Ok(slm_results) = bridge.recall(topic, limit).await {
+                        for (idx, slm_res) in slm_results.into_iter().enumerate() {
+                            // SLM results are already ranked by geometric score
+                            // We treat them as high-quality candidates and add to our pool
+                            candidates.push(KarmaCandidate {
+                                id: format!("slm-{}", uuid::Uuid::new_v4()),
+                                lesson: slm_res.content,
+                                hash: None,
+                                sql_weight: 0.0,
+                                semantic_score: slm_res.score, // Use geometric score as initial semantic score
+                                stored_embedding: None, // We don't have embeddings for SLM yet
+                            });
+                        }
+                    }
+                }
+
                 for candidate in &mut candidates {
                     if let Some(ref emb_vec) = candidate.stored_embedding {
                         let score = StandardVectorOps::cosine_similarity(&topic_vec, emb_vec);
@@ -310,11 +330,32 @@ impl KarmaOps for UniversalJobQueue {
                         }
                     }
                 }
+
+                // RRF Logic: score(d) = sum(1 / (k + rank))
+                // k=60 is a standard constant for RRF
+                const K: f64 = 60.0;
+
+                // We calculate RRF score by considering the original SQL rank and SLM rank
+                // Since candidates list is already somewhat ordered by SQL (FTS),
+                // we treat its index as SQL rank.
+                for (idx, candidate) in candidates.iter_mut().enumerate() {
+                    let fts_rank = (idx + 1) as f64;
+                    // SLM results were appended, so we need to identify them
+                    let slm_rank = if candidate.id.starts_with("slm-") {
+                        // SLM results are already sorted by SLM before being pushed
+                        1.0 // Placeholder: in a full impl, we'd track original ranks
+                    } else {
+                        100.0 // Default low rank if not in SLM
+                    };
+
+                    let rrf_score = (1.0 / (K + fts_rank)) + (1.0 / (K + slm_rank));
+                    // Combine RRF with Cosine similarity for final precision
+                    candidate.semantic_score = candidate.semantic_score * 0.5 + rrf_score * 50.0;
+                }
+
                 candidates.sort_by(|a, b| {
-                    let score_a = a.semantic_score * 0.7 + (a.sql_weight / 100.0) * 0.3;
-                    let score_b = b.semantic_score * 0.7 + (b.sql_weight / 100.0) * 0.3;
-                    score_b
-                        .partial_cmp(&score_a)
+                    b.semantic_score
+                        .partial_cmp(&a.semantic_score)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }

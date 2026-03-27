@@ -191,7 +191,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_cost_limit_green() {
-        let jq = Arc::new(UniversalJobQueue::new("sqlite::memory:").await.unwrap());
+        let jq = Arc::new(
+            UniversalJobQueue::new("sqlite::memory:", None)
+                .await
+                .unwrap(),
+        );
         let breaker = CostCircuitBreaker::new(jq.clone(), 10.0);
 
         // 通常範囲内 ($0.10) は OK

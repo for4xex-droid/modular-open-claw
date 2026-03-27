@@ -27,6 +27,7 @@ pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     job_queue: Arc<UniversalJobQueue>,
     semaphore: Arc<Semaphore>,
+    slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
 }
 
 impl MemoryCrystallizer {
@@ -35,11 +36,13 @@ impl MemoryCrystallizer {
         provider: Arc<dyn LlmProvider + Send + Sync>,
         job_queue: Arc<UniversalJobQueue>,
         semaphore: Arc<Semaphore>,
+        slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
     ) -> Self {
         Self {
             provider,
             job_queue,
             semaphore,
+            slm_bridge,
         }
     }
 
@@ -115,4 +118,50 @@ impl MemoryCrystallizer {
     }
 }
 
-// Tests are temporarily disabled during infra consolidation.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::slm_bridge::SlmBridge;
+    use aiome_contracts::llm::{LlmProvider, LlmResponse, StopReason};
+    use async_trait::async_trait;
+    use std::sync::Arc;
+    use tokio::sync::Semaphore;
+
+    #[derive(Debug)]
+    struct MockLlm;
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, aiome_contracts::error::AiomeError> {
+            Ok(LlmResponse {
+                content: "[Knowledge] TDD is essential for quality.".into(),
+                stop_reason: StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
+        }
+        async fn test_connection(&self) -> Result<(), aiome_contracts::error::AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "mock"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_memory_crystallizer_initialization() {
+        let provider = Arc::new(MockLlm);
+        // UniversalJobQueue の実体化（インメモリ）を試みる
+        if let Ok(jq) = UniversalJobQueue::new("sqlite::memory:", None).await {
+            let semaphore = Arc::new(Semaphore::new(1));
+            let slm = Some(Arc::new(SlmBridge::new()));
+
+            let crystallizer = MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm);
+
+            assert!(crystallizer.slm_bridge.is_some());
+        }
+    }
+}

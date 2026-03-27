@@ -225,7 +225,7 @@ mod tests {
     async fn test_intent_generator_generates_intent_green() {
         let _tmp = tempdir().unwrap();
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:")
+            crate::job_queue::UniversalJobQueue::new(":memory:", None)
                 .await
                 .unwrap(),
         );
@@ -290,7 +290,7 @@ mod tests {
     async fn test_intent_generation_reflects_soul_state() {
         let _tmp = tempdir().unwrap();
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:")
+            crate::job_queue::UniversalJobQueue::new(":memory:", None)
                 .await
                 .unwrap(),
         );

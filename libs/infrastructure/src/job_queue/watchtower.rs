@@ -277,11 +277,89 @@ impl WatchtowerOps for UniversalJobQueue {
 
     async fn do_karma_decay_sweep(&self) -> Result<u64, AiomeError> {
         let ts_expr = self.pool.now_with_dynamic_days_interval(0);
-        let q = format!("UPDATE karma_logs SET is_archived = 1 WHERE weight < 5 AND (last_applied_at IS NULL OR last_applied_at < {}) AND is_archived = 0", ts_expr);
-        let res = sql_exec!(&self.pool, &q, -90).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
-        Ok(res)
+
+        // 1. 既存の時間・重みベースのアーカイブ (COLD 遷移)
+        let q_time = format!("UPDATE karma_logs SET is_archived = 1 WHERE weight < 5 AND (last_applied_at IS NULL OR last_applied_at < {}) AND is_archived = 0", ts_expr);
+        let res_time =
+            sql_exec!(&self.pool, &q_time, -90).map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
+        // 2. Phase 4: Poincare ベースの重要度パージ (CR-1: バッチ化)
+        let mut res_slm = 0;
+        if let Some(slm) = &self.slm_bridge {
+            tracing::info!(
+                "🧬 [PoincareGC] Analyzing low-importance karma via SLM (batch mode)..."
+            );
+            // 重要度の低そうな記憶を recall でリストアップ
+            if let Ok(results) = slm
+                .recall("low importance logic artifacts redundant", 100)
+                .await
+            {
+                let queries: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
+
+                if !queries.is_empty() {
+                    // バッチで重要度を一括算出 (1回のプロセス起動 or フォールバック)
+                    let targets: Vec<String> = match slm.calculate_importance_batch(&queries).await
+                    {
+                        Ok(scored) => scored
+                            .into_iter()
+                            .filter(|(_, importance)| *importance < 0.3) // 閾値: 極めて低い
+                            .map(|(content, _)| content)
+                            .collect(),
+                        Err(e) => {
+                            tracing::warn!(
+                                "⚠️ [PoincareGC] Batch importance calculation failed: {}",
+                                e
+                            );
+                            Vec::new()
+                        }
+                    };
+
+                    if !targets.is_empty() {
+                        // 該当するコンテンツをアーカイブ。
+                        let q_slm = format!(
+                            "UPDATE karma_logs SET is_archived = 1 WHERE content IN ({}) AND is_archived = 0",
+                            targets.iter().map(|_| self.pool.ph(0)).collect::<Vec<_>>().join(", ")
+                        );
+
+                        // 動的バインドが必要なため、各 db 実装に合わせて処理
+                        match &self.pool {
+                            crate::db::DatabasePool::Sqlite(p) => {
+                                let mut query = sqlx::query(&q_slm);
+                                for t in &targets {
+                                    query = query.bind(t);
+                                }
+                                res_slm = query
+                                    .execute(p)
+                                    .await
+                                    .map(|r| r.rows_affected())
+                                    .unwrap_or(0);
+                            }
+                            crate::db::DatabasePool::Postgres(p) => {
+                                let mut query = sqlx::query(&q_slm);
+                                for t in &targets {
+                                    query = query.bind(t);
+                                }
+                                res_slm = query
+                                    .execute(p)
+                                    .await
+                                    .map(|r| r.rows_affected())
+                                    .unwrap_or(0);
+                            }
+                        }
+                        if res_slm > 0 {
+                            tracing::info!(
+                                "✅ [PoincareGC] Archived {} low-importance karma entries.",
+                                res_slm
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(res_time + res_slm)
     }
 
     async fn do_apply_distilled_karma(

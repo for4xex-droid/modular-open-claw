@@ -39,7 +39,7 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 - 💖 **Resonance (共鳴度)**: ユーザーとの良好な対話で上昇。
 - ⚙️ **Tech Level (技術力)**: ジョブの成功や複雑な問題の解決で上昇。システムの自律的な提案頻度や精度に影響します。
-- 🧠 **Temporal Decay (忘却メカニズム)**: `AgentSoul` の古い記憶や防衛反応（Defense）のうち、強度が `0.2` を下回ったものは永久に破棄され、メモリ空間の肥大化を防ぎます。
+- 🧠 **Temporal Decay (忘却メカニズム)**: **Phase 4 (Poincare GC)** により強化。`SlmBridge` を用いて記憶の重要度を非ユークリッド幾何学的に算出。強度が `0.3` を下回ったものはバックグラウンドで自動的にアーカイブされ、メモリ空間の肥大化と認知ノイズを抑制します。
 - 🔄 **Rebirth Inheritance (記憶の継承)**: 転生（Rebirth）時、強度が `0.5` を超える強い防衛ルールと、ナラティブ・アイデンティティ（Anamnesis）のみが次世代の魂へ引き継がれます。
 
 ---
@@ -53,5 +53,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-26 (Phase 44 / Job Control & Task History)
+最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)
 Aiome Development Team

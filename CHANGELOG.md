@@ -1,4 +1,8 @@
-## [Unreleased] - 2026-03-27
+- **Phase 4: Poincare Memory Lifecycle & GC [完了]**
+    - **SlmBridge Evolution**: `calculate_importance` および `calculate_importance_batch` を実装。一時ファイルを用いたバッチ処理によりプロセス起動オーバーヘッドを削減。
+    - **Autonomous GC (Watchtower)**: `do_karma_decay_sweep` に Poincare ベースのフィルタリングを統合。バッチ評価により O(1) プロセス起動での GC を実現。
+    - **NAPI Exposure**: `karma_geodesic_importance` を NAPI 経由でフロントエンドに露出。TypeScript 側から記憶の幾何学的重要度を直接クエリ可能に。
+    - **Constitutional Flexibility**: `ConstitutionalValidator` の矛盾検知閾値を 0.77 に調整し、定数として分離。`SlmBridge` をコンストラクタで受け取る設計へ改善。
 - **Phase 15: Agentic Foundation Expansion (ADR-024 Phase 1 & ADR-023) [完了]**
     - **StrategicPlanner**: LLM による目標分解ロジックを実装。Markdown コードブロックからの堅牢な JSON 抽出に対応し、パース失敗を大幅に低減。
     - **ToolDiscoveryEngine**: キーワード一致から LLM によるセマンティック検索へアップグレード。自然言語の意図から最適な Wasm スキルを推論可能に。
@@ -20,7 +24,7 @@
     - **TtsWorker Loop**: `api-server` 起動時に `TtsWorker` のバックグラウンドループを開始するように実装。未合成の音声ジョブを自律的に処理可能に。
     - **Mock Testing Suite**: `MockTtsProvider` および `MockLiveSessionManager` を実装し、統合テスト全体の安定性を確保。CI/CD における不確定要素を排除。
 
-## [Unreleased] - 2026-03-26
+## [Unreleased] - 2026-03-27
 
 ### Added
 - **Phase 5: Gemini Interactions API 統合基盤 [完了]**

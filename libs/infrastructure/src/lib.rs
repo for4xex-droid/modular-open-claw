@@ -87,6 +87,7 @@ pub mod security_zombie;
 pub mod skill_arena;
 /// WASMスキルのロード・サンドボックス管理
 pub mod skills;
+pub mod slm_bridge;
 pub mod slo_engine;
 /// イベント→Experience変換アダプタ
 pub mod soul_adapter;

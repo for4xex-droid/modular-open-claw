@@ -28,7 +28,7 @@ async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     println!("🐘 Testing PostgreSQL with URL: {}", url);
 
     // Act
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
 
     // Assert
     assert!(jq.get_pool().is_postgres(), "Should be a Postgres pool");
@@ -50,7 +50,7 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
     let pool = jq.get_pool().get_postgres_pool_or_err()?;
 
     // このテーブルたちは現時点の postgres_init.rs では未作成のため、ここで失敗（RED）になることが期待される
@@ -101,7 +101,7 @@ async fn test_postgres_soul_store_crud() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
     let pool = jq.get_pool().clone();
 
     let store = UniversalSoulStore::new(pool);
@@ -124,7 +124,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
     let pool = jq.get_pool().clone();
 
     let store = UniversalArtifactStore::new(pool, std::path::PathBuf::from("/tmp/pg_artifacts"));
@@ -162,7 +162,7 @@ async fn test_postgres_gig_engine_placeholder() -> anyhow::Result<()> {
         Ok(val) => val,
         Err(_) => return Ok(()),
     };
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url).await?;
+    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
     let pool = jq.get_pool().clone();
 
     // NOTE: This will fail to compile initially once we rename the struct,

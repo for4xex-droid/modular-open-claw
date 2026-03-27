@@ -31,6 +31,7 @@ pub struct UserProfile {
 pub struct UserLearner {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
+    slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
     pub profile: std::sync::RwLock<UserProfile>,
 }
 
@@ -40,10 +41,12 @@ impl UserLearner {
         provider: Arc<dyn LlmProvider + Send + Sync>,
         semaphore: Arc<Semaphore>,
         profile: UserProfile,
+        slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
     ) -> Self {
         Self {
             provider,
             semaphore,
+            slm_bridge,
             profile: std::sync::RwLock::new(profile),
         }
     }
@@ -127,6 +130,7 @@ impl AgentHook for UserLearner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::slm_bridge::SlmBridge;
     use aiome_contracts::error::AiomeError;
     use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
     use aiome_contracts::security::AgentHook;
@@ -159,7 +163,8 @@ mod tests {
     async fn test_user_learner_implements_agent_hook() {
         let provider = Arc::new(MockLlm);
         let semaphore = Arc::new(Semaphore::new(1));
-        let learner = UserLearner::new(provider, semaphore, UserProfile::default());
+        let slm = Some(Arc::new(SlmBridge::new()));
+        let learner = UserLearner::new(provider, semaphore, UserProfile::default(), slm);
 
         // AgentHook を実装していることを確認
         let hook: Box<dyn AgentHook> = Box::new(learner);

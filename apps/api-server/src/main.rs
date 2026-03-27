@@ -149,7 +149,7 @@ async fn main() -> anyhow::Result<()> {
         })
     };
 
-    let job_queue = infrastructure::job_queue::UniversalJobQueue::new(&config.db_path)
+    let job_queue = infrastructure::job_queue::UniversalJobQueue::new(&config.db_path, None)
         .await
         .unwrap_or_else(|e| {
             error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
@@ -504,7 +504,10 @@ async fn main() -> anyhow::Result<()> {
         ));
 
     let validator = Arc::new(
-        infrastructure::validator::DefaultConstitutionalValidator::new(bg_provider.clone()),
+        infrastructure::validator::DefaultConstitutionalValidator::new(
+            bg_provider.clone(),
+            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入
+        ),
     );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
     let tool_discovery = Arc::new(

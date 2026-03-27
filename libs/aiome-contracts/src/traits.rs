@@ -419,6 +419,16 @@ pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
         category: &str,
         limit: i64,
     ) -> Result<KarmaSearchResult, AiomeError>;
+
+    /// SLM (SuperLocalMemory) から教訓を想起する (Phase 2-B)
+    async fn recall_from_slm(
+        &self,
+        query: &str,
+        limit: i64,
+    ) -> Result<KarmaSearchResult, AiomeError> {
+        // デフォルトでは空の結果を返す (既存の Mock 互換性維持)
+        Ok(KarmaSearchResult::empty())
+    }
 }
 
 /// 5. エージェント進化・統計 (AgentEvolver)

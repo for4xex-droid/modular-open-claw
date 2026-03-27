@@ -52,6 +52,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 29 | Shadow Clone Hijacking | Docker Bomb / Secret Exfiltration | 🔴 High | **5-Layer Shadow Defense (Semaphore, Commerce, Bastion, Timeout, Purge) (Phase 43)** |
 | 30 | **Gemini Session Hijacking**| **Context Poisoning via interaction_id** | 🔴 High | **Interaction ID Validation + Trait-Based Provider Isolation (Phase 5)** |
 | 31 | **Secret Duplication in Memory**| **Secrets cloned via config.clone()** | 🔴 High | **Arc<AiomeConfig> sharing & immediate env::remove (Phase 13.3)** |
+| 32 | **Memory Bloat & Cognitive Noise** | **Endless ingestion of low-value artifacts** | 🟡 Mid | **Poincare-based Autonomous GC (Phase 4)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -103,6 +104,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **SQLite Pool Exhaustion Prevention (Phase 25.5 / ADR-014)**: The `AutonomousDemo` orchestrator avoids `gig_engine` trait method calls (which internally use `pool.begin()` transactions) and instead executes individual SQL statements. This prevents connection pool exhaustion when multiple browser tabs maintain concurrent SSE connections. Audit triggers on gig tables are temporarily suspended during demo execution to eliminate cascading WRITE lock contention. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md` for the full production migration plan (PostgreSQL, async audit logging, SSE connection sharing).
 - **Database Backend Safety (Phase 31)**: Eliminated 10+ instances of direct `unwrap()` on database pools. All internal router handlers now use safe getters returning explicit Errors via `DatabasePool::get_sqlite_pool_or_err`. This prevents system-wide crashes when switching to alternative backends (e.g., PostgreSQL for high concurrency).
 - **LLM Structured Output (Phase 31)**: Formally supports `format: "json"` in `LlmRequest` to enforce structured responses from LLMs (Ollama), reducing parsing errors and potential hallucination impacts.
+- **Autonomous Memory Lifecycle (Phase 4)**: Mitigates "cognitive noise" and resource exhaustion by autonomously pruning low-importance memories. Integrates `SlmBridge` for Poincare-based importance scoring and enforces a 0.3 threshold for background archival via Watchtower.
 
 ## 5. Comparison with Traditional Systems
 
@@ -141,4 +143,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*
+*最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)*

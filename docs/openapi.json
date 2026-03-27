@@ -1671,6 +1671,202 @@
         ]
       }
     },
+    "/api/v1/syndicate/guilds": {
+      "get": {
+        "tags": [
+          "crate::routes::syndicate"
+        ],
+        "summary": "[GET] /api/v1/syndicate/guilds",
+        "operationId": "list_guilds",
+        "responses": {
+          "200": {
+            "description": "List of guilds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Guild"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "crate::routes::syndicate"
+        ],
+        "summary": "[POST] /api/v1/syndicate/guilds",
+        "operationId": "create_guild",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Guild created",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/syndicate/guilds/{id}": {
+      "delete": {
+        "tags": [
+          "crate::routes::syndicate"
+        ],
+        "summary": "[DELETE] /api/v1/syndicate/guilds/:id",
+        "operationId": "delete_guild",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Guild deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/syndicate/guilds/{id}/members": {
+      "get": {
+        "tags": [
+          "crate::routes::syndicate"
+        ],
+        "summary": "[GET] /api/v1/syndicate/guilds/:id/members",
+        "operationId": "list_members",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of guild members",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GuildMember"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "crate::routes::syndicate"
+        ],
+        "summary": "[POST] /api/v1/syndicate/guilds/:id/members",
+        "operationId": "add_member",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Guild ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Member added"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/trajectory/{id}": {
       "get": {
         "tags": [
@@ -2020,6 +2216,22 @@
         ],
         "description": "納品検収基準（The Immutable Gateway の審査エンジン）"
       },
+      "AddMemberRequest": {
+        "type": "object",
+        "required": [
+          "agent_id",
+          "role"
+        ],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
       "AgentChatRequest": {
         "type": "object",
         "required": [
@@ -2173,6 +2385,23 @@
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          }
+        }
+      },
+      "CreateGuildRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -2470,6 +2699,64 @@
             "type": "string"
           },
           "label": {
+            "type": "string"
+          }
+        }
+      },
+      "Guild": {
+        "type": "object",
+        "description": "ギルド（エージェント間連携チーム）",
+        "required": [
+          "id",
+          "name",
+          "owner_id",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "GuildMember": {
+        "type": "object",
+        "description": "ギルドメンバー",
+        "required": [
+          "guild_id",
+          "agent_id",
+          "role",
+          "joined_at"
+        ],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "guild_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joined_at": {
+            "type": "string"
+          },
+          "role": {
             "type": "string"
           }
         }
