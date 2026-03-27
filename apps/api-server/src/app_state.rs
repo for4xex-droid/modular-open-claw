@@ -49,6 +49,11 @@ impl<T> Component<T> {
     pub fn as_opt(&self) -> Option<&T> {
         self.0.as_ref()
     }
+
+    pub fn get_inner(&self) -> &T {
+        use std::ops::Deref;
+        self.deref()
+    }
 }
 
 impl<T> std::ops::Deref for Component<T> {

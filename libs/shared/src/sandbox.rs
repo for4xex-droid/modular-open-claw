@@ -126,7 +126,7 @@ impl PathSandbox {
                 "VULN-64: Network URLs are not allowed for LoRA paths",
             ));
         }
-        
+
         if p.is_absolute() || path.starts_with('/') {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,

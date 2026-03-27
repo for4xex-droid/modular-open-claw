@@ -94,11 +94,7 @@ impl CommerceEngine for MockCommerceEngine {
         }
     }
 
-    async fn escrow_release(
-        &self,
-        escrow_id: &str,
-        recipient_id: Uuid,
-    ) -> Result<(), AiomeError> {
+    async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {
         if let Some((_, amount)) = self.escrows.remove(escrow_id) {
             let mut balance = self.balances.entry(recipient_id).or_insert(1000);
             *balance += amount;
@@ -284,7 +280,10 @@ mod tests {
         assert_eq!(engine.get_balance(sender_id).await.unwrap(), 800);
 
         // 2. エスクロー解放 (recipient: 1000 -> 1200)
-        engine.escrow_release(&escrow_id, recipient_id).await.unwrap();
+        engine
+            .escrow_release(&escrow_id, recipient_id)
+            .await
+            .unwrap();
         assert_eq!(engine.get_balance(recipient_id).await.unwrap(), 1200);
     }
 }

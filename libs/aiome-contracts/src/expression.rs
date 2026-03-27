@@ -33,7 +33,7 @@ impl TtsStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Expression {
     pub id: String,
     pub content: String,                          // 生成されたテキスト

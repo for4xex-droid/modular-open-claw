@@ -5,8 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use rubato::{Resampler, SincFixedIn, SincInterpolationType, SincInterpolationParameters};
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType};
 
 /// PCM 音声データのサンプリングレートを変換するためのエンジン
 pub struct PcmResampler {
@@ -32,7 +32,8 @@ impl PcmResampler {
             params,
             chunk_size,
             1, // mono
-        ).map_err(|e| anyhow!("Failed to initialize resampler: {}", e))?;
+        )
+        .map_err(|e| anyhow!("Failed to initialize resampler: {}", e))?;
 
         Ok(Self {
             resampler,
@@ -60,7 +61,9 @@ impl PcmResampler {
             input_f32.truncate(needed);
         }
 
-        let output = self.resampler.process(&[input_f32], None)
+        let output = self
+            .resampler
+            .process(&[input_f32], None)
             .map_err(|e| anyhow!("Resampling process failed: {}", e))?;
 
         // f32 を i16 バイト列に戻す
@@ -75,8 +78,12 @@ impl PcmResampler {
         Ok(resampled_bytes)
     }
 
-    pub fn input_rate(&self) -> u32 { self.input_rate }
-    pub fn output_rate(&self) -> u32 { self.output_rate }
+    pub fn input_rate(&self) -> u32 {
+        self.input_rate
+    }
+    pub fn output_rate(&self) -> u32 {
+        self.output_rate
+    }
 }
 
 #[cfg(test)]

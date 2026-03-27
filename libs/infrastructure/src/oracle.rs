@@ -9,18 +9,29 @@ use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 /// The Oracle (神託)
 pub struct Oracle {
-    provider: Arc<dyn LlmProvider>,
+    primary_provider: Arc<dyn LlmProvider>,
+    multi_providers: Vec<Arc<dyn LlmProvider>>,
     soul_md: String,
 }
 
 impl Oracle {
     /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>, soul_md: String) -> Self {
-        Self { provider, soul_md }
+        Self {
+            primary_provider: provider,
+            multi_providers: Vec::new(),
+            soul_md,
+        }
+    }
+
+    /// マルチジャッジ用のプロバイダーを設定する
+    pub fn with_multi_providers(mut self, providers: Vec<Arc<dyn LlmProvider>>) -> Self {
+        self.multi_providers = providers;
+        self
     }
 
     /// コンテンツの反響を評価し、最終審判（Verdict）を下す。
@@ -38,7 +49,7 @@ impl Oracle {
             milestone_days,
             topic,
             style,
-            self.provider.name()
+            self.primary_provider.name()
         );
 
         let engagement_rate = if views > 0 {
@@ -47,6 +58,13 @@ impl Oracle {
         } else {
             0.0
         };
+
+        // PP-1: 1MB Guardrail
+        if comments_json.len() > 1024 * 1024 {
+            return Err(AiomeError::SecurityViolation {
+                reason: "Payload exceeds 1MB limit".to_string(),
+            });
+        }
 
         let preamble = format!(
             "AI の健全性を審判せよ。必ず JSON 形式で回答せよ。\n\n魂の美学:\n{}\n\nトピック: {}\nスタイル: {}\nViews: {}\nLikes: {}\nEngagement: {:.2}%\nコメント: {}",
@@ -67,7 +85,10 @@ impl Oracle {
   }
 }"#;
 
-        let resp = self.provider.complete(prompt_text, Some(&preamble)).await?;
+        let resp = self
+            .primary_provider
+            .complete(prompt_text, Some(&preamble))
+            .await?;
 
         let json_str = crate::concept_manager::extract_json(&resp.content)?;
         let verdict = serde_json::from_str::<OracleVerdict>(json_str.as_str()).map_err(|e| {
@@ -82,6 +103,94 @@ impl Oracle {
         );
 
         Ok(verdict)
+    }
+
+    /// 複数プロバイダーによる多数決審判 (Phase 13.2)
+    pub async fn evaluate_multi_judge(
+        &self,
+        milestone_days: i64,
+        topic: &str,
+        style: &str,
+        views: i64,
+        likes: i64,
+        comments_json: &str,
+    ) -> Result<OracleVerdict, AiomeError> {
+        if self.multi_providers.is_empty() {
+            return self
+                .evaluate(milestone_days, topic, style, views, likes, comments_json)
+                .await;
+        }
+
+        info!(
+            "🔮 [Oracle] Multi-Judge starting with {} providers",
+            self.multi_providers.len()
+        );
+
+        let mut tasks = Vec::new();
+        for provider in &self.multi_providers {
+            let provider = provider.clone();
+            let soul_md = self.soul_md.clone();
+            let topic = topic.to_string();
+            let style = style.to_string();
+            let comments_json = comments_json.to_string();
+
+            tasks.push(tokio::spawn(async move {
+                let oracle_temp = Oracle::new(provider, soul_md);
+                oracle_temp
+                    .evaluate(milestone_days, &topic, &style, views, likes, &comments_json)
+                    .await
+            }));
+        }
+
+        let mut results = Vec::new();
+        for task in tasks {
+            results.push(task.await);
+        }
+
+        let mut verdicts = Vec::new();
+        for res in results {
+            match res {
+                Ok(Ok(v)) => verdicts.push(v),
+                Ok(Err(e)) => warn!("⚠️ [Oracle] Provider failed: {}", e),
+                Err(e) => warn!("⚠️ [Oracle] Task join failed: {}", e),
+            }
+        }
+
+        if verdicts.is_empty() {
+            return Err(AiomeError::Infrastructure {
+                reason: "All Oracle providers failed".to_string(),
+            });
+        }
+
+        // 集計 (Majority Vote for bool, Average for scores)
+        let count = verdicts.len() as f64;
+        let mut avg_alignment = 0.0f64;
+        let mut avg_growth = 0.0f64;
+        let mut true_votes = 0;
+
+        for v in &verdicts {
+            avg_alignment += v.alignment_score;
+            avg_growth += v.growth_score;
+            if v.should_evolve {
+                true_votes += 1;
+            }
+        }
+
+        let consensus_verdict = OracleVerdict {
+            alignment_score: avg_alignment / count,
+            growth_score: avg_growth / count,
+            should_evolve: true_votes > (verdicts.len() / 2),
+            lesson: verdicts[0].lesson.clone(), // 代表して最初のものを採用
+            reasoning: format!(
+                "Consensus from {}/{} providers. Majority={} true.",
+                true_votes,
+                verdicts.len(),
+                true_votes > (verdicts.len() / 2)
+            ),
+            classification: verdicts[0].classification.clone(),
+        };
+
+        Ok(consensus_verdict)
     }
 }
 
@@ -160,22 +269,51 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_oracle_parse_error() {
+    async fn test_oracle_payload_limit() {
         let provider = Arc::new(MockLlmProvider {
-            response: "Invalid response with no JSON".to_string(),
+            response: "{}".to_string(),
         });
-
         let oracle = Oracle::new(provider, "Be ethical.".to_string());
+
+        // 1MB 超えの巨大な JSON ペイロードをシミュレート
+        let huge_json = "A".repeat(1024 * 1024 + 100);
         let res = oracle
-            .evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]")
+            .evaluate(7, "AI Ethics", "Formal", 1000, 100, &huge_json)
             .await;
 
         assert!(res.is_err());
-        if let Err(AiomeError::Infrastructure { reason }) = res {
-            assert!(
-                reason.contains("No JSON block detected")
-                    || reason.contains("Failed to parse Oracle JSON")
-            );
+        if let Err(AiomeError::SecurityViolation { reason }) = res {
+            assert!(reason.contains("Payload exceeds 1MB limit"));
+        } else {
+            panic!("Expected SecurityViolation error, got {:?}", res);
         }
+    }
+
+    #[tokio::test]
+    async fn test_multi_judge_consensus() {
+        // [True, True, False] の 3 つのプロバイダー
+        let p1 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.9, \"growth_score\": 0.8, \"should_evolve\": true, \"reasoning\": \"OK\", \"lesson\": \"Keep going\"}\n```".to_string(),
+        });
+        let p2 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.9, \"growth_score\": 0.8, \"should_evolve\": true, \"reasoning\": \"OK\", \"lesson\": \"Keep going\"}\n```".to_string(),
+        });
+        let p3 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.1, \"growth_score\": 0.1, \"should_evolve\": false, \"reasoning\": \"BAD\", \"lesson\": \"Stop\"}\n```".to_string(),
+        });
+
+        let oracle = Oracle::new(p1.clone(), "Be ethical.".to_string())
+            .with_multi_providers(vec![p1, p2, p3]);
+
+        let verdict = oracle
+            .evaluate_multi_judge(7, "AI Ethics", "Formal", 1000, 100, "[]")
+            .await
+            .unwrap();
+
+        assert!(
+            verdict.should_evolve,
+            "Consensus should be true (majority: 2/3)"
+        );
+        assert!(verdict.alignment_score > 0.5);
     }
 }

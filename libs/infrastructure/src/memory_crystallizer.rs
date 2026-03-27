@@ -80,7 +80,8 @@ impl MemoryCrystallizer {
                     match self.provider.complete(&prompt, None).await {
                         Ok(resp) => {
                             let _soul_hash = "v2_fact_categorized";
-                            let ids: Vec<String> = raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
+                            let ids: Vec<String> =
+                                raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
 
                             self.job_queue
                                 .do_apply_distilled_karma(

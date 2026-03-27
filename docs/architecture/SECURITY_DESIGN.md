@@ -51,6 +51,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 28 | LLM Format Mismatch | JSON expected, Text received | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
 | 29 | Shadow Clone Hijacking | Docker Bomb / Secret Exfiltration | 🔴 High | **5-Layer Shadow Defense (Semaphore, Commerce, Bastion, Timeout, Purge) (Phase 43)** |
 | 30 | **Gemini Session Hijacking**| **Context Poisoning via interaction_id** | 🔴 High | **Interaction ID Validation + Trait-Based Provider Isolation (Phase 5)** |
+| 31 | **Secret Duplication in Memory**| **Secrets cloned via config.clone()** | 🔴 High | **Arc<AiomeConfig> sharing & immediate env::remove (Phase 13.3)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -140,4 +141,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-26 (Phase 5 / Gemini Interactions API Foundation)*
+*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*

@@ -5,11 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use async_trait::async_trait;
 use crate::adapter::SoulDomainAdapter;
 use crate::engine::SamsaraEngine;
 use crate::error::SoulError;
-use crate::pipeline::{SoulMiddleware, SoulMiddlewareNext, SoulContext};
+use crate::pipeline::{SoulContext, SoulMiddleware, SoulMiddlewareNext};
+use async_trait::async_trait;
 
 /// BoundingGuard Middleware
 /// ペルソナの境界（禁止事項、知識範囲、行動制約）を遵守させるためのガードレール。
@@ -41,10 +41,13 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
         // セキュリティ上の決定的な境界逸脱（Prompt Injection 由来の不適切な知識開示など）を即座にブロック。
         for topic in &boundaries.forbidden_topics {
             if content.to_lowercase().contains(&topic.to_lowercase()) {
-                tracing::warn!("🛡️ [BoundingGuard] Persona deviation detected (Forbidden Topic): {}", topic);
+                tracing::warn!(
+                    "🛡️ [BoundingGuard] Persona deviation detected (Forbidden Topic): {}",
+                    topic
+                );
                 ctx.is_rejected = true;
                 ctx.should_continue = false;
-                
+
                 // 特定の防衛アクションをアダプター経由で実行可能（将来拡張）
                 return Ok(());
             }
@@ -68,25 +71,70 @@ mod tests {
 
     struct TestEngine;
     impl crate::engine::SamsaraEngine for TestEngine {
-        fn is_shock(&self, _: &AgentSoul) -> bool { false }
-        fn rebirth<'a>(&'a self, s: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(s) }) }
-        fn distill<'a>(&'a self, _: &'a AgentSoul) -> Pin<Box<dyn Future<Output = Result<crate::instinct::Instinct, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(Default::default()) }) }
-        fn dream<'a>(&'a self, s: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(s) }) }
+        fn is_shock(&self, _: &AgentSoul) -> bool {
+            false
+        }
+        fn rebirth<'a>(
+            &'a self,
+            s: AgentSoul,
+        ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(s) })
+        }
+        fn distill<'a>(
+            &'a self,
+            _: &'a AgentSoul,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<crate::instinct::Instinct, crate::error::SoulError>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async { Ok(Default::default()) })
+        }
+        fn dream<'a>(
+            &'a self,
+            s: AgentSoul,
+        ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(s) })
+        }
     }
 
     struct TestAdapter;
     impl crate::adapter::SoulDomainAdapter for TestAdapter {
-        fn to_experience(&self, _: &dyn std::any::Any) -> Experience { Experience::default() }
-        fn distillation_system_prompt(&self) -> &str { "" }
-        fn predict_outcome(&self, _: &AgentSoul, _: &Experience) -> f64 { 0.0 }
-        fn execute_defense<'a>(&'a self, _: &'a crate::defense::DefenseAction, _: &'a str) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(()) }) }
-        fn embed_experience<'a>(&'a self, _: &'a Experience) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> { Box::pin(async { vec![] }) }
+        fn to_experience(&self, _: &dyn std::any::Any) -> Experience {
+            Experience::default()
+        }
+        fn distillation_system_prompt(&self) -> &str {
+            ""
+        }
+        fn predict_outcome(&self, _: &AgentSoul, _: &Experience) -> f64 {
+            0.0
+        }
+        fn execute_defense<'a>(
+            &'a self,
+            _: &'a crate::defense::DefenseAction,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(()) })
+        }
+        fn embed_experience<'a>(
+            &'a self,
+            _: &'a Experience,
+        ) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> {
+            Box::pin(async { vec![] })
+        }
     }
 
     #[tokio::test]
     async fn test_bounding_forbidden_topic() {
         let mut soul = AgentSoul::new("test".to_string());
-        soul.persona_boundaries.forbidden_topics.push("shrimp".to_string());
+        soul.persona_boundaries
+            .forbidden_topics
+            .push("shrimp".to_string());
 
         let pipeline = SoulPipeline::new(TestAdapter, TestEngine);
         let mut exp = Experience::default();
@@ -104,10 +152,18 @@ mod tests {
         };
 
         let guard = BoundingGuard::<TestAdapter, TestEngine>::new();
-        
+
         struct MockNext;
         impl crate::pipeline::SoulMiddlewareNext<TestAdapter, TestEngine> for MockNext {
-            fn run<'a, 'b>(&'a self, _: &'b mut SoulContext<'_, TestAdapter, TestEngine>) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'b>> where 'a: 'b { Box::pin(async { Ok(()) }) }
+            fn run<'a, 'b>(
+                &'a self,
+                _: &'b mut SoulContext<'_, TestAdapter, TestEngine>,
+            ) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'b>>
+            where
+                'a: 'b,
+            {
+                Box::pin(async { Ok(()) })
+            }
         }
 
         guard.process(&mut ctx, &MockNext).await.unwrap();

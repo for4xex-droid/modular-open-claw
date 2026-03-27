@@ -116,7 +116,11 @@ impl CostCircuitBreaker {
     }
 
     /// セッション単位のコスト制限を確認 (GAP-6)
-    pub async fn enforce_session_limit(&self, session_id: &str, current_session_cost: f64) -> Result<(), AiomeError> {
+    pub async fn enforce_session_limit(
+        &self,
+        session_id: &str,
+        current_session_cost: f64,
+    ) -> Result<(), AiomeError> {
         let limit = self
             .jq
             .get_setting_value("cost_limit_per_session")
@@ -127,9 +131,15 @@ impl CostCircuitBreaker {
             .unwrap_or(0.50); // デフォルト $0.50
 
         if current_session_cost >= limit {
-            warn!("🚨 [CostCircuitBreaker] Session {} cost ${:.4} exceeds limit ${:.4}", session_id, current_session_cost, limit);
+            warn!(
+                "🚨 [CostCircuitBreaker] Session {} cost ${:.4} exceeds limit ${:.4}",
+                session_id, current_session_cost, limit
+            );
             return Err(AiomeError::Infrastructure {
-                reason: format!("Session cost limit exceeded: ${:.4} >= ${:.4}", current_session_cost, limit),
+                reason: format!(
+                    "Session cost limit exceeded: ${:.4} >= ${:.4}",
+                    current_session_cost, limit
+                ),
             });
         }
         Ok(())
@@ -183,7 +193,7 @@ mod tests {
     async fn test_session_cost_limit_green() {
         let jq = Arc::new(UniversalJobQueue::new("sqlite::memory:").await.unwrap());
         let breaker = CostCircuitBreaker::new(jq.clone(), 10.0);
-        
+
         // 通常範囲内 ($0.10) は OK
         let result = breaker.enforce_session_limit("session_123", 0.1).await;
         assert!(result.is_ok());

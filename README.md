@@ -102,7 +102,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - ⚡ **ストリーミング Agent Console**: 思考プロセス（1文字ずつの出力）とツール実行（WASM Skill）をリアルタイムに可視化する SSE ベースのチャットインターフェース。
 - 🛡️ **自律型免疫システム (Autonomous Defense)**: バックグラウンドワーカーが失敗ログ（Karma）を常に分析し、脆弱性や攻撃パターンに対する新しい防御ルールを自動生成・運用（Auto-Healing）。
 - 🎭 **Avatar Expression Engine (Next-Gen AI Identity)**: AI の感情状態を Inochi2D や VRM のブレンドシェイプ・パラメータ（`avatar_params`）へリアルタイム変換。SSE 経由でフロントエンドへプッシュすることで、AI の「生きた表情」を表現します。
-- 🗣️ **TTS 表現エンジン (Expression Engine)**: AI が生成した内的感情を、OpenAI tts-1 などの API と連動し、ローカルに音声ファイル (.mp3) として自律生成・同期します。
+- 🗣️ **TTS 表現エンジン (Expression Engine)**: AI が生成した内的感情を、`TtsProvider` トレイトを介して OpenAI (`tts-1`) やローカルの XTTS サーバーと連動。バックグラウンドの `TtsWorker` が音声を自律生成・同期します (Phase 13.3 強化)。
 - ⚙️ **Ollama LoRA 動的ビルダー**: AI 自身が外部要因に応じて最適な LoRA を判断し、バックグラウンドの Ollama インスタンスに再構築リクエストを飛ばすことでパーソナライゼーションを即座に反映します。
 - 🌐 **Samsara Federation Sync (Secure P2P)**: 他のノードと「教訓（Karma）」や「免疫ルール」を定期的に同期。**バイナリ送信を拒絶するプロトコルレベルの CSAM フィルタ**により、P2P ネットワークの安全性を担保しつつ、`FEDERATION_SECRET` 由来の対称鍵による秘匿通信を実現しています。
 - 🎁 **Phase 7.2: A2C 恩返し / 法的ガードレール**: 高い Karma を持つユーザーに対し、AI が自律的に Tremendous 経由で実世界のギフトコードを送付する「恩返し」機能を搭載。同時に、AI によるダークパターン（おねだり等）を検知・遮断する **Begging Supervisor** により、法的・倫理的透明性を担保します。
@@ -123,7 +123,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: 複雑なタスクを Docker ベースの「分身エージェント」へ委ねる **Shadow Clone** 機能を実装。5層の多層防御（セマフォ、課金、BastionGuard、タイムアウト、浄化）により安全性を担保しつつ、非同期実行と SSE によるリアルタイム進捗通知を実現しました。
 - 🛑 **Phase 44: Shadow Clone Job Control & Task History**: ユーザーが実行中の Shadow Clone（影分身）を任意に停止できるジョブキャンセル API (`/api/v1/jobs/:id/cancel`) およびリアルタイムログ取得 API (`/api/v1/jobs/:id/logs`) を実装。CancellationToken による安全な非同期タスク中断と、Docker コンテナの確定的クリーンアップを統合。
 - 🛰️ **Phase 2 (ADR-024): 実行軌跡の永続化と自律적ジョブ分解**: プランナーによるタスク分解結果を個別のサブジョブとして `JobQueue` に自動投入する機能を実装。さらに、各ステップの実行軌跡（Trajectory）を `job_id` および `tool_name` 込みで SQLite に永続化し、エージェントの思考と行動の因果関係を追跡可能にしました。
-- 🛰️ **Phase 5: Gemini Interactions API 統合 (Hybrid Context Sync)**: Google Gemini の Interactions API を統合し、サーバーサイド・セッションとローカル履歴を完全に同期。API 障害時にはローカル LLM へ自動フェイルオーバーしつつ、思考の継続性を維持する究極のハイブリッド・コンテキスト管理を実現しました。
+- 🛰️ **Phase 5: Gemini Interactions API 統合 (Hybrid Context Sync)**: Google Gemini の Interactions API を統合し、サーバーサイド・セッションとローカル履歴を完全に同期。API 障害時にはローカル LLM へ自動フェイルオーバーしつつ、思考の継続性を維持。
+- 🗣️ **Phase 13.3: Synthetic Voice & Live Session Hardening**: `TtsWorker` を `TtsProvider` トレイトへ移行し、OpenAI/XTTS/Mock バックエンドのプラグイン化を実現。また、Gemini 2.0 Flash Live 用の `LiveSessionManager` を各 LLM プロバイダーに統合し、`main.rs` のシークレット管理（config.clone 排除）を徹底しました。
 
 ---
 
@@ -275,7 +276,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-26*
+*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

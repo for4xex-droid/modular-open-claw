@@ -72,6 +72,7 @@ use commerce_protocol;
 #[cfg(feature = "nurture")]
 use nurture_api;
 
+use aiome_core::expression::tts_worker::TtsWorker;
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
 
@@ -134,6 +135,19 @@ async fn main() -> anyhow::Result<()> {
         error!("🚨 Failed to load config: {}", e);
         std::process::exit(1);
     });
+    let config = Arc::new(config);
+
+    let live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>> = {
+        use secrecy::ExposeSecret;
+        config.gemini_api_key.as_ref().map(|key| {
+            Arc::new(
+                aiome_core::llm_provider::live_session::LiveSessionProvider::new(
+                    key.expose_secret().to_string(),
+                    "gemini-2.0-flash-exp".to_string(),
+                ),
+            ) as Arc<dyn aiome_contracts::traits::LiveSessionManager>
+        })
+    };
 
     let job_queue = infrastructure::job_queue::UniversalJobQueue::new(&config.db_path)
         .await
@@ -200,6 +214,7 @@ async fn main() -> anyhow::Result<()> {
         circuit_breaker: circuit_breaker.clone(),
         slo_engine: slo_engine.clone(),
         hook_manager: hook_manager.clone(),
+        live_manager: live_manager.clone(),
     });
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
@@ -211,6 +226,7 @@ async fn main() -> anyhow::Result<()> {
         openai_api_key: config.openai_api_key.clone(),
         anthropic_api_key: config.anthropic_api_key.clone(),
         hook_manager: hook_manager.clone(),
+        live_manager: live_manager.clone(),
     });
 
     let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
@@ -274,8 +290,10 @@ async fn main() -> anyhow::Result<()> {
             #[cfg(debug_assertions)]
             {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockCommerceEngine for development.");
-                Some(Arc::new(infrastructure::commerce_mock::MockCommerceEngine)
-                    as Arc<dyn aiome_core::commerce::CommerceEngine>)
+                Some(
+                    Arc::new(infrastructure::commerce_mock::MockCommerceEngine::new())
+                        as Arc<dyn aiome_core::commerce::CommerceEngine>,
+                )
             }
             #[cfg(not(debug_assertions))]
             {
@@ -560,7 +578,7 @@ async fn main() -> anyhow::Result<()> {
         slo_engine: Component::new(slo_engine),
         api_server_secret: Component::new(api_server_secret),
         federation_secret: Component(federation_secret),
-        config: Component::new(Arc::new(config)),
+        config: Component::new(config.clone()),
         gift_engine: Component::new(gift_engine),
         ekyc_engine: Component::new(ekyc_engine),
         ekyc_session_store: Component::new(ekyc_session_store),
@@ -578,7 +596,72 @@ async fn main() -> anyhow::Result<()> {
         soul_pipeline: Component::new(soul_pipeline),
         transcription_engine: Component::new(transcription_engine),
         task_dispatcher: Component::new(task_dispatcher),
+        lora_engine: {
+            let engine = Arc::new(aiome_core::lora::engine::LoraEngine::new());
+            Component::new(engine as Arc<dyn aiome_contracts::traits::LoraEngine>)
+        },
+        tts_provider: {
+            let tts_type = std::env::var("TTS_PROVIDER").unwrap_or_else(|_| "mock".to_string());
+            let provider: Arc<dyn aiome_contracts::traits::TtsProvider> = match tts_type.as_str() {
+                "openai" => {
+                    use secrecy::ExposeSecret;
+                    let key = std::env::var("TTS_OPENAI_API_KEY").unwrap_or_else(|_| {
+                        config
+                            .openai_api_key
+                            .as_ref()
+                            .map(|s| s.expose_secret().to_string())
+                            .unwrap_or_default()
+                    });
+                    let model =
+                        std::env::var("TTS_OPENAI_MODEL").unwrap_or_else(|_| "tts-1".to_string());
+                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
+                }
+                "xtts" => {
+                    let endpoint = std::env::var("XTTS_ENDPOINT")
+                        .unwrap_or_else(|_| "http://localhost:18020".to_string());
+                    Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                }
+                _ => Arc::new(infrastructure::tts::MockTtsProvider::default()),
+            };
+            Component::new(provider)
+        },
+        news_service: {
+            let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(
+                job_queue.clone(),
+            ));
+            Component::new(rss as Arc<dyn aiome_contracts::traits::NewsService>)
+        },
+        live_session_manager: Component(live_manager),
     };
+
+    // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)
+    let tts_worker_jq = state.job_queue.get_inner().clone();
+    let tts_worker_provider = state.tts_provider.get_inner().clone();
+    let tts_worker_speaker = state
+        .config
+        .get_inner()
+        .xtts_speaker
+        .clone()
+        .unwrap_or_else(|| "p225".to_string());
+    let tts_worker_artifacts = std::path::PathBuf::from("workspace/artifacts");
+
+    tokio::spawn(async move {
+        info!("🎙️ [TtsWorker] Starting background synthesis loop...");
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
+        loop {
+            interval.tick().await;
+            if let Err(e) = TtsWorker::process_pending_tts(
+                &*tts_worker_jq,
+                &*tts_worker_provider,
+                &tts_worker_speaker,
+                &tts_worker_artifacts,
+            )
+            .await
+            {
+                error!("🚨 [TtsWorker] Loop error: {}", e);
+            }
+        }
+    });
 
     let cors_layer = {
         let mut layer = CorsLayer::new()

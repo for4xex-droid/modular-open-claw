@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::app_state::Component;
+use aiome_contracts::traits::AgentEvolver;
 use aiome_contracts::traits::JobQueue;
 use axum_test::TestServer;
 use infrastructure::auth::AuthManager;
@@ -262,6 +263,61 @@ impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
         })
     }
 }
+#[derive(Debug, Default)]
+struct MockLiveSessionManager;
+#[async_trait::async_trait]
+impl aiome_contracts::traits::LiveSessionManager for MockLiveSessionManager {
+    async fn create_session(
+        &self,
+        _level: aiome_contracts::live_types::ThinkingLevel,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("mock_session".into())
+    }
+    async fn close_session(&self, _session_id: &str) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+    async fn send_audio(
+        &self,
+        _session_id: &str,
+        _pcm: &[u8],
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+    async fn send_text(
+        &self,
+        _session_id: &str,
+        _text: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+    async fn receive_events(
+        &self,
+        _session_id: &str,
+    ) -> Result<Vec<aiome_contracts::live_types::LiveEvent>, aiome_core::error::AiomeError> {
+        Ok(vec![])
+    }
+}
+
+#[derive(Debug, Default)]
+struct MockLoraEngine;
+#[async_trait::async_trait]
+impl aiome_contracts::traits::LoraEngine for MockLoraEngine {
+    async fn complete_with_lora(
+        &self,
+        _prompt: &str,
+        _lora_id: &str,
+    ) -> Result<aiome_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
+        Ok(aiome_contracts::llm::LlmResponse {
+            content: "LlmResponse from MockLoraEngine".to_string(),
+            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
+        })
+    }
+    async fn health_check(&self) -> Result<bool, aiome_core::error::AiomeError> {
+        Ok(true)
+    }
+}
 
 pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
@@ -504,10 +560,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
             Component::new(dispatcher)
         },
-        lora_engine: Component::default(),
-        tts_provider: Component::default(),
+        lora_engine: Component::new(Arc::new(MockLoraEngine::default())),
+        tts_provider: Component::new(Arc::new(infrastructure::tts::MockTtsProvider::default())),
         news_service: Component::default(),
-        live_session_manager: Component::default(),
+        live_session_manager: Component::new(Arc::new(MockLiveSessionManager::default())),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1332,13 +1388,8 @@ async fn test_tts_worker_flow_red() {
 
     // 2. Run TtsWorker (Expected to FAIL if XTTS is offline)
     // We use a dummy/invalid endpoint to guarantee RED if not handled or no server.
-    let res = TtsWorker::process_pending_tts(
-        jq.as_ref(),
-        "http://invalid.local:18020",
-        "p225",
-        &artifacts_dir,
-    )
-    .await;
+    let provider = infrastructure::tts::XttsProvider::new("http://invalid.local:18020".to_string());
+    let res = TtsWorker::process_pending_tts(jq.as_ref(), &provider, "p225", &artifacts_dir).await;
 
     // In a real TDD Red, we expect an error or some indication of failure
     // because the server is not there.
@@ -1571,7 +1622,7 @@ async fn test_treasure_get_recommendations() {
     // Check if resonance increased (via AgentStats)
     let stats: aiome_contracts::types::AgentStats = state
         .job_queue
-        .do_get_agent_stats()
+        .get_agent_stats()
         .await
         .expect("Failed to get initialized stats");
     assert!(

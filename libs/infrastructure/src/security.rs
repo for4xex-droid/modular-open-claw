@@ -231,7 +231,11 @@ impl RuntimeJail for BastionGuard {
                         "🛡️ [BastionGuard] Blocked access to unauthorized path: {}",
                         p
                     );
-                    let reason = if GLOBAL_SECURITY_CONFIG.vault_path.as_ref().is_some_and(|v| p.contains(&*v.to_string_lossy())) {
+                    let reason = if GLOBAL_SECURITY_CONFIG
+                        .vault_path
+                        .as_ref()
+                        .is_some_and(|v| p.contains(&*v.to_string_lossy()))
+                    {
                         format!("Security Violation: Path '{}' is in the Vault and requires system internal context.", p)
                     } else {
                         format!("Security Violation: Path '{}' is outside sandbox jail.", p)
@@ -696,7 +700,7 @@ mod tests {
             allow_filesystem_write: true, // 書き込み権限があっても Vault は拒否されるべき
             ..Default::default()
         };
-        
+
         if let Some(vault_path) = &GLOBAL_SECURITY_CONFIG.vault_path {
             let vault_file = vault_path.join("secret_key.txt");
             let _ = std::fs::create_dir_all(vault_path);
@@ -706,7 +710,10 @@ mod tests {
             let guard = BastionGuard::new(manifest.clone());
             let cmd = format!("cat {}", vault_file.to_string_lossy());
             let res = guard.safe_exec(&cmd).await;
-            assert!(res.is_err(), "Regular skills must NOT access Vault even with write perm.");
+            assert!(
+                res.is_err(),
+                "Regular skills must NOT access Vault even with write perm."
+            );
             if let Err(aiome_core::error::AiomeError::Infrastructure { reason }) = res {
                 assert!(reason.contains("requires system internal context"));
             }
@@ -714,7 +721,10 @@ mod tests {
             // 2. システム内部用ガードは許可されること
             let guard_internal = BastionGuard::new_internal(manifest);
             let res_internal = guard_internal.safe_exec(&cmd).await;
-            assert!(res_internal.is_ok(), "Internal system processes must have Vault access.");
+            assert!(
+                res_internal.is_ok(),
+                "Internal system processes must have Vault access."
+            );
             assert_eq!(res_internal.unwrap().trim(), "SENSITIVE_DATA");
 
             // Cleanup

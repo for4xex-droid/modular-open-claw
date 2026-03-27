@@ -1,3 +1,13 @@
+## [Unreleased] - 2026-03-27
+
+### Added
+- **Phase 13.3: Synthetic Voice & Live Session Hardening [完了]**
+    - **TtsProvider Decoupling**: `TtsWorker` を `TtsProvider` トレイトに依存するように刷新。OpenAI, XTTS, Mock などの多様なバックエンドをプラグイン可能にし、レガシーな `ExpressionEngine` への直接依存を排除。
+    - **LiveSession Integration**: `LiveSessionManager` (Gemini 2.0 Flash) を `AppState` および LLM プロバイダーに統合。WebSocket ベースの低レイテンシ双方向音声対話の基盤を構築。
+    - **Security & Secret Management**: `main.rs` の初期化順序を調整し、`AiomeConfig` を `Arc` で共有。`config.clone()` によるメモリ内でのシークレット重複を排除し、セキュリティを強化。
+    - **TtsWorker Loop**: `api-server` 起動時に `TtsWorker` のバックグラウンドループを開始するように実装。未合成の音声ジョブを自律的に処理可能に。
+    - **Mock Testing Suite**: `MockTtsProvider` および `MockLiveSessionManager` を実装し、統合テスト全体の安定性を確保。CI/CD における不確定要素を排除。
+
 ## [Unreleased] - 2026-03-26
 
 ### Added

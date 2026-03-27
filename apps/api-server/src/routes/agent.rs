@@ -10,7 +10,7 @@ use crate::error::AppError;
 use crate::skill_handler;
 use crate::AppState;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::*; 
+use aiome_core::traits::*;
 use axum::{
     extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, response::Json,
 };

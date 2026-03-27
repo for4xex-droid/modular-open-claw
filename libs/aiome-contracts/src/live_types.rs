@@ -50,17 +50,12 @@ pub struct LiveFunctionResponse {
     pub id: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ThinkingLevel {
+    #[default]
     Minimal,
     Low,
     Medium,
     High,
-}
-
-impl Default for ThinkingLevel {
-    fn default() -> Self {
-        Self::Minimal
-    }
 }

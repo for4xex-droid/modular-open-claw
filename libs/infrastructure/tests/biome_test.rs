@@ -5,8 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::biome::BiomeMessage;
 use aiome_contracts::traits::BiomeRegistry;
+use aiome_core::biome::BiomeMessage;
 use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]

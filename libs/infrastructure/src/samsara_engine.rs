@@ -328,7 +328,10 @@ impl SamsaraEngine for DefaultSamsaraEngine {
                                 .iter()
                                 .map(|e| e.id.clone())
                                 .collect(),
-                            valence_avg: val.get("valence_avg").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                            valence_avg: val
+                                .get("valence_avg")
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0),
                             created_at: chrono::Utc::now().to_rfc3339(),
                             embedding: vec![],
                         };

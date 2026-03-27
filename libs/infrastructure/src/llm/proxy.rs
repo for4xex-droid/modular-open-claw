@@ -42,7 +42,12 @@ struct ProxyResponse {
 
 impl ProxyLlmProvider {
     /// 新しいインスタンスを生成する
-    pub fn new(proxy_url: String, endpoint_tag: String, caller_id: String, proxy_secret: Option<String>) -> Self {
+    pub fn new(
+        proxy_url: String,
+        endpoint_tag: String,
+        caller_id: String,
+        proxy_secret: Option<String>,
+    ) -> Self {
         Self {
             proxy_url,
             endpoint_tag,

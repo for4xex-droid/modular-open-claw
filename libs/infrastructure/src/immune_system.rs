@@ -5,6 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::job_queue::EvaluationOps;
 use aiome_contracts::contracts::{
     ApprovalState, ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict,
     SamsaraEvent,
@@ -17,7 +18,6 @@ use aiome_contracts::traits::{
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry,
 };
-use crate::job_queue::EvaluationOps;
 use aiome_contracts::types::AgentStats;
 use async_trait::async_trait;
 use chrono::Utc;
@@ -29,12 +29,19 @@ use uuid::Uuid;
 /// `AdaptiveImmuneSystem` 構造体
 pub struct AdaptiveImmuneSystem {
     provider: Arc<dyn LlmProvider>,
+    /// 直近のアノマリスコア履歴 (エージェントID -> スコアのキュー)
+    drift_history: Arc<
+        tokio::sync::RwLock<std::collections::HashMap<String, std::collections::VecDeque<f64>>>,
+    >,
 }
 
 impl AdaptiveImmuneSystem {
     /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
-        Self { provider }
+        Self {
+            provider,
+            drift_history: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        }
     }
 
     /// 失敗ログやセキュリティインシデントを分析し、新しい免疫ルールを生成する
@@ -178,6 +185,45 @@ impl AdaptiveImmuneSystem {
         }
         Ok(None)
     }
+
+    /// アノマリスコアを記録し、蓄積ドリフトによる脅威を判定する (Phase 13.1)
+    pub async fn record_drift(
+        &self,
+        agent_id: &str,
+        score: f64,
+    ) -> Result<Option<ImmuneRule>, AiomeError> {
+        let mut history = self.drift_history.write().await;
+        let deque = history
+            .entry(agent_id.to_string())
+            .or_insert_with(|| std::collections::VecDeque::with_capacity(10));
+
+        if deque.len() >= 10 {
+            deque.pop_front();
+        }
+        deque.push_back(score);
+
+        let avg: f64 = deque.iter().sum::<f64>() / deque.len() as f64;
+
+        if deque.len() >= 10 && avg > 1.5 {
+            warn!(
+                "🚨 [AdaptiveImmuneSystem] Accumulated drift detected for agent {}: avg={:.2}",
+                agent_id, avg
+            );
+            return Ok(Some(ImmuneRule {
+                id: format!("drift-purge-{}", Utc::now().timestamp()),
+                pattern: "accumulated-drift".to_string(),
+                severity: 100,
+                action: "Purge".to_string(),
+                created_at: Utc::now().to_rfc3339(),
+                approval_status: ApprovalState::Approved,
+                lamport_clock: 0,
+                node_id: "local-immune".to_string(),
+                signature: None,
+            }));
+        }
+
+        Ok(None)
+    }
 }
 
 #[cfg(test)]
@@ -277,7 +323,11 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn do_fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> {
+        async fn do_fetch_jobs_for_evaluation(
+            &self,
+            _: i64,
+            _: i64,
+        ) -> Result<Vec<Job>, AiomeError> {
             Ok(vec![])
         }
         async fn do_fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {
@@ -603,7 +653,7 @@ mod tests {
             Ok(())
         }
     }
-    
+
     #[async_trait]
     impl SoulStore for MockJQ {
         async fn load_soul(&self, _: &str) -> Result<Option<Value>, AiomeError> {
@@ -624,5 +674,34 @@ mod tests {
         let res = system.verify_intent("rm -rf /", &jq).await.unwrap();
         assert!(res.is_some());
         assert_eq!(res.unwrap().id, "sentinel-baseline");
+    }
+
+    #[tokio::test]
+    async fn test_accumulated_drift_trigger() {
+        let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
+        let agent_id = "test-agent";
+
+        // 1. 低いスコアを 9 回注入 (平均 1.0)
+        for _ in 0..9 {
+            let res = system.record_drift(agent_id, 1.0).await.unwrap();
+            assert!(res.is_none(), "Should not trigger with < 10 samples");
+        }
+
+        // 2. 10 回目、平均が 1.5 未満
+        let res = system.record_drift(agent_id, 1.4).await.unwrap();
+        assert!(
+            res.is_none(),
+            "Should not trigger with avg <= 1.5 (avg=1.04)"
+        );
+
+        // 3. 高いスコアを連続注入して平均を 1.5 超えさせる
+        // 現在の履歴: [1.0, 1.0, ..., 1.4]
+        for _ in 0..10 {
+            system.record_drift(agent_id, 2.5).await.unwrap();
+        }
+
+        let res = system.record_drift(agent_id, 2.5).await.unwrap();
+        assert!(res.is_some(), "Should trigger Purge when avg > 1.5");
+        assert_eq!(res.unwrap().action, "Purge");
     }
 }

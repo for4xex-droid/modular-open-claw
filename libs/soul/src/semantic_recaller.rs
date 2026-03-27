@@ -5,23 +5,28 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use async_trait::async_trait;
 use crate::adapter::SoulDomainAdapter;
 use crate::engine::SamsaraEngine;
 use crate::error::SoulError;
 use crate::model::Experience;
 use crate::pipeline::{SoulContext, SoulMiddleware, SoulMiddlewareNext};
 use crate::somatic::math_utils::cosine_similarity;
+use async_trait::async_trait;
 
 /// SemanticRecaller Middleware
 /// 会話入力の Embedding と過去体験の Embedding を照合し、関連する記憶を想起コンテキストとして注入する。
-pub struct SemanticRecaller<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> {
+pub struct SemanticRecaller<
+    A: SoulDomainAdapter + 'static,
+    E: SamsaraEngine + Send + Sync + 'static,
+> {
     pub max_recall_items: usize,
     pub threshold: f64,
     _phantom: std::marker::PhantomData<(A, E)>,
 }
 
-impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SemanticRecaller<A, E> {
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static>
+    SemanticRecaller<A, E>
+{
     pub fn new(max_recall_items: usize, threshold: f64) -> Self {
         Self {
             max_recall_items,
@@ -74,14 +79,18 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
 
         // スコア降順でソートし、上位 N 件を抽出
         matched.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-        
-        ctx.recalled_experiences = matched.into_iter()
+
+        ctx.recalled_experiences = matched
+            .into_iter()
             .take(self.max_recall_items)
             .map(|(_, exp)| exp)
             .collect();
 
         if !ctx.recalled_experiences.is_empty() {
-            tracing::info!("🧠 [SemanticRecaller] Recalled {} relevant experiences", ctx.recalled_experiences.len());
+            tracing::info!(
+                "🧠 [SemanticRecaller] Recalled {} relevant experiences",
+                ctx.recalled_experiences.len()
+            );
         }
 
         next.run(ctx).await
@@ -98,25 +107,68 @@ mod tests {
 
     struct TestEngine;
     impl crate::engine::SamsaraEngine for TestEngine {
-        fn is_shock(&self, _: &AgentSoul) -> bool { false }
-        fn rebirth<'a>(&'a self, s: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(s) }) }
-        fn distill<'a>(&'a self, _: &'a AgentSoul) -> Pin<Box<dyn Future<Output = Result<crate::instinct::Instinct, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(Default::default()) }) }
-        fn dream<'a>(&'a self, s: AgentSoul) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(s) }) }
+        fn is_shock(&self, _: &AgentSoul) -> bool {
+            false
+        }
+        fn rebirth<'a>(
+            &'a self,
+            s: AgentSoul,
+        ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(s) })
+        }
+        fn distill<'a>(
+            &'a self,
+            _: &'a AgentSoul,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<crate::instinct::Instinct, crate::error::SoulError>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async { Ok(Default::default()) })
+        }
+        fn dream<'a>(
+            &'a self,
+            s: AgentSoul,
+        ) -> Pin<Box<dyn Future<Output = Result<AgentSoul, crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(s) })
+        }
     }
 
     struct TestAdapter;
     impl crate::adapter::SoulDomainAdapter for TestAdapter {
-        fn to_experience(&self, _: &dyn std::any::Any) -> Experience { Experience::default() }
-        fn distillation_system_prompt(&self) -> &str { "" }
-        fn predict_outcome(&self, _: &AgentSoul, _: &Experience) -> f64 { 0.0 }
-        fn execute_defense<'a>(&'a self, _: &'a crate::defense::DefenseAction, _: &'a str) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'a>> { Box::pin(async { Ok(()) }) }
-        fn embed_experience<'a>(&'a self, _: &'a Experience) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> { Box::pin(async { vec![] }) }
+        fn to_experience(&self, _: &dyn std::any::Any) -> Experience {
+            Experience::default()
+        }
+        fn distillation_system_prompt(&self) -> &str {
+            ""
+        }
+        fn predict_outcome(&self, _: &AgentSoul, _: &Experience) -> f64 {
+            0.0
+        }
+        fn execute_defense<'a>(
+            &'a self,
+            _: &'a crate::defense::DefenseAction,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(()) })
+        }
+        fn embed_experience<'a>(
+            &'a self,
+            _: &'a Experience,
+        ) -> Pin<Box<dyn Future<Output = Vec<f32>> + Send + 'a>> {
+            Box::pin(async { vec![] })
+        }
     }
 
     #[tokio::test]
     async fn test_semantic_recall() {
         let mut soul = AgentSoul::new("test".to_string());
-        
+
         // 1. 過去の記憶を準備（ベクトル付き）
         let mut exp1 = Experience::default();
         exp1.content = "I love cats".to_string();
@@ -142,10 +194,18 @@ mod tests {
         };
 
         let recaller = SemanticRecaller::<TestAdapter, TestEngine>::new(1, 0.7);
-        
+
         struct MockNext;
         impl crate::pipeline::SoulMiddlewareNext<TestAdapter, TestEngine> for MockNext {
-            fn run<'a, 'b>(&'a self, _: &'b mut SoulContext<'_, TestAdapter, TestEngine>) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'b>> where 'a: 'b { Box::pin(async { Ok(()) }) }
+            fn run<'a, 'b>(
+                &'a self,
+                _: &'b mut SoulContext<'_, TestAdapter, TestEngine>,
+            ) -> Pin<Box<dyn Future<Output = Result<(), crate::error::SoulError>> + Send + 'b>>
+            where
+                'a: 'b,
+            {
+                Box::pin(async { Ok(()) })
+            }
         }
 
         recaller.process(&mut ctx, &MockNext).await.unwrap();

@@ -96,6 +96,7 @@ pub mod soul_mutator;
 pub mod soul_store;
 pub mod task_orchestrator;
 pub mod trend_sonar;
+pub mod tts;
 /// ユーザー行動パターン学習
 pub mod user_learner;
 /// 入出力データの検証

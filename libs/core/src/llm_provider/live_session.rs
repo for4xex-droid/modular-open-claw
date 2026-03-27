@@ -23,13 +23,15 @@ pub struct LiveSessionProvider {
     model: String,
     // セッションID -> WebSocket 接続のマップ（簡易実装）
     #[allow(dead_code)]
-    sessions: Arc<Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>>,
+    sessions:
+        Arc<Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>>,
 }
 
 impl LiveSessionProvider {
     pub fn new(api_key: String, model: String) -> Self {
-        let sessions: Arc<Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>> = 
-            Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let sessions: Arc<
+            Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>,
+        > = Arc::new(Mutex::new(std::collections::HashMap::new()));
         let sessions_clone = sessions.clone();
 
         // GAP-7: バックグラウンドでのセッション維持・クリーンアップ
@@ -60,16 +62,18 @@ impl LiveSessionProvider {
 
 #[async_trait]
 impl LiveSessionManager for LiveSessionProvider {
-    async fn create_session(
-        &self,
-        _level: ThinkingLevel,
-    ) -> Result<String, AiomeError> {
+    async fn create_session(&self, _level: ThinkingLevel) -> Result<String, AiomeError> {
         let url = self.get_url();
-        info!("🔌 [LiveSession] Connecting to Gemini Live: {}", url.split('=').next().unwrap_or(""));
+        info!(
+            "🔌 [LiveSession] Connecting to Gemini Live: {}",
+            url.split('=').next().unwrap_or("")
+        );
 
-        let (ws_stream, _) = connect_async(&url).await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("WebSocket handshake failed: {}", e),
-        })?;
+        let (ws_stream, _) = connect_async(&url)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("WebSocket handshake failed: {}", e),
+            })?;
 
         let (mut write, mut read) = ws_stream.split();
         let session_id = uuid::Uuid::new_v4().to_string();
@@ -91,9 +95,12 @@ impl LiveSessionManager for LiveSessionProvider {
             }
         });
 
-        write.send(Message::Text(setup.to_string().into())).await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to send setup message: {}", e),
-        })?;
+        write
+            .send(Message::Text(setup.to_string().into()))
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to send setup message: {}", e),
+            })?;
 
         // 次のメッセージを待つ（セットアップ完了の確認など）
         match read.next().await {
@@ -149,17 +156,26 @@ impl LiveSessionManager for LiveSessionProvider {
 
     async fn send_audio(&self, _session_id: &str, _pcm_data: &[u8]) -> Result<(), AiomeError> {
         // 音声データの送信ロジック (GAP-4)
-        info!("🎙️ [LiveSession] Sending audio chunk to session: {}", _session_id);
+        info!(
+            "🎙️ [LiveSession] Sending audio chunk to session: {}",
+            _session_id
+        );
         // 実装詳細は WebSocket sender 経由での送信
         Ok(())
     }
 
     async fn send_text(&self, _session_id: &str, _text: &str) -> Result<(), AiomeError> {
-        info!("💬 [LiveSession] Sending text message to session: {}", _session_id);
+        info!(
+            "💬 [LiveSession] Sending text message to session: {}",
+            _session_id
+        );
         Ok(())
     }
 
-    async fn receive_events(&self, _session_id: &str) -> Result<Vec<aiome_contracts::live_types::LiveEvent>, AiomeError> {
+    async fn receive_events(
+        &self,
+        _session_id: &str,
+    ) -> Result<Vec<aiome_contracts::live_types::LiveEvent>, AiomeError> {
         // イベント受信バッファからの取得ロジック
         Ok(vec![])
     }
@@ -171,14 +187,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_creation() {
-        let provider = LiveSessionProvider::new("test_key".into(), "gemini-3.1-flash-live-preview".into());
+        let provider =
+            LiveSessionProvider::new("test_key".into(), "gemini-3.1-flash-live-preview".into());
         assert_eq!(provider.model, "gemini-3.1-flash-live-preview");
     }
 
     #[tokio::test]
     async fn test_create_session_failure() {
         // 間違ったAPIキーまたはオフラインで接続エラーになることを確認（REDテスト）
-        let provider = LiveSessionProvider::new("invalid_key".into(), "gemini-3.1-flash-live-preview".into());
+        let provider =
+            LiveSessionProvider::new("invalid_key".into(), "gemini-3.1-flash-live-preview".into());
         let result = provider.create_session(ThinkingLevel::Minimal).await;
         assert!(result.is_err());
     }
@@ -191,16 +209,16 @@ mod tests {
             let mut s = provider.sessions.lock().await;
             s.insert(session_id.clone(), tx);
         }
-        
+
         // sender をドロップするとセッションが closed になる
-        drop(rx); 
-        
+        drop(rx);
+
         // GC ループを手動でシミュレート（または interval を待つ）
         {
             let mut s = provider.sessions.lock().await;
             s.retain(|_id, tx| !tx.is_closed());
         }
-        
-        assert!(provider.sessions.lock().await.is_empty()); 
+
+        assert!(provider.sessions.lock().await.is_empty());
     }
 }

@@ -5,6 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::job_queue::EvaluationOps;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::LlmProvider;
 use aiome_contracts::traits::{
@@ -12,7 +13,6 @@ use aiome_contracts::traits::{
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry,
 };
-use crate::job_queue::EvaluationOps;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -167,7 +167,11 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn do_fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> {
+        async fn do_fetch_jobs_for_evaluation(
+            &self,
+            _: i64,
+            _: i64,
+        ) -> Result<Vec<Job>, AiomeError> {
             Ok(vec![])
         }
         async fn do_fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {
@@ -273,7 +277,11 @@ mod tests {
 
     #[async_trait]
     impl ChatStore for MockJobQueue {
-        async fn fetch_chat_history(&self, _: &str, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+        async fn fetch_chat_history(
+            &self,
+            _: &str,
+            _: i64,
+        ) -> Result<Vec<serde_json::Value>, AiomeError> {
             Ok(vec![])
         }
         async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
@@ -393,7 +401,10 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn fetch_evolution_history(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+        async fn fetch_evolution_history(
+            &self,
+            _: i64,
+        ) -> Result<Vec<serde_json::Value>, AiomeError> {
             Ok(vec![])
         }
         async fn record_soul_mutation(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
@@ -473,7 +484,11 @@ mod tests {
         async fn advance_biome_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> {
             Ok(0)
         }
-        async fn fetch_biome_messages(&self, _: &str, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+        async fn fetch_biome_messages(
+            &self,
+            _: &str,
+            _: i64,
+        ) -> Result<Vec<serde_json::Value>, AiomeError> {
             Ok(vec![])
         }
         async fn store_biome_message(

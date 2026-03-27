@@ -5,14 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use aiome_contracts::traits::{KarmaRegistry, TaskRegistry};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_contracts::traits::{KarmaRegistry, TaskRegistry};
 use async_trait::async_trait;
 use infrastructure::immune_system::AdaptiveImmuneSystem;
 use infrastructure::job_queue::UniversalJobQueue;
 use std::sync::Arc;
-
 
 #[derive(Debug, Clone)]
 struct MockLlmProvider {

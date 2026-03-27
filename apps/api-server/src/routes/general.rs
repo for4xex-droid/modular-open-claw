@@ -8,7 +8,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_contracts::contracts::QuarantinedAsset;
-use aiome_core::traits::*; 
+use aiome_core::traits::*;
 use axum::{
     extract::Path, extract::State, http::StatusCode, response::IntoResponse, response::Json,
     routing::get,

@@ -6,16 +6,18 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_contracts::traits::{TrendItem, TrendSource};
+use aiome_contracts::traits::{NewsService, TrendItem, TrendSource};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use regex::Regex;
+use serde_json;
 use sqlx::Row;
 use std::sync::Arc;
 use tracing::{info, warn};
 
 /// トレンドソースとしての RSS コレクター
 /// 複数のRSSフィードから最新記事を取得し、キーワードを抽出する。
+#[derive(Debug)]
 pub struct RssCollector {
     client: reqwest::Client,
     jq: Arc<UniversalJobQueue>,
@@ -147,6 +149,24 @@ impl RssCollector {
 impl TrendSource for RssCollector {
     async fn get_trends(&self, category: &str) -> Result<Vec<TrendItem>, AiomeError> {
         self.fetch(category).await
+    }
+}
+
+#[async_trait]
+impl NewsService for RssCollector {
+    async fn fetch_latest(&self, query: &str) -> Result<Vec<serde_json::Value>, AiomeError> {
+        let items = self.fetch(query).await?;
+        let values = items
+            .into_iter()
+            .map(|it| {
+                serde_json::json!({
+                    "title": it.keyword,
+                    "source": it.source,
+                    "relevance": it.score,
+                })
+            })
+            .collect();
+        Ok(values)
     }
 }
 

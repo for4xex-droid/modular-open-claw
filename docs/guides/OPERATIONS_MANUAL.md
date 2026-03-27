@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-27
 
 ---
 
@@ -50,6 +50,9 @@ BG_LLM_MODEL=qwen3.5:9b
 API_SERVER_SECRET=your_random_secret_here
 VAULT_SECRET=your_vault_secret
 FEDERATION_SECRET=your_hub_secret
+TTS_PROVIDER=openai
+TTS_OPENAI_API_KEY=your_openai_key
+TTS_OPENAI_MODEL=tts-1
 
 # --- オプション (デフォルト値あり) ---
 AIOME_DB_PATH=sqlite://workspace/aiome.db       # DBパス
@@ -173,6 +176,8 @@ RUST_LOG=info cargo run -p api-server
 - [ ] `cargo run -p api-server` でテスト起動
 - [ ] ブラウザで `http://localhost:3015` にアクセスし動作確認
 - [ ] 起動ログに 🚨 エラーがないことを確認
+- [ ] `TTS_PROVIDER` が正しく設定されているか確認
+- [ ] `main.rs` の初期化フローでシークレットの Zeroize が実行されているかログで確認
 
 ### 9. local Embedding Server (ruri-v3) の起動
 1. `tools/ruri-embed-server` に移動。

@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
 **Version:** 1.2
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-27
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -205,9 +205,12 @@ graph TB
 
 | プロバイダー | 設定値 (`tts_provider`) | API キー / エンドポイント | 特徴 |
 |---|---|---|---|
-| OpenAI | `openai` | `llm_api_key` | 高速・高品質、要クラウド接続 |
-| XTTS | `xtts` | `tts_endpoint` | ローカル実行可能、クローン音声対応 |
-| なし | `none` | 不要 | テキストのみ生成 |
+| OpenAI | `openai` | `llm_api_key` | 高速・高品質、要クラウド接続。`OpenAiTtsProvider` 実装。 |
+| XTTS | `xtts` | `tts_endpoint` | ローカル実行可能、クローン音声対応。`XttsProvider` 実装。 |
+| なし | `none` | 不要 | テキストのみ生成 (`MockTtsProvider`) |
+
+### 7.2 TtsProvider トレイト (Phase 13.3 強化)
+`TtsWorker` は具体的なエンジンから分離され、`TtsProvider` トレイトを介して動作します。これにより、実行時に `openai`, `xtts`, `mock` を動的に選択・差し替え可能になりました。バックグラウンドの非同期ジョブキューと連動し、メインスレッドをブロックせずに音声合成を行います。
 
 ### 7.2 LoRA モデル連携 (Phase 10.1b)
 
@@ -234,6 +237,11 @@ graph TB
 - **Stateful Sessions**: `interaction_id` を介してサーバーサイドで会話コンテキストを維持。フロントエンドからのコンテキスト送信量を削減。
 - **Hybrid Context Sync**: `ContextEngine` および `TrajectoryStore` と連携し、DB に同期保存された履歴に基づいた再構築とフェイルオーバーを実現。
 - **Reasoning Log Persistence**: LLM が生成した内部思考（Reasoning）を透過的に取得・永続化し、デバッグと透明性を向上。
+
+### 3.9 Live Session Integration (Phase 13.3 実装)
+Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionManager` を導入しました。
+- **Real-time Interaction**: WebScoket を介した低レイテンシ・マルチモーダル対話をサポート。
+- **Provider Integration**: `DynamicLlmProvider` および `BackgroundLlmProvider` に `LiveSessionManager` を注入可能にし、エージェントの全レイヤーでリアルタイム性能を活用できるようにしました。
 
 ---
 

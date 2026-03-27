@@ -5,6 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::job_queue::EvaluationOps;
 use crate::trend_sonar::ExternalTrendSonar;
 use aiome_contracts::biome::BiomeMessage;
 use aiome_contracts::contracts::{
@@ -17,7 +18,6 @@ use aiome_contracts::traits::{
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry, TrendSource,
 };
-use crate::job_queue::EvaluationOps;
 use aiome_contracts::types::AgentStats;
 use async_trait::async_trait;
 use rand::Rng;
@@ -305,7 +305,11 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn do_fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> {
+        async fn do_fetch_jobs_for_evaluation(
+            &self,
+            _: i64,
+            _: i64,
+        ) -> Result<Vec<Job>, AiomeError> {
             Ok(vec![])
         }
         async fn do_fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {

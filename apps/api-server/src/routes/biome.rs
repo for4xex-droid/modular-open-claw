@@ -11,7 +11,7 @@ use aiome_core::biome::dialogue::DialogueManager;
 use aiome_core::biome::{
     AutonomousBiomeEngine, AutonomousConfig, BiomeDialogue, BiomeMessage, DialogueStatus,
 };
-use aiome_core::traits::*; 
+use aiome_core::traits::*;
 use axum::{extract::State, http::StatusCode, response::Json};
 use sqlx::Row;
 use std::sync::atomic::Ordering;

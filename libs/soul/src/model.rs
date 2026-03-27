@@ -101,16 +101,22 @@ impl AgentSoul {
     pub fn push_experience(&mut self, exp: Experience) {
         // 1. Quota check for core memory (RED TEAM PATCH)
         if exp.is_core_memory {
-            let core_count = self.experience_buffer
+            let core_count = self
+                .experience_buffer
                 .iter()
                 .filter(|e| e.is_core_memory)
                 .count();
 
             if core_count >= Self::MAX_CORE_MEMORY {
                 // Find and demote the oldest core memory
-                if let Some(oldest_core) = self.experience_buffer.iter_mut().find(|e| e.is_core_memory) {
+                if let Some(oldest_core) =
+                    self.experience_buffer.iter_mut().find(|e| e.is_core_memory)
+                {
                     oldest_core.is_core_memory = false;
-                    tracing::debug!("🧠 [AgentSoul] Core memory quota reached. Demoting oldest: {}", oldest_core.id);
+                    tracing::debug!(
+                        "🧠 [AgentSoul] Core memory quota reached. Demoting oldest: {}",
+                        oldest_core.id
+                    );
                 }
             }
         }
@@ -269,7 +275,7 @@ mod tests {
     #[test]
     fn test_core_memory_protection() {
         let mut soul = AgentSoul::new("test-core".to_string());
-        
+
         // 1. 最初の一件を核記憶として追加
         let mut core_exp = Experience::default();
         core_exp.is_core_memory = true;
@@ -291,7 +297,7 @@ mod tests {
     #[test]
     fn test_core_memory_quota() {
         let mut soul = AgentSoul::new("test-quota".to_string());
-        
+
         // 1. Quota (50) いっぱいに核記憶を追加
         for i in 0..AgentSoul::MAX_CORE_MEMORY {
             let mut exp = Experience::default();
@@ -307,11 +313,24 @@ mod tests {
         soul.push_experience(overflow_exp);
 
         // 3. 核記憶の総数が Quota を超えていないことを確認
-        let core_count = soul.experience_buffer.iter().filter(|e| e.is_core_memory).count();
-        assert!(core_count <= AgentSoul::MAX_CORE_MEMORY, "Core memory count must respect quota");
-        
+        let core_count = soul
+            .experience_buffer
+            .iter()
+            .filter(|e| e.is_core_memory)
+            .count();
+        assert!(
+            core_count <= AgentSoul::MAX_CORE_MEMORY,
+            "Core memory count must respect quota"
+        );
+
         // 4. 最古の核記憶が降格（または削除）されていることを確認
-        let oldest_found = soul.experience_buffer.iter().any(|e| e.id == "core-0" && e.is_core_memory);
-        assert!(!oldest_found, "Oldest core memory should be demoted/removed when quota is exceeded");
+        let oldest_found = soul
+            .experience_buffer
+            .iter()
+            .any(|e| e.id == "core-0" && e.is_core_memory);
+        assert!(
+            !oldest_found,
+            "Oldest core memory should be demoted/removed when quota is exceeded"
+        );
     }
 }

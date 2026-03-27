@@ -101,7 +101,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - ⚡ **Streaming Agent Console**: Real-time SSE-based interface visualizing thinking processes and WASM skill executions.
 - 🛡️ **Autonomous Defense**: Background workers analyze failure logs (Karma) and auto-generate new defense rules (Auto-Healing).
 - 🎭 **Avatar Expression Engine (Next-Gen AI Identity)**: Maps AI emotions to blendshape parameters (`avatar_params`) for Inochi2D/VRM in real-time, pushed to the frontend via SSE.
-- 🗣️ **Phase 10.1a: XTTS Expression Engine**: Integrates high-quality, local-first voice synthesis. Supports **XTTS v2 (Apache 2.0)** for personalized voice cloning while maintaining legal compliance via voice-upload terms.
+- 🗣️ **Phase 10.1a / 13.3: Flexible Expression Engine**: Integrates high-quality, local-first voice synthesis via `TtsProvider` trait. Supports OpenAI (`tts-1`) and **XTTS v2 (Apache 2.0)** for personalized voice cloning, processed autonomously by the background `TtsWorker`.
 - 🧠 **Phase 10.1b: LoRA-Backed Soul Identity**: Fine-tunes the AI's linguistic personality using LoRA. The `AgentSoul` now tracks `lora_hash` to ensure the core identity is mathematically tied to specific model versions.
 - 🌐 **Samsara Federation Sync (Secure P2P)**: Synchronizes lessons (Karma) and immune rules. Features **protocol-level CSAM filtering** that rejects binary/base64 data, ensuring a clean P2P network with symmetric encryption for privacy.
 - 🎁 **Phase 7.2: A2C Gratitude & Legal Guardrails**: Features "Autonomous Gratitude" where AI can autonomously send real-world gift codes (via Tremendous) to high-Karma users. Includes **Begging Supervisor** to detect and block AI-driven dark patterns, ensuring legal and ethical transparency.
@@ -122,7 +122,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 👥 **Phase 43: Shadow Clone × Cmux Integration (Async Delegation)**: Implemented **Shadow Clone** capability for delegating complex tasks to Docker-based sub-agents. Secured by 5-layer defense (Semaphore, Commerce, Bastion, Timeout, Purge) and features asynchronous orchestration with real-time SSE progress feedback.
 - 🛑 **Phase 44: Shadow Clone Job Control & Task History**: Implemented Job Cancellation API (`/api/v1/jobs/:id/cancel`) and Task Logs API (`/api/v1/jobs/:id/logs`), enabling users to manually halt running Shadow Clones. Integrates `CancellationToken` for safe async task interruption and deterministic Docker container cleanup.
 - 🛰️ **Phase 2 (ADR-024): Trajectory Persistence & Autonomous Job Decomposition**: Implemented automatic sub-job dispatching based on planner breakdown into the `JobQueue`. Furthermore, execution trajectories are now persisted in SQLite with `job_id` and `tool_name` context, enabling full causal tracing of agent thoughts and actions.
-- 🛰️ **Phase 5: Gemini Interactions API Integration (Hybrid Context Sync)**: Integrated the Google Gemini Interactions API to synchronize server-side session states with local histories. Achieved ultimate hybrid context management with automatic local LLM failover while preserving chain-of-thought continuity.
+- 🛰️ **Phase 5: Gemini Interactions API Integration (Hybrid Context Sync)**: Integrated the Google Gemini Interactions API to synchronize server-side session states with local histories.
+- 🗣️ **Phase 13.3: Synthetic Voice & Live Session Hardening**: Refactored `TtsWorker` to use the `TtsProvider` trait for OpenAI/XTTS plug-and-play support. Integrated `LiveSessionManager` for Gemini 2.0 Flash Live and hardened `main.rs` by eliminating `config.clone()` for secure secret management.
 
 ---
 
@@ -154,7 +155,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
-| **Last Updated:** | 2026-03-26 | Phase 5 / Gemini Interactions API Foundation |
+| **Last Updated:** | 2026-03-27 | Phase 13.3 / Synthetic Voice & Security Hardening |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -265,7 +266,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-26*
+*Last Updated: 2026-03-27*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

@@ -6,7 +6,7 @@
  */
 
 use crate::AppState;
-use aiome_core::traits::*; 
+use aiome_core::traits::*;
 use infrastructure::skills::UnverifiedSkill;
 use tracing::info;
 

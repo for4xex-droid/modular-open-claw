@@ -93,12 +93,8 @@ pub trait CommerceEngine: Send + Sync {
     ) -> Result<SubscriptionStatus, AiomeError>;
 
     /// 他のエージェントまたはユーザーへ送金する (P0-1, G-2, M-1)
-    async fn transfer(
-        &self,
-        from_id: Uuid,
-        to_id: Uuid,
-        amount: u64,
-    ) -> Result<String, AiomeError>; // 戻り値はトランザクションID
+    async fn transfer(&self, from_id: Uuid, to_id: Uuid, amount: u64)
+        -> Result<String, AiomeError>; // 戻り値はトランザクションID
 }
 
 /// サブスクリプションのステータス

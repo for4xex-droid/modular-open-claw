@@ -6,6 +6,9 @@
  */
 
 use crate::error::AiomeError;
+use aiome_contracts::llm::{LlmResponse, StopReason};
+use aiome_contracts::traits::LoraEngine as LoraEngineTrait;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 /// Phase 10.1b: LoRAモデルのメタデータを管理するエンジン
@@ -24,6 +27,7 @@ pub struct LoraModel {
 }
 
 /// LoRAエンジン - ロードされたモデル群を管理
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoraEngine {
     /// ロード済みのLoRAモデル一覧
     pub models: Vec<LoraModel>,
@@ -50,6 +54,36 @@ impl LoraEngine {
             .ok_or_else(|| AiomeError::Infrastructure {
                 reason: format!("LoRA model with hash {} not found", hash),
             })
+    }
+}
+
+#[async_trait]
+impl LoraEngineTrait for LoraEngine {
+    async fn complete_with_lora(
+        &self,
+        prompt: &str,
+        lora_id: &str,
+    ) -> Result<LlmResponse, AiomeError> {
+        // Find by ID or Hash
+        let _model = self
+            .models
+            .iter()
+            .find(|m| m.id == lora_id || m.lora_hash == lora_id)
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: format!("LoRA model {} not found", lora_id),
+            })?;
+
+        // Placeholder implementation for AppState stabilization
+        Ok(LlmResponse {
+            content: format!("[LoRA: {}] Generated response for: {}", lora_id, prompt),
+            stop_reason: StopReason::EndTurn,
+            reasoning: Some("Mock LoRA generation".into()),
+            metadata: None,
+        })
+    }
+
+    async fn health_check(&self) -> Result<bool, AiomeError> {
+        Ok(true)
     }
 }
 

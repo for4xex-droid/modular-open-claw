@@ -8,8 +8,8 @@
 #[cfg(test)]
 pub mod mock_job_queue {
     use crate::job_queue::{
-        EvaluationOps, EvolutionOps, FederationOps, GuardrailOps, KarmaOps, SecurityOps, SettingsOps,
-        SoulStoreOps, SwarmOps,
+        EvaluationOps, EvolutionOps, FederationOps, GuardrailOps, KarmaOps, SecurityOps,
+        SettingsOps, SoulStoreOps, SwarmOps,
     };
     use aiome_contracts::contracts::{
         ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
@@ -166,7 +166,10 @@ pub mod mock_job_queue {
         async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
             Ok(0)
         }
-        async fn increment_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
+        async fn increment_security_request_count(
+            &self,
+            _: Option<Uuid>,
+        ) -> Result<u32, AiomeError> {
             Ok(1)
         }
     }
@@ -470,7 +473,11 @@ pub mod mock_job_queue {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn do_fetch_jobs_for_evaluation(&self, _: i64, _: i64) -> Result<Vec<Job>, AiomeError> {
+        async fn do_fetch_jobs_for_evaluation(
+            &self,
+            _: i64,
+            _: i64,
+        ) -> Result<Vec<Job>, AiomeError> {
             Ok(vec![])
         }
         async fn do_fetch_top_performing_jobs(&self, _: i64) -> Result<Vec<Job>, AiomeError> {

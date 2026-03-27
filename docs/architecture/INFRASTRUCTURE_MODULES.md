@@ -25,13 +25,14 @@
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 24** で `FederationOps` による統計メトリクスの自律報告を実装。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
-| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。Ollama の LoRA 動的ビルダ (`build_lora_model`) を統合済。 | **第3世代進化** |
+| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。**Phase 13.3** で Gemini 2.0 Flash Live 用の `LiveSessionManager` を統合。Ollama の LoRA 動的ビルダも統合済。 | **第3世代進化** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
-| `security` | 暗号化、認証、Abyss Vault との連携。**Phase 21** で Linux 環境における `runsc` (gVisor) の動的検知・優先実行を実装。 | **強化完了** |
+| `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
+| `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
@@ -50,4 +51,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-26 (Phase 2 ADR-024 / Trajectory Persistence)*
+*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*

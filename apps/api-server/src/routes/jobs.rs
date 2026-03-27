@@ -4,7 +4,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core::traits::*; 
+use aiome_core::traits::*;
 use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
 use axum::{
     extract::{Path, State},
