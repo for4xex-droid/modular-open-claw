@@ -117,6 +117,9 @@ pub enum AiomeError {
 
     #[error("権限がありません: {reason}")]
     Unauthorized { reason: String },
+
+    #[error("JSON 処理エラー: {0}")]
+    JsonSerialization(#[from] serde_json::Error),
 }
 
 #[cfg(feature = "axum")]
@@ -177,6 +180,10 @@ impl axum::response::IntoResponse for AiomeError {
             ),
             AiomeError::NotFound { reason } => (StatusCode::NOT_FOUND, reason.clone()),
             AiomeError::Unauthorized { reason } => (StatusCode::UNAUTHORIZED, reason.clone()),
+            AiomeError::JsonSerialization(e) => (
+                StatusCode::BAD_REQUEST,
+                format!("JSON processing error: {}", e),
+            ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred".to_string(),
