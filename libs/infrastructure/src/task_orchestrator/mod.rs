@@ -394,11 +394,23 @@ impl TaskDispatcher {
             // Enqueue sub-job derived from the step
             info!("➕ Enqueueing sub-job: {} for goal {}", step.action, job.id);
 
-            let directives = if step.input.is_null() {
-                None
+            let mut directives_obj = if step.input.is_null() {
+                serde_json::Map::new()
             } else {
-                Some(step.input.to_string())
+                step.input
+                    .as_object()
+                    .cloned()
+                    .unwrap_or_else(serde_json::Map::new)
             };
+
+            // ADR-024: 追跡用の親ステップ情報を付与
+            directives_obj.insert(
+                "parent_step_id".to_string(),
+                serde_json::json!(format!("{}:{}", job.id, step.step_id)),
+            );
+            directives_obj.insert("parent_job_id".to_string(), serde_json::json!(job.id));
+
+            let directives = Some(serde_json::to_string(&directives_obj)?);
 
             self.job_queue
                 .enqueue(

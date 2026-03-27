@@ -611,3 +611,71 @@ mod tests {
         }
     }
 }
+// --- Phase 15: Agentic Foundation Expansion (ADR-023/024) ---
+
+/// レビュー判定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub enum ReviewDecision {
+    /// 採択
+    Accept,
+    /// 却下
+    Reject,
+    /// 要修正
+    Revise,
+}
+
+/// マルチレビューの設定 (ADR-023)
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ReviewConfig {
+    /// 反省ループの回数
+    pub num_reflections: u8,
+    /// 温度パラメータ
+    pub temperature: f32,
+}
+
+impl Default for ReviewConfig {
+    fn default() -> Self {
+        Self {
+            num_reflections: 3,
+            temperature: 0.1,
+        }
+    }
+}
+
+/// マルチレビューの結果 (ADR-023)
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct MultiReviewResult {
+    /// 総合スコア (1.0 - 10.0)
+    pub overall_score: f32,
+    /// 最終判定
+    pub decision: ReviewDecision,
+    /// 反省ラウンドごとの洞察
+    pub reflections: Vec<String>,
+    /// 強みのリスト
+    pub strengths: Vec<String>,
+    /// 弱点のリスト
+    pub weaknesses: Vec<String>,
+}
+
+/// レビューのコンテキスト
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ReviewContext {
+    pub job_id: Option<String>,
+    pub topic: String,
+    pub goal: Option<String>,
+}
+
+/// 改善仮説の定義 (ADR-023)
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct HypothesisManifest {
+    pub id: String,
+    /// ターゲットとなるドメイン
+    pub domain: String,
+    /// 解析された現在の課題
+    pub problem_statement: String,
+    /// 提案される改善仮説
+    pub hypothesis: String,
+    /// 実験の設計
+    pub experiment_design: String,
+    pub created_at: String,
+}

@@ -507,12 +507,24 @@ async fn main() -> anyhow::Result<()> {
         infrastructure::validator::DefaultConstitutionalValidator::new(bg_provider.clone()),
     );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
+    let tool_discovery = Arc::new(
+        infrastructure::skills::discovery::DefaultToolDiscoveryEngine::new(
+            wasm_skill_manager.clone(),
+            bg_provider.clone(),
+        ),
+    );
+    let strategic_planner = Arc::new(
+        infrastructure::task_orchestrator::planner::DefaultStrategicPlanner::new(
+            bg_provider.clone(),
+        ),
+    );
+
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
         std::time::Duration::from_millis(100),
         Some(event_sender.clone()),
-        None,
-        None,
+        Some(tool_discovery as Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>),
+        Some(strategic_planner as Arc<dyn aiome_contracts::traits::StrategicPlanner>),
         Some(validator.clone()),
         Some(std::path::PathBuf::from("workspace/SOUL.md")),
     );
@@ -632,6 +644,15 @@ async fn main() -> anyhow::Result<()> {
             Component::new(rss as Arc<dyn aiome_contracts::traits::NewsService>)
         },
         live_session_manager: Component(live_manager),
+        syndicate_store: Component::new(Arc::new(
+            infrastructure::syndicate_store::SqliteSyndicateStore::new(
+                job_queue
+                    .get_pool()
+                    .get_sqlite_pool()
+                    .cloned()
+                    .expect("SQLite pool required for SyndicateStore"),
+            ),
+        )),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

@@ -570,3 +570,47 @@ graph TD
     A -->|Fetch Logs| F[JobQueue]
     F -->|Query| G[jobs Table]
 ```
+### 👥 Phase 14: Syndicate L3 (Agent Guild) MVP
+- **変更内容**: 
+    - `syndicate_store.rs`: `SqliteSyndicateStore` によるギルド・メンバー管理の実装。
+    - `routes/syndicate.rs`: ギルド管理 API の実装。
+    - `router.rs`: `/api/v1/syndicate/guilds` のルーティング。
+    - `main.rs` & `app_state.rs`: `SyndicateStore` の初期化とインジェクション。
+- **波及効果**: 
+    - エージェントが組織（ギルド）に所属し、グループ単位での自律的な経済活動やナレッジ共有を行うための基盤が確立。
+    - 所有権（Owner）ベースの権限制御が API レイヤーで強制される。
+
+```mermaid
+graph TD
+    A[SqliteSyndicateStore] -->|Implements| B[SyndicateOps]
+    B -->|Injected to| C[AppState]
+    C -->|Used by| D[routes/syndicate.rs]
+    E[router.rs] -->|Route Registration| D
+    F[main.rs] -->|Initialization| A
+    G[api_integration_tests.rs] -->|TDD Verification| D
+```
+
+### 🔬 Phase 15: Agentic Foundation Expansion (ADR-024/023)
+- **変更内容**: 
+    - `oracle.rs`: `multi_review` による反復レビューロジック。
+    - `dream_state.rs`: `scientific_dream` モードと LLM による仮説生成。
+    - `planner.rs`: Markdown 抽出に対応した堅牢な計画分解。
+    - `discovery.rs`: LLM ベースのセマンティックツール検索。
+    - `task_orchestrator/mod.rs`: `parent_step_id` の伝播とサブジョブ連携。
+- **波及効果**: 
+    - `DreamState` の初期化時に `LlmProvider` の注入が必要になり、`main.rs` およびテスト用モックのコンストラクタが一斉に変更。
+    - `TrajectoryStep` のフィールド追加により、データベース・スキル・プロキシ等の全データ構造が連鎖的に更新。
+    - レビュー品質と計画の堅牢性が向上する一方、LLM 呼び出し回数（コスト）が増加。
+
+```mermaid
+graph TD
+    A[Oracle::multi_review] -->|Iterative Review| B[LlmProvider]
+    C[DreamState::scientific_dream] -->|Hypothesis| B
+    C -->|Dispatch| D[JobQueue]
+    E[StrategicPlanner] -->|Robust JSON| F[TrajectoryStep]
+    G[ToolDiscoveryEngine] -->|Semantic Search| B
+    H[TaskDispatcher] -->|Causal Linking| F
+```
+
+---
+*最終更新日: 2026-03-27* (Phase 15 Agentic Foundation Expansion Integration)

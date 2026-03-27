@@ -192,6 +192,78 @@ impl Oracle {
 
         Ok(consensus_verdict)
     }
+
+    /// AI-Scientist スタイルのマルチレビュー (ADR-023)
+    pub async fn multi_review(
+        &self,
+        content: &str,
+        context: &aiome_contracts::contracts::ReviewContext,
+        config: aiome_contracts::contracts::ReviewConfig,
+    ) -> Result<aiome_contracts::contracts::MultiReviewResult, AiomeError> {
+        info!(
+            "🔮 [Oracle] Starting Multi-Review for job: {:?} (iterations: {})",
+            context.job_id, config.num_reflections
+        );
+
+        let mut current_content = content.to_string();
+        let mut reflections = Vec::new();
+
+        for i in 1..=config.num_reflections {
+            info!(
+                "🔮 [Oracle] Reflection Round {}/{}",
+                i, config.num_reflections
+            );
+
+            // 1. Critic Round: 現在の内容を批判し、改善点を挙げる
+            let critic_prompt = format!(
+                "You are a Critical Reviewer. Analyze the following content and identify strengths and weaknesses.\n\nContext: {:?}\n\nContent:\n{}\n\nOutput strengths and weaknesses clearly.",
+                context, current_content
+            );
+            let critic_resp = self
+                .primary_provider
+                .complete(
+                    &critic_prompt,
+                    Some("Analyze and provide critical feedback for improvement."),
+                )
+                .await?;
+            reflections.push(format!("Round {}: {}", i, critic_resp.content));
+
+            // 2. Refine Round: 批判に基づき、内容を洗練させる
+            let refine_prompt = format!(
+                "You are a Scientific Refiner. Improve the content based on the following feedback.\n\nFeedback:\n{}\n\nOriginal Content:\n{}\n\nOutput only the improved content.",
+                critic_resp.content, current_content
+            );
+            let refine_resp = self
+                .primary_provider
+                .complete(&refine_prompt, Some("Refine and improve the content."))
+                .await?;
+            current_content = refine_resp.content;
+        }
+
+        // 3. Final Verdict Round: 最終的なスコアと判定を下す
+        let final_prompt = format!(
+            "Analyze the final refined content and provide a structured verdict.\n\nContent:\n{}\n\nOutput in JSON format with 'overall_score' (1.0-10.0), 'decision' (Accept/Reject/Revise), 'strengths' (list), and 'weaknesses' (list).",
+            current_content
+        );
+        let final_resp = self
+            .primary_provider
+            .complete(
+                &final_prompt,
+                Some("Provide the final structured review verdict in JSON."),
+            )
+            .await?;
+
+        let json_str = crate::concept_manager::extract_json(&final_resp.content)?;
+        let mut result = serde_json::from_str::<aiome_contracts::contracts::MultiReviewResult>(
+            json_str.as_str(),
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to parse MultiReview JSON: {}", e),
+        })?;
+
+        result.reflections = reflections;
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
@@ -315,5 +387,46 @@ mod tests {
             "Consensus should be true (majority: 2/3)"
         );
         assert!(verdict.alignment_score > 0.5);
+    }
+
+    #[tokio::test]
+    async fn test_oracle_multi_review_green() {
+        let mock_json = r#"{
+            "overall_score": 8.5,
+            "decision": "Accept",
+            "reflections": [],
+            "strengths": ["Clear logic", "Robust extraction"],
+            "weaknesses": ["None"]
+        }"#;
+
+        let provider = Arc::new(MockLlmProvider {
+            response: format!("```json\n{}\n```", mock_json),
+        });
+
+        let oracle = Oracle::new(provider, "Be ethical.".to_string());
+        let context = aiome_contracts::contracts::ReviewContext {
+            job_id: Some("test-job".to_string()),
+            topic: "AI Ethics".to_string(),
+            goal: Some("Create a fair AI".to_string()),
+        };
+        let config = aiome_contracts::contracts::ReviewConfig {
+            num_reflections: 2,
+            temperature: 0.1,
+        };
+
+        let res = oracle.multi_review("Bad content", &context, config).await;
+
+        assert!(res.is_ok(), "Multi-review failed: {:?}", res.err());
+        let result = res.unwrap();
+        assert_eq!(result.overall_score, 8.5);
+        assert_eq!(
+            result.decision,
+            aiome_contracts::contracts::ReviewDecision::Accept
+        );
+        assert_eq!(
+            result.reflections.len(),
+            2,
+            "Should have 2 reflection rounds"
+        );
     }
 }

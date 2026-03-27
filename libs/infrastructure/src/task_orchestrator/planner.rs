@@ -44,8 +44,27 @@ impl StrategicPlanner for DefaultStrategicPlanner {
         let mut steps = Vec::new();
         let mut current_step_id = 1;
 
-        // response.content をパースする
-        if let Ok(json_steps) = serde_json::from_str::<Vec<serde_json::Value>>(&response.content) {
+        // response.content から JSON 部分を抽出する
+        let content = response.content.trim();
+        let json_str = if content.contains("```json") {
+            content
+                .split("```json")
+                .nth(1)
+                .and_then(|s| s.split("```").next())
+                .unwrap_or(content)
+                .trim()
+        } else if content.contains("```") {
+            content
+                .split("```")
+                .nth(1)
+                .and_then(|s| s.split("```").next())
+                .unwrap_or(content)
+                .trim()
+        } else {
+            content
+        };
+
+        if let Ok(json_steps) = serde_json::from_str::<Vec<serde_json::Value>>(json_str) {
             for v in json_steps {
                 steps.push(TrajectoryStep {
                     step_id: current_step_id,
@@ -94,5 +113,83 @@ impl StrategicPlanner for DefaultStrategicPlanner {
         }
 
         Ok(steps)
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aiome_contracts::trajectory::StepCategory;
+    use std::sync::Arc;
+
+    #[derive(Debug)]
+    struct MockLlm {
+        response: String,
+    }
+
+    #[async_trait]
+    impl LlmProvider for MockLlm {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            Ok(aiome_contracts::llm::LlmResponse {
+                content: self.response.clone(),
+                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "mock"
+        }
+        async fn complete_with_cache(
+            &self,
+            _req: aiome_contracts::llm::LlmRequest,
+        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            unimplemented!()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_plan_goal_decomposition_markdown_red() {
+        // LLM が Markdown コードブロックでレスポンスを返してきた場合 (堅牢性のテスト)
+        let mock_response = format!(
+            "Here is the plan:\n```json\n{}\n```",
+            json!([
+                {
+                    "description": "Research AI trends",
+                    "step_category": "Planning",
+                    "reasoning": "Need to gather data first"
+                },
+                {
+                    "description": "Write summary report",
+                    "step_category": "Execution",
+                    "reasoning": "Synthesize the gathered information"
+                }
+            ])
+        );
+
+        let mock_llm = Arc::new(MockLlm {
+            response: mock_response,
+        });
+        let planner = DefaultStrategicPlanner::new(mock_llm);
+
+        let steps = planner
+            .plan_goal("Analyze AI trends and write a report", json!({}))
+            .await
+            .unwrap();
+
+        // 3. 現状の実装では Markdown をパースできず、フォールバック（1ステップ）になるはず (RED)
+        assert_eq!(
+            steps.len(),
+            2,
+            "Should have extracted 2 steps from markdown, but got {:?}",
+            steps
+        );
+        assert_eq!(steps[0].step_category, StepCategory::Planning);
     }
 }

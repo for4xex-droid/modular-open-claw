@@ -1,6 +1,6 @@
 # ADR-024: Agentic Foundation Expansion — エージェンティック基盤の6軸拡張
 
-> **Status**: Proposed  
+> **Status**: Partially Implemented (Phase 1 & 2 Completed)  
 > **Date**: 2026-03-26  
 > **Origin**: ディープスキャンによるギャップ分析  
 > **Impact**: infrastructure / soul / aiome-contracts / api-server

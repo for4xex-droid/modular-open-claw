@@ -564,6 +564,15 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         tts_provider: Component::new(Arc::new(infrastructure::tts::MockTtsProvider::default())),
         news_service: Component::default(),
         live_session_manager: Component::new(Arc::new(MockLiveSessionManager::default())),
+        syndicate_store: Component::new(Arc::new(
+            infrastructure::syndicate_store::SqliteSyndicateStore::new(
+                job_queue
+                    .get_pool()
+                    .get_sqlite_pool()
+                    .cloned()
+                    .expect("SQLite pool required for SyndicateStore"),
+            ),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1692,4 +1701,105 @@ async fn test_subscription_lifecycle() {
         .await;
 
     assert_eq!(cancel_resp.status_code(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_syndicate_guild_api_flow() {
+    let (server, _state, _tmp_dir) = create_test_server().await;
+    let bearer = test_bearer(); // sub-1
+
+    // 1. Create Guild
+    let create_req = serde_json::json!({
+        "name": "Integration Syndicate",
+        "description": "Formed by API"
+    });
+    let resp = server
+        .post("/api/v1/syndicate/guilds")
+        .add_header("Authorization", &bearer)
+        .json(&create_req)
+        .await;
+    resp.assert_status(axum::http::StatusCode::CREATED);
+    let guild_id: uuid::Uuid = resp.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    // 2. List Guilds
+    let resp = server
+        .get("/api/v1/syndicate/guilds")
+        .add_header("Authorization", &bearer)
+        .await;
+    resp.assert_status(axum::http::StatusCode::OK);
+    let guilds: Vec<aiome_contracts::syndicate::Guild> = resp.json();
+    assert!(guilds.iter().any(|g| g.id == guild_id));
+
+    // 3. Add Member
+    let other_agent_id = uuid::Uuid::new_v4();
+    let add_req = serde_json::json!({
+        "agent_id": other_agent_id,
+        "role": "contributor"
+    });
+    let resp = server
+        .post(&format!("/api/v1/syndicate/guilds/{}/members", guild_id))
+        .add_header("Authorization", &bearer)
+        .json(&add_req)
+        .await;
+    resp.assert_status(axum::http::StatusCode::OK);
+
+    // 4. List Members
+    let resp = server
+        .get(&format!("/api/v1/syndicate/guilds/{}/members", guild_id))
+        .add_header("Authorization", &bearer)
+        .await;
+    resp.assert_status(axum::http::StatusCode::OK);
+    let members: Vec<aiome_contracts::syndicate::GuildMember> = resp.json();
+    assert_eq!(members.len(), 2); // Owner + New Member
+
+    // 5. Delete Guild
+    let resp = server
+        .delete(&format!("/api/v1/syndicate/guilds/{}", guild_id))
+        .add_header("Authorization", &bearer)
+        .await;
+    resp.assert_status(axum::http::StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_syndicate_guild_sanitization() {
+    let (server, _state, _tmp_dir) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // 1. Create Guild with "dirty" input
+    let create_req = serde_json::json!({
+        "name": "<script>alert('xss')</script>Safe Guild",
+        "description": "<b>Description</b> with <iframe src='malicious.com'></iframe>"
+    });
+    let resp = server
+        .post("/api/v1/syndicate/guilds")
+        .add_header("Authorization", &bearer)
+        .json(&create_req)
+        .await;
+    resp.assert_status(axum::http::StatusCode::CREATED);
+    let guild_id: uuid::Uuid = resp.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    // 2. Fetch Guilds and verify sanitization
+    let resp = server
+        .get("/api/v1/syndicate/guilds")
+        .add_header("Authorization", &bearer)
+        .await;
+    resp.assert_status(axum::http::StatusCode::OK);
+    let guilds: Vec<aiome_contracts::syndicate::Guild> = resp.json();
+    let guild = guilds
+        .iter()
+        .find(|g| g.id == guild_id)
+        .expect("Guild not found");
+
+    // Expecting: "Safe Guild" and "Description with " (or similar depending on purge_entities)
+    // purge_entities usually strips tags.
+    assert_eq!(guild.name, "Safe Guild");
+    assert_eq!(guild.description.as_ref().unwrap(), "Description with");
 }

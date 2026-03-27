@@ -94,6 +94,7 @@ pub mod soul_adapter;
 pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
+pub mod syndicate_store;
 pub mod task_orchestrator;
 pub mod trend_sonar;
 pub mod tts;

@@ -74,7 +74,13 @@ use utoipa::OpenApi;
         crate::routes::gig::submit_bid,
         crate::routes::gig::accept_bid,
         crate::routes::gig::deliver,
-        crate::routes::gig::verify
+        crate::routes::gig::verify,
+        // Syndicate
+        crate::routes::syndicate::create_guild,
+        crate::routes::syndicate::list_guilds,
+        crate::routes::syndicate::delete_guild,
+        crate::routes::syndicate::add_member,
+        crate::routes::syndicate::list_members
     ),
     components(
         schemas(
@@ -120,6 +126,11 @@ use utoipa::OpenApi;
             aiome_core::trajectory::FailureCategory,
             aiome_core::trajectory::StepCategory,
             aiome_core::trajectory::ConstraintViolation,
+            // Syndicate
+            aiome_contracts::syndicate::Guild,
+            aiome_contracts::syndicate::GuildMember,
+            crate::routes::syndicate::CreateGuildRequest,
+            crate::routes::syndicate::AddMemberRequest,
         )
     ),
     info(

@@ -111,6 +111,12 @@ pub enum AiomeError {
 
     #[error("リソースビジー（処理限界）: {reason}")]
     ResourceBusy { reason: String },
+
+    #[error("リソースが見つかりません: {reason}")]
+    NotFound { reason: String },
+
+    #[error("権限がありません: {reason}")]
+    Unauthorized { reason: String },
 }
 
 #[cfg(feature = "axum")]
@@ -169,6 +175,8 @@ impl axum::response::IntoResponse for AiomeError {
                 StatusCode::SERVICE_UNAVAILABLE,
                 format!("System busy: {}", reason),
             ),
+            AiomeError::NotFound { reason } => (StatusCode::NOT_FOUND, reason.clone()),
+            AiomeError::Unauthorized { reason } => (StatusCode::UNAUTHORIZED, reason.clone()),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred".to_string(),

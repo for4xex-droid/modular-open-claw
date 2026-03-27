@@ -23,16 +23,19 @@ use async_trait::async_trait;
 use rand::Rng;
 use serde_json::Value;
 use std::error::Error;
+use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
 /// `DreamState` 構造体
-pub struct DreamState {}
+pub struct DreamState {
+    llm: Arc<dyn aiome_core::llm_provider::LlmProvider>,
+}
 
 impl DreamState {
     /// 新しいインスタンスを生成する
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(llm: Arc<dyn aiome_core::llm_provider::LlmProvider>) -> Self {
+        Self { llm }
     }
 
     /// 「夢想状態（Dream State）」を実行する。
@@ -60,9 +63,12 @@ impl DreamState {
 
         // Level-based Behavioral Shift: Probability of communicative dream increases with level
         let comm_prob = ((level - 1) * 5).clamp(0, 50);
+        let sci_prob = if level >= 5 { 20 } else { 0 };
 
         let insight = if rand_val < comm_prob as i64 {
             self.communicative_dream(job_queue).await?
+        } else if rand_val < (comm_prob + sci_prob) as i64 {
+            self.scientific_dream(job_queue).await?
         } else if rand_val % 2 == 0 {
             self.explorative_dream(job_queue, trend_sonar).await?
         } else {
@@ -229,6 +235,73 @@ impl DreamState {
         }
 
         Ok(None)
+    }
+
+    /// 仮説検証夢 (ADR-023)
+    async fn scientific_dream(
+        &self,
+        job_queue: &dyn JobQueue,
+    ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+        info!("💤 [DreamState] Mode: Scientific — Formulating improvement hypotheses...");
+
+        // 1. Analyze existing Karma to find low-performance domains
+        let recent_karma = job_queue.fetch_all_karma(20).await?;
+        let karma_summary = serde_json::to_string(&recent_karma)?;
+
+        // 2. Generate Hypothesis via LLM
+        let prompt = format!(
+            "Analyze the following Karma entries and hypothesize a way to improve the agent's performance.\n\nKarma:\n{}\n\nOutput a structured hypothesis in JSON: {{ \"domain\": \"string\", \"problem\": \"string\", \"hypothesis\": \"string\", \"experiment_design\": \"string\" }}",
+            karma_summary
+        );
+
+        let resp = self
+            .llm
+            .complete(
+                &prompt,
+                Some("You are a Scientific AI Researcher. Generate innovative improvement hypotheses."),
+            )
+            .await?;
+
+        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let manifest: Value = serde_json::from_str(json_str.as_ref())?;
+
+        let domain = manifest["domain"].as_str().unwrap_or("General");
+        let hypothesis = manifest["hypothesis"].as_str().unwrap_or("No hypothesis");
+
+        info!(
+            "🧪 [DreamState] New Hypothesis for {}: {}",
+            domain, hypothesis
+        );
+
+        // 3. Dispatch Experiment Job
+        let job_topic = format!(
+            "[Experiment] {} - {}",
+            domain,
+            manifest["problem"].as_str().unwrap_or("")
+        );
+        let directives = serde_json::json!({
+            "dream_born": true,
+            "hypothesis": manifest,
+            "scientific_loop": true
+        })
+        .to_string();
+
+        job_queue
+            .enqueue(
+                "scientific_experiment",
+                &job_topic,
+                "experimental",
+                Some(&directives),
+                None,
+                None,
+                0,
+            )
+            .await?;
+
+        Ok(Some(format!(
+            "Hypothesized improvement for {}: {}",
+            domain, hypothesis
+        )))
     }
 }
 
@@ -643,9 +716,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_dream_execution() {
+        // Mock LLM
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
         let jq = BusyJQ;
         let sonar = ExternalTrendSonar::new(vec![], None);
-        let dream = DreamState::new();
+        let llm = std::sync::Arc::new(MockLlm);
+        let dream = DreamState::new(llm);
         let res = dream.dream(&jq, &sonar, 10).await;
         assert!(res.is_ok());
     }

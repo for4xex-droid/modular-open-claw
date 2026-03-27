@@ -1,6 +1,6 @@
 # ADR-023: AI-Scientist Self-Improvement Loop — 自律的スキル改良の仮説検証サイクル
 
-> **Status**: Proposed  
+> **Status**: Implemented  
 > **Date**: 2026-03-26  
 > **Origin**: SakanaAI/AI-Scientist パターンの Aiome への応用  
 > **Impact**: DreamState / Oracle / SkillArena / TaskConductor  

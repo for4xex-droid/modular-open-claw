@@ -124,6 +124,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛰️ **Phase 2 (ADR-024): Trajectory Persistence & Autonomous Job Decomposition**: Implemented automatic sub-job dispatching based on planner breakdown into the `JobQueue`. Furthermore, execution trajectories are now persisted in SQLite with `job_id` and `tool_name` context, enabling full causal tracing of agent thoughts and actions.
 - 🛰️ **Phase 5: Gemini Interactions API Integration (Hybrid Context Sync)**: Integrated the Google Gemini Interactions API to synchronize server-side session states with local histories.
 - 🗣️ **Phase 13.3: Synthetic Voice & Live Session Hardening**: Refactored `TtsWorker` to use the `TtsProvider` trait for OpenAI/XTTS plug-and-play support. Integrated `LiveSessionManager` for Gemini 2.0 Flash Live and hardened `main.rs` by eliminating `config.clone()` for secure secret management.
+- 🔬 **Phase 15 (ADR-024/023): AI-Scientist & Strategic Evolution**: Implemented semantic tool discovery and robust goal decomposition with Markdown JSON extraction. Introduced the "Scientific Self-Improvement Loop" where Level 5+ agents generate improvement hypotheses and dispatch experimental jobs through iterative `multi_review` cycles.
 
 ---
 
@@ -155,7 +156,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Expansion** | WebAssembly (Wasm) | Secure skill execution in a networked sandbox |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
-| **Last Updated:** | 2026-03-27 | Phase 13.3 / Synthetic Voice & Security Hardening |
+| **Last Updated:** | 2026-03-27 | Phase 15 / AI-Scientist & Strategic Evolution |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -266,7 +267,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-27*
+*Last Updated: 2026-03-27 (Phase 15)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

@@ -125,6 +125,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛰️ **Phase 2 (ADR-024): 実行軌跡の永続化と自律적ジョブ分解**: プランナーによるタスク分解結果を個別のサブジョブとして `JobQueue` に自動投入する機能を実装。さらに、各ステップの実行軌跡（Trajectory）を `job_id` および `tool_name` 込みで SQLite に永続化し、エージェントの思考と行動の因果関係を追跡可能にしました。
 - 🛰️ **Phase 5: Gemini Interactions API 統合 (Hybrid Context Sync)**: Google Gemini の Interactions API を統合し、サーバーサイド・セッションとローカル履歴を完全に同期。API 障害時にはローカル LLM へ自動フェイルオーバーしつつ、思考の継続性を維持。
 - 🗣️ **Phase 13.3: Synthetic Voice & Live Session Hardening**: `TtsWorker` を `TtsProvider` トレイトへ移行し、OpenAI/XTTS/Mock バックエンドのプラグイン化を実現。また、Gemini 2.0 Flash Live 用の `LiveSessionManager` を各 LLM プロバイダーに統合し、`main.rs` のシークレット管理（config.clone 排除）を徹底しました。
+- 🔬 **Phase 15 (ADR-024/023): AI-Scientist & Strategic Evolution**: LLM によるセマンティックなツール検索と、Markdown 抽出に対応した堅牢な目標分解ロジックを実装。さらに、Lv5 以上の AI が自ら改善仮説を立て、反復的な自己レビュー（`multi_review`）を経て実験ジョブを投入する「科学的自己改善ループ」を構築しました。
 
 ---
 
@@ -154,7 +155,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
-| **Last Updated:** | 2026-03-26 | Phase 5 / Gemini Interactions API Foundation |
+| **Last Updated:** | 2026-03-27 | Phase 15 / AI-Scientist & Strategic Evolution |
 
 ---
 
@@ -276,7 +277,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-27 (Phase 13.3 / Synthetic Voice & Security Hardening)*
+*最終更新: 2026-03-27 (Phase 15 / AI-Scientist & Strategic Evolution)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

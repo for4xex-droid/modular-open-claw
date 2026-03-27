@@ -16,7 +16,7 @@ use axum::{
         },
         HeaderValue, StatusCode,
     },
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::time::Duration;
@@ -246,6 +246,44 @@ pub fn build_app(
         .route(
             "/api/v1/settings/identity",
             get(routes::settings::get_identity),
+        )
+        .route(
+            "/api/v1/syndicate/guilds",
+            post(crate::routes::syndicate::create_guild)
+                .get(crate::routes::syndicate::list_guilds)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(
+                            handle_rate_limit,
+                        ))
+                        .buffer(5)
+                        .rate_limit(1, std::time::Duration::from_secs(1)) // 1 guild op per sec
+                        .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024)), // 2MB limit (G-8.6)
+                ),
+        )
+        .route(
+            "/api/v1/syndicate/guilds/:id",
+            delete(crate::routes::syndicate::delete_guild).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(2)), // 1 delete per 2s
+            ),
+        )
+        .route(
+            "/api/v1/syndicate/guilds/:id/members",
+            post(crate::routes::syndicate::add_member)
+                .get(crate::routes::syndicate::list_members)
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(
+                            handle_rate_limit,
+                        ))
+                        .buffer(5)
+                        .rate_limit(2, std::time::Duration::from_secs(1)), // 2 member ops per sec
+                ),
         )
         .route("/api/v1/demo/start", post(routes::demo::start_demo));
 

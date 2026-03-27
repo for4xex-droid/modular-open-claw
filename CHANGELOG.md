@@ -1,4 +1,16 @@
 ## [Unreleased] - 2026-03-27
+- **Phase 15: Agentic Foundation Expansion (ADR-024 Phase 1 & ADR-023) [完了]**
+    - **StrategicPlanner**: LLM による目標分解ロジックを実装。Markdown コードブロックからの堅牢な JSON 抽出に対応し、パース失敗を大幅に低減。
+    - **ToolDiscoveryEngine**: キーワード一致から LLM によるセマンティック検索へアップグレード。自然言語の意図から最適な Wasm スキルを推論可能に。
+    - **AI-Scientist Loop (Oracle)**: `multi_review` メソッドを実装。批判（Critic）→洗練（Refine）→最終判定の N 回反復ループにより、レビュー品質を極限まで向上。
+    - **Scientific Dream Mode**: `DreamState` に第4のモードを導入。Lv5 以上の AI が過去の Karma を分析し、自律的に「改善仮説」を立てて実験ジョブを投入するサイクルを構築。
+    - **Causal Trajectory**: `TrajectoryStep` に `parent_step_id` と `reasoning` を追加。`TaskDispatcher` における親子タスクの因果関係の伝播を完全にサポート。
+- **Phase 14: Syndicate L3 (Agent Guild) Implementation [完了]**
+    - **Guild Infrastructure**: Implemented `SqliteSyndicateStore` with CRUD operations for guilds and members (ADR-014 design).
+    - **API Integration**: Exposed `/api/v1/syndicate/guilds` endpoints for guild management (create, list, delete, member management).
+    - **Security Hardening (G-21 / Gap G-2)**: Implemented `purge_entities` sanitization for guild metadata and applied per-route rate limiting and 2MB request body limits.
+    - **Error Handling**: Added `NotFound` and `Unauthorized` variants to `AiomeError` with proper Axum status code mapping.
+    - **TDD Verification**: Passed full integration test suite (`test_syndicate_guild_api_flow`) covering the entire guild lifecycle.
 
 ### Added
 - **Phase 13.3: Synthetic Voice & Live Session Hardening [完了]**
