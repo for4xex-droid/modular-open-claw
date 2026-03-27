@@ -633,3 +633,56 @@ graph TD
 
 ---
 *最終更新日: 2026-03-27* (Phase 4 / Poincare Memory Lifecycle & GC Integration)
+### 🛡️ Phase 45: Vectorless RAG (Hierarchical Knowledge Router - HKR)
+- **変更内容**: 
+    - `knowledge_indexer.rs`: Markdown パーサと階層インデックス (`TreeNode`) 構築。
+    - `hierarchical_router.rs`: LLM 選択肢パース、セマフォ、TTL/Hash 検証付き RouteCache。
+    - `app_state.rs` / `main.rs`: `HierarchicalRouter` の `AppState` 注入と初期化。
+    - `stream.rs`: OOD 判定後の HKR フォールバックと `ConstitutionalValidator` による検証フローの統合。
+- **波及効果**: 
+    - `api-server` の SSE ストリームにおいて、未定義の教訓やナレッジに対しても階層ドキュメントを元にした高精度な補足が提供される。
+    - LLM 呼び出し回数は「階層の深さ」分増加するが、セマンティック検索では到達困難だった深層ドキュメントへのアクセスが可能になる。
+    - インフラコスト（VectorDB等）を抑えつつ、ドキュメントの更新にハッシュベースで追随可能。
+
+```mermaid
+graph TD
+    A[stream.rs / OOD Detection] -->|Trigger| B[HierarchicalRouter]
+    B -->|Fetch Tree/Hash| C[system_state table]
+    B -->|Check Cache| D[RouteCache]
+    B -->|LLM Traversal| E[LlmProvider]
+    B -->|Result| F[ConstitutionalValidator]
+    F -->|Validated| G[SSE knowledge_notice]
+    G -->|Context Injection| H[Next LLM Generation]
+```
+
+---
+*最終更新日: 2026-03-27* (Phase 45 / Vectorless RAG HKR Integration)
+
+### 🛡️ Phase 47-B: Infrastructure Stabilization
+- **変更内容**: 
+    - `UniversalJobQueue`: フィールド（`karma_cache`, `slm_bridge`, `trajectory_store` 等）の完全復元と手動 `Debug` 実装。
+    - `dynamic.rs`: LLM 設定取得フローの型安全化 (`Option<String>` -> `String`)。
+    - `rss_collector.rs`: SQL 実行時のプール参照エラー修正。
+- **波及効果**: 
+    - インフラ層全体のビルド不整合が解消。`memory_crystallizer.rs` や統合テストにおける初期化コードが安定。
+    - `BackgroundLlmProvider` を利用する全コンポーネントにおいて、設定欠落時のフォールバック挙動が堅牢化。
+
+### 🔬 Phase 48: Invariant-DAG Foundation
+- **変更内容**: 
+    - `TrajectoryStep`: 検証フィールド (`verified_invariants`, `state_hash` 等) の追加。
+    - `planner.rs`: `StrategicPlanner` における新規フィールドのデフォルト値設定。
+- **波及効果**: 
+    - タスクの実行軌跡に不変条件（Invariants）の検証結果を記録する準備が完了。
+    - `TaskDispatcher` における状態ハッシュチェーンの構築が可能に。
+
+```mermaid
+graph TD
+    A[UniversalJobQueue] -->|Field Restoration| B[Infrastructure Mod]
+    B -->|Initialization| C[memory_crystallizer / tests]
+    D[dynamic.rs] -->|Type Fix| E[LLM Providers]
+    F[TrajectoryStep expansion] -->|Default Init| G[StrategicPlanner]
+    G -->|Execution Path| H[TaskDispatcher]
+```
+
+---
+*最終更新日: 2026-03-27* (Infrastructure Stabilization & Invariant-DAG Foundation)

@@ -259,7 +259,7 @@ macro_rules! sql_exec {
                     .execute(p)
                     .await;
                 res.map(|r| r.rows_affected())
-                   .map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                   .map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
             $crate::db::DatabasePool::Postgres(p) => {
                 let res = sqlx::query($sql)
@@ -267,7 +267,7 @@ macro_rules! sql_exec {
                     .execute(p)
                     .await;
                 res.map(|r| r.rows_affected())
-                   .map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                   .map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
         }
     }};
@@ -283,14 +283,14 @@ macro_rules! sql_fetch_all {
                     $(.bind($arg))*
                     .fetch_all(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
             $crate::db::DatabasePool::Postgres(p) => {
                 let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql)
                     $(.bind($arg))*
                     .fetch_all(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
         }
     }};
@@ -306,14 +306,14 @@ macro_rules! sql_fetch_one {
                     $(.bind($arg))*
                     .fetch_one(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
             $crate::db::DatabasePool::Postgres(p) => {
                 let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql)
                     $(.bind($arg))*
                     .fetch_one(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
         }
     }};
@@ -329,14 +329,14 @@ macro_rules! sql_fetch_optional {
                     $(.bind($arg))*
                     .fetch_optional(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
             $crate::db::DatabasePool::Postgres(p) => {
                 let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql)
                     $(.bind($arg))*
                     .fetch_optional(p)
                     .await;
-                res.map_err(|e| aiome_core::error::AiomeError::Infrastructure { reason: e.to_string() })
+                res.map_err(|e: sqlx::Error| $crate::AiomeError::Infrastructure { reason: e.to_string() })
             }
         }
     }};

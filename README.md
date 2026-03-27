@@ -156,7 +156,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Expansion** | WebAssembly (Wasm) | ネットワーク制限下での安全なスキル実行環境 |
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
-| **Last Updated:** | 2026-03-27 | Phase 4: Poincare Memory Lifecycle & GC |
+| **Last Updated:** | 2026-03-27 | Phase 48: Invariant-DAG Foundation |
 
 ---
 
@@ -278,7 +278,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)*
+*最終更新: 2026-03-27 (Phase 48 / Invariant-DAG Foundation)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

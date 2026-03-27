@@ -444,18 +444,14 @@ impl LlmProvider for BackgroundLlmProvider {
         let provider_type = self
             .jq
             .get_setting_value("bg_llm_provider")
-            .await
-            .ok()
-            .flatten()
+            .await?
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
             .jq
             .get_setting_value("bg_llm_model")
-            .await
-            .ok()
-            .flatten()
+            .await?
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
             .unwrap_or_else(|| self.fallback_model.clone());
 
@@ -491,9 +487,7 @@ impl LlmProvider for BackgroundLlmProvider {
                 let host = self
                     .jq
                     .get_setting_value("lm_studio_host")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
                 let provider = aiome_core::llm_provider::LmStudioProvider::new(
                     self.client.clone(),
@@ -506,9 +500,7 @@ impl LlmProvider for BackgroundLlmProvider {
                 let host = self
                     .jq
                     .get_setting_value("ollama_host")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
                 let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
                 provider.complete(prompt, system).await
@@ -553,18 +545,14 @@ impl LlmProvider for BackgroundLlmProvider {
         let provider_type = self
             .jq
             .get_setting_value("bg_llm_provider")
-            .await
-            .ok()
-            .flatten()
+            .await?
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
             .jq
             .get_setting_value("bg_llm_model")
-            .await
-            .ok()
-            .flatten()
+            .await?
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
             .unwrap_or_else(|| self.fallback_model.clone());
 
@@ -599,9 +587,7 @@ impl LlmProvider for BackgroundLlmProvider {
                 let host = self
                     .jq
                     .get_setting_value("lm_studio_host")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
                 let provider = aiome_core::llm_provider::LmStudioProvider::new(
                     self.client.clone(),
@@ -614,9 +600,7 @@ impl LlmProvider for BackgroundLlmProvider {
                 let host = self
                     .jq
                     .get_setting_value("ollama_host")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
                 let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
                 provider.complete_with_cache(request.clone()).await
@@ -657,16 +641,12 @@ impl EmbeddingProvider for BackgroundLlmProvider {
                 let host = self
                     .jq
                     .get_setting_value("ollama_host")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
                 let model = self
                     .jq
                     .get_setting_value("bg_llm_model")
-                    .await
-                    .ok()
-                    .flatten()
+                    .await?
                     .or_else(|| std::env::var("BG_LLM_MODEL").ok())
                     .unwrap_or_else(|| self.fallback_model.clone());
                 aiome_core::llm_provider::OllamaProvider::new(host, model)

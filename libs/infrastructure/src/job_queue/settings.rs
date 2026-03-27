@@ -6,6 +6,7 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;

@@ -5,8 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::job_queue::UniversalJobQueue;
-use crate::job_queue::WatchtowerOps;
+use crate::job_queue::{UniversalJobQueue, WatchtowerOps};
 use aiome_contracts::llm::LlmProvider;
 use std::sync::Arc;
 use tokio::sync::Semaphore;

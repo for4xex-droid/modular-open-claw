@@ -656,6 +656,16 @@ async fn main() -> anyhow::Result<()> {
                     .expect("SQLite pool required for SyndicateStore"),
             ),
         )),
+        hierarchical_router: Component::new(Arc::new(
+            infrastructure::hierarchical_router::HierarchicalRouter::new(
+                bg_provider.clone(),
+                job_queue
+                    .get_pool()
+                    .get_sqlite_pool()
+                    .cloned()
+                    .expect("SQLite pool required for HierarchicalRouter"),
+            ),
+        )),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

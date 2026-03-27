@@ -145,6 +145,11 @@ mod tests {
             step_category: Default::default(),
             completion_criteria: None,
             interaction_id: None,
+            verified_invariants: vec![],
+            verification_time_us: None,
+            state_hash: None,
+            parent_state_hash: None,
+            ..Default::default()
         };
 
         let violations = checker.evaluate_step(&step);
@@ -181,6 +186,7 @@ mod tests {
             step_category: Default::default(),
             completion_criteria: None,
             interaction_id: None,
+            ..Default::default()
         };
 
         let violations = checker.evaluate_step(&step);

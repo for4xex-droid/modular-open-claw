@@ -52,23 +52,34 @@ impl ProjectKnowledgeIndexer {
             files_to_index.push(arch_file);
         }
 
+        let skills_dir = self.workspace_root.join(".agents").join("skills");
+
+        let mut stack = Vec::new();
         if docs_dir.exists() {
-            let mut stack = vec![(docs_dir, 0)]; // (path, current_depth)
-            while let Some((dir, depth)) = stack.pop() {
-                if depth > MAX_INDEX_DEPTH {
-                    warn!("⚠️ [KnowledgeIndexer] Skip deep directory: {:?}", dir);
-                    continue;
-                }
-                if let Ok(entries) = std::fs::read_dir(dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.is_dir() {
-                            stack.push((path, depth + 1));
-                        } else if path.is_file()
-                            && path.extension().map(|e| e == "md").unwrap_or(false)
-                        {
-                            files_to_index.push(path);
-                        }
+            stack.push((docs_dir, 0)); // (path, current_depth)
+        }
+        if skills_dir.exists() {
+            stack.push((skills_dir, 0));
+        }
+
+        while let Some((dir, depth)) = stack.pop() {
+            if depth > MAX_INDEX_DEPTH {
+                warn!("⚠️ [KnowledgeIndexer] Skip deep directory: {:?}", dir);
+                continue;
+            }
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    // [ATK-6] Security: Block symlinks to prevent path traversal
+                    if path.is_symlink() {
+                        warn!("🛡️ [KnowledgeIndexer] Blocked symlink: {:?}", path);
+                        continue;
+                    }
+                    if path.is_dir() {
+                        stack.push((path, depth + 1));
+                    } else if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false)
+                    {
+                        files_to_index.push(path);
                     }
                 }
             }
@@ -106,12 +117,13 @@ impl ProjectKnowledgeIndexer {
         hasher.update(content.as_bytes());
         let hash = format!("{:x}", hasher.finalize());
 
-        let state_key = format!("knowledge_hash_{}", rel_path);
+        let hash_key = format!("knowledge_hash_{}", rel_path);
+        let tree_key = format!("knowledge_tree_{}", rel_path);
 
         // Check if already indexed
         let existing_hash: Option<String> =
             sqlx::query_scalar("SELECT value FROM system_state WHERE key = ?")
-                .bind(&state_key)
+                .bind(&hash_key)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -123,7 +135,7 @@ impl ProjectKnowledgeIndexer {
         }
 
         info!(
-            "📚 [KnowledgeIndexer] File changed: {}. Re-indexing...",
+            "📚 [KnowledgeIndexer] File changed: {}. Re-indexing with Tree...",
             rel_path
         );
 
@@ -144,7 +156,13 @@ impl ProjectKnowledgeIndexer {
             let _ = self.artifact_store.delete_artifact(&id, jail).await;
         }
 
-        // 2. Chunk and Save
+        // 2. Build Hierarchical Tree and Save as Metadata
+        let tree = Self::build_tree(&content, rel_path);
+        let tree_json = serde_json::to_string(&tree).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to serialize tree: {}", e),
+        })?;
+
+        // 3. Flat Chunking (Legacy support for Hybrid RAG)
         let chunks: Vec<(String, String)> = Self::chunk_markdown(&content);
         for (i, (title, chunk_content)) in chunks.into_iter().enumerate() {
             let artifact_title = if title.is_empty() {
@@ -173,15 +191,196 @@ impl ProjectKnowledgeIndexer {
             self.artifact_store.save_artifact(req, jail).await?;
         }
 
-        // 3. Update hash in system_state
+        // 4. Update hash AND tree in system_state
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
         sqlx::query("INSERT INTO system_state (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
-            .bind(&state_key)
+            .bind(&hash_key)
             .bind(&hash)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
+        sqlx::query("INSERT INTO system_state (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
+            .bind(&tree_key)
+            .bind(&tree_json)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+        tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
+
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+/// `TreeNode` 階層的ナレッジインデックスのノード
+pub struct TreeNode {
+    /// 一意識別子 (パス等)
+    pub id: String,
+    /// 見出しタイトル
+    pub title: String,
+    /// 見出しレベル (1=#, 2=##, 3=###)
+    pub level: u8,
+    /// セクションの要約 (サニタイズ済み)
+    pub summary: String,
+    /// 子ノード
+    pub children: Vec<TreeNode>,
+    /// 本文コンテンツ (リーフノードのみ)
+    pub content: Option<String>,
+}
+
+impl ProjectKnowledgeIndexer {
+    /// プロンプトインジェクション等を防ぐためにサニタイズする
+    pub fn sanitize_summary(raw: &str) -> String {
+        let blocklist = [
+            "ignore all",
+            "disregard",
+            "forget previous",
+            "select chapter",
+            "always choose",
+            "override",
+        ];
+        let s_lower = raw.to_lowercase();
+        let mut found_injection = false;
+        for pattern in blocklist {
+            if s_lower.contains(pattern) {
+                found_injection = true;
+                break;
+            }
+        }
+
+        if found_injection {
+            let mut s = s_lower;
+            for pattern in blocklist {
+                s = s.replace(pattern, "[REDACTED]");
+            }
+            s
+        } else {
+            raw.to_string()
+        }
+    }
+
+    /// YAML Frontmatter があれば除去する
+    pub fn strip_yaml_frontmatter(content: &str) -> &str {
+        if content.starts_with("---\n") || content.starts_with("---\r\n") {
+            if let Some(end_idx) = content[3..].find("\n---") {
+                let remainder = &content[3 + end_idx + 4..];
+                return remainder.trim_start();
+            }
+        }
+        content
+    }
+
+    /// Markdown テキストから階層ツリーを構築する
+    pub fn build_tree(content: &str, base_id: &str) -> TreeNode {
+        let clean_content = Self::strip_yaml_frontmatter(content);
+        let mut lines = clean_content.lines().peekable();
+        let mut root = TreeNode {
+            id: base_id.to_string(),
+            title: "Root".to_string(),
+            level: 0,
+            summary: String::new(),
+            children: Vec::new(),
+            content: None,
+        };
+
+        const MAX_TREE_DEPTH: u8 = 4;
+        const MAX_NODES_PER_TREE: usize = 500;
+        let mut node_count = 1;
+
+        root.children = Self::build_level_recursive(
+            &mut lines,
+            0,
+            base_id,
+            MAX_TREE_DEPTH,
+            &mut node_count,
+            MAX_NODES_PER_TREE,
+        );
+
+        root
+    }
+
+    fn build_level_recursive(
+        lines: &mut std::iter::Peekable<std::str::Lines>,
+        parent_level: u8,
+        base_id: &str,
+        max_depth: u8,
+        node_count: &mut usize,
+        max_nodes: usize,
+    ) -> Vec<TreeNode> {
+        let mut nodes = Vec::new();
+
+        while let Some(&line) = lines.peek() {
+            let level = if line.starts_with('#') {
+                line.chars().take_while(|&c| c == '#').count() as u8
+            } else {
+                0
+            };
+
+            if level > 0 {
+                if level <= parent_level {
+                    break;
+                }
+
+                let header_line = lines.next().unwrap();
+                let title = header_line.trim_start_matches('#').trim();
+
+                if level > max_depth || *node_count >= max_nodes {
+                    continue;
+                }
+
+                *node_count += 1;
+                let mut node = TreeNode {
+                    id: format!("{}-{}", base_id, title.replace(' ', "-").to_lowercase()),
+                    title: title.to_string(),
+                    level,
+                    summary: String::new(),
+                    children: Vec::new(),
+                    content: None,
+                };
+
+                // Capture text content immediately following this header
+                let mut content_lines = Vec::new();
+                while let Some(&next_line) = lines.peek() {
+                    if next_line.starts_with('#') {
+                        break;
+                    }
+                    content_lines.push(lines.next().unwrap());
+                }
+
+                if !content_lines.is_empty() {
+                    let text = content_lines.join("\n").trim().to_string();
+                    node.summary = Self::sanitize_summary(&text);
+                    if node.summary.chars().count() > 200 {
+                        node.summary = node.summary.chars().take(200).collect();
+                    }
+                    node.content = Some(text);
+                }
+
+                // Recursive call for sub-headers
+                node.children = Self::build_level_recursive(
+                    lines, level, base_id, max_depth, node_count, max_nodes,
+                );
+
+                nodes.push(node);
+            } else {
+                // Skip orphan lines before any header or consume them?
+                // For Root, these could be added to root content, but build_tree handles root separately.
+                let _ = lines.next();
+            }
+        }
+
+        nodes
     }
 
     /// Markdown をセクションごとに分割する (OSS インデクサー等で再利用)

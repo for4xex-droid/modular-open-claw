@@ -86,6 +86,10 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                     reasoning: v["reasoning"].as_str().map(|s| s.to_string()),
                     completion_criteria: None,
                     interaction_id: None,
+                    verified_invariants: vec![],
+                    verification_time_us: None,
+                    state_hash: None,
+                    parent_state_hash: None,
                 });
                 current_step_id += 1;
             }
@@ -109,6 +113,10 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                 reasoning: Some("Evaluating all steps and context for the final output.".into()),
                 completion_criteria: None,
                 interaction_id: None,
+                verified_invariants: vec![],
+                verification_time_us: None,
+                state_hash: None,
+                parent_state_hash: None,
             });
         }
 

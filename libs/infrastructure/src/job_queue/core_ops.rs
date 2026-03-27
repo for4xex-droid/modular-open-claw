@@ -6,6 +6,7 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus};
 use async_trait::async_trait;
@@ -103,8 +104,7 @@ impl CoreOps for UniversalJobQueue {
             priority,
             &now,
             &now
-        )
-        .map(|_| ())?;
+        )?;
         Ok(id)
     }
 
@@ -277,7 +277,8 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(2),
             self.pool.ph(3)
         );
-        sql_exec!(&self.pool, &q, "Completed", output_artifacts, &now, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, "Completed", output_artifacts, &now, job_id)?;
+        Ok(())
     }
 
     async fn do_fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError> {
@@ -289,7 +290,8 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(2),
             self.pool.ph(3)
         );
-        sql_exec!(&self.pool, &q, "Failed", reason, &now, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, "Failed", reason, &now, job_id)?;
+        Ok(())
     }
 
     async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
@@ -340,7 +342,8 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(1),
             self.pool.ph(2)
         );
-        sql_exec!(&self.pool, &q, &now, &now, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, &now, &now, job_id)?;
+        Ok(())
     }
 
     async fn do_store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
@@ -351,7 +354,8 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(1),
             self.pool.ph(2)
         );
-        sql_exec!(&self.pool, &q, log, &now, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, log, &now, job_id)?;
+        Ok(())
     }
 
     async fn do_purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError> {
@@ -507,7 +511,8 @@ impl CoreOps for UniversalJobQueue {
             "UPDATE jobs SET retry_count = 0 WHERE id = {}",
             self.pool.ph(0)
         );
-        sql_exec!(&self.pool, &q, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, job_id)?;
+        Ok(())
     }
 
     async fn do_storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {

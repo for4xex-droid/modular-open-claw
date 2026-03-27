@@ -6,12 +6,12 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
 use std::collections::HashMap;
 use tracing::warn;
-
 #[async_trait]
 pub trait WatchtowerOps {
     async fn do_insert_chat_message(
@@ -152,11 +152,7 @@ impl WatchtowerOps for UniversalJobQueue {
             crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
             crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3}) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, last_interaction_id = EXCLUDED.last_interaction_id, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
         };
-        sql_exec!(&self.pool, &q, channel_id, summary, last_interaction_id).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: e.to_string(),
-            }
-        })?;
+        sql_exec!(&self.pool, &q, channel_id, summary, last_interaction_id)?;
         Ok(())
     }
 
@@ -216,11 +212,7 @@ impl WatchtowerOps for UniversalJobQueue {
             self.pool.ph(0),
             self.pool.ph(1)
         );
-        sql_exec!(&self.pool, &q, channel_id, up_to_id).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: e.to_string(),
-            }
-        })?;
+        sql_exec!(&self.pool, &q, channel_id, up_to_id)?;
         Ok(())
     }
 
@@ -230,9 +222,7 @@ impl WatchtowerOps for UniversalJobQueue {
             "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < {}",
             ts_expr
         );
-        let res = sql_exec!(&self.pool, &q, -days).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
+        let res = sql_exec!(&self.pool, &q, -days)?;
         Ok(res)
     }
 
@@ -267,11 +257,7 @@ impl WatchtowerOps for UniversalJobQueue {
 
     async fn do_adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError> {
         let q = format!("UPDATE karma_logs SET weight = CASE WHEN weight + {0} < 0 THEN 0 WHEN weight + {1} > 100 THEN 100 ELSE weight + {2} END WHERE id = {3}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3));
-        sql_exec!(&self.pool, &q, delta, delta, delta, karma_id).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: e.to_string(),
-            }
-        })?;
+        sql_exec!(&self.pool, &q, delta, delta, delta, karma_id)?;
         Ok(())
     }
 
@@ -280,10 +266,7 @@ impl WatchtowerOps for UniversalJobQueue {
 
         // 1. 既存の時間・重みベースのアーカイブ (COLD 遷移)
         let q_time = format!("UPDATE karma_logs SET is_archived = 1 WHERE weight < 5 AND (last_applied_at IS NULL OR last_applied_at < {}) AND is_archived = 0", ts_expr);
-        let res_time =
-            sql_exec!(&self.pool, &q_time, -90).map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        let res_time = sql_exec!(&self.pool, &q_time, -90)?;
 
         // 2. Phase 4: Poincare ベースの重要度パージ (CR-1: バッチ化)
         let mut res_slm = 0;

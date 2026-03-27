@@ -27,6 +27,22 @@
 ## [Unreleased] - 2026-03-27
 
 ### Added
+- **Phase 48: Invariant-DAG Foundation [進行中]**
+    - **Trajectory Expansion**: `TrajectoryStep` に `verified_invariants`, `state_hash`, `parent_state_hash` などの検証フィールドを追加。Planner (`planner.rs`) での初期化に対応。
+- **Infrastructure Stabilization [完了]**
+    - **UniversalJobQueue Restoration**: フィールド（`karma_cache`, `slm_bridge`, `trajectory_store` 等）の復元と、`TrajectoryStore` の非 `Debug` 性を考慮した手動 `Debug` トレイト実装により、ビルド不整合を解消。
+    - **LLM Provider Type Alignment**: `dynamic.rs` における設定取得フローを刷新。`Option<String>` から `String` への型整合性を確保し、各種プロバイダーコンストラクタとの衝突を修正。
+    - **DB Reference Fix**: `rss_collector.rs` での `sqlx` 実行時にプールへの適切な参照 (`&*p`) を渡すように修正。
+
+### Added
+- **Phase 1: Vectorless RAG (Hierarchical Knowledge Router - HKR) [完了]**
+    - **Knowledge Indexer**: Markdown を階層的な `TreeNode` にパースする機能を実装。シンボリックリンク排除、プロンプトインジェクション対策済みのサニタイズ機能を搭載。
+    - **Hierarchical Router**: LLM による多段階ツリー探索エンジンを実装。セマフォによるリソース制御と、1時間 TTL / ドキュメントハッシュ検証付きの `RouteCache` を統合。
+    - **API Integration**: SSE ストリーム (`stream.rs`) において、教訓検索が OOD (Out of Distribution) となった際に HKR が自動起動するフォールバックフローを実装。
+    - **Security Validation**: HKR の検索結果を `ConstitutionalValidator` で最終検証してからユーザーへ提供するセキュアなパイプラインを構築。
+    - **TDD Verification**: インデクサーとルーターに対し、正常系・異常系・セキュリティ・キャッシュの各レイヤーで GREEN パスを達成。
+
+### Added
 - **Phase 5: Gemini Interactions API 統合基盤 [完了]**
     - **InteractionsGeminiProvider**: Gemini Interactions API (REST) へのステートフル接続、指数バックオフ再試行、および Ollama への自動フェイルオーバー機能を実装。
     - **Hybrid Context Management**: Gemini 側のセッションステート (`interaction_id`) とローカル SQLite の履歴同期の第1段階を実装。

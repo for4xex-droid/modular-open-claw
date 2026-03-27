@@ -129,4 +129,6 @@ pub struct AppState {
     pub news_service: Component<Arc<dyn aiome_contracts::traits::NewsService>>,
     pub live_session_manager: Component<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
     pub syndicate_store: Component<Arc<infrastructure::syndicate_store::SqliteSyndicateStore>>,
+    pub hierarchical_router:
+        Component<Arc<infrastructure::hierarchical_router::HierarchicalRouter>>,
 }

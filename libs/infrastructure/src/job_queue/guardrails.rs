@@ -6,6 +6,7 @@
  */
 
 use super::swarm::SwarmOps;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 
 use super::UniversalJobQueue;
 use aiome_core::contracts::{ArenaMatch, ImmuneRule};

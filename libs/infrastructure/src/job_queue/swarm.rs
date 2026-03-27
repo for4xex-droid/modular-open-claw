@@ -6,6 +6,7 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use base64::{prelude::BASE64_STANDARD, Engine};
@@ -370,11 +371,7 @@ impl SwarmOps for UniversalJobQueue {
             crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
             crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
         };
-        sql_exec!(&self.pool, &q, "consecutive_api_failures", next.to_string()).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: e.to_string(),
-            }
-        })?;
+        sql_exec!(&self.pool, &q, "consecutive_api_failures", next.to_string())?;
         Ok(next)
     }
 
@@ -383,11 +380,7 @@ impl SwarmOps for UniversalJobQueue {
             crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
             crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
         };
-        sql_exec!(&self.pool, &q, "consecutive_api_failures", "0").map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: e.to_string(),
-            }
-        })?;
+        sql_exec!(&self.pool, &q, "consecutive_api_failures", "0")?;
         Ok(())
     }
 
@@ -425,11 +418,7 @@ impl SwarmOps for UniversalJobQueue {
                 self.pool.ph(0),
                 self.pool.ph(1)
             );
-            sql_exec!(&self.pool, &q2, "system_agent_id", &val).map_err(|e| {
-                AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                }
-            })?;
+            sql_exec!(&self.pool, &q2, "system_agent_id", &val)?;
             Ok(new_id)
         }
     }

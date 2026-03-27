@@ -6,6 +6,7 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep, TrajectoryStore};
 use async_trait::async_trait;
@@ -122,6 +123,11 @@ impl TrajectoryOps for UniversalJobQueue {
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),
                         interaction_id: row.get("interaction_id"),
+                        verified_invariants: vec![],
+                        verification_time_us: None,
+                        state_hash: None,
+                        parent_state_hash: None,
+                        ..Default::default()
                     });
                 }
             }
@@ -157,6 +163,11 @@ impl TrajectoryOps for UniversalJobQueue {
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),
                         interaction_id: row.get("interaction_id"),
+                        verified_invariants: vec![],
+                        verification_time_us: None,
+                        state_hash: None,
+                        parent_state_hash: None,
+                        ..Default::default()
                     });
                 }
             }

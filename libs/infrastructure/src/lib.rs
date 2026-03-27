@@ -13,6 +13,7 @@
 #![warn(missing_docs)]
 
 pub mod aiome_log;
+pub use aiome_core::error::AiomeError;
 /// 成果物の永続化・管理
 pub mod artifact_store;
 /// 非同期監査ログ用 MPSC キュー (Phase 35 Step 7)
@@ -39,6 +40,10 @@ pub mod constraint_checker;
 pub mod context_engine;
 /// タスクキュー・非同期実行・リトライ
 #[macro_use]
+pub mod boundary_verifier;
+#[cfg(test)]
+mod boundary_verifier_tests;
+
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;
@@ -49,6 +54,7 @@ pub mod dream_state;
 pub mod gig_engine;
 /// 定期診断・プロアクティブ発火
 pub mod heartbeat_wakeup;
+pub mod hierarchical_router;
 /// 脅威シグネチャ監視・遮断
 pub mod immune_system;
 /// Intent の生成・サニタイズ (AgentSense Phase AS-1)
@@ -109,6 +115,8 @@ pub mod whisper_transcription;
 pub mod workspace_manager;
 
 mod artifact_store_tests;
+mod hierarchical_router_tests;
+mod knowledge_indexer_tests;
 mod soul_store_tests;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;

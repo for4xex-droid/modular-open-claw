@@ -89,7 +89,7 @@ pub enum StepCategory {
 }
 
 /// 📉 軌跡（Trajectory）の1ステップ
-#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
 pub struct TrajectoryStep {
     pub step_id: u32,
     pub job_id: Option<String>,
@@ -113,6 +113,20 @@ pub struct TrajectoryStep {
     pub completion_criteria: Option<String>,
     /// Gemini Interaction ID (ADR-024 Phase 5)
     pub interaction_id: Option<String>,
+
+    // --- Phase 47-48: Proof-Carrying Intents ---
+    /// Phase 47: BoundaryVerifier で検証済みの不変条件名リスト
+    #[serde(default)]
+    pub verified_invariants: Vec<String>,
+    /// Phase 47: 検証所要時間 (マイクロ秒)
+    #[serde(default)]
+    pub verification_time_us: Option<u64>,
+    /// Phase 48: DAG ノードのハッシュ（改ざん検知用）
+    #[serde(default)]
+    pub state_hash: Option<String>,
+    /// Phase 48: 親ノードのハッシュ
+    #[serde(default)]
+    pub parent_state_hash: Option<String>,
 }
 
 /// ⛓️ 制約違反の証拠

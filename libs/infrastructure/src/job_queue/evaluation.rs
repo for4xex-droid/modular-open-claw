@@ -6,6 +6,7 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobQueue, JobStatus, SnsMetricsRecord};
@@ -64,7 +65,8 @@ impl EvaluationOps for UniversalJobQueue {
             self.pool.now_fn(),
             self.pool.ph(2)
         );
-        sql_exec!(&self.pool, &q, platform, content_id, job_id).map(|_| ())
+        sql_exec!(&self.pool, &q, platform, content_id, job_id)?;
+        Ok(())
     }
 
     async fn do_fetch_jobs_for_evaluation(
@@ -213,8 +215,8 @@ impl EvaluationOps for UniversalJobQueue {
             raw_comments,
             hard_metric_score,
             engagement_rate
-        )
-        .map(|_| ())
+        )?;
+        Ok(())
     }
 
     async fn do_fetch_pending_evaluations(

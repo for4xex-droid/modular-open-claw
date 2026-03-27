@@ -9,6 +9,7 @@ use super::swarm::SwarmOps;
 use super::UniversalJobQueue;
 use crate::polar_quant::PolarQuantEncoder;
 use crate::vector_ops::{StandardVectorOps, VectorOps};
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{Job, JobStatus, KarmaEntry, KarmaSearchResult};
 use async_trait::async_trait;

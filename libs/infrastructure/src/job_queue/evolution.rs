@@ -6,6 +6,7 @@
  */
 
 use super::UniversalJobQueue;
+use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
@@ -62,9 +63,7 @@ impl EvolutionOps for UniversalJobQueue {
             self.pool.ph(0),
             self.pool.now_fn()
         );
-        sql_exec!(&self.pool, &q, amount).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
+        sql_exec!(&self.pool, &q, amount)?;
         Ok(())
     }
 
@@ -74,9 +73,7 @@ impl EvolutionOps for UniversalJobQueue {
             self.pool.ph(0),
             self.pool.now_fn()
         );
-        sql_exec!(&self.pool, &q, amount).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
+        sql_exec!(&self.pool, &q, amount)?;
         let _ = self.do_sync_samsara_level().await;
         Ok(())
     }
@@ -87,9 +84,7 @@ impl EvolutionOps for UniversalJobQueue {
             self.pool.ph(0),
             self.pool.now_fn()
         );
-        sql_exec!(&self.pool, &q, amount).map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
+        sql_exec!(&self.pool, &q, amount)?;
         Ok(())
     }
 

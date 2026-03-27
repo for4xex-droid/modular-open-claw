@@ -874,6 +874,10 @@ async fn test_sqlite_trajectory_store() {
         step_category: aiome_core::trajectory::StepCategory::Planning,
         completion_criteria: None,
         interaction_id: None,
+        verified_invariants: vec![],
+        verification_time_us: None,
+        state_hash: None,
+        parent_state_hash: None,
     };
 
     jq.record_step(&job_id, step.clone())
