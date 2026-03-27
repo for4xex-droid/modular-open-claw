@@ -154,7 +154,17 @@ mod tests {
     async fn test_memory_crystallizer_initialization() {
         let provider = Arc::new(MockLlm);
         // UniversalJobQueue の実体化（インメモリ）を試みる
-        if let Ok(jq) = UniversalJobQueue::new("sqlite::memory:", None).await {
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
+        if let Ok(jq) = UniversalJobQueue::new("sqlite::memory:", None, ts).await {
             let semaphore = Arc::new(Semaphore::new(1));
             let slm = Some(Arc::new(SlmBridge::new()));
 

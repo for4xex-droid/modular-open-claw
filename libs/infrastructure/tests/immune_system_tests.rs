@@ -47,7 +47,17 @@ impl LlmProvider for MockLlmProvider {
 }
 
 async fn create_test_queue() -> UniversalJobQueue {
-    UniversalJobQueue::new("sqlite::memory:", None)
+    let ts = std::sync::Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+            infrastructure::db::DatabasePool::Sqlite(
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .connect("sqlite::memory:")
+                    .await
+                    .unwrap(),
+            ),
+        ),
+    );
+    UniversalJobQueue::new("sqlite::memory:", None, ts)
         .await
         .expect("Failed to create test job queue")
 }

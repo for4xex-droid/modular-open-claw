@@ -326,10 +326,21 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     // Set WORKSPACE_DIR to tmp_dir for security sandbox consistency (S-4 fix)
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
 
+    let ts = std::sync::Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+            infrastructure::db::DatabasePool::Sqlite(
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .connect(&format!("sqlite://{}", db_path.to_str().unwrap()))
+                    .await
+                    .unwrap(),
+            ),
+        ),
+    );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
             &format!("sqlite://{}", db_path.to_str().unwrap()),
             None,
+            ts,
         )
         .await
         .expect("Failed to create test job queue"),
@@ -574,6 +585,16 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                     .get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for SyndicateStore"),
+            ),
+        )),
+        hierarchical_router: Component::new(Arc::new(
+            infrastructure::hierarchical_router::HierarchicalRouter::new(
+                provider.clone(),
+                job_queue
+                    .get_pool()
+                    .get_sqlite_pool()
+                    .cloned()
+                    .expect("SQLite pool required for HierarchicalRouter"),
             ),
         )),
     };
@@ -1321,10 +1342,21 @@ async fn test_fallback_router_failover() {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test_failover.db");
 
+    let ts = std::sync::Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+            infrastructure::db::DatabasePool::Sqlite(
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .connect(&format!("sqlite://{}", db_path.to_str().unwrap()))
+                    .await
+                    .unwrap(),
+            ),
+        ),
+    );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
             &format!("sqlite://{}", db_path.to_str().unwrap()),
             None,
+            ts,
         )
         .await
         .expect("Failed to create test job queue"),

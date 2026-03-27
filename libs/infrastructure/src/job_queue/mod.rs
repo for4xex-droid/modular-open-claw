@@ -13,12 +13,12 @@ use aiome_contracts::security::PermissionManifest;
 use aiome_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
-    SnsMetricsRecord, TaskRegistry,
+    SnsMetricsRecord, SoulStore, TaskRegistry,
 };
 use aiome_contracts::types::AgentStats;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
-use aiome_core::trajectory::TrajectoryStore;
+use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
 
 use async_trait::async_trait;
 use sqlx::Row;
@@ -263,23 +263,20 @@ impl AuditStore for UniversalJobQueue {
     async fn store_execution_log(&self, job_id: &str, log: &str) -> Result<(), AiomeError> {
         Box::pin(self.do_store_execution_log(job_id, log)).await
     }
-    async fn store_trajectory_step(
-        &self,
-        step: aiome_contracts::trajectory::TrajectoryStep,
-    ) -> Result<(), AiomeError> {
+    async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError> {
         let job_id = step
             .job_id
             .clone()
             .ok_or_else(|| AiomeError::Infrastructure {
                 reason: "Missing job_id in TrajectoryStep".to_string(),
             })?;
-        Box::pin(self.do_record_step(&job_id, step)).await
+        self.trajectory_store.record_step(&job_id, step).await
     }
     async fn fetch_trajectory_steps(
         &self,
         job_id: &str,
-    ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
-        Box::pin(self.do_fetch_trajectory(job_id)).await
+    ) -> Result<Vec<TrajectoryStep>, AiomeError> {
+        self.trajectory_store.fetch_trajectory(job_id).await
     }
     async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
         Box::pin(self.do_get_security_request_count(agent_id)).await
@@ -413,8 +410,8 @@ impl KarmaRegistry for UniversalJobQueue {
             let slm_results = bridge.recall(query, limit).await?;
             let mut entries = Vec::new();
             for res in slm_results {
-                entries.push(aiome_contracts::traits::KarmaEntry {
-                    id: uuid::Uuid::new_v4().to_string(),
+                entries.push(KarmaEntry {
+                    id: Uuid::new_v4().to_string(),
                     lesson: res.content,
                     karma_type: "SLM_Geometric".to_string(),
                     ..Default::default()
@@ -422,7 +419,7 @@ impl KarmaRegistry for UniversalJobQueue {
             }
             Ok(KarmaSearchResult {
                 entries,
-                is_ood: false, // SLM は幾何スコアを返すため、必要に応じてここで OOD 判定可能
+                is_ood: false,
                 max_score: 0.0,
             })
         } else {
@@ -640,3 +637,30 @@ impl UniversalJobQueue {
         <Self as FederationOps>::do_push_federated_metrics(self).await
     }
 }
+
+#[async_trait]
+impl JobQueue for UniversalJobQueue {
+    async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError> {
+        Box::pin(self.do_sign_swarm_payload(payload)).await
+    }
+    async fn sync_local_clock(&self, remote_clock: u64) -> Result<u64, AiomeError> {
+        Box::pin(self.do_sync_local_clock(remote_clock)).await
+    }
+    async fn tick_local_clock(&self) -> Result<u64, AiomeError> {
+        Box::pin(self.do_tick_local_clock()).await
+    }
+    async fn storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {
+        Box::pin(self.do_storage_gc(threshold_gb)).await
+    }
+    async fn get_system_agent_id(&self) -> Result<Uuid, AiomeError> {
+        Box::pin(self.do_get_system_agent_id()).await
+    }
+    async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
+        Box::pin(self.do_store_expression(expression)).await
+    }
+    async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
+        Box::pin(self.do_fetch_expressions(limit)).await
+    }
+}
+
+// SoulStore impl is in soul_store.rs

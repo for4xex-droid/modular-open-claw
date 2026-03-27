@@ -5,12 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use super::UniversalJobQueue;
 use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use aiome_core::trajectory::{AgentDiagnosis, FailureCategory, TrajectoryStep, TrajectoryStore};
 use async_trait::async_trait;
 use sqlx::Row;
+
+// --- Trajectory Operations ---
 
 #[async_trait]
 pub trait TrajectoryOps {
@@ -24,8 +25,56 @@ pub trait TrajectoryOps {
     async fn do_fetch_diagnosis(&self, job_id: &str) -> Result<Option<AgentDiagnosis>, AiomeError>;
 }
 
+/// SQL-based implementation of TrajectoryStore
+#[derive(Clone)]
+pub struct SqliteTrajectoryStore {
+    pub pool: crate::db::DatabasePool,
+}
+
+impl SqliteTrajectoryStore {
+    /// 既存の `DatabasePool` から構築する
+    pub fn new(pool: crate::db::DatabasePool) -> Self {
+        Self { pool }
+    }
+
+    /// DB パスから自動的にプールを構築するファクトリ関数
+    ///
+    /// 外部クレート（napi-bridge 等）が sqlx に直接依存せずに
+    /// TrajectoryStore を構築できるようにする便利メソッド。
+    pub async fn from_db_path(db_path: &str) -> Result<Self, AiomeError> {
+        let pool = if db_path.starts_with("postgres://") || db_path.starts_with("postgresql://") {
+            let pg =
+                sqlx::PgPool::connect(db_path)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to connect TS pool: {}", e),
+                    })?;
+            crate::db::DatabasePool::Postgres(pg)
+        } else {
+            use std::str::FromStr;
+            let clean = db_path
+                .strip_prefix("sqlite://")
+                .or_else(|| db_path.strip_prefix("sqlite:"))
+                .unwrap_or(db_path);
+            let opts = sqlx::sqlite::SqliteConnectOptions::from_str(clean)
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Invalid DB path for TS: {}", e),
+                })?
+                .create_if_missing(true);
+            let sq = sqlx::sqlite::SqlitePoolOptions::new()
+                .connect_with(opts)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to connect TS pool: {}", e),
+                })?;
+            crate::db::DatabasePool::Sqlite(sq)
+        };
+        Ok(Self { pool })
+    }
+}
+
 #[async_trait]
-impl TrajectoryStore for UniversalJobQueue {
+impl TrajectoryStore for SqliteTrajectoryStore {
     async fn record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError> {
         self.do_record_step(job_id, step).await
     }
@@ -48,13 +97,13 @@ impl TrajectoryStore for UniversalJobQueue {
 }
 
 #[async_trait]
-impl TrajectoryOps for UniversalJobQueue {
+impl TrajectoryOps for SqliteTrajectoryStore {
     async fn do_record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError> {
         let input_json = serde_json::to_string(&step.input).unwrap_or_else(|_| "{}".to_string());
         let output_json = serde_json::to_string(&step.output).unwrap_or_else(|_| "{}".to_string());
         let violations_json =
             serde_json::to_string(&step.constraint_violations).unwrap_or_else(|_| "[]".to_string());
-        let failure_cat = step.failure_category.map(|c| c.to_string());
+        let failure_cat = step.failure_category.as_ref().map(|c| c.to_string());
         let is_critical = if step.is_critical_failure { 1 } else { 0 };
 
         let step_cat = serde_json::to_string(&step.step_category)
@@ -104,9 +153,9 @@ impl TrajectoryOps for UniversalJobQueue {
                     let output_str: String = row.get("output_json");
                     let violations_str: String = row.get("constraint_violations");
                     let failure_cat_str: Option<String> = row.get("failure_category");
+
                     steps.push(TrajectoryStep {
                         step_id: row.get::<i64, _>("step_id") as u32,
-                        job_id: Some(job_id.to_string()),
                         action: row.get("action"),
                         tool_name: row.get("tool_name"),
                         input: serde_json::from_str(&input_str).unwrap_or(serde_json::Value::Null),
@@ -115,7 +164,7 @@ impl TrajectoryOps for UniversalJobQueue {
                         timestamp: row.get("timestamp"),
                         constraint_violations: serde_json::from_str(&violations_str)
                             .unwrap_or_default(),
-                        is_critical_failure: row.get::<i64, _>("is_critical_failure") != 0,
+                        is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
                         failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
                         reasoning: row.get("reasoning"),
                         parent_step_id: row.get("parent_step_id"),
@@ -144,9 +193,9 @@ impl TrajectoryOps for UniversalJobQueue {
                     let output_str: String = row.get("output_json");
                     let violations_str: String = row.get("constraint_violations");
                     let failure_cat_str: Option<String> = row.get("failure_category");
+
                     steps.push(TrajectoryStep {
                         step_id: row.get::<i32, _>("step_id") as u32,
-                        job_id: Some(job_id.to_string()),
                         action: row.get("action"),
                         tool_name: row.get("tool_name"),
                         input: serde_json::from_str(&input_str).unwrap_or(serde_json::Value::Null),

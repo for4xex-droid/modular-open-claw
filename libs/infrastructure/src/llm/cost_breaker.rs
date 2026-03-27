@@ -191,8 +191,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_cost_limit_green() {
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None)
+            UniversalJobQueue::new("sqlite::memory:", None, ts)
                 .await
                 .unwrap(),
         );

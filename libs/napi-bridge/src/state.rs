@@ -25,7 +25,17 @@ pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
         // SLM Bridge の初期化
         let slm = get_slm_bridge().await?;
 
-        let mut queue = UniversalJobQueue::new(&db_path, Some(slm.clone())).await?;
+        let ts: Arc<dyn aiome_core::trajectory::TrajectoryStore> = Arc::new(
+            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::from_db_path(
+                &db_path,
+            )
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create TrajectoryStore: {}", e),
+            })?,
+        );
+
+        let mut queue = UniversalJobQueue::new(&db_path, Some(slm.clone()), ts).await?;
         queue.slm_bridge = Some(slm.clone());
 
         Ok(Arc::new(queue))

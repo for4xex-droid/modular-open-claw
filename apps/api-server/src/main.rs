@@ -149,12 +149,35 @@ async fn main() -> anyhow::Result<()> {
         })
     };
 
-    let job_queue = infrastructure::job_queue::UniversalJobQueue::new(&config.db_path, None)
-        .await
-        .unwrap_or_else(|e| {
-            error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
-            std::process::exit(1);
-        });
+    let trajectory_store: Arc<dyn aiome_core::trajectory::TrajectoryStore> = {
+        let ts_pool = if config.db_path.starts_with("postgres://")
+            || config.db_path.starts_with("postgresql://")
+        {
+            let pg = sqlx::PgPool::connect(&config.db_path)
+                .await
+                .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
+            infrastructure::db::DatabasePool::Postgres(pg)
+        } else {
+            use std::str::FromStr;
+            let opts = sqlx::sqlite::SqliteConnectOptions::from_str(&config.db_path)
+                .map_err(|e| anyhow::anyhow!("🚨 Invalid DB path for TS: {}", e))?
+                .create_if_missing(true);
+            let sq = sqlx::sqlite::SqlitePoolOptions::new()
+                .connect_with(opts)
+                .await
+                .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
+            infrastructure::db::DatabasePool::Sqlite(sq)
+        };
+        Arc::new(infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool))
+    };
+
+    let job_queue =
+        infrastructure::job_queue::UniversalJobQueue::new(&config.db_path, None, trajectory_store)
+            .await
+            .unwrap_or_else(|e| {
+                error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
+                std::process::exit(1);
+            });
     let job_queue = Arc::new(job_queue);
 
     let audit_logger = Arc::new(AsyncAuditLogger::new(

@@ -224,8 +224,18 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generator_generates_intent_green() {
         let _tmp = tempdir().unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:", None)
+            crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
                 .await
                 .unwrap(),
         );
@@ -289,8 +299,18 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generation_reflects_soul_state() {
         let _tmp = tempdir().unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:", None)
+            crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
                 .await
                 .unwrap(),
         );

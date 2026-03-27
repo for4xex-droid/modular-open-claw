@@ -14,6 +14,18 @@ use soul::model::AgentSoul;
 use std::env;
 use std::sync::Arc;
 
+async fn create_pg_queue(url: &str) -> anyhow::Result<UniversalJobQueue> {
+    let ts_pool = {
+        let pg = sqlx::PgPool::connect(url).await?;
+        crate::db::DatabasePool::Postgres(pg)
+    };
+    let ts = std::sync::Arc::new(
+        crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool),
+    );
+    let jq = UniversalJobQueue::new(url, None, ts).await?;
+    Ok(jq)
+}
+
 #[tokio::test]
 async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     // DATABASE_URL が無ければテストをスキップする
@@ -28,7 +40,7 @@ async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     println!("🐘 Testing PostgreSQL with URL: {}", url);
 
     // Act
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
+    let jq = create_pg_queue(&url).await?;
 
     // Assert
     assert!(jq.get_pool().is_postgres(), "Should be a Postgres pool");
@@ -50,7 +62,7 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
+    let jq = create_pg_queue(&url).await?;
     let pool = jq.get_pool().get_postgres_pool_or_err()?;
 
     // このテーブルたちは現時点の postgres_init.rs では未作成のため、ここで失敗（RED）になることが期待される
@@ -101,7 +113,7 @@ async fn test_postgres_soul_store_crud() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
+    let jq = create_pg_queue(&url).await?;
     let pool = jq.get_pool().clone();
 
     let store = UniversalSoulStore::new(pool);
@@ -124,7 +136,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
         Err(_) => return Ok(()),
     };
 
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
+    let jq = create_pg_queue(&url).await?;
     let pool = jq.get_pool().clone();
 
     let store = UniversalArtifactStore::new(pool, std::path::PathBuf::from("/tmp/pg_artifacts"));
@@ -162,12 +174,8 @@ async fn test_postgres_gig_engine_placeholder() -> anyhow::Result<()> {
         Ok(val) => val,
         Err(_) => return Ok(()),
     };
-    let jq: UniversalJobQueue = UniversalJobQueue::new(&url, None).await?;
-    let pool = jq.get_pool().clone();
-
-    // NOTE: This will fail to compile initially once we rename the struct,
-    // but for now it's RED because the table might be missing or logic not universal.
-    // let _engine = crate::gig_engine::UniversalGigEngine::new(pool, jq.into());
+    let jq = create_pg_queue(&url).await?;
+    let _pool = jq.get_pool().clone();
 
     Ok(())
 }

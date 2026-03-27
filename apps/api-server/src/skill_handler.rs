@@ -208,6 +208,10 @@ pub async fn execute_wasm_skill(
         step_category: aiome_core::trajectory::StepCategory::Execution,
         completion_criteria: None,
         interaction_id: None,
+        verified_invariants: vec![],
+        verification_time_us: None,
+        state_hash: None,
+        parent_state_hash: None,
     };
 
     let result_str = match unverified.verify(&state.wasm_skill_manager).await {
@@ -270,7 +274,7 @@ pub async fn execute_wasm_skill(
         }
 
         use aiome_core::trajectory::TrajectoryStore;
-        let _ = state.job_queue.record_step(id, step).await;
+        let _ = state.job_queue.trajectory_store.record_step(id, step).await;
     }
 
     result_str

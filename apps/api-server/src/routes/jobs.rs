@@ -106,8 +106,9 @@ pub async fn get_trajectory_handler(
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let steps = state
+    let steps: Vec<TrajectoryStep> = state
         .job_queue
+        .trajectory_store
         .fetch_trajectory(&job_id)
         .await
         .map_err(AppError::from)?;
@@ -139,8 +140,9 @@ pub async fn get_diagnosis_handler(
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let diagnosis = state
+    let diagnosis: Option<AgentDiagnosis> = state
         .job_queue
+        .trajectory_store
         .fetch_diagnosis(&job_id)
         .await
         .map_err(AppError::from)?;

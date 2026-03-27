@@ -72,7 +72,12 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
     let _ = dotenvy::dotenv();
     if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
         info!("🔧 Bootstrapping Test JobQueue against PostgreSQL");
-        let jq = UniversalJobQueue::new(&pg_url, None)
+        let ts_pool = {
+            let pg = sqlx::PgPool::connect(&pg_url).await.expect("TS pool connect");
+            crate::db::DatabasePool::Postgres(pg)
+        };
+        let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
+        let jq = UniversalJobQueue::new(&pg_url, None, ts)
             .await
             .expect("Failed to create test job queue (Postgres)");
 
@@ -82,8 +87,15 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
 
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
+    let ts_pool = crate::db::DatabasePool::Sqlite(
+        sqlx::sqlite::SqlitePoolOptions::new()
+            .connect(&format!("sqlite://{}", db_path_str))
+            .await
+            .expect("TS pool connect"),
+    );
+    let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
-    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str), None)
+    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str), None, ts)
         .await
         .expect("Failed to create test job queue");
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist

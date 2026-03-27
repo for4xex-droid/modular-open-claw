@@ -618,7 +618,7 @@ pub async fn trigger_agent_chat(
 
         tokio::spawn(async move {
             use aiome_core::trajectory::TrajectoryStore;
-            if let Ok(trajectory) = jq.fetch_trajectory(&diag_exec_id).await {
+            if let Ok(trajectory) = jq.trajectory_store.fetch_trajectory(&diag_exec_id).await {
                 if trajectory
                     .iter()
                     .any(|s| s.is_critical_failure || !s.constraint_violations.is_empty())
@@ -655,7 +655,10 @@ pub async fn trigger_agent_chat(
                     match diagnostics.diagnose(&trajectory, &virtual_job).await {
                         Ok(diagnosis) => {
                             info!("✅ [AgentRx] Diagnosis complete: {}", diagnosis.root_cause);
-                            let _ = jq.store_diagnosis(&diag_exec_id, diagnosis).await;
+                            let _ = jq
+                                .trajectory_store
+                                .store_diagnosis(&diag_exec_id, diagnosis)
+                                .await;
                         }
                         Err(e) => tracing::error!("❌ [AgentRx] Diagnostic failed: {}", e),
                     }
@@ -714,7 +717,17 @@ mod tests {
         let db_path = tmp_dir.path().join("test_agent.db");
         let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
 
-        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None).await.unwrap());
+        let ts = std::sync::Arc::new(
+            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                infrastructure::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect(&pool_url)
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
+        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap());
         let registry = Arc::new(RegistryManager::new(
             jq.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
         ));

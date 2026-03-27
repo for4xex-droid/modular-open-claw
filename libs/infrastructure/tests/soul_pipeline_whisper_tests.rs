@@ -49,9 +49,19 @@ impl LlmProvider for MockLlm {
 #[tokio::test]
 async fn test_soul_pipeline_with_whisper_integration() {
     let mock_llm = Arc::new(MockLlm);
+    let ts = std::sync::Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+            infrastructure::db::DatabasePool::Sqlite(
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .connect("sqlite::memory:")
+                    .await
+                    .unwrap(),
+            ),
+        ),
+    );
     let adapter = CoreDomainAdapter::new(
         Arc::new(
-            infrastructure::job_queue::UniversalJobQueue::new(":memory:", None)
+            infrastructure::job_queue::UniversalJobQueue::new(":memory:", None, ts)
                 .await
                 .unwrap(),
         ),

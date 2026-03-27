@@ -196,7 +196,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_semantic_cache_roundtrip() {
-        let jq = Arc::new(UniversalJobQueue::new(":memory:", None).await.unwrap());
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(),
+                ),
+            ),
+        );
+        let jq = Arc::new(UniversalJobQueue::new(":memory:", None, ts).await.unwrap());
         let cache = SemanticCache::new(jq);
 
         let prompt = "hello";
