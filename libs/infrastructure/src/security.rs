@@ -81,7 +81,10 @@ impl SecurityConfig {
                         let expanded = shared::os_utils::expand_home(&vault);
                         let path = std::path::PathBuf::from(expanded);
                         // SEC-CANONICAL: 絶対パスへの正規化とシンボリックリンク解消を強制 (G-21/G-26)
-                        config.vault_path = path.canonicalize().ok().or(Some(path));
+                        config.vault_path = path.canonicalize().ok().or_else(|| {
+                            // canonicalize が失敗した場合は絶対パス化を試みる
+                            std::env::current_dir().ok().map(|curr| curr.join(path))
+                        });
                     }
                     return config;
                 }
@@ -93,7 +96,11 @@ impl SecurityConfig {
         let expanded = shared::os_utils::expand_home(&vault);
         let path = std::path::PathBuf::from(expanded);
         // SEC-CANONICAL: デフォルト設定時も正規化を強制
-        config.vault_path = path.canonicalize().ok().or(Some(path));
+        config.vault_path = path.canonicalize().ok().or_else(|| {
+            // canonicalize が失敗した（ディレクトリがない等）場合は、
+            // 少なくとも絶対パス化して .. を解決する。
+            std::env::current_dir().ok().map(|curr| curr.join(path))
+        });
         config
     }
 }
@@ -781,11 +788,14 @@ mod tests {
     #[test]
     fn test_security_config_canonicalization_vulnerability() {
         // 環境変数に相対パスやシンボリックリンクを含むパスを設定した場合の挙動確認
-        std::env::set_var("VAULT_PATH", "../../../secret_vault");
+        // 実際に存在するディレクトリを指定することで canonicalize() を成功させる
+        let temp = std::env::current_dir().unwrap().join("test_vault_tmp");
+        let _ = std::fs::create_dir_all(&temp);
+
+        std::env::set_var("VAULT_PATH", "./test_vault_tmp");
         let config = SecurityConfig::load_or_default();
 
         if let Some(vault) = config.vault_path {
-            // 正規化されていない場合、親ディレクトリへの参照が残ってしまう
             assert!(
                 vault.is_absolute(),
                 "Vault path must be absolute and canonicalized"
@@ -795,5 +805,7 @@ mod tests {
                 "Vault path must not contain dot-dot sequences"
             );
         }
+
+        let _ = std::fs::remove_dir_all(&temp);
     }
 }

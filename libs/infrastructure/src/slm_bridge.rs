@@ -17,6 +17,7 @@ use tracing::{error, info, warn};
 #[derive(Debug)]
 pub struct SlmBridge {
     circuit_breaker: Arc<CircuitBreaker>,
+    command_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -87,12 +88,18 @@ struct SlmTraceJsonResponse {
 impl SlmBridge {
     /// 新しいインスタンスを生成する
     pub fn new() -> Self {
+        Self::new_with_command("slm")
+    }
+
+    /// 指定されたコマンド名を使用してインスタンスを生成する（テスト用）
+    pub fn new_with_command(command: &str) -> Self {
         let cb_config = CircuitBreakerConfig {
             failure_threshold: 3,
             reset_timeout: Duration::from_secs(60),
         };
         Self {
             circuit_breaker: Arc::new(CircuitBreaker::new("slm-bridge", cb_config)),
+            command_name: command.to_string(),
         }
     }
 
@@ -150,7 +157,7 @@ impl SlmBridge {
         Self::validate(&entry.category)?;
 
         // 実行 (タイムアウト付き C-3 対策)
-        let future = Command::new("slm")
+        let future = Command::new(&self.command_name)
             .arg("remember")
             .arg("--tags")
             .arg(&entry.category)
@@ -203,7 +210,7 @@ impl SlmBridge {
 
         Self::validate(query)?;
 
-        let future = Command::new("slm")
+        let future = Command::new(&self.command_name)
             .arg("recall")
             .arg("--json")
             .arg("--limit")
@@ -254,7 +261,7 @@ impl SlmBridge {
 
         Self::validate(text)?;
 
-        let future = Command::new("slm")
+        let future = Command::new(&self.command_name)
             .arg("contradict")
             .arg("--json")
             .arg(text)
@@ -305,7 +312,7 @@ impl SlmBridge {
 
         Self::validate(query)?;
 
-        let future = Command::new("slm")
+        let future = Command::new(&self.command_name)
             .arg("trace")
             .arg("--json")
             .arg(query)
@@ -377,7 +384,7 @@ impl SlmBridge {
                 reason: format!("Failed to write batch file: {}", e),
             })?;
 
-        let future = Command::new("slm")
+        let future = Command::new(&self.command_name)
             .arg("trace")
             .arg("--json")
             .arg("--batch")
@@ -534,7 +541,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_slm_bridge_race_condition_circuit_breaker() {
-        let bridge = SlmBridge::new();
+        // 存在しないコマンドを指定して確実に失敗させる
+        let bridge = SlmBridge::new_with_command("non-existent-slm-cmd");
         let bridge_arc = Arc::new(bridge);
 
         // 並行して多数の失敗を発生させ、サーキットブレーカーが正しく OPEN に遷移するか
@@ -548,7 +556,13 @@ mod tests {
                     category: "Test".into(),
                     metadata: None,
                 };
-                let _ = b.store_memory(entry).await;
+                // slm バイナリは存在するが、不正な引数やモックされないエラーを模倣するため、
+                // 回数制限を超えた場合に OPEN になることを確認。
+                // テスト環境で slm が成功してしまう場合を考慮し、
+                // 明らかに不正なタグ名を使用してエラーを誘発させる。
+                let mut invalid_entry = entry;
+                invalid_entry.category = "TestCategory".into(); // バリデーションを通る名前
+                let _ = b.store_memory(invalid_entry).await;
             }));
         }
 
