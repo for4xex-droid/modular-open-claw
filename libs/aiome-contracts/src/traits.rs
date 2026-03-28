@@ -431,6 +431,15 @@ pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
     }
 }
 
+/// 6. システム状態永続化 (SystemStateOps)
+#[async_trait]
+pub trait SystemStateOps: Send + Sync + std::fmt::Debug {
+    /// キーを指定してシステム状態を保存する
+    async fn store_system_state(&self, key: &str, value: &str) -> Result<(), AiomeError>;
+    /// キーを指定してシステム状態を取得する
+    async fn fetch_system_state(&self, key: &str) -> Result<Option<String>, AiomeError>;
+}
+
 /// 5. エージェント進化・統計 (AgentEvolver)
 #[async_trait]
 pub trait AgentEvolver: Send + Sync + std::fmt::Debug {
@@ -555,7 +564,11 @@ pub trait JobQueue:
     + ImmuneSystemOps
     + FederationRegistry
     + BiomeRegistry
+    + SystemStateOps
     + SoulStore
+    + Send
+    + Sync
+    + std::fmt::Debug
 {
     // --- Phase 10-B: Swarm Sync & CRDT ---
     async fn sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError>;

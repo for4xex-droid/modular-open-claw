@@ -7,6 +7,7 @@
 | モジュール | 役割 | 状態 |
 |---|---|---|
 | `aiome_log` | システム全体の標準化されたロギング（JSON/Text）を提供。 | 実装完了 |
+| `boundary_verifier` | LLM を介さない O(1) のシェルコマンド境界検証（不変条件強制）を提供。 | **Phase 47 完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **Phase 21 継続中** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
@@ -22,6 +23,7 @@
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。 | **Phase 8.8** |
 | `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。Phase 2b で Soul Pipeline と統合済。 | **機能強化** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
+| `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 4** で `WatchtowerOps` による Poincare GC（バッチ処理対応）を実装。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
@@ -52,4 +54,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)*
+*最終更新: 2026-03-28 (Phase 48 / Invariant-DAG Foundation)*

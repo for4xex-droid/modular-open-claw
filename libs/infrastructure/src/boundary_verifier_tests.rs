@@ -15,6 +15,12 @@ mod tests {
         BoundaryVerifier::new(
             PathBuf::from("/tmp/aiome-workspace"),
             Some(PathBuf::from("/tmp/aiome-vault")),
+            vec![
+                "ls".to_string(),
+                "cat".to_string(),
+                "cargo".to_string(),
+                "echo".to_string(),
+            ],
         )
     }
 
@@ -74,5 +80,29 @@ mod tests {
         let verifier = setup_verifier();
         let result = verifier.verify_command("cat /tmp/aiome-vault/secret", true);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_binary_whitelist_dynamic_pass() {
+        let verifier = BoundaryVerifier::from_global_config();
+        // 'docker' は GLOBAL_SECURITY_CONFIG にあるが、現在の BoundaryVerifier にはハードコードされていない
+        let result = verifier.verify_command("docker ps", false);
+        assert!(
+            result.is_ok(),
+            "Expected 'docker' to pass via GLOBAL_SECURITY_CONFIG"
+        );
+    }
+
+    #[test]
+    fn test_payload_size_limit_reject() {
+        let verifier = setup_verifier();
+        // 64KB を超える巨大な引数
+        let large_arg = "a".repeat(70000);
+        let cmd = format!("echo {}", large_arg);
+        let result = verifier.verify_command(&cmd, false);
+        assert!(
+            matches!(result, Err(AiomeError::Infrastructure { .. })),
+            "Expected rejection for large payload"
+        );
     }
 }

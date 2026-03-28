@@ -111,6 +111,15 @@ mod tests {
         karma_lessons: Vec<String>,
         stats: AgentStats,
     }
+    #[async_trait::async_trait]
+    impl aiome_contracts::traits::SystemStateOps for MockJobQueue {
+        async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_system_state(&self, _: &str) -> Result<Option<String>, AiomeError> {
+            Ok(None)
+        }
+    }
 
     #[async_trait]
     impl JobQueue for MockJobQueue {

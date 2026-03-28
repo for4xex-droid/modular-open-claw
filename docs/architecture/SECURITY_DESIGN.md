@@ -53,6 +53,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 30 | **Gemini Session Hijacking**| **Context Poisoning via interaction_id** | 🔴 High | **Interaction ID Validation + Trait-Based Provider Isolation (Phase 5)** |
 | 31 | **Secret Duplication in Memory**| **Secrets cloned via config.clone()** | 🔴 High | **Arc<AiomeConfig> sharing & immediate env::remove (Phase 13.3)** |
 | 32 | **Memory Bloat & Cognitive Noise** | **Endless ingestion of low-value artifacts** | 🟡 Mid | **Poincare-based Autonomous GC (Phase 4)** |
+| 33 | **Boundary Violation** | **Malformed Shell Command Injection** | 🔴 High | **BoundaryVerifier (O(1) Tautology) (Phase 47)** |
+| 34 | **Causal Tampering** | **Job Graph Transformation / History Deletion** | 🔴 High | **Invariant-DAG (SHA-256 Hash Chain) (Phase 48)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -69,6 +71,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.
+- **Boundary Tautology Verification (Phase 47)**: Implements `BoundaryVerifier` as a microsecond-latency O(1) filter. It enforces immutable security invariants (shell meta-chars, restricted system paths, size limits) before any command reaches the OS shell, independent of LLM reasoning.
 - **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
 - **5-Layer Shadow Sandbox (Phase 43)**: `DockerConductor` enforces five progressive security layers for sub-agent delegation: 1) **Fork Bomb Protection** (Semaphore limit: 3), 2) **Economic Binding** (Validation via `CommerceEngine`), 3) **Absolute Sterilization** (Pre-execution environment isolation), 4) **BastionGuard Strict** (Read-only root, no network by default), and 5) **Technical Timeout** (300s hard kill).
@@ -78,6 +81,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
 - **Hash Chains**: All operational logs in SQLite are cryptographically linked using SHA-256 hash chains, enabling immediate detection of deletion or tampering efforts.
 - **Diagnostics & Immunity Ledger (Phase 8.8)**: Exposes a formalized `Audit & Immunity Ledger` in the management console. This provides human-readable visibility into local `agent_diagnoses` (self-repair trails) and `audit_ledger_global` (hash-chained record mutations), satisfying NURTURE §12 auditability requirements.
+- **Causal Hash Chains (Invariant-DAG) (Phase 48)**: All task execution graphs are secured using SHA-256 hash chains. The `TaskDispatcher` autonomously verifies the parent link integrity before dispatching sub-jobs, preventing "causal hijacking" where an agent might be tricked into executing a malicious step from a fake history.
 - **Federated Metrics Persistence (Phase 24)**: Extends the `Samsara Hub` with a `federated_metrics` table to record node-level health, job completion rates, and karma growth. Enables global observability and anomaly detection across the autonomous federation.
 
 ### Layer 4: Build Isolation & Formal TDD Forge (S-Rank Defense)
@@ -143,4 +147,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)*
+*最終更新: 2026-03-28 (Phase 48 / Invariant-DAG Foundation)*

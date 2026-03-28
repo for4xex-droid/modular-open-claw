@@ -323,6 +323,22 @@ mod tests {
 
     #[derive(Debug)]
     struct BusyJQ;
+    #[async_trait::async_trait]
+    impl aiome_contracts::traits::SystemStateOps for BusyJQ {
+        async fn store_system_state(
+            &self,
+            _: &str,
+            _: &str,
+        ) -> Result<(), aiome_core::error::AiomeError> {
+            Ok(())
+        }
+        async fn fetch_system_state(
+            &self,
+            _: &str,
+        ) -> Result<Option<String>, aiome_core::error::AiomeError> {
+            Ok(None)
+        }
+    }
     #[async_trait]
     impl JobQueue for BusyJQ {
         async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> {

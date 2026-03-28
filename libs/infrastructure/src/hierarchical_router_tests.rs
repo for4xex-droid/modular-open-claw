@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
     use crate::hierarchical_router::HierarchicalRouter;
-    use crate::test_utils::mock_job_queue::MockLlm;
+    use crate::test_utils::job_queue_mock::GlobalMockLlm;
     use std::sync::Arc;
 
     #[test]
@@ -85,7 +85,7 @@ mod tests {
         .await
         .unwrap();
 
-        let mock_llm = Arc::new(MockLlm);
+        let mock_llm = Arc::new(GlobalMockLlm);
         let router = HierarchicalRouter::new(mock_llm, pool.clone());
 
         // Test route (MockLlm returns "mock", parse_llm_selection finds "1")

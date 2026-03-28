@@ -229,6 +229,7 @@ impl AdaptiveImmuneSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
     use aiome_contracts::biome::BiomeMessage;
     use aiome_contracts::llm::LlmResponse;
 
@@ -267,6 +268,15 @@ mod tests {
     #[derive(Debug)]
     struct MockJQ {
         rules: Vec<ImmuneRule>,
+    }
+    #[async_trait]
+    impl aiome_contracts::traits::SystemStateOps for MockJQ {
+        async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_system_state(&self, _: &str) -> Result<Option<String>, AiomeError> {
+            Ok(None)
+        }
     }
     #[async_trait]
     impl JobQueue for MockJQ {

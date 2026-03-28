@@ -59,6 +59,9 @@ pub mod hierarchical_router;
 pub mod immune_system;
 /// Intent の生成・サニタイズ (AgentSense Phase AS-1)
 pub mod intent;
+pub mod invariant_dag;
+#[cfg(test)]
+mod invariant_dag_tests;
 /// Universal Job Queue backend interface
 pub mod job_queue;
 /// ドキュメント・Karma検索インデックス

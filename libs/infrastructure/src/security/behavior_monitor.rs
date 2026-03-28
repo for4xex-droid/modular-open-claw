@@ -91,8 +91,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_behavior_monitor_blocks_after_limit() {
-        use crate::test_utils::mock_job_queue::MockJobQueue;
-        let jq = Arc::new(MockJobQueue);
+        use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
+        let jq = Arc::new(GlobalMockJobQueue::default());
         // Note: MockJobQueue.increment_security_request_count returns 1 always in the mock implementation above.
         // To test limit, we need a smarter mock or just verify the call.
 
@@ -122,8 +122,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_behavior_monitor_detects_trojan_patterns() {
-        use crate::test_utils::mock_job_queue::MockJobQueue;
-        let jq = Arc::new(MockJobQueue);
+        use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
+        let jq = Arc::new(GlobalMockJobQueue::default());
         let sandbox = Arc::new(PathSandbox::new("/tmp").unwrap());
         let monitor = BehaviorMonitor::new(jq, sandbox, None, 100);
 

@@ -12,14 +12,20 @@ use std::path::PathBuf;
 pub struct BoundaryVerifier {
     workspace_root: PathBuf,
     vault_path: Option<PathBuf>,
+    allowed_binaries: Vec<String>,
 }
 
 impl BoundaryVerifier {
     /// 新しいインスタンスを生成する
-    pub fn new(workspace_root: PathBuf, vault_path: Option<PathBuf>) -> Self {
+    pub fn new(
+        workspace_root: PathBuf,
+        vault_path: Option<PathBuf>,
+        allowed_binaries: Vec<String>,
+    ) -> Self {
         Self {
             workspace_root,
             vault_path,
+            allowed_binaries,
         }
     }
 
@@ -29,6 +35,7 @@ impl BoundaryVerifier {
         Self::new(
             GLOBAL_SECURITY_CONFIG.workspace_root.clone(),
             GLOBAL_SECURITY_CONFIG.vault_path.clone(),
+            GLOBAL_SECURITY_CONFIG.allowed_binaries.clone(),
         )
     }
 
@@ -39,6 +46,18 @@ impl BoundaryVerifier {
         is_system_internal: bool,
     ) -> Result<Vec<String>, AiomeError> {
         let mut verified = Vec::new();
+
+        // 0. ペイロードサイズ制限 (O(1))
+        // 巨大なコマンドによる DoS 防止
+        if cmd.len() > 64 * 1024 {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Boundary Invariant Violation: Command payload size {} exceeds limit (64KB)",
+                    cmd.len()
+                ),
+            });
+        }
+        verified.push("payload_size_limit".into());
 
         // 1. メタ文字チェック (O(n))
         // インジェクション防止のトートロジー
@@ -55,8 +74,7 @@ impl BoundaryVerifier {
         // 2. バイナリ・ホワイトリスト
         // (簡易実装: 最初の単語をチェック)
         let binary = cmd.split_whitespace().next().unwrap_or("");
-        let allowed_binaries = ["ls", "cat", "cargo", "git", "echo", "pwd"];
-        if !allowed_binaries.contains(&binary) {
+        if !is_system_internal && !self.allowed_binaries.contains(&binary.to_string()) {
             return Err(AiomeError::Infrastructure {
                 reason: format!(
                     "Boundary Invariant Violation: Binary '{}' is not in the allowed whitelist",
@@ -70,7 +88,7 @@ impl BoundaryVerifier {
         // コマンドに含まれるパスっぽい文字列を抽出してチェック
         for word in cmd.split_whitespace() {
             if word.starts_with('/') || word.contains('.') {
-                let p = std::path::Path::new(word);
+                let _p = std::path::Path::new(word);
 
                 // システムパスへのアクセス禁止
                 let system_roots = ["/etc", "/usr", "/System", "/var", "/bin", "/sbin"];

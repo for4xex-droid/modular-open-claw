@@ -3285,6 +3285,13 @@
             ]
           },
           "output": {},
+          "parent_state_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Phase 48: 親ノードのハッシュ"
+          },
           "parent_step_id": {
             "type": [
               "string",
@@ -3298,6 +3305,13 @@
               "null"
             ],
             "description": "「なぜこの行動を選んだか」の推論理由"
+          },
+          "state_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Phase 48: DAG ノードのハッシュ（改ざん検知用）"
           },
           "step_category": {
             "$ref": "#/components/schemas/StepCategory",
@@ -3316,6 +3330,22 @@
               "string",
               "null"
             ]
+          },
+          "verification_time_us": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Phase 47: 検証所要時間 (マイクロ秒)",
+            "minimum": 0
+          },
+          "verified_invariants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Phase 47: BoundaryVerifier で検証済みの不変条件名リスト"
           }
         }
       },

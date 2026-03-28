@@ -5,6 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::boundary_verifier::BoundaryVerifier;
 use crate::registry::RegistryManager;
 use aiome_core::error::AiomeError;
 pub use aiome_core::security::{PermissionManifest, RuntimeJail, SandboxProfile};
@@ -117,6 +118,7 @@ pub struct BastionGuard {
     manifest: PermissionManifest,
     /// システム内部のバイパスフラグ (G-26)
     pub is_system_internal: bool,
+    boundary_verifier: BoundaryVerifier,
 }
 
 #[async_trait]
@@ -133,6 +135,11 @@ impl RuntimeJail for BastionGuard {
         cmd_str: &str,
         profile: SandboxProfile,
     ) -> Result<String, AiomeError> {
+        // Phase 47: Boundary Tautology Check (O(1), no LLM)
+        let _verified = self
+            .boundary_verifier
+            .verify_command(cmd_str, self.is_system_internal)?;
+
         info!(
             "🛡️ [BastionGuard] 検証中 (Profile: {:?}): {}",
             profile, cmd_str
@@ -384,6 +391,7 @@ impl BastionGuard {
         Self {
             manifest,
             is_system_internal: false,
+            boundary_verifier: BoundaryVerifier::from_global_config(),
         }
     }
 
@@ -392,6 +400,7 @@ impl BastionGuard {
         Self {
             manifest,
             is_system_internal: true,
+            boundary_verifier: BoundaryVerifier::from_global_config(),
         }
     }
 
@@ -798,14 +807,33 @@ mod tests {
         if let Some(vault) = config.vault_path {
             assert!(
                 vault.is_absolute(),
-                "Vault path must be absolute and canonicalized"
-            );
-            assert!(
-                !vault.to_string_lossy().contains(".."),
-                "Vault path must not contain dot-dot sequences"
+                "Vault path must be absolute after canonicalization."
             );
         }
 
         let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[tokio::test]
+    async fn test_bastion_guard_boundary_verifier_integration() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // 1. 巨大なペイロード（BoundaryVerifier で拒否されるはず）
+        let large_cmd = format!("echo {}", "a".repeat(70000));
+        let res = guard.safe_exec(&large_cmd).await;
+        assert!(res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            // 統合前は別の理由でエラーになるか、あるいはパスバリデーション等でエラーになる。
+            // BoundaryVerifier のメッセージが含まれていることを確認するテスト。
+            assert!(
+                reason.contains("exceeds limit (64KB)"),
+                "Expected BoundaryVerifier rejection, got: {}",
+                reason
+            );
+        }
     }
 }

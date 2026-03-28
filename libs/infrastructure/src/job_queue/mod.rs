@@ -13,7 +13,7 @@ use aiome_contracts::security::PermissionManifest;
 use aiome_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
-    SnsMetricsRecord, SoulStore, TaskRegistry,
+    SnsMetricsRecord, SoulStore, SystemStateOps, TaskRegistry,
 };
 use aiome_contracts::types::AgentStats;
 use aiome_core::error::AiomeError;
@@ -46,6 +46,26 @@ pub mod swarm;
 pub mod taxonomy;
 pub mod trajectory_store;
 pub mod watchtower;
+
+#[async_trait]
+impl aiome_contracts::traits::SystemStateOps for UniversalJobQueue {
+    async fn store_system_state(&self, key: &str, value: &str) -> Result<(), AiomeError> {
+        let q = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
+        };
+        crate::sql_exec!(&self.pool, &q, key, value).map(|_| ())
+    }
+
+    async fn fetch_system_state(&self, key: &str) -> Result<Option<String>, AiomeError> {
+        let q = format!(
+            "SELECT value FROM system_state WHERE key = {}",
+            self.pool.ph(0)
+        );
+        let opt: Option<(String,)> = crate::sql_fetch_optional!(&self.pool, (String,), &q, key)?;
+        Ok(opt.map(|r| r.0))
+    }
+}
 
 pub use self::core_ops::CoreOps;
 pub use self::evaluation::EvaluationOps;
