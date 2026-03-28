@@ -29,6 +29,7 @@ graph TD
         management-console[management-console]
         watchtower[watchtower]
         aiome-migrate[aiome-migrate]
+        shadow-worker[shadow-worker]
     end
 
     subgraph Libs
@@ -72,6 +73,7 @@ graph TD
     soul --> aiome-contracts
     aiome-migrate --> aiome-core
     aiome-migrate --> infrastructure
+    shadow-worker --> aiome-contracts
 ```
 
 ## 4. Directory Map (Crates)
@@ -94,6 +96,7 @@ graph TD
 | `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
 | `soul` | `libs/soul` | (Core Module) |
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
+| `shadow-worker` | `apps/shadow-worker` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*

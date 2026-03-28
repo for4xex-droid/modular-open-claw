@@ -1,3 +1,7 @@
+- **Phase 50: Agentic A2A gRPC Protocol [完了]**
+    - **DockerConductor**: 同期的な `docker exec` から、非同期の `tonic` ベース gRPC ストリーミング通信へとアーキテクチャを刷新し、タスク実行状況をリアルタイムにサブスクライブ可能に。
+    - **Shadow Worker**: 独立したコンテナ化 gRPC サーバー (`aiome-shadow-worker`) として実装。タスクのバックグラウンド実行（Detached）プロトコルに対応。
+    - **Security & Networking**: ランダムにアサインされるローカルポートマッピング (`127.0.0.1:0`) と UUID ベースのワンタイム・トークン認証を整備し、セキュアな A2A 通信環境を実現。
 - **Phase 4: Poincare Memory Lifecycle & GC [完了]**
     - **SlmBridge Evolution**: `calculate_importance` および `calculate_importance_batch` を実装。一時ファイルを用いたバッチ処理によりプロセス起動オーバーヘッドを削減。
     - **Autonomous GC (Watchtower)**: `do_karma_decay_sweep` に Poincare ベースのフィルタリングを統合。バッチ評価により O(1) プロセス起動での GC を実現。

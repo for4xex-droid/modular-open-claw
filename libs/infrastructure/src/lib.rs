@@ -57,6 +57,8 @@ pub mod docker_conductor;
 pub mod dream_state;
 /// AIギグ・エコノミー受発注エンジン
 pub mod gig_engine;
+#[cfg(feature = "grpc")]
+pub mod grpc;
 /// 定期診断・プロアクティブ発火
 pub mod heartbeat_wakeup;
 pub mod hierarchical_router;

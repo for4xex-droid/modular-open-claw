@@ -12,7 +12,7 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "apps/watchtower",
-    "libs/aiome-contracts", "libs/soul", "apps/aiome-migrate",
+    "libs/aiome-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker",
 ]
 resolver = "2"
 
@@ -66,6 +66,9 @@ lru = "0.13"
 clap = { version = "4.5.4", features = ["derive"] }
 indicatif = "0.17"
 dotenvy = "0.15"
+tonic = "0.12"
+prost = "0.13"
+tonic-build = "0.12"
 [workspace.lints.clippy]
 unwrap_used = "warn"
 

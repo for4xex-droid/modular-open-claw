@@ -1,11 +1,15 @@
+use crate::grpc::a2a_grpc_client::{A2aGrpcClient, GrpcClientConfig};
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
+use aiome_contracts::a2a::{A2aClient, A2aTaskRequest};
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::Job;
 use async_trait::async_trait;
 use base64::Engine;
+use futures::StreamExt;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, Semaphore};
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -16,14 +20,19 @@ pub struct DockerConductor {
     bastion: BastionGuard,
     commerce_engine: Option<Arc<dyn CommerceEngine>>,
     concurrency_limit: Arc<Semaphore>,
+    grpc_config: GrpcClientConfig,
 }
 
 impl DockerConductor {
-    pub fn new(commerce_engine: Option<Arc<dyn CommerceEngine>>) -> Self {
+    pub fn new(
+        commerce_engine: Option<Arc<dyn CommerceEngine>>,
+        grpc_config: GrpcClientConfig,
+    ) -> Self {
         Self {
             bastion: BastionGuard::new_internal(PermissionManifest::default()),
             commerce_engine,
             concurrency_limit: Arc::new(Semaphore::new(3)), // MAX 3 concurrent shadow clones
+            grpc_config,
         }
     }
 }
@@ -132,16 +141,18 @@ impl TaskConductor for DockerConductor {
             let _ = std::fs::set_permissions(&yaml_path, std::fs::Permissions::from_mode(0o600));
         }
 
+        // One-time Token generation for gRPC Authorization
+        let auth_token = Uuid::new_v4().to_string();
+
         let _ = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
-                message: "Executing inside BastionGuard...".to_string(),
+                message: "Executing worker container via BastionGuard...".to_string(),
                 percent: Some(30),
             })
             .await;
 
-        // Encoding prompt
         let task_prompt_b64 = base64::engine::general_purpose::STANDARD.encode(task_prompt);
 
         // Capability Check: Verify Docker is installed
@@ -154,31 +165,131 @@ impl TaskConductor for DockerConductor {
             Err(_) => {
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(AiomeError::Infrastructure {
-                    reason: "Docker capability check failed. Docker is required for Shadow Clones."
-                        .to_string(),
+                    reason: "Docker capability check failed.".to_string(),
                 });
             }
         }
 
-        // Execution
-        // SEC-FIX: Use deterministic container name to allow easier management/cancellation
         let container_name = format!("aiome-job-{}", job.id);
+
+        // Detached Docker Execution (gRPC Server)
         let cmd = format!(
-            "docker agent run --name {} --exec --json {} --prompt-b64 {}",
+            "docker run -d --rm --name {} -p 127.0.0.1:0:50051 -e A2A_AUTH_TOKEN={} aiome-shadow-worker",
             container_name,
-            yaml_path.display(),
-            task_prompt_b64
+            auth_token
         );
 
         let start = std::time::Instant::now();
 
-        // Use tokio timeout for overall execution to avoid infinitely hanging containers
-        let exec_result = tokio::time::timeout(
-            std::time::Duration::from_secs(300), // 5 minute max execution
-            self.bastion
-                .safe_exec_with_profile(&cmd, SandboxProfile::Strict),
-        )
+        // 1. Start container
+        if let Err(e) = self
+            .bastion
+            .safe_exec_with_profile(&cmd, SandboxProfile::Strict)
+            .await
+        {
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Failed to start shadow worker container: {:?}", e),
+            });
+        }
+
+        // 2. Get dynamic port mapped to 50051
+        let port_cmd = format!("docker port {} 50051", container_name);
+
+        // Simple retry loop to wait for container to bind port
+        let mut mapped_port = String::new();
+        for _ in 0..10 {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            if let Ok(out) = self
+                .bastion
+                .safe_exec_with_profile(&port_cmd, SandboxProfile::Strict)
+                .await
+            {
+                // Expected output format: 127.0.0.1:32768
+                if let Some(port) = out.trim().split(':').last() {
+                    mapped_port = port.to_string();
+                    break;
+                }
+            }
+        }
+
+        if mapped_port.is_empty() {
+            let _ = self.cancel(&job.id).await;
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            return Err(AiomeError::Infrastructure {
+                reason: "Failed to resolve worker mapped port".to_string(),
+            });
+        }
+
+        // 3. Connect via gRPC
+        let mut client_config = self.grpc_config.clone();
+        client_config.endpoint_url = format!("http://127.0.0.1:{}", mapped_port);
+        client_config.auth_token = auth_token;
+
+        let grpc_client = A2aGrpcClient::new(client_config);
+        let req = A2aTaskRequest {
+            job_id: job.id.clone(),
+            prompt_b64: task_prompt_b64,
+            artifact_path: None,
+        };
+
+        // 4. Stream Results
+        let stream_result = tokio::time::timeout(Duration::from_secs(300), async {
+            grpc_client.execute_task(req).await
+        })
         .await;
+
+        let mut raw_output = String::new();
+        match stream_result {
+            Ok(Ok(mut stream)) => {
+                while let Some(progress_item) = stream.next().await {
+                    match progress_item {
+                        Ok(p) => {
+                            let _ = progress_tx
+                                .send(TaskEvent::Progress {
+                                    job_id: job.id.clone(),
+                                    conductor_id: self.conductor_name().to_string(),
+                                    message: p.message.clone(),
+                                    percent: Some(p.percent.min(100) as u8),
+                                })
+                                .await;
+
+                            if p.is_completed {
+                                raw_output = p.result.unwrap_or_default();
+                                // Note: result_hash tracking to Invariant-DAG added here in future implementation
+                                break;
+                            } else if p.is_failed {
+                                let _ = self.cancel(&job.id).await;
+                                let _ = std::fs::remove_dir_all(&temp_dir);
+                                return Err(AiomeError::Infrastructure {
+                                    reason: format!(
+                                        "Shadow Worker failed: {}",
+                                        p.error.unwrap_or_default()
+                                    ),
+                                });
+                            }
+                        }
+                        Err(e) => {
+                            let _ = self.cancel(&job.id).await;
+                            let _ = std::fs::remove_dir_all(&temp_dir);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+            Ok(Err(e)) => {
+                let _ = self.cancel(&job.id).await;
+                let _ = std::fs::remove_dir_all(&temp_dir);
+                return Err(e);
+            }
+            Err(_) => {
+                let _ = self.cancel(&job.id).await;
+                let _ = std::fs::remove_dir_all(&temp_dir);
+                return Err(AiomeError::Infrastructure {
+                    reason: "gRPC Stream Execution timed out after 300s".to_string(),
+                });
+            }
+        }
 
         let duration_ms = start.elapsed().as_millis() as u64;
         let _ = std::fs::remove_dir_all(&temp_dir);
@@ -191,20 +302,6 @@ impl TaskConductor for DockerConductor {
                 percent: Some(90),
             })
             .await;
-
-        let raw_output = match exec_result {
-            Ok(Ok(out)) => out,
-            Ok(Err(e)) => {
-                return Err(AiomeError::Infrastructure {
-                    reason: format!("Execution error: {}", e),
-                })
-            }
-            Err(_) => {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Execution timed out after 300s".to_string(),
-                })
-            }
-        };
 
         // Layer 5: Sterilization
         // Validate against XSS/malicious prompts via Unified Response Purger

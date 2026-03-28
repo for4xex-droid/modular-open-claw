@@ -1,0 +1,47 @@
+# Build Stage
+FROM rust:slim AS builder
+
+# Install required build tools (protobuf compiler)
+RUN apt-get update && apt-get install -y protobuf-compiler libprotobuf-dev pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/aiome
+
+# Generate dummy cargo workspace to cache dependencies
+COPY Cargo.toml ./
+
+# Just copy Cargo.toml for cache (but we'll overwrite it later)
+COPY Cargo.toml ./
+
+COPY libs/aiome-contracts/Cargo.toml libs/aiome-contracts/
+COPY libs/core/Cargo.toml libs/core/
+COPY libs/infrastructure/Cargo.toml libs/infrastructure/
+COPY libs/shared/Cargo.toml libs/shared/
+COPY libs/soul/Cargo.toml libs/soul/
+COPY libs/avatar-engine/Cargo.toml libs/avatar-engine/
+COPY apps/api-server/Cargo.toml apps/api-server/
+COPY apps/shadow-worker/Cargo.toml apps/shadow-worker/
+
+# Remove other workspace members not needed for shadow-worker build to keep it fast
+# But actually, we need the minimum structure. We can just copy the whole project.
+COPY . .
+
+# Remove external workspace dependencies that break docker build (do this after COPY . .)
+RUN sed -i 's/"apps\/api-server",//g' Cargo.toml && \
+    sed -i 's/"apps\/samsara-hub",//g' Cargo.toml && \
+    sed -i 's/"apps\/key-proxy",//g' Cargo.toml && \
+    sed -i 's/"apps\/watchtower",//g' Cargo.toml && \
+    sed -i 's/"apps\/aiome-migrate",//g' Cargo.toml && \
+    sed -i 's/"apps\/management-console\/src-tauri",//g' Cargo.toml
+
+# Build shadow-worker
+RUN cargo build --release -p shadow-worker --bin shadow-worker
+
+# Final Stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /usr/src/aiome/target/release/shadow-worker /usr/local/bin/shadow-worker
+
+CMD ["shadow-worker"]

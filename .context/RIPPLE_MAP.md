@@ -686,3 +686,26 @@ graph TD
 
 ---
 *最終更新日: 2026-03-27* (Infrastructure Stabilization & Invariant-DAG Foundation)
+
+### 👥 Phase 50: Agentic A2A gRPC Protocol & Worker Detachment
+- **変更内容**: 
+    - `libs/infrastructure/src/docker_conductor.rs`: 同期実行 (`docker exec`) から非同期ポートマッピング (`docker run -d`) を利用した gRPC 通信アーキテクチャへの全面移行。
+    - `libs/infrastructure/src/grpc/a2a_grpc_client.rs`: `async-stream` および `tonic` を活用した `A2aClient` トレイトの具象実装とタイムアウト制御。
+    - `apps/shadow-worker`: トークン認証 (`A2A_AUTH_TOKEN`) による 127.0.0.1 バインディングとヘルスチェックを備えたコンテナ用 gRPC サーバーの構築。
+- **波及効果**: 
+    - メインの `api-server` プロセスのブロッキングが軽減され、重い推論タスクやシミュレーション環境を完全にデタッチされたクリーンなコンテナ環境でスロッティング可能に。
+    - ワークスペース全体での通信基盤が gRPC (`tonic`) 前提にアップデートされたことで、今後予定されている分散型マルチノードフェデレーション（Samsara Hub 経由）への展開要件の多くが満たされた。
+
+```mermaid
+graph TD
+    A[DockerConductor] -->|Start Container| B[Detached Docker (shadow-worker)]
+    A -->|Fetch Dynamc Port| C[docker port 50051]
+    A -->|Connect gRPC Stream| D[A2aGrpcClient]
+    D -->|Execute Task & Auth Token| B
+    B -->|TaskProgress Yields| D
+    D -->|Stream to SSE| E[TaskDispatcher Loop]
+    E -->|Clean Output| F[Job Result]
+```
+
+---
+*最終更新日: 2026-03-28* (Phase 50 / Agentic A2A gRPC Protocol)

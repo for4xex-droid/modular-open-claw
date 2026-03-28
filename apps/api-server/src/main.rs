@@ -614,8 +614,14 @@ async fn main() -> anyhow::Result<()> {
         Some(std::path::PathBuf::from("workspace/SOUL.md")),
     );
     // Register DockerConductor
+    let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
+        endpoint_url: "http://127.0.0.1:50051".to_string(), // dynamically overwritten in conduct()
+        connect_timeout: std::time::Duration::from_secs(5),
+        auth_token: "".to_string(), // dynamically overwritten in conduct()
+    };
     let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(
         commerce_engine.clone(),
+        grpc_config,
     ));
     task_dispatcher.register_conductor(docker_conductor);
 

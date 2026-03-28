@@ -12,9 +12,12 @@ aiome-contracts = { workspace = true }
 shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+tonic = { workspace = true, optional = true }
 reqwest = { workspace = true }
 stripe = { workspace = true }
 async-trait = "0.1"
+futures = { workspace = true }
+async-stream = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
@@ -60,6 +63,9 @@ lru.workspace = true
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 quote = "1.0"
 proc-macro2 = "1.0"
+
+[features]
+grpc = ["tonic", "aiome-contracts/grpc"]
 
 [dev-dependencies]
 tempfile = "3"
