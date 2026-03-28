@@ -67,33 +67,96 @@ impl UserLearner {
 
         if let Ok(_permit) = self.semaphore.try_acquire() {
             info!("🎓 [UserLearner] Analyzing session for user preference updates...");
+
+            let system_prompt = r##"
+ユーザーとの会話から、ユーザーのプロフィール（名前、好み、美的スタイル、対話スタイル、性格的特徴）を抽出し、JSON形式で返してください。
+また、人間が読みやすい形式の USER.md 用のコンテンツも生成してください。
+更新が必要ない場合は、単に "NO_UPDATE" と返してください。
+
+JSONフォーマット:
+{
+  "name": "ユーザー名",
+  "preferences": ["好み1", "好み2"],
+  "aesthetic_style": "視覚的スタイルの好み",
+  "interaction_style": "対話のトーンやスタイル",
+  "traits": {"特徴1": "説明1"},
+  "markdown_content": "# User Profile\n\n..."
+}
+"##;
+
             let prompt = format!(
-                "この会話からユーザーの好みや情報を抽出し、USER.mdを更新してください。既存の情報は消さずに補完してください。\n\n現在のUSER.md:\n{}\n\n最近の会話内容:\n{}\n\nルール:\n1. 更新が必要なら、新しいUSER.mdの内容全体を出力せよ。\n2. 更新が不要なら「NO_UPDATE」とだけ出力せよ。\n3. フォーマットはMarkdownを維持せよ。日本語で出力せよ。",
+                "現在のプロフィール:\n{}\n\n最近の会話内容:\n{}\n\n上記に基づき、更新された情報をJSONで出力せよ。未判明の項目は現在の値を維持せよ。",
                 current_user, conversation_summary
             );
 
-            match self.provider.complete(&prompt, None).await {
+            match self.provider.complete(&prompt, Some(system_prompt)).await {
                 Ok(resp) => {
                     let reply = resp.content.trim();
-                    if reply != "NO_UPDATE" && !reply.is_empty() {
-                        // 異常サイズ・内容検知 (短すぎる、またはMarkdown構造を成していない場合はブロック)
-                        if reply.len() < 50 || (!reply.contains('#') && !reply.contains("- ")) {
-                            warn!("⚠️ [UserLearner] 生成された内容が異常に短いか、不正な形式です。上書きを中止します。");
-                            return Ok(false);
+                    if reply == "NO_UPDATE" || reply.is_empty() {
+                        info!("🎓 [UserLearner] No updates needed.");
+                        return Ok(false);
+                    }
+
+                    // JSON パースの試行
+                    // LLM が Markdown のコードブロックで囲んでくる場合があるため、トリミング
+                    let json_str = reply
+                        .strip_prefix("```json")
+                        .and_then(|s| s.strip_suffix("```"))
+                        .unwrap_or(reply)
+                        .trim();
+
+                    #[derive(Deserialize)]
+                    struct LlmUpdate {
+                        name: Option<String>,
+                        preferences: Option<Vec<String>>,
+                        aesthetic_style: Option<String>,
+                        interaction_style: Option<String>,
+                        traits: Option<std::collections::HashMap<String, String>>,
+                        markdown_content: Option<String>,
+                    }
+
+                    if let Ok(update) = serde_json::from_str::<LlmUpdate>(json_str) {
+                        let mut profile =
+                            self.profile.write().map_err(|_| "Failed to lock profile")?;
+
+                        if let Some(n) = update.name {
+                            profile.name = n;
+                        }
+                        if let Some(p) = update.preferences {
+                            profile.preferences = p;
+                        }
+                        if let Some(a) = update.aesthetic_style {
+                            profile.aesthetic_style = Some(a);
+                        }
+                        if let Some(i) = update.interaction_style {
+                            profile.interaction_style = Some(i);
+                        }
+                        if let Some(t) = update.traits {
+                            profile.traits = t;
                         }
 
-                        // 上書き前にバックアップを作成
-                        let backup_path = format!("{}.bak", user_path);
-                        let _ = fs::copy(&user_path, &backup_path);
-
-                        fs::write(&user_path, reply)?;
-                        info!(
-                            "✅ [UserLearner] {} has been updated based on session intelligence. Backup saved to {}.",
-                            user_path, backup_path
-                        );
+                        if let Some(md) = update.markdown_content {
+                            // バックアップと保存
+                            let backup_path = format!("{}.bak", user_path);
+                            let _ = fs::copy(&user_path, &backup_path);
+                            fs::write(&user_path, md)?;
+                            info!("✅ [UserLearner] USER.md and structured profile updated.");
+                        }
                         return Ok(true);
+                    } else {
+                        // フォールバック: 以前の Markdown 直接更新ロジック (念のため)
+                        if reply.len() > 50
+                            && (reply.contains('#') || reply.contains("- "))
+                            && !reply.contains('{')
+                        {
+                            let backup_path = format!("{}.bak", user_path);
+                            let _ = fs::copy(&user_path, &backup_path);
+                            fs::write(&user_path, reply)?;
+                            info!("✅ [UserLearner] USER.md updated (legacy fallback).");
+                            return Ok(true);
+                        }
+                        warn!("⚠️ [UserLearner] Failed to parse LLM update: {}", reply);
                     }
-                    info!("🎓 [UserLearner] No updates needed for {}.", user_path);
                 }
                 Err(e) => {
                     warn!("⚠️ [UserLearner] Failed to learn user preferences: {:?}", e);
@@ -130,13 +193,23 @@ impl AgentHook for UserLearner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::slm_bridge::SlmBridge;
     use aiome_contracts::error::AiomeError;
     use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
     use aiome_contracts::security::AgentHook;
 
     #[derive(Debug)]
-    struct MockLlm;
+    struct MockLlm {
+        response_json: String,
+    }
+
+    impl MockLlm {
+        fn new(json: &str) -> Self {
+            Self {
+                response_json: json.to_string(),
+            }
+        }
+    }
+
     #[async_trait]
     impl LlmProvider for MockLlm {
         async fn complete(
@@ -145,40 +218,90 @@ mod tests {
             _system: Option<&str>,
         ) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
-                content: "[]".to_string(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                content: self.response_json.clone(),
+                stop_reason: StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
         }
+
+        async fn complete_with_cache(
+            &self,
+            _req: aiome_contracts::llm::LlmRequest,
+        ) -> Result<LlmResponse, AiomeError> {
+            self.complete("", None).await
+        }
+
         async fn test_connection(&self) -> Result<(), AiomeError> {
             Ok(())
         }
+
         fn name(&self) -> &str {
-            "mock"
+            "mock-llm"
+        }
+
+        async fn stream_complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<
+            std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
+            AiomeError,
+        > {
+            Err(AiomeError::Infrastructure {
+                reason: "streaming not supported in mock".into(),
+            })
         }
     }
 
     #[tokio::test]
     async fn test_user_learner_implements_agent_hook() {
-        let provider = Arc::new(MockLlm);
+        let json = r##"{"name": "Alice", "markdown_content": "# User Profile"}"##;
+        let provider = Arc::new(MockLlm::new(json));
         let semaphore = Arc::new(Semaphore::new(1));
-        let slm = Some(Arc::new(SlmBridge::new()));
-        let learner = UserLearner::new(provider, semaphore, UserProfile::default(), slm);
+        let learner = UserLearner::new(provider, semaphore, UserProfile::default(), None);
 
         // AgentHook を実装していることを確認
         let hook: Box<dyn AgentHook> = Box::new(learner);
 
         let request = LlmRequest::default();
         let response = LlmResponse {
-            content: "[]".to_string(), // Mock for inference
-            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            content: "[]".to_string(),
+            stop_reason: StopReason::EndTurn,
             reasoning: None,
             metadata: None,
         };
 
-        // RED: on_post_execute should trigger session learning
         let result = hook.on_post_execute(&request, &response).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_user_learner_updates_structured_profile() {
+        let json = r##"{
+            "name": "Alice",
+            "preferences": ["rust", "security"],
+            "aesthetic_style": "Dark",
+            "interaction_style": "Friendly",
+            "traits": {"curiosity": "high"},
+            "markdown_content": "# User Profile\n\n- Name: Alice"
+        }"##;
+
+        let provider = Arc::new(MockLlm::new(json));
+        let semaphore = Arc::new(Semaphore::new(1));
+        let learner = UserLearner::new(provider, semaphore, UserProfile::default(), None);
+
+        // Act: 会話から学習を実行
+        let _ = learner.learn_from_session("User likes Rust.").await;
+
+        // Assert: 構造化プロファイルが更新されていることを確認
+        let profile = learner.profile.read().unwrap();
+        assert_eq!(profile.name, "Alice");
+        assert!(profile.preferences.contains(&"rust".to_string()));
+        assert_eq!(profile.aesthetic_style.as_deref(), Some("Dark"));
+        assert_eq!(
+            profile.traits.get("curiosity").map(|s| s.as_str()),
+            Some("high")
+        );
     }
 }

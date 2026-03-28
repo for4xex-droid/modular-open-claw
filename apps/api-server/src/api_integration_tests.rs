@@ -401,11 +401,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue
-            .get_pool()
-            .get_sqlite_pool_or_err()
-            .unwrap()
-            .clone(),
+        job_queue.get_pool().clone(),
     ));
     std::env::set_var(
         "VAULT_MASTER_KEY",
@@ -416,11 +412,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::security::VoiceCoreDrm::new(
             "http://localhost:3016".to_string(),
             registry.clone(),
-            job_queue
-                .get_pool()
-                .get_sqlite_pool_or_err()
-                .unwrap()
-                .clone(),
+            job_queue.get_pool().clone(),
         )
         .await,
     );
@@ -443,6 +435,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let state = AppState {
+        a2a_client: Component::new(Arc::new(
+            infrastructure::grpc::mock_a2a_client::MockA2aClient::new(),
+        )),
         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
         job_queue: Component::new(job_queue.clone()),
         wasm_skill_manager: Component::new(wasm_skill_manager),
@@ -598,6 +593,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                     .expect("SQLite pool required for HierarchicalRouter"),
             ),
         )),
+        ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

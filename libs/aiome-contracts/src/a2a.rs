@@ -12,6 +12,8 @@ use async_trait::async_trait;
 use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
 
+pub mod agent_card;
+
 /// Task execution request towards a shadow clone
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct A2aTaskRequest {

@@ -131,4 +131,7 @@ pub struct AppState {
     pub syndicate_store: Component<Arc<infrastructure::syndicate_store::SqliteSyndicateStore>>,
     pub hierarchical_router:
         Component<Arc<infrastructure::hierarchical_router::HierarchicalRouter>>,
+    // --- Phase 51 Expansion ---
+    pub a2a_client: Component<Arc<dyn aiome_contracts::a2a::A2aClient>>,
+    pub ws_active_connections: Arc<std::sync::atomic::AtomicUsize>,
 }

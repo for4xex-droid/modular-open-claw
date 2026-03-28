@@ -1,12 +1,5 @@
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Apache License, Version 2.0.
- */
-
+use crate::db::DatabaseTransaction;
 use aiome_core::error::AiomeError;
-use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
 /// プラットフォームとクリエイター間の収益分配を担当するモジュール
@@ -16,7 +9,7 @@ impl RevenueSplitter {
     /// 収益をプラットフォームとクリエイターに分配する
     /// `total_amount` は基本通貨単位（例: セントやコイン）とする
     pub async fn split_revenue(
-        tx: &mut Transaction<'_, Sqlite>,
+        tx: &mut DatabaseTransaction<'_>,
         tx_id: &str,
         total_amount: i64,
         creator_id: Uuid,
@@ -26,25 +19,48 @@ impl RevenueSplitter {
         let creator_amount = total_amount - platform_amount;
 
         // クリエイターへの分配
-        sqlx::query(
-            "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, ?, 'creator', ?)"
-        )
-        .bind(tx_id)
-        .bind(creator_id.to_string())
-        .bind(creator_amount)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        let q_creator = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, ?, 'creator', ?)";
+        // Note: RevenueSplitter doesn't have access to pool for placeholders,
+        // but for SQLite/Postgres simple INSERTs, '?' often works if using Any,
+        // however our DatabaseTransaction variants use specific drivers.
+        // For simplicity, we assume '?' currently, but let's be robust.
 
-        // プラットフォームへの分配
-        sqlx::query(
-            "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, 'platform', 'platform', ?)"
-        )
-        .bind(tx_id)
-        .bind(platform_amount)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+        match tx {
+            DatabaseTransaction::Sqlite(itx) => {
+                sqlx::query(q_creator)
+                    .bind(tx_id)
+                    .bind(creator_id.to_string())
+                    .bind(creator_amount)
+                    .execute(&mut **itx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+
+                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, 'platform', 'platform', ?)")
+                    .bind(tx_id)
+                    .bind(platform_amount)
+                    .execute(&mut **itx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+            DatabaseTransaction::Postgres(itx) => {
+                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, $2, 'creator', $3)")
+                    .bind(tx_id)
+                    .bind(creator_id.to_string())
+                    .bind(creator_amount)
+                    .execute(&mut **itx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+
+                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, 'platform', 'platform', $2)")
+                    .bind(tx_id)
+                    .bind(platform_amount)
+                    .execute(&mut **itx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+            }
+        }
 
         Ok(())
     }
@@ -55,7 +71,7 @@ mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
 
-    async fn setup_db() -> sqlx::SqlitePool {
+    async fn setup_db() -> crate::db::DatabasePool {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
@@ -77,7 +93,7 @@ mod tests {
         .await
         .unwrap();
 
-        pool
+        crate::db::DatabasePool::Sqlite(pool)
     }
 
     #[tokio::test]
@@ -96,11 +112,12 @@ mod tests {
         tx.commit().await.unwrap();
 
         // TDD Assert: Verify the records in the database
+        let inner_pool = pool.get_sqlite_pool_or_err().unwrap();
         let splits: Vec<(String, String, i64)> = sqlx::query_as(
             "SELECT recipient_id, role, amount FROM revenue_splits WHERE tx_id = ? ORDER BY role ASC"
         )
         .bind(tx_id)
-        .fetch_all(&pool)
+        .fetch_all(inner_pool)
         .await
         .unwrap();
 

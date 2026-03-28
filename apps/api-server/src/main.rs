@@ -539,7 +539,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+        job_queue.get_pool().clone(),
     ));
 
     // [A-3] MCP Discovery: Automated server discovery and registration
@@ -559,7 +559,7 @@ async fn main() -> anyhow::Result<()> {
             std::env::var("ABYSS_VAULT_URL")
                 .unwrap_or_else(|_| "http://localhost:3016".to_string()),
             registry.clone(),
-            job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+            job_queue.get_pool().clone(),
         )
         .await,
     );
@@ -638,6 +638,22 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     });
+
+    // [Phase 51] Initialize Node IPC Client (A2A gRPC)
+    let a2a_client = {
+        let endpoint_url =
+            std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string());
+        let auth_token = std::env::var("A2A_NODE_TOKEN")
+            .unwrap_or_else(|_| "placeholder_for_phase51".to_string());
+        let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
+            endpoint_url,
+            connect_timeout: std::time::Duration::from_secs(5),
+            auth_token,
+        };
+        Arc::new(infrastructure::grpc::a2a_grpc_client::A2aGrpcClient::new(
+            grpc_config,
+        )) as Arc<dyn aiome_contracts::a2a::A2aClient>
+    };
 
     let state = AppState {
         health_monitor: Component::new(health_monitor),
@@ -754,6 +770,8 @@ async fn main() -> anyhow::Result<()> {
                     .expect("SQLite pool required for HierarchicalRouter"),
             ),
         )),
+        a2a_client: Component::new(a2a_client),
+        ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

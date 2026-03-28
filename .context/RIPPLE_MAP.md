@@ -2,6 +2,39 @@
 
 このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
 
+## Phase 52: Infrastructure Hardening & ZTAS Preparation
+
+### 1. `UserLearner` の構造化プロファイル (TDD)
+- **変更理由**: 単純な Markdown 追記だけでなく、メモリ上の `UserProfile` を JSON ベースで抽出し、システム全体の A2A コンテキストとして利用可能にするため。
+- **波及効果**:
+  - `libs/infrastructure/src/user_learner.rs`: `learn_from_session` に JSON 抽出ロジックと `serde_json` パース処理を追加。
+  - テスト環境: `MockLlm` が JSON 形式のレスポンスを返すように修正し、最新の `LlmProvider` トレイトに対応。
+
+### 2. `RegistryManager` とインフラ層のエラーハンドリング
+- **変更理由**: 本番環境におけるパニック (unwrap) を排除し、完全な `AiomeError` マッピングによる型安全なエラーハンドリングを実現するため。
+- **波及効果**:
+  - `libs/infrastructure/src/registry.rs`: `sql_exec!`, `sql_fetch_one!` などの `DatabasePool` マクロを全面的に適用し、SQLite/Postgres 間の差異を吸収。
+  - `libs/infrastructure/src/docker_conductor.rs`: `tokio_stream::StreamExt` の型推論不具合を明示的に解決しビルドを安定化。
+  - `libs/infrastructure/src/gig_engine_tests.rs`: `commerce_mock` などのモック初期化不備とトレイトインポート漏れを修正。
+
+---
+
+## Phase 51: Aiome Node & mDNS Discovery
+
+### 1. `aiome-node` バイナリの独立
+- **変更理由**: エージェントのネットワーク上のアイデンティティ (Agent Card) と自律実行環境を単一の P2P ノードとして確立するため。
+- **波及効果**:
+  - `apps/aiome-node/src/main.rs`: `/.well-known/agent.json` (Agent Card) の配信、および `mdns-sd` に依存した `_aiome._tcp.local.` サービスの継続的 P2P ブロードキャスト実装が追加されました。
+  - `apps/api-server/src/app_state.rs`: Core API は内部ロジックをバイパスし、分離された Node コンポーネントへ依存する基盤 (`AgentNodeClient` アーキテクチャ) に移行します。
+
+### 2. `samsara-hub` レジストリインデックス拡張
+- **変更理由**: P2P 発見された `aiome-node` を中央またはローカルハブのレジストリとして登録し、API経由でクライアントから検索可能にするため。
+- **波及効果**:
+  - `apps/samsara-hub/src/mdns_listener.rs`: mDNS サービスブラウズによる動的な `AgentRegistry` ノード登録機能が実装されました。
+  - `apps/samsara-hub/src/main.rs`: `HubState` への `AgentRegistry` の注入と、発見済みエージェントを返す `GET /api/v1/registry/agents` ルーティングが追加されました。
+  - `apps/samsara-hub/Cargo.toml`: `mdns-sd` およびテスト用の `http-body-util` が追加されました。
+
+
 ## Phase 50: A2A gRPC Native Support
 
 ### 1. `DockerConductor` (task_orchestrator)
@@ -731,3 +764,17 @@ graph TD
 
 ---
 *最終更新日: 2026-03-28* (Phase 50 / Agentic A2A gRPC Protocol)
+
+### 🔮 Phase 51-55 波及影響予測 (Planning Phase)
+- **Phase 51 (Aiome Node + Agent Card)**: 
+    - `api-server/main.rs`: `AppState` への Node IPC クライアント事前注入が必要となり、初期化シーケンスに波及。
+    - `api_integration_tests.rs`: `MockAppState` の初期化ブロックへの波及。
+- **Phase 53 (ACP / GigEngine 拡張)**: 
+    - `routes/gig.rs`: ACP (`PROBE`, `BID`, `COMMIT`) 準拠に伴い、既存 REST エンドポイントのリクエスト/レスポンススキーマが非互換となる可能性大。
+    - `samsara-hub/src/routes/federation.rs`: Agent Card メタデータの追加送受信に伴うペイロード拡張。
+- **Phase 54 (x402 + AP2)**: 
+    - `libs/aiome-contracts/src/commerce.rs`: `CommerceEngine` トレイトに x402 決済インターフェース追加。
+    - `infrastructure/src/mock_commerce.rs` & `stripe.rs`: トレイト拡張に伴う全 Mock/実装型のシグネチャ一斉変更波及（Phase 37a と同等規模の波及が見込まれる）。
+
+---
+*最終事前予測日: 2026-03-28* (Phase 51-55 Perfect Planning)

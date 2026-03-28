@@ -161,7 +161,9 @@ mod tests {
         sqlx::query("CREATE TABLE IF NOT EXISTS registry (id TEXT PRIMARY KEY, asset_type TEXT, description TEXT, metadata TEXT, created_at DATETIME, updated_at DATETIME)")
             .execute(&pool).await.unwrap();
 
-        let registry = infrastructure::registry::RegistryManager::new(pool);
+        let registry = infrastructure::registry::RegistryManager::new(
+            infrastructure::db::DatabasePool::Sqlite(pool),
+        );
 
         // This path probably doesn't exist in test env, but we can verify the function returns Ok if file is missing
         let res = discover_and_connect(&manager, &registry).await;

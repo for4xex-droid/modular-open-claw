@@ -145,7 +145,7 @@ mod tests {
             "CREATE TABLE stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT, processed_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         ).execute(&pool).await.unwrap();
 
-        let registry = Arc::new(RegistryManager::new(pool.clone()));
+        let registry = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
         let vault = AbyssVoiceVault::new_with_master_key(
             registry,
             DatabasePool::Sqlite(pool.clone()),
@@ -170,7 +170,7 @@ mod tests {
             .unwrap();
 
         // 2. 同一プールを共有する別 Vault インスタンスを作成
-        let registry2 = Arc::new(RegistryManager::new(pool.clone()));
+        let registry2 = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
         let vault2 = AbyssVoiceVault::new_with_master_key(
             registry2,
             DatabasePool::Sqlite(pool.clone()),

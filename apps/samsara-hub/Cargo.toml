@@ -20,7 +20,7 @@ sqlx = { workspace = true }
 reqwest = { version = "0.12", features = ["json"] }
 aiome-core = { path = "../../libs/core" }
 shared = { path = "../../libs/shared" }
-infrastructure = { path = "../../libs/infrastructure" }
+infrastructure = { path = "../../libs/infrastructure", features = ["grpc"] }
 # Ensure tracing-subscriber has json for production logs
 tower = { version = "0.4", features = ["limit", "buffer", "util"] }
 subtle = "2.5.0"
@@ -30,9 +30,11 @@ futures-util = "0.3.32"
 tokio-util = { version = "0.7", features = ["rt"] }
 ed25519-dalek = "2.1.1"
 base64 = "0.22.1"
+mdns-sd = "0.11.5"
 automerge = { workspace = true }
 
 [dev-dependencies]
 futures-util = "0.3.32"
 tokio-tungstenite = "0.28.0"
+http-body-util = "0.1.1"
 wiremock = { workspace = true }

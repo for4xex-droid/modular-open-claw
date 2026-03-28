@@ -728,9 +728,7 @@ mod tests {
             ),
         );
         let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap());
-        let registry = Arc::new(RegistryManager::new(
-            jq.get_pool().get_sqlite_pool_or_err().unwrap().clone(),
-        ));
+        let registry = Arc::new(RegistryManager::new(jq.get_pool().clone()));
 
         // Setup WASM Skill Manager in a tmp dir
         let skills_dir = tmp_dir.path().join("skills");

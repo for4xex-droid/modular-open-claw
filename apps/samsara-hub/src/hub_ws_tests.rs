@@ -29,6 +29,7 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
         auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
+        agent_registry: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
     });
 
     let app = build_app(state.clone());

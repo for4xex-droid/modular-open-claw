@@ -474,9 +474,9 @@ impl VoiceCoreDrm {
     pub async fn new(
         vault_url: String,
         registry: Arc<RegistryManager>,
-        pool: sqlx::SqlitePool,
+        pool: DatabasePool,
     ) -> Self {
-        let vault = AbyssVoiceVault::new(registry.clone(), DatabasePool::Sqlite(pool));
+        let vault = AbyssVoiceVault::new(registry.clone(), pool);
         // 起動時に永続化された鍵をリストア (§CISO-1)
         match vault.restore_keys_from_db().await {
             Ok(n) => tracing::info!("🔐 [DRM] {} vault keys restored on startup", n),

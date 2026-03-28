@@ -30,6 +30,7 @@ graph TD
         watchtower[watchtower]
         aiome-migrate[aiome-migrate]
         shadow-worker[shadow-worker]
+        aiome-node[aiome-node]
     end
 
     subgraph Libs
@@ -75,6 +76,10 @@ graph TD
     aiome-migrate --> infrastructure
     shadow-worker --> aiome-contracts
     shadow-worker --> aiome-core
+    aiome-node --> aiome-contracts
+    aiome-node --> shared
+    aiome-node --> infrastructure
+    aiome-node --> aiome-contracts
 ```
 
 ## 4. Directory Map (Crates)
@@ -98,12 +103,13 @@ graph TD
 | `soul` | `libs/soul` | (Core Module) |
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
+| `aiome-node` | `apps/aiome-node` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
 ```text
-API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, TTS_PROVIDER, TTS_OPENAI_API_KEY, TTS_OPENAI_MODEL, TTS_ENDPOINT, XTTS_ENDPOINT, XTTS_SPEAKER, STRIPE_TEST_MODE, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, VAULT_MASTER_KEY, DATABASE_URL, SAMSARA_HUB_REST, SAMSARA_HUB_WS, EKYC_RETURN_URL, QUARANTINE_DIR, SHADOW_CLONE_IMAGE, SHADOW_CLONE_GRPC_PORT, A2A_GRPC_HEALTH_INTERVAL_MS, A2A_GRPC_CONNECT_TIMEOUT_MS, A2A_AUTH_TOKEN
+API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_LLM_PROVIDER, BG_LLM_MODEL, EMBEDDING_PROVIDER, TTS_PROVIDER, TTS_OPENAI_API_KEY, TTS_OPENAI_MODEL, TTS_ENDPOINT, XTTS_ENDPOINT, XTTS_SPEAKER, STRIPE_TEST_MODE, SEARCH_API_KEY, PORT, WORKSPACE_DIR, ABYSS_VAULT_PATH, VAULT_MASTER_KEY, DATABASE_URL, SAMSARA_HUB_REST, SAMSARA_HUB_WS, EKYC_RETURN_URL, QUARANTINE_DIR, SHADOW_CLONE_IMAGE, SHADOW_CLONE_GRPC_PORT, A2A_GRPC_HEALTH_INTERVAL_MS, A2A_GRPC_CONNECT_TIMEOUT_MS, A2A_AUTH_TOKEN, A2A_NODE_URL, A2A_NODE_TOKEN
 ```
 
 ---
-*Last Auto-Generated: 2026-03-28 UTC*
+*Last Auto-Generated: 2026-03-29 UTC*

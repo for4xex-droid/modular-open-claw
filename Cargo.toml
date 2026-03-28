@@ -12,7 +12,7 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "apps/watchtower",
-    "libs/aiome-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker",
+    "libs/aiome-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node",
 ]
 resolver = "2"
 

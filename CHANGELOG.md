@@ -33,6 +33,17 @@
 ## [Unreleased] - 2026-03-28
 
 ### Added
+- **Phase 52: Infrastructure Hardening & ZTAS Preparation [進行中]**
+    - **UserLearner Evolution (TDD)**: セッションからユーザーの構造化プロファイル（好み、美的スタイル、性格的特徴）を JSON 形式で抽出し、メモリ上の `UserProfile` と `USER.md` の両方を自動更新するインテリジェントな学習ロジックを実装。
+    - **RegistryManager Safety**: SQLite と PostgreSQL 間のクエリ戻り値の型不整合を吸収するため `DatabasePool` マクロ (`sql_exec!`, `sql_fetch_one!`) を適用。重要パスからパニックを誘発する `unwrap()` を排除し、完全な `AiomeError` マッピングへ移行。
+    - **Compile Error Remediation**: `UserLearner` での JSON パーシング、`MockLlm` トレイト不整合、`DockerConductor` のストリーム型推論不全、`MockCommerceEngine` の初期化不備など、インフラ全域の型不整合やコンパイルエラーを解消。
+
+- **Phase 51: Aiome Node Foundation & mDNS Discovery [完了]**
+    - **Aiome Node (`aiome-node`)**: Created a standalone node process adhering to BUSL-1.1 that serves Agent Card details over `/.well-known/agent.json`.
+    - **mDNS P2P Broadcaster**: Implemented `mdns_broadcaster` leveraging `mdns-sd` to announce `_aiome._tcp.local.` services upon Aiome Node startup, broadcasting its public DID.
+    - **Samsara Hub Registry**: Augmented `HubState` with an in-memory `AgentRegistry` and an `mdns_listener`. The Hub asynchronously discovers local Aiome Nodes and exposes them through `GET /api/v1/registry/agents`.
+    - **Core ↔ Node IPC Integration**: Set the structural foundation for `api-server` internal logic using an `AgentNodeClient` interface pointing to the externalized Aiome Node's gRPC endpoint.
+    - **E2E TDD Integration**: Concluded phase with a full E2E discovery flow test ensuring mock nodes launched via `mdns-sd` are properly cataloged by the Hub's registry API.
 - **Phase 50: A2A gRPC Native Support [Planning 完了]**
     - **Architecture Strategy**: Core/Node 分離アーキテクチャおよび gRPC 駆動型 A2A 通信網（A2A v1.0 / ACP 準拠）を策定。
     - **Security Hardening (Phase 50)**: Threat #36-38 (Unauthorized Access, Message Tampering, Zombie Worker) に対する緩和策（Localhost IPC, ワンタイムトークン, gRPC Deadline）を計画。

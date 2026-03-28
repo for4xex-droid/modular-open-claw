@@ -12,6 +12,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
+use infrastructure::db::{DatabasePool, DatabaseTransaction};
 use tracing::{error, info, warn};
 
 /// [POST] /api/v1/commerce/webhook
@@ -70,21 +71,36 @@ pub async fn stripe_webhook(
     );
 
     // 5. 冪等性の保証とライセンス付与 (単一トランザクション / Phase 11)
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
-    let mut tx = pool.begin().await.map_err(|e| {
+    let db_pool = state.job_queue.get_pool();
+    let mut tx = db_pool.begin().await.map_err(|e| {
         error!("❌ [StripeWebhook] Failed to begin transaction: {}", e);
         AppError::internal("Database error")
     })?;
 
-    // 冪等性チェック
-    let result = sqlx::query(
-        "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
-    )
-    .bind(event_id)
-    .bind(event_type)
-    .bind(serde_json::to_string(&event.data.object).unwrap_or_default())
-    .execute(&mut *tx)
-    .await;
+    // 冪等性チェック (G-47 Mitigation: RDBMS Agnostic)
+    let q_idempotency =
+        format!(
+        "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES ({}, {}, {})",
+        db_pool.ph(0), db_pool.ph(1), db_pool.ph(2)
+    );
+    let metadata_json = serde_json::to_string(&event.data.object).unwrap_or_default();
+
+    let result = match &mut tx {
+        DatabaseTransaction::Sqlite(itx) => sqlx::query(&q_idempotency)
+            .bind(event_id)
+            .bind(event_type)
+            .bind(&metadata_json)
+            .execute(&mut **itx)
+            .await
+            .map(|r| r.rows_affected()),
+        DatabaseTransaction::Postgres(itx) => sqlx::query(&q_idempotency)
+            .bind(event_id)
+            .bind(event_type)
+            .bind(&metadata_json)
+            .execute(&mut **itx)
+            .await
+            .map(|r| r.rows_affected()),
+    };
 
     match result {
         Ok(_) => {

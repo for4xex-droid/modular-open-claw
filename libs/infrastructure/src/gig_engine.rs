@@ -242,25 +242,45 @@ impl GigEngine for UniversalGigEngine {
             }
         }
 
-        // 5. Update Statuses
+        // 5. Update Statuses with Optimistic Locking (G-46 Mitigation)
         let q_upd_intent = format!(
-            "UPDATE gig_intents SET status = 'Accepted' WHERE id = {}",
+            "UPDATE gig_intents SET status = 'Accepted' WHERE id = {0} AND status = 'Open'",
             self.pool.ph(0)
         );
         let q_upd_bid = format!(
-            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {}",
+            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {0} AND status = 'Open'",
             self.pool.ph(0)
         );
 
+        let intent_rows = match &mut tx {
+            DatabaseTransaction::Sqlite(itx) => sqlx::query(&q_upd_intent)
+                .bind(&intent_id_str)
+                .execute(&mut **itx)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+                .rows_affected(),
+            DatabaseTransaction::Postgres(itx) => sqlx::query(&q_upd_intent)
+                .bind(&intent_id_str)
+                .execute(&mut **itx)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+                .rows_affected(),
+        };
+
+        if intent_rows == 0 {
+            // Race condition lost!
+            return Err(AiomeError::Infrastructure {
+                reason: "Race condition detected: Intent already accepted by another process."
+                    .into(),
+            });
+        }
+
         match &mut tx {
             DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_upd_intent)
-                    .bind(&intent_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
                 sqlx::query(&q_upd_bid)
                     .bind(&bid_id_str)
                     .execute(&mut **itx)
@@ -270,13 +290,6 @@ impl GigEngine for UniversalGigEngine {
                     })?;
             }
             DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_upd_intent)
-                    .bind(&intent_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
                 sqlx::query(&q_upd_bid)
                     .bind(&bid_id_str)
                     .execute(&mut **itx)

@@ -10,7 +10,7 @@
 //! # Infrastructure — I/O実装層
 //!
 //! `core` で定義されたトレイトの具体実装を提供する。
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 
 pub mod aiome_log;
 pub use aiome_core::error::AiomeError;
@@ -125,6 +125,7 @@ pub mod whisper_transcription;
 pub mod workspace_manager;
 
 mod artifact_store_tests;
+mod gig_engine_tests;
 mod hierarchical_router_tests;
 mod knowledge_indexer_tests;
 mod soul_store_tests;

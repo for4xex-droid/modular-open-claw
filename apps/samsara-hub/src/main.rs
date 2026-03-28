@@ -43,6 +43,7 @@ pub struct HubState {
     pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
     tx: broadcast::Sender<HubMessage>,
     active_connections: std::sync::atomic::AtomicUsize,
+    pub agent_registry: mdns_listener::AgentRegistry,
 }
 
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
@@ -61,6 +62,9 @@ struct FederatedKarmaRecord {
     generation: Option<i64>,
     somatic_valence: Option<f64>,
 }
+
+mod hub_discovery_tests;
+mod mdns_listener;
 
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
 struct ImmuneRuleRecord {
@@ -121,18 +125,22 @@ async fn main() -> anyhow::Result<()> {
 
     // Create broadcast channel for real-time rule/karma notification
     let (tx, _) = broadcast::channel(100);
+    let agent_registry = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
+    let _mdns_daemon = mdns_listener::start_mdns_listener(agent_registry.clone()).unwrap();
+
     let state = Arc::new(HubState {
         pool: pool.clone(),
         secret,
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
                 Ok(key_b64) => Arc::new(
-                    infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)?,
+                    infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64).unwrap(),
                 ),
                 #[cfg(debug_assertions)]
                 Err(_) => {
                     warn!("⚠️ [SamsaraHub] JWT key not set, using MockAuthManager (dev only)");
                     Arc::new(infrastructure::auth::MockAuthManager::new())
+                        as Arc<dyn infrastructure::auth::AuthManager>
                 }
                 #[cfg(not(debug_assertions))]
                 Err(_) => {
@@ -143,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
         },
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
+        agent_registry,
     });
 
     let token = CancellationToken::new();
@@ -583,6 +592,22 @@ async fn list_topics_handler(
         .collect();
 
     (StatusCode::OK, Json(serde_json::json!(topics)))
+}
+
+async fn list_agents_handler(
+    State(state): State<Arc<HubState>>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let reg = state.agent_registry.read().await;
+    let mut agents = Vec::new();
+    for info in reg.values() {
+        agents.push(serde_json::json!({
+            "did": info.did,
+            "ip": info.ip,
+            "port": info.port,
+            "last_seen_seconds_ago": info.last_seen.elapsed().as_secs()
+        }));
+    }
+    (StatusCode::OK, Json(serde_json::json!(agents)))
 }
 
 fn verify_bearer(auth_header: &str, secret: &secrecy::SecretString) -> bool {
@@ -2111,6 +2136,7 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         .route("/api/v1/federation/sync", post(sync_handler))
         .route("/api/v1/federation/push", post(push_handler))
         .route("/api/v1/health", get(health_handler))
+        .route("/api/v1/registry/agents", get(list_agents_handler))
         .route(
             "/api/v1/biome/topics",
             get(list_topics_handler).post(create_topic_handler),

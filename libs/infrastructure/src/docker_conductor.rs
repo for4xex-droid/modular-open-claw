@@ -277,7 +277,8 @@ impl TaskConductor for DockerConductor {
         // 3.5 Gap C: gRPC Health Check
         let mut health_ok = false;
         for _ in 0..15 {
-            if grpc_client.check_health().await.is_ok() {
+            let health_res: Result<(), AiomeError> = grpc_client.check_health().await;
+            if health_res.is_ok() {
                 health_ok = true;
                 break;
             }
@@ -293,10 +294,11 @@ impl TaskConductor for DockerConductor {
         }
 
         // 4. Stream Results
-        let stream_result = tokio::time::timeout(Duration::from_secs(300), async {
-            grpc_client.execute_task(req).await
-        })
-        .await;
+        let stream_result: Result<Result<_, AiomeError>, tokio::time::error::Elapsed> =
+            tokio::time::timeout(Duration::from_secs(300), async {
+                grpc_client.execute_task(req).await
+            })
+            .await;
 
         let mut raw_output = String::new();
         let mut final_result_hash: Option<String> = None;
@@ -304,7 +306,8 @@ impl TaskConductor for DockerConductor {
 
         match stream_result {
             Ok(Ok(mut stream)) => {
-                while let Some(progress_item) = stream.next().await {
+                let mut stream = stream;
+                while let Some(progress_item) = tokio_stream::StreamExt::next(&mut stream).await {
                     match progress_item {
                         Ok(p) => {
                             let _ = progress_tx
