@@ -15,6 +15,7 @@ use axum::{
     extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, response::Json,
 };
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
 use serial_test::serial;
 use std::sync::Arc;
 use std::time::Duration;

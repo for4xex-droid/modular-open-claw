@@ -2,6 +2,9 @@ use aiome_contracts::a2a::internal::{
     ExecuteTaskRequest, TaskProgress,
     docker_conductor_server::{DockerConductor, DockerConductorServer},
 };
+use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
+use base64::{Engine as _, engine::general_purpose};
+use sha2::{Digest, Sha256};
 use std::env;
 use std::net::SocketAddr;
 use tokio::sync::mpsc;
@@ -37,34 +40,120 @@ impl DockerConductor for ShadowWorkerService {
 
         let (tx, rx) = mpsc::channel(4);
         let job_id = req.job_id.clone();
+        let prompt_b64 = req.prompt_b64.clone();
 
         tokio::spawn(async move {
-            // RED: Dummy execution
             info!("Executing task for job: {}", job_id);
 
-            tx.send(Ok(TaskProgress {
-                message: "Initializing worker".into(),
-                percent: 0,
-                is_completed: false,
-                is_failed: false,
-                result: "".into(),
-                error: "".into(),
-            }))
-            .await
-            .unwrap();
+            let _ = tx
+                .send(Ok(TaskProgress {
+                    message: "Initializing worker and decoding prompt".into(),
+                    percent: 10,
+                    is_completed: false,
+                    is_failed: false,
+                    result: "".into(),
+                    error: "".into(),
+                    result_hash: "".into(),
+                }))
+                .await;
 
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            let prompt = match general_purpose::STANDARD.decode(&prompt_b64) {
+                Ok(bytes) => match String::from_utf8(bytes) {
+                    Ok(s) => s,
+                    Err(_) => {
+                        let _ = tx
+                            .send(Ok(TaskProgress {
+                                message: "Prompt decoding failed".into(),
+                                percent: 100,
+                                is_completed: true,
+                                is_failed: true,
+                                result: "".into(),
+                                error: "Invalid UTF-8 in decoded prompt".into(),
+                                result_hash: "".into(),
+                            }))
+                            .await;
+                        return;
+                    }
+                },
+                Err(e) => {
+                    let _ = tx
+                        .send(Ok(TaskProgress {
+                            message: "Prompt decoding failed".into(),
+                            percent: 100,
+                            is_completed: true,
+                            is_failed: true,
+                            result: "".into(),
+                            error: format!("Base64 decode error: {}", e),
+                            result_hash: "".into(),
+                        }))
+                        .await;
+                    return;
+                }
+            };
 
-            tx.send(Ok(TaskProgress {
-                message: "Task completed".into(),
-                percent: 100,
-                is_completed: true,
-                is_failed: false,
-                result: "SUCCESS_DUMMY_RESULT".into(),
-                error: "".into(),
-            }))
-            .await
-            .unwrap();
+            let _ = tx
+                .send(Ok(TaskProgress {
+                    message: "Invoking LLM Provider".into(),
+                    percent: 30,
+                    is_completed: false,
+                    is_failed: false,
+                    result: "".into(),
+                    error: "".into(),
+                    result_hash: "".into(),
+                }))
+                .await;
+
+            // Use GEMINI_API_KEY if exists, else fallback to Ollama
+            let llm_res = match env::var("GEMINI_API_KEY") {
+                Ok(key) if !key.is_empty() => {
+                    let provider = GeminiProvider::new(
+                        reqwest::Client::new(),
+                        key,
+                        "gemini-2.5-flash".to_string(),
+                    );
+                    provider.complete(&prompt, Some("You are an autonomous Aiome Shadow Worker. Execute the requested objective securely.")).await
+                }
+                _ => {
+                    // Internal docker network or host path
+                    let host = env::var("OLLAMA_HOST")
+                        .unwrap_or_else(|_| "http://host.docker.internal:11434".to_string());
+                    let provider = OllamaProvider::new(host, "llama3".to_string());
+                    provider.complete(&prompt, Some("You are an autonomous Aiome Shadow Worker. Execute the requested objective securely.")).await
+                }
+            };
+
+            match llm_res {
+                Ok(response) => {
+                    let mut hasher = Sha256::new();
+                    hasher.update(response.content.as_bytes());
+                    let result_hash = hex::encode(hasher.finalize());
+
+                    let _ = tx
+                        .send(Ok(TaskProgress {
+                            message: "Task completed successfully".into(),
+                            percent: 100,
+                            is_completed: true,
+                            is_failed: false,
+                            result: aiome_core::security_impl::purge_entities(&response.content),
+                            error: "".into(),
+                            result_hash,
+                        }))
+                        .await;
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(Ok(TaskProgress {
+                            message: "LLM execution failed".into(),
+                            percent: 100,
+                            is_completed: true,
+                            is_failed: true,
+                            result: "".into(),
+                            error: format!("Engine Error: {:?}", e),
+                            result_hash: "".into(),
+                        }))
+                        .await;
+                }
+            }
         });
 
         Ok(Response::new(ReceiverStream::new(rx)))

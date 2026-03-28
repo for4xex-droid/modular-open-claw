@@ -1,8 +1,30 @@
-# 🌊 Aiome Ripple Map (Phase 9)
+# 🌊 Aiome Ripple Map
 
-このドキュメントは、Phase 9「サンドボックス強化」におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
+このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
 
-## 1. コア依存チェーン
+## Phase 50: A2A gRPC Native Support
+
+### 1. `DockerConductor` (task_orchestrator)
+- **変更理由**: 同期 `docker exec` から 非同期 gRPC ストリーミング受信への完全移行。
+- **波及先 (変更・追加されたモジュール)**:
+  - `libs/aiome-contracts/proto/a2a_internal.proto`: メッセージスキーマ (TaskRequest, TaskProgress) 定義
+  - `libs/aiome-contracts/src/a2a.rs`: `A2aClient` トレイトとデータ構造の再定義
+  - `libs/infrastructure/src/grpc/a2a_grpc_client.rs`: `async-stream` を用いた gRPC クライアント (新規作成)
+  - `api-server/src/main.rs`: 起動時の `GrpcClientConfig` 注入
+  - `libs/infrastructure/src/task_orchestrator/mod.rs`: `InvariantDag` との統合 (result_hash 連携)
+
+### 2. `aiome-shadow-worker` バイナリ
+- **変更理由**: 従来の Docker 内部での CLI プロセス起動を廃止し、永続化された gRPC サーバー (`tonic`) に置換。
+- **波及先**:
+  - `apps/shadow-worker/src/main.rs`: gRPC サーバー実装、ワンタイムトークン検証、ヘルスチェック提供
+  - `libs/core/src/llm_provider/`: Gemini/Ollama エンジンへの実アクセス
+  - `Dockerfile.shadow-worker`: Cargo workspace から `shadow-worker` のみを抽出ビルド・実行するように刷新
+
+---
+
+## Phase 9: サンドボックス強化
+
+### 1. コア依存チェーン
 
 ```mermaid
 graph TD

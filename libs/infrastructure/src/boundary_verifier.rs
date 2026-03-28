@@ -91,12 +91,14 @@ impl BoundaryVerifier {
                 let _p = std::path::Path::new(word);
 
                 // システムパスへのアクセス禁止
-                let system_roots = ["/etc", "/usr", "/System", "/var", "/bin", "/sbin"];
-                for root in &system_roots {
-                    if word.starts_with(root) {
-                        return Err(AiomeError::Infrastructure {
-                            reason: format!("Boundary Invariant Violation: Access to system path '{}' is forbidden", word),
-                        });
+                if !is_system_internal {
+                    let system_roots = ["/etc", "/usr", "/System", "/var", "/bin", "/sbin"];
+                    for root in &system_roots {
+                        if word.starts_with(root) {
+                            return Err(AiomeError::Infrastructure {
+                                reason: format!("Boundary Invariant Violation: Access to system path '{}' is forbidden", word),
+                            });
+                        }
                     }
                 }
                 verified.push("path_not_system".into());

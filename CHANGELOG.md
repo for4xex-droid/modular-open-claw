@@ -1,7 +1,9 @@
 - **Phase 50: Agentic A2A gRPC Protocol [完了]**
     - **DockerConductor**: 同期的な `docker exec` から、非同期の `tonic` ベース gRPC ストリーミング通信へとアーキテクチャを刷新し、タスク実行状況をリアルタイムにサブスクライブ可能に。
-    - **Shadow Worker**: 独立したコンテナ化 gRPC サーバー (`aiome-shadow-worker`) として実装。タスクのバックグラウンド実行（Detached）プロトコルに対応。
-    - **Security & Networking**: ランダムにアサインされるローカルポートマッピング (`127.0.0.1:0`) と UUID ベースのワンタイム・トークン認証を整備し、セキュアな A2A 通信環境を実現。
+    - **Shadow Worker**: 独立したコンテナ化 gRPC サーバー (`aiome-shadow-worker`) として実装。推論エンジン連携（Ollama/Gemini）によるリアルタイム応答に対応。
+    - **Security & Networking**: ランダムにアサインされるローカルポートマッピング (`127.0.0.1:0`) と UUID ベースのワンタイム・トークン認証を整備。Dockerネットワークも `aiome-internal` に完全分離。
+    - **Stability Hotfix (The Gaps)**: proto 構造の乖離、ヘルスチェック競合 (Gap C)、ストリーム異常切断対応 (Gap G)、そして `InvariantDag` の Causal Tracking 維持 (Gap B) を含む計 17 件の品質改修を実施し、最上級のセキュリティ保証を確立。
+    - **Secret Protection (Gap R/S)**: `docker run -e` コマンドライン引数経由の API キー露出 (Threat #39) を、エフェメラル `--env-file` (0600 パーミッション + 即時ワイプ) へ移行して完全封鎖。`aiome-internal` ネットワーク不在時のフェイルセーフも追加。
 - **Phase 4: Poincare Memory Lifecycle & GC [完了]**
     - **SlmBridge Evolution**: `calculate_importance` および `calculate_importance_batch` を実装。一時ファイルを用いたバッチ処理によりプロセス起動オーバーヘッドを削減。
     - **Autonomous GC (Watchtower)**: `do_karma_decay_sweep` に Poincare ベースのフィルタリングを統合。バッチ評価により O(1) プロセス起動での GC を実現。

@@ -25,6 +25,45 @@ impl A2aGrpcClient {
     pub fn new(config: GrpcClientConfig) -> Self {
         Self { config }
     }
+
+    pub async fn check_health(&self) -> Result<(), AiomeError> {
+        let endpoint = Endpoint::from_shared(self.config.endpoint_url.clone()).map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Invalid URL: {}", e),
+            }
+        })?;
+
+        let channel = endpoint
+            .timeout(Duration::from_secs(2))
+            .connect()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to connect: {}", e),
+            })?;
+
+        let mut client = tonic_health::pb::health_client::HealthClient::new(channel);
+
+        let request = tonic::Request::new(tonic_health::pb::HealthCheckRequest {
+            service: "".to_string(), // Overall health
+        });
+
+        match client.check(request).await {
+            Ok(response) => {
+                let status = response.into_inner().status;
+                if status == tonic_health::pb::health_check_response::ServingStatus::Serving as i32
+                {
+                    Ok(())
+                } else {
+                    Err(AiomeError::Infrastructure {
+                        reason: format!("Service not serving: {}", status),
+                    })
+                }
+            }
+            Err(e) => Err(AiomeError::Infrastructure {
+                reason: format!("Health check failed: {}", e),
+            }),
+        }
+    }
 }
 
 #[async_trait]
@@ -53,11 +92,20 @@ impl A2aClient for A2aGrpcClient {
 
             let mut client = DockerConductorClient::new(channel);
 
-            let grpc_req = tonic::Request::new(aiome_contracts::a2a::internal::ExecuteTaskRequest {
+            let mut grpc_req = tonic::Request::new(aiome_contracts::a2a::internal::ExecuteTaskRequest {
                 job_id: request_clone.job_id,
                 prompt_b64: request_clone.prompt_b64,
                 artifact_path: request_clone.artifact_path.unwrap_or_default(),
+                agent_yaml_b64: request_clone.agent_yaml_b64,
+                auth_token: request_clone.auth_token,
+                proof_of_intent: request_clone.proof_of_intent.unwrap_or_default(),
+                sender_did: request_clone.sender_did.unwrap_or_default(),
             });
+
+            // Set Authorization Header (Gap A fix)
+            if let Ok(token) = tonic::metadata::MetadataValue::try_from(&format!("Bearer {}", config_clone.auth_token)) {
+                grpc_req.metadata_mut().insert("authorization", token);
+            }
 
             match client.execute_task(grpc_req).await {
                 Ok(response) => {
@@ -70,6 +118,7 @@ impl A2aClient for A2aGrpcClient {
                             is_failed: progress.is_failed,
                             result: if progress.result.is_empty() { None } else { Some(progress.result) },
                             error: if progress.error.is_empty() { None } else { Some(progress.error) },
+                            result_hash: if progress.result_hash.is_empty() { None } else { Some(progress.result_hash) },
                         };
                     }
                 }
@@ -113,6 +162,11 @@ mod tests {
             &self,
             request: Request<ProtoExecuteTaskRequest>,
         ) -> Result<Response<Self::ExecuteTaskStream>, Status> {
+            // Assert Gap A (Authorization header)
+            let auth_header = request.metadata().get("authorization");
+            assert!(auth_header.is_some(), "Authorization metadata not found!");
+            assert_eq!(auth_header.unwrap().to_str().unwrap(), "Bearer test-token");
+
             let req = request.into_inner();
             assert_eq!(req.job_id, "job-123");
 
@@ -126,6 +180,7 @@ mod tests {
                     is_failed: false,
                     result: "".into(),
                     error: "".into(),
+                    result_hash: "".into(),
                 }))
                 .await
                 .unwrap();
@@ -137,6 +192,7 @@ mod tests {
                     is_failed: false,
                     result: "Success".into(),
                     error: "".into(),
+                    result_hash: "abcd1234hash".into(),
                 }))
                 .await
                 .unwrap();
@@ -167,12 +223,16 @@ mod tests {
             connect_timeout: Duration::from_secs(1),
             auth_token: "test-token".to_string(),
         };
-        let client = A2aGrpcClient::new(config);
+        let client = A2aGrpcClient::new(config.clone());
 
         let req = A2aTaskRequest {
             job_id: "job-123".into(),
             prompt_b64: "base64prompt".into(),
             artifact_path: None,
+            agent_yaml_b64: "".into(),
+            auth_token: config.auth_token.clone(),
+            proof_of_intent: None,
+            sender_did: None,
         };
 
         let result = client.execute_task(req).await;

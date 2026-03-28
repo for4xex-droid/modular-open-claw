@@ -55,9 +55,14 @@ impl From<ProcessError> for aiome_contracts::error::AiomeError {
                 }
             }
             ProcessError::NonZeroExit {
-                command, exit_code, ..
+                command,
+                exit_code,
+                stderr,
             } => aiome_contracts::error::AiomeError::SubprocessFailed {
-                reason: format!("Command '{}' failed with code {}", command, exit_code),
+                reason: format!(
+                    "Command '{}' failed with code {}. Stderr: {}",
+                    command, exit_code, stderr
+                ),
             },
         }
     }

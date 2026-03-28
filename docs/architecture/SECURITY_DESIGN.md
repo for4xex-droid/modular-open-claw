@@ -56,6 +56,10 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 33 | **Boundary Violation** | **Malformed Shell Command Injection** | 🔴 High | **BoundaryVerifier (O(1) Tautology) (Phase 47)** |
 | 34 | **Causal Tampering** | **Job Graph Transformation / History Deletion** | 🔴 High | **Invariant-DAG (SHA-256 Hash Chain) (Phase 48)** |
 | 35 | **Opinion Drift / Belief Hijacking** | **Karma-based slow identity poisoning** | 🔴 High | **BeliefConsistencyGate (2-Stage SLM/LLM) (Phase 49)** |
+| 36 | **Rogue Worker Execution** | **Unauthenticated gRPC attachment** | 🔴 High | **UUID One-Time Bearer Token + Localhost Binding (Phase 50)** |
+| 37 | **Agent Configuration Leakage**| **Command Line Arguments Snooping (ps aux)** | 🔴 High | **Read-only Docker Volume Mount for agent.yaml (Phase 50)** |
+| 38 | **Premature Task Dispatch** | **Sending jobs before server is ready** | 🟡 Mid | **tonic-health based readiness probe loops (Phase 50)** |
+| 39 | **Secret CLI Exposure** | **API keys visible via `ps aux` on host** | 🔴 High | **Ephemeral `--env-file` with 0600 perms + immediate wipe after `docker run` (Phase 50)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -150,4 +154,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)*
+*最終更新: 2026-03-28 (Phase 50 / A2A gRPC Native Support & Zero-Trust Sub-Agent)*

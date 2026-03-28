@@ -14,6 +14,7 @@
     ambiguous_glob_reexports
 )]
 
+pub mod a2a;
 pub mod biome;
 pub mod commerce;
 pub mod contracts;
@@ -34,6 +35,7 @@ pub mod types;
 pub mod vault_backend;
 pub mod voice_vault;
 
+pub use a2a::*;
 pub use biome::*;
 pub use commerce::*;
 pub use contracts::*;

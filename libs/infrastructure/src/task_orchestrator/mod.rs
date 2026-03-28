@@ -62,7 +62,7 @@ pub trait TaskConductor: Send + Sync {
         &self,
         job: Job,
         progress_tx: mpsc::Sender<TaskEvent>,
-    ) -> Result<String, AiomeError>;
+    ) -> Result<(String, Option<String>), AiomeError>;
 
     /// Cancel the execution of a specific job
     async fn cancel(&self, _job_id: &str) -> Result<(), AiomeError> {
@@ -303,6 +303,7 @@ impl TaskDispatcher {
                                 }
                             }
 
+                            let karma_directives = job.karma_directives.clone();
                             tokio::select! {
                                 _ = job_token.cancelled() => {
                                     info!("⏹️ Job {} was cancelled.", job_id);
@@ -313,14 +314,52 @@ impl TaskDispatcher {
                                 }
                                 result = conductor_clone.conduct(job, progress_tx.clone()) => {
                                     match result {
-                                        Ok(res) => {
-                                            let _ = job_queue_clone.complete_job(&job_id, Some(&res)).await;
+                                        Ok((out, result_hash_opt)) => {
+                                            let _ = job_queue_clone.complete_job(&job_id, Some(&out)).await;
                                             let _ = progress_tx
                                                 .send(TaskEvent::Completed {
                                                     job_id: job_id.clone(),
-                                                    result: res,
+                                                    result: out,
                                                 })
                                                 .await;
+
+                                            // Gap B: InvariantDag Result Hash Recording
+                                            if let Some(result_hash) = result_hash_opt {
+                                                let mut parent_id_opt = None;
+                                                if let Some(directives_str) = &karma_directives {
+                                                    if let Ok(directives) = serde_json::from_str::<serde_json::Value>(directives_str) {
+                                                        parent_id_opt = directives["parent_job_id"].as_str().map(|s| s.to_string());
+                                                    }
+                                                }
+
+                                                let dag_key = if let Some(pid) = parent_id_opt {
+                                                    format!("invariant_dag_{}", pid)
+                                                } else {
+                                                    format!("invariant_dag_{}", job_id)
+                                                };
+
+                                                let mut dag = if let Ok(Some(dag_json)) = job_queue_clone.fetch_system_state(&dag_key).await {
+                                                    InvariantDag::from_json(&dag_json).unwrap_or_default()
+                                                } else {
+                                                    InvariantDag::new()
+                                                };
+
+                                                // Default parent_hash could be obtained from DAG logic
+                                                // since get_latest_hash() might not be public, we can just pass None for now
+                                                // Wait, looking at InvariantDag implementation, parent_hash is tracked internally in append!
+                                                // "pub fn append(&mut self, payload: serde_json::Value, result_hash: Option<String>, parent_hash: Option<String>) -> InvariantDagNode"
+
+                                                let step_id = dag.node_count() as u32 + 1;
+                                                dag.append(
+                                                    step_id,
+                                                    &job_id,
+                                                    conductor_clone.conductor_name(),
+                                                    vec![format!("result_hash:{}", result_hash)]
+                                                );
+
+                                                let _ = job_queue_clone.store_system_state(&dag_key, &dag.to_json()).await;
+                                                info!("🛡️ [InvariantDag] Appended result_hash for job {} to DAG.", job_id);
+                                            }
                                         }
                                         Err(e) => {
                                             error!("Task {} failed: {:?}", job_id, e);
@@ -547,17 +586,16 @@ mod tests {
             &self,
             job: Job,
             progress_tx: mpsc::Sender<TaskEvent>,
-        ) -> Result<String, AiomeError> {
-            progress_tx
+        ) -> Result<(String, Option<String>), AiomeError> {
+            let _ = progress_tx
                 .send(TaskEvent::Progress {
-                    job_id: job.id.clone(),
-                    conductor_id: "TestConductor".to_string(),
-                    message: "Working...".into(),
+                    job_id: job.id,
+                    conductor_id: self.conductor_name().to_string(),
+                    message: "testing".into(),
                     percent: Some(50),
                 })
-                .await
-                .unwrap();
-            Ok("done".into())
+                .await;
+            Ok(("done".into(), None))
         }
     }
 

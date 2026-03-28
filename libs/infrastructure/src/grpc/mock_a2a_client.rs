@@ -42,6 +42,7 @@ impl A2aClient for MockA2aClient {
                     is_failed: false,
                     result: None,
                     error: None,
+                    result_hash: None,
                 }),
                 Ok(A2aTaskProgress {
                     message: "Completed mock task".into(),
@@ -50,6 +51,7 @@ impl A2aClient for MockA2aClient {
                     is_failed: false,
                     result: Some(format!("Mock result for {}", request.job_id)),
                     error: None,
+                    result_hash: Some("mock-hash-1234".into()),
                 }),
             ]
         };

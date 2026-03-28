@@ -11,6 +11,7 @@ use chrono::Utc;
 use sha2::{Digest, Sha256};
 
 /// 不変条件の状態遷移をハッシュチェーンで管理するエンジン
+#[derive(Default)]
 pub struct InvariantDag {
     nodes: Vec<InvariantDagNode>,
 }
@@ -19,6 +20,11 @@ impl InvariantDag {
     /// 新しい DAG インスタンスを作成する
     pub fn new() -> Self {
         Self { nodes: Vec::new() }
+    }
+
+    /// 最新のノード数を取得する
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
     }
 
     /// 新しいノードを追加し、ハッシュチェーンを更新する

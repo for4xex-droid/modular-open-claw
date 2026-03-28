@@ -13,6 +13,7 @@ shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
 tonic = { workspace = true, optional = true }
+tonic-health = { version = "0.12", optional = true }
 reqwest = { workspace = true }
 stripe = { workspace = true }
 async-trait = "0.1"
@@ -65,7 +66,7 @@ quote = "1.0"
 proc-macro2 = "1.0"
 
 [features]
-grpc = ["tonic", "aiome-contracts/grpc"]
+grpc = ["tonic", "aiome-contracts/grpc", "tonic-health"]
 
 [dev-dependencies]
 tempfile = "3"

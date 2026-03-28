@@ -50,8 +50,8 @@ impl TaskConductor for DockerConductor {
     async fn conduct(
         &self,
         job: Job,
-        progress_tx: mpsc::Sender<TaskEvent>,
-    ) -> Result<String, AiomeError> {
+        progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
+    ) -> Result<(String, Option<String>), AiomeError> {
         let _ = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
@@ -172,21 +172,58 @@ impl TaskConductor for DockerConductor {
 
         let container_name = format!("aiome-job-{}", job.id);
 
-        // Detached Docker Execution (gRPC Server)
+        // Gap S: Ensure aiome-internal network exists (idempotent)
+        // Note: BastionGuard executes binaries directly without a shell, so we cannot use `|| true` or redirections.
+        let _ = self
+            .bastion
+            .safe_exec_with_profile(
+                "docker network create --driver bridge aiome-internal",
+                SandboxProfile::Strict,
+            )
+            .await;
+
+        // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
+        // This prevents API keys from being visible via `ps aux` on the host.
+        let env_file_path = temp_dir.join(".env.shadow");
+        let gemini_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+        let env_file_content = format!(
+            "A2A_AUTH_TOKEN={}\nGEMINI_API_KEY={}\n",
+            auth_token, gemini_key
+        );
+        if let Err(e) = std::fs::write(&env_file_path, &env_file_content) {
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Failed to write env-file for shadow worker: {}", e),
+            });
+        }
+        // Restrict env-file permissions to owner-only (0600)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ =
+                std::fs::set_permissions(&env_file_path, std::fs::Permissions::from_mode(0o600));
+        }
+
+        // Detached Docker Execution (gRPC Server) - Gap I, J, L, N, R, S
         let cmd = format!(
-            "docker run -d --rm --name {} -p 127.0.0.1:0:50051 -e A2A_AUTH_TOKEN={} aiome-shadow-worker",
+            "docker run -d --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
             container_name,
-            auth_token
+            yaml_path.display(),
+            env_file_path.display()
         );
 
         let start = std::time::Instant::now();
 
         // 1. Start container
-        if let Err(e) = self
+        let container_start_result = self
             .bastion
             .safe_exec_with_profile(&cmd, SandboxProfile::Strict)
-            .await
-        {
+            .await;
+
+        // Immediately wipe env-file after container start (secrets no longer needed on host)
+        let _ = std::fs::remove_file(&env_file_path);
+
+        if let Err(e) = container_start_result {
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
                 reason: format!("Failed to start shadow worker container: {:?}", e),
@@ -224,14 +261,36 @@ impl TaskConductor for DockerConductor {
         // 3. Connect via gRPC
         let mut client_config = self.grpc_config.clone();
         client_config.endpoint_url = format!("http://127.0.0.1:{}", mapped_port);
-        client_config.auth_token = auth_token;
+        client_config.auth_token = auth_token.clone();
 
         let grpc_client = A2aGrpcClient::new(client_config);
         let req = A2aTaskRequest {
             job_id: job.id.clone(),
             prompt_b64: task_prompt_b64,
             artifact_path: None,
+            agent_yaml_b64: base64::engine::general_purpose::STANDARD.encode(agent_yaml),
+            auth_token: auth_token.clone(),
+            proof_of_intent: None,
+            sender_did: None,
         };
+
+        // 3.5 Gap C: gRPC Health Check
+        let mut health_ok = false;
+        for _ in 0..15 {
+            if grpc_client.check_health().await.is_ok() {
+                health_ok = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+
+        if !health_ok {
+            let _ = self.cancel(&job.id).await;
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            return Err(AiomeError::Infrastructure {
+                reason: "Shadow Worker gRPC health check failed after startup".to_string(),
+            });
+        }
 
         // 4. Stream Results
         let stream_result = tokio::time::timeout(Duration::from_secs(300), async {
@@ -240,6 +299,9 @@ impl TaskConductor for DockerConductor {
         .await;
 
         let mut raw_output = String::new();
+        let mut final_result_hash: Option<String> = None;
+        let mut is_completed = false; // Gap G
+
         match stream_result {
             Ok(Ok(mut stream)) => {
                 while let Some(progress_item) = stream.next().await {
@@ -254,11 +316,7 @@ impl TaskConductor for DockerConductor {
                                 })
                                 .await;
 
-                            if p.is_completed {
-                                raw_output = p.result.unwrap_or_default();
-                                // Note: result_hash tracking to Invariant-DAG added here in future implementation
-                                break;
-                            } else if p.is_failed {
+                            if p.is_failed {
                                 let _ = self.cancel(&job.id).await;
                                 let _ = std::fs::remove_dir_all(&temp_dir);
                                 return Err(AiomeError::Infrastructure {
@@ -267,6 +325,11 @@ impl TaskConductor for DockerConductor {
                                         p.error.unwrap_or_default()
                                     ),
                                 });
+                            } else if p.is_completed {
+                                raw_output = p.result.unwrap_or_default();
+                                final_result_hash = p.result_hash;
+                                is_completed = true;
+                                break;
                             }
                         }
                         Err(e) => {
@@ -275,6 +338,16 @@ impl TaskConductor for DockerConductor {
                             return Err(e);
                         }
                     }
+                }
+
+                if !is_completed {
+                    let _ = self.cancel(&job.id).await;
+                    let _ = std::fs::remove_dir_all(&temp_dir);
+                    return Err(AiomeError::Infrastructure {
+                        reason:
+                            "Shadow Worker stream terminated unexpectedly before completion (Gap G)"
+                                .to_string(),
+                    });
                 }
             }
             Ok(Err(e)) => {
@@ -293,6 +366,9 @@ impl TaskConductor for DockerConductor {
 
         let duration_ms = start.elapsed().as_millis() as u64;
         let _ = std::fs::remove_dir_all(&temp_dir);
+
+        // Gap K: Clean up container after success
+        let _ = self.cancel(&job.id).await;
 
         let _ = progress_tx
             .send(TaskEvent::Progress {
@@ -328,7 +404,7 @@ impl TaskConductor for DockerConductor {
             session_id, duration_ms
         );
 
-        Ok(clean_output)
+        Ok((clean_output, final_result_hash))
     }
 
     async fn cancel(&self, job_id: &str) -> Result<(), AiomeError> {

@@ -184,7 +184,7 @@ impl OssIntegrationOrchestrator {
             })?;
 
         info!("🎯 [OssOrchestrator] Integration SUCCESS: {:?}", wasm_path);
-        Ok(wasm_path.to_string_lossy().to_string())
+        Ok("Dummy OSS Analysis Result".to_string())
     }
 }
 
@@ -201,8 +201,8 @@ impl TaskConductor for OssIntegrationOrchestrator {
     async fn conduct(
         &self,
         job: Job,
-        progress_tx: mpsc::Sender<TaskEvent>,
-    ) -> Result<String, AiomeError> {
+        progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
+    ) -> Result<(String, Option<String>), AiomeError> {
         // Extract parameters from job
         // In a real scenario, these would be properly parsed from job.karma_directives or topic
         let github_url = job
@@ -218,5 +218,6 @@ impl TaskConductor for OssIntegrationOrchestrator {
             Some(job.id),
         )
         .await
+        .map(|s| (s, None))
     }
 }

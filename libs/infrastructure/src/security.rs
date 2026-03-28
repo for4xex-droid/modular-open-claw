@@ -229,21 +229,22 @@ impl RuntimeJail for BastionGuard {
             for p in potential_paths {
                 let mut path_allowed = false;
 
-                // Check against Workspace Sandbox
-                if sandbox.validate_path(p).is_ok() {
+                if self.is_system_internal {
                     path_allowed = true;
-                }
+                } else {
+                    // Check against Workspace Sandbox
+                    if sandbox.validate_path(p).is_ok() {
+                        path_allowed = true;
+                    }
 
-                // Check against Vault Sandbox (if configured)
-                if !path_allowed {
-                    if let Some(vault_root) = &GLOBAL_SECURITY_CONFIG.vault_path {
-                        if let Ok(vault_sandbox) = shared::sandbox::PathSandbox::new(vault_root) {
-                            if vault_sandbox.validate_path(p).is_ok() {
-                                // G-21 Hardening: Vault access is STRICTLY for internal processes only.
-                                // Skills (even with write permission) should NEVER access the Vault via shell.
-                                if self.is_system_internal {
-                                    path_allowed = true;
-                                } else {
+                    // Check against Vault Sandbox (if configured)
+                    if !path_allowed {
+                        if let Some(vault_root) = &GLOBAL_SECURITY_CONFIG.vault_path {
+                            if let Ok(vault_sandbox) = shared::sandbox::PathSandbox::new(vault_root)
+                            {
+                                if vault_sandbox.validate_path(p).is_ok() {
+                                    // G-21 Hardening: Vault access is STRICTLY for internal processes only.
+                                    // (is_system_internal is already checked above, but keep logic symmetric)
                                     warn!("🛡️ [BastionGuard] Access to vault path '{}' blocked: unauthorized skill context.", p);
                                 }
                             }
