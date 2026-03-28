@@ -1545,6 +1545,11 @@ async fn test_gig_lifecycle() {
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 
     // 4. Deliver
+    let gig_artifacts_dir = _tmp.path().join("gig_artifacts");
+    if !gig_artifacts_dir.exists() {
+        std::fs::create_dir_all(&gig_artifacts_dir).unwrap();
+    }
+    std::fs::write(gig_artifacts_dir.join("artifact.txt"), "mock").unwrap();
     let deliver_req = json!({
         "order_id": intent_id,
         "deliverer_id": bidder_id,
@@ -1556,6 +1561,7 @@ async fn test_gig_lifecycle() {
         .add_header(axum::http::header::AUTHORIZATION, &auth)
         .json(&deliver_req)
         .await;
+    println!("Deliver 500 Response: {:?}", resp.text());
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 
     // 5. Verify

@@ -248,7 +248,7 @@ impl GigEngine for UniversalGigEngine {
             self.pool.ph(0)
         );
         let q_upd_bid = format!(
-            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {0} AND status = 'Open'",
+            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {0} AND status = 'Pending'",
             self.pool.ph(0)
         );
 
