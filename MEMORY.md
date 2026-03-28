@@ -1,7 +1,7 @@
 # 🧠 MEMORY.md: Aiome Agent Long-Term Context
 
-**Current Phase:** Phase 15 (Agentic Foundation Expansion & AI-Scientist Loop)
-**Last Major Update:** 2026-03-27
+**Current Phase:** Phase 48 (Causal Hash Chain & Boundary Tautology)
+**Last Major Update:** 2026-03-28
 
 ## 🌟 Core Identity & Directives
 
@@ -11,13 +11,12 @@ Aiome は「自身で考え、改善し、世界と関わる自律エージェ�
 - リアルタイムイベントストリーム（SSE）と Shadow Clone Worker でのサンドボックス（Wasm/Docker）並行実行
 
 ### 🗺️ Recent Milestones
-* **Phase 13.3**: Synthetic Voice & Live Session (Gemini 2.0 Flash Live) の統合。
-* **Phase 14 MVP**: Agent Guild（Syndicate）の基盤構築によるグループ自律制御への布石。
+* **Phase 47**: `BoundaryVerifier` による O(1) シェル境界検証の実装。メタ文字・パスアクセスの物理的遮断。
+* **Phase 48**: `Invariant-DAG` 実装。SHA-256 ハッシュチェーンによる因果監査基盤の確立。
 * **Phase 15 (ADR-024 / ADR-023)**: 
   * AI-Scientist 自律的自己改善ループの実装 (`Oracle::multi_review`, `DreamState::scientific_dream`)。
-  * `StrategicPlanner` における堅牢な目標分解と JSON パース。
-  * Semantic Tool Discovery を用いた動的なスキル呼び出し基盤。
-  * `TaskDispatcher` での因果メタデータ（`parent_step_id`）追跡。
+  * `StrategicPlanner` における目標分解と JSON パース。
+  * Semantic Tool Discovery を用いた動的なスキル呼び出し基出し。
 
 ### 🚧 Current Blind Spots & Known Issues
 * `infrastructure` コアで一時的な `unwrap()` やドキュメント警告が一部残存（R-005: unwrap in productionコード違反）。折を見てリファクタが必要。

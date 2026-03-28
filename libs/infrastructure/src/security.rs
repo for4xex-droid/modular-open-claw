@@ -615,7 +615,7 @@ mod tests {
         let res = guard.safe_exec("rm -rf /tmp/foo").await;
         assert!(res.is_err());
         if let Err(AiomeError::Infrastructure { reason }) = res {
-            assert!(reason.contains("Binary 'rm' is not in the whitelist"));
+            assert!(reason.contains("is not in the allowed whitelist"));
         }
     }
 
@@ -773,7 +773,7 @@ mod tests {
 
         assert!(res.is_err());
         if let Err(AiomeError::Infrastructure { reason }) = res {
-            assert!(reason.contains("prohibited"));
+            assert!(reason.contains("forbidden"));
         } else {
             panic!("Expected Security Violation for escaped injection");
         }
