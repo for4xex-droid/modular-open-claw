@@ -5,9 +5,9 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::slm_bridge::SlmBridge;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::LlmProvider;
-use crate::slm_bridge::SlmBridge;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -68,12 +68,20 @@ impl BeliefConsistencyGate {
     }
 
     /// Karma 候補の信念整合性をチェックする
-    pub async fn check_belief_consistency(&self, karma_candidate: &str) -> Result<BeliefCheckResult, AiomeError> {
+    pub async fn check_belief_consistency(
+        &self,
+        karma_candidate: &str,
+    ) -> Result<BeliefCheckResult, AiomeError> {
         // 1. SLM による高速スクリーニング (利用可能な場合)
         if let Some(slm) = &self.slm_bridge {
             if let Ok(score) = slm.detect_contradictions(karma_candidate).await {
                 // RT-3 Fix: SLM の判定も確率的にサンプリング検証する (10% の確率で LLM で再確認)
-                let should_verify = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().subsec_nanos() % 10 == 0;
+                let should_verify = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .subsec_nanos()
+                    % 10
+                    == 0;
                 if score < self.config.contradiction_threshold && !should_verify {
                     // SLM が矛盾なしと判断した場合は早期リターン
                     return Ok(BeliefCheckResult::Consistent);
@@ -84,10 +92,10 @@ impl BeliefConsistencyGate {
         // 2. LLM による詳細判定
         let beliefs = self.soul_beliefs.read().await;
         let pilled_beliefs = beliefs.join("\n- ");
-        
+
         // RT-1 Fix: Prompt Injection 防御のため入力をサニタイズ
         let sanitized_karma = sanitize_karma_input(karma_candidate);
-        
+
         let prompt = format!(
             "Compare the following new knowledge (Karma) with the core beliefs of the agent.\n\n\
             Core Beliefs:\n- {}\n\n\
@@ -101,23 +109,31 @@ impl BeliefConsistencyGate {
             pilled_beliefs, sanitized_karma
         );
 
-        let response = self.llm.complete(&prompt, Some("You are the BeliefConsistencyGate of an AI agent.")).await?;
+        let response = self
+            .llm
+            .complete(
+                &prompt,
+                Some("You are the BeliefConsistencyGate of an AI agent."),
+            )
+            .await?;
         let content = response.content.trim();
 
         if content.starts_with("CONSISTENT") {
             Ok(BeliefCheckResult::Consistent)
         } else if content.starts_with("REVISION_CANDIDATE") {
             // RT-6 Fix: 証拠として記録
-            Ok(BeliefCheckResult::RevisionCandidate { 
+            Ok(BeliefCheckResult::RevisionCandidate {
                 evidence: vec![Evidence {
                     content: karma_candidate.to_string(),
                     source: "llm_gate".into(),
                     timestamp: chrono::Utc::now().to_rfc3339(),
                     strength: 0.7,
-                }] 
+                }],
             })
         } else {
-            Ok(BeliefCheckResult::Contradicted { flag: content.to_string() })
+            Ok(BeliefCheckResult::Contradicted {
+                flag: content.to_string(),
+            })
         }
     }
 

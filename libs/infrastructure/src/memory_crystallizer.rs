@@ -5,13 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::belief_consistency_gate::{BeliefCheckResult, BeliefConsistencyGate};
 use crate::job_queue::{UniversalJobQueue, WatchtowerOps};
 use crate::slm_bridge::SlmBridge;
-use crate::belief_consistency_gate::{BeliefConsistencyGate, BeliefCheckResult};
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::LlmProvider;
+use aiome_contracts::trajectory::{StepCategory, TrajectoryStep};
 use aiome_contracts::AuditStore;
-use aiome_contracts::trajectory::{TrajectoryStep, StepCategory};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
@@ -118,12 +118,16 @@ impl MemoryCrystallizer {
                                             job_id: Some(format!("crystallize-{}", skill)),
                                             action: "RequestBeliefRevision".into(),
                                             step_category: StepCategory::Decision,
-                                            output: serde_json::to_value(evidence).unwrap_or_default(),
-                                            reasoning: Some(format!("Evidence for skill: {}", skill)),
+                                            output: serde_json::to_value(evidence)
+                                                .unwrap_or_default(),
+                                            reasoning: Some(format!(
+                                                "Evidence for skill: {}",
+                                                skill
+                                            )),
                                             ..Default::default()
                                         };
                                         let _ = self.job_queue.store_trajectory_step(step).await;
-                                        continue; 
+                                        continue;
                                     }
                                     Err(e) => {
                                         warn!("⚠️ [MemoryCrystallizer] Belief gate error: {:?}", e);
@@ -214,7 +218,8 @@ mod tests {
             let semaphore = Arc::new(Semaphore::new(1));
             let slm = Some(Arc::new(SlmBridge::new()));
 
-            let crystallizer = MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm, None);
+            let crystallizer =
+                MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm, None);
 
             assert!(crystallizer.slm_bridge.is_some());
         }

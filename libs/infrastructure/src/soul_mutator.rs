@@ -31,7 +31,11 @@ impl SoulMutator {
         base_dir: PathBuf,
         belief_gate: Option<Arc<crate::belief_consistency_gate::BeliefConsistencyGate>>,
     ) -> Self {
-        Self { llm, base_dir, belief_gate }
+        Self {
+            llm,
+            base_dir,
+            belief_gate,
+        }
     }
 
     pub async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {

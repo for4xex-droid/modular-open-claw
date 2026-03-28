@@ -27,6 +27,11 @@
 ## [Unreleased] - 2026-03-28
 
 ### Added
+- **Phase 50: A2A gRPC Native Support [Planning 完了]**
+    - **Architecture Strategy**: Core/Node 分離アーキテクチャおよび gRPC 駆動型 A2A 通信網（A2A v1.0 / ACP 準拠）を策定。
+    - **Security Hardening (Phase 50)**: Threat #36-38 (Unauthorized Access, Message Tampering, Zombie Worker) に対する緩和策（Localhost IPC, ワンタイムトークン, gRPC Deadline）を計画。
+    - **Implementation Plan**: DockerConductor の同期実行から gRPC ストリーミング受信への全面リファクタリング、および `libs/aiome-contracts` への proto 統合を含む 26 ステップの精密計画を作成。
+    - **Perfect Planning**: 4 回の反復検証により 20 件の潜在的欠陥を特定・修正し、実装可能な最高品質の計画を確立。
 - **Phase 49: BeliefShift Causal Integrity [完了]**
     - **BeliefConsistencyGate**: 新規 Karma 候補をコア信念（`SOUL.md`）と照合する 2 段階検証ゲート（SLM 高速スクリーニング + LLM 詳細判定）を実装。
     - **Evidence-Driven Revision**: 信念と矛盾するが強力な証拠を持つ情報を `RevisionCandidate` として検出し、ハッシュチェーン（軌跡）に証拠付きで記録する仕組みを構築。

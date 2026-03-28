@@ -16,14 +16,14 @@ use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::TranscriptionEngine;
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
+use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
 use infrastructure::circuit_breaker::CircuitBreaker;
 use infrastructure::compliance::ekyc::EkycEngine;
 use infrastructure::compliance::ekyc_store::EkycSessionStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
+use infrastructure::memory_crystallizer::MemoryCrystallizer;
 use infrastructure::slo_engine::SloEngine;
 use infrastructure::whisper_transcription::WhisperTranscriptionAdapter;
-use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
-use infrastructure::memory_crystallizer::MemoryCrystallizer;
 use shared::config::AiomeConfig;
 
 use async_trait::async_trait;
@@ -386,7 +386,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize BeliefConsistencyGate (Phase 49)
     let slm_bridge = if !config.ollama_host.is_empty() {
-        Some(Arc::new(infrastructure::slm_bridge::SlmBridge::new_with_command("ollama")))
+        Some(Arc::new(
+            infrastructure::slm_bridge::SlmBridge::new_with_command("ollama"),
+        ))
     } else {
         None
     };
@@ -403,11 +405,11 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!("⚠️ [BeliefGate] SOUL.md contains fewer than 3 parseable beliefs ({}). Gate effectiveness may be degraded.", beliefs.len());
             }
             beliefs
-        },
+        }
         Err(e) => {
             tracing::error!("🚨 [BeliefGate] Failed to read SOUL.md: {}. BeliefConsistencyGate will operate with minimal beliefs.", e);
             vec!["Be helpful and resourceful.".to_string()]
-        },
+        }
     };
 
     let belief_gate = Arc::new(BeliefConsistencyGate::new(
@@ -425,7 +427,7 @@ async fn main() -> anyhow::Result<()> {
         slm_bridge.clone(),
         Some(belief_gate.clone()),
     ));
-    
+
     let crystallizer_task = crystallizer.clone();
     tokio::spawn(async move {
         info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
