@@ -87,12 +87,9 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
 
     let db_path = tmp_dir.path().join("test.db");
     let db_path_str = db_path.to_str().expect("Invalid path");
-    let ts_pool = crate::db::DatabasePool::Sqlite(
-        sqlx::sqlite::SqlitePoolOptions::new()
-            .connect(&format!("sqlite://{}", db_path_str))
-            .await
-            .expect("TS pool connect"),
-    );
+    let ts_pool = crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str))
+        .await
+        .expect("TS pool connect");
     let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
     let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str), None, ts)

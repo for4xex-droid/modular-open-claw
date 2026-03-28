@@ -249,6 +249,16 @@ mod tests {
     }
 
     #[async_trait]
+    impl aiome_contracts::traits::SystemStateOps for MockQueue {
+        async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_system_state(&self, _: &str) -> Result<Option<String>, AiomeError> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait]
     impl aiome_contracts::traits::AuditStore for MockQueue {
         async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())

@@ -15,6 +15,7 @@ use axum::{
     extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, response::Json,
 };
 use serde::{Deserialize, Serialize};
+use serial_test::serial;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -710,6 +711,7 @@ mod tests {
     use infrastructure::job_queue::UniversalJobQueue;
     use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
     use infrastructure::skills::WasmSkillManager;
+    use serial_test::serial;
     use std::sync::Arc;
 
     async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
@@ -719,12 +721,9 @@ mod tests {
 
         let ts = std::sync::Arc::new(
             infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                infrastructure::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect(&pool_url)
-                        .await
-                        .unwrap(),
-                ),
+                infrastructure::db::DatabasePool::new_sqlite(&pool_url)
+                    .await
+                    .unwrap(),
             ),
         );
         let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap());
@@ -754,6 +753,7 @@ mod tests {
         (state, tmp_dir)
     }
 
+    #[serial]
     #[tokio::test]
     async fn test_build_system_instructions_includes_mcp_servers() {
         let (state, _tmp) = setup_test_state().await;
@@ -792,6 +792,7 @@ mod tests {
         );
     }
 
+    #[serial]
     #[tokio::test]
     async fn test_describe_skill_returns_markdown_for_mcp() {
         let (state, _tmp) = setup_test_state().await;

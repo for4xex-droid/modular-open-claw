@@ -326,15 +326,15 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     // Set WORKSPACE_DIR to tmp_dir for security sandbox consistency (S-4 fix)
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
 
+    let pool = infrastructure::db::DatabasePool::new_sqlite(&format!(
+        "sqlite://{}",
+        db_path.to_str().unwrap()
+    ))
+    .await
+    .expect("Failed to create test DB pool");
+
     let ts = std::sync::Arc::new(
-        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-            infrastructure::db::DatabasePool::Sqlite(
-                sqlx::sqlite::SqlitePoolOptions::new()
-                    .connect(&format!("sqlite://{}", db_path.to_str().unwrap()))
-                    .await
-                    .unwrap(),
-            ),
-        ),
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
@@ -619,6 +619,7 @@ pub fn test_bearer() -> String {
     "Bearer mock_valid_token_test_user".to_string()
 }
 
+#[serial]
 #[tokio::test]
 async fn test_health_check() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -641,6 +642,7 @@ async fn test_health_check() {
     assert_eq!(cb["state"], "Closed");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_rate_limiting_per_agent() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -661,6 +663,7 @@ async fn test_rate_limiting_per_agent() {
     assert_eq!(resp.status_code(), StatusCode::TOO_MANY_REQUESTS);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_settings_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -668,6 +671,7 @@ async fn test_settings_unauthorized() {
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_settings_authorized_and_crud() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -708,6 +712,7 @@ async fn test_settings_authorized_and_crud() {
     assert_eq!(settings_array[0]["value"], "qwen2");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_settings_ssrf_protection() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -731,6 +736,7 @@ async fn test_settings_ssrf_protection() {
     assert!(json["message"].as_str().unwrap().contains("SSRF Blocked"));
 }
 
+#[serial]
 #[tokio::test]
 async fn test_biome_routes_auth() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -745,6 +751,7 @@ async fn test_biome_routes_auth() {
     assert_eq!(resp_auth.status_code(), StatusCode::OK);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_ollama_models() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -764,6 +771,7 @@ async fn test_ollama_models() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_avatar_upload_ekyc_enforcement() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -793,6 +801,7 @@ async fn test_avatar_upload_ekyc_enforcement() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_skill_import_oom_protection() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -812,6 +821,7 @@ async fn test_skill_import_oom_protection() {
     // but it should NOT be UNAUTHORIZED.
     assert_ne!(resp.status_code(), StatusCode::UNAUTHORIZED);
 }
+#[serial]
 #[tokio::test]
 async fn test_global_body_limit() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -838,6 +848,7 @@ async fn test_global_body_limit() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_avatar_upload_limit_bypass() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -867,6 +878,7 @@ async fn test_avatar_upload_limit_bypass() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_diagnostics_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -888,6 +900,7 @@ async fn test_diagnostics_api() {
     assert!(json.as_array().is_some());
 }
 
+#[serial]
 #[tokio::test]
 async fn test_artifacts_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -902,6 +915,7 @@ async fn test_artifacts_api() {
     assert!(json.as_array().is_some());
 }
 
+#[serial]
 #[tokio::test]
 async fn test_trends_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -916,6 +930,7 @@ async fn test_trends_api() {
     assert!(json.get("trends").is_some());
 }
 
+#[serial]
 #[tokio::test]
 async fn test_stripe_webhook_idempotency_and_license_grant() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1017,6 +1032,7 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
     );
 }
 
+#[serial]
 #[tokio::test]
 #[serial]
 async fn test_voice_drm_roundtrip() {
@@ -1085,6 +1101,7 @@ async fn test_voice_drm_roundtrip() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_synergy_demo_routes_visibility() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1132,6 +1149,7 @@ async fn test_synergy_demo_routes_visibility() {
     }
 }
 
+#[serial]
 #[tokio::test]
 async fn test_quarantine_audit_api() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1158,6 +1176,7 @@ async fn test_quarantine_audit_api() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_oauth2_endpoints_stub() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1176,6 +1195,7 @@ async fn test_oauth2_endpoints_stub() {
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_voice_asset_list() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1191,6 +1211,7 @@ async fn test_voice_asset_list() {
     assert!(json.as_array().is_some(), "Response should be a JSON array");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_ekyc_session_creation() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1206,6 +1227,7 @@ async fn test_ekyc_session_creation() {
     assert!(json.get("session_id").is_some());
 }
 
+#[serial]
 #[tokio::test]
 async fn test_inochi2d_upload() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1223,6 +1245,7 @@ async fn test_inochi2d_upload() {
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_gift_policy_dynamic() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1240,6 +1263,7 @@ async fn test_gift_policy_dynamic() {
     assert_eq!(json["daily_limit_reached"], false);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_gift_send_success() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1265,6 +1289,7 @@ async fn test_gift_send_success() {
     assert!(json.get("order_id").is_some());
 }
 
+#[serial]
 #[tokio::test]
 async fn test_gift_send_unverified_blocked() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1291,6 +1316,7 @@ async fn test_gift_send_unverified_blocked() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_commerce_purchase_unverified_blocked() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1316,6 +1342,7 @@ async fn test_commerce_purchase_unverified_blocked() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_voice_upload_limit() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1337,20 +1364,21 @@ async fn test_voice_upload_limit() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_fallback_router_failover() {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test_failover.db");
 
+    let pool = infrastructure::db::DatabasePool::new_sqlite(&format!(
+        "sqlite://{}",
+        db_path.to_str().unwrap()
+    ))
+    .await
+    .expect("Failed to create test DB pool");
+
     let ts = std::sync::Arc::new(
-        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-            infrastructure::db::DatabasePool::Sqlite(
-                sqlx::sqlite::SqlitePoolOptions::new()
-                    .connect(&format!("sqlite://{}", db_path.to_str().unwrap()))
-                    .await
-                    .unwrap(),
-            ),
-        ),
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
@@ -1404,6 +1432,7 @@ async fn test_fallback_router_failover() {
     assert_eq!(res.content, "fallback success");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_tts_worker_flow_red() {
     use aiome_contracts::expression::TtsStatus;
@@ -1456,6 +1485,7 @@ async fn test_tts_worker_flow_red() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_gig_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1541,6 +1571,7 @@ async fn test_gig_lifecycle() {
     assert!(verify_res.passed);
 }
 
+#[serial]
 #[tokio::test]
 #[serial]
 #[cfg(not(debug_assertions))]
@@ -1587,6 +1618,7 @@ async fn test_test_endpoints_are_inaccessible_in_release() {
     );
 }
 
+#[serial]
 #[tokio::test]
 #[serial]
 #[cfg(debug_assertions)]
@@ -1603,6 +1635,7 @@ async fn test_test_endpoints_are_accessible_in_debug() {
         .await;
     assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 }
+#[serial]
 #[tokio::test]
 async fn test_treasure_get_recommendations() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1675,6 +1708,7 @@ async fn test_treasure_get_recommendations() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_autonomous_demo_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1695,6 +1729,7 @@ async fn test_autonomous_demo_lifecycle() {
         .contains("Autonomous demo started"));
 }
 
+#[serial]
 #[tokio::test]
 async fn test_subscription_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1738,6 +1773,7 @@ async fn test_subscription_lifecycle() {
     assert_eq!(cancel_resp.status_code(), StatusCode::OK);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_syndicate_guild_api_flow() {
     let (server, _state, _tmp_dir) = create_test_server().await;
@@ -1799,6 +1835,7 @@ async fn test_syndicate_guild_api_flow() {
     resp.assert_status(axum::http::StatusCode::OK);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_syndicate_guild_sanitization() {
     let (server, _state, _tmp_dir) = create_test_server().await;
