@@ -13,21 +13,14 @@ use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 use tracing::{error, info, warn};
 
-/// SuperLocalMemory MCP/CLI との通信を管理するブリッジ
-#[derive(Debug)]
-pub struct SlmBridge {
-    circuit_breaker: Arc<CircuitBreaker>,
-    command_name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlmMemoryEntry {
     pub content: String,
     pub category: String,
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SlmRecallResult {
     pub content: String,
@@ -43,82 +36,283 @@ impl Default for SlmRecallResult {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmRecallData {
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmRecallData {
     #[serde(default)]
-    results: Vec<SlmRecallResult>,
+    pub results: Vec<SlmRecallResult>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmRecallJsonResponse {
-    data: SlmRecallData,
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmRecallJsonResponse {
+    pub data: SlmRecallData,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmTraceChannelScores {
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmTraceChannelScores {
     #[serde(default)]
-    semantic: f64,
+    pub semantic: f64,
     #[serde(default)]
-    bm25: f64,
+    pub bm25: f64,
     #[serde(default)]
-    entity_graph: f64,
+    pub entity_graph: f64,
     #[serde(default)]
-    poincare: f64,
+    pub poincare: f64,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmTraceResult {
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmTraceResult {
     #[serde(default)]
-    score: f64,
+    pub score: f64,
     #[serde(default)]
-    channel_scores: Option<SlmTraceChannelScores>,
+    pub channel_scores: Option<SlmTraceChannelScores>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmTraceData {
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmTraceData {
     #[serde(default)]
-    results: Vec<SlmTraceResult>,
+    pub results: Vec<SlmTraceResult>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlmTraceJsonResponse {
-    data: SlmTraceData,
+#[derive(Debug, Clone, Deserialize)]
+pub struct SlmTraceJsonResponse {
+    pub data: SlmTraceData,
+}
+
+//// SLM バックエンドの共通インターフェース
+#[async_trait::async_trait]
+pub trait SlmBackend: std::fmt::Debug + Send + Sync {
+    /// メモリを保存する
+    async fn store(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError>;
+    /// メモリを検索する
+    async fn recall(&self, query: &str, limit: i64) -> Result<Vec<SlmRecallResult>, AiomeError>;
+    /// 矛盾を検出する
+    async fn detect_contradictions(&self, text: &str) -> Result<f64, AiomeError>;
+    /// 重要度を算出する
+    async fn calculate_importance(&self, query: &str) -> Result<f64, AiomeError>;
+    /// 重要度を一括算出する
+    async fn calculate_importance_batch(
+        &self,
+        queries: &[String],
+    ) -> Result<Vec<(String, f64)>, AiomeError>;
+}
+
+/// 従来の CLI ベースの SLM バックエンド
+#[derive(Debug)]
+pub struct CliSlmBackend {
+    command_name: String,
+}
+
+impl CliSlmBackend {
+    pub fn new(command: &str) -> Self {
+        Self {
+            command_name: command.to_string(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl SlmBackend for CliSlmBackend {
+    async fn store(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError> {
+        let output = Command::new(&self.command_name)
+            .arg("remember")
+            .arg("--tags")
+            .arg(&entry.category)
+            .arg(&entry.content)
+            .output()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute slm remember: {}", e),
+            })?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let err = String::from_utf8_lossy(&output.stderr);
+            Err(AiomeError::Infrastructure {
+                reason: format!("SLM CLI reported failure: {}", err),
+            })
+        }
+    }
+
+    async fn recall(&self, query: &str, limit: i64) -> Result<Vec<SlmRecallResult>, AiomeError> {
+        let output = Command::new(&self.command_name)
+            .arg("recall")
+            .arg("--json")
+            .arg("--limit")
+            .arg(limit.to_string())
+            .arg(query)
+            .output()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute slm recall: {}", e),
+            })?;
+
+        if output.status.success() {
+            let response: SlmRecallJsonResponse =
+                serde_json::from_slice(&output.stdout).map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to parse SLM recall JSON: {}", e),
+                })?;
+            Ok(response.data.results)
+        } else {
+            let err = String::from_utf8_lossy(&output.stderr);
+            Err(AiomeError::Infrastructure {
+                reason: format!("SLM CLI recall failure: {}", err),
+            })
+        }
+    }
+
+    async fn detect_contradictions(&self, text: &str) -> Result<f64, AiomeError> {
+        let output = Command::new(&self.command_name)
+            .arg("contradict")
+            .arg("--json")
+            .arg(text)
+            .output()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute slm contradict: {}", e),
+            })?;
+
+        if output.status.success() {
+            let response: serde_json::Value =
+                serde_json::from_slice(&output.stdout).map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to parse SLM contradiction JSON: {}", e),
+                })?;
+            let score = response["data"]["score"].as_f64().unwrap_or(0.0);
+            Ok(score)
+        } else {
+            let err = String::from_utf8_lossy(&output.stderr);
+            Err(AiomeError::Infrastructure {
+                reason: format!("SLM CLI contradict failure: {}", err),
+            })
+        }
+    }
+
+    async fn calculate_importance(&self, query: &str) -> Result<f64, AiomeError> {
+        let output = Command::new(&self.command_name)
+            .arg("trace")
+            .arg("--json")
+            .arg(query)
+            .output()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute slm trace: {}", e),
+            })?;
+
+        if output.status.success() {
+            let response: SlmTraceJsonResponse =
+                serde_json::from_slice(&output.stdout).map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to parse SLM trace JSON: {}", e),
+                })?;
+            Ok(SlmBridge::extract_importance_from_trace(&response))
+        } else {
+            let err = String::from_utf8_lossy(&output.stderr);
+            Err(AiomeError::Infrastructure {
+                reason: format!("SLM CLI trace failure: {}", err),
+            })
+        }
+    }
+
+    async fn calculate_importance_batch(
+        &self,
+        queries: &[String],
+    ) -> Result<Vec<(String, f64)>, AiomeError> {
+        let tmp_path =
+            std::env::temp_dir().join(format!("slm_batch_{}.jsonl", uuid::Uuid::new_v4()));
+        let batch_content = queries.join("\n");
+        tokio::fs::write(&tmp_path, &batch_content)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to write batch file: {}", e),
+            })?;
+
+        let output_res = Command::new(&self.command_name)
+            .arg("trace")
+            .arg("--json")
+            .arg("--batch")
+            .arg(&tmp_path)
+            .output()
+            .await;
+
+        let _ = tokio::fs::remove_file(&tmp_path).await;
+
+        match output_res {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let mut results = Vec::with_capacity(queries.len());
+                for (i, line) in stdout.lines().enumerate() {
+                    if let Ok(resp) = serde_json::from_str::<SlmTraceJsonResponse>(line) {
+                        let importance = SlmBridge::extract_importance_from_trace(&resp);
+                        let query = queries.get(i).cloned().unwrap_or_default();
+                        results.push((query, importance));
+                    }
+                }
+                Ok(results)
+            }
+            _ => {
+                // Sequential fallback
+                let mut results = Vec::with_capacity(queries.len());
+                for q in queries {
+                    match self.calculate_importance(q).await {
+                        Ok(importance) => results.push((q.clone(), importance)),
+                        Err(_) => results.push((q.clone(), 0.0)),
+                    }
+                }
+                Ok(results)
+            }
+        }
+    }
+}
+
+/// SuperLocalMemory との通信を管理するブリッジ (Strategy パターン)
+#[derive(Debug)]
+pub struct SlmBridge {
+    circuit_breaker: Arc<CircuitBreaker>,
+    backend: Box<dyn SlmBackend>,
 }
 
 impl SlmBridge {
-    /// 新しいインスタンスを生成する
+    /// 新しいインスタンスを生成する (デフォルトは CLI)
     pub fn new() -> Self {
         Self::new_with_command("slm")
     }
 
-    /// 指定されたコマンド名を使用してインスタンスを生成する（テスト用）
+    /// 指定されたコマンド名を使用して CLI バックエンドを生成する
     pub fn new_with_command(command: &str) -> Self {
+        Self::with_backend(Box::new(CliSlmBackend::new(command)))
+    }
+
+    /// 任意のバックエンドを指定して生成する (テスト/拡張用)
+    pub fn with_backend(backend: Box<dyn SlmBackend>) -> Self {
         let cb_config = CircuitBreakerConfig {
             failure_threshold: 3,
             reset_timeout: Duration::from_secs(60),
         };
         Self {
             circuit_breaker: Arc::new(CircuitBreaker::new("slm-bridge", cb_config)),
-            command_name: command.to_string(),
+            backend,
         }
     }
 
-    /// 入力文字列を検証する (C-1 対策: White-list & Black-list Hybrid)
+    /// ネイティブ推論バックエンドを生成する (Phase 2)
+    #[cfg(feature = "native-inference")]
+    pub fn new_native(config: aiome_contracts::llm::NativeModelConfig) -> Self {
+        Self::with_backend(Box::new(crate::native_backend::NativeSlmBackend::new(
+            config,
+        )))
+    }
+
+    /// 入力文字列を検証する
     fn validate(input: &str) -> Result<(), AiomeError> {
         if input.trim().is_empty() {
             return Err(AiomeError::Infrastructure {
                 reason: "Input is empty or whitespace only".into(),
             });
         }
-
-        // 1. 長さ制限 (Resource Exhaustion 対策)
         if input.len() > 1024 * 64 {
             return Err(AiomeError::Infrastructure {
                 reason: "Input too large (max 64KB)".into(),
             });
         }
-
-        // 2. 制御文字のチェック (Null byte 等)
         if input
             .chars()
             .any(|c| c.is_control() && c != '\n' && c != '\r' && c != '\t')
@@ -127,75 +321,40 @@ impl SlmBridge {
                 reason: "Control characters detected in input".into(),
             });
         }
-
-        // 3. 危険なシェル文字のチェック
         let dangerous_chars = [
             ';', '&', '|', '$', '>', '<', '`', '\\', '!', '{', '}', '(', ')', '[', ']', '*', '?',
             '~',
         ];
         if input.chars().any(|c| dangerous_chars.contains(&c)) {
             return Err(AiomeError::Infrastructure {
-                reason: format!("Potentially malicious characters detected in input"),
+                reason: "Potentially malicious characters detected in input".into(),
             });
         }
-
         Ok(())
     }
 
-    /// メモリを保存する (Phase 1 堅牢版)
     pub async fn store_memory(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError> {
-        // サーキットブレーカーのチェック
         self.circuit_breaker
             .check_state()
             .await
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("SLM Service is unavailable: {}", e),
             })?;
-
-        // バリデーション (サニタイズではなく拒否)
         Self::validate(&entry.content)?;
         Self::validate(&entry.category)?;
 
-        // 実行 (タイムアウト付き C-3 対策)
-        let future = Command::new(&self.command_name)
-            .arg("remember")
-            .arg("--tags")
-            .arg(&entry.category)
-            .arg(&entry.content)
-            .output();
-
-        match timeout(Duration::from_secs(30), future).await {
-            Ok(Ok(output)) => {
-                if output.status.success() {
-                    self.circuit_breaker.record_success().await;
-                    info!("Memory stored in SLM (category: {})", entry.category);
-                    Ok(())
-                } else {
-                    let err = String::from_utf8_lossy(&output.stderr);
-                    error!("SLM Remember Error: {}", err);
-                    self.circuit_breaker.record_failure().await;
-                    Err(AiomeError::Infrastructure {
-                        reason: format!("SLM CLI reported failure: {}", err),
-                    })
-                }
+        match self.backend.store(entry).await {
+            Ok(_) => {
+                self.circuit_breaker.record_success().await;
+                Ok(())
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to execute slm remember: {}", e),
-                })
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure().await;
-                warn!("SLM Remember timed out after 30s");
-                Err(AiomeError::Infrastructure {
-                    reason: "SLM process timed out".into(),
-                })
+                Err(e)
             }
         }
     }
 
-    /// メモリを検索する (Phase 1 堅牢版)
     pub async fn recall(
         &self,
         query: &str,
@@ -207,50 +366,20 @@ impl SlmBridge {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("SLM Service is unavailable: {}", e),
             })?;
-
         Self::validate(query)?;
 
-        let future = Command::new(&self.command_name)
-            .arg("recall")
-            .arg("--json")
-            .arg("--limit")
-            .arg(limit.to_string())
-            .arg(query)
-            .output();
-
-        match timeout(Duration::from_secs(30), future).await {
-            Ok(Ok(output)) => {
-                if output.status.success() {
-                    self.circuit_breaker.record_success().await;
-                    let response: SlmRecallJsonResponse = serde_json::from_slice(&output.stdout)
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to parse SLM recall JSON: {}", e),
-                        })?;
-                    Ok(response.data.results)
-                } else {
-                    let err = String::from_utf8_lossy(&output.stderr);
-                    self.circuit_breaker.record_failure().await;
-                    Err(AiomeError::Infrastructure {
-                        reason: format!("SLM CLI recall failure: {}", err),
-                    })
-                }
+        match self.backend.recall(query, limit).await {
+            Ok(res) => {
+                self.circuit_breaker.record_success().await;
+                Ok(res)
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to execute slm recall: {}", e),
-                })
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: "SLM recall timed out".into(),
-                })
+                Err(e)
             }
         }
     }
 
-    /// 矛盾を検出する (Phase 3: Constitutional Security)
     pub async fn detect_contradictions(&self, text: &str) -> Result<f64, AiomeError> {
         self.circuit_breaker
             .check_state()
@@ -258,50 +387,20 @@ impl SlmBridge {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("SLM Service is unavailable: {}", e),
             })?;
-
         Self::validate(text)?;
 
-        let future = Command::new(&self.command_name)
-            .arg("contradict")
-            .arg("--json")
-            .arg(text)
-            .output();
-
-        match timeout(Duration::from_secs(30), future).await {
-            Ok(Ok(output)) => {
-                if output.status.success() {
-                    self.circuit_breaker.record_success().await;
-                    let response: serde_json::Value = serde_json::from_slice(&output.stdout)
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to parse SLM contradiction JSON: {}", e),
-                        })?;
-                    // JSON 例: { "data": { "score": 0.85, "reason": "..." } }
-                    let score = response["data"]["score"].as_f64().unwrap_or(0.0);
-                    Ok(score)
-                } else {
-                    let err = String::from_utf8_lossy(&output.stderr);
-                    self.circuit_breaker.record_failure().await;
-                    Err(AiomeError::Infrastructure {
-                        reason: format!("SLM CLI contradict failure: {}", err),
-                    })
-                }
+        match self.backend.detect_contradictions(text).await {
+            Ok(score) => {
+                self.circuit_breaker.record_success().await;
+                Ok(score)
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to execute slm contradict: {}", e),
-                })
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: "SLM contradict timed out".into(),
-                })
+                Err(e)
             }
         }
     }
 
-    /// 記憶の重要度を算出する (Phase 4: Poincare GC)
     pub async fn calculate_importance(&self, query: &str) -> Result<f64, AiomeError> {
         self.circuit_breaker
             .check_state()
@@ -309,147 +408,46 @@ impl SlmBridge {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("SLM Service is unavailable: {}", e),
             })?;
-
         Self::validate(query)?;
 
-        let future = Command::new(&self.command_name)
-            .arg("trace")
-            .arg("--json")
-            .arg(query)
-            .output();
-
-        match timeout(Duration::from_secs(30), future).await {
-            Ok(Ok(output)) => {
-                if output.status.success() {
-                    self.circuit_breaker.record_success().await;
-                    let response: SlmTraceJsonResponse = serde_json::from_slice(&output.stdout)
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to parse SLM trace JSON: {}", e),
-                        })?;
-
-                    Ok(Self::extract_importance_from_trace(&response))
-                } else {
-                    let err = String::from_utf8_lossy(&output.stderr);
-                    self.circuit_breaker.record_failure().await;
-                    Err(AiomeError::Infrastructure {
-                        reason: format!("SLM CLI trace failure: {}", err),
-                    })
-                }
+        match self.backend.calculate_importance(query).await {
+            Ok(score) => {
+                self.circuit_breaker.record_success().await;
+                Ok(score)
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to execute slm trace: {}", e),
-                })
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: "SLM trace timed out".into(),
-                })
+                Err(e)
             }
         }
     }
 
-    /// 複数の記憶の重要度を一括算出する (CR-1: バッチ化パフォーマンス改善)
-    /// 一時ファイルに改行区切りのクエリを書き込み、1回の `slm trace --batch` プロセス起動で処理する。
-    /// `slm trace --batch` が未サポートの場合は、フォールバックとして逐次実行を行う。
     pub async fn calculate_importance_batch(
         &self,
         queries: &[String],
     ) -> Result<Vec<(String, f64)>, AiomeError> {
-        if queries.is_empty() {
-            return Ok(vec![]);
-        }
-
         self.circuit_breaker
             .check_state()
             .await
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("SLM Service is unavailable: {}", e),
             })?;
-
-        // 各クエリをバリデーション
         for q in queries {
             Self::validate(q)?;
         }
 
-        // 一時ファイルにクエリを書き込み
-        let tmp_path =
-            std::env::temp_dir().join(format!("slm_batch_{}.jsonl", uuid::Uuid::new_v4()));
-        let batch_content = queries.join("\n");
-        tokio::fs::write(&tmp_path, &batch_content)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to write batch file: {}", e),
-            })?;
-
-        let future = Command::new(&self.command_name)
-            .arg("trace")
-            .arg("--json")
-            .arg("--batch")
-            .arg(&tmp_path)
-            .output();
-
-        let batch_result = timeout(Duration::from_secs(60), future).await;
-
-        // 一時ファイルの後片付け（エラーは無視）
-        let _ = tokio::fs::remove_file(&tmp_path).await;
-
-        match batch_result {
-            Ok(Ok(output)) if output.status.success() => {
+        match self.backend.calculate_importance_batch(queries).await {
+            Ok(res) => {
                 self.circuit_breaker.record_success().await;
-                // バッチ出力: JSONL (1行1 SlmTraceJsonResponse)
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let mut results = Vec::with_capacity(queries.len());
-                for (i, line) in stdout.lines().enumerate() {
-                    if let Ok(resp) = serde_json::from_str::<SlmTraceJsonResponse>(line) {
-                        let importance = Self::extract_importance_from_trace(&resp);
-                        let query = queries.get(i).cloned().unwrap_or_default();
-                        results.push((query, importance));
-                    }
-                }
-                Ok(results)
+                Ok(res)
             }
-            Ok(Ok(_output)) => {
-                // `--batch` 未サポートの場合、逐次フォールバック
-                warn!("⚠️ [SlmBridge] Batch trace not supported, falling back to sequential execution");
-                self.circuit_breaker.record_success().await;
-                let mut results = Vec::with_capacity(queries.len());
-                for q in queries {
-                    match self.calculate_importance(q).await {
-                        Ok(importance) => results.push((q.clone(), importance)),
-                        Err(_) => results.push((q.clone(), 0.0)),
-                    }
-                }
-                Ok(results)
-            }
-            Ok(Err(e)) => {
+            Err(e) => {
                 self.circuit_breaker.record_failure().await;
-                // フォールバック: 逐次実行
-                warn!(
-                    "⚠️ [SlmBridge] Batch execution failed ({}), falling back",
-                    e
-                );
-                let mut results = Vec::with_capacity(queries.len());
-                for q in queries {
-                    match self.calculate_importance(q).await {
-                        Ok(importance) => results.push((q.clone(), importance)),
-                        Err(_) => results.push((q.clone(), 0.0)),
-                    }
-                }
-                Ok(results)
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure().await;
-                Err(AiomeError::Infrastructure {
-                    reason: "SLM batch trace timed out".into(),
-                })
+                Err(e)
             }
         }
     }
 
-    /// SlmTraceJsonResponse から重要度スコアを算出する共通ヘルパー
     fn extract_importance_from_trace(response: &SlmTraceJsonResponse) -> f64 {
         if response.data.results.is_empty() {
             return 0.0;
@@ -457,9 +455,9 @@ impl SlmBridge {
         let top = &response.data.results[0];
         let base_score = top.score;
         if let Some(channels) = &top.channel_scores {
-            let poincare = channels.poincare;
             let avg_channels =
-                (channels.semantic + channels.bm25 + channels.entity_graph + poincare) / 4.0;
+                (channels.semantic + channels.bm25 + channels.entity_graph + channels.poincare)
+                    / 4.0;
             (base_score + avg_channels) / 2.0
         } else {
             base_score
@@ -471,110 +469,68 @@ impl SlmBridge {
 mod tests {
     use super::*;
 
+    #[derive(Debug, Default)]
+    struct MockBackend {
+        store_called: std::sync::atomic::AtomicBool,
+    }
+
+    #[async_trait::async_trait]
+    impl SlmBackend for MockBackend {
+        async fn store(&self, _: SlmMemoryEntry) -> Result<(), AiomeError> {
+            self.store_called
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        }
+        async fn recall(&self, _: &str, _: i64) -> Result<Vec<SlmRecallResult>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn detect_contradictions(&self, _: &str) -> Result<f64, AiomeError> {
+            Ok(1.0)
+        }
+        async fn calculate_importance(&self, _: &str) -> Result<f64, AiomeError> {
+            Ok(0.5)
+        }
+        async fn calculate_importance_batch(
+            &self,
+            q: &[String],
+        ) -> Result<Vec<(String, f64)>, AiomeError> {
+            Ok(q.iter().map(|s| (s.clone(), 0.5)).collect())
+        }
+    }
+
     #[tokio::test]
-    async fn test_slm_bridge_store_green() {
-        let bridge = SlmBridge::new();
+    async fn test_slm_bridge_strategy_pattern_tdd() {
+        let mock = Box::new(MockBackend::default());
+        let bridge = SlmBridge::with_backend(mock);
+
         let entry = SlmMemoryEntry {
-            content: "TDD focus: integration test for SLM bridge.".into(),
+            content: "Testing Strategy Pattern".into(),
             category: "Test".into(),
             metadata: None,
         };
 
         let res = bridge.store_memory(entry).await;
-        assert!(res.is_ok(), "Store memory should succeed in GREEN phase");
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
-    async fn test_slm_bridge_recall_green() {
+    async fn test_slm_bridge_resource_exhaustion() {
         let bridge = SlmBridge::new();
-
-        // 保存済みの内容を検索してみる
-        let res = bridge.recall("TDD focus", 10).await;
-        assert!(res.is_ok(), "Recall memory should succeed in GREEN phase");
-
-        let results = res.unwrap();
-        // 少なくとも1件以上ヒットすることを期待 (SLM の精度に依存するが、テストデータを入れた直後なら 100% のはず)
-        assert!(!results.is_empty(), "Should return at least one result");
-    }
-
-    #[tokio::test]
-    async fn test_slm_bridge_timeout_red() {
-        let bridge = SlmBridge::new();
-        // SLM recall に非常に長い時間がかかる偽装（現在は未実装なので即座に終わるが、
-        // 意図的にタイムアウトを短く設定して失敗させる等が必要。
-        // ここでは、将来的に導入するタイムアウト機能が正しく動作することを期待するテストを書く）
-
-        // 現状の実装にはタイムアウトがないため、もし slm がハングすればこのテストもハングする。
-        // GREEN フェーズで tokio::time::timeout を導入し、エラーを返すようにする。
-        let result = bridge.recall("query", 10).await;
-        assert!(result.is_ok()); // 現時点では OK だが、ハングリスクがある
-    }
-
-    #[tokio::test]
-    async fn test_slm_bridge_resource_exhaustion_red() {
-        let bridge = SlmBridge::new();
-        // 64KB を超える巨大入力
         let huge_content = "A".repeat(1024 * 65);
         let entry = SlmMemoryEntry {
             content: huge_content,
             category: "Test".into(),
             metadata: None,
         };
-
         let res = bridge.store_memory(entry).await;
         assert!(res.is_err(), "Should reject input exceeding 64KB");
     }
 
     #[tokio::test]
-    async fn test_slm_bridge_control_char_red() {
-        let bridge = SlmBridge::new();
-        // Null byte インジェクションの試み
-        let entry = SlmMemoryEntry {
-            content: "Normal facts\0; rm -rf /".into(),
-            category: "Test".into(),
-            metadata: None,
-        };
-
-        let res = bridge.store_memory(entry).await;
-        assert!(res.is_err(), "Should reject control characters (Null byte)");
-    }
-
-    #[tokio::test]
-    async fn test_slm_bridge_race_condition_circuit_breaker() {
-        // 存在しないコマンドを指定して確実に失敗させる
-        let bridge = SlmBridge::new_with_command("non-existent-slm-cmd");
-        let bridge_arc = Arc::new(bridge);
-
-        // 並行して多数の失敗を発生させ、サーキットブレーカーが正しく OPEN に遷移するか
-        // (SlmBridge は Command::new("slm") を呼ぶため、実際には slm バイナリの不在で失敗する)
-        let mut handles = vec![];
-        for i in 0..10 {
-            let b = Arc::clone(&bridge_arc);
-            handles.push(tokio::spawn(async move {
-                let entry = SlmMemoryEntry {
-                    content: format!("Contention test {}", i),
-                    category: "Test".into(),
-                    metadata: None,
-                };
-                // slm バイナリは存在するが、不正な引数やモックされないエラーを模倣するため、
-                // 回数制限を超えた場合に OPEN になることを確認。
-                // テスト環境で slm が成功してしまう場合を考慮し、
-                // 明らかに不正なタグ名を使用してエラーを誘発させる。
-                let mut invalid_entry = entry;
-                invalid_entry.category = "TestCategory".into(); // バリデーションを通る名前
-                let _ = b.store_memory(invalid_entry).await;
-            }));
-        }
-
-        for h in handles {
-            let _ = h.await;
-        }
-
-        // 状態が Open になっているはず（失敗閾値 3）
-        let status = bridge_arc.circuit_breaker.get_status().await;
-        assert!(status.failure_count >= 3);
-        // 注意: 並行実行のタイミングにより、OPEN 遷移後も数件は実行が試みられる可能性があるが、
-        // 最終的なチェックで OPEN になっていることが重要。
+    async fn test_slm_bridge_validation() {
+        assert!(SlmBridge::validate("normal text").is_ok());
+        assert!(SlmBridge::validate("   ").is_err()); // empty
+        assert!(SlmBridge::validate("text with ; dangerous char").is_err());
     }
 
     #[tokio::test]

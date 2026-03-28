@@ -84,6 +84,7 @@ impl SemanticCache {
 
         // 2. セマンティック一致 (Vector)
         if let Some(provider) = self.jq.get_embedding_provider().await {
+            let embed_dim = provider.embedding_dim();
             if let Ok(query_vec_f32) = provider.embed(prompt, true).await {
                 let query_vec: Vec<f64> = query_vec_f32.iter().map(|&f| f as f64).collect();
                 let semantic_q = "SELECT response, prompt_embedding FROM llm_response_cache WHERE prompt_embedding IS NOT NULL ORDER BY created_at DESC LIMIT 100";
@@ -97,7 +98,7 @@ impl SemanticCache {
                             for row in rows {
                                 let emb_bytes: Vec<u8> = row.get("prompt_embedding");
                                 if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
-                                    let emb_vec = encoder.decode(&emb_bytes, 768);
+                                    let emb_vec = encoder.decode(&emb_bytes, embed_dim);
                                     let score =
                                         StandardVectorOps::cosine_similarity(&query_vec, &emb_vec);
                                     if score > 0.95 {
@@ -118,7 +119,7 @@ impl SemanticCache {
                             for row in rows {
                                 let emb_bytes: Vec<u8> = row.get("prompt_embedding");
                                 if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
-                                    let emb_vec = encoder.decode(&emb_bytes, 768);
+                                    let emb_vec = encoder.decode(&emb_bytes, embed_dim);
                                     let score =
                                         StandardVectorOps::cosine_similarity(&query_vec, &emb_vec);
                                     if score > 0.95 {

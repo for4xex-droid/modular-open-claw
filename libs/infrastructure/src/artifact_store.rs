@@ -539,12 +539,13 @@ impl ArtifactStore for UniversalArtifactStore {
             }
         };
 
+        let embed_dim = provider.embedding_dim();
         let mut sim_results: Vec<(f64, String)> = Vec::new();
         let encoder = PolarQuantEncoder::new(4, 32);
         for (id, emb_bytes) in entries {
             let emb_vec: Vec<f64> = if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
                 // 新フォーマット (PolarQuant)
-                encoder.decode(&emb_bytes, 768) // 本来は次元数を追跡すべきだが、OpenAI/Gemini は 768 or 1536
+                encoder.decode(&emb_bytes, embed_dim)
             } else {
                 // 旧フォーマット (f64 raw)
                 emb_bytes

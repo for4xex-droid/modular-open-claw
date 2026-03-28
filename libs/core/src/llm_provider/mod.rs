@@ -455,6 +455,10 @@ impl EmbeddingProvider for OllamaProvider {
     fn name(&self) -> &str {
         "Ollama(Embed)"
     }
+
+    fn embedding_dim(&self) -> usize {
+        768 // Default for nomic-embed-text
+    }
 }
 
 /// Abyss Vault (Key Proxy) 経由の Gemini プロバイダー (DEPRECATED: Direct GeminiProvider推奨)
@@ -937,6 +941,10 @@ impl EmbeddingProvider for GeminiProvider {
 
     fn name(&self) -> &str {
         "Gemini(Embed)"
+    }
+
+    fn embedding_dim(&self) -> usize {
+        768 // Default for Gemini embedding-004
     }
 }
 
@@ -1675,6 +1683,10 @@ impl EmbeddingProvider for RuriProvider {
 
     fn name(&self) -> &str {
         "Ruri-v3(Embed)"
+    }
+
+    fn embedding_dim(&self) -> usize {
+        768 // Default for ruri-base
     }
 }
 

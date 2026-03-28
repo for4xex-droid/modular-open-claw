@@ -52,6 +52,7 @@ mod belief_consistency_gate_tests;
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;
+#[cfg(feature = "grpc")]
 pub mod docker_conductor;
 /// アイドル時の自律思考管理
 pub mod dream_state;
@@ -77,6 +78,11 @@ pub mod knowledge_indexer;
 pub mod llm;
 /// 短期記憶→長期Karma結晶化
 pub mod memory_crystallizer;
+/// HuggingFace Hub モデル管理 (Phase 2)
+pub mod model_manager;
+/// ネイティブ推論バックエンド (Phase 2)
+#[cfg(feature = "native-inference")]
+pub mod native_backend;
 /// 高度な論理推論エンジン
 pub mod oracle;
 pub mod oss_ast_analyzer;

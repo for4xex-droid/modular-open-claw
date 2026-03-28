@@ -1,0 +1,261 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+use aiome_core::error::AiomeError;
+use aiome_core::llm_provider::EmbeddingProvider;
+use async_trait::async_trait;
+
+#[cfg(feature = "native-inference")]
+use candle_core::{DType, Device, Tensor};
+#[cfg(feature = "native-inference")]
+use candle_nn::VarBuilder;
+#[cfg(feature = "native-inference")]
+use candle_transformers::models::bert::{BertModel, Config, HiddenAct};
+#[cfg(feature = "native-inference")]
+use hf_hub::api::sync::Api;
+#[cfg(feature = "native-inference")]
+use std::sync::Arc;
+#[cfg(feature = "native-inference")]
+use tokenizers::{PaddingParams, Tokenizer};
+#[cfg(feature = "native-inference")]
+use tokio::sync::Mutex;
+
+#[cfg(feature = "native-inference")]
+pub struct NativeModelInner {
+    model: BertModel,
+    tokenizer: Tokenizer,
+    device: Device,
+}
+
+#[cfg(not(feature = "native-inference"))]
+pub struct NativeModelInner {} // Dummy for compilation
+
+/// ローカル環境で実行される高速なネイティブ埋め込み (all-MiniLM-L6-v2)
+#[derive(Clone)]
+pub struct NativeEmbeddingProvider {
+    inner: Arc<tokio::sync::Mutex<Option<NativeModelInner>>>,
+}
+
+impl std::fmt::Debug for NativeEmbeddingProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeEmbeddingProvider").finish()
+    }
+}
+
+impl NativeEmbeddingProvider {
+    pub fn new() -> Result<Self, AiomeError> {
+        Ok(Self {
+            inner: Arc::new(tokio::sync::Mutex::new(None)),
+        })
+    }
+
+    #[allow(unsafe_code)]
+    #[cfg(feature = "native-inference")]
+    async fn get_or_init_model(
+        &self,
+    ) -> Result<tokio::sync::MutexGuard<'_, Option<NativeModelInner>>, AiomeError> {
+        let mut guard = self.inner.lock().await;
+        if guard.is_none() {
+            tracing::info!(
+                "🚀 [NativeEmbedding] Loading all-MiniLM-L6-v2 model from HuggingFace Hub..."
+            );
+            let inner = tokio::task::spawn_blocking(|| {
+                let api = Api::new().map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("HF Api Error: {}", e),
+                })?;
+                let repo = api.model("sentence-transformers/all-MiniLM-L6-v2".to_string());
+
+                let config_filename =
+                    repo.get("config.json")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Fetch config.json error: {}", e),
+                        })?;
+                let tokenizer_filename =
+                    repo.get("tokenizer.json")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Fetch tokenizer.json error: {}", e),
+                        })?;
+                let weights_filename =
+                    repo.get("model.safetensors")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Fetch model.safetensors error: {}", e),
+                        })?;
+
+                let config = std::fs::read_to_string(config_filename).map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: format!("Read config.json error: {}", e),
+                    }
+                })?;
+                let mut config: Config =
+                    serde_json::from_str(&config).map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Parse config.json error: {}", e),
+                    })?;
+
+                let mut tokenizer = Tokenizer::from_file(tokenizer_filename).map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: format!("Load tokenizer error: {}", e),
+                    }
+                })?;
+
+                if let Some(pp) = tokenizer.get_padding_mut() {
+                    pp.strategy = tokenizers::PaddingStrategy::BatchLongest;
+                } else {
+                    let pp = PaddingParams {
+                        strategy: tokenizers::PaddingStrategy::BatchLongest,
+                        ..Default::default()
+                    };
+                    tokenizer.with_padding(Some(pp));
+                }
+
+                let device = Device::Cpu; // Use CPU by default for stability
+                let vb = unsafe {
+                    VarBuilder::from_mmaped_safetensors(&[weights_filename], DType::F32, &device)
+                }
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Load safetensors error: {}", e),
+                })?;
+
+                let model =
+                    BertModel::load(vb, &config).map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Load BertModel error: {}", e),
+                    })?;
+
+                tracing::info!("✅ [NativeEmbedding] Model loaded successfully");
+                Ok::<NativeModelInner, AiomeError>(NativeModelInner {
+                    model,
+                    tokenizer,
+                    device,
+                })
+            })
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("JoinError: {}", e),
+            })??;
+
+            *guard = Some(inner);
+        }
+        Ok(guard)
+    }
+}
+
+#[async_trait]
+impl EmbeddingProvider for NativeEmbeddingProvider {
+    #[cfg(feature = "native-inference")]
+    async fn embed(&self, text: &str, _is_query: bool) -> Result<Vec<f32>, AiomeError> {
+        let mut guard = self.get_or_init_model().await?;
+        let inner = guard.as_mut().unwrap();
+
+        let tokens =
+            inner
+                .tokenizer
+                .encode(text, true)
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Tokenization error: {}", e),
+                })?;
+        let token_ids = tokens.get_ids().to_vec();
+
+        let token_ids = Tensor::new(token_ids.as_slice(), &inner.device)
+            .and_then(|t| t.unsqueeze(0)) // Batch size 1
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Tensor creation error: {}", e),
+            })?;
+
+        let token_type_ids = token_ids
+            .zeros_like()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("TokenTypeIds creation error: {}", e),
+            })?;
+
+        // Run forward
+        let embeddings = inner
+            .model
+            .forward(&token_ids, &token_type_ids, None)
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Model forward error: {}", e),
+            })?;
+
+        // Apply Mean Pooling
+        let (_b_size, seq_len, hidden_size) = embeddings.dims3().unwrap();
+        let attention_mask = token_ids.ones_like().unwrap(); // Simple mask since batch size is 1
+
+        // Sum embeddings
+        let sum_embeddings = embeddings.sum(1).unwrap();
+        // Sum mask
+        let sum_mask = attention_mask.to_dtype(DType::F32).unwrap().sum(1).unwrap();
+        // Div
+        let pooled = sum_embeddings.broadcast_div(&sum_mask).unwrap();
+
+        // Compute L2 normalization manually if needed, or just return pooled directly
+        let sq = pooled.sqr().unwrap().sum_keepdim(1).unwrap();
+        let norm = sq.sqrt().unwrap();
+        let normalized = pooled.broadcast_div(&norm).unwrap();
+
+        let vec_embeddings: Vec<Vec<f32>> =
+            normalized
+                .to_vec2()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("To Vec error: {}", e),
+                })?;
+
+        if let Some(first) = vec_embeddings.into_iter().next() {
+            Ok(first)
+        } else {
+            Err(AiomeError::Infrastructure {
+                reason: "Empty embedding generated".to_string(),
+            })
+        }
+    }
+
+    #[cfg(not(feature = "native-inference"))]
+    async fn embed(&self, _text: &str, _is_query: bool) -> Result<Vec<f32>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "Feature native-inference is disabled".to_string(),
+        })
+    }
+
+    async fn test_connection(&self) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "Native(all-MiniLM-L6-v2)"
+    }
+
+    fn embedding_dim(&self) -> usize {
+        384
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[cfg(feature = "native-inference")]
+    async fn test_native_embedding_green() {
+        // GREEN phase test
+        let provider = NativeEmbeddingProvider::new().expect("Should initialize");
+        assert_eq!(provider.embedding_dim(), 384);
+        assert_eq!(provider.name(), "Native(all-MiniLM-L6-v2)");
+
+        // Ignore test if running without internet access or avoiding long downloads in simple CI
+        if std::env::var("CI").is_err() {
+            let embed_res = provider
+                .embed("hello world", false)
+                .await
+                .expect("Should generate embedding");
+            assert_eq!(embed_res.len(), 384);
+
+            // Check that it's somewhat normalized
+            let norm: f32 = embed_res.iter().map(|v| v * v).sum();
+            assert!(
+                (norm - 1.0).abs() < 0.01,
+                "Embedding should be L2 normalized"
+            );
+        }
+    }
+}

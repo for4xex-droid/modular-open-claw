@@ -197,4 +197,8 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
     fn name(&self) -> &str {
         "KeyProxy(Embed)"
     }
+
+    fn embedding_dim(&self) -> usize {
+        768 // Default for VaultProxy
+    }
 }

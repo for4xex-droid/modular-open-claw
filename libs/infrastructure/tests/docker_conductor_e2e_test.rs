@@ -1,3 +1,4 @@
+#![cfg(feature = "grpc")]
 use aiome_core::traits::Job;
 use infrastructure::docker_conductor::DockerConductor;
 use infrastructure::grpc::a2a_grpc_client::GrpcClientConfig;

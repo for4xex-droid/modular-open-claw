@@ -118,8 +118,30 @@ pub trait EmbeddingProvider: Send + Sync + Debug {
     /// is_query: trueの場合は検索クエリ用、falseの場合はドキュメント用として解釈する
     async fn embed(&self, text: &str, is_query: bool) -> Result<Vec<f32>, AiomeError>;
 
+    /// 使用するモデルの埋め込み次元数を取得 (Phase 2-C: Hardcode Elimination)
+    fn embedding_dim(&self) -> usize;
+
     /// 接続テスト
     async fn test_connection(&self) -> Result<(), AiomeError>;
 
     fn name(&self) -> &str;
+}
+
+/// ネイティブ推論モデルの設定 (Phase 2: Native Integration)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NativeModelConfig {
+    /// モデル名 (例: "phi-3-mini", "nomic-embed-text")
+    pub model_name: String,
+    /// モデルファイルのパス (GGUF or Safetensors)
+    pub model_path: String,
+    /// トークナイザー設定のパス
+    pub tokenizer_path: String,
+    /// コンテキスト長
+    pub context_size: usize,
+    /// デバイス設定 ("cpu", "cuda", "metal")
+    pub device: String,
+    /// 量子化タイプ
+    pub quantization: Option<String>,
+    /// 埋め込み次元数 (Embeddingモデルの場合)
+    pub embedding_dim: Option<usize>,
 }

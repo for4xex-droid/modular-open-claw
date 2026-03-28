@@ -166,6 +166,12 @@ impl KarmaOps for UniversalJobQueue {
             format!("\"{}\"", sanitized_topic)
         };
 
+        let embed_dim = self
+            .get_embedding_provider()
+            .await
+            .map(|p| p.embedding_dim())
+            .unwrap_or(768);
+
         let candidate_limit = limit * 5;
         let weight_expr = self.pool.karma_sql_weight_expr(0);
         let q = format!(
@@ -229,7 +235,7 @@ impl KarmaOps for UniversalJobQueue {
                         let stored_embedding = embedding_bytes.map(|b| {
                             if b.len() > 1 && b[0] == 1 {
                                 // 新フォーマット (PolarQuant)
-                                encoder.decode(&b, 768)
+                                encoder.decode(&b, embed_dim)
                             } else {
                                 // 旧フォーマット (f32 raw)
                                 b.chunks_exact(4)
@@ -268,7 +274,7 @@ impl KarmaOps for UniversalJobQueue {
                         let encoder = PolarQuantEncoder::new(4, 32);
                         let stored_embedding = embedding_bytes.map(|b| {
                             if b.len() > 1 && b[0] == 1 {
-                                encoder.decode(&b, 768)
+                                encoder.decode(&b, embed_dim)
                             } else {
                                 b.chunks_exact(4)
                                     .map(|chunk| {

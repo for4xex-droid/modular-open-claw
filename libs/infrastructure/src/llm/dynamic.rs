@@ -306,6 +306,10 @@ impl EmbeddingProvider for DynamicLlmProvider {
     fn name(&self) -> &str {
         "DynamicEmbedding"
     }
+
+    fn embedding_dim(&self) -> usize {
+        768 // Standard for nomic-embed-text / Gemini
+    }
 }
 
 impl DynamicLlmProvider {
@@ -663,6 +667,10 @@ impl EmbeddingProvider for BackgroundLlmProvider {
 
     fn name(&self) -> &str {
         "BackgroundEmbedding"
+    }
+
+    fn embedding_dim(&self) -> usize {
+        768
     }
 }
 

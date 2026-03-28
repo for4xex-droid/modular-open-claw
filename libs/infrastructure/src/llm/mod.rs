@@ -11,6 +11,10 @@ pub mod cost_breaker;
 pub mod dynamic;
 /// `fallback_router` モジュール
 pub mod fallback_router;
+
+#[cfg(feature = "native-inference")]
+pub mod native_embedding;
+
 /// `proxy` モジュール
 pub mod proxy;
 /// `semantic_cache` モジュール

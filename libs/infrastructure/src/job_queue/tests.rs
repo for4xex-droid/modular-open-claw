@@ -518,6 +518,10 @@ impl EmbeddingProvider for MockEmbedProvider {
     async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
+
+    fn embedding_dim(&self) -> usize {
+        1536
+    }
 }
 
 #[tokio::test]

@@ -38,6 +38,12 @@
     - **RegistryManager Safety**: SQLite と PostgreSQL 間のクエリ戻り値の型不整合を吸収するため `DatabasePool` マクロ (`sql_exec!`, `sql_fetch_one!`) を適用。重要パスからパニックを誘発する `unwrap()` を排除し、完全な `AiomeError` マッピングへ移行。
     - **Compile Error Remediation**: `UserLearner` での JSON パーシング、`MockLlm` トレイト不整合、`DockerConductor` のストリーム型推論不全、`MockCommerceEngine` の初期化不備など、インフラ全域の型不整合やコンパイルエラーを解消。
 
+- **Phase B/C: Rust-Native Inference Integration [完了]**
+    - **Strategy Pattern Migration**: `SlmBridge` を CLI ベースから `SlmBackend` トレイトへの Strategy パターンへリファクタリングし、拡張性を確保。
+    - **Native Embedding Provider**: HuggingFace の `candle` を用いた Rust ネイティブなベクトル埋め込み生成（`all-MiniLM-L6-v2`）を実装し、ローカルインファレンスのスループットを向上（`native-inference` feature 指定時）。
+    - **Dynamic Dimension Resolution**: `EmbeddingProvider` トレイトに `embedding_dim()` メソッドを追加し、`artifact_store.rs`, `karma.rs`, `semantic_cache.rs` 内に存在した `768` 次元ハードコードをプロバイダーからの動的取得に改修。依存する12モジュールに対する結合・単体テストをオールグリーンで通過。
+
+
 - **Phase 51: Aiome Node Foundation & mDNS Discovery [完了]**
     - **Aiome Node (`aiome-node`)**: Created a standalone node process adhering to BUSL-1.1 that serves Agent Card details over `/.well-known/agent.json`.
     - **mDNS P2P Broadcaster**: Implemented `mdns_broadcaster` leveraging `mdns-sd` to announce `_aiome._tcp.local.` services upon Aiome Node startup, broadcasting its public DID.

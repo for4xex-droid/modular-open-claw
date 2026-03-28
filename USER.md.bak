@@ -1,5 +1,1 @@
-JSON_START
-{"name": "Alice", "preferences": ["rust", "security"]}
-JSON_END
-# USER PROFILE
-- Name: Alice
+# User Profile
