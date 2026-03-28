@@ -7,6 +7,7 @@
 | モジュール | 役割 | 状態 |
 |---|---|---|
 | `aiome_log` | システム全体の標準化されたロギング（JSON/Text）を提供。 | 実装完了 |
+| `belief_consistency_gate`| コア信念（SOUL.md）との整合性検証ゲート。2段階検証（SLM/LLM）により Opinion Drift を防止。 | **Phase 49 完了** |
 | `boundary_verifier` | LLM を介さない O(1) のシェルコマンド境界検証（不変条件強制）を提供。 | **Phase 47 完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **Phase 21 継続中** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
@@ -54,4 +55,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-28 (Phase 48 / Invariant-DAG Foundation)*
+*最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)*

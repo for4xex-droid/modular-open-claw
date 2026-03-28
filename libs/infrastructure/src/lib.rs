@@ -44,6 +44,11 @@ pub mod boundary_verifier;
 #[cfg(test)]
 mod boundary_verifier_tests;
 
+/// 信念整合性ゲート (Phase 49: BeliefShift)
+pub mod belief_consistency_gate;
+#[cfg(test)]
+mod belief_consistency_gate_tests;
+
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;

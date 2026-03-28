@@ -385,6 +385,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let soul_mutator = Arc::new(infrastructure::soul_mutator::SoulMutator::new(
         provider.clone(),
         tmp_dir.path().join("SOUL.md"),
+        None,
     ));
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));

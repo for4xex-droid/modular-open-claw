@@ -22,14 +22,26 @@ use tracing::{info, warn};
 pub struct SoulMutator {
     llm: Arc<dyn LlmProvider>,
     base_dir: PathBuf,
+    belief_gate: Option<Arc<crate::belief_consistency_gate::BeliefConsistencyGate>>,
 }
 
 impl SoulMutator {
-    pub fn new(llm: Arc<dyn LlmProvider>, base_dir: PathBuf) -> Self {
-        Self { llm, base_dir }
+    pub fn new(
+        llm: Arc<dyn LlmProvider>,
+        base_dir: PathBuf,
+        belief_gate: Option<Arc<crate::belief_consistency_gate::BeliefConsistencyGate>>,
+    ) -> Self {
+        Self { llm, base_dir, belief_gate }
     }
 
     pub async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {
+        // Phase 49: Evidence-Driven Revision Gate
+        if let Some(gate) = &self.belief_gate {
+            if !gate.has_sufficient_evidence_for_revision().await {
+                info!("🛡️ [SoulMutator] Insufficient evidence for belief revision. Skipping transmute.");
+                return Ok(false);
+            }
+        }
         let soul_path = self.base_dir.join("SOUL.md");
         let soul_content =
             fs::read_to_string(&soul_path)
@@ -538,7 +550,7 @@ mod tests {
         let llm = Arc::new(MockLlm {
             mutation_response: "X Y Z".to_string(),
         });
-        let mutator = SoulMutator::new(llm, temp_dir.clone());
+        let mutator = SoulMutator::new(llm, temp_dir.clone(), None);
         let jq = MockJobQueue {
             karma_lessons: vec!["Test lesson".into()],
             stats: AgentStats::default(),

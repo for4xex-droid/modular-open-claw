@@ -22,6 +22,8 @@ use infrastructure::compliance::ekyc_store::EkycSessionStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::slo_engine::SloEngine;
 use infrastructure::whisper_transcription::WhisperTranscriptionAdapter;
+use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
+use infrastructure::memory_crystallizer::MemoryCrystallizer;
 use shared::config::AiomeConfig;
 
 use async_trait::async_trait;
@@ -382,9 +384,64 @@ async fn main() -> anyhow::Result<()> {
         soul_store.clone(),
     ));
 
+    // Initialize BeliefConsistencyGate (Phase 49)
+    let slm_bridge = if !config.ollama_host.is_empty() {
+        Some(Arc::new(infrastructure::slm_bridge::SlmBridge::new_with_command("ollama")))
+    } else {
+        None
+    };
+
+    let soul_beliefs = match std::fs::read_to_string("SOUL.md") {
+        Ok(content) => {
+            let beliefs: Vec<String> = content
+                .lines()
+                .filter(|l| l.trim().starts_with("- ") || l.trim().starts_with("**"))
+                .map(|l| l.trim().to_string())
+                .collect();
+            // RT-5 Fix: 信念が少なすぎる場合は警告を出す
+            if beliefs.len() < 3 {
+                tracing::warn!("⚠️ [BeliefGate] SOUL.md contains fewer than 3 parseable beliefs ({}). Gate effectiveness may be degraded.", beliefs.len());
+            }
+            beliefs
+        },
+        Err(e) => {
+            tracing::error!("🚨 [BeliefGate] Failed to read SOUL.md: {}. BeliefConsistencyGate will operate with minimal beliefs.", e);
+            vec!["Be helpful and resourceful.".to_string()]
+        },
+    };
+
+    let belief_gate = Arc::new(BeliefConsistencyGate::new(
+        provider.clone(),
+        slm_bridge.clone(),
+        soul_beliefs,
+        None,
+    ));
+
+    // Initialize MemoryCrystallizer Background Loop (Phase 49)
+    let crystallizer = Arc::new(MemoryCrystallizer::new(
+        provider.clone(),
+        job_queue.clone(),
+        forge_semaphore.clone(),
+        slm_bridge.clone(),
+        Some(belief_gate.clone()),
+    ));
+    
+    let crystallizer_task = crystallizer.clone();
+    tokio::spawn(async move {
+        info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
+        let mut interval = tokio::time::interval(Duration::from_secs(300)); // Every 5 minutes
+        loop {
+            interval.tick().await;
+            if let Err(e) = crystallizer_task.run_distillation_cycle().await {
+                error!("🚨 [MemoryCrystallizer] Distillation error: {}", e);
+            }
+        }
+    });
+
     let soul_mutator = Arc::new(infrastructure::soul_mutator::SoulMutator::new(
         provider.clone(),
-        std::path::PathBuf::from("workspace"),
+        std::path::PathBuf::from("."),
+        Some(belief_gate.clone()),
     ));
     let primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
     let fallback_provider: Arc<dyn LlmProvider + Send + Sync> = bg_provider.clone();

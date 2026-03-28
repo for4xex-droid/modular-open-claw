@@ -55,6 +55,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 32 | **Memory Bloat & Cognitive Noise** | **Endless ingestion of low-value artifacts** | 🟡 Mid | **Poincare-based Autonomous GC (Phase 4)** |
 | 33 | **Boundary Violation** | **Malformed Shell Command Injection** | 🔴 High | **BoundaryVerifier (O(1) Tautology) (Phase 47)** |
 | 34 | **Causal Tampering** | **Job Graph Transformation / History Deletion** | 🔴 High | **Invariant-DAG (SHA-256 Hash Chain) (Phase 48)** |
+| 35 | **Opinion Drift / Belief Hijacking** | **Karma-based slow identity poisoning** | 🔴 High | **BeliefConsistencyGate (2-Stage SLM/LLM) (Phase 49)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -65,11 +66,13 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
 - **Unified Response Purger (Phase 24)**: Implements `purge_entities` in `aiome-core` to provide robust, multi-step sanitization for all external inputs, including RSS feeds, Web Search results, and LLM outputs. It centralizes regex patterns, HTML decoding, and tag stripping to prevent XSS and script injection at the core layer.
+- **Belief Injection Defense (Phase 49)**: Implements `sanitize_karma_input` and `<karma>` XML tagging in the `BeliefConsistencyGate` to prevent LLM instructions from hijacking the belief validation process (RT-1).
 - **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
+- **Belief Consistency Check (Phase 49)**: ALL memory distillations pass through the `BeliefConsistencyGate`. Uses a fast SLM screening for contradictions with a 10% random LLM re-verification (RT-3) plus a mandatory LLM check for potential revisions. Evidence accumulation is capped at 100 entries (RT-2) to prevent memory exhaustion (OOM).
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.
 - **Boundary Tautology Verification (Phase 47)**: Implements `BoundaryVerifier` as a microsecond-latency O(1) filter. It enforces immutable security invariants (shell meta-chars, restricted system paths, size limits) before any command reaches the OS shell, independent of LLM reasoning.
 - **OAuth 2.1 Foundation (Phase 8.2)**: Transitioned from hardcoded dummy IDs to a stateless **JWT AuthManager**. Standardized `AiomeCustomClaims` (sub, ekyc_verified, roles) are extracted and injected into handlers via Rust type-safe Extensions, strictly enforcing session-based resource ownership and access control.
@@ -147,4 +150,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-28 (Phase 48 / Invariant-DAG Foundation)*
+*最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)*

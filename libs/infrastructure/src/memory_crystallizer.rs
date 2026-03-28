@@ -6,7 +6,12 @@
  */
 
 use crate::job_queue::{UniversalJobQueue, WatchtowerOps};
+use crate::slm_bridge::SlmBridge;
+use crate::belief_consistency_gate::{BeliefConsistencyGate, BeliefCheckResult};
+use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::LlmProvider;
+use aiome_contracts::AuditStore;
+use aiome_contracts::trajectory::{TrajectoryStep, StepCategory};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
@@ -26,7 +31,8 @@ pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     job_queue: Arc<UniversalJobQueue>,
     semaphore: Arc<Semaphore>,
-    slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
+    slm_bridge: Option<Arc<SlmBridge>>,
+    belief_gate: Option<Arc<BeliefConsistencyGate>>,
 }
 
 impl MemoryCrystallizer {
@@ -35,13 +41,15 @@ impl MemoryCrystallizer {
         provider: Arc<dyn LlmProvider + Send + Sync>,
         job_queue: Arc<UniversalJobQueue>,
         semaphore: Arc<Semaphore>,
-        slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
+        slm_bridge: Option<Arc<SlmBridge>>,
+        belief_gate: Option<Arc<BeliefConsistencyGate>>,
     ) -> Self {
         Self {
             provider,
             job_queue,
             semaphore,
             slm_bridge,
+            belief_gate,
         }
     }
 
@@ -85,6 +93,44 @@ impl MemoryCrystallizer {
                             let ids: Vec<String> =
                                 raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
 
+                            let mut domain = None;
+
+                            // Phase 49: Belief Consistency Gate
+                            if let Some(gate) = &self.belief_gate {
+                                match gate.check_belief_consistency(&resp.content).await {
+                                    Ok(BeliefCheckResult::Consistent) => {
+                                        // No action needed
+                                    }
+                                    Ok(BeliefCheckResult::Contradicted { flag }) => {
+                                        warn!(
+                                            "🛡️ [MemoryCrystallizer] Belief contradiction detected for {}: {}",
+                                            skill, flag
+                                        );
+                                        domain = Some("belief_contradicted".to_string());
+                                    }
+                                    Ok(BeliefCheckResult::RevisionCandidate { evidence }) => {
+                                        info!(
+                                            "🧠 [MemoryCrystallizer] Belief revision candidate detected for {}. Recording to DAG.",
+                                            skill
+                                        );
+                                        // Karma 保存はスキップし、DAG に証拠を記録
+                                        let step = TrajectoryStep {
+                                            job_id: Some(format!("crystallize-{}", skill)),
+                                            action: "RequestBeliefRevision".into(),
+                                            step_category: StepCategory::Decision,
+                                            output: serde_json::to_value(evidence).unwrap_or_default(),
+                                            reasoning: Some(format!("Evidence for skill: {}", skill)),
+                                            ..Default::default()
+                                        };
+                                        let _ = self.job_queue.store_trajectory_step(step).await;
+                                        continue; 
+                                    }
+                                    Err(e) => {
+                                        warn!("⚠️ [MemoryCrystallizer] Belief gate error: {:?}", e);
+                                    }
+                                }
+                            }
+
                             self.job_queue
                                 .do_apply_distilled_karma(
                                     &skill,
@@ -92,7 +138,7 @@ impl MemoryCrystallizer {
                                     &ids,
                                     "v1",
                                     None,
-                                    None,
+                                    domain.as_deref(),
                                     None,
                                 )
                                 .await?;
@@ -168,7 +214,7 @@ mod tests {
             let semaphore = Arc::new(Semaphore::new(1));
             let slm = Some(Arc::new(SlmBridge::new()));
 
-            let crystallizer = MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm);
+            let crystallizer = MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm, None);
 
             assert!(crystallizer.slm_bridge.is_some());
         }

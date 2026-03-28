@@ -30,6 +30,9 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 5.  **Causal Strategy Layer (ADR-024 / Trajectory Persistence)**:
     - **役割**: エージェントの思考プロセスと行動の因果関係（Why）を可視化・分析可能にする。
     - **特徴**: プランナーによるタスク分解フェーズから実行結果までを `TrajectoryStep` としてハッシュチェーン的に永続化。失敗時の「なぜ失敗したか」を AST レベルで特定し、次回のプランニング精度を向上させる「因果論的自律性」の基礎となります。
+6.  **Belief Integrity Layer (Phase 49 / BeliefShift)**:
+    - **役割**: エージェントの「根源的なアイデンティティ」と矛盾する知識の学習を阻止し、Opinion Drift を防ぐ。
+    - **特徴**: `BeliefConsistencyGate` が全ての新規知識（Karma）をコア信念と照合。矛盾するが妥当に見える情報は「証拠（Evidence）」として蓄積し、十分な証拠が得られた場合のみ `SoulMutator` が安全な書き換えを許可します。
 
 ---
 
@@ -53,5 +56,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-27 (Phase 4 / Poincare Memory Lifecycle & GC)
+最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)
 Aiome Development Team

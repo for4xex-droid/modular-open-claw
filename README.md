@@ -128,6 +128,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🔬 **Phase 15 (ADR-024/023): AI-Scientist & Strategic Evolution**: LLM によるセマンティックなツール検索と、Markdown 抽出に対応した堅牢な目標分解ロジックを実装。さらに、Lv5 以上の AI が自ら改善仮説を立て、反復的な自己レビュー（`multi_review`）を経て実験ジョブを投入する「科学的自己改善ループ」を構築しました。
 - 🧬 **Phase 4 (ADR-025): Poincare Memory Lifecycle & GC**: `SlmBridge` を介した Poincare スコアに基づく動的な重要度算出を実装。重要度 0.3 未満の記憶をバックグラウンド（Watchtower）で自律的にアーカイブ（GC）する仕組みを確立し、メモリの肥大化とノイズを物理的に抑制します。
 - 🛡️ **Phase 47/48: Boundary Tautology & Invariant-DAG**: O(1) レベルの超高速境界検証（不変条件強制）と、全アクションの因果関係を SHA-256 で繋ぐハッシュチェーン機能を実装。自律的な意思決定を「数学的」に監査・証明可能にしました。
+- 🧠 **Phase 49: BeliefShift Causal Integrity**: エージェントの長期的な意見のブレ（Opinion Drift）を防止するため、新規知識をコア信念（`SOUL.md`）と照合する **BeliefConsistencyGate** を実装。十分な証拠が集まるまで既存の魂の書き換えを制限し、エージェントのアイデンティティの一貫性を担保します。
 
 ---
 
@@ -158,7 +159,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 ハッシュチェーンによる因果関係監査と、O(1) レベルの不変条件強制エンジン |
-| **Last Updated:** | 2026-03-28 | Phase 48: Invariant-DAG Foundation |
+| **Last Updated:** | 2026-03-28 | Phase 49: BeliefShift Causal Integrity |
 
 ---
 
@@ -280,7 +281,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-28 (Phase 48 / Invariant-DAG Foundation)*
+*最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

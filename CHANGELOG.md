@@ -27,6 +27,17 @@
 ## [Unreleased] - 2026-03-28
 
 ### Added
+- **Phase 49: BeliefShift Causal Integrity [完了]**
+    - **BeliefConsistencyGate**: 新規 Karma 候補をコア信念（`SOUL.md`）と照合する 2 段階検証ゲート（SLM 高速スクリーニング + LLM 詳細判定）を実装。
+    - **Evidence-Driven Revision**: 信念と矛盾するが強力な証拠を持つ情報を `RevisionCandidate` として検出し、ハッシュチェーン（軌跡）に証拠付きで記録する仕組みを構築。
+    - **SoulMutator Integration**: 証拠の蓄積が閾値を超えるまで `SOUL.md` の安易な書き換え（意見のブレ）を物理的に抑制するゲートを統合。
+    - **Security Hardening (Red Team)**: 
+        - **RT-1 (Prompt Injection)**: `<karma>` タグによるカプセル化と命令文サニタイズ。
+        - **RT-2 (OOM Defense)**: 証拠ストアへの FIFO 制限（100件）の実装。
+        - **RT-3 (SLM Bypass)**: SLM 判定結果の 10% ランダム再検証ロジックを追加。
+        - **RT-5 (Empty Soul)**: `SOUL.md` 不在時の警告およびデフォルト信念のフォールバック処理を強化。
+
+### Added
 - **Phase 48: Invariant-DAG (Causal Hash Chain) [完了]**
     - **Hash-Chain Core**: SHA-256 を用いた状態遷移のハッシュチェーン構造を実装。全アクションに `parent_hash` を持たせることで、数学的な改ざん検知を実現。
     - **Rollback Logic**: 指定したハッシュ値またはステップ ID までのオートマトン状態ロールバック機能を実装。
