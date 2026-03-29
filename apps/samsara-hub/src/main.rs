@@ -24,10 +24,8 @@ use axum::{
 };
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 // Standard imports
-use infrastructure::{sql_exec, sql_fetch_all, sql_fetch_optional};
-use sqlx::SqlitePool;
+use shared::sql_fetch_all;
 // use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,9 +36,9 @@ use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
 
 pub struct HubState {
-    pool: infrastructure::db::DatabasePool,
+    pool: shared::db::DatabasePool,
     secret: secrecy::SecretString,
-    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
+    pub auth_manager: Arc<dyn shared::auth::AuthManager>,
     tx: broadcast::Sender<HubMessage>,
     active_connections: std::sync::atomic::AtomicUsize,
     pub agent_registry: mdns_listener::AgentRegistry,
@@ -114,11 +112,11 @@ async fn main() -> anyhow::Result<()> {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3016".to_string());
     // Initialize Unified Database Pool
     let pool = if db_url.starts_with("postgres://") || db_url.starts_with("postgresql://") {
-        let p = infrastructure::db::DatabasePool::new_postgres(&db_url).await?;
+        let p = shared::db::DatabasePool::new_postgres(&db_url).await?;
         // DatabasePool::new_postgres already handles standard db initialization where appropriate.
         p
     } else {
-        infrastructure::db::DatabasePool::new_sqlite(&db_url).await?
+        shared::db::DatabasePool::new_sqlite(&db_url).await?
     };
 
     init_hub_db(&pool).await?;
@@ -133,14 +131,14 @@ async fn main() -> anyhow::Result<()> {
         secret,
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
-                Ok(key_b64) => Arc::new(
-                    infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64).unwrap(),
-                ),
+                Ok(key_b64) => {
+                    Arc::new(shared::auth::JwtAuthManager::from_private_key_b64(&key_b64).unwrap())
+                }
                 #[cfg(debug_assertions)]
                 Err(_) => {
                     warn!("⚠️ [SamsaraHub] JWT key not set, using MockAuthManager (dev only)");
-                    Arc::new(infrastructure::auth::MockAuthManager::new())
-                        as Arc<dyn infrastructure::auth::AuthManager>
+                    Arc::new(shared::auth::MockAuthManager::new())
+                        as Arc<dyn shared::auth::AuthManager>
                 }
                 #[cfg(not(debug_assertions))]
                 Err(_) => {
@@ -224,9 +222,9 @@ async fn shutdown_signal(token: CancellationToken) {
     token.cancel();
 }
 
-async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<()> {
+async fn init_hub_db(pool: &shared::db::DatabasePool) -> anyhow::Result<()> {
     match pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => {
+        shared::db::DatabasePool::Sqlite(p) => {
             sqlx::query(
                 "CREATE TABLE IF NOT EXISTS approved_karma (
                     id TEXT PRIMARY KEY,
@@ -394,7 +392,7 @@ async fn init_hub_db(pool: &infrastructure::db::DatabasePool) -> anyhow::Result<
             .execute(p)
             .await?;
         }
-        infrastructure::db::DatabasePool::Postgres(p) => {
+        shared::db::DatabasePool::Postgres(p) => {
             // Postgres schema is primarily handled by PostgresInitializer, but we ensure basic Hub tables exist.
             // Note: PostgresInitializer::init_db is called earlier in main for other tables.
             sqlx::query(
@@ -666,7 +664,7 @@ async fn create_topic_handler(
         state.pool.ph(0)
     );
     let karma_sum =
-        infrastructure::sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey)
+        shared::sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey)
             .unwrap_or(Some((0,)))
             .unwrap_or((0,))
             .0;
@@ -695,7 +693,7 @@ async fn create_topic_handler(
         state.pool.ph(1),
         state.pool.ph(2)
     );
-    let res = infrastructure::sql_exec!(
+    let res = shared::sql_exec!(
         &state.pool,
         &insert_query,
         &req.topic_id,
@@ -749,7 +747,7 @@ async fn biome_relay_handler(
         state.pool.ph(0)
     );
     let topic_exists =
-        infrastructure::sql_fetch_optional!(&state.pool, (i64,), &topic_check_query, &msg.topic_id)
+        shared::sql_fetch_optional!(&state.pool, (i64,), &topic_check_query, &msg.topic_id)
             .unwrap_or(Some((0,)))
             .unwrap_or((0,))
             .0
@@ -824,7 +822,7 @@ async fn biome_relay_handler(
         state.pool.ph(0),
         state.pool.ph(1)
     );
-    if let Err(e) = infrastructure::sql_exec!(
+    if let Err(e) = shared::sql_exec!(
         &state.pool,
         &relay_insert_query,
         &msg.recipient_pubkey,
@@ -842,7 +840,7 @@ async fn biome_relay_handler(
         state.pool.now_fn(),
         state.pool.ph(0)
     );
-    if let Err(e) = infrastructure::sql_exec!(&state.pool, &turn_update_query, &msg.topic_id) {
+    if let Err(e) = shared::sql_exec!(&state.pool, &turn_update_query, &msg.topic_id) {
         warn!(
             "🛡️ [Relay] Failed to increment turn_count for {}: {}",
             msg.topic_id, e
@@ -967,15 +965,11 @@ async fn sync_handler(
         "SELECT is_banned FROM node_reputation WHERE node_id = {}",
         state.pool.ph(0)
     );
-    let is_banned = infrastructure::sql_fetch_optional!(
-        &state.pool,
-        (bool,),
-        &ban_check_query,
-        &payload.node_id
-    )
-    .unwrap_or(Some((false,)))
-    .unwrap_or((false,))
-    .0;
+    let is_banned =
+        shared::sql_fetch_optional!(&state.pool, (bool,), &ban_check_query, &payload.node_id)
+            .unwrap_or(Some((false,)))
+            .unwrap_or((false,))
+            .0;
 
     if is_banned {
         warn!(
@@ -1008,26 +1002,22 @@ async fn sync_handler(
          ) WHERE ts > {} ORDER BY ts ASC LIMIT 500",
          state.pool.ph(0)
     );
-    let karmas: Vec<FederatedKarmaRecord> = infrastructure::sql_fetch_all!(
-        &state.pool,
-        FederatedKarmaRecord,
-        &karma_sync_query,
-        &since
-    )
-    .unwrap_or_default();
+    let karmas: Vec<FederatedKarmaRecord> =
+        shared::sql_fetch_all!(&state.pool, FederatedKarmaRecord, &karma_sync_query, &since)
+            .unwrap_or_default();
     let rule_sync_query = format!(
         "SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM approved_rules 
          WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500",
          state.pool.ph(0)
     );
     let rules: Vec<ImmuneRuleRecord> =
-        infrastructure::sql_fetch_all!(&state.pool, ImmuneRuleRecord, &rule_sync_query, &since)
+        shared::sql_fetch_all!(&state.pool, ImmuneRuleRecord, &rule_sync_query, &since)
             .unwrap_or_default();
     let has_more = karmas.len() == 500 || rules.len() == 500;
 
     let arena_sync_query = format!("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM approved_arena_matches WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500", state.pool.ph(0));
     let arena_rows: Vec<ArenaMatchRecord> =
-        infrastructure::sql_fetch_all!(&state.pool, ArenaMatchRecord, &arena_sync_query, &since)
+        shared::sql_fetch_all!(&state.pool, ArenaMatchRecord, &arena_sync_query, &since)
             .unwrap_or_default();
 
     // Fetch latest Automerge Snapshot for this node if it exists
@@ -1035,14 +1025,10 @@ async fn sync_handler(
         "SELECT snapshot_blob FROM timeline_snapshots WHERE node_id = {}",
         state.pool.ph(0)
     );
-    let snapshot_blob: Option<Vec<u8>> = infrastructure::sql_fetch_optional!(
-        &state.pool,
-        (Vec<u8>,),
-        &snapshot_query,
-        &payload.node_id
-    )
-    .unwrap_or(Some((None.unwrap_or_default(),)))
-    .map(|t| t.0);
+    let snapshot_blob: Option<Vec<u8>> =
+        shared::sql_fetch_optional!(&state.pool, (Vec<u8>,), &snapshot_query, &payload.node_id)
+            .unwrap_or(Some((None.unwrap_or_default(),)))
+            .map(|t| t.0);
 
     let _next_cursor: Option<String> = if has_more {
         // Find the latest approved_at for pagination (Keyset Pagination)
@@ -1152,15 +1138,11 @@ async fn push_handler(
         "SELECT is_banned FROM node_reputation WHERE node_id = {}",
         state.pool.ph(0)
     );
-    let is_banned = infrastructure::sql_fetch_optional!(
-        &state.pool,
-        (bool,),
-        &ban_check_query,
-        &payload.node_id
-    )
-    .unwrap_or(Some((false,)))
-    .unwrap_or((false,))
-    .0;
+    let is_banned =
+        shared::sql_fetch_optional!(&state.pool, (bool,), &ban_check_query, &payload.node_id)
+            .unwrap_or(Some((false,)))
+            .unwrap_or((false,))
+            .0;
 
     if is_banned {
         warn!(
@@ -1205,7 +1187,7 @@ async fn push_handler(
              state.pool.ph(4), state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
         );
 
-        let equiv_exists = infrastructure::sql_fetch_optional!(
+        let equiv_exists = shared::sql_fetch_optional!(
             &state.pool,
             (i64,),
             &equiv_check_query,
@@ -1227,7 +1209,7 @@ async fn push_handler(
                 k.node_id
             );
             let slash_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
-            let _ = infrastructure::sql_exec!(&state.pool, &slash_query, &k.node_id);
+            let _ = shared::sql_exec!(&state.pool, &slash_query, &k.node_id);
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1245,7 +1227,7 @@ async fn push_handler(
              state.pool.ph(10), state.pool.ph(11), state.pool.ph(12), state.pool.ph(13)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(ref mut t) => {
+            shared::db::DatabaseTransaction::Sqlite(ref mut t) => {
                 sqlx::query::<sqlx::Sqlite>(&quarantine_karma_query)
                     .bind(&k.id)
                     .bind(&k.node_id)
@@ -1265,7 +1247,7 @@ async fn push_handler(
                     .await
                     .map(|_| ())
             }
-            infrastructure::db::DatabaseTransaction::Postgres(ref mut t) => {
+            shared::db::DatabaseTransaction::Postgres(ref mut t) => {
                 sqlx::query::<sqlx::Postgres>(&quarantine_karma_query)
                     .bind(&k.id)
                     .bind(&k.node_id)
@@ -1302,7 +1284,7 @@ async fn push_handler(
              state.pool.ph(0), state.pool.ph(1), state.pool.ph(2), state.pool.ph(3), state.pool.ph(4),
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7), state.pool.ph(8), state.pool.ph(9)
         );
-        let exists = infrastructure::sql_fetch_optional!(
+        let exists = shared::sql_fetch_optional!(
             &state.pool,
             (i64,),
             &equiv_check_rule_query,
@@ -1326,7 +1308,7 @@ async fn push_handler(
                 r.node_id
             );
             let ban_query = format!("UPDATE node_reputation SET is_banned = 1, reputation_score = -1000 WHERE node_id = {}", state.pool.ph(0));
-            let _ = infrastructure::sql_exec!(&state.pool, &ban_query, &r.node_id);
+            let _ = shared::sql_exec!(&state.pool, &ban_query, &r.node_id);
             return (
                 StatusCode::FORBIDDEN,
                 Json(serde_json::json!({"error": "Equivocation detected"})),
@@ -1342,7 +1324,7 @@ async fn push_handler(
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7), state.pool.ph(8)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+            shared::db::DatabaseTransaction::Sqlite(t) => {
                 sqlx::query::<sqlx::Sqlite>(&quarantine_rule_query)
                     .bind(&r.id)
                     .bind(&r.node_id)
@@ -1357,7 +1339,7 @@ async fn push_handler(
                     .await
                     .map(|_| ())
             }
-            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+            shared::db::DatabaseTransaction::Postgres(t) => {
                 sqlx::query::<sqlx::Postgres>(&quarantine_rule_query)
                     .bind(&r.id)
                     .bind(&r.node_id)
@@ -1387,7 +1369,7 @@ async fn push_handler(
              state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+            shared::db::DatabaseTransaction::Sqlite(t) => {
                 sqlx::query::<sqlx::Sqlite>(&quarantine_arena_query)
                     .bind(&a.id)
                     .bind(&a.skill_a)
@@ -1401,7 +1383,7 @@ async fn push_handler(
                     .await
                     .map(|_| ())
             }
-            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+            shared::db::DatabaseTransaction::Postgres(t) => {
                 sqlx::query::<sqlx::Postgres>(&quarantine_arena_query)
                     .bind(&a.id)
                     .bind(&a.skill_a)
@@ -1429,7 +1411,7 @@ async fn push_handler(
             state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+            shared::db::DatabaseTransaction::Sqlite(t) => {
                 sqlx::query::<sqlx::Sqlite>(&snapshot_query)
                     .bind(&payload.node_id)
                     .bind(snapshot)
@@ -1438,7 +1420,7 @@ async fn push_handler(
                     .await
                     .map(|_| ())
             }
-            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+            shared::db::DatabaseTransaction::Postgres(t) => {
                 sqlx::query::<sqlx::Postgres>(&snapshot_query)
                     .bind(&payload.node_id)
                     .bind(snapshot)
@@ -1463,7 +1445,7 @@ async fn push_handler(
             state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
         );
         let res = match &mut tx {
-            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+            shared::db::DatabaseTransaction::Sqlite(t) => {
                 sqlx::query::<sqlx::Sqlite>(&metrics_query)
                     .bind(&payload.node_id)
                     .bind(&metrics_json)
@@ -1472,7 +1454,7 @@ async fn push_handler(
                     .await
                     .map(|_| ())
             }
-            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+            shared::db::DatabaseTransaction::Postgres(t) => {
                 sqlx::query::<sqlx::Postgres>(&metrics_query)
                     .bind(&payload.node_id)
                     .bind(&metrics_json)
@@ -1507,7 +1489,7 @@ async fn push_handler(
          ON CONFLICT(node_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, reputation_score = node_reputation.reputation_score + 1",
          state.pool.ph(0), state.pool.ph(1)
     );
-    let res = infrastructure::sql_exec!(
+    let res = shared::sql_exec!(
         &state.pool,
         &reputation_query,
         &payload.node_id,
@@ -1649,7 +1631,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<HubState>) {
         .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
 }
 
-async fn approval_worker(pool: infrastructure::db::DatabasePool, token: CancellationToken) {
+async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToken) {
     use base64::{prelude::BASE64_STANDARD, Engine};
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
@@ -1663,7 +1645,7 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
         // 1. Process Quarantined Karma
         let karma_fetch_query = "SELECT * FROM quarantined_karma LIMIT 50";
         let karmas: Vec<FederatedKarmaRecord> =
-            infrastructure::sql_fetch_all!(&pool, FederatedKarmaRecord, karma_fetch_query)
+            shared::sql_fetch_all!(&pool, FederatedKarmaRecord, karma_fetch_query)
                 .unwrap_or_default();
 
         for k in &karmas {
@@ -1697,7 +1679,7 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                              pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7), pool.ph(8), pool.ph(9), pool.ph(10), pool.ph(11), pool.ph(12), pool.ph(13)
                         );
                         let res = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                            shared::db::DatabaseTransaction::Sqlite(t) => {
                                 sqlx::query::<sqlx::Sqlite>(&approve_karma_query)
                                     .bind(&k.id)
                                     .bind(&k.node_id)
@@ -1717,7 +1699,7 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                                     .await
                                     .map(|_| ())
                             }
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                            shared::db::DatabaseTransaction::Postgres(t) => {
                                 sqlx::query::<sqlx::Postgres>(&approve_karma_query)
                                     .bind(&k.id)
                                     .bind(&k.node_id)
@@ -1748,14 +1730,14 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                         let delete_quarantine_query =
                             format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
                         let res_del = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                            shared::db::DatabaseTransaction::Sqlite(t) => {
                                 sqlx::query::<sqlx::Sqlite>(&delete_quarantine_query)
                                     .bind(&k.id)
                                     .execute(&mut **t)
                                     .await
                                     .map(|_| ())
                             }
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                            shared::db::DatabaseTransaction::Postgres(t) => {
                                 sqlx::query::<sqlx::Postgres>(&delete_quarantine_query)
                                     .bind(&k.id)
                                     .execute(&mut **t)
@@ -1788,18 +1770,17 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(&pool, &slash_query, &k.node_id);
+                let _ = shared::sql_exec!(&pool, &slash_query, &k.node_id);
                 let delete_malformed_query =
                     format!("DELETE FROM quarantined_karma WHERE id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(&pool, &delete_malformed_query, &k.id);
+                let _ = shared::sql_exec!(&pool, &delete_malformed_query, &k.id);
             }
         }
 
         // 2. Process Quarantined Rules
         let rule_fetch_query = "SELECT * FROM quarantined_rules LIMIT 50";
         let rules: Vec<ImmuneRuleRecord> =
-            infrastructure::sql_fetch_all!(&pool, ImmuneRuleRecord, rule_fetch_query)
-                .unwrap_or_default();
+            shared::sql_fetch_all!(&pool, ImmuneRuleRecord, rule_fetch_query).unwrap_or_default();
 
         for r in &rules {
             let mut valid = false;
@@ -1832,7 +1813,7 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                              pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7), pool.ph(8)
                         );
                         let res = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                            shared::db::DatabaseTransaction::Sqlite(t) => {
                                 sqlx::query::<sqlx::Sqlite>(&approve_rule_query)
                                     .bind(&r.id)
                                     .bind(&r.pattern)
@@ -1847,7 +1828,7 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                                     .await
                                     .map(|_| ())
                             }
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                            shared::db::DatabaseTransaction::Postgres(t) => {
                                 sqlx::query::<sqlx::Postgres>(&approve_rule_query)
                                     .bind(&r.id)
                                     .bind(&r.pattern)
@@ -1873,14 +1854,14 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                         let delete_quarantine_rule_query =
                             format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
                         let res_del = match &mut tx {
-                            infrastructure::db::DatabaseTransaction::Sqlite(t) => {
+                            shared::db::DatabaseTransaction::Sqlite(t) => {
                                 sqlx::query::<sqlx::Sqlite>(&delete_quarantine_rule_query)
                                     .bind(&r.id)
                                     .execute(&mut **t)
                                     .await
                                     .map(|_| ())
                             }
-                            infrastructure::db::DatabaseTransaction::Postgres(t) => {
+                            shared::db::DatabaseTransaction::Postgres(t) => {
                                 sqlx::query::<sqlx::Postgres>(&delete_quarantine_rule_query)
                                     .bind(&r.id)
                                     .execute(&mut **t)
@@ -1913,10 +1894,10 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
                 // BFT Slashing: Penalize node reputation for invalid signatures
                 // BFT Slashing
                 let slash_rule_query = format!("UPDATE node_reputation SET reputation_score = reputation_score - 10 WHERE node_id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(&pool, &slash_rule_query, &r.node_id);
+                let _ = shared::sql_exec!(&pool, &slash_rule_query, &r.node_id);
                 let delete_malformed_rule_query =
                     format!("DELETE FROM quarantined_rules WHERE id = {}", pool.ph(0));
-                let _ = infrastructure::sql_exec!(&pool, &delete_malformed_rule_query, &r.id);
+                let _ = shared::sql_exec!(&pool, &delete_malformed_rule_query, &r.id);
             }
         }
 
@@ -1925,12 +1906,12 @@ async fn approval_worker(pool: infrastructure::db::DatabasePool, token: Cancella
         let karma_evict_query = "DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)";
         let rule_evict_query = "DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)";
 
-        let res_k = infrastructure::sql_exec!(&pool, karma_evict_query);
+        let res_k = shared::sql_exec!(&pool, karma_evict_query);
         if let Err(e) = res_k {
             warn!("⚠️ [SamsaraHub] Karma eviction failed: {}", e);
         }
 
-        let res_r = infrastructure::sql_exec!(&pool, rule_evict_query);
+        let res_r = shared::sql_exec!(&pool, rule_evict_query);
         if let Err(e) = res_r {
             warn!("⚠️ [SamsaraHub] Rule eviction failed: {}", e);
         }
@@ -2019,14 +2000,14 @@ async fn timeline_sync_handler(
         state.pool.ph(0)
     );
     let blob_opt = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => {
+        shared::db::DatabasePool::Sqlite(p) => {
             sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
                 .bind(&payload.hub_id)
                 .fetch_optional(p)
                 .await
                 .unwrap_or(None)
         }
-        infrastructure::db::DatabasePool::Postgres(p) => {
+        shared::db::DatabasePool::Postgres(p) => {
             sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
                 .bind(&payload.hub_id)
                 .fetch_optional(p)
@@ -2071,13 +2052,13 @@ async fn timeline_sync_handler(
         state.pool.now_fn()
     );
     let res = match &state.pool {
-        infrastructure::db::DatabasePool::Sqlite(p) => sqlx::query(&timeline_persist_query)
+        shared::db::DatabasePool::Sqlite(p) => sqlx::query(&timeline_persist_query)
             .bind(&payload.hub_id)
             .bind(&finalized_blob)
             .execute(p)
             .await
             .map(|_| ()),
-        infrastructure::db::DatabasePool::Postgres(p) => sqlx::query(&timeline_persist_query)
+        shared::db::DatabasePool::Postgres(p) => sqlx::query(&timeline_persist_query)
             .bind(&payload.hub_id)
             .bind(&finalized_blob)
             .execute(p)

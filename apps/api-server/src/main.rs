@@ -12,14 +12,14 @@ use crate::app_state::Component;
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::commerce::GiftEngine;
 use aiome_contracts::commerce::GiftPolicyContext;
+use aiome_contracts::ekyc::EkycEngine;
+use aiome_contracts::ekyc::EkycSessionStore;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::TranscriptionEngine;
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
 use infrastructure::circuit_breaker::CircuitBreaker;
-use infrastructure::compliance::ekyc::EkycEngine;
-use infrastructure::compliance::ekyc_store::EkycSessionStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::memory_crystallizer::MemoryCrystallizer;
 use infrastructure::slo_engine::SloEngine;
@@ -304,21 +304,18 @@ async fn main() -> anyhow::Result<()> {
         if let Some(key) = stripe_key {
             use secrecy::ExposeSecret;
             let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
-            Some(
-                Arc::new(infrastructure::commerce::stripe::StripeCommerceEngine::new(
-                    key.expose_secret().to_string(),
-                    webhook_secret,
-                    job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
-                )) as Arc<dyn aiome_core::commerce::CommerceEngine>,
-            )
+            Some(Arc::new(aiome_commerce::stripe::StripeCommerceEngine::new(
+                key.expose_secret().to_string(),
+                webhook_secret,
+                job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+            ))
+                as Arc<dyn aiome_core::commerce::CommerceEngine>)
         } else {
             #[cfg(debug_assertions)]
             {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockCommerceEngine for development.");
-                Some(
-                    Arc::new(infrastructure::commerce_mock::MockCommerceEngine::new())
-                        as Arc<dyn aiome_core::commerce::CommerceEngine>,
-                )
+                Some(Arc::new(aiome_commerce::mock::MockCommerceEngine::new())
+                    as Arc<dyn aiome_core::commerce::CommerceEngine>)
             }
             #[cfg(not(debug_assertions))]
             {
@@ -473,7 +470,7 @@ async fn main() -> anyhow::Result<()> {
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(true); // Default to true (Sandbox First)
 
-        Arc::new(infrastructure::commerce::gift::TremendousGiftEngine::new(
+        Arc::new(aiome_commerce::gift::TremendousGiftEngine::new(
             key,
             sandbox,
             job_queue.get_pool().clone(),
@@ -482,8 +479,9 @@ async fn main() -> anyhow::Result<()> {
     };
     let ekyc_session_store = {
         let pool = job_queue.get_pool().clone();
-        Arc::new(infrastructure::compliance::ekyc_store::UniversalEkycSessionStore::new(pool))
-            as Arc<dyn EkycSessionStore>
+        Arc::new(aiome_commerce::ekyc::store::UniversalEkycSessionStore::new(
+            pool.clone(),
+        )) as Arc<dyn EkycSessionStore>
     };
     let ekyc_engine = {
         use secrecy::ExposeSecret;
@@ -493,7 +491,7 @@ async fn main() -> anyhow::Result<()> {
         });
 
         if let Some(key) = stripe_key {
-            Arc::new(infrastructure::compliance::ekyc::StripeEkycEngine::new(
+            Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
                 key,
                 "http://localhost:1420/verify-callback".to_string(),
                 http_client.clone(),
@@ -502,7 +500,7 @@ async fn main() -> anyhow::Result<()> {
             #[cfg(debug_assertions)]
             {
                 warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
-                Arc::new(infrastructure::compliance::ekyc::MockEkycEngine) as Arc<dyn EkycEngine>
+                Arc::new(aiome_commerce::ekyc::MockEkycEngine) as Arc<dyn EkycEngine>
             }
             #[cfg(not(debug_assertions))]
             {
@@ -563,7 +561,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .await,
     );
-    let gig_engine = Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
+    let gig_engine = Arc::new(aiome_commerce::gig::UniversalGigEngine::new(
         job_queue.get_pool().clone(),
         commerce_engine
             .clone()
@@ -604,6 +602,12 @@ async fn main() -> anyhow::Result<()> {
         ),
     );
 
+    let soul_md = std::fs::read_to_string("workspace/SOUL.md").unwrap_or_else(|_| String::new());
+    let oracle = Arc::new(infrastructure::oracle::Oracle::new(
+        bg_provider.clone(),
+        soul_md.clone(),
+    ));
+
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
         std::time::Duration::from_millis(100),
@@ -612,6 +616,7 @@ async fn main() -> anyhow::Result<()> {
         Some(strategic_planner as Arc<dyn aiome_contracts::traits::StrategicPlanner>),
         Some(validator.clone()),
         Some(std::path::PathBuf::from("workspace/SOUL.md")),
+        Some(oracle),
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
@@ -752,7 +757,7 @@ async fn main() -> anyhow::Result<()> {
         },
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
-            infrastructure::syndicate_store::SqliteSyndicateStore::new(
+            aiome_commerce::syndicate::SqliteSyndicateStore::new(
                 job_queue
                     .get_pool()
                     .get_sqlite_pool()

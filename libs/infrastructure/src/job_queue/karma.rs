@@ -538,6 +538,7 @@ impl KarmaOps for UniversalJobQueue {
                     priority: r.get("priority"),
                     created_at: r.try_get("created_at").unwrap_or_default(),
                     updated_at: r.try_get("updated_at").unwrap_or_default(),
+                    requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                 });
             }
         } else if let Some(rows) = rows_pg {
@@ -571,6 +572,7 @@ impl KarmaOps for UniversalJobQueue {
                     priority: r.get("priority"),
                     created_at: r.try_get("created_at").unwrap_or_default(),
                     updated_at: r.try_get("updated_at").unwrap_or_default(),
+                    requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                 });
             }
         }

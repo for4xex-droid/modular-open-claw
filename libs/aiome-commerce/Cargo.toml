@@ -1,0 +1,37 @@
+[package]
+name = "aiome-commerce"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+aiome-contracts = { path = "../aiome-contracts" }
+aiome-core = { path = "../core" }
+shared = { path = "../shared" }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }
+reqwest = { workspace = true }
+stripe = { workspace = true }
+async-trait = "0.1"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+once_cell = { workspace = true }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+secrecy = { workspace = true }
+jsonschema = { workspace = true }
+serde_yaml = "0.9"
+schemars = { workspace = true }
+dashmap = "5.5"
+url = "2.5"
+subtle = "2.5"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+wiremock = { workspace = true }

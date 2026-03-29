@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, transport::Server};
-use tracing::{error, info};
+use tracing::info;
 use tracing_subscriber;
 
 pub struct ShadowWorkerService {

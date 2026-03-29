@@ -8,7 +8,7 @@
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::error::AiomeError;
 use async_trait::async_trait;
-use stripe::{Webhook, WebhookError};
+use stripe::Webhook;
 use uuid::Uuid;
 
 /// Stripe Webhook イベントを処理する商用エンジン実装
@@ -206,7 +206,7 @@ impl CommerceEngine for StripeCommerceEngine {
         }
     }
 
-    async fn cancel_subscription(&self, subscription_id: &str) -> Result<(), AiomeError> {
+    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), AiomeError> {
         // Mock mode for tests
         if self.is_mock {
             return Ok(());

@@ -5,28 +5,12 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use aiome_contracts::ekyc::{EkycEngine, EkycSession};
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, Secret};
-use stripe::Client;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
-/// eKYCセッション情報
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct EkycSession {
-    /// 検証用URL
-    pub url: String,
-    /// StripeセッションID (永続化用)
-    pub session_id: String,
-}
-
-/// インターフェース: ユーザー検証 (eKYC) エンジン
-#[async_trait]
-pub trait EkycEngine: Send + Sync {
-    /// 新しい検証セッションを作成し、検証用URLとセッションIDを返す
-    async fn create_verification_session(&self, user_id: &str) -> anyhow::Result<EkycSession>;
-    /// 検証ステータスを確認
-    async fn check_status(&self, user_id: &str) -> anyhow::Result<bool>;
-}
+pub mod store;
 
 /// Stripe Identity を使用した eKYC 実装
 pub struct StripeEkycEngine {

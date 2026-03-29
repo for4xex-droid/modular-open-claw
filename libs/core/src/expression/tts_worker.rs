@@ -210,6 +210,13 @@ mod tests {
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             unimplemented!()
         }
+        async fn update_job_status(
+            &self,
+            _: &str,
+            _: aiome_contracts::traits::JobStatus,
+        ) -> Result<(), AiomeError> {
+            unimplemented!()
+        }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
             unimplemented!()
         }
@@ -244,6 +251,9 @@ mod tests {
             unimplemented!()
         }
         async fn increment_job_retry_count(&self, _: &str) -> Result<bool, AiomeError> {
+            unimplemented!()
+        }
+        async fn requeue_job(&self, _: &str) -> Result<(), AiomeError> {
             unimplemented!()
         }
     }
@@ -286,6 +296,9 @@ mod tests {
             _: Option<uuid::Uuid>,
         ) -> Result<u32, AiomeError> {
             Ok(0)
+        }
+        async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
         }
     }
 

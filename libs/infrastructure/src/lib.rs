@@ -25,11 +25,7 @@ pub mod capability_registry;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
-/// 商用連携実装（ギフト送信等）
-pub mod commerce;
-/// 決済フローのモック実装
-#[cfg(any(test, debug_assertions))]
-pub mod commerce_mock;
+
 /// コンプライアンス・eKYC
 pub mod compliance;
 /// コンセプト（概念）のベクター管理
@@ -56,8 +52,7 @@ pub mod diagnostics;
 pub mod docker_conductor;
 /// アイドル時の自律思考管理
 pub mod dream_state;
-/// AIギグ・エコノミー受発注エンジン
-pub mod gig_engine;
+
 #[cfg(feature = "grpc")]
 pub mod grpc;
 /// 定期診断・プロアクティブ発火
@@ -117,7 +112,7 @@ pub mod soul_adapter;
 pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
-pub mod syndicate_store;
+
 pub mod task_orchestrator;
 pub mod trend_sonar;
 pub mod tts;
@@ -131,7 +126,7 @@ pub mod whisper_transcription;
 pub mod workspace_manager;
 
 mod artifact_store_tests;
-mod gig_engine_tests;
+
 mod hierarchical_router_tests;
 mod knowledge_indexer_tests;
 mod soul_store_tests;

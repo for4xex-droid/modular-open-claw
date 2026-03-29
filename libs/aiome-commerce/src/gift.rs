@@ -5,13 +5,13 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::audit_logger::{AsyncAuditLogger, AuditEntry};
-use crate::db::DatabasePool;
+use aiome_contracts::audit::AuditLogger;
 use aiome_contracts::commerce::GiftEngine;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::json;
+use shared::db::DatabasePool;
 use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -22,7 +22,7 @@ pub struct TremendousGiftEngine {
     base_url: String,
     client: Client,
     pool: DatabasePool,
-    audit_logger: Arc<AsyncAuditLogger>,
+    audit_logger: Arc<dyn AuditLogger>,
 }
 
 impl TremendousGiftEngine {
@@ -31,7 +31,7 @@ impl TremendousGiftEngine {
         api_key: String,
         sandbox: bool,
         pool: DatabasePool,
-        audit_logger: Arc<AsyncAuditLogger>,
+        audit_logger: Arc<dyn AuditLogger>,
     ) -> Self {
         // Double check for production safety (😈 Demon's Advocate Gate 4)
         #[cfg(debug_assertions)]
@@ -125,16 +125,19 @@ impl GiftEngine for TremendousGiftEngine {
         );
 
         // Log the successful transaction asynchronously
-        self.audit_logger.log_event_sync(AuditEntry {
-            table_name: "gift_transactions".to_string(),
-            operation: "SEND".to_string(),
-            record_id: order_id.clone(),
-            new_data: json!({
-                "recipient_email": recipient_email,
-                "amount_usd": amount_usd,
-                "reason": safe_reason,
-            }),
-        });
+        let _ = self
+            .audit_logger
+            .log_event(
+                "GIFT_SEND",
+                "GiftEngine",
+                &json!({
+                    "record_id": order_id.clone(),
+                    "recipient_email": recipient_email,
+                    "amount_usd": amount_usd,
+                    "reason": safe_reason,
+                }),
+            )
+            .await;
 
         Ok(order_id)
     }
@@ -194,7 +197,7 @@ impl GiftEngine for TremendousGiftEngine {
 
         // Use generic SQL fetch for dual-dialect support (SQLite & PostgreSQL)
         let row_opt =
-            crate::sql_fetch_optional!(&self.pool, (i64, f64), &q, &agent_str).map_err(|e| {
+            shared::sql_fetch_optional!(&self.pool, (i64, f64), &q, &agent_str).map_err(|e| {
                 AiomeError::Infrastructure {
                     reason: format!("Failed to fetch gift audit: {}", e),
                 }
@@ -217,9 +220,31 @@ impl GiftEngine for TremendousGiftEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audit_logger::AsyncAuditLogger;
-    use crate::db::DatabasePool;
+    use aiome_contracts::audit::AuditLogger;
+    use shared::db::DatabasePool;
     use sqlx::SqlitePool;
+
+    struct MockAuditLogger;
+
+    #[async_trait::async_trait]
+    impl AuditLogger for MockAuditLogger {
+        async fn log_event(
+            &self,
+            _t: &str,
+            _a: &str,
+            _d: &serde_json::Value,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+        async fn log_violation(
+            &self,
+            _t: &str,
+            _d: &str,
+            _c: &serde_json::Value,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
 
     async fn setup_test_engine() -> TremendousGiftEngine {
         let pool = if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
@@ -239,8 +264,7 @@ mod tests {
             DatabasePool::Sqlite(p)
         };
 
-        let logger =
-            std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+        let logger = std::sync::Arc::new(MockAuditLogger);
         TremendousGiftEngine::new("test_key".into(), true, pool, logger)
     }
 
@@ -275,8 +299,7 @@ mod tests {
         } else {
             DatabasePool::Sqlite(SqlitePool::connect("sqlite::memory:").await.unwrap())
         };
-        let logger =
-            std::sync::Arc::new(AsyncAuditLogger::new(std::sync::Arc::new(pool.clone()), 10));
+        let logger = std::sync::Arc::new(MockAuditLogger);
         let sandbox_engine = TremendousGiftEngine::new("key".into(), true, pool, logger);
         assert!(sandbox_engine.base_url.contains("testflight"));
     }

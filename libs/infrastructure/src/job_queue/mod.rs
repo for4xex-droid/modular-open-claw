@@ -237,8 +237,14 @@ impl TaskRegistry for UniversalJobQueue {
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError> {
         Box::pin(self.do_fail_job(job_id, reason)).await
     }
+    async fn requeue_job(&self, job_id: &str) -> Result<(), AiomeError> {
+        Box::pin(self.do_requeue_job(job_id)).await
+    }
     async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
         Box::pin(self.do_cancel_job(job_id)).await
+    }
+    async fn update_job_status(&self, job_id: &str, status: JobStatus) -> Result<(), AiomeError> {
+        Box::pin(self.do_update_job_status(job_id, status.as_str())).await
     }
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         Box::pin(self.do_reclaim_zombie_jobs(timeout_minutes)).await
@@ -297,6 +303,9 @@ impl AuditStore for UniversalJobQueue {
         job_id: &str,
     ) -> Result<Vec<TrajectoryStep>, AiomeError> {
         self.trajectory_store.fetch_trajectory(job_id).await
+    }
+    async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError> {
+        self.trajectory_store.clear_trajectory_steps(job_id).await
     }
     async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
         Box::pin(self.do_get_security_request_count(agent_id)).await

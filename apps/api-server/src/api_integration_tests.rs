@@ -510,9 +510,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             Arc::new(config)
         }),
         gift_engine: Component::new(Arc::new(MockGiftEngine)),
-        ekyc_engine: Component::new(Arc::new(infrastructure::compliance::ekyc::MockEkycEngine)),
+        ekyc_engine: Component::new(Arc::new(aiome_commerce::ekyc::MockEkycEngine)),
         ekyc_session_store: Component::new(Arc::new(
-            infrastructure::compliance::ekyc_store::MockEkycSessionStore,
+            aiome_commerce::ekyc::store::MockEkycSessionStore,
         )),
         quarantine_store: Component::new(Arc::new(
             infrastructure::compliance::quarantine::MockQuarantineStore,
@@ -521,14 +521,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
-        gig_engine: Component::new(
-            Arc::new(infrastructure::gig_engine::UniversalGigEngine::new(
-                job_queue.get_pool().clone(),
-                Arc::new(MockCommerceEngine),
-                provider.clone(),
-                tmp_dir.path().join("gig_artifacts"),
-            )) as Arc<dyn aiome_contracts::gig::GigEngine>,
-        ),
+        gig_engine: Component::new(Arc::new(aiome_commerce::gig::UniversalGigEngine::new(
+            job_queue.get_pool().clone(),
+            Arc::new(MockCommerceEngine),
+            provider.clone(),
+            tmp_dir.path().join("gig_artifacts"),
+        )) as Arc<dyn aiome_contracts::gig::GigEngine>),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
@@ -560,6 +558,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 None, // planner
                 Some(validator),
                 Some(tmp_dir.path().join("SOUL.md")),
+                None, // oracle
             ));
 
             // G-22 Fix: Spawn dispatcher loop in background for integration tests
@@ -575,7 +574,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         news_service: Component::default(),
         live_session_manager: Component::new(Arc::new(MockLiveSessionManager::default())),
         syndicate_store: Component::new(Arc::new(
-            infrastructure::syndicate_store::SqliteSyndicateStore::new(
+            aiome_commerce::syndicate::SqliteSyndicateStore::new(
                 job_queue
                     .get_pool()
                     .get_sqlite_pool()
@@ -1877,4 +1876,29 @@ async fn test_syndicate_guild_sanitization() {
     // purge_entities usually strips tags.
     assert_eq!(guild.name, "Safe Guild");
     assert_eq!(guild.description.as_ref().unwrap(), "Description with");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_oracle_job_review_api() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "status": "approved",
+        "comments": "Looking good"
+    });
+
+    let resp = server
+        .post("/api/v1/jobs/test-job-id/review")
+        .add_header("Authorization", &bearer)
+        .json(&payload) // we can send an empty body or review payload
+        .await;
+
+    // We expect this to fail initially since the endpoint is not implemented (RED phase)
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::ACCEPTED,
+        "Expected ACCEPTED or OK from new review endpoint"
+    );
 }

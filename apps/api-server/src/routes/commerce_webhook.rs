@@ -150,13 +150,16 @@ pub async fn stripe_webhook(
                                 .amount_total
                                 .unwrap_or(asset_manifest.price_coins as i64);
                             if amount > 0 {
-                                if let Err(e) = infrastructure::commerce::splitter::RevenueSplitter::split_revenue(
-                                    &mut tx,
-                                    event_id,
-                                    amount,
-                                    asset_manifest.creator_id,
-                                    0.15 // 15% platform fee
-                                ).await {
+                                if let Err(e) =
+                                    aiome_commerce::splitter::RevenueSplitter::split_revenue(
+                                        &mut tx,
+                                        event_id,
+                                        amount,
+                                        asset_manifest.creator_id,
+                                        0.15, // 15% platform fee
+                                    )
+                                    .await
+                                {
                                     let _ = tx.rollback().await;
                                     error!("❌ [StripeWebhook] Failed to split revenue: {}", e);
                                     return Err(AppError::internal("Revenue split failed"));

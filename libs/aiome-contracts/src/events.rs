@@ -52,6 +52,9 @@ pub enum CoreEvent {
         message: String,
         percent: Option<u8>,
     },
+    TaskEvaluating {
+        job_id: String,
+    },
     TaskFailed {
         job_id: String,
         error: String,

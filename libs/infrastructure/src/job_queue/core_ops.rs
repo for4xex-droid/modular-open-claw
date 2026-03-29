@@ -35,7 +35,9 @@ pub trait CoreOps {
         output_artifacts: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn do_fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
+    async fn do_requeue_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn do_update_job_status(&self, job_id: &str, status: &str) -> Result<(), AiomeError>;
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
@@ -140,6 +142,7 @@ impl CoreOps for UniversalJobQueue {
                     priority: $r.get("priority"),
                     created_at: $r.try_get("created_at").unwrap_or_default(),
                     updated_at: $r.try_get("updated_at").unwrap_or_default(),
+                    requires_review: $r.try_get::<bool, _>("requires_review").unwrap_or(false),
                 }
             }};
         }
@@ -294,6 +297,18 @@ impl CoreOps for UniversalJobQueue {
         Ok(())
     }
 
+    async fn do_requeue_job(&self, job_id: &str) -> Result<(), AiomeError> {
+        let now = Utc::now().to_rfc3339();
+        let q = format!(
+            "UPDATE jobs SET status = {0}, error_message = NULL, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, "Pending", &now, job_id)?;
+        Ok(())
+    }
+
     async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
         let q = format!(
@@ -311,9 +326,21 @@ impl CoreOps for UniversalJobQueue {
         Ok(())
     }
 
+    async fn do_update_job_status(&self, job_id: &str, status: &str) -> Result<(), AiomeError> {
+        let now = Utc::now().to_rfc3339();
+        let q = format!(
+            "UPDATE jobs SET status = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, status, &now, job_id)?;
+        Ok(())
+    }
+
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         let now = Utc::now().to_rfc3339();
-        let update_str = format!("UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed', updated_at = {0} WHERE status = 'Processing' AND {1}", self.pool.ph(0), self.pool.interval_minutes_check("last_heartbeat", timeout_minutes));
+        let update_str = format!("UPDATE jobs SET status = 'Failed', error_message = 'Zombie reclaimed', updated_at = {0} WHERE status IN ('Processing', 'Evaluating') AND {1}", self.pool.ph(0), self.pool.interval_minutes_check("last_heartbeat", timeout_minutes));
         sql_exec!(&self.pool, &update_str, &now)
     }
 
@@ -408,6 +435,7 @@ impl CoreOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }
@@ -446,6 +474,7 @@ impl CoreOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }

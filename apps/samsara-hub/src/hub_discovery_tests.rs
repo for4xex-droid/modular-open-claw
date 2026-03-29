@@ -17,7 +17,7 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        let db_pool = infrastructure::db::DatabasePool::Sqlite(pool.clone());
+        let db_pool = shared::db::DatabasePool::Sqlite(pool.clone());
         crate::init_hub_db(&db_pool).await.unwrap();
 
         let (tx, _) = tokio::sync::broadcast::channel(10);
@@ -29,7 +29,7 @@ mod tests {
         let state = std::sync::Arc::new(crate::HubState {
             pool: db_pool,
             secret: secrecy::SecretString::from("test".to_string()),
-            auth_manager: std::sync::Arc::new(infrastructure::auth::MockAuthManager::new()),
+            auth_manager: std::sync::Arc::new(shared::auth::MockAuthManager::new()),
             tx,
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry: agent_registry.clone(),

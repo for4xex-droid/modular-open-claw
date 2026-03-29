@@ -11,6 +11,7 @@ infrastructure = { path = "../../libs/infrastructure", features = ["grpc"] }
 shared = { path = "../../libs/shared" }
 avatar-engine = { path = "../../libs/avatar-engine" }
 aiome-contracts = { path = "../../libs/aiome-contracts", features = ["axum"] }
+aiome-commerce = { path = "../../libs/aiome-commerce" }
 tokio = { workspace = true }
 axum.workspace = true
 tower-http = { version = "0.5", features = ["fs", "cors", "set-header", "limit", "timeout"] }

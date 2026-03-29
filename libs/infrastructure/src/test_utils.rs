@@ -77,7 +77,17 @@ pub mod job_queue_mock {
         async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn requeue_job(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn update_job_status(
+            &self,
+            _: &str,
+            _: aiome_contracts::traits::JobStatus,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
@@ -128,6 +138,9 @@ pub mod job_queue_mock {
         }
         async fn fetch_trajectory_steps(&self, _: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
             Ok(Vec::new())
+        }
+        async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
         }
         async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
             Ok(0)

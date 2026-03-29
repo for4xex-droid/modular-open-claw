@@ -5,19 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::db::DatabasePool;
-use crate::sql_exec;
-use aiome_core::error::AiomeError;
+use aiome_contracts::ekyc::EkycSessionStore;
 use async_trait::async_trait;
-
-/// eKYCセッションの永続化インターフェース
-#[async_trait]
-pub trait EkycSessionStore: Send + Sync {
-    /// セッションIDを保存する (1ユーザー1セッション)
-    async fn save(&self, user_id: &str, session_id: &str) -> anyhow::Result<()>;
-    /// 保存されているセッションIDを取得する
-    async fn get_session_id(&self, user_id: &str) -> anyhow::Result<Option<String>>;
-}
+use shared::db::DatabasePool;
+use shared::sql_exec;
 
 /// Universal (SQLite/PostgreSQL) implementation for EkycSessionStore
 pub struct UniversalEkycSessionStore {
@@ -44,7 +35,6 @@ impl EkycSessionStore for UniversalEkycSessionStore {
     }
 
     async fn get_session_id(&self, user_id: &str) -> anyhow::Result<Option<String>> {
-        use sqlx::Row;
         let q = format!(
             "SELECT session_id FROM ekyc_sessions WHERE user_id = {}",
             self.pool.ph(0)

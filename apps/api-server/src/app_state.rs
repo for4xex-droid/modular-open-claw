@@ -6,13 +6,13 @@
  */
 
 use aiome_contracts::commerce::GiftEngine;
+use aiome_contracts::ekyc::EkycEngine;
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::{ArtifactStore, JobQueue, TranscriptionEngine};
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
-use infrastructure::compliance::ekyc::EkycEngine;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::context_engine::ContextEngine;
 use infrastructure::job_queue::UniversalJobQueue;
@@ -31,7 +31,7 @@ use shared::watchtower::CoreEvent;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use infrastructure::compliance::ekyc_store::EkycSessionStore;
+use aiome_contracts::ekyc::EkycSessionStore;
 
 #[derive(Clone, Debug)]
 pub struct Component<T>(pub Option<T>);
@@ -128,7 +128,7 @@ pub struct AppState {
     pub tts_provider: Component<Arc<dyn aiome_contracts::traits::TtsProvider>>,
     pub news_service: Component<Arc<dyn aiome_contracts::traits::NewsService>>,
     pub live_session_manager: Component<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
-    pub syndicate_store: Component<Arc<infrastructure::syndicate_store::SqliteSyndicateStore>>,
+    pub syndicate_store: Component<Arc<aiome_commerce::syndicate::SqliteSyndicateStore>>,
     pub hierarchical_router:
         Component<Arc<infrastructure::hierarchical_router::HierarchicalRouter>>,
     // --- Phase 51 Expansion ---

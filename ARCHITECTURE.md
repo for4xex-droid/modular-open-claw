@@ -44,6 +44,7 @@ graph TD
         napi-bridge(napi-bridge)
         aiome-contracts(aiome-contracts)
         soul(soul)
+        aiome-commerce(aiome-commerce)
     end
 
     api-server --> soul
@@ -51,9 +52,9 @@ graph TD
     api-server --> shared
     api-server --> avatar-engine
     api-server --> aiome-contracts
+    api-server --> aiome-commerce
     samsara-hub --> aiome-core
     samsara-hub --> shared
-    samsara-hub --> infrastructure
     key-proxy --> aiome-core
     key-proxy --> shared
     key-proxy --> infrastructure
@@ -80,6 +81,9 @@ graph TD
     aiome-node --> shared
     aiome-node --> infrastructure
     aiome-node --> aiome-contracts
+    aiome-commerce --> aiome-contracts
+    aiome-commerce --> aiome-core
+    aiome-commerce --> shared
 ```
 
 ## 4. Directory Map (Crates)
@@ -104,6 +108,7 @@ graph TD
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
 | `aiome-node` | `apps/aiome-node` | (Core Module) |
+| `aiome-commerce` | `libs/aiome-commerce` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
@@ -112,4 +117,4 @@ API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_L
 ```
 
 ---
-*Last Auto-Generated: 2026-03-29 UTC*
+*Last Auto-Generated: 2026-03-30 UTC*

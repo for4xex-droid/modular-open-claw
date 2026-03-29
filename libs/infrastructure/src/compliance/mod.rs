@@ -7,18 +7,8 @@
 
 /// 音声 CSAM ハッシュ (知覚ハッシュ)
 pub mod audio_hasher;
-/// 年齢確認 (Stripe Identity)
-pub mod ekyc;
-/// eKYCセッション永続化
-pub mod ekyc_store;
 /// アセット検疫 (CSAM/Compliance)
 pub mod quarantine;
 
 pub use audio_hasher::AudioHasher;
-#[cfg(any(test, debug_assertions))]
-pub use ekyc::MockEkycEngine;
-pub use ekyc::{EkycEngine, EkycSession, StripeEkycEngine};
-#[cfg(any(test, debug_assertions))]
-pub use ekyc_store::MockEkycSessionStore;
-pub use ekyc_store::{EkycSessionStore, UniversalEkycSessionStore};
 pub use quarantine::{AssetReason, QuarantineStore, UniversalQuarantineStore};

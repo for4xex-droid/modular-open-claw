@@ -49,10 +49,10 @@
 | `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。**ADR-024 Phase 2** でプランに基づくサブジョブ投入機能を統合。 | **Phase 43 完了** |
+| `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。**Phase 3C** にて `requires_review` 判定に基づく `Oracle` による非同期評価と 60秒タイムアウト隔離（Evaluating）ループを統合。 | **Phase 3C 完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-28 (Phase 49 / BeliefShift Causal Integrity)*
+*最終更新: 2026-03-30 (Phase 3C / Oracle Async Pipeline)*

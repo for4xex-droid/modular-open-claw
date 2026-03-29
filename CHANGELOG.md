@@ -30,6 +30,15 @@
     - **TtsWorker Loop**: `api-server` 起動時に `TtsWorker` のバックグラウンドループを開始するように実装。未合成の音声ジョブを自律的に処理可能に。
     - **Mock Testing Suite**: `MockTtsProvider` および `MockLiveSessionManager` を実装し、統合テスト全体の安定性を確保。CI/CD における不確定要素を排除。
 
+## [Unreleased] - 2026-03-30
+
+### Added
+- **Phase 3C: Oracle Asynchronous Review Integration [完了]**
+    - **TaskDispatcher Async Evaluator**: `requires_review` フラグ付きのジョブに対し、`tokio::spawn` と `timeout(60s)` による非同期 Oracle 評価機構を実装完了。メイン・ディスパッチ・ループのブロッキングを排除。
+    - **Zombie Reclamation Update**: SQLite/Postgres 両方の `do_reclaim_zombie_jobs` で `status IN ('Processing', 'Evaluating')` を対象とし、Oracle 評価中（`Evaluating`）にクラッシュしても自動的に `Failed` として回収される堅牢な耐障害性を設計。
+    - **API Extension**: `POST /api/v1/jobs/:id/review` サブミットエンドポイントを新設。
+    - **Code Quality Refactoring**: `aiome-commerce` パッケージをインフラストラクチャー層から独立したクレートとして完全分離し、依存関係の循環を解決 (`infrastructure/src/commerce` を削除)。`napi-bridge`、`api-server` 等の対応を完了し、ビルド警告ゼロを達成。
+
 ## [Unreleased] - 2026-03-28
 
 ### Added

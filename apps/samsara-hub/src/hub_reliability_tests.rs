@@ -29,7 +29,7 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        let db_pool = infrastructure::db::DatabasePool::Sqlite(pool.clone());
+        let db_pool = shared::db::DatabasePool::Sqlite(pool.clone());
         let _: () = crate::init_hub_db(&db_pool).await.unwrap();
 
         let overflow_clock: i64 = (u32::MAX as i64) + 123456;
@@ -75,11 +75,11 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        let db_pool = infrastructure::db::DatabasePool::Sqlite(pool.clone());
+        let db_pool = shared::db::DatabasePool::Sqlite(pool.clone());
         let _: () = crate::init_hub_db(&db_pool).await.unwrap();
 
         let (tx, _) = tokio::sync::broadcast::channel(10);
-        let auth = Arc::new(infrastructure::auth::MockAuthManager::new());
+        let auth = Arc::new(shared::auth::MockAuthManager::new());
         let state = Arc::new(crate::HubState {
             pool: db_pool,
             secret: secrecy::SecretString::new("test".into()),

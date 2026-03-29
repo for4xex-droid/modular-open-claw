@@ -175,6 +175,7 @@ pub enum JobStatus {
     #[default]
     Pending,
     InProgress,
+    Evaluating,
     Completed,
     Failed,
     Cancelled,
@@ -187,6 +188,7 @@ impl JobStatus {
         match self {
             JobStatus::Pending => "Pending",
             JobStatus::InProgress => "InProgress",
+            JobStatus::Evaluating => "Evaluating",
             JobStatus::Completed => "Completed",
             JobStatus::Failed => "Failed",
             JobStatus::Cancelled => "Cancelled",
@@ -198,6 +200,7 @@ impl JobStatus {
     pub fn from_string(s: impl AsRef<str>) -> Self {
         match s.as_ref() {
             "InProgress" | "Processing" => JobStatus::InProgress,
+            "Evaluating" => JobStatus::Evaluating,
             "Completed" => JobStatus::Completed,
             "Failed" => JobStatus::Failed,
             "Cancelled" => JobStatus::Cancelled,
@@ -239,6 +242,7 @@ pub struct Job {
     pub karma_directives: Option<String>,
     pub permission_manifest: Option<crate::security::PermissionManifest>,
     pub agent_id: Option<uuid::Uuid>,
+    pub requires_review: bool,
 }
 
 /// ジョブのステータス更新リクエスト
@@ -306,7 +310,9 @@ pub trait TaskRegistry: Send + Sync + std::fmt::Debug {
         output_artifacts: Option<&str>,
     ) -> Result<(), AiomeError>;
     async fn fail_job(&self, job_id: &str, reason: &str) -> Result<(), AiomeError>;
+    async fn requeue_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn update_job_status(&self, job_id: &str, status: JobStatus) -> Result<(), AiomeError>;
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
     async fn get_pending_job_count(&self) -> Result<i64, AiomeError>;
     async fn get_job_count_since(
@@ -335,6 +341,7 @@ pub trait AuditStore: Send + Sync + std::fmt::Debug {
         &self,
         job_id: &str,
     ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
+    async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn get_security_request_count(
         &self,
         agent_id: Option<uuid::Uuid>,
@@ -866,4 +873,17 @@ pub trait LiveSessionManager: Send + Sync + std::fmt::Debug {
 pub trait NewsService: Send + Sync + std::fmt::Debug {
     /// 最新のトレンドやニュースを収集
     async fn fetch_latest(&self, query: &str) -> Result<Vec<serde_json::Value>, AiomeError>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_job_status_evaluating() {
+        // TDD RED Phase: Expected to fail to compile initially!
+        let status = JobStatus::Evaluating;
+        assert_eq!(status.as_str(), "Evaluating");
+        assert_eq!(JobStatus::from_string("Evaluating"), JobStatus::Evaluating);
+    }
 }

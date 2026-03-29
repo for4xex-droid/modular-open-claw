@@ -48,28 +48,6 @@ impl AsyncAuditLogger {
         Self { sender: tx }
     }
 
-    /// Appends an event to the audit queue asynchronously.
-    pub async fn log_event(&self, entry: AuditEntry) -> Result<(), AiomeError> {
-        self.sender
-            .send(entry)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Audit logger queue is full or closed: {}", e),
-            })
-    }
-
-    /// Appends an event to the audit queue forcefully in a synchronous context,
-    /// attempting to not block the current thread.
-    /// If the queue is completely full, the record may be dropped with an error logged.
-    pub fn log_event_sync(&self, entry: AuditEntry) {
-        if let Err(e) = self.sender.try_send(entry) {
-            error!(
-                "🚨 [AsyncAuditLogger] Failed to queue sync audit entry: {}",
-                e
-            );
-        }
-    }
-
     /// Background worker that receives elements from the channel and persists them.
     async fn audit_worker(pool: Arc<DatabasePool>, mut rx: mpsc::Receiver<AuditEntry>) {
         info!("🛡️ [AsyncAuditLogger] Background worker started.");
@@ -106,5 +84,51 @@ impl AsyncAuditLogger {
         }
 
         info!("🛑 [AsyncAuditLogger] Sequence completed; channel closed.");
+    }
+}
+
+use aiome_contracts::audit::AuditLogger;
+use async_trait::async_trait;
+
+#[async_trait]
+impl AuditLogger for AsyncAuditLogger {
+    async fn log_event(
+        &self,
+        event_type: &str,
+        actor: &str,
+        details: &serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let entry = AuditEntry {
+            table_name: actor.to_string(),
+            operation: event_type.to_string(),
+            record_id: details
+                .get("record_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string(),
+            new_data: details.clone(),
+        };
+        self.sender
+            .send(entry)
+            .await
+            .map_err(|e| anyhow::anyhow!("Audit logger queue is full or closed: {}", e))
+    }
+
+    async fn log_violation(
+        &self,
+        violation_type: &str,
+        description: &str,
+        context: &serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let entry = AuditEntry {
+            table_name: "SECURITY_VIOLATION".to_string(),
+            operation: violation_type.to_string(),
+            record_id: description.to_string(),
+            new_data: context.clone(),
+        };
+        self.sender
+            .send(entry)
+            .await
+            .map_err(|e| anyhow::anyhow!("Audit logger queue is full or closed: {}", e))
     }
 }

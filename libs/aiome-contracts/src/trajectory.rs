@@ -161,6 +161,9 @@ pub trait TrajectoryStore: Send + Sync {
     /// ジョブの全軌跡を取得する
     async fn fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError>;
 
+    /// 古い軌跡をクリアし、リトライ時のカオス状態を防ぐ
+    async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError>;
+
     /// 特定のステップを Critical Failure としてマークし、診断情報を保存する
     async fn store_diagnosis(
         &self,

@@ -1,5 +1,5 @@
-use crate::db::DatabaseTransaction;
 use aiome_core::error::AiomeError;
+use shared::db::DatabaseTransaction;
 use uuid::Uuid;
 
 /// プラットフォームとクリエイター間の収益分配を担当するモジュール
@@ -71,7 +71,7 @@ mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
 
-    async fn setup_db() -> crate::db::DatabasePool {
+    async fn setup_db() -> shared::db::DatabasePool {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
@@ -93,7 +93,7 @@ mod tests {
         .await
         .unwrap();
 
-        crate::db::DatabasePool::Sqlite(pool)
+        shared::db::DatabasePool::Sqlite(pool)
     }
 
     #[tokio::test]

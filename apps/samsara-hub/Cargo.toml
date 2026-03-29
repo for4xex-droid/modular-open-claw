@@ -20,7 +20,6 @@ sqlx = { workspace = true }
 reqwest = { version = "0.12", features = ["json"] }
 aiome-core = { path = "../../libs/core" }
 shared = { path = "../../libs/shared" }
-infrastructure = { path = "../../libs/infrastructure", features = ["grpc"] }
 # Ensure tracing-subscriber has json for production logs
 tower = { version = "0.4", features = ["limit", "buffer", "util"] }
 subtle = "2.5.0"

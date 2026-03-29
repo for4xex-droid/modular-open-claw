@@ -13,6 +13,13 @@ chrono = { workspace = true }
 regex = "1.10"
 tokio = { workspace = true }
 reqwest = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }
+async-trait = "0.1"
+jsonwebtoken = "9.2"
+ed25519-dalek = { version = "2.1", features = ["pkcs8", "rand_core"] }
+secrecy = { workspace = true }
+base64 = "0.22"
+rand = "0.8"
 sysinfo.workspace = true
 tracing = { workspace = true }
 nix = { workspace = true }
@@ -22,7 +29,6 @@ anyhow = { workspace = true }
 config = { workspace = true }
 utoipa = { workspace = true }
 unicode-normalization = { workspace = true }
-secrecy.workspace = true
 sha2.workspace = true
 thiserror = { workspace = true }
 img_hash = { workspace = true }

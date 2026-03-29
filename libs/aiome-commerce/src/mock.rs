@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_core::commerce::{CommerceEngine, EconomicContext};
+use aiome_core::commerce::CommerceEngine;
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use tracing::info;

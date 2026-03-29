@@ -155,3 +155,46 @@ pub async fn get_diagnosis_handler(
         .into()),
     }
 }
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct JobReviewPayload {
+    pub status: String,
+    pub comments: Option<String>,
+}
+
+/// POST /api/v1/jobs/:id/review
+#[utoipa::path(
+    post,
+    path = "/api/v1/jobs/{id}/review",
+    request_body = JobReviewPayload,
+    responses(
+        (status = 202, description = "Review submitted"),
+        (status = 500, description = "Internal server error")
+    ),
+    params(
+        ("id" = String, Path, description = "Job ID")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
+pub async fn submit_job_review(
+    State(_state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Path(job_id): Path<String>,
+    axum::Json(payload): axum::Json<JobReviewPayload>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    tracing::info!(
+        "📝 Received review for job {}: status={}, comments={:?}",
+        job_id,
+        payload.status,
+        payload.comments
+    );
+
+    // In a real implementation this would trigger state changes or be recorded.
+    // For Phase 3C Oracle testing, we just return ACCEPTED to verify wiring.
+    Ok((
+        axum::http::StatusCode::ACCEPTED,
+        Json(json!({"success": true, "job_id": job_id})),
+    ))
+}

@@ -21,7 +21,7 @@ use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 pub mod planner;
 
@@ -41,6 +41,9 @@ pub enum TaskEvent {
     Completed {
         job_id: String,
         result: String,
+    },
+    Evaluating {
+        job_id: String,
     },
     Failed {
         job_id: String,
@@ -84,6 +87,7 @@ pub struct TaskDispatcher {
     planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
     validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
     soul_path: Option<std::path::PathBuf>,
+    pub oracle: Option<Arc<crate::oracle::Oracle>>,
 }
 
 impl TaskDispatcher {
@@ -96,6 +100,7 @@ impl TaskDispatcher {
         planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
         validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
         soul_path: Option<std::path::PathBuf>,
+        oracle: Option<Arc<crate::oracle::Oracle>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -124,6 +129,9 @@ impl TaskDispatcher {
                                 preview_url: None,
                             }
                         }
+                        TaskEvent::Evaluating { job_id } => {
+                            aiome_contracts::events::CoreEvent::TaskEvaluating { job_id }
+                        }
                         TaskEvent::Failed { job_id, error } => {
                             aiome_contracts::events::CoreEvent::TaskFailed { job_id, error }
                         }
@@ -145,6 +153,7 @@ impl TaskDispatcher {
             planner,
             validator,
             soul_path,
+            oracle,
         }
     }
 
@@ -259,6 +268,7 @@ impl TaskDispatcher {
                         // Spawn the actual task conductor
                         let conductor_clone = conductor.clone();
                         let active_jobs_clone = self.active_jobs.clone();
+                        let oracle_clone = self.oracle.clone();
                         tokio::spawn(async move {
                             // Phase 48-D: Invariant-DAG Verification before execution
                             if let Some(directives_str) = &job.karma_directives {
@@ -304,6 +314,7 @@ impl TaskDispatcher {
                             }
 
                             let karma_directives = job.karma_directives.clone();
+                            let requires_review = job.requires_review;
                             tokio::select! {
                                 _ = job_token.cancelled() => {
                                     info!("⏹️ Job {} was cancelled.", job_id);
@@ -315,61 +326,111 @@ impl TaskDispatcher {
                                 result = conductor_clone.conduct(job, progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
-                                            let _ = job_queue_clone.complete_job(&job_id, Some(&out)).await;
-                                            let _ = progress_tx
-                                                .send(TaskEvent::Completed {
-                                                    job_id: job_id.clone(),
-                                                    result: out,
-                                                })
-                                                .await;
+                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String| async move {
+                                                let _ = q.complete_job(&j_id, Some(&res_out)).await;
+                                                let _ = p_tx
+                                                    .send(TaskEvent::Completed {
+                                                        job_id: j_id.clone(),
+                                                        result: res_out,
+                                                    })
+                                                    .await;
 
-                                            // Gap B: InvariantDag Result Hash Recording
-                                            if let Some(result_hash) = result_hash_opt {
-                                                let mut parent_id_opt = None;
-                                                if let Some(directives_str) = &karma_directives {
-                                                    if let Ok(directives) = serde_json::from_str::<serde_json::Value>(directives_str) {
-                                                        parent_id_opt = directives["parent_job_id"].as_str().map(|s| s.to_string());
+                                                if let Some(result_hash) = r_hash_opt {
+                                                    let mut parent_id_opt = None;
+                                                    if let Some(directives_str) = &k_dirs {
+                                                        if let Ok(directives) = serde_json::from_str::<serde_json::Value>(directives_str) {
+                                                            parent_id_opt = directives["parent_job_id"].as_str().map(|s| s.to_string());
+                                                        }
                                                     }
+
+                                                    let dag_key = if let Some(pid) = parent_id_opt {
+                                                        format!("invariant_dag_{}", pid)
+                                                    } else {
+                                                        format!("invariant_dag_{}", j_id)
+                                                    };
+
+                                                    let mut dag = if let Ok(Some(dag_json)) = q.fetch_system_state(&dag_key).await {
+                                                        InvariantDag::from_json(&dag_json).unwrap_or_default()
+                                                    } else {
+                                                        InvariantDag::new()
+                                                    };
+
+                                                    let step_id = dag.node_count() as u32 + 1;
+                                                    dag.append(
+                                                        step_id,
+                                                        &j_id,
+                                                        &c_name,
+                                                        vec![format!("result_hash:{}", result_hash)]
+                                                    );
+
+                                                    let _ = q.store_system_state(&dag_key, &dag.to_json()).await;
+                                                    info!("🛡️ [InvariantDag] Appended result_hash for job {} to DAG.", j_id);
                                                 }
+                                            };
 
-                                                let dag_key = if let Some(pid) = parent_id_opt {
-                                                    format!("invariant_dag_{}", pid)
-                                                } else {
-                                                    format!("invariant_dag_{}", job_id)
-                                                };
+                                            if requires_review && oracle_clone.is_some() {
+                                                let oracle = oracle_clone.clone().unwrap();
+                                                let q = job_queue_clone.clone();
+                                                let p_tx = progress_tx.clone();
+                                                let j_id = job_id.clone();
+                                                let c_name = conductor_clone.conductor_name().to_string();
+                                                let k_dirs = karma_directives.clone();
+                                                let r_hash = result_hash_opt.clone();
+                                                let out_clone = out.clone();
 
-                                                let mut dag = if let Ok(Some(dag_json)) = job_queue_clone.fetch_system_state(&dag_key).await {
-                                                    InvariantDag::from_json(&dag_json).unwrap_or_default()
-                                                } else {
-                                                    InvariantDag::new()
-                                                };
+                                                let _ = q.update_job_status(&j_id, aiome_contracts::traits::JobStatus::Evaluating).await;
+                                                let _ = p_tx.send(TaskEvent::Evaluating { job_id: j_id.clone() }).await;
 
-                                                // Default parent_hash could be obtained from DAG logic
-                                                // since get_latest_hash() might not be public, we can just pass None for now
-                                                // Wait, looking at InvariantDag implementation, parent_hash is tracked internally in append!
-                                                // "pub fn append(&mut self, payload: serde_json::Value, result_hash: Option<String>, parent_hash: Option<String>) -> InvariantDagNode"
-
-                                                let step_id = dag.node_count() as u32 + 1;
-                                                dag.append(
-                                                    step_id,
-                                                    &job_id,
-                                                    conductor_clone.conductor_name(),
-                                                    vec![format!("result_hash:{}", result_hash)]
-                                                );
-
-                                                let _ = job_queue_clone.store_system_state(&dag_key, &dag.to_json()).await;
-                                                info!("🛡️ [InvariantDag] Appended result_hash for job {} to DAG.", job_id);
+                                                tokio::spawn(async move {
+                                                    match tokio::time::timeout(
+                                                        std::time::Duration::from_secs(60),
+                                                        oracle.evaluate_multi_judge(0, &j_id, &c_name, 0, 0, &out_clone)
+                                                    ).await {
+                                                        Ok(Ok(verdict)) => {
+                                                            if verdict.should_evolve {
+                                                                info!("✅ Job {} passed Oracle review.", j_id);
+                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name).await;
+                                                            } else {
+                                                                let reason = verdict.reasoning.clone();
+                                                                warn!("❌ Job {} failed Oracle review: {}", j_id, reason);
+                                                                let _ = q.fail_job(&j_id, &reason).await;
+                                                                let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await;
+                                                            }
+                                                        }
+                                                        Ok(Err(e)) => {
+                                                            let err_msg = format!("Oracle error: {}", e);
+                                                            error!("🔥 {}", err_msg);
+                                                            let _ = q.fail_job(&j_id, &err_msg).await;
+                                                            let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await;
+                                                        }
+                                                        Err(_) => {
+                                                            let err_msg = "Oracle evaluation timeout (60s)".to_string();
+                                                            error!("⏰ {}", err_msg);
+                                                            let _ = q.fail_job(&j_id, &err_msg).await;
+                                                            let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await;
+                                                        }
+                                                    }
+                                                });
+                                            } else {
+                                                do_completion(job_queue_clone.clone(), progress_tx.clone(), job_id.clone(), out, result_hash_opt, karma_directives.clone(), conductor_clone.conductor_name().to_string()).await;
                                             }
                                         }
                                         Err(e) => {
                                             error!("Task {} failed: {:?}", job_id, e);
-                                            let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
-                                            let _ = progress_tx
-                                                .send(TaskEvent::Failed {
-                                                    job_id: job_id.clone(),
-                                                    error: e.to_string(),
-                                                })
-                                                .await;
+                                            let is_poisoned = job_queue_clone.increment_job_retry_count(&job_id).await.unwrap_or(true);
+                                            if is_poisoned {
+                                                let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
+                                                let _ = progress_tx
+                                                    .send(TaskEvent::Failed {
+                                                        job_id: job_id.clone(),
+                                                        error: e.to_string(),
+                                                    })
+                                                    .await;
+                                            } else {
+                                                warn!("Task {} failed but will be retried. Clearing partial trajectory...", job_id);
+                                                let _ = job_queue_clone.clear_trajectory_steps(&job_id).await;
+                                                let _ = job_queue_clone.requeue_job(&job_id).await;
+                                            }
                                         }
                                     }
                                 }
@@ -618,6 +679,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -651,5 +713,18 @@ mod tests {
         assert!(*job_queue.completed.lock().unwrap());
 
         handle.abort();
+    }
+
+    #[test]
+    fn test_task_event_evaluating_exists() {
+        let event = TaskEvent::Evaluating {
+            job_id: "test-job".to_string(),
+        };
+        match event {
+            TaskEvent::Evaluating { job_id } => {
+                assert_eq!(job_id, "test-job");
+            }
+            _ => panic!("Expected Evaluating event"),
+        }
     }
 }

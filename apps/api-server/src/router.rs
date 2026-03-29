@@ -186,6 +186,10 @@ pub fn build_app(
             get(routes::jobs::get_job_logs_handler),
         )
         .route(
+            "/api/v1/jobs/:id/review",
+            post(routes::jobs::submit_job_review),
+        )
+        .route(
             "/api/v1/trajectory/:id",
             get(routes::jobs::get_trajectory_handler),
         )

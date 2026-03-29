@@ -5,15 +5,14 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::db::{DatabasePool, DatabaseTransaction};
-use crate::sql_exec;
 use aiome_contracts::commerce::CommerceEngine;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::gig::{
-    AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, IntentCategory,
-    VerificationResult,
+    AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, VerificationResult,
 };
 use async_trait::async_trait;
+use shared::db::{DatabasePool, DatabaseTransaction};
+use shared::sql_exec;
 use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;

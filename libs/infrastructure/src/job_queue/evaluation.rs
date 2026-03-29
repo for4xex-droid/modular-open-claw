@@ -128,6 +128,7 @@ impl EvaluationOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }
@@ -169,6 +170,7 @@ impl EvaluationOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }
@@ -443,6 +445,7 @@ impl EvaluationOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }
@@ -482,6 +485,7 @@ impl EvaluationOps for UniversalJobQueue {
                         priority: r.get("priority"),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                         updated_at: r.try_get("updated_at").unwrap_or_default(),
+                        requires_review: r.try_get::<bool, _>("requires_review").unwrap_or(false),
                     });
                 }
             }

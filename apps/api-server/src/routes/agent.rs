@@ -652,6 +652,7 @@ pub async fn trigger_agent_chat(
                         priority: 0,
                         created_at: chrono::Utc::now().to_rfc3339(),
                         updated_at: chrono::Utc::now().to_rfc3339(),
+                        requires_review: false,
                     };
 
                     match diagnostics.diagnose(&trajectory, &virtual_job).await {

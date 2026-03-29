@@ -18,6 +18,8 @@ pub mod config;
 pub mod crypto;
 /// CSAM (Child Safety & Compliance)
 pub mod csam;
+/// データベース・共通マクロ
+pub mod db;
 
 pub mod guardrails;
 /// システムヘルスモニタリング
@@ -28,3 +30,8 @@ pub mod sandbox;
 /// ネットワークセキュリティポリシー
 pub mod security;
 pub mod watchtower;
+
+/// Macros use these re-exports to avoid requiring dependencies in caller crates.
+pub mod reexport {
+    pub use aiome_contracts::error::AiomeError;
+}

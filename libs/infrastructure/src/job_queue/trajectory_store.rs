@@ -17,6 +17,7 @@ use sqlx::Row;
 pub trait TrajectoryOps {
     async fn do_record_step(&self, job_id: &str, step: TrajectoryStep) -> Result<(), AiomeError>;
     async fn do_fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError>;
+    async fn do_clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_store_diagnosis(
         &self,
         job_id: &str,
@@ -81,6 +82,10 @@ impl TrajectoryStore for SqliteTrajectoryStore {
 
     async fn fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
         self.do_fetch_trajectory(job_id).await
+    }
+
+    async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError> {
+        self.do_clear_trajectory_steps(job_id).await
     }
 
     async fn store_diagnosis(
@@ -222,6 +227,17 @@ impl TrajectoryOps for SqliteTrajectoryStore {
             }
         }
         Ok(steps)
+    }
+
+    async fn do_clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError> {
+        let q = format!(
+            "DELETE FROM trajectory_steps WHERE job_id = {}",
+            self.pool.ph(0)
+        );
+        crate::sql_exec!(&self.pool, &q, job_id).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to clear trajectory steps: {}", e),
+        })?;
+        Ok(())
     }
 
     async fn do_store_diagnosis(

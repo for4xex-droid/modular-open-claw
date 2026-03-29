@@ -15,9 +15,11 @@
 )]
 
 pub mod a2a;
+pub mod audit;
 pub mod biome;
 pub mod commerce;
 pub mod contracts;
+pub mod ekyc;
 pub mod error;
 pub mod events;
 pub mod expression;
@@ -36,9 +38,11 @@ pub mod vault_backend;
 pub mod voice_vault;
 
 pub use a2a::*;
+pub use audit::*;
 pub use biome::*;
 pub use commerce::*;
 pub use contracts::*;
+pub use ekyc::*;
 pub use error::*;
 pub use events::*;
 pub use expression::*;

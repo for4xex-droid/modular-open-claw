@@ -13,6 +13,7 @@ members = [
     "apps/management-console/src-tauri",
     "apps/watchtower",
     "libs/aiome-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node",
+    "libs/aiome-commerce",
 ]
 resolver = "2"
 

@@ -7,7 +7,7 @@ use aiome_contracts::error::AiomeError;
 use aiome_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
 use async_trait::async_trait;
 use sqlx::{Row, SqlitePool};
-use tracing::{debug, error};
+use tracing::error;
 use uuid::Uuid;
 
 pub struct SqliteSyndicateStore {

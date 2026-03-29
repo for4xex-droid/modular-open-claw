@@ -15,7 +15,6 @@ tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
 tonic = { workspace = true, optional = true }
 tonic-health = { version = "0.12", optional = true }
 reqwest = { workspace = true }
-stripe = { workspace = true }
 async-trait = "0.1"
 futures = { workspace = true }
 async-stream = { workspace = true }

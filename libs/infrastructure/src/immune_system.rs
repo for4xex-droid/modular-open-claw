@@ -375,6 +375,13 @@ mod tests {
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn update_job_status(
+            &self,
+            _: &str,
+            _: aiome_contracts::traits::JobStatus,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
             Ok(0)
         }
@@ -411,6 +418,9 @@ mod tests {
         async fn increment_job_retry_count(&self, _: &str) -> Result<bool, AiomeError> {
             Ok(false)
         }
+        async fn requeue_job(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
     }
 
     #[async_trait]
@@ -438,6 +448,9 @@ mod tests {
             _: Option<Uuid>,
         ) -> Result<u32, AiomeError> {
             Ok(1)
+        }
+        async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
         }
     }
 
