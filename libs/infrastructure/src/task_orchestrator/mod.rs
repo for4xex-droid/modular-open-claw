@@ -669,6 +669,7 @@ mod tests {
         let job_queue = Arc::new(GlobalMockJobQueue {
             job_to_return: std::sync::Mutex::new(Some(job)),
             completed: std::sync::Mutex::new(false),
+            ..Default::default()
         });
 
         let mut dispatcher = TaskDispatcher::new(

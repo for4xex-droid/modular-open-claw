@@ -33,6 +33,7 @@ pub mod job_queue_mock {
     pub struct GlobalMockJobQueue {
         pub job_to_return: std::sync::Mutex<Option<Job>>,
         pub completed: std::sync::Mutex<bool>,
+        pub karmas: std::sync::Mutex<Vec<Value>>,
     }
 
     #[async_trait]
@@ -218,7 +219,7 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn fetch_all_karma(&self, _: i64) -> Result<Vec<Value>, AiomeError> {
-            Ok(vec![])
+            Ok(self.karmas.lock().unwrap().clone())
         }
         async fn fetch_unincorporated_karma(
             &self,

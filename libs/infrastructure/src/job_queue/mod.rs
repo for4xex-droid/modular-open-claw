@@ -693,3 +693,6 @@ impl JobQueue for UniversalJobQueue {
 }
 
 // SoulStore impl is in soul_store.rs
+
+#[cfg(test)]
+pub mod tests;

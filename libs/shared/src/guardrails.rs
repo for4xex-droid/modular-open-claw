@@ -68,6 +68,22 @@ pub fn sanitize_asset_name(name: &str) -> String {
     safe_name.trim().to_string()
 }
 
+/// LLMプロンプトに注入する文字列をサニタイズする（Markdownヘッダーなどの無害化）
+pub fn sanitize_for_prompt(input: &str) -> String {
+    input
+        .lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('#') || trimmed.starts_with("---") {
+                format!(" \\{}", line)
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// AI がユーザーに対して金銭やギフトを要求する（おねだり）のを監視・遮断する
 pub struct BeggingSupervisor;
 
@@ -266,5 +282,21 @@ mod tests {
         let input = "テ\u{3099}スト/データ*1.dat";
         let sanitized = sanitize_asset_name(input);
         assert_eq!(sanitized, "デスト_データ_1.dat");
+    }
+
+    #[test]
+    fn test_sanitize_for_prompt() {
+        // Markdownヘッダーのインジェクション防御テスト
+        let input = "### Important Header\nNormal text\n# Huge Header";
+        let sanitized = sanitize_for_prompt(input);
+
+        // 行頭の # がエスケープされていることを期待
+        assert!(sanitized.contains(" \\### Important Header"));
+        assert!(sanitized.contains(" \\# Huge Header"));
+
+        // プロンプトセパレーターの無害化
+        let input2 = "text\n---\nmore text";
+        let sanitized2 = sanitize_for_prompt(input2);
+        assert!(sanitized2.contains(" \\---"));
     }
 }

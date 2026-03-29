@@ -13,6 +13,8 @@
 use super::settings::SettingsOps;
 use super::watchtower::WatchtowerOps;
 use super::UniversalJobQueue;
+use crate::job_queue::karma::KarmaOps;
+use crate::job_queue::trajectory_store::TrajectoryOps;
 use aiome_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
     TaskRegistry,
@@ -20,6 +22,7 @@ use aiome_contracts::traits::{
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};
+use aiome_core::trajectory::TrajectoryStore;
 use async_trait::async_trait;
 use chrono::Utc;
 use sqlx::Row;
@@ -27,8 +30,8 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 #[derive(Debug)]
-struct MockLlmProvider {
-    json_response: String,
+pub(crate) struct MockLlmProvider {
+    pub(crate) json_response: String,
 }
 
 #[async_trait]
@@ -73,7 +76,9 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
     if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
         info!("🔧 Bootstrapping Test JobQueue against PostgreSQL");
         let ts_pool = {
-            let pg = sqlx::PgPool::connect(&pg_url).await.expect("TS pool connect");
+            let pg = sqlx::PgPool::connect(&pg_url)
+                .await
+                .expect("TS pool connect");
             crate::db::DatabasePool::Postgres(pg)
         };
         let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
@@ -160,6 +165,48 @@ async fn test_sqlite_job_queue_karma_storage() {
         .unwrap();
     assert_eq!(result.entries.len(), 1);
     assert_eq!(result.entries[0].lesson, "Lesson 1");
+}
+
+#[tokio::test]
+async fn test_sqlite_job_queue_karma_somatic_valence() {
+    let (jq, _tmp) = create_test_queue().await;
+    let job_id = jq
+        .enqueue("Task", "Topic Valence", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+
+    // 最初に store_karma する前に、手動でSQLを叩いてsomatic_valenceを設定できるか確認する
+    jq.store_karma(
+        &job_id,
+        "skill-v",
+        "Valence Lesson",
+        "Technical",
+        "hash-v",
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    // 手動で valence をセット
+    sqlx::query("UPDATE karma_logs SET somatic_valence = 0.8 WHERE lesson = 'Valence Lesson'")
+        .execute(jq.pool.get_sqlite_pool().unwrap())
+        .await
+        .unwrap();
+
+    // 取得時に somatic_valence が JSON に含まれているかテスト
+    let all_karma = jq.fetch_all_karma(10).await.unwrap();
+    let entry = all_karma
+        .iter()
+        .find(|k| k.get("lesson").and_then(|v| v.as_str()) == Some("Valence Lesson"))
+        .expect("Should find the inserted karma");
+
+    // RED: The current implementation doesn't return somatic_valence in JSON
+    assert_eq!(
+        entry.get("somatic_valence").and_then(|v| v.as_f64()),
+        Some(0.8)
+    );
 }
 
 #[tokio::test]
@@ -893,12 +940,14 @@ async fn test_sqlite_trajectory_store() {
         parent_state_hash: None,
     };
 
-    jq.record_step(&job_id, step.clone())
+    jq.trajectory_store
+        .record_step(&job_id, step.clone())
         .await
         .expect("Failed to record trajectory step");
 
     // 2. Fetch Trajectory
     let trajectory = jq
+        .trajectory_store
         .fetch_trajectory(&job_id)
         .await
         .expect("Failed to fetch trajectory");
@@ -923,12 +972,14 @@ async fn test_sqlite_trajectory_store() {
         diagnosed_at: "now".into(),
     };
 
-    jq.store_diagnosis(&job_id, diagnosis)
+    jq.trajectory_store
+        .store_diagnosis(&job_id, diagnosis)
         .await
         .expect("Failed to store diagnosis");
 
     // 4. Fetch Diagnosis
     let fetched = jq
+        .trajectory_store
         .fetch_diagnosis(&job_id)
         .await
         .expect("Failed to fetch diagnosis")

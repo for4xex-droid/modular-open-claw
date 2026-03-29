@@ -132,6 +132,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 47/48: Boundary Tautology & Invariant-DAG**: O(1) レベルの超高速境界検証（不変条件強制）と、全アクションの因果関係を SHA-256 で繋ぐハッシュチェーン機能を実装。自律的な意思決定を「数学的」に監査・証明可能にしました。
 - 🧠 **Phase 49: BeliefShift Causal Integrity**: エージェントの長期的な意見のブレ（Opinion Drift）を防止するため、新規知識をコア信念（`SOUL.md`）と照合する **BeliefConsistencyGate** を実装。十分な証拠が集まるまで既存の魂の書き換えを制限し、エージェントのアイデンティティの一貫性を担保します。
 - ⚖️ **Phase 3C: Oracle Asynchronous Review Pipeline**: 非同期 `TaskDispatcher` にて自律反省ループ（AI-Scientist）を非同期実行する機構を統合。60秒のタイムアウトと `Evaluating` 隔離状態を用いてメインスレッドをブロックせずに高度な仮説検証を実施します。
+- 📈 **Phase 3D: TimesFM Plateau Detection**: Google の `timesfm-2.5-200m-pytorch` をバックエンドとした時系列予測モジュール (`ScoreTracker`) を統合。エージェントの Karma や経験値の伸び悩み（Plateau）を数学的に検知し、自律的な打破ミッションをトリガーします。
+- 🎭 **Phase 2B: Emotional RAG & Cognitive Sentinel**: 過去の記憶から計算された感情の蓄積（`somatic_valence`）を LLM のシステムプロンプトへ動的に注入する「Somatic Context」を実装。同時に、感情が極端な鬱状態などに陥った場合に検知・復旧する **Cognitive Sentinel** を導入し、長期的な精神的安定性を担保します。
 
 ---
 
@@ -162,7 +164,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 ハッシュチェーンによる因果関係監査と、O(1) レベルの不変条件強制エンジン |
-| **Last Updated:** | 2026-03-30 | Phase 3C: Oracle Async Pipeline |
+| **Last Updated:** | 2026-03-30 | Phase 2B & 3D: Emotional RAG & TimesFM Plateau Detection |
 
 ---
 
@@ -284,7 +286,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-30 (Phase 3C / Oracle Async Pipeline)*
+*最終更新: 2026-03-30 (Phase 2B & 3D / Emotional RAG & TimesFM)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

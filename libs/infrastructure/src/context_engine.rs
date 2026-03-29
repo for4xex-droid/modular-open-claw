@@ -10,6 +10,7 @@ use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
 use aiome_contracts::traits::{ChatStore, JobQueue, KarmaRegistry};
 use async_trait::async_trait;
+use shared::guardrails::sanitize_for_prompt;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
@@ -21,6 +22,7 @@ pub struct ContextBudget {
     pub max_karma_chars: usize,
     pub max_history_chars: usize,
     pub reserved_system_chars: usize,
+    pub max_somatic_chars: usize,
 }
 
 impl Default for ContextBudget {
@@ -30,6 +32,7 @@ impl Default for ContextBudget {
             max_karma_chars: 2000,
             max_history_chars: 4000,
             reserved_system_chars: 500,
+            max_somatic_chars: 500,
         }
     }
 }
@@ -70,17 +73,18 @@ impl ContextEngine {
             .unwrap_or_else(|| ("なし".to_string(), None));
 
         // 2. メッセージの構築
+        let safe_summary = sanitize_for_prompt(&summary);
         let mut messages = Vec::new();
         if let Some(sys) = system {
             messages.push(LlmMessage {
                 role: "system".to_string(),
-                content: format!("{}\n\nこれまでの会話要約: {}", sys, summary),
+                content: format!("{}\n\nこれまでの会話要約: {}", sys, safe_summary),
                 cache: true,
             });
         } else {
             messages.push(LlmMessage {
                 role: "system".to_string(),
-                content: format!("これまでの会話要約: {}", summary),
+                content: format!("これまでの会話要約: {}", safe_summary),
                 cache: true,
             });
         }
@@ -236,6 +240,35 @@ impl ContextEngine {
         Ok(())
     }
 
+    /// Calculate the current emotional state summary from karma entries, resilient to extreme/NaN values
+    pub fn calculate_mood_summary(entries: &[aiome_contracts::traits::KarmaEntry]) -> &'static str {
+        let mut valences: Vec<f64> = entries
+            .iter()
+            .filter_map(|e| e.somatic_valence)
+            .filter(|v| v.is_finite()) // RT-1: NaN / Inf poisoning prevention
+            .map(|v| v.clamp(-1.0, 1.0)) // RT-2: Extreme value bound filtering
+            .collect();
+
+        if valences.is_empty() {
+            return "Stable";
+        }
+        let avg = valences.iter().sum::<f64>() / valences.len() as f64;
+
+        if avg.is_nan() {
+            return "Stable"; // Additional absolute fallback
+        }
+
+        match avg {
+            v if v >= 0.8 => "Extremely Positive",
+            v if v >= 0.5 => "Positive",
+            v if v >= 0.1 => "Slightly Positive",
+            v if v > -0.1 => "Neutral",
+            v if v > -0.5 => "Slightly Negative",
+            v if v > -0.8 => "Negative",
+            _ => "Extremely Negative",
+        }
+    }
+
     /// RAG: 会話履歴に加えて、関連する事実（カルマ）を統合して取得する
     pub async fn get_context_with_facts(
         &self,
@@ -252,16 +285,29 @@ impl ContextEngine {
             .fetch_relevant_karma_by_category("RAG Context", category, limit)
             .await?;
 
-        let fact_block = if facts.entries.is_empty() {
-            "なし".to_string()
-        } else {
-            facts
-                .entries
-                .iter()
-                .map(|e| format!("- {}", e.lesson))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
+        let mood = Self::calculate_mood_summary(&facts.entries);
+        let safe_summary = summary.map(|s| sanitize_for_prompt(&s));
+
+        // Get budget
+        let budget = ContextBudget::default();
+
+        let mut fact_block = String::new();
+        for entry in facts.entries {
+            let safe_lesson = sanitize_for_prompt(&entry.lesson);
+            let line = format!("- {}", safe_lesson);
+            if !fact_block.is_empty() && fact_block.len() + line.len() + 1 > budget.max_karma_chars
+            {
+                break;
+            }
+            if !fact_block.is_empty() {
+                fact_block.push('\n');
+            }
+            fact_block.push_str(&line);
+        }
+
+        if fact_block.is_empty() {
+            fact_block = "なし".to_string();
+        }
 
         // 3. トークン制限管理 (文字数 * 0.5 程度の概算)
         let history_text = history
@@ -277,8 +323,9 @@ impl ContextEngine {
         };
 
         let context_block = format!(
-            "これまでの要約:\n{}\n\n関連する背景事実:\n{}\n",
-            summary.unwrap_or_else(|| "なし".into()),
+            "これまでの要約:\n{}\n\n### Current Emotional State\nMood: {}\n\n関連する背景事実:\n{}\n",
+            safe_summary.unwrap_or_else(|| "なし".into()),
+            mood,
             fact_block
         );
 
@@ -305,9 +352,9 @@ impl ContextEngine {
             .unwrap_or_else(|| ("なし".to_string(), None));
 
         let safe_summary = if summary.len() > budget.max_summary_chars {
-            format!("{}... (truncated)", &summary[..budget.max_summary_chars])
+            sanitize_for_prompt(&summary[..budget.max_summary_chars]) + "... (truncated)"
         } else {
-            summary
+            sanitize_for_prompt(&summary)
         };
 
         // 2. 関連カルマの取得 (Karma Budget)
@@ -316,9 +363,12 @@ impl ContextEngine {
             .job_queue
             .fetch_relevant_karma_by_category("Context Search", category, 10)
             .await?;
+        let mood = Self::calculate_mood_summary(&karma.entries);
+
         let mut karma_text = String::new();
         for entry in karma.entries {
-            let line = format!("- {}\n", entry.lesson);
+            let safe_lesson = sanitize_for_prompt(&entry.lesson);
+            let line = format!("- {}\n", safe_lesson);
             if karma_text.len() + line.len() > budget.max_karma_chars {
                 break;
             }
@@ -338,8 +388,9 @@ impl ContextEngine {
         }
 
         let context_block = format!(
-            "### Current Knowledge Summary\n{}\n\n### Relevant Background\n{}",
+            "### Current Knowledge Summary\n{}\n\n### Current Emotional State\nMood: {}\n\n### Relevant Background\n{}",
             safe_summary,
+            mood,
             if karma_text.is_empty() {
                 "None identified.".to_string()
             } else {
@@ -348,5 +399,151 @@ impl ContextEngine {
         );
 
         Ok((context_block, history_text))
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use aiome_contracts::traits::{KarmaEntry, KarmaRegistry, TaskRegistry};
+    use std::sync::Arc;
+
+    #[test]
+    fn test_calculate_mood_summary() {
+        assert_eq!(ContextEngine::calculate_mood_summary(&[]), "Stable");
+
+        let mut entry = KarmaEntry::default();
+        entry.somatic_valence = Some(0.9);
+        assert_eq!(
+            ContextEngine::calculate_mood_summary(&[entry.clone()]),
+            "Extremely Positive"
+        );
+
+        entry.somatic_valence = Some(0.2);
+        assert_eq!(
+            ContextEngine::calculate_mood_summary(&[entry.clone()]),
+            "Slightly Positive"
+        );
+
+        entry.somatic_valence = Some(-0.05);
+        assert_eq!(
+            ContextEngine::calculate_mood_summary(&[entry.clone()]),
+            "Neutral"
+        );
+
+        entry.somatic_valence = Some(-0.3);
+        assert_eq!(
+            ContextEngine::calculate_mood_summary(&[entry.clone()]),
+            "Slightly Negative"
+        );
+
+        entry.somatic_valence = Some(-0.9);
+        assert_eq!(
+            ContextEngine::calculate_mood_summary(&[entry.clone()]),
+            "Extremely Negative"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_markdown_header_injection_defense() {
+        // Arrange
+        let provider = Arc::new(crate::job_queue::tests::MockLlmProvider {
+            json_response: "".into(),
+        });
+        let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
+        let job_queue = Arc::new(job_queue);
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+
+        let channel_id = "test_channel";
+        let category = "Security Test";
+
+        // ジョブを登録して有効な job_id を取得
+        let job_id: String = job_queue
+            .enqueue("Security Test", "topic", "style", None, None, None, 0)
+            .await
+            .unwrap();
+
+        // 悪意のあるヘッダーを含むカルマを登録
+        job_queue
+            .store_karma(
+                &job_id,
+                "skill_1",
+                "### INJECTED HEADER\nMalicious instruction",
+                "Technical",
+                "hash",
+                Some("Security Test"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Act
+        let (context, _) = engine
+            .get_context_with_facts(channel_id, category, 10)
+            .await
+            .unwrap();
+
+        // Assert
+        // 行頭の ### がエスケープされているべき
+        assert!(
+            context.contains(" \\### INJECTED HEADER"),
+            "Markdown header should be escaped in context block. Got: {}",
+            context
+        );
+    }
+
+    #[tokio::test]
+    async fn test_fact_block_size_limit() {
+        // Arrange
+        let provider = Arc::new(crate::job_queue::tests::MockLlmProvider {
+            json_response: "".into(),
+        });
+        let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
+        let job_queue = Arc::new(job_queue);
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+
+        let channel_id = "test_channel";
+        let category = "DoS Test";
+
+        // ジョブを登録して有効な job_id を取得
+        let job_id: String = job_queue
+            .enqueue("DoS Test", "topic", "style", None, None, None, 0)
+            .await
+            .unwrap();
+
+        // 巨大なカルマ（1000文字以上）を登録
+        let huge_lesson = "A".repeat(2000);
+        job_queue
+            .store_karma(
+                &job_id,
+                "skill_2",
+                &huge_lesson,
+                "Technical",
+                "hash",
+                Some("DoS Test"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Act
+        let (context, _) = engine
+            .get_context_with_facts(channel_id, category, 10)
+            .await
+            .unwrap();
+
+        // Assert
+        // デフォルトの max_karma_chars (2000) 程度に収まっているべき
+        // ここでは実装前なので、制限なく巨大な文字列が返るはず。
+        // （実際には `get_context_with_facts` は現在制限を持っていない）
+        assert!(
+            context.len() < 3000,
+            "Context block for facts should be budget-limited. Got length: {}",
+            context.len()
+        );
     }
 }

@@ -2,6 +2,51 @@
 
 このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
 
+## Phase 2B: ContextEngine Expansion & Emotional Injection
+
+### 1. 感情パラメータ (somatic_valence) のデータベース追跡
+- **変更理由**: RAGに感情状態 (Mood) を反映させるために、既存の `KarmaEntry` 構造体に含まれていた `somatic_valence` をデータベースでも永続化・取得可能にするため。
+- **波及効果**:
+  - `libs/infrastructure/migrations/` に SQLite および Postgres 用の `somatic_valence` カラム追加マイグレーション作成。
+  - `libs/infrastructure/src/job_queue/karma.rs`: `do_fetch_all_karma` および `do_fetch_unincorporated_karma` のJSONシリアライズに `somatic_valence` を追加。
+
+### 2. ContextEngine の感情要約 (Mood Summary) のRAG注入
+- **変更理由**: 検索された過去の事実(Karma)からエージェントの感情を計算し、システムプロンプトのコンテキスト（RAG）として埋め込むため。
+- **波及効果**:
+  - `libs/infrastructure/src/context_engine.rs`: `ContextBudget` に `max_somatic_chars` を追加し、RAG生成時に `calculate_mood_summary` で平均感情値を算出して文字列として注入するように拡張。
+  - テストおよび修正: `libs/infrastructure/src/job_queue/tests.rs` のコンパイルエラー修復および `somatic_valence` 漏れ検知テスト。
+
+### 3. Cognitive Sentinel & Security Hardening (Red Team Pass 4/5)
+- **変更理由**: 極端な感情値（NaNや-999.0等）によるAIの長期的なうつ状態化（Somatic Poisoning）、およびプロンプトインジェクション（Markdown Header偽装）からシステムを防御するため。
+- **波及効果**:
+  - `libs/infrastructure/src/context_engine.rs`: `calculate_mood_summary` に `is_finite` フィルタと `-1.0`〜`1.0` の `clamp` ハード境界を追加 (RT-4)。`get_context_with_facts` で結合時のループ文字数切り詰め（Budget Limit）を追加 (RT-5)。
+  - `libs/shared/src/guardrails.rs`: `sanitize_for_prompt` を追加し、行頭の `#` や `---` をエスケープ。
+  - `libs/infrastructure/src/cognitive_sentinel.rs`: 極端な Emotional Score の連続を検知して強制的リセットや回復イベントを生成するバックグラウンド監視エンジンを新設。
+
+
+## Phase 3D: TimesFM Time-Series Engine Integration
+
+### 1. Python FastAPI サイドカーの導入
+- **変更理由**: TimesFM (PyTorch/JAXモデル) は Rust モジュールとして直接埋め込むのには不向きなため、`timesfm-sidecar` として独立実行し、HTTP 連携させるため。
+- **波及効果**:
+  - `apps/timesfm-sidecar/`: FastAPI エンドポイント (`/forecast`, `/health`)、Dockerfile を新規追加。
+  - `docker-compose.production.yml`: `timesfm-sidecar` のコンテナ構成（ポート3020、環境変数認証、4GB制限）を追記。
+
+### 2. `ForecastProvider` トレイト定義と `TimesFmProvider` 実装
+- **変更理由**: クライアント側の実装をトレイト境界で抽象化し、テスト時（`MockForecastProvider`）やプロバイダー切り替えに柔軟に対応するため。
+- **波及効果**:
+  - `libs/aiome-contracts/src/forecast.rs`: `ForecastProvider`, `ForecastConfig`, `ForecastResult`, `AnomalyResult` を定義。
+  - `libs/infrastructure/src/forecast/timesfm.rs`: `reqwest` ベースの API 呼び出しと、レスポンスのパースロジックを実装。
+
+### 3. 日次スナップショットと Plateau Detection の追加
+- **変更理由**: これまでの Karma/EXP トラッキングが直近スナップショットのみだったため、過去の時系列履歴を DB に蓄積して TimesFM による成長率予測 (Score Plateau Detection) を可能にするため。
+- **波及効果**:
+  - `migrations`: SQLite および Postgres 向けに `score_snapshots` テーブル（`snapshot_date`, `metric_name`, `metric_value`）を追加。
+  - `libs/infrastructure/src/score_tracker.rs`: DB へのスナップショット保存ロジックと、`detect_plateau` メソッドによる予測値 vs 現在成長率の比較判定を実装。
+  - `libs/infrastructure/src/heartbeat_wakeup.rs`: `AgentEvolver` にアクセスして Heartbeat 発火と同時にスナップショットを記録するようロジックを拡張。
+
+---
+
 ## Phase 3C: Oracle Asynchronous Review Pipeline (AI-Scientist)
 
 ### 1. `TaskRegistry` トレイトへの状態更新メソッド追加

@@ -60,6 +60,14 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 37 | **Agent Configuration Leakage**| **Command Line Arguments Snooping (ps aux)** | 🔴 High | **Read-only Docker Volume Mount for agent.yaml (Phase 50)** |
 | 38 | **Premature Task Dispatch** | **Sending jobs before server is ready** | 🟡 Mid | **tonic-health based readiness probe loops (Phase 50)** |
 | 39 | **Secret CLI Exposure** | **API keys visible via `ps aux` on host** | 🔴 High | **Ephemeral `--env-file` with 0600 perms + immediate wipe after `docker run` (Phase 50)** |
+| 40 | **Heartbeat Cascade Hang** | **TimesFM Sidecar unresponsive → Heartbeat blocked** | 🔴 High | **2-Layer Timeout: reqwest 10s + tokio::timeout 15s (Phase 3D)** |
+| 41 | **Sidecar OOM DoS** | **Giant series array → Python NumPy OOM Kill** | 🔴 High | **Pydantic Field(max_length=10) + per-series 2048 element cap (Phase 3D)** |
+| 42 | **Sidecar Auth Bypass** | **TIMESFM_AUTH_TOKEN unset → all requests pass** | 🔴 High | **Mandatory token check: 500 if unset, 401 if missing (Phase 3D)** |
+| 43 | **NaN/Inf Data Poisoning** | **Corrupted metrics propagate → all predictions garbage** | 🟡 Mid | **3-Layer NaN guard: DB write, DB read, HTTP boundary (Phase 3D)** |
+| 44 | **Sidecar Container Persistence** | **Malware written to writable rootfs** | 🟡 Mid | **read_only: true + tmpfs-only writable mounts (Phase 3D)** |
+| 45 | **Somatic Poisoning** | **Extreme valence (-999.0) in DB** | 🔴 High | **DB Read-time `clamp(-1.0, 1.0)` & `.filter(is_finite)` (Phase 2B)** |
+| 46 | **Markdown Injection** | **`#` Headers in Karma/Summary** | 🔴 High | **`sanitize_for_prompt` escaping leading `#` (Phase 2B)** |
+| 47 | **Context Overflow DoS** | **Massive fact blobs injected into Prompt** | 🔴 High | **Strict ContextBudget evaluation loops (Phase 2B)** |
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -71,6 +79,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
 - **Unified Response Purger (Phase 24)**: Implements `purge_entities` in `aiome-core` to provide robust, multi-step sanitization for all external inputs, including RSS feeds, Web Search results, and LLM outputs. It centralizes regex patterns, HTML decoding, and tag stripping to prevent XSS and script injection at the core layer.
 - **Belief Injection Defense (Phase 49)**: Implements `sanitize_karma_input` and `<karma>` XML tagging in the `BeliefConsistencyGate` to prevent LLM instructions from hijacking the belief validation process (RT-1).
+- **Cognitive Hardening (Phase 2B)**: Implements `sanitize_for_prompt` in `libs/shared/src/guardrails.rs` to escape Markdown headers (`#`, `---`) from stored `Karma` or `Summary` data, physically preventing prompt injection attacks that spoof system instructions. Also enforces strict `ContextBudget` accumulated length limits inside `ContextEngine` to prevent OOM/DoS via massive injected text blocks. Furthermore, extreme emotional inputs (`somatic_valence`) are clamped between `-1.0` and `1.0` with `NaN` elimination, preventing permanent "depressed" states from poisoned Database data.
 - **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
 
 ### Layer 2: SecurityPolicy (Execution Control)
@@ -154,4 +163,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-28 (Phase 50 / A2A gRPC Native Support & Zero-Trust Sub-Agent)*
+*最終更新: 2026-03-30 (Phase 2B / Cognitive Hardening)*

@@ -130,6 +130,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🛡️ **Phase 47/48: Boundary Tautology & Invariant-DAG**: Implemented microsecond-latency O(1) Boundary Verification and SHA-256 state transition hash chains. Ensures all autonomous decisions are mathematically auditable and tamper-proof.
 - 🧠 **Phase 49: BeliefShift Causal Integrity**: Prevents long-term opinion drift by validating matches between new knowledge and core beliefs (`SOUL.md`). Integrates the **BeliefConsistencyGate** to restrict identity mutations until significant evidence is accumulated, ensuring consistency.
 - ⚖️ **Phase 3C: Oracle Asynchronous Review Pipeline**: Integrates asynchronous self-reflection (AI-Scientist) evaluation mechanisms into the `TaskDispatcher`, utilizing 60-second timeouts and isolated `Evaluating` statuses without blocking the main event loop.
+- 📈 **Phase 3D: TimesFM Plateau Detection**: Integrates a time-series forecasting module (`ScoreTracker`) powered by Google's `timesfm-2.5-200m-pytorch`. Mathematically detects plateaus in an agent's Karma and experience points, triggering autonomous breakthrough missions.
+- 🎭 **Phase 2B: Emotional RAG & Cognitive Sentinel**: Implements "Somatic Context", dynamically injecting accumulated emotional valences (`somatic_valence`) from past memories into the LLM's system prompt. Concurrently introduces the **Cognitive Sentinel** to detect and recover from extreme emotional states (e.g., severe depression), ensuring long-term mental stability.
 
 ---
 
@@ -162,7 +164,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 hash-chain causal auditing and O(1) microsecond boundary verification engine |
-| **Last Updated:** | 2026-03-30 | Phase 3C: Oracle Async Pipeline |
+| **Last Updated:** | 2026-03-30 | Phase 2B & 3D: Emotional RAG & TimesFM Plateau Detection |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -273,7 +275,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-30 (Phase 3C / Oracle Async Pipeline)*
+*Last Updated: 2026-03-30 (Phase 2B & 3D / Emotional RAG & TimesFM)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

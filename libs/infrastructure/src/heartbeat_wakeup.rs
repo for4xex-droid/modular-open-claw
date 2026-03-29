@@ -5,8 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::score_tracker::ScoreTracker;
+use aiome_contracts::traits::AgentEvolver;
 use aiome_core::llm_provider::LlmProvider;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
@@ -15,7 +18,9 @@ use tracing::{info, warn};
 pub struct HeartbeatWakeupService {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     semaphore: Arc<Semaphore>,
-    workspace_dir: std::path::PathBuf,
+    workspace_dir: PathBuf,
+    score_tracker: Option<Arc<ScoreTracker>>,
+    agent_evolver: Option<Arc<dyn AgentEvolver>>,
 }
 
 impl HeartbeatWakeupService {
@@ -23,13 +28,26 @@ impl HeartbeatWakeupService {
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
         semaphore: Arc<Semaphore>,
-        workspace_dir: std::path::PathBuf,
+        workspace_dir: PathBuf,
     ) -> Self {
         Self {
             provider,
             semaphore,
             workspace_dir,
+            score_tracker: None,
+            agent_evolver: None,
         }
+    }
+
+    /// ScoreTracker を紐付ける
+    pub fn with_score_tracker(
+        mut self,
+        tracker: Arc<ScoreTracker>,
+        registry: Arc<dyn AgentEvolver>,
+    ) -> Self {
+        self.score_tracker = Some(tracker);
+        self.agent_evolver = Some(registry);
+        self
     }
 
     /// `run_wakeup_ping` を実行する
@@ -41,6 +59,36 @@ impl HeartbeatWakeupService {
         // G-24: もしコンテンツが空、または実効性のない場合は早期リターン
         if content.trim().is_empty() || self.is_effectively_empty(&content) {
             return None;
+        }
+
+        // Phase 3D: Capture daily score snapshot
+        // RT-1 FIX: Wrap in timeout to guarantee Heartbeat liveness even if
+        // TimesFM sidecar is unresponsive or DB is locked.
+        if let (Some(tracker), Some(registry)) = (&self.score_tracker, &self.agent_evolver) {
+            let snapshot_future = async {
+                if let Err(e) = tracker.record_daily_snapshot(registry).await {
+                    warn!("⚠️ [Heartbeat] Failed to record score snapshot: {:?}", e);
+                } else {
+                    match tracker.detect_plateau("exp", 14).await {
+                        Ok(Some(report)) if report.is_stagnating => {
+                            warn!(
+                                "📉 [Heartbeat] Score plateau detected for '{}'",
+                                report.metric_name
+                            );
+                        }
+                        Err(e) => {
+                            warn!("⚠️ [Heartbeat] Plateau detection failed: {:?}", e);
+                        }
+                        _ => {}
+                    }
+                }
+            };
+            match tokio::time::timeout(std::time::Duration::from_secs(15), snapshot_future).await {
+                Ok(()) => {}
+                Err(_) => {
+                    warn!("⏰ [Heartbeat] ScoreTracker timed out after 15s. Sidecar may be unresponsive.");
+                }
+            }
         }
 
         // Phase 1 Flaw 4 Defense: Use try_acquire to avoid blocking

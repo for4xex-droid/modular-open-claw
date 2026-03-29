@@ -33,6 +33,24 @@
 ## [Unreleased] - 2026-03-30
 
 ### Added
+- **Phase 2B: ContextEngine Expansion & Emotional Injection [完了]**
+    - **Somatic Valence DB Persistence**: `migrations` にて `karma_logs` テーブルへ `somatic_valence` (REAL/DOUBLE PRECISION) カラムを追加し、永続化レイヤーでの感情トラッキング基盤を整備。
+    - **ContextBudget Extension**: `ContextBudget` のパラメーターに `max_somatic_chars` を新設し、感情データに対する独立したコンテキストバジェット制限を実装。
+    - **Emotional RAG Injection**: `ContextEngine::calculate_mood_summary` メソッドを実装し、過去の経験（Karma）からエージェントの平均感情値（Mood）を動的算出。`get_context_with_facts` および `fetch_budgeted_context` でLLMのシステムプロンプトに `### Current Emotional State` として直接注入するメカニズムを確立。
+    - **TDD Verification**: データベース抽出漏れを防ぐための `test_sqlite_job_queue_karma_somatic_valence` テスト、および `calculate_mood_summary` の単体テストをオールグリーン検証完了。
+    - **Security Hardening (Red Team Pass 4)**: `somatic_valence` の平均計算ロジックにおける2件の深刻な認知ハイジャック脆弱性を修正。
+        - **RT4-1 (NaN Poisoning)**: DB注入による `f64::NAN` の起因でエージェントが永久に「Extremely Negative」にロックされるバグを排除 (`.filter(is_finite)` 適用)。
+        - **RT4-2 (Extreme Value Disruption)**: 任意の極端値 (99999.0 等) で算術平均を汚染する攻撃に対し、ハード境界 `-1.0` 〜 `1.0` への `clamp` 正規化を適用し感情乗っ取りを防止。
+    - **Security Hardening (Red Team Pass 5 - TDD)**: プロンプト構築プロセスの認知堅牢化。
+        - **RT5-1 (Markdown Injection)**: `shared/guardrails.rs` に `sanitize_for_prompt` を実装し、Karma/Summary 内の `#` 行をエスケープすることでプロンプト構造の偽装を防止。
+        - **RT5-2 (Context DoS)**: `get_context_with_facts` における累積文字数制限（Budget enforcement）を実装し、コンテキスト溢れによる動作不全を回避。
+
+- **Phase 3D: TimesFM Time-Series Engine Integration [完了]**
+    - **TimesFM Sidecar**: 独立した Python FastAPI コンテナ (`aiome-timesfm-sidecar`) を構築し、Google Research の `timesfm-2.5-200m-pytorch` モデルを用いた時系列予測 API を提供。内部ネットワークで完全に隔離。
+    - **ForecastProvider Trait**: 新規に `ForecastProvider` トレイトを定義し、Rust 側からサイドカーへ透過的にアクセスする `TimesFmProvider` HTTP クライアントを実装。
+    - **ScoreTracker (Plateau Detection)**: `ScoreTracker` モジュールを実装し、エージェントの Karma や EXP の直近データに基づいて TimesFM で成長の停滞 (Plateau) を数学的に予測。
+    - **Heartbeat Wakeup Extension**: `HeartbeatWakeupService` ランタイムに `ScoreTracker` を統合し、Heartbeat 発火時に自動で日次スナップショット (`score_snapshots` テーブル) を記録・停滞検知を実行。
+
 - **Phase 3C: Oracle Asynchronous Review Integration [完了]**
     - **TaskDispatcher Async Evaluator**: `requires_review` フラグ付きのジョブに対し、`tokio::spawn` と `timeout(60s)` による非同期 Oracle 評価機構を実装完了。メイン・ディスパッチ・ループのブロッキングを排除。
     - **Zombie Reclamation Update**: SQLite/Postgres 両方の `do_reclaim_zombie_jobs` で `status IN ('Processing', 'Evaluating')` を対象とし、Oracle 評価中（`Evaluating`）にクラッシュしても自動的に `Failed` として回収される堅牢な耐障害性を設計。

@@ -66,6 +66,8 @@ ALLOWED_ORIGINS=http://localhost:1420,http://localhost:5173  # CORS許可オリ�
 EMBEDDING_PROVIDER=ruri                          # 埋め込みプロバイダー (ruri/gemini/ollama)
 RURI_EMBED_URL=http://localhost:8100             # RuriサーバーURL
 ABYSS_VAULT_PATH=~/.aiome/abyss_vault            # APIキー物理隔離ディレクトリ
+TIMESFM_AUTH_TOKEN=your_secure_token             # TimesFM 予測側認証トークン (必須)
+TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
 ```
 
 > **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。
@@ -179,6 +181,7 @@ RUST_LOG=info cargo run -p api-server
 - [ ] `.env` に `API_SERVER_SECRET` を設定
 - [ ] `.env` に `VAULT_SECRET` を設定 (Key Proxy用)
 - [ ] `.env` に `FEDERATION_SECRET` を設定 (Samsara Hub用)
+- [ ] `.env` に `TIMESFM_AUTH_TOKEN` を設定し、Docker側と一致させる (Phase 3D)
 - [ ] `SOUL.md` を確認・カスタマイズ
 - [ ] Ollama でモデルをダウンロード (`ollama pull qwen3.5:9b`)
 - [ ] `ALLOWED_ORIGINS` にフロントエンドURLを追加

@@ -26,6 +26,8 @@ pub mod capability_registry;
 pub mod channel_bridge;
 pub mod circuit_breaker;
 
+/// 認知健全性モニター (Phase 2A)
+pub mod cognitive_sentinel;
 /// コンプライアンス・eKYC
 pub mod compliance;
 /// コンセプト（概念）のベクター管理
@@ -53,6 +55,7 @@ pub mod docker_conductor;
 /// アイドル時の自律思考管理
 pub mod dream_state;
 
+pub mod forecast;
 #[cfg(feature = "grpc")]
 pub mod grpc;
 /// 定期診断・プロアクティブ発火
@@ -97,6 +100,7 @@ pub mod registry;
 pub mod rss_collector;
 /// Soul転生（L3）ロジック
 pub mod samsara_engine;
+pub mod score_tracker;
 /// ネットワークセキュリティポリシー
 pub mod security;
 pub mod security_zombie;

@@ -18,11 +18,13 @@
 | `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
 | `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
 | `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。**Phase 21** で `/api/v1/audit/quarantine` による監査 API を公開。 | **Phase 21 完了** |
+| `cognitive_sentinel`| 感情が極端な鬱状態などに陥った場合に検知し、自律的に回復イベントを発火させる防御層。 | **Phase 2B 完了** |
 | `concept_manager` | AIが獲得した概念（Concepts）をベクターDBで管理。 | 実装完了 |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。 | **新規実装** |
-| `context_engine` | 会話履歴や環境情報をLLMに提供するコンテキスト生成。 | 実装完了 |
+| `context_engine` | 会話履歴や環境情報をLLMに提供。**Phase 2B** で感情履歴（Karma/somatic_valence）から動的 Mood を計算し、LLMプロンプトへ注入（Somatic Context & Emotional RAG）機能を追加。 | **Phase 2B 強化** |
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。 | **Phase 8.8** |
 | `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。Phase 2b で Soul Pipeline と統合済。 | **機能強化** |
+| `forecast` | Google `timesfm-2.5-200m-pytorch` と通信し、成長停滞等の時系列予測を透過的に返す `ForecastProvider` トレイトの実装。 | **Phase 3D 完了** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
@@ -38,6 +40,7 @@
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
+| `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
@@ -55,4 +58,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-03-30 (Phase 3C / Oracle Async Pipeline)*
+*最終更新: 2026-03-30 (Phase 2B & Phase 3D)*

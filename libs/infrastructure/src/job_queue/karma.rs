@@ -612,6 +612,7 @@ impl KarmaOps for UniversalJobQueue {
                         "id": r.get::<String, _>("id"), "job_id": r.try_get::<String, _>("job_id").ok(),
                         "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
                         "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "somatic_valence": r.try_get::<f64, _>("somatic_valence").ok(),
                         "soul": r.try_get::<String, _>("soul_version_hash").ok(), "node_id": r.get::<String, _>("node_id"),
                         "clock": r.get::<i64, _>("lamport_clock"), "signature": r.try_get::<String, _>("signature").ok(),
                         "last_applied_at": r.try_get::<String, _>("last_applied_at").ok(), "created_at": r.get::<String, _>("created_at")
@@ -631,6 +632,7 @@ impl KarmaOps for UniversalJobQueue {
                         "id": r.get::<String, _>("id"), "job_id": r.try_get::<String, _>("job_id").ok(),
                         "skill": r.get::<String, _>("related_skill"), "lesson": r.get::<String, _>("lesson"),
                         "karma_type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "somatic_valence": r.try_get::<f64, _>("somatic_valence").ok(),
                         "soul": r.try_get::<String, _>("soul_version_hash").ok(), "node_id": r.get::<String, _>("node_id"),
                         "clock": r.get::<i64, _>("lamport_clock"), "signature": r.try_get::<String, _>("signature").ok(),
                         "last_applied_at": r.try_get::<String, _>("last_applied_at").ok(), "created_at": r.get::<String, _>("created_at")
@@ -665,6 +667,7 @@ impl KarmaOps for UniversalJobQueue {
                     results.push(serde_json::json!({
                         "id": r.get::<String, _>("id"), "lesson": r.get::<String, _>("lesson"),
                         "skill": r.get::<String, _>("related_skill"), "type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "somatic_valence": r.try_get::<f64, _>("somatic_valence").ok(),
                     }));
                 }
             }
@@ -681,6 +684,7 @@ impl KarmaOps for UniversalJobQueue {
                     results.push(serde_json::json!({
                         "id": r.get::<String, _>("id"), "lesson": r.get::<String, _>("lesson"),
                         "skill": r.get::<String, _>("related_skill"), "type": r.get::<String, _>("karma_type"), "weight": r.get::<i64, _>("weight"),
+                        "somatic_valence": r.try_get::<f64, _>("somatic_valence").ok(),
                     }));
                 }
             }

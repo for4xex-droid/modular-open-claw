@@ -172,6 +172,23 @@ impl DreamState {
             info!("✨ [DreamState] The past is clear. No recent failures haunt my dreams.");
         }
 
+        let sentinel = crate::cognitive_sentinel::CognitiveSentinel::new(
+            crate::cognitive_sentinel::CognitiveThresholds::default(),
+        );
+        match sentinel.diagnose(job_queue, "system_agent").await {
+            Ok(Some(alert)) => {
+                warn!("🚨 [DreamState] {}", alert);
+                return Ok(Some(alert));
+            }
+            Err(e) => {
+                warn!(
+                    "⚠️ [DreamState] CognitiveSentinel failed to diagnose: {}",
+                    e
+                );
+            }
+            _ => {}
+        }
+
         Ok(None)
     }
 
