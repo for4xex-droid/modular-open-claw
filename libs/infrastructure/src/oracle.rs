@@ -255,20 +255,29 @@ impl Oracle {
                 // ブリッジ終了を待つ必要はないが、クリーンアップのために handle は落とす
                 drop(bridge_handle);
 
-                let (_session_id, outcome) = result?;
+                let (_session_id, outcome, scores) = result?;
+
+                let avg_score = if scores.is_empty() {
+                    5.0
+                } else {
+                    scores.iter().map(|(_, s)| s).sum::<f64>() / scores.len() as f64
+                };
 
                 return Ok(aiome_contracts::contracts::MultiReviewResult {
-                    overall_score: 9.0,
+                    overall_score: avg_score as f32,
                     decision: match outcome {
                         aiome_contracts::contracts::SoTOutcome::AllCriteriaPassed => {
                             aiome_contracts::contracts::ReviewDecision::Accept
                         }
                         _ => aiome_contracts::contracts::ReviewDecision::Reject,
                     },
-                    reflections: vec![format!("SoT Outcome: {:?}", outcome)],
+                    reflections: scores
+                        .iter()
+                        .map(|(n, s)| format!("{}: {}", n, s))
+                        .collect(),
                     strengths: vec!["Highly deliberated".to_string()],
                     weaknesses: vec![],
-                    sot_artifact_uri: None, // P-12: 将来的に履歴を保存する URI
+                    sot_artifact_uri: None,
                 });
             }
         }

@@ -38,7 +38,7 @@ const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
 import { useDisplayMode } from "./hooks/useDisplayMode";
-import { AgentStats, VitalityUIEvent, Karma } from "./types";
+import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 
@@ -112,6 +112,11 @@ function App() {
       case 'proactive_talk': {
         const d = data as string;
         addEvent('Aiome Message', d, 'var(--accent-cyan)', <MessageSquare size={16} />);
+        break;
+      }
+      case 'sot_progress': {
+        const d = data as SoTEvent;
+        addEvent('Society of Thought', `Deliberation update: ${d.event.type}`, 'var(--accent-purple)', <BrainCircuit size={16} />);
         break;
       }
       default:

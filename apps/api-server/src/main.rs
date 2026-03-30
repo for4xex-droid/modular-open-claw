@@ -604,10 +604,10 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let soul_md = std::fs::read_to_string("workspace/SOUL.md").unwrap_or_else(|_| String::new());
-    let oracle = Arc::new(infrastructure::oracle::Oracle::new(
-        bg_provider.clone(),
-        soul_md.clone(),
-    ));
+    let oracle = Arc::new(
+        infrastructure::oracle::Oracle::new(bg_provider.clone(), soul_md.clone())
+            .with_event_tx(event_sender.clone()),
+    );
 
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),

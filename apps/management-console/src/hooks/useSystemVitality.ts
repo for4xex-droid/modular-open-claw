@@ -1,17 +1,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { API_BASE } from '../config';
-import { AgentStats, Karma } from '../types';
+import { AgentStats, Karma, SoTEvent } from '../types';
 import { getAuthHeaders } from '../lib/auth';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 export interface SystemVitality {
     status: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
-    data: AgentStats | Karma | unknown;
+    data: AgentStats | Karma | SoTEvent | unknown;
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published';
-    data: AgentStats | Karma | unknown;
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress';
+    data: AgentStats | Karma | SoTEvent | unknown;
 };
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'paused';
@@ -92,7 +92,7 @@ export const useSystemVitality = () => {
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress'
                         ];
 
                         if (validEvents.includes(msg.event)) {

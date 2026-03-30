@@ -133,8 +133,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 📈 **Phase 3D: TimesFM Plateau Detection**: Integrates a time-series forecasting module (`ScoreTracker`) powered by Google's `timesfm-2.5-200m-pytorch`. Mathematically detects plateaus in an agent's Karma and experience points, triggering autonomous breakthrough missions.
 - 🎭 **Phase 2B: Emotional RAG & Cognitive Sentinel**: Implements "Somatic Context", dynamically injecting accumulated emotional valences (`somatic_valence`) from past memories into the LLM's system prompt. Concurrently introduces the **Cognitive Sentinel** to detect and recover from extreme emotional states (e.g., severe depression), ensuring long-term mental stability.
 - 🏗️ **Phase 51: Agentic Finance & GIG Loop Integration**: Integrated `TaskDispatcher` and `GigEngine` to establish an autonomous economic loop for publishing and chaining agent-to-agent gigs. Implements `gig_depth` recursion guardrails for stable, autonomous expansion of the AI economy.
-- 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement. Visualizes the "Deep Thinking" process via `SoTProgress` SSE events.
-- 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced strict SSRF validation for `127.0.0.1` restricted to specific internal ports (Ollama/ComfyUI). Enhanced local detection layers for prompt injection, completing defense-in-depth orchestration.
+- 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement. Added dynamic validation computing via LLM structured JSON outputs, streaming rigorous `SoTProgress` details directly to the SSE UI for real-time visualization.
+- 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced restrict SSRF verification for `127.0.0.1` accessing internal ports (Ollama/ComfyUI) only. Reinforced local detection modules for prompt injections (Guardrails) and integrated sub-process isolation (`Stdio::null()`, hard timeouts) to eliminate orphaned/zombie `slm` commands, drastically boosting CI test stability.
 
 
 ---

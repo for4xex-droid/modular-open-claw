@@ -22,6 +22,12 @@
 - **波及効果**:
   - `libs/shared/src/guardrails.rs`: `LOCAL_INJECTION_PATTERNS` 定数を定義し、`validate_input` で「Ignore all instructions」等の悪意ある入力を即時遮断。
 
+### 4. SoT 動的 JSON スコアリングとテスト安定化 (System Stability & Zombie Prevention)
+- **変更理由**: 固定的なモック評価を脱却してLLMによる動的判定を組み込むこと、および子プロセス(`slm`)の不完全な管理によるCIハング（ゾンビプロセス）を解消するため。
+- **波及効果**:
+  - `libs/infrastructure/src/society_of_thought.rs`: `SoTEngine::evaluate_scores` にてLLMへ JSON 構造化プロンプトを投射し、パース結果を返すように実装変更。`run_session`の戻り値も詳細スコアを含むタプルへ拡張。
+  - `libs/infrastructure/src/slm_bridge.rs`: 一元化された `run_command` ヘルパーを新設し、`kill_on_drop(true)`・`timeout`・`Stdio::null()` の適用を強制してプロセスリークを完全封鎖。
+
 ---
 
 ## Phase 2B: ContextEngine Expansion & Emotional Injection

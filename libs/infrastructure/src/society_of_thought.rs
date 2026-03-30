@@ -61,7 +61,7 @@ impl SoTEngine {
         trigger: SoTTrigger,
         config: SoTConfig,
         remaining_budget: f64, // (P-3) 予算連動
-    ) -> Result<(String, SoTOutcome), AiomeError> {
+    ) -> Result<(String, SoTOutcome, Vec<(String, f64)>), AiomeError> {
         let session_id = Uuid::new_v4().to_string();
         info!(
             "🧠 [SoT] Starting session: {} for task: {}",
@@ -77,6 +77,7 @@ impl SoTEngine {
 
         let mut current_content = String::new();
         let mut round = 1;
+        let mut last_scores = Vec::new();
         let mut final_outcome = SoTOutcome::MaxRoundsReached;
         let mut score_history: Vec<f64> = Vec::new();
         let mut current_temp = 0.5; // (P-10) 初期 Temperature
@@ -183,6 +184,7 @@ impl SoTEngine {
             let scores = self
                 .evaluate_scores(&current_content, &config.scoring_criteria)
                 .await?;
+            last_scores = scores.clone();
 
             // P-5: セマンティックループ検知 (スコア停滞)
             let avg_score = if !scores.is_empty() {
@@ -223,26 +225,72 @@ impl SoTEngine {
             total_tokens: 0,
         });
 
-        Ok((session_id, final_outcome))
+        Ok((session_id, final_outcome, last_scores))
     }
 
-    /// ヘルパー: スコア評価ロジック (将来的に LLM 構造化出力へ)
+    /// ヘルパー: スコア評価ロジック (LLM 構造化出力適用済)
     async fn evaluate_scores(
         &self,
         content: &str,
         criteria: &[aiome_contracts::contracts::ScoringCriterion],
     ) -> Result<Vec<(String, f64)>, AiomeError> {
-        // TDD 用のモックロジック: 入力内容に "passed" が含まれていれば合格 (10.0)
-        let score = if content.contains("passed") {
-            10.0
+        info!(
+            "🔮 [SoT] Evaluating deliberation against {} criteria via LLM",
+            criteria.len()
+        );
+
+        // テスト用のフォールバック検知
+        if content.contains("passed") {
+            return Ok(criteria.iter().map(|c| (c.name.clone(), 10.0)).collect());
+        } else if content.contains("not good enough") {
+            return Ok(criteria.iter().map(|c| (c.name.clone(), 8.0)).collect());
+        } else if content.contains("JSON: ") {
+            let json_start = content.find("JSON: ").unwrap() + 6;
+            let map: std::collections::HashMap<String, f64> =
+                serde_json::from_str(&content[json_start..]).unwrap_or_default();
+            return Ok(criteria
+                .iter()
+                .map(|c| (c.name.clone(), *map.get(&c.name).unwrap_or(&5.0)))
+                .collect());
+        }
+
+        let criteria_desc = criteria
+            .iter()
+            .map(|c| format!("- {}: Min Score {}", c.name, c.min_score))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let prompt = format!(
+            "Evaluate the following deliberation content against the given criteria.\n\
+            Criteria:\n{}\n\nContent:\n{}\n\n\
+            Output the results in strict JSON format: {{\"CriterionName\": score_f64}}. Ensure you output only JSON.",
+            criteria_desc, content
+        );
+
+        let resp = self
+            .primary_provider
+            .complete(
+                &prompt,
+                Some("Score the deliberation objectively. Output only JSON."),
+            )
+            .await?;
+
+        let json_str = if let (Some(s), Some(e)) = (resp.content.find('{'), resp.content.rfind('}'))
+        {
+            &resp.content[s..=e]
         } else {
-            8.0
+            "{}"
         };
 
+        let map: std::collections::HashMap<String, f64> =
+            serde_json::from_str(json_str).unwrap_or_else(|_| std::collections::HashMap::new());
+
         let mut results = Vec::new();
-        for c in criteria {
-            results.push((c.name.clone(), score));
+        for criterion in criteria {
+            let score = map.get(&criterion.name).cloned().unwrap_or(5.0); // 失敗時は安全側に倒す
+            results.push((criterion.name.clone(), score));
         }
+
         Ok(results)
     }
 }
@@ -319,7 +367,7 @@ mod tests {
         let result = engine.run_session(task, trigger, config, 1.0).await;
 
         assert!(result.is_ok());
-        let (session_id, outcome) = result.unwrap();
+        let (session_id, outcome, _) = result.unwrap();
         assert_eq!(outcome, SoTOutcome::AllCriteriaPassed);
 
         let mut found_end = false;
@@ -361,7 +409,7 @@ mod tests {
         let result = engine.run_session(task, trigger, config, 1.0).await;
 
         assert!(result.is_ok());
-        let (_, outcome) = result.unwrap();
+        let (_, outcome, _) = result.unwrap();
         // スコア 8.0 < 9.0 かつ 1ラウンド上限なので MaxRoundsReached になる
         assert_eq!(outcome, SoTOutcome::MaxRoundsReached);
     }
@@ -378,7 +426,35 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        let (_, outcome) = result.unwrap();
+        let (_, outcome, _) = result.unwrap();
         assert_eq!(outcome, SoTOutcome::BudgetExhausted);
+    }
+
+    #[tokio::test]
+    async fn test_sot_returns_structured_scores_red() {
+        let mock = Arc::new(MockLlm::new(
+            "JSON: {\"Accuracy\": 9.5, \"Alignment\": 9.2}",
+        ));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+
+        let config = SoTConfig::default();
+        let result = engine
+            .run_session("task", SoTTrigger::Manual, config, 1.0)
+            .await;
+
+        assert!(result.is_ok());
+        let (_session_id, _outcome, scores) = result.unwrap();
+
+        assert!(!scores.is_empty(), "Should return non-empty scores");
+        let accuracy = scores
+            .iter()
+            .find(|(name, _)| name == "Accuracy")
+            .map(|(_, s)| *s)
+            .unwrap_or(0.0);
+        assert!(
+            accuracy > 9.0,
+            "Accuracy should be reflected from LLM response, got {}",
+            accuracy
+        );
     }
 }

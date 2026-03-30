@@ -104,3 +104,18 @@ export interface AgentDiagnosis {
     self_repair_hint: string;
     diagnosed_at: string;
 }
+
+export type SoTTrigger = "Manual" | { HighBudgetGig: { threshold: number } } | "SelfEvolution" | "ConstitutionalEscalation";
+
+export type SoTOutcome = "AllCriteriaPassed" | "MaxRoundsReached" | "BudgetExhausted" | "Timeout" | { Error: string };
+
+export type SoTEventPayload =
+    | { type: "SessionStart"; data: { session_id: string; config: any; trigger: SoTTrigger } }
+    | { type: "RoleStart"; data: { session_id: string; role: string; round: number } }
+    | { type: "RoleOutput"; data: { session_id: string; role: string; round: number; content: string; token_count: number } }
+    | { type: "Score"; data: { session_id: string; round: number; scores: [string, number][]; all_passed: boolean } }
+    | { type: "SessionEnd"; data: { session_id: string; outcome: SoTOutcome; total_tokens: number } };
+
+export interface SoTEvent {
+    event: SoTEventPayload;
+}

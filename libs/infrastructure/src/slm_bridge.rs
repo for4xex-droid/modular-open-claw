@@ -8,6 +8,7 @@
 use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use aiome_contracts::error::AiomeError;
 use serde::{Deserialize, Serialize};
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::time::{timeout, Duration};
@@ -108,21 +109,41 @@ impl CliSlmBackend {
             command_name: command.to_string(),
         }
     }
+
+    async fn run_command(
+        &self,
+        subcommand: &str,
+        args: Vec<&str>,
+        timeout_secs: u64,
+    ) -> Result<std::process::Output, AiomeError> {
+        let cmd_fut = Command::new(&self.command_name)
+            .arg(subcommand)
+            .args(args)
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
+            .output();
+
+        timeout(Duration::from_secs(timeout_secs), cmd_fut)
+            .await
+            .map_err(|_| AiomeError::Infrastructure {
+                reason: format!("SLM {} command timed out ({}s)", subcommand, timeout_secs),
+            })?
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute slm {}: {}", subcommand, e),
+            })
+    }
 }
 
 #[async_trait::async_trait]
 impl SlmBackend for CliSlmBackend {
     async fn store(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError> {
-        let output = Command::new(&self.command_name)
-            .arg("remember")
-            .arg("--tags")
-            .arg(&entry.category)
-            .arg(&entry.content)
-            .output()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to execute slm remember: {}", e),
-            })?;
+        let output = self
+            .run_command(
+                "remember",
+                vec!["--tags", &entry.category, &entry.content],
+                5,
+            )
+            .await?;
 
         if output.status.success() {
             Ok(())
@@ -135,17 +156,10 @@ impl SlmBackend for CliSlmBackend {
     }
 
     async fn recall(&self, query: &str, limit: i64) -> Result<Vec<SlmRecallResult>, AiomeError> {
-        let output = Command::new(&self.command_name)
-            .arg("recall")
-            .arg("--json")
-            .arg("--limit")
-            .arg(limit.to_string())
-            .arg(query)
-            .output()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to execute slm recall: {}", e),
-            })?;
+        let limit_str = limit.to_string();
+        let output = self
+            .run_command("recall", vec!["--json", "--limit", &limit_str, query], 5)
+            .await?;
 
         if output.status.success() {
             let response: SlmRecallJsonResponse =
@@ -162,15 +176,9 @@ impl SlmBackend for CliSlmBackend {
     }
 
     async fn detect_contradictions(&self, text: &str) -> Result<f64, AiomeError> {
-        let output = Command::new(&self.command_name)
-            .arg("contradict")
-            .arg("--json")
-            .arg(text)
-            .output()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to execute slm contradict: {}", e),
-            })?;
+        let output = self
+            .run_command("contradict", vec!["--json", text], 5)
+            .await?;
 
         if output.status.success() {
             let response: serde_json::Value =
@@ -188,15 +196,7 @@ impl SlmBackend for CliSlmBackend {
     }
 
     async fn calculate_importance(&self, query: &str) -> Result<f64, AiomeError> {
-        let output = Command::new(&self.command_name)
-            .arg("trace")
-            .arg("--json")
-            .arg(query)
-            .output()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to execute slm trace: {}", e),
-            })?;
+        let output = self.run_command("trace", vec!["--json", query], 5).await?;
 
         if output.status.success() {
             let response: SlmTraceJsonResponse =
@@ -225,12 +225,9 @@ impl SlmBackend for CliSlmBackend {
                 reason: format!("Failed to write batch file: {}", e),
             })?;
 
-        let output_res = Command::new(&self.command_name)
-            .arg("trace")
-            .arg("--json")
-            .arg("--batch")
-            .arg(&tmp_path)
-            .output()
+        let tmp_path_str = tmp_path.to_string_lossy().to_string();
+        let output_res = self
+            .run_command("trace", vec!["--json", "--batch", &tmp_path_str], 10)
             .await;
 
         let _ = tokio::fs::remove_file(&tmp_path).await;
@@ -535,8 +532,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_slm_bridge_calculate_importance_green() {
-        let bridge = SlmBridge::new();
-        // GREEN Phase: calculate_importance は slm trace --json を呼び出し、
+        let mock = Box::new(MockBackend::default());
+        let bridge = SlmBridge::with_backend(mock);
+        // GREEN Phase: calculate_importance は mocked backend を呼び出し、
         // Poincare スコアを含む重要度を 0.0〜1.0 の範囲で返す。
         let res = bridge.calculate_importance("test query").await;
         assert!(
@@ -552,14 +550,30 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_slm_bridge_calculate_importance_batch_green() {
-        let bridge = SlmBridge::new();
-        let queries = vec!["test query 1".to_string(), "test query 2".to_string()];
-        let res = bridge.calculate_importance_batch(&queries).await;
-        // バッチ結果は成功するはず（フォールバック含む）
+    async fn test_slm_bridge_cli_hang_timeout_red() {
+        let hang_script = "/tmp/hang_cmd.sh";
+        let backend = CliSlmBackend::new(hang_script);
+
+        let start = std::time::Instant::now();
+        // 5秒でタイムアウトすることを期待する (デフォルト設定を5秒とする)
+        let res = backend.calculate_importance("test").await;
+        let elapsed = start.elapsed();
+
+        assert!(res.is_err(), "Should return an error on timeout");
         assert!(
-            res.is_ok(),
-            "GREEN Phase: batch calculate_importance should succeed"
+            elapsed.as_secs() >= 5 && elapsed.as_secs() < 10,
+            "Should timeout around 5s: {:?}",
+            elapsed
         );
+
+        if let Err(AiomeError::Infrastructure { reason }) = res {
+            assert!(
+                reason.contains("timed out") || reason.contains("Timed out"),
+                "Error should mention timeout: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure timeout error, got {:?}", res);
+        }
     }
 }

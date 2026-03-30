@@ -532,6 +532,11 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("gig_published").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::SoTProgress { event } => {
+                            if let Ok(json) = serde_json::to_string(&event) {
+                                yield Ok(Event::default().event("sot_progress").data(json));
+                            }
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

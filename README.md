@@ -135,8 +135,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 📈 **Phase 3D: TimesFM Plateau Detection**: Google の `timesfm-2.5-200m-pytorch` をバックエンドとした時系列予測モジュール (`ScoreTracker`) を統合。エージェントの Karma や経験値の伸び悩み（Plateau）を数学的に検知し、自律的な打破ミッションをトリガーします。
 - 🎭 **Phase 2B: Emotional RAG & Cognitive Sentinel**: 過去の記憶から計算された感情の蓄積（`somatic_valence`）を LLM のシステムプロンプトへ動的に注入する「Somatic Context」を実装。同時に、感情が極端な鬱状態などに陥った場合に検知・復旧する **Cognitive Sentinel** を導入し、長期的な精神的安定性を担保します。
 - 🏗️ **Phase 51: Agentic Finance & GIG Loop Integration**: `TaskDispatcher` と `GigEngine` を統合し、タスク完了時に自律的にギグ（依頼）を発行・連鎖させる経済ループを構築。`gig_depth` による無限ループ防止策を備えた、AI間経済圏の自律的拡大を実現しました。
-- 🧠 **Phase 53: Society of Thought (SoT) 審議エンジン**: `Oracle::multi_review` による複数フェーズの自己批判・洗練プロセスを実装。推論過程を `SoTProgress` イベントとして SSE 配信し、AI の「深い思考」を可視化します。
-- 🛡️ **Phase 53: マルチレイヤー・セキュリティ強化**: SSRF 対策として `127.0.0.1` へのアクセスを特定ポート (Ollama/ComfyUI) に限定する厳密なバリデーションを導入。また、プロンプトインジェクションに対するローカル検知レイヤーを強化し、防御の多重化を完了しました。
+- 🧠 **Phase 53: Society of Thought (SoT) 審議エンジン**: `Oracle::multi_review` による複数フェーズの自己批判・洗練プロセスを実装。LLMによる動的検証（JSON構造化抽出）機能を追加し、推論詳細を `SoTProgress` イベントとして SSE 配信することで、AI の「深い思考とスコアリング」をUIへリアルタイム連動させます。
+- 🛡️ **Phase 53: マルチレイヤー・セキュリティ強化**: SSRF 対策として `127.0.0.1` へのアクセスを特定ポート (Ollama/ComfyUI) に限定する厳密なバリデーションを導入。また、プロンプトインジェクションに対するローカル検知レイヤー（Guardrails）の強化と、`Stdio::null` や強制タイムアウトを駆使したサブプロセス管理（ゾンビハング解消）を統合し、インフラ全体の CI 安定性とプロセス安全性を確固たるものにしました。
 
 ---
 
