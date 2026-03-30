@@ -53,12 +53,12 @@
 
 ### Added
 - **Phase 53: Society of Thought (SoT) & Security Hardening [完了]**
-    - **SoT Multi-Review Pipeline (Active JSON Scoring)**: `Oracle::multi_review` を実装し、批判・洗練・判定の反復ループによる高度な意思決定基盤を確立。さらに `SoTEngine` の `evaluate_scores` において、LLM (primary_provider) による **JSON フォーマットでの動的スコア算出と構造化抽出** を実装し、シグネチャ `Result<(String, SoTOutcome, Vec<(String, f64)>)>` を通じて動的評価を Oracle へ透過伝播。
-    - **SoT Progress Visibility (End-to-End SSE)**: `SoTProgress` イベントを新設。バックエンドの `Oracle` 紐付けから、フロントエンド (`management-console` の `useSystemVitality`, `App.tsx`) へのリアルタイム伝搬ルーティング（トースト通知機能等）を統合。
-    - **Port-Level SSRF Protection**: `SecurityPolicy` において、`127.0.0.1` および `localhost` へのアクセスを、許可された内部ポート（8188: Test Node, 11434: Ollama）のみに厳密に制限。
+    - **SoT Multi-Review Pipeline (Active JSON Scoring)**: `Oracle::multi_review` を実装し、批判・洗練・判定の反復ループによる高度な意思決定基盤を確立。さらに `SoTEngine` の `evaluate_scores` において、LLM による **JSON 構造化抽出とスコア・クランプ (0-10)** を実装し、パース失敗時の安全なフォールバックを徹底。
+    - **SoT Progress Visibility (End-to-End SSE)**: `SoTProgress` イベントを新設。バックエンドの `Oracle` 審議から、フロントエンドのリアルタイム・トースト通知表示までの SSE ルーティングを統合。
+    - **Port-Level SSRF Protection (IPv6 Hardening)**: `SecurityPolicy` において、`127.0.0.1` および **IPv6 ループバック (`::1`, `[::1]`)** へのアクセスを、特定の内部ポート（8188: Test Node, 11434: Ollama）のみに厳密に制限。バイパス不可能な多層防御を構築。
     - **Local Guardrail Patterns**: `guardrails.rs` に指示無視や秘密情報流出の典型パターンに対するローカル検知レイヤーを追加。Bastion 外部バリデータとの二重化を実現。
     - **Polite Begging Detection**: `BeggingSupervisor` を強化し、日本語の丁寧な表現を用いた金銭・ギフト要求も検知・遮断対象に。
-    - **System Stability & Zombie Prevention**: `SlmBridge` `run_command` ヘルパーを新設し、`Stdio::null()`, `tokio::time::timeout`, `kill_on_drop(true)` を強制。これによりテストランダムハングを含む子プロセスのゾンビ化問題を解決し、CI 安定性を劇的向上。
+    - **System Stability & Zombie Prevention**: `SlmBridge` において `Stdio::null()`、タイムアウト、`kill_on_drop(true)` を強制。さらに **RAII ベースの一時ファイル管理 (`tempfile::NamedTempFile`)** を導入し、プロセスハングとファイルリークの両面を完全封鎖。
     - **Test Suite Validation**: 難読化・SSRF 検証を含む `tests/redteam_drill.rs` や `society_of_thought.rs` の TDD モック拡張を整備し、警告ゼロと全テスト（206 件のインフラテストを含む）の完全 PASS を確認。
 
 ## [Unreleased] - 2026-03-30

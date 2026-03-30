@@ -245,12 +245,22 @@ impl SoTEngine {
         } else if content.contains("not good enough") {
             return Ok(criteria.iter().map(|c| (c.name.clone(), 8.0)).collect());
         } else if content.contains("JSON: ") {
-            let json_start = content.find("JSON: ").unwrap() + 6;
+            let json_start = content
+                .find("JSON: ")
+                .ok_or_else(|| AiomeError::Infrastructure {
+                    reason: "Malformed mock SoT content".to_string(),
+                })?
+                + 6;
             let map: std::collections::HashMap<String, f64> =
                 serde_json::from_str(&content[json_start..]).unwrap_or_default();
             return Ok(criteria
                 .iter()
-                .map(|c| (c.name.clone(), *map.get(&c.name).unwrap_or(&5.0)))
+                .map(|c| {
+                    (
+                        c.name.clone(),
+                        map.get(&c.name).cloned().unwrap_or(5.0).clamp(0.0, 10.0),
+                    )
+                })
                 .collect());
         }
 
@@ -287,8 +297,8 @@ impl SoTEngine {
 
         let mut results = Vec::new();
         for criterion in criteria {
-            let score = map.get(&criterion.name).cloned().unwrap_or(5.0); // 失敗時は安全側に倒す
-            results.push((criterion.name.clone(), score));
+            let score = map.get(&criterion.name).cloned().unwrap_or(5.0);
+            results.push((criterion.name.clone(), score.clamp(0.0, 10.0)));
         }
 
         Ok(results)
@@ -456,5 +466,51 @@ mod tests {
             "Accuracy should be reflected from LLM response, got {}",
             accuracy
         );
+    }
+
+    #[tokio::test]
+    async fn test_sot_invalid_json_fallback_green() {
+        let mock = Arc::new(MockLlm::new("Invalid JSON here { not a json }"));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig::default();
+
+        let result = engine
+            .run_session("task", SoTTrigger::Manual, config, 1.0)
+            .await;
+        assert!(result.is_ok());
+        let (_, _, scores) = result.unwrap();
+        // Fallback to 5.0 for each criterion
+        for (_, score) in scores {
+            assert_eq!(score, 5.0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sot_score_clamping_green() {
+        let mock = Arc::new(MockLlm::new(
+            "JSON: {\"Accuracy\": 999.0, \"Alignment\": -50.0}",
+        ));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig::default();
+
+        let result = engine
+            .run_session("task", SoTTrigger::Manual, config, 1.0)
+            .await;
+        assert!(result.is_ok());
+        let (_, _, scores) = result.unwrap();
+
+        let acc = scores
+            .iter()
+            .find(|(n, _)| n == "Accuracy")
+            .map(|(_, s)| *s)
+            .unwrap();
+        let aln = scores
+            .iter()
+            .find(|(n, _)| n == "Alignment")
+            .map(|(_, s)| *s)
+            .unwrap();
+
+        assert_eq!(acc, 10.0);
+        assert_eq!(aln, 0.0);
     }
 }

@@ -36,6 +36,8 @@ impl SecurityPolicy {
         let mut builder = ShieldClient::builder()
             .allow_endpoint("127.0.0.1")
             .allow_endpoint("localhost")
+            .allow_endpoint("::1")
+            .allow_endpoint("[::1]")
             .allow_endpoint("trends.google.co.jp")
             .block_private_ips(true); // プライベートIPへのSSRFを防止（Allowlist以外）
 
@@ -96,7 +98,13 @@ impl SecurityPolicy {
 
         // ローカルホストの場合、ポート制限を独自に適用 (8188, 11434 のみ許可)
         if let Some(host) = url_obj.host_str() {
-            if host == "127.0.0.1" || host == "localhost" {
+            let is_loopback = host == "127.0.0.1"
+                || host == "localhost"
+                || host == "::1"
+                || host == "0:0:0:0:0:0:0:1"
+                || host == "[::1]";
+
+            if is_loopback {
                 let port = url_obj.port().unwrap_or(80);
                 if port != 8188 && port != 11434 {
                     bail!("Security Violation: Unauthorized local port {}", port);
@@ -186,6 +194,18 @@ mod tests {
         let policy = SecurityPolicy::default();
         assert!(policy.validate_url("http://127.0.0.1:8188").await.is_ok());
         assert!(policy.validate_url("http://localhost:11434").await.is_ok());
+        assert!(policy.validate_url("http://[::1]:8188").await.is_ok());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_default_policy_blocks_ipv6_loopback_unauthorized_port() -> Result<()> {
+        let policy = SecurityPolicy::default();
+        assert!(policy.validate_url("http://[::1]:22").await.is_err());
+        assert!(policy
+            .validate_url("http://[0:0:0:0:0:0:0:1]:22")
+            .await
+            .is_err());
         Ok(())
     }
 

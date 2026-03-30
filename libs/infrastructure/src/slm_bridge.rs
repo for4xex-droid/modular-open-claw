@@ -216,21 +216,20 @@ impl SlmBackend for CliSlmBackend {
         &self,
         queries: &[String],
     ) -> Result<Vec<(String, f64)>, AiomeError> {
-        let tmp_path =
-            std::env::temp_dir().join(format!("slm_batch_{}.jsonl", uuid::Uuid::new_v4()));
-        let batch_content = queries.join("\n");
-        tokio::fs::write(&tmp_path, &batch_content)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to write batch file: {}", e),
+        use std::io::Write;
+        let mut tmp_file =
+            tempfile::NamedTempFile::new().map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create temp file: {}", e),
             })?;
 
-        let tmp_path_str = tmp_path.to_string_lossy().to_string();
+        let batch_content = queries.join("\n");
+        let _ = tmp_file.write_all(batch_content.as_bytes());
+        let _ = tmp_file.flush();
+
+        let tmp_path_str = tmp_file.path().to_string_lossy().to_string();
         let output_res = self
             .run_command("trace", vec!["--json", "--batch", &tmp_path_str], 10)
             .await;
-
-        let _ = tokio::fs::remove_file(&tmp_path).await;
 
         match output_res {
             Ok(output) if output.status.success() => {
