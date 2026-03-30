@@ -1,3 +1,7 @@
+- **Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD) [進行中]**
+    - **Rebirth Archiving**: `archived_lora_models` テーブルとマイグレーションを追加。`SoulStore::archive_lora_model` を実装し、`SamsaraEngine::rebirth` 時に前世代のLoRA設定をアーカイブ＆リセットすることでデータポイズニングを完全に遮断。
+    - **Secure LoRA Training**: `LoraTrainingService` を新設。`BastionGuard::new_internal()` を用いてLoRA学習プロセス（MLX/Python）を隔離実行・監視。
+    - **Vault Isolation & Ollama Integration**: 学習完了後のウェイトを `GLOBAL_SECURITY_CONFIG.vault_path` に安全に移動し、`ollama create` を用いて自律的に推論エンジンへモデルを登録するフローを確立。
 - **Phase 51: Agentic Finance & GIG Loop Integration [完了]**
     - **TaskDispatcher Evolution**: `GigEngine` を依存注入 (DI) し、ジョブ完了時にロジックを自律トリガー可能に。
     - **Autonomous GIG Publishing**: `karma_directives` 内の `gig_intent: true` を検知し、自動的に `GigIntent` を生成・公開するサイクルを確立。

@@ -2,6 +2,22 @@
 
 このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
 
+## Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD)
+
+### 1. LoRA Metadata Archiving over Generation (Rebirth)
+- **変更理由**: Rebirth (転生) 時に旧世代のLoRA設定を引き継ぐと、過剰適応によるデータポイズニング（データ汚染）のリスクがあるため。旧世代のLoRA設定は隔離記録（Archive）に残し、新世代は白紙から学習するように変更。
+- **波及効果**:
+  - `libs/infrastructure/migrations/` に `archived_lora_models` 追加の SQL スキーマ定義。
+  - `libs/aiome-contracts/src/traits.rs`: `SoulStore::archive_lora_model` メソッドを新規追加。
+  - `libs/infrastructure/src/job_queue/soul_store.rs`, `libs/infrastructure/src/soul_store.rs`: `archive_lora_model` を実装（他のモック等も更新）。
+  - `libs/infrastructure/src/samsara_engine.rs`: `DefaultSamsaraEngine::rebirth` に `SoulStore` インスタンスを（Option で）注入し、アーカイブ処理を挟んだ後、`new_soul.lora_hash`, `lora_adapter_path`, `lora_base_model` を `None` にリセット。
+
+### 2. Secure LoRA Training Execution (LoraTrainingService)
+- **変更理由**: 動的な学習スクリプト（MLX/Python）実行時の特権昇格や不要なシステムアクセスを防ぎ、安全な場所にウェイト出力させるため。
+- **波及効果**:
+  - `libs/infrastructure/src/lora_training.rs` [NEW]: `LoraTrainingService` 構造体の追加。`BastionGuard::new_internal()`（RAIIパターン）による隔離保護空間でのスクリプト実行 (`Command::new`) を開始。
+  - **Vault 保護**: 出力されるセーフテンサー(`adapter_model.safetensors`)をセキュアな保管庫 (`GLOBAL_SECURITY_CONFIG.vault_path`) に移動し、`ollama create` コマンドを発行して自動的に推論エンジンにモデルを読み込ませるフローを確立。
+
 ## Phase 53: SoT Deliberation Engine & Security Hardening (Phase 53 実装)
 
 ### 1. Society of Thought (SoT) 統合

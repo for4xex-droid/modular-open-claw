@@ -38,6 +38,16 @@ pub struct SoulSnapshot {
     pub lora_hash: Option<String>,
 }
 
+/// A record representing an archived LoRA model from a past generation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchivedLoraModel {
+    pub id: i64,
+    pub generation: u32,
+    pub lora_hash: String,
+    pub adapter_path: String,
+    pub base_model: String,
+}
+
 /// Soul 永続化ストア (Universal: SQLite/PostgreSQL 対応)
 pub struct UniversalSoulStore {
     pool: DatabasePool,
@@ -158,6 +168,63 @@ impl UniversalSoulStore {
         }
 
         Ok(())
+    }
+
+    /// アーカイブされたLoRAモデルの履歴を取得する
+    pub async fn get_archived_lora_models(
+        &self,
+        soul_id: &str,
+    ) -> Result<Vec<ArchivedLoraModel>, AiomeError> {
+        use sqlx::Row;
+        let q = format!(
+            "SELECT id, generation, lora_hash, adapter_path, base_model FROM archived_lora_models WHERE soul_id = {0} ORDER BY generation DESC",
+            self.pool.ph(0)
+        );
+
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(soul_id)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                let mut results = Vec::new();
+                for r in rows {
+                    results.push(ArchivedLoraModel {
+                        id: r.get::<i64, _>("id"),
+                        generation: r.get::<i64, _>("generation") as u32,
+                        lora_hash: r.get("lora_hash"),
+                        adapter_path: r.get("adapter_path"),
+                        base_model: r.get("base_model"),
+                    });
+                }
+                Ok(results)
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(soul_id)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                let mut results = Vec::new();
+                for r in rows {
+                    let id_val: i64 = try_extract_i64_from_pg_row(&r, "id");
+                    let gen_val: i64 = try_extract_i64_from_pg_row(&r, "generation");
+                    results.push(ArchivedLoraModel {
+                        id: id_val,
+                        generation: gen_val as u32,
+                        lora_hash: r.get("lora_hash"),
+                        adapter_path: r.get("adapter_path"),
+                        base_model: r.get("base_model"),
+                    });
+                }
+                Ok(results)
+            }
+        }
     }
 
     /// Soulの履歴を保存する (Event Sourcing Light)
@@ -463,4 +530,41 @@ impl aiome_contracts::traits::SoulStore for UniversalSoulStore {
             }
         }
     }
+
+    async fn archive_lora_model(
+        &self,
+        soul_id: &str,
+        generation: u32,
+        lora_hash: &str,
+        adapter_path: &str,
+        base_model: &str,
+    ) -> Result<(), AiomeError> {
+        let q = format!(
+            "INSERT INTO archived_lora_models (soul_id, generation, lora_hash, adapter_path, base_model) VALUES ({0}, {1}, {2}, {3}, {4})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
+        );
+
+        sql_exec!(
+            &self.pool,
+            &q,
+            soul_id,
+            generation as i64,
+            lora_hash,
+            adapter_path,
+            base_model
+        )?;
+
+        Ok(())
+    }
+}
+
+fn try_extract_i64_from_pg_row(row: &sqlx::postgres::PgRow, col: &str) -> i64 {
+    use sqlx::Row;
+    if let Ok(val) = row.try_get::<i32, _>(col) {
+        return val as i64;
+    }
+    if let Ok(val) = row.try_get::<i64, _>(col) {
+        return val;
+    }
+    0
 }

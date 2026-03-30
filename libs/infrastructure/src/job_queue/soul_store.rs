@@ -41,6 +41,17 @@ impl SoulStore for UniversalJobQueue {
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError> {
         self.do_fetch_latest_soul_fragment().await
     }
+
+    async fn archive_lora_model(
+        &self,
+        _soul_id: &str,
+        _generation: u32,
+        _lora_hash: &str,
+        _adapter_path: &str,
+        _base_model: &str,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
 }
 
 #[async_trait]

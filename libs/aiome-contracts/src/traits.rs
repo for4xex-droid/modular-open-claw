@@ -604,6 +604,16 @@ pub trait SoulStore: Send + Sync {
         version_hash: &str,
     ) -> Result<(), AiomeError>;
     async fn fetch_latest_soul_fragment(&self) -> Result<Option<(String, String)>, AiomeError>;
+
+    /// Archives the current LoRA active state associated with a given soul ID.
+    async fn archive_lora_model(
+        &self,
+        soul_id: &str,
+        generation: u32,
+        lora_hash: &str,
+        adapter_path: &str,
+        base_model: &str,
+    ) -> Result<(), AiomeError>;
 }
 
 // --- AI Artifacts Storage System ---

@@ -74,6 +74,7 @@ pub mod job_queue;
 pub mod knowledge_indexer;
 /// LLMプロバイダの動的選択・プロキシ
 pub mod llm;
+pub mod lora_training;
 /// 短期記憶→長期Karma結晶化
 pub mod memory_crystallizer;
 /// HuggingFace Hub モデル管理 (Phase 2)

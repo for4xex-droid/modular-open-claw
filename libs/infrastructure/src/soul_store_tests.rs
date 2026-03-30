@@ -9,6 +9,7 @@
 mod tests {
     use crate::db::DatabasePool;
     use crate::soul_store::UniversalSoulStore;
+    use aiome_contracts::traits::SoulStore;
     use aiome_core::error::AiomeError;
     use soul::AgentSoul;
 
@@ -116,6 +117,44 @@ mod tests {
             Some("/path/to/lora789".to_string())
         );
         assert_eq!(snapshot.lora_base_model, Some("sdxl-v1-0".to_string()));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_archive_lora_model_on_rebirth() -> Result<(), AiomeError> {
+        let pool = setup_db().await;
+        // In order for this test to pass we will need to ensure the schema includes `archived_lora_models` table.
+        let store = UniversalSoulStore::new(pool);
+
+        let mut soul = AgentSoul::new("test-archive-lora".to_string());
+        soul.generation = 1;
+        soul.lora_hash = Some("sha256:legacy_model".to_string());
+        soul.lora_adapter_path = Some("/vault/lora/legacy_1".to_string());
+        soul.lora_base_model = Some("mlx_lm.llama".to_string());
+
+        // Save active soul initially
+        store.save_soul(&soul).await?;
+
+        // Archive it
+        store
+            .archive_lora_model(
+                &soul.id,
+                soul.generation,
+                soul.lora_hash.as_ref().unwrap(),
+                soul.lora_adapter_path.as_ref().unwrap(),
+                soul.lora_base_model.as_ref().unwrap(),
+            )
+            .await?;
+
+        // Verify we can fetch it back
+        let archived = store.get_archived_lora_models("test-archive-lora").await?;
+        assert_eq!(archived.len(), 1);
+        let record = &archived[0];
+        assert_eq!(record.generation, 1);
+        assert_eq!(record.lora_hash, "sha256:legacy_model");
+        assert_eq!(record.adapter_path, "/vault/lora/legacy_1");
+        assert_eq!(record.base_model, "mlx_lm.llama");
 
         Ok(())
     }

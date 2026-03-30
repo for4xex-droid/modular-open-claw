@@ -20,6 +20,7 @@ use soul::model::AgentSoul;
 pub struct DefaultSamsaraEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     distillation_prompt: String,
+    store: Option<Arc<dyn aiome_contracts::traits::SoulStore>>,
 }
 
 impl DefaultSamsaraEngine {
@@ -28,7 +29,14 @@ impl DefaultSamsaraEngine {
         Self {
             provider,
             distillation_prompt,
+            store: None,
         }
+    }
+
+    /// (Optional) SoulStore を注入する (LoRAモデルのアーカイブ処理などに利用可能)
+    pub fn with_store(mut self, store: Arc<dyn aiome_contracts::traits::SoulStore>) -> Self {
+        self.store = Some(store);
+        self
     }
 }
 
@@ -160,10 +168,33 @@ impl SamsaraEngine for DefaultSamsaraEngine {
             let mut new_soul = AgentSoul::new(soul.id.clone());
             new_soul.generation = soul.generation + 1;
             new_soul.instinct = new_instinct;
-            // Inherit key identity elements (e.g. attachment, LoRA configs)
+            // Inherit key identity elements (e.g. attachment)
             new_soul.attachment = soul.attachment.clone();
-            new_soul.lora_adapter_path = soul.lora_adapter_path.clone(); // NG-3 FIX
-            new_soul.lora_base_model = soul.lora_base_model.clone(); // NG-3 FIX
+
+            // Archive the previous generation's LoRA state before resetting it
+            if let Some(ref store) = self.store {
+                if let (Some(hash), Some(adapter), Some(base)) = (
+                    soul.lora_hash.as_ref(),
+                    soul.lora_adapter_path.as_ref(),
+                    soul.lora_base_model.as_ref(),
+                ) {
+                    if let Err(e) = store
+                        .archive_lora_model(&soul.id, soul.generation, hash, adapter, base)
+                        .await
+                    {
+                        tracing::warn!("⚠️ [SamsaraEngine] Failed to archive LoRA model: {}", e);
+                    } else {
+                        tracing::info!(
+                            "💼 [SamsaraEngine] Successfully archived LoRA model for generation {}",
+                            soul.generation
+                        );
+                    }
+                }
+            }
+
+            new_soul.lora_adapter_path = None; // Reset for security (Data Poisoning Prevention)
+            new_soul.lora_base_model = None;
+            new_soul.lora_hash = None;
 
             // GAP-4 Design Intent Clarification:
             // The `predictive_model` is intentionally left as `PredictiveModel::default()`.
@@ -440,5 +471,26 @@ mod tests {
             new_soul.anamnesis.narrative_self,
             Some("Old narrative.".into())
         );
+    }
+
+    #[tokio::test]
+    async fn test_rebirth_archives_lora_and_resets_new_soul() {
+        let mock_llm = Arc::new(MockLlm {
+            response_content: "narrative".into(),
+            should_fail: false,
+        });
+        let engine = DefaultSamsaraEngine::new(mock_llm, "mock_distill".into());
+
+        let mut soul = AgentSoul::new("test-lora-reset".to_string());
+        soul.lora_hash = Some("lora-xyz".to_string());
+        soul.lora_adapter_path = Some("/path/to/adapter".to_string());
+        soul.lora_base_model = Some("llama-3".to_string());
+
+        let new_soul = engine.rebirth(soul.clone()).await.expect("Rebirth failed");
+
+        // The old implementation inherited them. We now expect them to be reset (None).
+        assert_eq!(new_soul.lora_hash, None, "LoRA hash should be reset");
+        assert_eq!(new_soul.lora_adapter_path, None, "Adapter should be reset");
+        assert_eq!(new_soul.lora_base_model, None, "Base model should be reset");
     }
 }
