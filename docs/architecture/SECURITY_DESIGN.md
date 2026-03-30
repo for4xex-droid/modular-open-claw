@@ -70,6 +70,15 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 47 | **Context Overflow DoS** | **Massive fact blobs injected into Prompt** | 🔴 High | **Strict ContextBudget evaluation loops (Phase 2B)** |
 | 48 | **Internal SSRF (Localhost)** | **Attack on local services via valid tool** | 🔴 High | **SecurityPolicy Port-level Validation (8188/11434) (Phase 53)** |
 | 49 | **Prompt Injection (Internal)** | **Ignore all instructions / secret_key** | 🔴 High | **Local Keyword Guardrail Patterns (guardrails.rs) (Phase 53)** |
+| 50 | **Infrastructure Fail-Open** | **DB failure treated as "setting not found"**| 🔴 High | **Result<?> Error Propagation (Fail-Closed) (RT1-1)** |
+| 51 | **Native Bridge Bypass** | **Missing binary defaults to "allow-all"** | 🔴 High | **Fail-Closed Fallback (Sentinel Resilience) (RT1-2)** |
+| 52 | **Context Memory DoS** | **Single massive message exhausts RAM** | 🔴 High | **Per-message 10k character limit (RT2-1)** |
+| 53 | **TTS Error Payload DoS** | **Massive error response body OOM** | 🟡 Mid | **2048-byte Read Limit on API Errors (RT2-2)** |
+| 54 | **Supply Chain Hijacking** | **Malicious Git dependency / Fork** | 🔴 High | **Crates.io Official Package Pinning (Bastion-core) (RT3-1)** |
+| 55 | **Unicode Normalization Bypass** | **Full-width char (＃) injection** | 🔴 High | **sanitize_for_prompt Unicode Normalization (RT3-2)** |
+| 56 | **Zombie Process Leak** | **Subprocess hang drains system resources** | 🟡 Mid | **RAII-based kill_on_drop + Stdio::null (RT3-3)** |
+| 57 | **Credential CLI Leak** | **Secrets visible in `ps aux` command line** | 🔴 High | **Ephemeral 0600 --env-file + immediate wipe (RT3-4)** |
+| 58 | **Cognitive Identity Drift** | **NaN emotional values lock state** | 🟡 Mid | **is_finite() filter + hard clamp regularizer (RT4-1)** |
 
 ## 3. Defense Architecture
 

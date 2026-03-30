@@ -8,6 +8,9 @@
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::traits::TtsProvider;
 use async_trait::async_trait;
+use std::sync::Arc;
+use std::time::Duration;
+use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 
 /// Phase 13.3: OpenAI をバックエンドとした TTS プロバイダー
 #[derive(Debug)]
@@ -70,13 +73,22 @@ impl TtsProvider for OpenAiTtsProvider {
 pub struct XttsProvider {
     client: reqwest::Client,
     endpoint: String,
+    circuit_breaker: Arc<CircuitBreaker>,
 }
 
 impl XttsProvider {
     pub fn new(endpoint: String) -> Self {
+        let cb_config = CircuitBreakerConfig {
+            failure_threshold: 2, // Fails after 2 consecutive errors
+            reset_timeout: Duration::from_secs(30),
+        };
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(10)) // 10s timeout for synthesis
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             endpoint,
+            circuit_breaker: Arc::new(CircuitBreaker::new("xtts_provider", cb_config)),
         }
     }
 }
@@ -84,6 +96,12 @@ impl XttsProvider {
 #[async_trait]
 impl TtsProvider for XttsProvider {
     async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError> {
+        if let Err(msg) = self.circuit_breaker.check_state().await {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("XTTS Circuit Breaker blocked request: {}", msg),
+            });
+        }
+
         let payload = serde_json::json!({
             "text": text,
             "speaker_id": voice_id,
@@ -92,32 +110,46 @@ impl TtsProvider for XttsProvider {
 
         let url = format!("{}/tts_to_audio", self.endpoint.trim_end_matches('/'));
 
-        let resp = self
-            .client
-            .post(&url)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("XTTS request failed: {}", e),
-            })?;
+        let resp = match self.client.post(&url).json(&payload).send().await {
+            Ok(resp) => resp,
+            Err(e) => {
+                self.circuit_breaker.record_failure().await;
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("XTTS request failed: {}", e),
+                });
+            }
+        };
 
         if !resp.status().is_success() {
+            self.circuit_breaker.record_failure().await;
             return Err(AiomeError::Infrastructure {
                 reason: format!("XTTS API error: {}", resp.status()),
             });
         }
 
-        let bytes = resp.bytes().await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to read XTTS response: {}", e),
-        })?;
+        let bytes = match resp.bytes().await {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                self.circuit_breaker.record_failure().await;
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Failed to read XTTS response: {}", e),
+                });
+            }
+        };
 
+        self.circuit_breaker.record_success().await;
         Ok(bytes.to_vec())
     }
 
     async fn health_check(&self) -> Result<bool, AiomeError> {
         let url = format!("{}/health", self.endpoint.trim_end_matches('/'));
-        let resp = self.client.get(url).send().await;
+        // Use a short timeout for health checks
+        let health_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+            
+        let resp = health_client.get(url).send().await;
         Ok(resp.is_ok() && resp.unwrap().status().is_success())
     }
 }
@@ -157,5 +189,21 @@ mod tests {
         let res = provider.health_check().await;
         assert!(res.is_ok()); // Should return Ok(false) if server unreachable
         assert_eq!(res.unwrap(), false);
+    }
+
+    #[tokio::test]
+    async fn test_xtts_provider_circuit_breaker_trips() {
+        let provider = XttsProvider::new("http://invalid.local:18020".into());
+        
+        let res1 = provider.synthesize("test", "p225").await;
+        assert!(res1.is_err()); // 1st failure
+        
+        let res2 = provider.synthesize("test", "p225").await;
+        assert!(res2.is_err()); // 2nd failure
+
+        let res3 = provider.synthesize("test", "p225").await;
+        // 3rd failure should not even try to connect, but fail fast due to circuit breaker
+        let err_msg = res3.unwrap_err().to_string();
+        assert!(err_msg.contains("CircuitBreaker is OPEN"), "Expected CircuitBreaker to trip, got: {}", err_msg);
     }
 }

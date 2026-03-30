@@ -64,6 +64,10 @@
     - **Polite Begging Detection**: `BeggingSupervisor` を強化し、日本語の丁寧な表現を用いた金銭・ギフト要求も検知・遮断対象に。
     - **System Stability & Zombie Prevention**: `SlmBridge` において `Stdio::null()`、タイムアウト、`kill_on_drop(true)` を強制。さらに **RAII ベースの一時ファイル管理 (`tempfile::NamedTempFile`)** を導入し、プロセスハングとファイルリークの両面を完全封鎖。
     - **Test Suite Validation**: 難読化・SSRF 検証を含む `tests/redteam_drill.rs` や `society_of_thought.rs` の TDD モック拡張を整備し、警告ゼロと全テスト（206 件のインフラテストを含む）の完全 PASS を確認。
+- **Red Team Security Hardening (Round 1-3) & Supply Chain Security [完了]**
+    - **Fail-Closed Migration**: `sentinel` (Native Bridge) および `Settings` (Infrastructure) における Fail-Open 挙動を完全に排除。内部エラー発生時は「拒否/例外」として処理する Fail-Closed 姿勢へ統一。
+    - **Resource Exhaustion Defense**: `ContextEngine` での 10,000 文字制限、および TTS API エラーレスポンスの 2048 バイト制限を実装。悪意ある巨大データによるメモリ枯渇を防止。
+    - **Supply Chain Hardening**: セキュリティコアである `bastion` ライブラリを、独自の Git 依存から **Crates.io 公式版 (`bastion-core` v1.0.0)** へ切り替え。`cargo audit` による透過的な脆弱性管理を実現。
 
 ## [Unreleased] - 2026-03-30
 

@@ -121,9 +121,11 @@ impl ExpressionEngine {
 
         if !resp.status().is_success() {
             let status = resp.status();
+            // RT-11: Limited error body read to prevent DoS via huge payload
             let err = resp.text().await.unwrap_or_default();
+            let err_limited = if err.len() > 2048 { &err[..2048] } else { &err };
             return Err(AiomeError::Infrastructure {
-                reason: format!("TTS api failed [{}]: {}", status, err),
+                reason: format!("TTS api failed [{}]: {}", status, err_limited),
             });
         }
 
@@ -160,9 +162,11 @@ impl ExpressionEngine {
 
         if !resp.status().is_success() {
             let status = resp.status();
+            // RT-11: Limited error body read to prevent DoS via huge payload
             let err = resp.text().await.unwrap_or_default();
+            let err_limited = if err.len() > 2048 { &err[..2048] } else { &err };
             return Err(AiomeError::Infrastructure {
-                reason: format!("XTTS api failed [{}]: {}", status, err),
+                reason: format!("XTTS api failed [{}]: {}", status, err_limited),
             });
         }
 

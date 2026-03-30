@@ -296,34 +296,21 @@ async fn main() -> anyhow::Result<()> {
     ));
 
     let commerce_engine = {
-        use secrecy::ExposeSecret;
         let stripe_key = std::env::var("STRIPE_API_KEY").ok().map(|key| {
             std::env::remove_var("STRIPE_API_KEY");
-            secrecy::SecretString::from(key)
+            key
         });
+        let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+        let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
-        if let Some(key) = stripe_key {
-            use secrecy::ExposeSecret;
-            let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
-            Some(Arc::new(aiome_commerce::stripe::StripeCommerceEngine::new(
-                key.expose_secret().to_string(),
+        Some(
+            aiome_commerce::CommerceEngineFactory::create(
+                stripe_key,
                 webhook_secret,
-                job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
-            ))
-                as Arc<dyn aiome_core::commerce::CommerceEngine>)
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockCommerceEngine for development.");
-                Some(Arc::new(aiome_commerce::mock::MockCommerceEngine::new())
-                    as Arc<dyn aiome_core::commerce::CommerceEngine>)
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!");
-                std::process::exit(1);
-            }
-        }
+                sqlite_pool,
+            )
+            .await?,
+        )
     };
 
     let api_server_secret_raw = match std::env::var("API_SERVER_SECRET") {

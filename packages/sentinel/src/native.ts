@@ -33,12 +33,15 @@ export interface AiomeNativeBridge {
 
 let native: AiomeNativeBridge;
 
+const platform = os.platform();
+const arch = os.arch();
+
 try {
-    const platform = os.platform();
-    const arch = os.arch();
     native = require(`../../index.${platform}-${arch}.node`) as AiomeNativeBridge;
 } catch (e) {
-    console.warn("⚠️ [SENTINEL] Native bridge binary not found. Falling back to No-Op implementation. Security checks will be bypassed!");
+    console.error("❌ [CRITICAL SECURITY ALERT] Aiome Native Bridge (Sentinel) binary NOT FOUND for platform: " + platform + "-" + arch);
+    console.error("⚠️  Falling back to Safe-Mode (Blocking Mode). Security-critical operations will be RESTRICTED.");
+    
     native = {
         error: e,
         async karmaBootstrap() { },
@@ -46,12 +49,14 @@ try {
         async karmaDistillTurn() { },
         async karmaFetchRelevant() { return ""; },
         async get_karma_directives() { return ""; },
-        async immuneGetWarnings() { return ""; },
+        async immuneGetWarnings() { return "ALERT: Sentinel Native Bridge Missing. System running in restricted mode."; },
         async karmaCompact() { },
-        async quarantineCheckSpawn() { return { status: 'ok' }; },
+        async quarantineCheckSpawn() { return { status: 'blocked' }; }, // Fail-Closed on subagent spawn
         async karmaLearnFromSubagent() { },
         shutdown() { },
-        async immuneCheckTool() { return { blocked: false }; },
+        async immuneCheckTool() { 
+            return { blocked: true, reason: "Sentinel Native Bridge binary not found. Restricted mode active." }; 
+        },
         async karmaLearnFromTool() { },
         async karmaPreserveFacts() { },
         async immuneScanInput() { },

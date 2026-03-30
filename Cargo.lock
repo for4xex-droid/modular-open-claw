@@ -950,7 +950,8 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 [[package]]
 name = "bastion-core"
 version = "1.0.0"
-source = "git+https://github.com/for4xex-droid/bastion.git?branch=main#77900498034906c4d4249e2133d9c08e10b333f8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd1389a0e9819cb170ac56f125bd18ccadb2d795b166e433eefad5bc859e94c8"
 dependencies = [
  "anyhow",
  "colored",

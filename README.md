@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 *   **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-03-30*
+*Last Mutated: 2026-03-31*
 
 ---
 
@@ -167,7 +167,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 ハッシュチェーンによる因果関係監査と、O(1) レベルの不変条件強制エンジン |
-| **Last Updated:** | 2026-03-30 | Phase 2B & 3D: Emotional RAG & TimesFM Plateau Detection |
+| **Last Updated:** | 2026-03-31 | Phase 53: SoT & Security Hardening |
 
 ---
 
@@ -289,7 +289,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-30 (Phase 2B & 3D / Emotional RAG & TimesFM)*
+*最終更新: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

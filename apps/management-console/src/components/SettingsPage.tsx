@@ -526,7 +526,14 @@ const OriginsManager: React.FC<{ origins: string, onSave: (val: string) => void,
         setItems(origins ? origins.split(',').map(s => s.trim()).filter(Boolean) : []);
     }, [origins]);
 
-    const isValidOrigin = (v: string) => /^https?:\/\/[^\s,]+$/.test(v);
+    const isValidOrigin = (v: string) => {
+        try {
+            const url = new URL(v);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch (_) {
+            return false;
+        }
+    };
 
     const addOrigin = () => {
         const val = draft.trim();
@@ -593,9 +600,12 @@ const SecretUpdater: React.FC = () => {
     const handleUpdate = async () => {
         if (!newSecret.trim()) return;
         setTesting(true);
+        
+        // RT-FIX: Backup old token to rollback if verification fails
+        const oldSecret = sessionStorage.getItem('aiome_secret');
         setAuthToken(newSecret.trim());
+        
         try {
-            // Special case: verifying a *new* secret, so we manually pass it to authenticatedFetch
             const res = await authenticatedFetch(`${API_BASE}/api/health`, {
                 headers: { 'Authorization': `Bearer ${newSecret.trim()}` },
             });
@@ -605,9 +615,11 @@ const SecretUpdater: React.FC = () => {
                 dismiss();
             } else {
                 setResult({ success: false, message: `Authentication failed (${res.status})` });
+                if (oldSecret) setAuthToken(oldSecret);
             }
         } catch {
             setResult({ success: false, message: 'Connection failed' });
+            if (oldSecret) setAuthToken(oldSecret);
         } finally {
             setTesting(false);
         }

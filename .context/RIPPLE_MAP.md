@@ -912,3 +912,21 @@ graph TD
     G -->|Economic Trigger| H[Other Agents]
 ```
 
+---
+*最終更新日: 2026-03-31* (Phase 52, 53 & Red Team Security Hardening)
+
+### 🛡️ Phase 52: LoRA Archiving & Secure Training Pipeline
+- **変更内容**: `archived_lora_models` テーブルの追加および `SoulStore::archive_lora_model` メソッド実装。Rebirth 時に過剰適応をリセットしデータポイズニングを阻止。
+- **波及効果**: `SamsaraEngine` に `SoulStore` が注入され、Rebirth 処理のフローが変更されました。また `LoraTrainingService` は `BastionGuard::new_internal` を用いて隔離空間で MLX 学習スクリプトを実行するようになりました。
+
+### 🧠 Phase 53: SoT Deliberation & Cognitive Sentinel
+- **変更内容**: `Oracle::multi_review` の実装により、「批判・洗練・最終判定」のループ処理が組まれました。また、`SoTEngine` にて LLM による JSON 構造化抽出を強制し、`SoTProgress` SSE イベントが追加されました。
+- **波及効果**: 判断プロセスが同期から非同期かつ複数回の推論へ変更され、より確実な JSON レスポンスが返るようになりました。
+
+### 🛡️ Red Team Pass 1-3 (Security Posture Update)
+- **変更内容**: 
+    - `Settings::do_get_setting` と `Sentinel::native_bridge_fallback` が Fail-Open から Fail-Closed (Result<?> エラー伝播・拒否) に変更。
+    - `ContextEngine::maintain_context` に 10,000 文字のハードリミット、`ExpressionEngine::synthesize_audio` に 2048 Byte のエラーレスポンス上限追加（DoS/OOM 防御）。
+    - ワークスペース全体の `bastion` 依存を独自 Git フォークから Crates.io 公式パッケージ `bastion-core = "1.0.0"` へ移行。
+- **波及効果**: サプライチェーンリスクが完全に排除されました。設定値やネイティブブリッジの欠損時に不正にテストを通過したり、システムが脆弱なデフォルト状態で起動することが物理的に不可能になりました。
+

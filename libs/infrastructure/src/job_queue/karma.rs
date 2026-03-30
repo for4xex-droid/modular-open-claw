@@ -157,14 +157,18 @@ impl KarmaOps for UniversalJobQueue {
         }
 
         // Sprint 3-C: Query Sanitization
-        let sanitized_topic = topic.replace('"', "\"\"");
+        let sanitized_topic: String = topic
+            .chars()
+            .filter(|c| c.is_alphanumeric() || c.is_whitespace() || *c == '-')
+            .collect();
+            
         let fts_query = if self.pool.is_postgres() {
             sanitized_topic
                 .split_whitespace()
                 .collect::<Vec<_>>()
                 .join(" & ")
         } else {
-            format!("\"{}\"", sanitized_topic)
+            format!("\"{}\"", sanitized_topic.replace('"', "\"\""))
         };
 
         let embed_dim = self

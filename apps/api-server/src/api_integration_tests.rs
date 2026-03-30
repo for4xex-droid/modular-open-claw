@@ -186,8 +186,11 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
 
     async fn get_subscription_status(
         &self,
-        _agent_id: uuid::Uuid,
+        agent_id: uuid::Uuid,
     ) -> Result<aiome_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError> {
+        if agent_id == uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap() {
+            return Ok(aiome_contracts::commerce::SubscriptionStatus::None);
+        }
         Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
     }
 
@@ -658,6 +661,33 @@ async fn test_rate_limiting_per_agent() {
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
     assert_eq!(resp.status_code(), StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_expression_generation_plan_limits() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_test_user:00000000-0000-0000-0000-000000000002".to_string();
+    use aiome_core::expression::Expression;
+    use aiome_contracts::expression::TtsStatus;
+    // Simulate 5 recently generated expressions
+    for i in 0..5 {
+        let mut expr = Expression::default();
+        expr.id = format!("expr_{}", i);
+        expr.content = "mock content".into();
+        expr.tts_status = TtsStatus::NotRequested;
+        expr.created_at = chrono::Utc::now().to_rfc3339();
+        
+        state.job_queue.store_expression(&expr).await.unwrap();
+    }
+
+    // 2. The generation attempt should be blocked by the Free plan rate limit
+    let resp = server
+        .post("/api/expression/generate")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::TOO_MANY_REQUESTS, "Free plan should be rate limited at 5 expressions per hour");
 }
 
 #[serial]

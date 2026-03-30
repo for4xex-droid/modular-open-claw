@@ -133,9 +133,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 📈 **Phase 3D: TimesFM Plateau Detection**: Integrates a time-series forecasting module (`ScoreTracker`) powered by Google's `timesfm-2.5-200m-pytorch`. Mathematically detects plateaus in an agent's Karma and experience points, triggering autonomous breakthrough missions.
 - 🎭 **Phase 2B: Emotional RAG & Cognitive Sentinel**: Implements "Somatic Context", dynamically injecting accumulated emotional valences (`somatic_valence`) from past memories into the LLM's system prompt. Concurrently introduces the **Cognitive Sentinel** to detect and recover from extreme emotional states (e.g., severe depression), ensuring long-term mental stability.
 - 🏗️ **Phase 51: Agentic Finance & GIG Loop Integration**: Integrated `TaskDispatcher` and `GigEngine` to establish an autonomous economic loop for publishing and chaining agent-to-agent gigs. Implements `gig_depth` recursion guardrails for stable, autonomous expansion of the AI economy.
-- 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement. Added dynamic validation computing via LLM structured JSON outputs, streaming rigorous `SoTProgress` details directly to the SSE UI for real-time visualization.
-- 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced restrict SSRF verification for `127.0.0.1` accessing internal ports (Ollama/ComfyUI) only. Reinforced local detection modules for prompt injections (Guardrails) and integrated sub-process isolation (`Stdio::null()`, hard timeouts) to eliminate orphaned/zombie `slm` commands, drastically boosting CI test stability.
-
+- 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement processes. Added dynamic LLM verification (JSON structured extraction) and broadcast reasoning details as `SoTProgress` SSE events to mirror AI's "deep thinking and scoring" in the UI in real-time.
+- 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced SSRF countermeasures with strict port-level validation (restricting `127.0.0.1` traffic entirely to Ollama/ComfyUI). Bolstered local detection layers (Guardrails) against prompt injection, and managed subprocesses with `Stdio::null` and hard timeouts to resolve zombie hangs, cementing CI stability and infrastructural safety.
 
 ---
 
@@ -168,7 +167,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 hash-chain causal auditing and O(1) microsecond boundary verification engine |
-| **Last Updated:** | 2026-03-30 | Phase 2B & 3D: Emotional RAG & TimesFM Plateau Detection |
+| **Last Updated:** | 2026-03-31 | Phase 53: SoT & Security Hardening |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -279,7 +278,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-30 (Phase 2B & 3D / Emotional RAG & TimesFM)*
+*Last Updated: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

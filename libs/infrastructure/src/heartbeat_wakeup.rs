@@ -119,13 +119,15 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
                         None
                     } else {
                         info!("💓 [Heartbeat] Proactive Talk generated.");
-                        // RT-5 Sanitization: Remove any dangerous patterns (shell, markdown injection)
-                        let sanitized = reply
-                            .replace("`", "")
-                            .replace("sudo", "")
-                            .replace("rm -rf", "")
-                            .replace("sh ", "");
-                        Some(sanitized)
+                        // RT-5 Sanitization: Drop any dangerous patterns (shell, markdown injection)
+                        let lower = reply.to_lowercase();
+                        if lower.contains("curl ") || lower.contains("wget ") || lower.contains("bash") || lower.contains("sudo ") || lower.contains("eval") || lower.contains("rm -rf") {
+                            warn!("🚨 [Heartbeat] Blocked generated text containing potential shell commands or dangerous keywords.");
+                            None
+                        } else {
+                            // Strip markdown code blocks just in case
+                            Some(reply.replace('`', ""))
+                        }
                     }
                 }
                 Err(e) => {

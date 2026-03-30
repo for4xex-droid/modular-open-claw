@@ -170,9 +170,10 @@ impl ContextEngine {
             .await?;
 
         // 概算トークン数（文字数 * 0.5 程度だが、ここでは単純に文字数で閾値を判定する）
+        // RT-10: 各メッセージの加算を1万文字までに制限し、単一の巨大メッセージによる計測の爆発を抑える
         let total_chars: usize = all_recent
             .iter()
-            .map(|m| m["content"].as_str().unwrap_or("").len())
+            .map(|m| m["content"].as_str().unwrap_or("").len().min(10000))
             .sum();
 
         // threshold が文字数基準とする

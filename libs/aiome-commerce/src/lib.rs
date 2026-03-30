@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 pub mod ekyc;
+pub mod factory;
 pub mod gift;
 pub mod gig;
 pub mod mock;
@@ -18,6 +19,7 @@ pub mod wallet;
 
 // Re-exports for convenience
 pub use crate::ekyc::StripeEkycEngine;
+pub use crate::factory::CommerceEngineFactory;
 pub use crate::gig::UniversalGigEngine;
 pub use crate::stripe::StripeCommerceEngine;
 pub use crate::syndicate::SqliteSyndicateStore;

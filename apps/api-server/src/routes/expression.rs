@@ -77,9 +77,42 @@ pub async fn expression_status(
 )]
 pub async fn generate_expression(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // 1. Fetch latest Karma
+    // 1. Plan-based rate limiting (Step 3: TTS / Expression rate limiting)
+    let sub_status = state
+        .commerce_engine
+        .get_subscription_status(auth.agent_id)
+        .await
+        .unwrap_or(aiome_contracts::commerce::SubscriptionStatus::None);
+        
+    let is_pro = matches!(sub_status, aiome_contracts::commerce::SubscriptionStatus::Active);
+    
+    if !is_pro {
+        // Enforce Free plan limits (e.g., max 5 expressions per hour).
+        // For accurate limit, we fetch the 5 recent expressions and check their creation time
+        let recent_exprs = state.job_queue.fetch_expressions(5).await.map_err(|e| {
+            aiome_core::error::AiomeError::Infrastructure {
+                reason: format!("Failed to fetch recent expressions for rate limit check: {}", e),
+            }
+        })?;
+        if recent_exprs.len() >= 5 {
+            if let Some(oldest) = recent_exprs.last() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&oldest.created_at) {
+                    if (chrono::Utc::now() - dt.with_timezone(&chrono::Utc)).num_hours() < 1 {
+                        return Err(aiome_core::error::AiomeError::BudgetExhausted(
+                            aiome_contracts::error::BudgetExhaustedError {
+                                limit: 5.0,
+                                actual: 5.0,
+                            }
+                        ).into());
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Fetch latest Karma
     let karma = state.job_queue.fetch_all_karma(5).await?;
 
     if karma.is_empty() {

@@ -38,7 +38,9 @@ impl SettingsOps for UniversalJobQueue {
             self.pool.ph(0)
         );
         let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, key)
-            .unwrap_or(None)
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Get setting failed for key '{}': {}", key, e),
+            })?
             .map(|r| r.0);
         Ok(opt)
     }
