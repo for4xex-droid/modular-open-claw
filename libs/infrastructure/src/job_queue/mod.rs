@@ -100,6 +100,7 @@ pub struct UniversalJobQueue {
     pub embed_provider: Arc<RwLock<Option<Arc<dyn EmbeddingProvider>>>>,
     pub slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
     pub trajectory_store: Arc<dyn TrajectoryStore>,
+    pub security_validator: Arc<aiome_core::security::ConstitutionalValidator>,
 }
 
 impl std::fmt::Debug for UniversalJobQueue {
@@ -150,6 +151,7 @@ impl UniversalJobQueue {
             embed_provider: Arc::new(RwLock::new(None)),
             slm_bridge,
             trajectory_store,
+            security_validator: Arc::new(aiome_core::security::ConstitutionalValidator::new()),
         };
 
         if this.pool.is_sqlite() {
@@ -175,6 +177,7 @@ impl UniversalJobQueue {
             embed_provider: Arc::new(RwLock::new(None)),
             slm_bridge: None,
             trajectory_store,
+            security_validator: Arc::new(aiome_core::security::ConstitutionalValidator::new()),
         }
     }
 
@@ -379,6 +382,7 @@ impl KarmaRegistry for UniversalJobQueue {
         domain: Option<&str>,
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
+        is_private: bool,
     ) -> Result<(), AiomeError> {
         Box::pin(self.do_store_karma(
             job_id,
@@ -389,6 +393,7 @@ impl KarmaRegistry for UniversalJobQueue {
             domain,
             subtopic,
             clone_origin_id,
+            is_private,
         ))
         .await
     }

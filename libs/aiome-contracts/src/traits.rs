@@ -404,6 +404,7 @@ pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
         domain: Option<&str>,
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
+        is_private: bool,
     ) -> Result<(), AiomeError>;
     async fn adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError>;
     async fn karma_decay_sweep(&self) -> Result<u64, AiomeError>;

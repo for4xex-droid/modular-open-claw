@@ -55,7 +55,7 @@ impl FederationOps for UniversalJobQueue {
     ) -> Result<(Vec<FederatedKarma>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> {
         let since_ts = since.unwrap_or("1970-01-01T00:00:00");
         let mut fed_karmas = Vec::new();
-        let q_karma = "SELECT * FROM karma_logs WHERE created_at > ?";
+        let q_karma = "SELECT * FROM karma_logs WHERE created_at > ? AND is_private = 0";
 
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {

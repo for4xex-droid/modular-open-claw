@@ -1,3 +1,22 @@
+- **Phase 51: Agentic Finance & GIG Loop Integration [完了]**
+    - **TaskDispatcher Evolution**: `GigEngine` を依存注入 (DI) し、ジョブ完了時にロジックを自律トリガー可能に。
+    - **Autonomous GIG Publishing**: `karma_directives` 内の `gig_intent: true` を検知し、自動的に `GigIntent` を生成・公開するサイクルを確立。
+    - **Recursion Safety**: `gig_depth` によるガードレールを実装。無限ループ（自己発注の連鎖）を防止（最大3階層）。
+    - **Constitutional Security**: `TaskDispatcher` に `ConstitutionalValidator` を統合。AI自律発注の「安全性・倫理性」を最終検証する検閲レイヤーを構築。
+    - **Budget Guardrails**: `MAX_GIG_BUDGET` (5000) を設定し、過大な予算要求を自動クランプ。
+    - **SSE Real-time Bridge**: `TaskEvent::GigPublished` を `CoreEvent` 経由で `api-server` の SSE ストリームへブリッジ。管理コンソールでのリアルタイム可視化に対応。
+    - **Red Team Hardening (RT4)**:
+        - **Structured Validation**: 憲法バリデーターのコンテキストを構造化 (`--- TASK ---`) し、プロンプトインジェクションによる「安全なタスク」の偽装を防止。
+        - **Budget Floor**: 最小予算を 10 coins に設定し、ダスト・インテントによる DDoS 攻撃を抑制。
+        - **Instruction Expansion**: シークレットの流出（Exfiltration）試行を検知するようバリデーターの指示を強化。
+        - **RT5: Heartbeat Hardening**: `HEARTBEAT.md` の読み取りサイズを 5000 文字に制限。LLM 提案内容からシェルコマンド等の危険なパターンを排除するサニタイザーを実装。
+        - **RT6: Settings & WASM Hardening**: `stripe_api_key`, `openai_api_key` 等のシークレット Whitelist 拡張。WASM `fs_reader` のブラックリストを強化し、`.db`, `.sqlite`, `credentials` へのアクセスを封鎖。
+        - **RT7: Deployment & CI Hardening**: `docker-compose.production.yml` に非特権ユーザー、リソース制限、内部ポート遮断を導入。CI への **Trivy コンテナ脆弱性スキャン** 統合。
+        - **RT8: Logic & Normalization Hardening**: `＃` や `－－－` 等の全角 Unicode によるインジェクション防御機能を `sanitize_for_prompt` に実装。巨大メッセージによるコンテキスト破壊への境界保護、および感情計算における NaN/Inf 耐性を追加。
+        - **RT9: Red Team Penetration Drill**: `tests/redteam_drill.rs` を新規作成。難読化プロンプト、SSRF、WASM 隔離、おねだりパターン等の実戦的な攻撃シナリオに対する防御性能を検証し、全項目で「Blocked」を確認。
+        - **Audit Integration**: 設定変更のログを `AuditLogger` (Global Ledger) に移行。
+    - **TDD Verification**: `MockGigEngine` を用いたユニットテスト (`test_dispatcher_publishes_gig_on_completion`) を追加し、経済圏連携の堅牢性を実証。
+    - **Contract Update**: `GigIntent` に `metadata` フィールドを追加し、因果関係（親ジョブID等）の追跡を可能に。
 - **Phase 50: Agentic A2A gRPC Protocol [完了]**
     - **DockerConductor**: 同期的な `docker exec` から、非同期の `tonic` ベース gRPC ストリーミング通信へとアーキテクチャを刷新し、タスク実行状況をリアルタイムにサブスクライブ可能に。
     - **Shadow Worker**: 独立したコンテナ化 gRPC サーバー (`aiome-shadow-worker`) として実装。推論エンジン連携（Ollama/Gemini）によるリアルタイム応答に対応。
@@ -29,6 +48,17 @@
     - **Security & Secret Management**: `main.rs` の初期化順序を調整し、`AiomeConfig` を `Arc` で共有。`config.clone()` によるメモリ内でのシークレット重複を排除し、セキュリティを強化。
     - **TtsWorker Loop**: `api-server` 起動時に `TtsWorker` のバックグラウンドループを開始するように実装。未合成の音声ジョブを自律的に処理可能に。
     - **Mock Testing Suite**: `MockTtsProvider` および `MockLiveSessionManager` を実装し、統合テスト全体の安定性を確保。CI/CD における不確定要素を排除。
+
+## [Unreleased] - 2026-03-31
+
+### Added
+- **Phase 53: Society of Thought (SoT) & Security Hardening [完了]**
+    - **SoT Multi-Review Pipeline**: `Oracle::multi_review` を実装し、批判・洗練・判定の反復ループによる高度な意思決定基盤を確立。
+    - **SoT Progress Visibility**: `SoTProgress` イベントを新設。SSE 経由で推論の内部過程（メタ思考、批判内容等）をリアルタイムにフロントエンドへ配信可能に。
+    - **Port-Level SSRF Protection**: `SecurityPolicy` において、`127.0.0.1` および `localhost` へのアクセスを、許可された内部ポート（8188: Test Node, 11434: Ollama）のみに厳密に制限。
+    - **Local Guardrail Patterns**: `guardrails.rs` に指示無視や秘密情報流出の典型パターンに対するローカル検知レイヤーを追加。Bastion 外部バリデータとの二重化を実現。
+    - **Polite Begging Detection**: `BeggingSupervisor` を強化し、日本語の丁寧な表現を用いた金銭・ギフト要求も検知・遮断対象に。
+    - **Test Suite Stabilization**: `tests/redteam_drill.rs` の不要なインポートを削除し、警告をゼロ化。全 1,254 件のテストがガードレール有効化状態でパスすることを確認。
 
 ## [Unreleased] - 2026-03-30
 

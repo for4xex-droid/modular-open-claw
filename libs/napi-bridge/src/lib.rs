@@ -132,6 +132,7 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
                         None, // domain
                         None, // subtopic
                         None, // clone_origin_id
+                        false,
                     )
                     .await;
             }
@@ -221,6 +222,7 @@ pub async fn karma_learn_from_subagent(target_session_key: String, outcome: Stri
         Some("quarantine"),
         Some("subagent_outcome"),
         None,
+        false,
     )
     .await
     .map_err(map_err)?;
@@ -324,6 +326,7 @@ pub async fn karma_learn_from_tool(
             Some("safety"),
             Some("tool_error"),
             None,
+            false,
         )
         .await
         .map_err(map_err)?;
@@ -352,6 +355,7 @@ pub async fn karma_preserve_facts(session_file: String) -> Result<()> {
         Some("pivotal"),
         Some("checkpoint"),
         None,
+        false,
     )
     .await
     .map_err(map_err)?;

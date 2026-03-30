@@ -11,6 +11,7 @@ const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
     const [steps, setSteps] = useState<TrajectoryStep[]>([]);
+    const [graph, setGraph] = useState<{nodes: any[], edges: any[]} | null>(null);
     const [diagnosis, setDiagnosis] = useState<AgentDiagnosis | null>(null);
     const [selectedStep, setSelectedStep] = useState<TrajectoryStep | null>(null);
     const [jobId, setJobId] = useState<string>("");
@@ -25,7 +26,8 @@ const CausalVisualizer: React.FC = () => {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/trajectory/${id}`);
             if (!res.ok) throw new Error("Failed to fetch trajectory");
             const data = await res.json();
-            setSteps(data.steps || []);
+            setSteps(data.nodes.map((n: any) => n.step) || []);
+            setGraph(data);
 
             // Try to fetch diagnosis if job failed
             const diagRes = await authenticatedFetch(`${API_BASE}/api/v1/trajectory/${id}/diagnosis`);
@@ -43,34 +45,31 @@ const CausalVisualizer: React.FC = () => {
     };
 
     useEffect(() => {
-        if (!containerRef.current || steps.length === 0) return;
+        if (!containerRef.current || !graph || graph.nodes.length === 0) return;
 
-        const nodes = new DataSet<any>(steps.map((s) => ({
-            id: s.step_id,
-            label: `${s.action}\n[${s.step_category}]`,
-            title: `Step ${s.step_id}: ${s.action}`,
-            group: s.step_category.toLowerCase(),
-            color: getStepColor(s.step_category),
-            font: { color: '#fff', size: 14, face: 'Inter' },
-            shape: 'box',
-            margin: 10,
-            borderWidth: 2,
-            shadow: { enabled: true, color: 'rgba(0,0,0,0.3)', size: 5, x: 2, y: 2 }
+        const nodes = new DataSet<any>(graph.nodes.map((n) => {
+            const label = n.step.action.length > 40 ? n.step.action.substring(0, 37) + "..." : n.step.action;
+            return {
+                id: n.id,
+                label: `${label}\n[${n.step.step_category}]`,
+                title: `Step ${n.id}: ${n.step.action}`,
+                group: n.step.step_category.toLowerCase(),
+                color: getStepColor(n.step.step_category),
+                font: { color: '#fff', size: 14, face: 'Inter' },
+                shape: 'box',
+                margin: 10,
+                borderWidth: 2,
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.3)', size: 5, x: 2, y: 2 }
+            };
+        }));
+
+        const edges = new DataSet<any>(graph.edges.map(e => ({
+            ...e,
+            arrows: 'to',
+            color: { color: 'rgba(255,255,255,0.2)', highlight: 'var(--accent-cyan)' },
+            width: 2,
+            smooth: { type: 'cubicBezier', forceDirection: 'vertical' }
         })));
-
-        const edges = new DataSet<any>();
-        steps.forEach(s => {
-            if (s.parent_step_id) {
-                edges.add({
-                    from: parseInt(s.parent_step_id),
-                    to: s.step_id,
-                    arrows: 'to',
-                    color: { color: 'rgba(255,255,255,0.2)', highlight: 'var(--accent-cyan)' },
-                    width: 2,
-                    smooth: { type: 'cubicBezier', forceDirection: 'vertical' }
-                });
-            }
-        });
 
         const options: Options = {
             layout: {
@@ -103,7 +102,7 @@ const CausalVisualizer: React.FC = () => {
         return () => {
             networkRef.current?.destroy();
         };
-    }, [steps]);
+    }, [graph]);
 
     const getStepColor = (category: string) => {
         switch (category) {
@@ -114,6 +113,15 @@ const CausalVisualizer: React.FC = () => {
             case 'Correction': return { background: '#b71540', border: 'var(--accent-rose)' };
             default: return { background: '#2c3e50', border: '#7f8c8d' };
         }
+    };
+
+    const validateAndFetch = (id: string) => {
+        const jobIdRegex = /^[a-zA-Z0-9_\-]+$/;
+        if (!jobIdRegex.test(id)) {
+            setError("Invalid Job ID format. Only alphanumeric, _, and - allowed.");
+            return;
+        }
+        fetchTrajectory(id);
     };
 
     return (
@@ -132,10 +140,10 @@ const CausalVisualizer: React.FC = () => {
                             style={{ paddingRight: '3rem', width: '280px' }}
                             value={jobId}
                             onChange={(e) => setJobId(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && fetchTrajectory(jobId)}
+                            onKeyDown={(e) => e.key === 'Enter' && validateAndFetch(jobId)}
                         />
                         <button
-                            onClick={() => fetchTrajectory(jobId)}
+                            onClick={() => validateAndFetch(jobId)}
                             style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer' }}
                         >
                             <ChevronRight size={20} />

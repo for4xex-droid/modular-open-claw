@@ -523,6 +523,15 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("task_failed").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::GigPublished { job_id, intent_id, description, budget } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "intent_id": intent_id,
+                                "description": description,
+                                "budget": budget,
+                            });
+                            yield Ok(Event::default().event("gig_published").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

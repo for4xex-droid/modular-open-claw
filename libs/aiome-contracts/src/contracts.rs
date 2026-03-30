@@ -631,6 +631,109 @@ pub struct ReviewConfig {
     pub num_reflections: u8,
     /// 温度パラメータ
     pub temperature: f32,
+    /// [Phase 15+]: SoT エンジンの設定
+    #[serde(default)]
+    pub sot_config: Option<SoTConfig>,
+}
+
+/// SoT セッションの発動条件 (P-4)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub enum SoTTrigger {
+    /// ユーザーが明示的に指示
+    Manual,
+    /// GIG 予算が閾値以上
+    HighBudgetGig { threshold: u64 },
+    /// 自己進化イベント
+    SelfEvolution,
+    /// セキュリティ違反によるエスカレーション
+    ConstitutionalEscalation,
+}
+
+/// 多基準スコアリングの基準 (P-11)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub struct ScoringCriterion {
+    pub name: String,
+    pub min_score: f64,
+    pub weight: f64,
+}
+
+/// SoT エンジンの詳細設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub struct SoTConfig {
+    pub enabled: bool,
+    pub triggers: Vec<SoTTrigger>,
+    pub max_rounds: u8,
+    pub scoring_criteria: Vec<ScoringCriterion>,
+    pub use_fast_model_for_debate: bool,
+    pub adversarial_personas: Vec<String>,
+}
+
+impl Default for SoTConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            triggers: vec![SoTTrigger::Manual],
+            max_rounds: 3,
+            scoring_criteria: vec![
+                ScoringCriterion {
+                    name: "Accuracy".to_string(),
+                    min_score: 8.5,
+                    weight: 1.0,
+                },
+                ScoringCriterion {
+                    name: "Alignment".to_string(),
+                    min_score: 9.0,
+                    weight: 1.0,
+                },
+            ],
+            use_fast_model_for_debate: true,
+            adversarial_personas: vec!["Skeptical Auditor".to_string()],
+        }
+    }
+}
+
+/// SoT セッションの結果
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub enum SoTOutcome {
+    AllCriteriaPassed,
+    MaxRoundsReached,
+    BudgetExhausted,
+    Timeout,
+    Error(String),
+}
+
+/// SoT セッションイベント (P-8)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+#[serde(tag = "type", content = "data")]
+pub enum SoTEvent {
+    SessionStart {
+        session_id: String,
+        config: SoTConfig,
+        trigger: SoTTrigger,
+    },
+    RoleStart {
+        session_id: String,
+        role: String,
+        round: u8,
+    },
+    RoleOutput {
+        session_id: String,
+        role: String,
+        round: u8,
+        content: String,
+        token_count: u32,
+    },
+    Score {
+        session_id: String,
+        round: u8,
+        scores: Vec<(String, f64)>,
+        all_passed: bool,
+    },
+    SessionEnd {
+        session_id: String,
+        outcome: SoTOutcome,
+        total_tokens: u32,
+    },
 }
 
 impl Default for ReviewConfig {
@@ -638,6 +741,7 @@ impl Default for ReviewConfig {
         Self {
             num_reflections: 3,
             temperature: 0.1,
+            sot_config: None,
         }
     }
 }
@@ -655,6 +759,8 @@ pub struct MultiReviewResult {
     pub strengths: Vec<String>,
     /// 弱点のリスト
     pub weaknesses: Vec<String>,
+    /// [Phase 15+]: SoT 保存用 Artifact URI (P-12)
+    pub sot_artifact_uri: Option<String>,
 }
 
 /// レビューのコンテキスト

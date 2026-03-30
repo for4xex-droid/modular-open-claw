@@ -380,11 +380,28 @@ impl ContextEngine {
         let mut history_text = String::new();
         // 直近のメッセージから順にバジェットに詰め込む
         for m in history.iter().rev() {
-            let line = format!("{}: {}\n", m["role"], m["content"].as_str().unwrap_or(""));
-            if history_text.len() + line.len() > budget.max_history_chars {
+            let role = m["role"].as_str().unwrap_or("user");
+            let content = m["content"].as_str().unwrap_or("");
+
+            // RT-8: メッセージ単位での切り詰め (1メッセージが巨大すぎる場合の保護)
+            let safe_content = if content.len() > budget.max_history_chars {
+                &content[..budget.max_history_chars]
+            } else {
+                content
+            };
+
+            let line = format!("{}: {}\n", role, safe_content);
+            if !history_text.is_empty()
+                && history_text.len() + line.len() > budget.max_history_chars
+            {
                 break;
             }
             history_text = format!("{}{}", line, history_text); // 前に追加 (時系列維持)
+
+            // 1メッセージ追加した時点でバジェット超えなら終了
+            if history_text.len() >= budget.max_history_chars {
+                break;
+            }
         }
 
         let context_block = format!(
@@ -473,8 +490,9 @@ pub mod tests {
                 "Technical",
                 "hash",
                 Some("Security Test"),
-                None,
-                None,
+                None,  // subtopic
+                None,  // clone_origin_id
+                false, // is_private
             )
             .await
             .unwrap();
@@ -524,8 +542,9 @@ pub mod tests {
                 "Technical",
                 "hash",
                 Some("DoS Test"),
-                None,
-                None,
+                None,  // subtopic
+                None,  // clone_origin_id
+                false, // is_private
             )
             .await
             .unwrap();
@@ -545,5 +564,64 @@ pub mod tests {
             "Context block for facts should be budget-limited. Got length: {}",
             context.len()
         );
+    }
+
+    #[tokio::test]
+    async fn test_context_history_budget_limit() {
+        // Arrange
+        let provider = Arc::new(crate::job_queue::tests::MockLlmProvider {
+            json_response: "".into(),
+        });
+        let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
+        let job_queue = Arc::new(job_queue);
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+
+        let channel_id = "test_channel";
+        let huge_content = "H".repeat(2000);
+
+        // Add history message (2000 chars)
+        job_queue
+            .store_chat_message(channel_id, "user", &huge_content)
+            .await
+            .unwrap();
+
+        // Custom budget with 1000 char history limit
+        let mut budget = ContextBudget::default();
+        budget.max_history_chars = 1000;
+
+        // Act
+        // Use the existing budgeted method
+        let (_, history) = engine
+            .fetch_budgeted_context(channel_id, "Category", budget)
+            .await
+            .unwrap();
+
+        // Assert
+        assert!(
+            history.len() <= 1000 + 100,
+            "History should be truncated to 1000 chars. Got: {}",
+            history.len()
+        );
+        assert!(
+            !history.is_empty(),
+            "History should contain at least a portion of the huge message"
+        );
+    }
+
+    #[test]
+    fn test_calculate_mood_summary_resilience() {
+        // NaN/Inf 攻撃に対する耐性テスト
+        let mut entry_nan = KarmaEntry::default();
+        entry_nan.somatic_valence = Some(f64::NAN);
+        let mut entry_inf = KarmaEntry::default();
+        entry_inf.somatic_valence = Some(f64::INFINITY);
+
+        // 正常な値と混ぜた場合
+        let mut entry_ok = KarmaEntry::default();
+        entry_ok.somatic_valence = Some(1.0);
+
+        let mood = ContextEngine::calculate_mood_summary(&[entry_nan, entry_inf, entry_ok]);
+        assert_eq!(mood, "Extremely Positive"); // NaN/Inf は除外され、1.0 だけが残るはず
     }
 }

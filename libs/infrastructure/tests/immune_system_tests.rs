@@ -121,6 +121,7 @@ async fn test_analyze_threats_and_verify() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();

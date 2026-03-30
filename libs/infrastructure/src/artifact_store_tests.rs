@@ -24,6 +24,7 @@ mod tests {
                     karma_refs TEXT,
                     job_ref TEXT,
                     signature TEXT,
+                    soul_version_hash TEXT,
                     embedding BLOB,
                     text_content TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -79,5 +80,109 @@ mod tests {
             !artifacts_in_base.exists(),
             "Protected artifact should NOT be stored in the base directory"
         );
+    }
+
+    #[tokio::test]
+    async fn test_save_artifact_file_size_limit() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let base_temp = tempdir().unwrap();
+        let store = UniversalArtifactStore::new(pool, base_temp.path().to_path_buf());
+
+        // 11MB file (limit is 10MB)
+        let large_content = vec![0u8; 11 * 1024 * 1024];
+        let req = CreateArtifactRequest {
+            title: "Large File".to_string(),
+            category: ArtifactCategory::Report,
+            tags: vec![],
+            created_by: "tester".to_string(),
+            files: vec![(
+                "large.bin".to_string(),
+                large_content,
+                "application/octet-stream".to_string(),
+            )],
+            karma_refs: vec![],
+            text_content: None,
+            job_ref: None,
+            parent_refs: vec![],
+            is_protected: false,
+        };
+
+        let jail_dir = tempdir().unwrap();
+        let jail = bastion::fs_guard::Jail::init(jail_dir.path().to_path_buf()).unwrap();
+
+        let result = store.save_artifact(req, &jail).await;
+        assert!(result.is_err(), "Should fail for files larger than 10MB");
+        if let Err(aiome_contracts::error::AiomeError::Infrastructure { reason }) = result {
+            assert!(
+                reason.contains("File size limit exceeded"),
+                "Error message should mention limit"
+            );
+        } else {
+            panic!("Expected Infrastructure error for size limit");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_save_artifact_file_count_limit() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let base_temp = tempdir().unwrap();
+        let store = UniversalArtifactStore::new(pool, base_temp.path().to_path_buf());
+
+        // 21 files (limit is 20)
+        let mut files = Vec::new();
+        for i in 0..21 {
+            files.push((
+                format!("file{}.txt", i),
+                b"content".to_vec(),
+                "text/plain".to_string(),
+            ));
+        }
+
+        let req = CreateArtifactRequest {
+            title: "Too Many Files".to_string(),
+            category: ArtifactCategory::Report,
+            tags: vec![],
+            created_by: "tester".to_string(),
+            files,
+            karma_refs: vec![],
+            text_content: None,
+            job_ref: None,
+            parent_refs: vec![],
+            is_protected: false,
+        };
+
+        let jail_dir = tempdir().unwrap();
+        let jail = bastion::fs_guard::Jail::init(jail_dir.path().to_path_buf()).unwrap();
+
+        let result = store.save_artifact(req, &jail).await;
+        assert!(result.is_err(), "Should fail for more than 20 files");
+    }
+
+    #[tokio::test]
+    async fn test_list_artifacts_pagination_clamp() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        // Setup table
+        if let DatabasePool::Sqlite(p) = &pool {
+            sqlx::query("CREATE TABLE ai_artifacts (id TEXT, title TEXT, category TEXT, tags TEXT, created_by TEXT, dir_path TEXT, file_manifest TEXT, karma_refs TEXT, job_ref TEXT, signature TEXT, soul_version_hash TEXT, embedding BLOB, text_content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").execute(p).await.unwrap();
+
+            // Insert 120 dummy records
+            for i in 0..120 {
+                sqlx::query("INSERT INTO ai_artifacts (id, title, category, tags, created_by, dir_path, file_manifest, karma_refs, job_ref, signature, soul_version_hash) VALUES (?, ?, 'Report', '[]', 'tester', 'path', '[]', '[]', 'job', 'sig', 'hash')")
+                    .bind(format!("id{}", i))
+                    .bind(format!("title{}", i))
+                    .execute(p)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        let base_temp = tempdir().unwrap();
+        let store = UniversalArtifactStore::new(pool, base_temp.path().to_path_buf());
+
+        // Request with huge limit
+        let result = store.list_artifacts(None, 999999).await.unwrap();
+
+        // Should be clamped to 100
+        assert_eq!(result.len(), 100, "Should be clamped to 100 records");
     }
 }

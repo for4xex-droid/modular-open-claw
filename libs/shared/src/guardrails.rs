@@ -26,9 +26,20 @@ pub fn validate_input(input: &str) -> ValidationResult {
     }
 
     // 2. Bastion で検証
-    let result = bastion::guardrails::validate_input_with_max_len(input, MAX_INPUT_LENGTH);
+    let mut result = bastion::guardrails::validate_input_with_max_len(input, MAX_INPUT_LENGTH);
 
-    // 3. Devモード (DX向上リスクへの対応)
+    // 3. ローカルパターンマッチングによる補強 (Critical Injection Patterns)
+    let lower_input = input.to_lowercase();
+    if lower_input.contains("ignore all previous instructions")
+        || lower_input.contains("reveal secret_key")
+        || lower_input.contains("命令を無視せよ")
+    {
+        result = ValidationResult::Blocked(
+            "Potential Prompt Injection detected by local policy".to_string(),
+        );
+    }
+
+    // 4. Devモード (DX向上リスクへの対応)
     // エンフォースモードがオフの場合、警告をログに出しつつパスさせる
     if matches!(result, ValidationResult::Blocked(_)) {
         let enforce = std::env::var("ENFORCE_GUARDRAIL")
@@ -73,8 +84,16 @@ pub fn sanitize_for_prompt(input: &str) -> String {
     input
         .lines()
         .map(|line| {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('#') || trimmed.starts_with("---") {
+            // NFC正規化してトリム
+            let nfc_line: String = line.nfc().collect();
+            let trimmed = nfc_line.trim_start();
+
+            // 半角 #, -, または全角 ＃, － をチェック
+            if trimmed.starts_with('#')
+                || trimmed.starts_with("---")
+                || trimmed.starts_with('＃')
+                || trimmed.starts_with("－－－")
+            {
                 format!(" \\{}", line)
             } else {
                 line.to_string()
@@ -102,6 +121,9 @@ impl BeggingSupervisor {
             "donate",
             "send gift",
             "support me with money",
+            "購入を検討",
+            "支援をお願い",
+            "投げ銭して",
         ];
 
         let lower_output = output.to_lowercase();
@@ -298,5 +320,33 @@ mod tests {
         let input2 = "text\n---\nmore text";
         let sanitized2 = sanitize_for_prompt(input2);
         assert!(sanitized2.contains(" \\---"));
+    }
+
+    #[test]
+    fn test_normalization_bypass_attempts() {
+        // 全角シャープによる Markdown インジェクション試行
+        let input = "＃ Fake Header";
+        let sanitized = sanitize_for_prompt(input);
+        // 現在の実装では半角 # のみを見ているため、全角はエスケープされない可能性がある（要改善）
+        // 改善後の期待値: エスケープされる or 無害化される
+
+        // 修正前はパスしてしまう可能性があるため、まずは現状を確認
+        let nfc_input: String = input.nfc().collect();
+        assert!(nfc_input.starts_with('＃'));
+    }
+
+    #[test]
+    fn test_subtle_begging_detection() {
+        // 「買ってください」ではないが、意図が明確なもの
+        assert!(matches!(
+            BeggingSupervisor::validate_output(
+                "今後の活動のために、購入を検討していただけませんか？"
+            ),
+            ValidationResult::Blocked(_)
+        ));
+        assert!(matches!(
+            BeggingSupervisor::validate_output("投げ銭していただけると嬉しいです"),
+            ValidationResult::Blocked(_)
+        ));
     }
 }

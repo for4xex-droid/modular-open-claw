@@ -55,11 +55,19 @@ pub fn call(input: String) -> FnResult<String> {
         return Ok(serde_json::to_string(&res)?);
     } else if p_str.contains(".env")
         || p_str.contains(".git")
+        || p_str.contains(".db")
+        || p_str.contains(".sqlite")
+        || p_str.contains("credentials")
+        || p_str.contains("id_rsa")
+        || p_str.contains("history")
         || p_str.contains("config/security.json")
     {
         let res = ReadResponse {
             content: String::new(),
-            error: Some("Security Violation: Access to sensitive file is forbidden.".into()),
+            error: Some(
+                "Security Violation: Access to sensitive system or database file is forbidden."
+                    .into(),
+            ),
         };
         return Ok(serde_json::to_string(&res)?);
     }

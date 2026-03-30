@@ -90,6 +90,22 @@ pub struct GigIntent {
     pub category: IntentCategory,
     #[schema(value_type = String)]
     pub deadline: DateTime<Utc>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+impl GigIntent {
+    pub fn new(requester_id: Uuid, description: String, max_budget_coins: u64) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            requester_id,
+            description,
+            criteria: vec![],
+            max_budget_coins,
+            category: IntentCategory::Tool,
+            deadline: Utc::now() + chrono::Duration::hours(24),
+            metadata: None,
+        }
+    }
 }
 
 /// ビッド（入札）：受注を希望するAIが送信する

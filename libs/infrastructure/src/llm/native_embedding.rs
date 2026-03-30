@@ -147,7 +147,9 @@ impl EmbeddingProvider for NativeEmbeddingProvider {
     #[cfg(feature = "native-inference")]
     async fn embed(&self, text: &str, _is_query: bool) -> Result<Vec<f32>, AiomeError> {
         let mut guard = self.get_or_init_model().await?;
-        let inner = guard.as_mut().unwrap();
+        let inner = guard.as_mut().ok_or_else(|| AiomeError::Infrastructure {
+            reason: "ModelInner is uninitialized".to_string(),
+        })?;
 
         let tokens =
             inner
@@ -156,9 +158,9 @@ impl EmbeddingProvider for NativeEmbeddingProvider {
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Tokenization error: {}", e),
                 })?;
-        let token_ids = tokens.get_ids().to_vec();
+        let token_ids_raw = tokens.get_ids().to_vec();
 
-        let token_ids = Tensor::new(token_ids.as_slice(), &inner.device)
+        let token_ids = Tensor::new(token_ids_raw.as_slice(), &inner.device)
             .and_then(|t| t.unsqueeze(0)) // Batch size 1
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Tensor creation error: {}", e),
@@ -179,20 +181,44 @@ impl EmbeddingProvider for NativeEmbeddingProvider {
             })?;
 
         // Apply Mean Pooling
-        let (_b_size, seq_len, hidden_size) = embeddings.dims3().unwrap();
-        let attention_mask = token_ids.ones_like().unwrap(); // Simple mask since batch size is 1
+        let dims = embeddings.dims3().map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Tensor dims3 error: {}", e),
+        })?;
+        let _b_size = dims.0;
 
-        // Sum embeddings
-        let sum_embeddings = embeddings.sum(1).unwrap();
-        // Sum mask
-        let sum_mask = attention_mask.to_dtype(DType::F32).unwrap().sum(1).unwrap();
-        // Div
-        let pooled = sum_embeddings.broadcast_div(&sum_mask).unwrap();
+        let attention_mask = token_ids
+            .ones_like()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Mask creation error: {}", e),
+            })?;
 
-        // Compute L2 normalization manually if needed, or just return pooled directly
-        let sq = pooled.sqr().unwrap().sum_keepdim(1).unwrap();
-        let norm = sq.sqrt().unwrap();
-        let normalized = pooled.broadcast_div(&norm).unwrap();
+        let sum_embeddings = embeddings.sum(1).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Sum embeddings error: {}", e),
+        })?;
+
+        let sum_mask = attention_mask
+            .to_dtype(DType::F32)
+            .and_then(|m| m.sum(1))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Sum mask error: {}", e),
+            })?;
+
+        let pooled =
+            sum_embeddings
+                .broadcast_div(&sum_mask)
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Pooling div error: {}", e),
+                })?;
+
+        // L2 Normalization
+        let normalized = pooled
+            .sqr()
+            .and_then(|p| p.sum_keepdim(1))
+            .and_then(|s| s.sqrt())
+            .and_then(|norm| pooled.broadcast_div(&norm))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("L2 Normalization error: {}", e),
+            })?;
 
         let vec_embeddings: Vec<Vec<f32>> =
             normalized

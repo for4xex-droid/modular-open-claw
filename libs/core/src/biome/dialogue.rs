@@ -127,6 +127,7 @@ impl DialogueManager {
                 Some("Biome"),
                 Some(topic_id),
                 None,
+                false,
             )
             .await?;
 

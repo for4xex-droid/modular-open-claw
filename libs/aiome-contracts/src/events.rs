@@ -59,6 +59,13 @@ pub enum CoreEvent {
         job_id: String,
         error: String,
     },
+    /// Phase 51: Autonomous GIG Publishing
+    GigPublished {
+        job_id: String,
+        intent_id: String,
+        description: String,
+        budget: u64,
+    },
     /// Phase 6: Live API からの音声チャンク
     LiveAudioChunk {
         session_id: String,
@@ -73,6 +80,10 @@ pub enum CoreEvent {
     /// Phase 6: Live API ターン完了
     LiveTurnEnd {
         session_id: String,
+    },
+    /// Phase 15+: SoT 審議プログレス
+    SoTProgress {
+        event: crate::contracts::SoTEvent,
     },
 }
 

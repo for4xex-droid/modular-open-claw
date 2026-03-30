@@ -7,6 +7,7 @@
 
 use crate::error::AppError;
 use crate::{auth::Authenticated, AppState};
+use aiome_contracts::AuditLogger;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -149,14 +150,25 @@ pub async fn update_setting(
         "telegram_token",
         "api_server_secret",
         "llm_api_key",
+        "bg_llm_api_key",
+        "stripe_api_key",
+        "openai_api_key",
+        "anthropic_api_key",
+        "gemini_api_key",
     ];
     let is_secret = secrets.contains(&payload.key.as_str());
 
-    // 5. Audit Logging
-    info!(
-        "🔧 [Settings] Audit: Key '{}' updated (category: {}, secret: {})",
-        payload.key, payload.category, is_secret
-    );
+    // 5. Audit Logging (Global Ledger)
+    let details = serde_json::json!({
+        "key": payload.key,
+        "category": payload.category,
+        "is_secret": is_secret,
+        "requested_by": _auth.agent_id,
+    });
+    let _ = state
+        .audit_logger
+        .log_event("SETTING_UPDATE", "SYSTEM_SETTINGS", &details)
+        .await;
 
     state
         .job_queue

@@ -116,6 +116,9 @@ impl TrajectoryOps for SqliteTrajectoryStore {
 
         let q = format!("INSERT INTO trajectory_steps (job_id, step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category, completion_criteria, interaction_id) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13), self.pool.ph(14));
+
+        let parent_id_cast = step.parent_step_id.map(|id| id as i64);
+
         sql_exec!(
             &self.pool,
             &q,
@@ -130,7 +133,7 @@ impl TrajectoryOps for SqliteTrajectoryStore {
             is_critical,
             &failure_cat,
             &step.reasoning,
-            &step.parent_step_id,
+            parent_id_cast,
             &step_cat,
             &step.completion_criteria,
             &step.interaction_id
@@ -172,7 +175,9 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
                         failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
                         reasoning: row.get("reasoning"),
-                        parent_step_id: row.get("parent_step_id"),
+                        parent_step_id: row
+                            .get::<Option<String>, _>("parent_step_id")
+                            .and_then(|v| v.parse().ok()),
                         step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),
@@ -212,7 +217,9 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
                         failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
                         reasoning: row.get("reasoning"),
-                        parent_step_id: row.get("parent_step_id"),
+                        parent_step_id: row
+                            .get::<Option<String>, _>("parent_step_id")
+                            .and_then(|v| v.parse().ok()),
                         step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),

@@ -10,7 +10,7 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published';
     data: AgentStats | Karma | unknown;
 };
 
@@ -92,7 +92,7 @@ export const useSystemVitality = () => {
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published'
                         ];
 
                         if (validEvents.includes(msg.event)) {

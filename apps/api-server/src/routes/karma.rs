@@ -85,6 +85,7 @@ pub async fn trigger_failure_demo(
             None,
             None,
             None,
+            false,
         )
         .await
     {

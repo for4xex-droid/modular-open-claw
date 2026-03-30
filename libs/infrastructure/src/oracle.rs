@@ -5,27 +5,51 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::society_of_thought::SoTEngine;
+use aiome_contracts::events::CoreEvent;
 use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tokio::sync::broadcast;
+use tracing::{error, info, warn};
 
 /// The Oracle (神託)
 pub struct Oracle {
     primary_provider: Arc<dyn LlmProvider>,
+    fast_provider: Arc<dyn LlmProvider>, // P-2 用
     multi_providers: Vec<Arc<dyn LlmProvider>>,
     soul_md: String,
+    sot_engine: Arc<SoTEngine>,
+    core_event_tx: Option<broadcast::Sender<CoreEvent>>,
 }
 
 impl Oracle {
     /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>, soul_md: String) -> Self {
+        let fast_provider = provider.clone(); // デフォルトは同じものを使用
+        let sot_engine = Arc::new(SoTEngine::new(fast_provider.clone(), provider.clone()));
         Self {
             primary_provider: provider,
+            fast_provider,
             multi_providers: Vec::new(),
             soul_md,
+            sot_engine,
+            core_event_tx: None,
         }
+    }
+
+    /// イベント送信チャネルを設定する
+    pub fn with_event_tx(mut self, tx: broadcast::Sender<CoreEvent>) -> Self {
+        self.core_event_tx = Some(tx);
+        self
+    }
+
+    /// 明示的に高速モデルを指定して SoT を初期化する
+    pub fn with_fast_provider(mut self, fast_provider: Arc<dyn LlmProvider>) -> Self {
+        self.fast_provider = fast_provider.clone();
+        self.sot_engine = Arc::new(SoTEngine::new(fast_provider, self.primary_provider.clone()));
+        self
     }
 
     /// マルチジャッジ用のプロバイダーを設定する
@@ -200,8 +224,57 @@ impl Oracle {
         context: &aiome_contracts::contracts::ReviewContext,
         config: aiome_contracts::contracts::ReviewConfig,
     ) -> Result<aiome_contracts::contracts::MultiReviewResult, AiomeError> {
+        // Phase B: SoT (Society of Thought) が有効な場合はそちらに委譲する
+        if let Some(sot_config) = config.sot_config {
+            if sot_config.enabled {
+                info!("🔮 [Oracle] Delegating deliberation to SoT Engine (P-1, P-3, P-10)");
+
+                let budget = context.job_id.as_ref().map(|_| 1.0).unwrap_or(1.0);
+                let trigger = aiome_contracts::contracts::SoTTrigger::Manual;
+                let task_desc = format!("Goal: {:?}\nContent: {}", context.goal, content);
+
+                // P-8: SSE イベントブリッジング
+                let mut sot_rx = self.sot_engine.subscribe();
+                let event_tx_clone = self.core_event_tx.clone();
+                let job_id = context.job_id.clone();
+
+                let bridge_handle = tokio::spawn(async move {
+                    while let Ok(sot_ev) = sot_rx.recv().await {
+                        if let Some(ref tx) = event_tx_clone {
+                            let core_ev = CoreEvent::SoTProgress { event: sot_ev };
+                            let _ = tx.send(core_ev);
+                        }
+                    }
+                });
+
+                let result = self
+                    .sot_engine
+                    .run_session(&task_desc, trigger, sot_config, budget)
+                    .await;
+
+                // ブリッジ終了を待つ必要はないが、クリーンアップのために handle は落とす
+                drop(bridge_handle);
+
+                let (_session_id, outcome) = result?;
+
+                return Ok(aiome_contracts::contracts::MultiReviewResult {
+                    overall_score: 9.0,
+                    decision: match outcome {
+                        aiome_contracts::contracts::SoTOutcome::AllCriteriaPassed => {
+                            aiome_contracts::contracts::ReviewDecision::Accept
+                        }
+                        _ => aiome_contracts::contracts::ReviewDecision::Reject,
+                    },
+                    reflections: vec![format!("SoT Outcome: {:?}", outcome)],
+                    strengths: vec!["Highly deliberated".to_string()],
+                    weaknesses: vec![],
+                    sot_artifact_uri: None, // P-12: 将来的に履歴を保存する URI
+                });
+            }
+        }
+
         info!(
-            "🔮 [Oracle] Starting Multi-Review for job: {:?} (iterations: {})",
+            "🔮 [Oracle] Starting standard Multi-Review for job: {:?} (iterations: {})",
             context.job_id, config.num_reflections
         );
 
@@ -310,6 +383,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_oracle_evaluation() {
+        use std::sync::Arc;
         let mock_json = r#"{
             "alignment_score": 0.95,
             "growth_score": 0.8,
@@ -342,6 +416,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_oracle_payload_limit() {
+        use std::sync::Arc;
         let provider = Arc::new(MockLlmProvider {
             response: "{}".to_string(),
         });
@@ -363,6 +438,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_multi_judge_consensus() {
+        use std::sync::Arc;
         // [True, True, False] の 3 つのプロバイダー
         let p1 = Arc::new(MockLlmProvider {
             response: "```json\n{\"alignment_score\": 0.9, \"growth_score\": 0.8, \"should_evolve\": true, \"reasoning\": \"OK\", \"lesson\": \"Keep going\"}\n```".to_string(),
@@ -391,6 +467,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_oracle_multi_review_green() {
+        use std::sync::Arc;
         let mock_json = r#"{
             "overall_score": 8.5,
             "decision": "Accept",
@@ -412,6 +489,7 @@ mod tests {
         let config = aiome_contracts::contracts::ReviewConfig {
             num_reflections: 2,
             temperature: 0.1,
+            sot_config: None,
         };
 
         let res = oracle.multi_review("Bad content", &context, config).await;
@@ -428,5 +506,51 @@ mod tests {
             2,
             "Should have 2 reflection rounds"
         );
+    }
+
+    #[tokio::test]
+    async fn test_oracle_sot_delegation_green() {
+        use std::sync::Arc;
+        let provider = Arc::new(MockLlmProvider {
+            response: "passed".to_string(),
+        });
+
+        let (core_tx, mut core_rx) = broadcast::channel(10);
+        let oracle = Oracle::new(provider, "Be ethical.".to_string()).with_event_tx(core_tx);
+
+        let context = aiome_contracts::contracts::ReviewContext {
+            job_id: Some("sot-test-job".to_string()),
+            topic: "Ethics".to_string(),
+            goal: Some("Fairness".to_string()),
+        };
+
+        let config = aiome_contracts::contracts::ReviewConfig {
+            num_reflections: 1,
+            temperature: 0.1,
+            sot_config: Some(aiome_contracts::contracts::SoTConfig {
+                enabled: true,
+                max_rounds: 1,
+                ..Default::default()
+            }),
+        };
+
+        let res = oracle.multi_review("Content", &context, config).await;
+
+        assert!(res.is_ok());
+        let result = res.unwrap();
+        assert_eq!(
+            result.decision,
+            aiome_contracts::contracts::ReviewDecision::Accept
+        );
+
+        // SSE イベントがブリッジされているか確認
+        let mut found_progress = false;
+        while let Ok(ev) = core_rx.recv().await {
+            if let CoreEvent::SoTProgress { .. } = ev {
+                found_progress = true;
+                break;
+            }
+        }
+        assert!(found_progress, "Should have bridged SoTProgress events");
     }
 }

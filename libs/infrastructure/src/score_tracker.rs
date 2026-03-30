@@ -148,8 +148,9 @@ impl ScoreTracker {
             &history[..]
         };
         let current_growth = if last_7.len() > 1 {
-            // RT-5 FIX: Safe access with .first()/.last() — guaranteed Some due to len > 1
-            (last_7.last().unwrap() - last_7.first().unwrap()) / (last_7.len() as f64)
+            let first = last_7.first().copied().unwrap_or(0.0);
+            let last = last_7.last().copied().unwrap_or(0.0);
+            (last - first) / (last_7.len() as f64)
         } else {
             0.0
         };
@@ -177,7 +178,9 @@ impl ScoreTracker {
         };
 
         let predicted_growth = if predicted.len() > 1 {
-            (predicted.last().unwrap() - predicted.first().unwrap()) / (predicted.len() as f64)
+            let first = predicted.first().copied().unwrap_or(0.0);
+            let last = predicted.last().copied().unwrap_or(0.0);
+            (last - first) / (predicted.len() as f64)
         } else {
             0.0
         };

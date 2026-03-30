@@ -73,6 +73,12 @@ impl CoreOps for UniversalJobQueue {
         agent_id: Option<uuid::Uuid>,
         priority: i32,
     ) -> Result<String, AiomeError> {
+        // Phase 52.3: Constitutional Validation
+        // Perform Axiomatic Safety check before persistence.
+        if let Some(ref manifest) = permission_manifest {
+            self.security_validator.validate_manifest(manifest).await?;
+        }
+
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         let directives = karma_directives.unwrap_or("{}");

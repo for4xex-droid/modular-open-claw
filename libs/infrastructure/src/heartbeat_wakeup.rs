@@ -54,7 +54,9 @@ impl HeartbeatWakeupService {
     pub async fn run_wakeup_ping(&self) -> Option<String> {
         let filename = "HEARTBEAT.md";
         let target_path = self.workspace_dir.join(filename);
-        let content = fs::read_to_string(&target_path).unwrap_or_default();
+        let content = fs::read(target_path)
+            .map(|bytes| String::from_utf8_lossy(&bytes[..bytes.len().min(5000)]).to_string())
+            .unwrap_or_default();
 
         // G-24: もしコンテンツが空、または実効性のない場合は早期リターン
         if content.trim().is_empty() || self.is_effectively_empty(&content) {
@@ -117,7 +119,13 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
                         None
                     } else {
                         info!("💓 [Heartbeat] Proactive Talk generated.");
-                        Some(reply.to_string())
+                        // RT-5 Sanitization: Remove any dangerous patterns (shell, markdown injection)
+                        let sanitized = reply
+                            .replace("`", "")
+                            .replace("sudo", "")
+                            .replace("rm -rf", "")
+                            .replace("sh ", "");
+                        Some(sanitized)
                     }
                 }
                 Err(e) => {

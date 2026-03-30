@@ -68,6 +68,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 45 | **Somatic Poisoning** | **Extreme valence (-999.0) in DB** | 🔴 High | **DB Read-time `clamp(-1.0, 1.0)` & `.filter(is_finite)` (Phase 2B)** |
 | 46 | **Markdown Injection** | **`#` Headers in Karma/Summary** | 🔴 High | **`sanitize_for_prompt` escaping leading `#` (Phase 2B)** |
 | 47 | **Context Overflow DoS** | **Massive fact blobs injected into Prompt** | 🔴 High | **Strict ContextBudget evaluation loops (Phase 2B)** |
+| 48 | **Internal SSRF (Localhost)** | **Attack on local services via valid tool** | 🔴 High | **SecurityPolicy Port-level Validation (8188/11434) (Phase 53)** |
+| 49 | **Prompt Injection (Internal)** | **Ignore all instructions / secret_key** | 🔴 High | **Local Keyword Guardrail Patterns (guardrails.rs) (Phase 53)** |
+
 ## 3. Defense Architecture
 
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
@@ -81,6 +84,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Belief Injection Defense (Phase 49)**: Implements `sanitize_karma_input` and `<karma>` XML tagging in the `BeliefConsistencyGate` to prevent LLM instructions from hijacking the belief validation process (RT-1).
 - **Cognitive Hardening (Phase 2B)**: Implements `sanitize_for_prompt` in `libs/shared/src/guardrails.rs` to escape Markdown headers (`#`, `---`) from stored `Karma` or `Summary` data, physically preventing prompt injection attacks that spoof system instructions. Also enforces strict `ContextBudget` accumulated length limits inside `ContextEngine` to prevent OOM/DoS via massive injected text blocks. Furthermore, extreme emotional inputs (`somatic_valence`) are clamped between `-1.0` and `1.0` with `NaN` elimination, preventing permanent "depressed" states from poisoned Database data.
 - **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
+- **Local Guardrail Patterns (Phase 53)**: Implements a second layer of defense inside `guardrails.rs` using high-performance keyword matching (e.g., "Ignore all instructions", "secret_key"). This provides immediate, low-latency protection against common prompt injection and exfiltration patterns, complementing the heavier LLM-based Bastion validators.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
@@ -92,6 +96,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Gift Policy Enforcement (Phase 7.2)**: The `GiftEngine` enforces a hard limit of $5.0 USD per autonomous gift and requires valid administrator (`MASTER_EMAIL`) credentials to prevent asset draining by malicious or hallucinating agents.
 - **5-Layer Shadow Sandbox (Phase 43)**: `DockerConductor` enforces five progressive security layers for sub-agent delegation: 1) **Fork Bomb Protection** (Semaphore limit: 3), 2) **Economic Binding** (Validation via `CommerceEngine`), 3) **Absolute Sterilization** (Pre-execution environment isolation), 4) **BastionGuard Strict** (Read-only root, no network by default), and 5) **Technical Timeout** (300s hard kill).
 - **Hybrid Context Isolation (Phase 5)**: `InteractionsGeminiProvider` isolates conversation state per session using `interaction_id`. This prevents cross-session context leakage and ensures that the agent's "chain of thought" (Reasoning Log) is tied to specific, authenticated job contexts within the `TrajectoryStore`.
+- **Port-Level SSRF Shield (Phase 53)**: `SecurityPolicy::validate_url` explicitly blocks access to `127.0.0.1` and `localhost` UNLESS the destination port matches allowed internal services (8188 for ComfyUI, 11434 for Ollama). This prevents agents from attacking local administration interfaces or data stores (e.g., Redis, DB) via SSRF.
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
@@ -163,4 +168,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-30 (Phase 2B / Cognitive Hardening)*
+*最終更新: 2026-03-31 (Phase 53 / SoT & Security Hardening)*

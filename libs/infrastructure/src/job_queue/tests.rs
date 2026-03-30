@@ -21,6 +21,7 @@ use aiome_contracts::traits::{
 };
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
+use aiome_core::security::PermissionManifest;
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};
 use aiome_core::trajectory::TrajectoryStore;
 use async_trait::async_trait;
@@ -156,6 +157,7 @@ async fn test_sqlite_job_queue_karma_storage() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -185,6 +187,7 @@ async fn test_sqlite_job_queue_karma_somatic_valence() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -356,6 +359,7 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -384,6 +388,7 @@ async fn test_sqlite_job_queue_incorporate_karma() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -496,6 +501,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -528,6 +534,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -580,12 +587,10 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
         .enqueue("Task", "Real Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
-    // Use manual SQL to insert embedding matched to MockEmbedProvider's output
+    // Use PolarQuantEncoder to generate standard format embedding
     let id = uuid::Uuid::new_v4().to_string();
-    let emb: Vec<u8> = vec![1.0f32; 1536]
-        .iter()
-        .flat_map(|f| f.to_le_bytes())
-        .collect();
+    let encoder = crate::polar_quant::PolarQuantEncoder::new(4, 32);
+    let emb = encoder.encode(&vec![1.0; 1536]);
     sqlx::query("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, created_at, karma_embedding) VALUES (?, ?, 'Technical', 'skill-1', 'Real Lesson', datetime('now'), ?)")
         .bind(&id).bind(&job_id).bind(&emb).execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
@@ -620,6 +625,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -660,6 +666,7 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -708,6 +715,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -723,6 +731,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -738,6 +747,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -752,6 +762,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -790,6 +801,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -803,6 +815,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -930,7 +943,7 @@ async fn test_sqlite_trajectory_store() {
         is_critical_failure: false,
         failure_category: None,
         reasoning: Some("Strategic planning for expansion".into()),
-        parent_step_id: Some("step-0".into()),
+        parent_step_id: Some(0),
         step_category: aiome_core::trajectory::StepCategory::Planning,
         completion_criteria: None,
         interaction_id: None,
@@ -959,7 +972,7 @@ async fn test_sqlite_trajectory_store() {
         trajectory[0].reasoning,
         Some("Strategic planning for expansion".into())
     );
-    assert_eq!(trajectory[0].parent_step_id, Some("step-0".into()));
+    assert_eq!(trajectory[0].parent_step_id, Some(0));
     assert_eq!(trajectory[0].step_category, StepCategory::Planning);
 
     // 3. Store Diagnosis
@@ -1111,6 +1124,7 @@ async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
         None,
         None,
         None,
+        false,
     )
     .await
     .unwrap();
@@ -1125,4 +1139,92 @@ async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
         .await
         .unwrap();
     info!("Remaining entries after GC: {}", res.entries.len());
+}
+
+#[tokio::test]
+async fn test_federation_export_privacy_filter() {
+    let (jq, _tmp) = create_test_queue().await;
+
+    // 0. Enqueue jobs to satisfy foreign key constraints
+    let job1 = jq
+        .enqueue("Task", "Public", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+    let job2 = jq
+        .enqueue("Task", "Private", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+
+    // 1. Store a public karma
+    jq.store_karma(
+        &job1,
+        "skill1",
+        "Public Lesson",
+        "Synthesized",
+        "hash1",
+        Some("general"),
+        Some("test"),
+        None,
+        false, // false = is_private
+    )
+    .await
+    .unwrap();
+
+    // 2. Store a private karma
+    jq.store_karma(
+        &job2,
+        "skill1",
+        "Private Lesson",
+        "Synthesized",
+        "hash1",
+        Some("general"),
+        Some("test"),
+        None,
+        true, // true = is_private
+    )
+    .await
+    .unwrap();
+
+    // 3. Export
+    let (karmas, _, _) = jq.export_federated_data(None).await.unwrap();
+
+    // Assert
+    assert_eq!(karmas.len(), 1, "Only public karma should be exported");
+    assert_eq!(karmas[0].lesson, "Public Lesson");
+}
+
+#[tokio::test]
+async fn test_job_enqueue_constitutional_violation() {
+    let (jq, _tmp) = create_test_queue().await;
+
+    // Attempting to enqueue a job with forbidden dual permissions (Network + Shell + FS)
+    let harmful_manifest = PermissionManifest {
+        allow_network: true,
+        allow_filesystem_write: true,
+        allow_shell_execution: true,
+        allowed_domains: vec![],
+    };
+
+    let res = jq
+        .enqueue(
+            "Task",
+            "Harmful",
+            "Style",
+            None,
+            Some(harmful_manifest),
+            None,
+            0,
+        )
+        .await;
+
+    assert!(res.is_err(), "Expected an error for harmful manifest");
+    if let Err(AiomeError::SecurityViolation { reason }) = res {
+        assert!(
+            reason.contains("Excessive permissions"),
+            "Error message should contain 'Excessive permissions', got: {}",
+            reason
+        );
+    } else {
+        panic!("Expected SecurityViolation error, got {:?}", res);
+    }
 }

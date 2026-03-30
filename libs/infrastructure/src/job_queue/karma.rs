@@ -38,6 +38,7 @@ pub trait KarmaOps {
         domain: Option<&str>,
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
+        is_private: bool,
     ) -> Result<(), AiomeError>;
     async fn do_fetch_undistilled_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError>;
     async fn do_mark_karma_extracted(&self, job_id: &str) -> Result<(), AiomeError>;
@@ -214,7 +215,7 @@ impl KarmaOps for UniversalJobQueue {
             hash: Option<String>,
             sql_weight: f64,
             semantic_score: f64,
-            stored_embedding: Option<Vec<f64>>,
+            compressed_embedding: Option<Vec<u8>>,
         }
 
         let mut candidates: Vec<KarmaCandidate> = match &self.pool {
@@ -231,29 +232,13 @@ impl KarmaOps for UniversalJobQueue {
                 rows.iter()
                     .map(|r| {
                         let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
-                        let encoder = PolarQuantEncoder::new(4, 32);
-                        let stored_embedding = embedding_bytes.map(|b| {
-                            if b.len() > 1 && b[0] == 1 {
-                                // 新フォーマット (PolarQuant)
-                                encoder.decode(&b, embed_dim)
-                            } else {
-                                // 旧フォーマット (f32 raw)
-                                b.chunks_exact(4)
-                                    .map(|chunk| {
-                                        let bytes: [u8; 4] =
-                                            chunk.try_into().unwrap_or([0, 0, 0, 0]);
-                                        f32::from_le_bytes(bytes) as f64
-                                    })
-                                    .collect()
-                            }
-                        });
                         KarmaCandidate {
                             id: r.get("id"),
                             lesson: r.get("lesson"),
                             hash: r.try_get::<String, _>("soul_version_hash").ok(),
                             sql_weight: r.get("sql_weight"),
                             semantic_score: 0.0,
-                            stored_embedding,
+                            compressed_embedding: embedding_bytes,
                         }
                     })
                     .collect()
@@ -271,27 +256,13 @@ impl KarmaOps for UniversalJobQueue {
                 rows.iter()
                     .map(|r| {
                         let embedding_bytes: Option<Vec<u8>> = r.try_get("karma_embedding").ok();
-                        let encoder = PolarQuantEncoder::new(4, 32);
-                        let stored_embedding = embedding_bytes.map(|b| {
-                            if b.len() > 1 && b[0] == 1 {
-                                encoder.decode(&b, embed_dim)
-                            } else {
-                                b.chunks_exact(4)
-                                    .map(|chunk| {
-                                        let bytes: [u8; 4] =
-                                            chunk.try_into().unwrap_or([0, 0, 0, 0]);
-                                        f32::from_le_bytes(bytes) as f64
-                                    })
-                                    .collect()
-                            }
-                        });
                         KarmaCandidate {
                             id: r.get("id"),
                             lesson: r.get("lesson"),
                             hash: r.try_get::<String, _>("soul_version_hash").ok(),
                             sql_weight: r.get("sql_weight"),
                             semantic_score: 0.0,
-                            stored_embedding,
+                            compressed_embedding: embedding_bytes,
                         }
                     })
                     .collect()
@@ -322,15 +293,17 @@ impl KarmaOps for UniversalJobQueue {
                                 hash: None,
                                 sql_weight: 0.0,
                                 semantic_score: slm_res.score, // Use geometric score as initial semantic score
-                                stored_embedding: None, // We don't have embeddings for SLM yet
+                                compressed_embedding: None, // We don't have embeddings for SLM yet
                             });
                         }
                     }
                 }
 
                 for candidate in &mut candidates {
-                    if let Some(ref emb_vec) = candidate.stored_embedding {
-                        let score = StandardVectorOps::cosine_similarity(&topic_vec, emb_vec);
+                    if let Some(ref emb_comp) = candidate.compressed_embedding {
+                        let score = StandardVectorOps::approximate_cosine_similarity(
+                            &topic_vec, emb_comp, embed_dim,
+                        );
                         candidate.semantic_score = score;
                         if score > max_score {
                             max_score = score;
@@ -424,6 +397,7 @@ impl KarmaOps for UniversalJobQueue {
         domain: Option<&str>,
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
+        is_private: bool,
     ) -> Result<(), AiomeError> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
@@ -443,9 +417,9 @@ impl KarmaOps for UniversalJobQueue {
         }
 
         let domain = domain.unwrap_or("general");
-        let q = format!(
-            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic, clone_origin_id) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
+        let mut q = format!(
+            "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, soul_version_hash, created_at, karma_embedding, node_id, lamport_clock, signature, domain, subtopic, clone_origin_id, is_private) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13), self.pool.ph(14)
         );
 
         sql_exec!(
@@ -464,7 +438,8 @@ impl KarmaOps for UniversalJobQueue {
             signature,
             domain,
             subtopic,
-            clone_origin_id
+            clone_origin_id,
+            is_private as i32
         )
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to store karma: {}", e),

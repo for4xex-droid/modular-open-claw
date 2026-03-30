@@ -110,6 +110,8 @@ pub mod skill_arena;
 pub mod skills;
 pub mod slm_bridge;
 pub mod slo_engine;
+/// 思考の社会 (Evans et al, 2026) 熟議エンジン
+pub mod society_of_thought;
 /// イベント→Experience変換アダプタ
 pub mod soul_adapter;
 /// 経験に基づくSOUL.md動的書換え
@@ -118,6 +120,7 @@ pub mod soul_mutator;
 pub mod soul_store;
 
 pub mod task_orchestrator;
+pub mod trajectory_graph;
 pub mod trend_sonar;
 pub mod tts;
 /// ユーザー行動パターン学習

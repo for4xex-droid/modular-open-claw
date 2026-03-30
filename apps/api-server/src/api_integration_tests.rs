@@ -559,6 +559,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 Some(validator),
                 Some(tmp_dir.path().join("SOUL.md")),
                 None, // oracle
+                None, // gig_engine
             ));
 
             // G-22 Fix: Spawn dispatcher loop in background for integration tests

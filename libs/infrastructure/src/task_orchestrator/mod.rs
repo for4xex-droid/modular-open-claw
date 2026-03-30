@@ -18,10 +18,13 @@ use aiome_contracts::traits::{
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use serde_json::json;
+use shared::guardrails;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info, warn};
+
+const MAX_GIG_BUDGET: u64 = 5000;
 
 pub mod planner;
 
@@ -48,6 +51,12 @@ pub enum TaskEvent {
     Failed {
         job_id: String,
         error: String,
+    },
+    GigPublished {
+        job_id: String,
+        intent_id: String,
+        description: String,
+        budget: u64,
     },
 }
 
@@ -88,6 +97,7 @@ pub struct TaskDispatcher {
     validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
     soul_path: Option<std::path::PathBuf>,
     pub oracle: Option<Arc<crate::oracle::Oracle>>,
+    gig_engine: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
 }
 
 impl TaskDispatcher {
@@ -101,6 +111,7 @@ impl TaskDispatcher {
         validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
         soul_path: Option<std::path::PathBuf>,
         oracle: Option<Arc<crate::oracle::Oracle>>,
+        gig_engine: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -135,6 +146,17 @@ impl TaskDispatcher {
                         TaskEvent::Failed { job_id, error } => {
                             aiome_contracts::events::CoreEvent::TaskFailed { job_id, error }
                         }
+                        TaskEvent::GigPublished {
+                            job_id,
+                            intent_id,
+                            description,
+                            budget,
+                        } => aiome_contracts::events::CoreEvent::GigPublished {
+                            job_id,
+                            intent_id,
+                            description,
+                            budget,
+                        },
                         _ => continue,
                     };
                     let _ = ctx.send(core_ev);
@@ -154,6 +176,7 @@ impl TaskDispatcher {
             validator,
             soul_path,
             oracle,
+            gig_engine,
         }
     }
 
@@ -164,6 +187,112 @@ impl TaskDispatcher {
             conductor.conductor_name()
         );
         self.conductors.push(conductor);
+    }
+
+    async fn maybe_publish_gig_intent(
+        q: Arc<dyn JobQueue>,
+        g_engine_opt: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
+        validator_opt: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+        p_tx: mpsc::Sender<TaskEvent>,
+        j_id: &str,
+        karma_directives: Option<String>,
+    ) {
+        if let (Some(g_engine), Some(dirs_str)) = (g_engine_opt, karma_directives) {
+            if let Ok(dirs) = serde_json::from_str::<serde_json::Value>(&dirs_str) {
+                if dirs["gig_intent"].as_bool().unwrap_or(false) {
+                    info!(
+                        "💰 [AgenticFinance] GIG Intent detected for job {}. Verifying security...",
+                        j_id
+                    );
+
+                    // 1. Immutable Depth Check (System-provided)
+                    let depth = dirs["gig_depth"].as_u64().unwrap_or(0);
+                    if depth >= 3 {
+                        warn!(
+                            "⚠️ [AgenticFinance] Max GIG depth reached ({}). Skipping...",
+                            depth
+                        );
+                        return;
+                    }
+
+                    if let Ok(Some(current_job)) = q.fetch_job(j_id).await {
+                        if let Some(artifacts_str) = current_job.output_artifacts {
+                            if let Ok(arts) =
+                                serde_json::from_str::<serde_json::Value>(&artifacts_str)
+                            {
+                                // 2. Guardrails: Sanitize & Limit (Max 1000 chars to protect SSE buffers)
+                                let raw_description =
+                                    arts["description"].as_str().unwrap_or("Autonomous GIG");
+                                let sanitized = guardrails::sanitize_input(raw_description);
+                                let description = if sanitized.len() > 1000 {
+                                    format!("{}...", &sanitized[..997])
+                                } else {
+                                    sanitized
+                                };
+
+                                let raw_budget = arts["budget"].as_u64().unwrap_or(100);
+                                let budget = raw_budget.clamp(10, MAX_GIG_BUDGET);
+                                if raw_budget > MAX_GIG_BUDGET {
+                                    warn!("🛡️ [AgenticFinance] Budget clamped from {} to {} for safety.", raw_budget, MAX_GIG_BUDGET);
+                                } else if raw_budget < 10 {
+                                    warn!(
+                                        "🛡️ [AgenticFinance] Budget clamped from {} to 10 (floor).",
+                                        raw_budget
+                                    );
+                                }
+
+                                // 3. Constitutional Validation (Safety Valve) - Structured Context to prevent injection
+                                if let Some(validator) = validator_opt {
+                                    let agent_id =
+                                        current_job.agent_id.unwrap_or_else(uuid::Uuid::nil);
+                                    let validation_context = format!(
+                                        "--- TASK ---\nACTION: GIG_PUBLISH\nAGENT: {}\nDESCRIPTION: {}\nMAX_BUDGET: {}\n--- END ---",
+                                        agent_id, description, budget
+                                    );
+                                    if let Err(e) = validator.verify_constitutional(&validation_context, "Validate this autonomous job request (GIG). Ensure it is not harmful, illegal, or an attempt to bypass security or exfiltrate secrets.").await {
+                                        error!("🚨 [AgenticFinance] Constitutional Validation FAILED: {:?}", e);
+                                        return;
+                                    }
+                                }
+
+                                let mut intent = aiome_contracts::gig::GigIntent::new(
+                                    current_job.agent_id.unwrap_or_else(uuid::Uuid::nil),
+                                    description.clone(),
+                                    budget,
+                                );
+
+                                let mut metadata = serde_json::Map::new();
+                                metadata
+                                    .insert("parent_job_id".to_string(), serde_json::json!(j_id));
+                                metadata
+                                    .insert("gig_depth".to_string(), serde_json::json!(depth + 1));
+                                intent.metadata = Some(serde_json::Value::Object(metadata));
+
+                                match g_engine.publish_intent(intent).await {
+                                    Ok(intent_id) => {
+                                        info!("🚀 [AgenticFinance] GIG Intent published successfully: {}", intent_id);
+
+                                        // 4. Progress Broadcast (will be bridge-mapped to global event line)
+                                        let _ = p_tx
+                                            .send(TaskEvent::GigPublished {
+                                                job_id: j_id.to_string(),
+                                                intent_id: intent_id.to_string(),
+                                                description,
+                                                budget,
+                                            })
+                                            .await;
+                                    }
+                                    Err(e) => error!(
+                                        "❌ [AgenticFinance] Failed to publish GIG intent: {:?}",
+                                        e
+                                    ),
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Get a receiver subscribing to TaskEvents
@@ -269,6 +398,8 @@ impl TaskDispatcher {
                         let conductor_clone = conductor.clone();
                         let active_jobs_clone = self.active_jobs.clone();
                         let oracle_clone = self.oracle.clone();
+                        let gig_engine_clone = self.gig_engine.clone();
+                        let validator_clone = self.validator.clone();
                         tokio::spawn(async move {
                             // Phase 48-D: Invariant-DAG Verification before execution
                             if let Some(directives_str) = &job.karma_directives {
@@ -326,7 +457,7 @@ impl TaskDispatcher {
                                 result = conductor_clone.conduct(job, progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
-                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String| async move {
+                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>| async move {
                                                 let _ = q.complete_job(&j_id, Some(&res_out)).await;
                                                 let _ = p_tx
                                                     .send(TaskEvent::Completed {
@@ -366,10 +497,11 @@ impl TaskDispatcher {
                                                     let _ = q.store_system_state(&dag_key, &dag.to_json()).await;
                                                     info!("🛡️ [InvariantDag] Appended result_hash for job {} to DAG.", j_id);
                                                 }
+
+                                                Self::maybe_publish_gig_intent(q, g_engine_opt, validator_opt, p_tx, &j_id, k_dirs).await;
                                             };
 
-                                            if requires_review && oracle_clone.is_some() {
-                                                let oracle = oracle_clone.clone().unwrap();
+                                            if let (true, Some(oracle)) = (requires_review, oracle_clone.as_ref().cloned()) {
                                                 let q = job_queue_clone.clone();
                                                 let p_tx = progress_tx.clone();
                                                 let j_id = job_id.clone();
@@ -389,7 +521,7 @@ impl TaskDispatcher {
                                                         Ok(Ok(verdict)) => {
                                                             if verdict.should_evolve {
                                                                 info!("✅ Job {} passed Oracle review.", j_id);
-                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name).await;
+                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone()).await;
                                                             } else {
                                                                 let reason = verdict.reasoning.clone();
                                                                 warn!("❌ Job {} failed Oracle review: {}", j_id, reason);
@@ -412,7 +544,7 @@ impl TaskDispatcher {
                                                     }
                                                 });
                                             } else {
-                                                do_completion(job_queue_clone.clone(), progress_tx.clone(), job_id.clone(), out, result_hash_opt, karma_directives.clone(), conductor_clone.conductor_name().to_string()).await;
+                                                do_completion(job_queue_clone.clone(), progress_tx.clone(), job_id.clone(), out, result_hash_opt, karma_directives.clone(), conductor_clone.conductor_name().to_string(), gig_engine_clone, validator_clone.clone()).await;
                                             }
                                         }
                                         Err(e) => {
@@ -681,6 +813,7 @@ mod tests {
             None,
             None,
             None,
+            None, // gig_engine
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -727,5 +860,145 @@ mod tests {
             }
             _ => panic!("Expected Evaluating event"),
         }
+    }
+
+    struct MockGigEngine {
+        pub published_intent: Arc<tokio::sync::Mutex<Option<aiome_contracts::gig::GigIntent>>>,
+    }
+
+    #[async_trait]
+    impl aiome_contracts::gig::GigEngine for MockGigEngine {
+        async fn publish_intent(
+            &self,
+            intent: aiome_contracts::gig::GigIntent,
+        ) -> Result<uuid::Uuid, aiome_contracts::error::AiomeError> {
+            let mut lock = self.published_intent.lock().await;
+            let id = intent.id;
+            *lock = Some(intent);
+            Ok(id)
+        }
+        async fn submit_bid(
+            &self,
+            _bid: aiome_contracts::gig::GigBid,
+        ) -> Result<(), aiome_contracts::error::AiomeError> {
+            Ok(())
+        }
+        async fn accept_bid(
+            &self,
+            _intent_id: uuid::Uuid,
+            _bid_id: uuid::Uuid,
+        ) -> Result<(), aiome_contracts::error::AiomeError> {
+            Ok(())
+        }
+        async fn deliver(
+            &self,
+            _deliverable: aiome_contracts::gig::GigDeliverable,
+        ) -> Result<(), aiome_contracts::error::AiomeError> {
+            Ok(())
+        }
+        async fn verify_and_settle(
+            &self,
+            _order_id: uuid::Uuid,
+        ) -> Result<aiome_contracts::gig::VerificationResult, aiome_contracts::error::AiomeError>
+        {
+            Ok(aiome_contracts::gig::VerificationResult {
+                order_id: uuid::Uuid::new_v4(),
+                passed: true,
+                score: 1.0,
+                detail: "ok".into(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_publishes_gig_on_completion() {
+        let mut job = Job::default();
+        job.id = "gig-job".into();
+        job.category = "test_cat".into();
+        job.karma_directives = Some(r#"{"gig_intent": true}"#.to_string());
+        job.output_artifacts =
+            Some(r#"{"description": "Need a special tool", "budget": 100}"#.to_string());
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            completed: std::sync::Mutex::new(false),
+            ..Default::default()
+        });
+
+        let mock_gig = Arc::new(MockGigEngine {
+            published_intent: Arc::new(tokio::sync::Mutex::new(None)),
+        });
+
+        // RED: TaskDispatcher::new does not yet take gig_engine
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(mock_gig.clone()), // This argument causes compilation failure
+        );
+        dispatcher.register_conductor(Arc::new(TestConductor));
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        // Wait for completion
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let intent_lock = mock_gig.published_intent.lock().await;
+        assert!(
+            intent_lock.is_some(),
+            "GIG Intent should have been published"
+        );
+        assert_eq!(intent_lock.as_ref().unwrap().max_budget_coins, 100);
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_respects_gig_depth_limit() {
+        let mut job = Job::default();
+        job.id = "deep-gig-job".into();
+        job.karma_directives = Some(r#"{"gig_intent": true, "gig_depth": 3}"#.to_string()); // Already at limit
+        job.output_artifacts = Some(r#"{"description": "Too deep", "budget": 100}"#.to_string());
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            ..Default::default()
+        });
+
+        let mock_gig = Arc::new(MockGigEngine {
+            published_intent: Arc::new(tokio::sync::Mutex::new(None)),
+        });
+
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(mock_gig.clone()),
+        );
+        dispatcher.register_conductor(Arc::new(TestConductor));
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let intent_lock = mock_gig.published_intent.lock().await;
+        assert!(
+            intent_lock.is_none(),
+            "GIG Intent should NOT have been published due to depth limit"
+        );
     }
 }

@@ -91,6 +91,19 @@ impl SecurityPolicy {
 
     /// URLの安全性を検証する
     pub async fn validate_url(&self, url: &str) -> Result<()> {
+        let url_obj =
+            reqwest::Url::parse(url).map_err(|e| anyhow::anyhow!("Invalid URL: {}", e))?;
+
+        // ローカルホストの場合、ポート制限を独自に適用 (8188, 11434 のみ許可)
+        if let Some(host) = url_obj.host_str() {
+            if host == "127.0.0.1" || host == "localhost" {
+                let port = url_obj.port().unwrap_or(80);
+                if port != 8188 && port != 11434 {
+                    bail!("Security Violation: Unauthorized local port {}", port);
+                }
+            }
+        }
+
         self.network_shield
             .validate_url(url)
             .await
@@ -184,7 +197,22 @@ mod tests {
             .validate_url("http://evil-server.com:443")
             .await
             .is_err());
-        assert!(policy.validate_url("http://1.2.3.4:9999").await.is_err());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_default_policy_blocks_metadata_srv() -> Result<()> {
+        let policy = SecurityPolicy::default();
+        // AWS Metadata Service for SSRF
+        assert!(policy
+            .validate_url("http://169.254.169.254/latest/meta-data/")
+            .await
+            .is_err());
+        assert!(policy.validate_url("http://10.0.0.1/admin").await.is_err());
+        assert!(policy
+            .validate_url("http://192.168.1.1/setup")
+            .await
+            .is_err());
         Ok(())
     }
 

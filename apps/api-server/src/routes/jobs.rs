@@ -106,17 +106,22 @@ pub async fn get_trajectory_handler(
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let steps: Vec<TrajectoryStep> = state
+    let mut steps: Vec<TrajectoryStep> = state
         .job_queue
         .trajectory_store
         .fetch_trajectory(&job_id)
         .await
         .map_err(AppError::from)?;
 
-    Ok(Json(json!({
-        "job_id": job_id,
-        "steps": steps,
-    })))
+    // 🛡️ [RED-TEAM PATCH] Scrub sensitive data
+    for step in &mut steps {
+        step.scrub();
+    }
+
+    let graph = infrastructure::trajectory_graph::TrajectoryGraph::build_graph(steps)
+        .map_err(AppError::from)?;
+
+    Ok(Json(json!(graph)))
 }
 
 /// GET /api/v1/trajectory/:job_id/diagnosis

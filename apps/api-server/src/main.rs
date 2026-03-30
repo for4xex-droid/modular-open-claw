@@ -274,7 +274,8 @@ async fn main() -> anyhow::Result<()> {
         job_queue.get_pool().clone(),
         std::path::PathBuf::from("workspace/artifacts"),
     )
-    .with_embeddings(embed_provider.clone());
+    .with_embeddings(embed_provider.clone())
+    .with_audit_logger(audit_logger.clone());
 
     let (event_sender, _) = tokio::sync::broadcast::channel(100);
 
@@ -617,6 +618,7 @@ async fn main() -> anyhow::Result<()> {
         Some(validator.clone()),
         Some(std::path::PathBuf::from("workspace/SOUL.md")),
         Some(oracle),
+        Some(gig_engine.clone()),
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {

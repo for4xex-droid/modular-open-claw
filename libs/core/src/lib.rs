@@ -30,7 +30,6 @@ pub mod http;
 pub mod llm_provider;
 /// LoRAモデルの管理・推論支援（Phase 10.1b）
 pub mod lora;
-/// 権限検証・セキュリティ機能
 pub mod security;
 /// JobQueue等、インフラ層に実装を依存させるためのTrait
 pub mod traits;
@@ -39,5 +38,7 @@ pub mod traits;
 pub mod trajectory {
     pub use aiome_contracts::trajectory::*;
 }
-/// LLM出力のサニタイズなどのセキュリティ実装
 pub mod security_impl;
+
+#[cfg(test)]
+mod security_test;

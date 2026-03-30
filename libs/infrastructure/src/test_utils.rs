@@ -32,6 +32,7 @@ pub mod job_queue_mock {
     #[derive(Debug, Default)]
     pub struct GlobalMockJobQueue {
         pub job_to_return: std::sync::Mutex<Option<Job>>,
+        pub fetched_job: std::sync::Mutex<Option<Job>>,
         pub completed: std::sync::Mutex<bool>,
         pub karmas: std::sync::Mutex<Vec<Value>>,
     }
@@ -69,7 +70,7 @@ pub mod job_queue_mock {
             }
         }
         async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> {
-            Ok(None)
+            Ok(self.fetched_job.lock().unwrap().clone())
         }
         async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
             *self.completed.lock().unwrap() = true;
@@ -203,6 +204,7 @@ pub mod job_queue_mock {
             _: Option<&str>,
             _: Option<&str>,
             _: Option<&str>,
+            _: bool,
         ) -> Result<(), AiomeError> {
             Ok(())
         }

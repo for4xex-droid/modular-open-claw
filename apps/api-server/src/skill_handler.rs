@@ -71,6 +71,7 @@ pub async fn execute_forge_command(
                                     None,
                                     None,
                                     None,
+                                    false,
                                 )
                                 .await
                                 .ok();

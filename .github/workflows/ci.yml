@@ -13,6 +13,9 @@ env:
   RUSTFLAGS: "-D warnings"
   PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test & Lint
@@ -339,6 +342,26 @@ jobs:
       - name: Build Samsara Hub Image
         run: |
           docker build -t aiome-hub:latest -f docker/distroless.Dockerfile --build-arg BIN_NAME=samsara-hub .
+
+      - name: Run Trivy vulnerability scanner (api-server)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aiome-api:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner (samsara-hub)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aiome-hub:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
   trigger-nurture:
     name: Trigger Nurture CI

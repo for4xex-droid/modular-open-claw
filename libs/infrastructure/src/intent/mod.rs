@@ -107,6 +107,7 @@ impl IntentGenerator {
             max_budget_coins: budget,
             category,
             deadline: chrono::Utc::now() + chrono::Duration::days(1),
+            metadata: None,
         }))
     }
 
@@ -134,6 +135,7 @@ impl IntentGenerator {
             max_budget_coins: 100,
             category,
             deadline: chrono::Utc::now() + chrono::Duration::days(7),
+            metadata: None,
         })
     }
 }

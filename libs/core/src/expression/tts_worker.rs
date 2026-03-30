@@ -354,6 +354,7 @@ mod tests {
             _: Option<&str>,
             _: Option<&str>,
             _: Option<&str>,
+            _: bool,
         ) -> Result<(), AiomeError> {
             Ok(())
         }

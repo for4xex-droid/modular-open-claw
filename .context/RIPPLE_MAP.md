@@ -2,6 +2,28 @@
 
 このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
 
+## Phase 53: SoT Deliberation Engine & Security Hardening (Phase 53 実装)
+
+### 1. Society of Thought (SoT) 統合
+- **変更理由**: 単一のLLM出力に依存せず、批判と洗練を繰り返す審議プロセス（SoT）を自動化し、回答の信頼性と論理的整合性を向上させるため。
+- **波及効果**:
+  - `libs/aiome-contracts/src/oracle.rs`: `SoTProgress` SSEイベント構造体と `Oracle` トレイトへの `multi_review` メソッド追加。
+  - `libs/infrastructure/src/oracle/mod.rs`: `multi_review` のパイプライン（初期回答、批判、洗練、最終判定）を実装。
+  - `libs/infrastructure/src/task_orchestrator/mod.rs`: `TaskDispatcher` が `requires_review` ジョブを検知した際に SoT 審議を非同期実行するブリッジを構築。
+
+### 2. SSRF 防御の多層化 (Port-level Validation)
+- **変更理由**: 許可されたドメイン（localhost）内でも、管理インターフェースや未保護の内部サービスへの攻撃を防ぐため。
+- **波及効果**:
+  - `libs/shared/src/security.rs`: `SecurityPolicy::validate_url` にポート単位の許可リスト（8188: ComfyUI, 11434: Ollama）を導入し、localhost へのアクセスを厳密に制限。
+  - テスト: `libs/shared/src/security.rs` 内の `test_ssrf_blocking_local_ports` で境界条件を検証。
+
+### 3. プロンプトインジェクションのローカル防御 (Guardrail Patterns)
+- **変更理由**: Bastion 外部バリデータへの依存を減らし、低レイテンシかつ確実なキーワード検知による多層防御を実現するため。
+- **波及効果**:
+  - `libs/shared/src/guardrails.rs`: `LOCAL_INJECTION_PATTERNS` 定数を定義し、`validate_input` で「Ignore all instructions」等の悪意ある入力を即時遮断。
+
+---
+
 ## Phase 2B: ContextEngine Expansion & Emotional Injection
 
 ### 1. 感情パラメータ (somatic_valence) のデータベース追跡
@@ -844,4 +866,27 @@ graph TD
     - `infrastructure/src/mock_commerce.rs` & `stripe.rs`: トレイト拡張に伴う全 Mock/実装型のシグネチャ一斉変更波及（Phase 37a と同等規模の波及が見込まれる）。
 
 ---
-*最終事前予測日: 2026-03-28* (Phase 51-55 Perfect Planning)
+*最終更新日: 2026-03-30* (Phase 51: Agentic Finance & GIG Loop Integration)
+
+### 🏦 Phase 51: Agentic Finance & GIG Loop Integration
+- **変更内容**: 
+    - `libs/infrastructure/src/task_orchestrator/mod.rs`: `TaskDispatcher` に `GigEngine` を依存注入 (DI) し、ジョブ完了時に自律的に `GigIntent` を発行する `maybe_publish_gig_intent` メソッドを実装。
+    - `libs/aiome-contracts/src/gig.rs`: `GigIntent` 構造体に `metadata` フィールドを追加。コンストラクタ `new()` を実装。
+    - `libs/infrastructure/src/intent/mod.rs`: `GigIntent` の構造変更に伴う初期化箇所の修正。
+    - `libs/infrastructure/src/test_utils.rs`: `GlobalMockJobQueue` に `fetched_job` フィールドを追加し、`fetch_job` メソッドが意図したジョブを返せるように拡張。
+- **波及効果**: 
+    - AIエージェントがタスク完了後に自動的に次のタスク（ギグ）を市場へ公開する「自律的経済ループ」が実現。
+    - 循環参照や無限ループを防止するため、`gig_depth` を含むメタデータが全ギグインテントに伝播するようになった。
+    - `api-server` および `api_integration_tests.rs` の初期化コードが更新され、本番・テスト両環境で `GigEngine` が必須またはモックされる構成に移行。
+
+```mermaid
+graph TD
+    A[TaskDispatcher] -->|Inject| B[GigEngine]
+    A -->|On Completion| C[maybe_publish_gig_intent]
+    C -->|Check karma_directives| D{gig_intent: true?}
+    D -->|Yes| E[GigIntent::new]
+    E -->|Propagate depth| F[intent.metadata]
+    F -->|Publish| G[GigEngine::publish_intent]
+    G -->|Economic Trigger| H[Other Agents]
+```
+

@@ -35,7 +35,11 @@ pub struct UniversalArtifactStore {
     base_dir: PathBuf,           // workspace/artifacts
     vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     embed_provider: Option<Arc<dyn EmbeddingProvider>>,
+    audit_logger: Option<Arc<dyn aiome_contracts::audit::AuditLogger>>,
 }
+
+const MAX_ARTIFACT_FILE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+const MAX_ARTIFACT_FILES: usize = 20;
 
 impl UniversalArtifactStore {
     /// 新しいインスタンスを生成する
@@ -45,6 +49,7 @@ impl UniversalArtifactStore {
             base_dir,
             vault_path: None,
             embed_provider: None,
+            audit_logger: None,
         }
     }
 
@@ -57,6 +62,15 @@ impl UniversalArtifactStore {
     /// 埋め込みプロバイダを設定する
     pub fn with_embeddings(mut self, provider: Arc<dyn EmbeddingProvider>) -> Self {
         self.embed_provider = Some(provider);
+        self
+    }
+
+    /// 監査ロガーを設定する
+    pub fn with_audit_logger(
+        mut self,
+        logger: Arc<dyn aiome_contracts::audit::AuditLogger>,
+    ) -> Self {
+        self.audit_logger = Some(logger);
         self
     }
 
@@ -166,7 +180,42 @@ impl ArtifactStore for UniversalArtifactStore {
         let mut artifact_files = Vec::new();
         let mut manifest_hasher = Sha256::new();
 
+        if req.files.len() > MAX_ARTIFACT_FILES {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Too many files in artifact: {} exceeds limit of {}",
+                    req.files.len(),
+                    MAX_ARTIFACT_FILES
+                ),
+            });
+        }
+
+        if req.tags.len() > 50 {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Too many tags: {} exceeds limit of 50", req.tags.len()),
+            });
+        }
+
+        if req.karma_refs.len() > 100 {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Too many karma refs: {} exceeds limit of 100",
+                    req.karma_refs.len()
+                ),
+            });
+        }
+
         for (filename, content, mime_type) in req.files {
+            if content.len() > MAX_ARTIFACT_FILE_SIZE {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!(
+                        "File size limit exceeded for {}: {} bytes exceeds limit of {} bytes",
+                        filename,
+                        content.len(),
+                        MAX_ARTIFACT_FILE_SIZE
+                    ),
+                });
+            }
             let hash = Self::calculate_hash(&content);
             let file_path = sandbox
                 .validate_path(full_dir.join(&filename))
@@ -240,6 +289,20 @@ impl ArtifactStore for UniversalArtifactStore {
         )?;
 
         info!("📦 Artifact saved: {}", id);
+
+        // RT-6 Audit Logging
+        if let Some(logger) = &self.audit_logger {
+            let details = serde_json::json!({
+                "artifact_id": id,
+                "title": req.title,
+                "category": cat_str,
+                "is_protected": req.is_protected,
+            });
+            let _ = logger
+                .log_event("ARTIFACT_CREATE", &req.created_by, &details)
+                .await;
+        }
+
         Ok(id)
     }
 
@@ -248,16 +311,17 @@ impl ArtifactStore for UniversalArtifactStore {
         category: Option<ArtifactCategory>,
         limit: i64,
     ) -> Result<Vec<ArtifactMeta>, AiomeError> {
+        let effective_limit = limit.min(100);
         let sql = if category.is_some() {
             format!(
                 "SELECT * FROM ai_artifacts WHERE category = {} ORDER BY created_at DESC LIMIT {}",
                 self.pool.ph(0),
-                limit
+                effective_limit
             )
         } else {
             format!(
                 "SELECT * FROM ai_artifacts ORDER BY created_at DESC LIMIT {}",
-                limit
+                effective_limit
             )
         };
 
@@ -363,6 +427,19 @@ impl ArtifactStore for UniversalArtifactStore {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Path error: {}", e),
             })?;
+
+        // RT-6 Audit Logging (Critical for DRM)
+        if let Some(logger) = &self.audit_logger {
+            let details = serde_json::json!({
+                "artifact_id": id,
+                "filename": filename,
+                "protected": meta.dir_path.contains("vault") || meta.dir_path.contains(".abyss_vault"),
+            });
+            let _ = logger
+                .log_event("ARTIFACT_READ", &meta.created_by, &details)
+                .await;
+        }
+
         std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure {
             reason: format!("IO error: {}", e),
         })
@@ -541,21 +618,12 @@ impl ArtifactStore for UniversalArtifactStore {
 
         let embed_dim = provider.embedding_dim();
         let mut sim_results: Vec<(f64, String)> = Vec::new();
-        let encoder = PolarQuantEncoder::new(4, 32);
         for (id, emb_bytes) in entries {
-            let emb_vec: Vec<f64> = if emb_bytes.len() > 1 && emb_bytes[0] == 1 {
-                // 新フォーマット (PolarQuant)
-                encoder.decode(&emb_bytes, embed_dim)
-            } else {
-                // 旧フォーマット (f64 raw)
-                emb_bytes
-                    .chunks_exact(8)
-                    .map(|c: &[u8]| {
-                        f64::from_le_bytes(c.try_into().unwrap_or([0, 0, 0, 0, 0, 0, 0, 0]))
-                    })
-                    .collect()
-            };
-            let score = cosine_similarity(&query_vec_f64, &emb_vec);
+            let score = StandardVectorOps::approximate_cosine_similarity(
+                &query_vec_f64,
+                &emb_bytes,
+                embed_dim,
+            );
             sim_results.push((score, id));
         }
         sim_results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));

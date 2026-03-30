@@ -106,7 +106,7 @@ pub struct TrajectoryStep {
     /// 「なぜこの行動を選んだか」の推論理由
     pub reasoning: Option<String>,
     /// 因果関係の親ステップ ID
-    pub parent_step_id: Option<String>,
+    pub parent_step_id: Option<u32>,
     /// ステップの種別カテゴリ
     pub step_category: StepCategory,
     /// 完了条件（Task Contract）
@@ -127,6 +127,78 @@ pub struct TrajectoryStep {
     /// Phase 48: 親ノードのハッシュ
     #[serde(default)]
     pub parent_state_hash: Option<String>,
+}
+
+impl TrajectoryStep {
+    /// 🛡️ 機密情報をスクラビング（マスク）する
+    pub fn scrub(&mut self) {
+        Self::scrub_value(&mut self.input);
+        Self::scrub_value(&mut self.output);
+    }
+
+    fn scrub_value(value: &mut serde_json::Value) {
+        match value {
+            serde_json::Value::Object(map) => {
+                for (key, val) in map.iter_mut() {
+                    let k = key.to_lowercase();
+                    if k.contains("api_key")
+                        || k.contains("password")
+                        || k.contains("secret")
+                        || k.contains("token")
+                        || k.contains("key") && (k.contains("private") || k.contains("access"))
+                    {
+                        *val = serde_json::json!("****** [REDACTED BY ZTAS] ******");
+                    } else {
+                        Self::scrub_value(val);
+                    }
+                }
+            }
+            serde_json::Value::Array(arr) => {
+                for val in arr.iter_mut() {
+                    Self::scrub_value(val);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_trajectory_step_scrub() {
+        let mut step = TrajectoryStep {
+            input: json!({
+                "api_key": "secret-123",
+                "nested": {
+                    "password": "pass",
+                    "safe": "data"
+                }
+            }),
+            output: json!({
+                "token": "tok-456",
+                "other": ["val1", {"secret": "val2"}]
+            }),
+            ..Default::default()
+        };
+
+        step.scrub();
+
+        assert_eq!(step.input["api_key"], "****** [REDACTED BY ZTAS] ******");
+        assert_eq!(
+            step.input["nested"]["password"],
+            "****** [REDACTED BY ZTAS] ******"
+        );
+        assert_eq!(step.input["nested"]["safe"], "data");
+        assert_eq!(step.output["token"], "****** [REDACTED BY ZTAS] ******");
+        assert_eq!(
+            step.output["other"][1]["secret"],
+            "****** [REDACTED BY ZTAS] ******"
+        );
+    }
 }
 
 /// ⛓️ 制約違反の証拠

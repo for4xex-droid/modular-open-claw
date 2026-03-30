@@ -243,10 +243,16 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 - **Real-time Interaction**: WebScoket を介した低レイテンシ・マルチモーダル対話をサポート。
 - **Provider Integration**: `DynamicLlmProvider` および `BackgroundLlmProvider` に `LiveSessionManager` を注入可能にし、エージェントの全レイヤーでリアルタイム性能を活用できるようにしました。
 
+### 3.10 Society of Thought (SoT) 審議 (Phase 53 実装)
+`Oracle` クラスに統合された `multi_review` パイプラインは、推論の精度と安全性を極限まで高めるための審議エンジンです。
+- **Multi-Phase Pipeline**: 「初期回答」→「批判（Critique）」→「洗練（Refinement）」→「最終判定（Final Judge）」の 4 フェーズ構成。
+- **SoTProgress SSE**: 審議の各ステップ（メタ思考、批判内容、修正案）を `SoTProgress` イベントとしてリアルタイムに配信。ユーザーはエージェントの「思考過程」を視覚的に追跡可能です。
+- **Deterministic Judge**: 最終判定フェーズでは `format: "json"` を強制し、構造化された結論（承認/却下/要修正）を得ることで、後続のタスク自動実行を確実に制御します。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-03-26 (Phase 5 / Gemini Interactions API 対応)*
+*最終更新: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
 
 ---
 

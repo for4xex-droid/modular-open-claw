@@ -2627,6 +2627,7 @@
             "format": "int64",
             "minimum": 0
           },
+          "metadata": {},
           "requester_id": {
             "type": "string"
           }
@@ -3294,10 +3295,12 @@
           },
           "parent_step_id": {
             "type": [
-              "string",
+              "integer",
               "null"
             ],
-            "description": "因果関係の親ステップ ID"
+            "format": "int32",
+            "description": "因果関係の親ステップ ID",
+            "minimum": 0
           },
           "reasoning": {
             "type": [
