@@ -304,12 +304,8 @@ async fn main() -> anyhow::Result<()> {
         let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
         Some(
-            aiome_commerce::CommerceEngineFactory::create(
-                stripe_key,
-                webhook_secret,
-                sqlite_pool,
-            )
-            .await?,
+            aiome_commerce::CommerceEngineFactory::create(stripe_key, webhook_secret, sqlite_pool)
+                .await?,
         )
     };
 

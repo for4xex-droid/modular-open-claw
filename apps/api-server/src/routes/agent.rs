@@ -669,9 +669,10 @@ pub async fn trigger_agent_chat(
                                 use aiome_contracts::traits::AgentEvolver;
                                 jq.get_agent_stats().await.unwrap_or_default()
                             };
-                            
-                            let strategy = diagnostics.suggest_repair_strategy(&diagnosis, &agent_stats, 0);
-                            
+
+                            let strategy =
+                                diagnostics.suggest_repair_strategy(&diagnosis, &agent_stats, 0);
+
                             if let infrastructure::repair_strategy::RepairStrategy::RetryWithHint(ref hint) = strategy {
                                 let msg = format!("🛠️ [AgentRx Self-Repair Alert]\n前回の実行で問題が検出されました。次回のアクションで以下の修正戦略を試行してください:\n{}", hint);
                                 let _ = jq.store_chat_message(&channel_id_clone, "system", &msg).await;

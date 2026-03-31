@@ -488,7 +488,8 @@ pub trait AgentEvolver: Send + Sync + std::fmt::Debug {
 
     /// Triggers character evolution (default). (Sprint 4)
     async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {
-        self.transmute_with_metadata(jq, serde_json::json!({})).await
+        self.transmute_with_metadata(jq, serde_json::json!({}))
+            .await
     }
 }
 

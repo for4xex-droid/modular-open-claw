@@ -82,29 +82,39 @@ impl HeartbeatWakeupService {
                                 "📉 [Heartbeat] Score plateau detected for '{}'. Evaluating autonomous LoRA...",
                                 report.metric_name
                             );
-                            
+
                             // Check Cooldown File
-                            let cooldown_file = self.workspace_dir.join("last_lora_trigger.timestamp");
+                            let cooldown_file =
+                                self.workspace_dir.join("last_lora_trigger.timestamp");
                             let can_trigger = if cooldown_file.exists() {
                                 if let Ok(meta) = fs::metadata(&cooldown_file) {
                                     if let Ok(modified) = meta.modified() {
                                         if let Ok(elapsed) = modified.elapsed() {
                                             // Cooldown: 24 hours
                                             elapsed.as_secs() > 86400
-                                        } else { false } // Clock went backwards 
-                                    } else { false } // Fail-safe
-                                } else { false } // Fail-safe
-                            } else { true };
+                                        } else {
+                                            false
+                                        } // Clock went backwards
+                                    } else {
+                                        false
+                                    } // Fail-safe
+                                } else {
+                                    false
+                                } // Fail-safe
+                            } else {
+                                true
+                            };
 
                             if can_trigger {
                                 if let Some(ref lora) = self.lora_service {
                                     info!("🚀 [Heartbeat] Triggering Autonomous LoRA Training due to plateau!");
-                                    let mut config = crate::lora_training::LoraTrainingConfig::default();
+                                    let mut config =
+                                        crate::lora_training::LoraTrainingConfig::default();
                                     config.base_model = "autonomous-recovery".into();
                                     config.dataset_path = "workspace/datasets/auto_exp".into();
                                     config.output_dir = "workspace/output".into();
                                     config.vault_path = "workspace/vault/auto_recovery".into();
-                                    
+
                                     let lora_clone = lora.clone();
                                     tokio::spawn(async move {
                                         if let Err(e) = lora_clone.start_training(config).await {
@@ -114,7 +124,9 @@ impl HeartbeatWakeupService {
                                         }
                                     });
                                     // Touch cooldown file
-                                    if let Err(e) = fs::write(&cooldown_file, chrono::Utc::now().to_rfc3339()) {
+                                    if let Err(e) =
+                                        fs::write(&cooldown_file, chrono::Utc::now().to_rfc3339())
+                                    {
                                         tracing::error!("🚨 [Heartbeat] CRITICAL: Failed to write cooldown file at {:?}. Error: {:?}", cooldown_file, e);
                                     }
                                 } else {
@@ -167,7 +179,13 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
                         info!("💓 [Heartbeat] Proactive Talk generated.");
                         // RT-5 Sanitization: Drop any dangerous patterns (shell, markdown injection)
                         let lower = reply.to_lowercase();
-                        if lower.contains("curl ") || lower.contains("wget ") || lower.contains("bash") || lower.contains("sudo ") || lower.contains("eval") || lower.contains("rm -rf") {
+                        if lower.contains("curl ")
+                            || lower.contains("wget ")
+                            || lower.contains("bash")
+                            || lower.contains("sudo ")
+                            || lower.contains("eval")
+                            || lower.contains("rm -rf")
+                        {
                             warn!("🚨 [Heartbeat] Blocked generated text containing potential shell commands or dangerous keywords.");
                             None
                         } else {

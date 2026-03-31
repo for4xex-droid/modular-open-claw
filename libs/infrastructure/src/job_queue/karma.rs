@@ -161,7 +161,7 @@ impl KarmaOps for UniversalJobQueue {
             .chars()
             .filter(|c| c.is_alphanumeric() || c.is_whitespace() || *c == '-')
             .collect();
-            
+
         let fts_query = if self.pool.is_postgres() {
             sanitized_topic
                 .split_whitespace()

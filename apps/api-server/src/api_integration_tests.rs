@@ -675,9 +675,10 @@ async fn test_rate_limiting_per_agent() {
 #[tokio::test]
 async fn test_expression_generation_plan_limits() {
     let (server, state, _tmp) = create_test_server().await;
-    let bearer = "Bearer mock_valid_token_test_user:00000000-0000-0000-0000-000000000002".to_string();
-    use aiome_core::expression::Expression;
+    let bearer =
+        "Bearer mock_valid_token_test_user:00000000-0000-0000-0000-000000000002".to_string();
     use aiome_contracts::expression::TtsStatus;
+    use aiome_core::expression::Expression;
     // Simulate 5 recently generated expressions
     for i in 0..5 {
         let mut expr = Expression::default();
@@ -685,7 +686,7 @@ async fn test_expression_generation_plan_limits() {
         expr.content = "mock content".into();
         expr.tts_status = TtsStatus::NotRequested;
         expr.created_at = chrono::Utc::now().to_rfc3339();
-        
+
         state.job_queue.store_expression(&expr).await.unwrap();
     }
 
@@ -695,7 +696,11 @@ async fn test_expression_generation_plan_limits() {
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
 
-    assert_eq!(resp.status_code(), StatusCode::TOO_MANY_REQUESTS, "Free plan should be rate limited at 5 expressions per hour");
+    assert_eq!(
+        resp.status_code(),
+        StatusCode::TOO_MANY_REQUESTS,
+        "Free plan should be rate limited at 5 expressions per hour"
+    );
 }
 
 #[serial]
@@ -825,7 +830,7 @@ async fn test_tts_synthesis() {
 
     // This is expected to FAIL (RED) with 404/405 initially
     assert_eq!(resp.status_code(), StatusCode::OK);
-    
+
     let body = resp.as_bytes();
     assert!(!body.is_empty());
 }
@@ -853,7 +858,7 @@ async fn test_lora_training_start() {
 
     // This is expected to FAIL (RED) with 404/405 initially
     assert_eq!(resp.status_code(), StatusCode::ACCEPTED);
-    
+
     let json = resp.json::<serde_json::Value>();
     assert!(json.get("job_id").is_some());
 }

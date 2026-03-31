@@ -114,7 +114,8 @@ impl ConstraintChecker {
             if output_str.contains(&input_str) {
                 violations.push(ConstraintViolation {
                     constraint_name: "SuspiciousEchoDetected".to_string(),
-                    expected: "Output should derive from but not exactly duplicate long inputs".to_string(),
+                    expected: "Output should derive from but not exactly duplicate long inputs"
+                        .to_string(),
                     actual: "Exact duplication of input detected in output".to_string(),
                     severity: 75,
                 });

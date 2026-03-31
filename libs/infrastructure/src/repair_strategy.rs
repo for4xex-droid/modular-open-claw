@@ -63,31 +63,65 @@ mod tests {
         let mut stats = AgentStats::default();
         stats.level = 1;
         stats.resonance = 0;
-        assert_eq!(RepairCalculator::calculate_max_retries(&stats), 1, "Level 1 should yield 1 retry");
+        assert_eq!(
+            RepairCalculator::calculate_max_retries(&stats),
+            1,
+            "Level 1 should yield 1 retry"
+        );
 
         stats.level = 3;
-        assert_eq!(RepairCalculator::calculate_max_retries(&stats), 3, "Level 3 should yield 3 retries");
+        assert_eq!(
+            RepairCalculator::calculate_max_retries(&stats),
+            3,
+            "Level 3 should yield 3 retries"
+        );
 
         stats.level = 10;
-        assert_eq!(RepairCalculator::calculate_max_retries(&stats), 5, "Level 10 should cap at 5 retries");
+        assert_eq!(
+            RepairCalculator::calculate_max_retries(&stats),
+            5,
+            "Level 10 should cap at 5 retries"
+        );
     }
 
     #[test]
     fn test_suggest_strategy() {
         // Red test: Retry logic based on category and current retries
-        let s1 = suggest_strategy(&FailureCategory::PlanAdherenceFailure, "Use different tool", 0, 3);
-        assert_eq!(s1, RepairStrategy::RetryWithHint("Use different tool".into()));
+        let s1 = suggest_strategy(
+            &FailureCategory::PlanAdherenceFailure,
+            "Use different tool",
+            0,
+            3,
+        );
+        assert_eq!(
+            s1,
+            RepairStrategy::RetryWithHint("Use different tool".into())
+        );
 
         // Beyond max retries
         let s2 = suggest_strategy(&FailureCategory::InvalidInvocation, "Fix JSON", 3, 3);
-        assert_eq!(s2, RepairStrategy::EscalateToHuman("Max retries exceeded for InvalidInvocation".into()));
+        assert_eq!(
+            s2,
+            RepairStrategy::EscalateToHuman("Max retries exceeded for InvalidInvocation".into())
+        );
 
         // Unrecoverable errors escalate immediately
         let s3 = suggest_strategy(&FailureCategory::SystemFailure, "DB locked", 0, 3);
-        assert_eq!(s3, RepairStrategy::EscalateToHuman("SystemFailure escalated immediately".into()));
-        
+        assert_eq!(
+            s3,
+            RepairStrategy::EscalateToHuman("SystemFailure escalated immediately".into())
+        );
+
         // Guardrails escalation immediately
-        let s4 = suggest_strategy(&FailureCategory::GuardrailsTriggered, "Cannot write out of sandbox", 0, 3);
-        assert_eq!(s4, RepairStrategy::EscalateToHuman("GuardrailsTriggered escalated immediately".into()));
+        let s4 = suggest_strategy(
+            &FailureCategory::GuardrailsTriggered,
+            "Cannot write out of sandbox",
+            0,
+            3,
+        );
+        assert_eq!(
+            s4,
+            RepairStrategy::EscalateToHuman("GuardrailsTriggered escalated immediately".into())
+        );
     }
 }

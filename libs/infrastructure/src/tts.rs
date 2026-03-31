@@ -5,12 +5,12 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::traits::TtsProvider;
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
-use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 
 /// Phase 13.3: OpenAI をバックエンドとした TTS プロバイダー
 #[derive(Debug)]
@@ -148,7 +148,7 @@ impl TtsProvider for XttsProvider {
             .timeout(Duration::from_secs(3))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
-            
+
         let resp = health_client.get(url).send().await;
         Ok(resp.is_ok() && resp.unwrap().status().is_success())
     }
@@ -194,16 +194,20 @@ mod tests {
     #[tokio::test]
     async fn test_xtts_provider_circuit_breaker_trips() {
         let provider = XttsProvider::new("http://invalid.local:18020".into());
-        
+
         let res1 = provider.synthesize("test", "p225").await;
         assert!(res1.is_err()); // 1st failure
-        
+
         let res2 = provider.synthesize("test", "p225").await;
         assert!(res2.is_err()); // 2nd failure
 
         let res3 = provider.synthesize("test", "p225").await;
         // 3rd failure should not even try to connect, but fail fast due to circuit breaker
         let err_msg = res3.unwrap_err().to_string();
-        assert!(err_msg.contains("CircuitBreaker is OPEN"), "Expected CircuitBreaker to trip, got: {}", err_msg);
+        assert!(
+            err_msg.contains("CircuitBreaker is OPEN"),
+            "Expected CircuitBreaker to trip, got: {}",
+            err_msg
+        );
     }
 }

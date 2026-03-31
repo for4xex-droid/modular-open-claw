@@ -85,15 +85,21 @@ pub async fn generate_expression(
         .get_subscription_status(auth.agent_id)
         .await
         .unwrap_or(aiome_contracts::commerce::SubscriptionStatus::None);
-        
-    let is_pro = matches!(sub_status, aiome_contracts::commerce::SubscriptionStatus::Active);
-    
+
+    let is_pro = matches!(
+        sub_status,
+        aiome_contracts::commerce::SubscriptionStatus::Active
+    );
+
     if !is_pro {
         // Enforce Free plan limits (e.g., max 5 expressions per hour).
         // For accurate limit, we fetch the 5 recent expressions and check their creation time
         let recent_exprs = state.job_queue.fetch_expressions(5).await.map_err(|e| {
             aiome_core::error::AiomeError::Infrastructure {
-                reason: format!("Failed to fetch recent expressions for rate limit check: {}", e),
+                reason: format!(
+                    "Failed to fetch recent expressions for rate limit check: {}",
+                    e
+                ),
             }
         })?;
         if recent_exprs.len() >= 5 {
@@ -104,8 +110,9 @@ pub async fn generate_expression(
                             aiome_contracts::error::BudgetExhaustedError {
                                 limit: 5.0,
                                 actual: 5.0,
-                            }
-                        ).into());
+                            },
+                        )
+                        .into());
                     }
                 }
             }

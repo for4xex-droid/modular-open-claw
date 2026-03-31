@@ -51,11 +51,21 @@ impl AgentEvolver for SoulMutator {
     async fn get_agent_stats(&self) -> Result<aiome_contracts::types::AgentStats, AiomeError> {
         Ok(aiome_contracts::types::AgentStats::default())
     }
-    async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
-    async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
-    async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
-    async fn sync_samsara_level(&self) -> Result<Option<aiome_contracts::contracts::SamsaraEvent>, AiomeError> { Ok(None) }
-    
+    async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> {
+        Ok(())
+    }
+    async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> {
+        Ok(())
+    }
+    async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> {
+        Ok(())
+    }
+    async fn sync_samsara_level(
+        &self,
+    ) -> Result<Option<aiome_contracts::contracts::SamsaraEvent>, AiomeError> {
+        Ok(None)
+    }
+
     async fn record_evolution_event(
         &self,
         _: i32,
@@ -63,22 +73,21 @@ impl AgentEvolver for SoulMutator {
         _: &str,
         _: Option<&str>,
         _: Option<&str>,
-    ) -> Result<(), AiomeError> { Ok(()) }
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
 
-    async fn fetch_evolution_history(
-        &self,
-        _: i64,
-    ) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+    async fn fetch_evolution_history(&self, _: i64) -> Result<Vec<serde_json::Value>, AiomeError> {
+        Ok(vec![])
+    }
 
-    async fn record_soul_mutation(
-        &self,
-        _: &str,
-        _: &str,
-        _: &str,
-    ) -> Result<(), AiomeError> { Ok(()) }
+    async fn record_soul_mutation(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
 
     async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {
-        self.transmute_with_metadata(jq, serde_json::json!({})).await
+        self.transmute_with_metadata(jq, serde_json::json!({}))
+            .await
     }
 
     async fn transmute_with_metadata(
@@ -94,11 +103,12 @@ impl AgentEvolver for SoulMutator {
             }
         }
         let soul_path = self.base_dir.join("SOUL.md");
-        let soul_content = fs::read_to_string(&soul_path).await.map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: format!("Failed to read SOUL.md: {}", e),
-            }
-        })?;
+        let soul_content =
+            fs::read_to_string(&soul_path)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to read SOUL.md: {}", e),
+                })?;
 
         let prompt = format!(
             "Current Soul:\n{}\n\nMetadata: {}\n\nMutate this soul to reflect recent development and lessons learned.",
@@ -114,11 +124,11 @@ impl AgentEvolver for SoulMutator {
             return Ok(false);
         }
 
-        fs::write(&soul_path, mutated_soul).await.map_err(|e| {
-            AiomeError::Infrastructure {
+        fs::write(&soul_path, mutated_soul)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to write mutated soul: {}", e),
-            }
-        })?;
+            })?;
 
         info!("Soul transmutation successful.");
         Ok(true)

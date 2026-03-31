@@ -28,8 +28,6 @@ pub mod circuit_breaker;
 
 /// 認知健全性モニター (Phase 2A)
 pub mod cognitive_sentinel;
-pub mod repair_strategy;
-pub mod lora_autotuner;
 /// コンプライアンス・eKYC
 pub mod compliance;
 /// コンセプト（概念）のベクター管理
@@ -38,6 +36,8 @@ pub mod concept_manager;
 pub mod constraint_checker;
 /// LLM向けコンテキスト生成エンジン
 pub mod context_engine;
+pub mod lora_autotuner;
+pub mod repair_strategy;
 /// タスクキュー・非同期実行・リトライ
 #[macro_use]
 pub mod boundary_verifier;

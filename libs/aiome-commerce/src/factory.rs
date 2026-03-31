@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub struct CommerceEngineFactory;
 
 impl CommerceEngineFactory {
-    /// Dynamically creates the correct CommerceEngine instance depending on the 
+    /// Dynamically creates the correct CommerceEngine instance depending on the
     /// provided API key and the build environment (debug vs release).
     pub async fn create(
         api_key: Option<String>,
@@ -30,7 +30,9 @@ impl CommerceEngineFactory {
             // In release mode, the API key is MANDATORY. Fail-closed.
             #[cfg(not(debug_assertions))]
             {
-                Err(anyhow!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!"))
+                Err(anyhow!(
+                    "🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!"
+                ))
             }
         }
     }
@@ -66,14 +68,19 @@ mod tests {
 
         #[cfg(debug_assertions)]
         {
-            assert!(engine.is_ok(), "Should return MockCommerceEngine in debug mode");
+            assert!(
+                engine.is_ok(),
+                "Should return MockCommerceEngine in debug mode"
+            );
         }
-        
+
         #[cfg(not(debug_assertions))]
         {
             assert!(engine.is_err(), "Should fail in release mode if no API key");
             if let Err(e) = engine {
-                assert!(e.to_string().contains("STRIPE_API_KEY must be set in production"));
+                assert!(e
+                    .to_string()
+                    .contains("STRIPE_API_KEY must be set in production"));
             }
         }
     }

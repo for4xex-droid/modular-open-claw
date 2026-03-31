@@ -524,7 +524,11 @@ impl AgentEvolver for UniversalJobQueue {
         Ok(false)
     }
 
-    async fn transmute_with_metadata(&self, _jq: &dyn JobQueue, _metadata: serde_json::Value) -> Result<bool, AiomeError> {
+    async fn transmute_with_metadata(
+        &self,
+        _jq: &dyn JobQueue,
+        _metadata: serde_json::Value,
+    ) -> Result<bool, AiomeError> {
         Ok(false)
     }
 }

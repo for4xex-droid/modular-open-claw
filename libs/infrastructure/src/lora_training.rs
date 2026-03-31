@@ -8,11 +8,11 @@
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail};
 use crate::soul_mutator::SoulMutator;
 use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::{LoraEngine, JobQueue, AgentEvolver};
 use aiome_contracts::llm::LlmResponse;
+use aiome_contracts::traits::{AgentEvolver, JobQueue, LoraEngine};
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::process::Command;
-use async_trait::async_trait;
 
 /// Configuration for LoRA Training
 #[derive(Debug, Clone)]
@@ -80,13 +80,14 @@ impl LoraTrainingService {
             Ok(std::path::PathBuf::from("scripts/mlx_train.py"))
         } else {
             // Find root from current dir (safely)
-            let mut curr: std::path::PathBuf = std::env::current_dir()
-                .map_err(|e| AiomeError::Infrastructure {
+            let mut curr: std::path::PathBuf =
+                std::env::current_dir().map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Failed to get current dir: {}", e),
                 })?;
-            
+
             let mut found = None;
-            for _ in 0..3 { // Up to 3 levels
+            for _ in 0..3 {
+                // Up to 3 levels
                 if curr.join("scripts/mlx_train.py").exists() {
                     found = Some(curr.join("scripts/mlx_train.py"));
                     break;
@@ -97,7 +98,7 @@ impl LoraTrainingService {
                     break;
                 }
             }
-            
+
             found.ok_or_else(|| AiomeError::Infrastructure {
                 reason: "Could not find scripts/mlx_train.py in workspace tree".to_string(),
             })
@@ -108,7 +109,8 @@ impl LoraTrainingService {
     pub async fn start_training(&self, config: LoraTrainingConfig) -> Result<(), AiomeError> {
         tracing::info!(
             "🛠️ [LoraTrainingService] Starting MLX training: model={}, dataset={}",
-            config.base_model, config.dataset_path
+            config.base_model,
+            config.dataset_path
         );
 
         let adapter_output = format!("{}/adapter_model.safetensors", config.vault_path);
@@ -142,7 +144,10 @@ impl LoraTrainingService {
                 let _ = stderr.read_to_string(&mut stderr_content).await;
             }
             return Err(AiomeError::Infrastructure {
-                reason: format!("LoRA training script exited with error ({}): {}", status, stderr_content),
+                reason: format!(
+                    "LoRA training script exited with error ({}): {}",
+                    status, stderr_content
+                ),
             });
         }
 
@@ -172,7 +177,7 @@ impl LoraEngine for LoraTrainingService {
         _params: serde_json::Value,
     ) -> Result<String, AiomeError> {
         let job_id = format!("job_{}", uuid::Uuid::new_v4());
-        
+
         // In a real app, we would enqueue this to a background worker.
         // For GREEN stage, we trigger it and return the id.
         let config = LoraTrainingConfig {
@@ -194,15 +199,20 @@ impl LoraEngine for LoraTrainingService {
             metadata.insert("model".into(), base_model.into());
             metadata.insert("dataset".into(), dataset_id.into());
             metadata.insert("job_id".into(), job_id.clone().into());
-            
-            if let Err(e) = mutator.transmute_with_metadata(&**jq, serde_json::Value::Object(metadata)).await {
-                tracing::warn!("⚠️ [LoraTrainingService] Evolution failed (Non-fatal): {}", e);
+
+            if let Err(e) = mutator
+                .transmute_with_metadata(&**jq, serde_json::Value::Object(metadata))
+                .await
+            {
+                tracing::warn!(
+                    "⚠️ [LoraTrainingService] Evolution failed (Non-fatal): {}",
+                    e
+                );
             }
         }
 
         Ok(job_id)
     }
-
 
     /// Verifies the presence of MLX training script and mlx-lm dependency.
     async fn health_check(&self) -> Result<bool, AiomeError> {
@@ -217,7 +227,10 @@ impl LoraEngine for LoraTrainingService {
             Err(_) => return Ok(false),
         };
         if !script_path.exists() {
-            tracing::warn!("⚠️ [LoraTrainingService] MLX script not found at {:?}", script_path);
+            tracing::warn!(
+                "⚠️ [LoraTrainingService] MLX script not found at {:?}",
+                script_path
+            );
             return Ok(false);
         }
 
@@ -235,7 +248,9 @@ impl LoraEngine for LoraTrainingService {
                 Ok(stdout.trim() == "ready")
             }
             _ => {
-                tracing::warn!("⚠️ [LoraTrainingService] mlx-lm library not found or python3 missing.");
+                tracing::warn!(
+                    "⚠️ [LoraTrainingService] mlx-lm library not found or python3 missing."
+                );
                 Ok(false)
             }
         }
@@ -293,11 +308,15 @@ mod tests {
         std::fs::write(&soul_path, "Initial Soul").unwrap();
 
         // Setup mock LLM that returns a specific mutation
-        let mutator = Arc::new(SoulMutator::new(Arc::new(GlobalMockLlm), tmp.path().to_path_buf(), None));
+        let mutator = Arc::new(SoulMutator::new(
+            Arc::new(GlobalMockLlm),
+            tmp.path().to_path_buf(),
+            None,
+        ));
         let jq = Arc::new(GlobalMockJobQueue::default());
 
         let service = LoraTrainingService::new(core, Some(mutator), Some(jq));
-        
+
         // MLX script exists at workspace root
         let config = LoraTrainingConfig {
             base_model: "test".into(),
@@ -308,24 +327,37 @@ mod tests {
         };
 
         // When implemented, this should trigger SoulMutator
-        service.train("test", "null", serde_json::json!({})).await.unwrap();
+        service
+            .train("test", "null", serde_json::json!({}))
+            .await
+            .unwrap();
 
         let mutated_content = std::fs::read_to_string(&soul_path).unwrap();
-        assert_ne!(mutated_content, "Initial Soul", "Soul should have evolved after training");
+        assert_ne!(
+            mutated_content, "Initial Soul",
+            "Soul should have evolved after training"
+        );
     }
 
     #[tokio::test]
     async fn test_lora_training_health_check() {
         use crate::test_utils::job_queue_mock::{GlobalMockJobQueue, GlobalMockLlm};
         let mock_llm = Arc::new(GlobalMockLlm);
-        let mutator = Arc::new(SoulMutator::new(mock_llm, std::path::PathBuf::from("/tmp"), None));
+        let mutator = Arc::new(SoulMutator::new(
+            mock_llm,
+            std::path::PathBuf::from("/tmp"),
+            None,
+        ));
         let jq = Arc::new(GlobalMockJobQueue::default());
-        
+
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, Some(mutator), Some(jq));
-        
+
         // This method does not exist yet! (TDD RED)
         let health = service.health_check().await.unwrap();
-        assert!(health, "Health check should pass in test environment (STUB mode)");
+        assert!(
+            health,
+            "Health check should pass in test environment (STUB mode)"
+        );
     }
 }
