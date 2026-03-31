@@ -13,7 +13,7 @@ use rand::Rng;
 use serde_json::json;
 use std::path::PathBuf;
 use tokio::fs;
-use tracing::info;
+use tracing::{info, error};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -143,4 +143,47 @@ pub async fn list_voice_assets_handler(
         )
         .await?;
     Ok((StatusCode::OK, Json(assets)))
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct SynthesizeRequest {
+    pub text: String,
+    pub voice_id: Option<String>,
+}
+
+/// [POST] /api/v1/voice/synthesize
+/// AI Voice Synthesis via TtsProvider
+#[utoipa::path(
+    post,
+    path = "/api/v1/voice/synthesize",
+    responses(
+        (status = 200, description = "Synthesized audio bytes")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn synthesize_voice_handler(
+    _auth: Authenticated,
+    State(state): State<AppState>,
+    Json(req): Json<SynthesizeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    info!("🎙️ [Voice] Synthesizing text: {} chars", req.text.len());
+    
+    // Use requested voice_id, or default from config, or fallback to p225
+    let voice_id = req.voice_id.as_deref()
+        .or(state.config.xtts_speaker.as_deref())
+        .unwrap_or("p225");
+    
+    let audio_bytes = state.tts_provider
+        .synthesize(&req.text, voice_id)
+        .await
+        .map_err(|e| {
+            error!("❌ [Voice] Synthesis failed: {}", e);
+            AppError::internal(format!("TTS synthesis failed: {}", e))
+        })?;
+
+    Ok((
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "audio/wav")],
+        audio_bytes,
+    ))
 }

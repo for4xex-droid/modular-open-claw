@@ -666,7 +666,7 @@ async fn main() -> anyhow::Result<()> {
         ),
         event_sender: Component::new(event_sender),
         context_engine: Component::new(context_engine),
-        soul_mutator: Component::new(soul_mutator),
+        soul_mutator: Component::new(soul_mutator.clone()),
         soul_store: Component::new(soul_store),
         provider: Component::new(router_provider),
         autonomous_running: Component::new(autonomous_running),
@@ -710,7 +710,12 @@ async fn main() -> anyhow::Result<()> {
         transcription_engine: Component::new(transcription_engine),
         task_dispatcher: Component::new(task_dispatcher),
         lora_engine: {
-            let engine = Arc::new(aiome_core::lora::engine::LoraEngine::new());
+            let core_engine = Arc::new(aiome_core::lora::engine::LoraEngine::new());
+            let engine = Arc::new(infrastructure::lora_training::LoraTrainingService::new(
+                core_engine,
+                Some(soul_mutator.clone()),
+                Some(job_queue.clone()),
+            ));
             Component::new(engine as Arc<dyn aiome_contracts::traits::LoraEngine>)
         },
         tts_provider: {

@@ -4,12 +4,14 @@ import { Bot, Send, Cpu, Brain, Sparkles, ThumbsUp, ThumbsDown, BookOpen } from 
 import { API_BASE } from "../config";
 import { ChatMessage } from '../types';
 import { authenticatedFetch } from '../lib/auth';
+import { Volume2, VolumeX } from 'lucide-react';
 
 const AgentConsole: React.FC = () => {
     const [input, setInput] = useState("");
     const [history, setHistory] = useState<ChatMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);
     const [streamingText, setStreamingText] = useState("");
+    const [autoTts, setAutoTts] = useState(true);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [status, setStatus] = useState<string>("IDLE");
     const [relevantKarma, setRelevantKarma] = useState<string | null>(null);
@@ -28,6 +30,23 @@ const AgentConsole: React.FC = () => {
     };
 
     useEffect(scrollToBottom, [history, streamingText]);
+
+    const playTts = async (text: string) => {
+        if (!text) return;
+        try {
+            const response = await authenticatedFetch(`${API_BASE}/api/v1/voice/synthesize`, {
+                method: 'POST',
+                body: JSON.stringify({ text })
+            });
+            if (!response.ok) throw new Error("TTS failed");
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            await audio.play();
+        } catch (e) {
+            console.error("TTS Playback failed:", e);
+        }
+    };
 
     const sendMessage = async () => {
         if (!input.trim() || isTyping) return;
@@ -107,6 +126,9 @@ const AgentConsole: React.FC = () => {
             if (accumulatedText) {
                 setHistory(prev => [...prev, { role: "assistant", content: accumulatedText }]);
                 setStreamingText("");
+                if (autoTts) {
+                    playTts(accumulatedText);
+                }
             }
         } catch (e) {
             setHistory(prev => [...prev, { role: "assistant", content: "⚠️ Connection error to Aiome layer.", isError: true }]);
@@ -160,7 +182,24 @@ const AgentConsole: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                    <button 
+                        onClick={() => setAutoTts(!autoTts)}
+                        className="stat-badge" 
+                        style={{ 
+                            fontSize: '0.7rem', 
+                            background: autoTts ? 'rgba(0, 243, 255, 0.1)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${autoTts ? 'var(--accent-cyan)' : 'transparent'}`,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            color: autoTts ? 'var(--accent-cyan)' : 'var(--text-muted)'
+                        }}
+                    >
+                        {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                        VOICE: {autoTts ? 'ON' : 'OFF'}
+                    </button>
                     <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)' }}>3.5B MODEL</div>
                 </div>
             </div>

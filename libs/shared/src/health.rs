@@ -69,6 +69,9 @@ pub struct ResourceStatus {
     /// LLM サーキットブレーカーの状態 (G-1)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub llm_circuit_breaker: Option<serde_json::Value>,
+    /// LoRA 学習エンジンの状態 (Sprint 4)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lora_engine: Option<serde_json::Value>,
 }
 
 /// システムの状態を監視する
@@ -162,6 +165,7 @@ impl HealthMonitor {
             creativity: 30,
             fatigue: 10,
             llm_circuit_breaker: None,
+            lora_engine: None,
         }
     }
 }

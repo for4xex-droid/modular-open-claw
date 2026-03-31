@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "generate-types": "openapi-typescript ../../docs/openapi.json -o src/types/generated.ts",
     "audit": "npm audit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "rebuild": "npm rebuild"
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",

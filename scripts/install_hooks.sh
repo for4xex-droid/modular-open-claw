@@ -110,6 +110,19 @@ else
   echo "✅"
 fi
 
+# ── Check 5: Prevent committing strategic documents ──
+echo -n "  strategy docs... "
+STRATEGY_PATTERNS='(strategy|valuation|buyout|business_plan).*\.md$'
+STAGED_FILES=$(git diff --cached --name-only || true)
+if echo "$STAGED_FILES" | grep -iqE "$STRATEGY_PATTERNS"; then
+  echo "❌ STRATEGIC DOCUMENT DETECTED!"
+  echo "  🔴 You are trying to commit a sensitive business/strategy document."
+  echo "  Rename it or bypass this check only if you are absolutely sure."
+  ERRORS=$((ERRORS + 1))
+else
+  echo "✅"
+fi
+
 # ── Result ──
 echo ""
 if [[ $ERRORS -gt 0 ]]; then

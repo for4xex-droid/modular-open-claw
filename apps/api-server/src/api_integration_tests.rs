@@ -320,6 +320,14 @@ impl aiome_contracts::traits::LoraEngine for MockLoraEngine {
     async fn health_check(&self) -> Result<bool, aiome_core::error::AiomeError> {
         Ok(true)
     }
+    async fn train(
+        &self,
+        _base: &str,
+        _data: &str,
+        _params: serde_json::Value,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("mock_job_id".into())
+    }
 }
 
 pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
@@ -796,6 +804,58 @@ async fn test_ollama_models() {
             || resp.status_code() == StatusCode::INTERNAL_SERVER_ERROR
             || resp.status_code() == StatusCode::OK
     );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_tts_synthesis() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = json!({
+        "text": "Hello from TDD",
+        "voice_id": "p225"
+    });
+
+    let resp = server
+        .post("/api/v1/voice/synthesize")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    // This is expected to FAIL (RED) with 404/405 initially
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    
+    let body = resp.as_bytes();
+    assert!(!body.is_empty());
+}
+
+#[serial]
+#[tokio::test]
+async fn test_lora_training_start() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = json!({
+        "base_model": "mistral-7b",
+        "dataset_id": "user-123-chat",
+        "params": {
+            "epochs": 3,
+            "lr": 1e-4
+        }
+    });
+
+    let resp = server
+        .post("/api/v1/lora/train")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    // This is expected to FAIL (RED) with 404/405 initially
+    assert_eq!(resp.status_code(), StatusCode::ACCEPTED);
+    
+    let json = resp.json::<serde_json::Value>();
+    assert!(json.get("job_id").is_some());
 }
 
 #[serial]

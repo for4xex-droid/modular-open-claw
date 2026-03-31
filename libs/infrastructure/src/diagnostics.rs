@@ -82,4 +82,20 @@ impl AgentRxDiagnostics {
             diagnosed_at: Utc::now().to_rfc3339(),
         })
     }
+
+    /// 診断結果とエージェントの成長度（AgentStats）に基づき、最適な修復戦略を提案する
+    pub fn suggest_repair_strategy(
+        &self,
+        diagnosis: &AgentDiagnosis,
+        stats: &aiome_contracts::types::AgentStats,
+        current_retries: u32,
+    ) -> crate::repair_strategy::RepairStrategy {
+        let max_retries = crate::repair_strategy::RepairCalculator::calculate_max_retries(stats);
+        crate::repair_strategy::suggest_strategy(
+            &diagnosis.category,
+            &diagnosis.self_repair_hint,
+            current_retries,
+            max_retries,
+        )
+    }
 }

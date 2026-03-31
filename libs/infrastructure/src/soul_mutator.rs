@@ -25,6 +25,13 @@ pub struct SoulMutator {
     belief_gate: Option<Arc<crate::belief_consistency_gate::BeliefConsistencyGate>>,
 }
 
+impl std::fmt::Debug for SoulMutator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SoulMutator")
+            .field("base_dir", &self.base_dir)
+            .finish_non_exhaustive()
+    }
+}
 impl SoulMutator {
     pub fn new(
         llm: Arc<dyn LlmProvider>,
@@ -37,8 +44,48 @@ impl SoulMutator {
             belief_gate,
         }
     }
+}
 
-    pub async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {
+#[async_trait]
+impl AgentEvolver for SoulMutator {
+    async fn get_agent_stats(&self) -> Result<aiome_contracts::types::AgentStats, AiomeError> {
+        Ok(aiome_contracts::types::AgentStats::default())
+    }
+    async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+    async fn add_tech_exp(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+    async fn add_creativity(&self, _: i32) -> Result<(), AiomeError> { Ok(()) }
+    async fn sync_samsara_level(&self) -> Result<Option<aiome_contracts::contracts::SamsaraEvent>, AiomeError> { Ok(None) }
+    
+    async fn record_evolution_event(
+        &self,
+        _: i32,
+        _: &str,
+        _: &str,
+        _: Option<&str>,
+        _: Option<&str>,
+    ) -> Result<(), AiomeError> { Ok(()) }
+
+    async fn fetch_evolution_history(
+        &self,
+        _: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError> { Ok(vec![]) }
+
+    async fn record_soul_mutation(
+        &self,
+        _: &str,
+        _: &str,
+        _: &str,
+    ) -> Result<(), AiomeError> { Ok(()) }
+
+    async fn transmute(&self, jq: &dyn JobQueue) -> Result<bool, AiomeError> {
+        self.transmute_with_metadata(jq, serde_json::json!({})).await
+    }
+
+    async fn transmute_with_metadata(
+        &self,
+        _jq: &dyn JobQueue,
+        metadata: serde_json::Value,
+    ) -> Result<bool, AiomeError> {
         // Phase 49: Evidence-Driven Revision Gate
         if let Some(gate) = &self.belief_gate {
             if !gate.has_sufficient_evidence_for_revision().await {
@@ -47,16 +94,15 @@ impl SoulMutator {
             }
         }
         let soul_path = self.base_dir.join("SOUL.md");
-        let soul_content =
-            fs::read_to_string(&soul_path)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to read SOUL.md: {}", e),
-                })?;
+        let soul_content = fs::read_to_string(&soul_path).await.map_err(|e| {
+            AiomeError::Infrastructure {
+                reason: format!("Failed to read SOUL.md: {}", e),
+            }
+        })?;
 
         let prompt = format!(
-            "Current Soul:\n{}\n\nMutate this soul to reflect recent development and lessons learned.",
-            soul_content
+            "Current Soul:\n{}\n\nMetadata: {}\n\nMutate this soul to reflect recent development and lessons learned.",
+            soul_content, metadata
         );
 
         let response = self.llm.complete(&prompt, None).await?;
@@ -68,11 +114,11 @@ impl SoulMutator {
             return Ok(false);
         }
 
-        fs::write(&soul_path, mutated_soul)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
+        fs::write(&soul_path, mutated_soul).await.map_err(|e| {
+            AiomeError::Infrastructure {
                 reason: format!("Failed to write mutated soul: {}", e),
-            })?;
+            }
+        })?;
 
         info!("Soul transmutation successful.");
         Ok(true)

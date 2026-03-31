@@ -2,7 +2,7 @@
 description: 計画の抜け漏れを多角的に検証するパーフェクトプランニング検証プロセス
 ---
 
-# /perfect-plan - パーフェクトプランニング 🎯
+# ç - /perfect-plan パーフェクトプランニング 🎯
 
 計画書（implementation_plan.md 等）に対して、**5つの異なる視座**から抜け漏れを徹底検証するメタワークフローです。
 個別ワークフロー（`/brainstorm`, `/deep-scan`, `/red-team`, `/preflight`）の強みを1つのパイプラインに統合しています。

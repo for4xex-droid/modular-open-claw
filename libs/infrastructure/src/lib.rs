@@ -28,6 +28,8 @@ pub mod circuit_breaker;
 
 /// 認知健全性モニター (Phase 2A)
 pub mod cognitive_sentinel;
+pub mod repair_strategy;
+pub mod lora_autotuner;
 /// コンプライアンス・eKYC
 pub mod compliance;
 /// コンセプト（概念）のベクター管理

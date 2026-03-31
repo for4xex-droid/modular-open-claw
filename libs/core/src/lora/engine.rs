@@ -82,6 +82,21 @@ impl LoraEngineTrait for LoraEngine {
         })
     }
 
+    async fn train(
+        &self,
+        base_model: &str,
+        dataset_id: &str,
+        _params: serde_json::Value,
+    ) -> Result<String, AiomeError> {
+        tracing::info!(
+            "🛠️ [LoraEngine] Mimicking training start: model={}, dataset={}",
+            base_model,
+            dataset_id
+        );
+        // Returns a dummy job_id
+        Ok(format!("job_{}", uuid::Uuid::new_v4()))
+    }
+
     async fn health_check(&self) -> Result<bool, AiomeError> {
         Ok(true)
     }

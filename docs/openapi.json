@@ -3016,6 +3016,9 @@
           "llm_circuit_breaker": {
             "description": "LLM サーキットブレーカーの状態 (G-1)"
           },
+          "lora_engine": {
+            "description": "LoRA 学習エンジンの状態 (Sprint 4)"
+          },
           "memory_usage_mb": {
             "type": "integer",
             "format": "int64",

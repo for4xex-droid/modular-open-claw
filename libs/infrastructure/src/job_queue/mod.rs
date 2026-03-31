@@ -517,6 +517,16 @@ impl AgentEvolver for UniversalJobQueue {
     ) -> Result<(), AiomeError> {
         Box::pin(self.do_record_soul_mutation(old_hash, new_hash, reason)).await
     }
+
+    async fn transmute(&self, _jq: &dyn JobQueue) -> Result<bool, AiomeError> {
+        // UniversalJobQueue acts as a registry, evolution is usually delegated.
+        // For now, return Ok(false) or a default.
+        Ok(false)
+    }
+
+    async fn transmute_with_metadata(&self, _jq: &dyn JobQueue, _metadata: serde_json::Value) -> Result<bool, AiomeError> {
+        Ok(false)
+    }
 }
 
 #[async_trait]

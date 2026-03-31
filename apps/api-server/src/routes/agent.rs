@@ -617,6 +617,7 @@ pub async fn trigger_agent_chat(
         let provider_bg = (*state.provider).clone();
         let diag_exec_id = chat_execution_id.clone();
         let prompt_clone = payload.prompt.clone();
+        let channel_id_clone = channel_id.clone();
 
         tokio::spawn(async move {
             use aiome_core::trajectory::TrajectoryStore;
@@ -660,8 +661,24 @@ pub async fn trigger_agent_chat(
                             info!("✅ [AgentRx] Diagnosis complete: {}", diagnosis.root_cause);
                             let _ = jq
                                 .trajectory_store
-                                .store_diagnosis(&diag_exec_id, diagnosis)
+                                .store_diagnosis(&diag_exec_id, diagnosis.clone())
                                 .await;
+
+                            // Self-repair logic
+                            let agent_stats = {
+                                use aiome_contracts::traits::AgentEvolver;
+                                jq.get_agent_stats().await.unwrap_or_default()
+                            };
+                            
+                            let strategy = diagnostics.suggest_repair_strategy(&diagnosis, &agent_stats, 0);
+                            
+                            if let infrastructure::repair_strategy::RepairStrategy::RetryWithHint(ref hint) = strategy {
+                                let msg = format!("🛠️ [AgentRx Self-Repair Alert]\n前回の実行で問題が検出されました。次回のアクションで以下の修正戦略を試行してください:\n{}", hint);
+                                let _ = jq.store_chat_message(&channel_id_clone, "system", &msg).await;
+                            } else if let infrastructure::repair_strategy::RepairStrategy::EscalateToHuman(ref msg) = strategy {
+                                let alert = format!("🚨 [AgentRx Escalation]\n致命的なエラーまたは再試行上限に達しました。ユーザー介入が必要です:\n{}", msg);
+                                let _ = jq.store_chat_message(&channel_id_clone, "system", &alert).await;
+                            }
                         }
                         Err(e) => tracing::error!("❌ [AgentRx] Diagnostic failed: {}", e),
                     }

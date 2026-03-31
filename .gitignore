@@ -38,3 +38,7 @@ PITCH_DECK.md
 scripts/update_headers.py
 check_output.txt
 docs/vision/
+*.strategy.md
+*valuation*.md
+*buyout*.md
+*business_plan*.md

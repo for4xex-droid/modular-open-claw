@@ -62,6 +62,25 @@ impl CognitiveSentinel {
             )));
         }
 
+        // 2. Fetch recent jobs to measure failure rate
+        let recent_jobs = job_queue.fetch_recent_jobs(50).await?;
+        if recent_jobs.len() >= 10 {
+            let failed_count = recent_jobs
+                .iter()
+                .filter(|j| j.status == aiome_contracts::traits::JobStatus::Failed)
+                .count();
+            let fail_rate = failed_count as f64 / recent_jobs.len() as f64;
+
+            if fail_rate > 0.6 {
+                return Ok(Some(format!(
+                    "🚨 Agent Panic State Detected. Recent failure rate is {:.1}% ({} out of {}). Safety mechanisms engaged.",
+                    fail_rate * 100.0,
+                    failed_count,
+                    recent_jobs.len()
+                )));
+            }
+        }
+
         Ok(None)
     }
 }

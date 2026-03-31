@@ -99,6 +99,13 @@ pub async fn get_health_status(
     let cb_status = state.circuit_breaker.get_status().await;
     status.llm_circuit_breaker = Some(serde_json::to_value(cb_status).unwrap_or_default());
 
+    // 🔍 Sprint 4: LoRA 学習エンジンの健全性チェック
+    let lora_ok = state.lora_engine.health_check().await.unwrap_or(false);
+    status.lora_engine = Some(serde_json::json!({
+        "mlx_available": lora_ok,
+        "status": if lora_ok { "ready" } else { "unavailable" }
+    }));
+
     Ok(Json(status))
 }
 

@@ -87,6 +87,7 @@ impl ConstraintChecker {
         }
 
         // 3. Output Panic/Error detection
+        let output_str = step.output.to_string();
         if let Some(error) = step.output.get("error") {
             violations.push(ConstraintViolation {
                 constraint_name: "ExecutionError".to_string(),
@@ -94,6 +95,30 @@ impl ConstraintChecker {
                 actual: error.to_string(),
                 severity: 90,
             });
+        }
+
+        // 4. OutputSizeExceeded
+        if output_str.len() > 100_000 {
+            violations.push(ConstraintViolation {
+                constraint_name: "OutputSizeExceeded".to_string(),
+                expected: "Output must be under 100KB".to_string(),
+                actual: format!("Output size is {} bytes", output_str.len()),
+                severity: 85,
+            });
+        }
+
+        // 5. SuspiciousEchoDetected
+        // If output contains the exact input and input is sufficiently long, it might be an echo attack or a loop.
+        // Guard against O(N*M) CPU denial of service: only run contains if strings are reasonably sized.
+        if input_str.len() > 50 && input_str.len() < 10_000 && output_str.len() < 100_000 {
+            if output_str.contains(&input_str) {
+                violations.push(ConstraintViolation {
+                    constraint_name: "SuspiciousEchoDetected".to_string(),
+                    expected: "Output should derive from but not exactly duplicate long inputs".to_string(),
+                    actual: "Exact duplication of input detected in output".to_string(),
+                    severity: 75,
+                });
+            }
         }
 
         violations

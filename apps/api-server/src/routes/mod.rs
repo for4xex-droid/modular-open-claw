@@ -21,6 +21,7 @@ pub mod gig;
 pub mod inochi2d;
 pub mod jobs;
 pub mod karma;
+pub mod lora;
 pub mod settings;
 pub mod skill;
 pub mod soul;

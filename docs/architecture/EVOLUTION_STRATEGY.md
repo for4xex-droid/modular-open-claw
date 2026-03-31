@@ -33,6 +33,9 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 6.  **Belief Integrity Layer (Phase 49 / BeliefShift)**:
     - **役割**: エージェントの「根源的なアイデンティティ」と矛盾する知識の学習を阻止し、Opinion Drift を防ぐ。
     - **特徴**: `BeliefConsistencyGate` が全ての新規知識（Karma）をコア信念と照合。矛盾するが妥当に見える情報は「証拠（Evidence）」として蓄積し、十分な証拠が得られた場合のみ `SoulMutator` が安全な書き換えを許可します。
+7.  **Autonomous Evolution Layer (Phase 55 / LoraAutotuner)**:
+    - **役割**: エージェントの学習プロセスを自律的に監視・最適化する。
+    - **特徴**: `LoraAutotuner` がロス履歴から Stagnation（停滞）や Overfitting（過学習）を検知し、学習率 (LR) や Epoch 数、Rank を動的に調整。`HeartbeatWakeup` と連携し、24時間のクールダウンを維持しつつ、成長のプラトー（停滞）を検知した際に自律再学習を自己トリガーします。
 
 ---
 
@@ -56,5 +59,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-28 (Phase 50 / A2A gRPC & Node Architecture)
+最終更新: 2026-03-31 (Phase 55 / AgentRx & LoRA Evolution)
 Aiome Development Team

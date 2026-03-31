@@ -135,6 +135,8 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🏗️ **Phase 51: Agentic Finance & GIG Loop Integration**: Integrated `TaskDispatcher` and `GigEngine` to establish an autonomous economic loop for publishing and chaining agent-to-agent gigs. Implements `gig_depth` recursion guardrails for stable, autonomous expansion of the AI economy.
 - 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement processes. Added dynamic LLM verification (JSON structured extraction) and broadcast reasoning details as `SoTProgress` SSE events to mirror AI's "deep thinking and scoring" in the UI in real-time.
 - 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced SSRF countermeasures with strict port-level validation (restricting `127.0.0.1` traffic entirely to Ollama/ComfyUI). Bolstered local detection layers (Guardrails) against prompt injection, and managed subprocesses with `Stdio::null` and hard timeouts to resolve zombie hangs, cementing CI stability and infrastructural safety.
+- 🛡️ **Phase 55: AgentRx Expansion & LoRA Autonomous Evolution**: Resolved `RepairCalculator` bugs and integrated dynamic repair hint scaling. Implemented `LoraAutotuner` for self-adjusting hyperparameters (LR, Epochs, Rank) based on loss history. Completed the "Autonomous Evolution Loop" with 24-hour cooldown logic, mathematically detecting performance plateaus to trigger self-optimization.
+- 🛡️ **Security Hardening (2026-03-31): NPM Supply Chain Mitigation**: Structural blocking of malicious `postinstall` scripts (e.g., Axios RAT) via `.npmrc` and a 3-layer CI audit (Critical Vulnerabilities, Registry Signatures, and `ignore-scripts` enforcement).
 
 ---
 
@@ -278,7 +280,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
+*Last Updated: 2026-03-31 (Phase 55: AgentRx & LoRA Evolution)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

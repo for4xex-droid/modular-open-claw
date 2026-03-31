@@ -1,3 +1,14 @@
+- **Security Hardening: NPM Supply Chain Attack Mitigation [完了]**
+    - **背景**: `axios@1.14.1` / `axios@0.30.4` の npm メンテナアカウント乗っ取りによるRAT（Remote Access Trojan）配備事案（2026-03-31）を受け、同種の攻撃に対する構造的防御を導入。
+    - **Layer 1 — postinstall 無効化**: `.npmrc` に `ignore-scripts=true` を設定。`postinstall` フックを悪用するサプライチェーン攻撃（axios RAT, event-stream, ua-parser-js 等）のクラス全体を構造的に無力化。
+    - **Layer 2 — Critical Audit Gate**: CI パイプラインに `npm audit --audit-level=critical` を追加。Critical レベルの既知脆弱性が混入した場合にビルドを即座にブロック。High レベル（ビルドツール内部のReDoS等、実害のない誤検知）はブロックしない設計により、Developer Friction を最小化。
+    - **Layer 3 — Registry Signature Verification**: `npm audit signatures` を CI に統合。npm の OIDC Trusted Publisher メカニズムによるレジストリ署名を検証し、正規CI外からの手動publish（アカウント乗っ取り攻撃の典型パターン）を検知。全192パッケージの署名検証をパス確認済み。
+    - **影響範囲**: `management-console` のみ。Rust バックエンドは crates.io ベースのため影響なし。既存ビルド・E2Eテストへの影響ゼロを統合テストで実証済み。
+- **Phase 55: AgentRx Expansion & LoRA Autotuning [完了]**
+    - **AgentRx Closed-Loop**: `RepairCalculator` の型ミスマッチを修正し、`AgentRxDiagnostics` に `suggest_repair_strategy` を実装。`API Server` のエージェント実行ループに修復ヒント（Retry/Escalate）の動的注入機構を統合。
+    - **LoRA Autotuning**: `LoraAutotuner` を新設し、過去のロス履歴に基づいた学習率、エポック数、ランクの自動チューニング（Overfitting抑制、Stagnation時のLR倍増、Oscillation時のLR半減）を実装。
+    - **Autonomous Evolution**: `HeartbeatWakeupService` に `LoraTrainingService` を統合。成長のプラトー（停滞）を検知した際に、24時間のクールダウン制御付きで自律的な自己最適化（訓練ループ）を自発的にトリガーする仕組みを完成。
+    - **System Defenses**: `ConstraintChecker` に `OutputSizeExceeded` (100KB超過) と `SuspiciousEchoDetected` (50文字以上の入力の完全なエコー攻撃) のセーフガードを追加。さらに `CognitiveSentinel` へ、最近のFail Rateが60%を超えた場合に発火する `Panic State` 防御メカニズムを追加。全機能の TDD およびワークスペースワイドな `cargo test` 通過を確認。
 - **Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD) [進行中]**
     - **Rebirth Archiving**: `archived_lora_models` テーブルとマイグレーションを追加。`SoulStore::archive_lora_model` を実装し、`SamsaraEngine::rebirth` 時に前世代のLoRA設定をアーカイブ＆リセットすることでデータポイズニングを完全に遮断。
     - **Secure LoRA Training**: `LoraTrainingService` を新設。`BastionGuard::new_internal()` を用いてLoRA学習プロセス（MLX/Python）を隔離実行・監視。
@@ -56,6 +67,10 @@
 ## [Unreleased] - 2026-03-31
 
 ### Added
+- **Phase 54: Agentic Evolution Engine (LoRA & Personality) [完了]**
+    - **Domain Abstraction**: `AgentEvolver` トレイトに `transmute` および `transmute_with_metadata` を追加し、全進化コンポーネントに対する統一的なインターフェースを提供。
+    - **Soul Evolution**: `SoulMutator` を `AgentEvolver` の実装としてリファクタリング。`belief_gate` と連携し、LLM による証拠駆動での安全な自己変容 (`SOUL.md` 更新) サイクルを構築。
+    - **LoRA Observability**: `LoraTrainingService` に `find_mlx_script_path` および `health_check` メソッドを実装。`api-server` の `/api/health` 監視項目に `lora_engine` を追加し、MLX 学習環境の可用性をリアルタイム監視。
 - **Phase 53: Society of Thought (SoT) & Security Hardening [完了]**
     - **SoT Multi-Review Pipeline (Active JSON Scoring)**: `Oracle::multi_review` を実装し、批判・洗練・判定の反復ループによる高度な意思決定基盤を確立。さらに `SoTEngine` の `evaluate_scores` において、LLM による **JSON 構造化抽出とスコア・クランプ (0-10)** を実装し、パース失敗時の安全なフォールバックを徹底。
     - **SoT Progress Visibility (End-to-End SSE)**: `SoTProgress` イベントを新設。バックエンドの `Oracle` 審議から、フロントエンドのリアルタイム・トースト通知表示までの SSE ルーティングを統合。

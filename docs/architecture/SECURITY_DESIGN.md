@@ -79,6 +79,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 56 | **Zombie Process Leak** | **Subprocess hang drains system resources** | 🟡 Mid | **RAII-based kill_on_drop + Stdio::null (RT3-3)** |
 | 57 | **Credential CLI Leak** | **Secrets visible in `ps aux` command line** | 🔴 High | **Ephemeral 0600 --env-file + immediate wipe (RT3-4)** |
 | 58 | **Cognitive Identity Drift** | **NaN emotional values lock state** | 🟡 Mid | **is_finite() filter + hard clamp regularizer (RT4-1)** |
+| 59 | **NPM Supply Chain Hijacking** | **Malicious postinstall script (Axios RAT)** | 🔴 High | **`.npmrc` ignore-scripts + 3-Layer NPM Audit** |
+| 60 | **Agent Output Abuse / DoS** | **Infinite Echo / Giant output generation** | 🔴 High | **ConstraintChecker (Max Output & Echo Filter) (Phase 55)** |
 
 ## 3. Defense Architecture
 
@@ -94,6 +96,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Cognitive Hardening (Phase 2B)**: Implements `sanitize_for_prompt` in `libs/shared/src/guardrails.rs` to escape Markdown headers (`#`, `---`) from stored `Karma` or `Summary` data, physically preventing prompt injection attacks that spoof system instructions. Also enforces strict `ContextBudget` accumulated length limits inside `ContextEngine` to prevent OOM/DoS via massive injected text blocks. Furthermore, extreme emotional inputs (`somatic_valence`) are clamped between `-1.0` and `1.0` with `NaN` elimination, preventing permanent "depressed" states from poisoned Database data.
 - **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
 - **Local Guardrail Patterns (Phase 53)**: Implements a second layer of defense inside `guardrails.rs` using high-performance keyword matching (e.g., "Ignore all instructions", "secret_key"). This provides immediate, low-latency protection against common prompt injection and exfiltration patterns, complementing the heavier LLM-based Bastion validators.
+- **Constraint Enforcement (Phase 55)**: Implements `ConstraintChecker` in the core execution loop. It structurally blocks agents from generating outputs exceeding 100KB (`OutputSizeExceeded`) and detects `SuspiciousEchoDetected` (50+ char exact input repetition), preventing CPU/Memory DoS and repetitive hallucination loops.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
@@ -113,6 +116,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Diagnostics & Immunity Ledger (Phase 8.8)**: Exposes a formalized `Audit & Immunity Ledger` in the management console. This provides human-readable visibility into local `agent_diagnoses` (self-repair trails) and `audit_ledger_global` (hash-chained record mutations), satisfying NURTURE §12 auditability requirements.
 - **Causal Hash Chains (Invariant-DAG) (Phase 48)**: All task execution graphs are secured using SHA-256 hash chains. The `TaskDispatcher` autonomously verifies the parent link integrity before dispatching sub-jobs, preventing "causal hijacking" where an agent might be tricked into executing a malicious step from a fake history.
 - **Federated Metrics Persistence (Phase 24)**: Extends the `Samsara Hub` with a `federated_metrics` table to record node-level health, job completion rates, and karma growth. Enables global observability and anomaly detection across the autonomous federation.
+- **NPM Supply Chain Governance (2026-03-31)**: Enforces `ignore-scripts=true` in `.npmrc` to structurally prevent RCE via `postinstall` hooks. CI pipeline integrates `npm audit signatures` to verify OIDC-backed provenance and `npm audit --audit-level=critical` to block known contaminated packages without blocking on minor build-tool vulnerabilities.
 
 ### Layer 4: Build Isolation & Formal TDD Forge (S-Rank Defense)
 - **OS-Native Sandbox**: Autonomous compilation (`cargo build`) executed by the agent is forcibly containerized using OS-native guardrails (`sandbox-exec` / `bwrap`) to prevent supply chain attacks during the Forge process.
@@ -177,4 +181,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
+*最終更新: 2026-03-31 (Security Hardening: NPM Supply Chain & Phase 55 Constraints)*

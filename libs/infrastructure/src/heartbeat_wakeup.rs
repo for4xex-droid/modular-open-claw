@@ -21,6 +21,7 @@ pub struct HeartbeatWakeupService {
     workspace_dir: PathBuf,
     score_tracker: Option<Arc<ScoreTracker>>,
     agent_evolver: Option<Arc<dyn AgentEvolver>>,
+    lora_service: Option<Arc<crate::lora_training::LoraTrainingService>>,
 }
 
 impl HeartbeatWakeupService {
@@ -36,17 +37,21 @@ impl HeartbeatWakeupService {
             workspace_dir,
             score_tracker: None,
             agent_evolver: None,
+            lora_service: None,
         }
     }
 
     /// ScoreTracker を紐付ける
-    pub fn with_score_tracker(
+    /// ScoreTracker と LoraService を紐付ける
+    pub fn with_evolution_tools(
         mut self,
         tracker: Arc<ScoreTracker>,
         registry: Arc<dyn AgentEvolver>,
+        lora_service: Option<Arc<crate::lora_training::LoraTrainingService>>,
     ) -> Self {
         self.score_tracker = Some(tracker);
         self.agent_evolver = Some(registry);
+        self.lora_service = lora_service;
         self
     }
 
@@ -74,9 +79,50 @@ impl HeartbeatWakeupService {
                     match tracker.detect_plateau("exp", 14).await {
                         Ok(Some(report)) if report.is_stagnating => {
                             warn!(
-                                "📉 [Heartbeat] Score plateau detected for '{}'",
+                                "📉 [Heartbeat] Score plateau detected for '{}'. Evaluating autonomous LoRA...",
                                 report.metric_name
                             );
+                            
+                            // Check Cooldown File
+                            let cooldown_file = self.workspace_dir.join("last_lora_trigger.timestamp");
+                            let can_trigger = if cooldown_file.exists() {
+                                if let Ok(meta) = fs::metadata(&cooldown_file) {
+                                    if let Ok(modified) = meta.modified() {
+                                        if let Ok(elapsed) = modified.elapsed() {
+                                            // Cooldown: 24 hours
+                                            elapsed.as_secs() > 86400
+                                        } else { false } // Clock went backwards 
+                                    } else { false } // Fail-safe
+                                } else { false } // Fail-safe
+                            } else { true };
+
+                            if can_trigger {
+                                if let Some(ref lora) = self.lora_service {
+                                    info!("🚀 [Heartbeat] Triggering Autonomous LoRA Training due to plateau!");
+                                    let mut config = crate::lora_training::LoraTrainingConfig::default();
+                                    config.base_model = "autonomous-recovery".into();
+                                    config.dataset_path = "workspace/datasets/auto_exp".into();
+                                    config.output_dir = "workspace/output".into();
+                                    config.vault_path = "workspace/vault/auto_recovery".into();
+                                    
+                                    let lora_clone = lora.clone();
+                                    tokio::spawn(async move {
+                                        if let Err(e) = lora_clone.start_training(config).await {
+                                            tracing::error!("❌ [Heartbeat] Autonomous LoRA Training failed: {:?}", e);
+                                        } else {
+                                            tracing::info!("✅ [Heartbeat] Autonomous LoRA Training completed successfully.");
+                                        }
+                                    });
+                                    // Touch cooldown file
+                                    if let Err(e) = fs::write(&cooldown_file, chrono::Utc::now().to_rfc3339()) {
+                                        tracing::error!("🚨 [Heartbeat] CRITICAL: Failed to write cooldown file at {:?}. Error: {:?}", cooldown_file, e);
+                                    }
+                                } else {
+                                    warn!("⚠️ [Heartbeat] LoraTrainingService not configured. Skipping autonomous training.");
+                                }
+                            } else {
+                                info!("⏳ [Heartbeat] LoRA training is on cooldown. Skipping.");
+                            }
                         }
                         Err(e) => {
                             warn!("⚠️ [Heartbeat] Plateau detection failed: {:?}", e);
