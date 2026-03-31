@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 *   **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-03-31 (Security Hardening: NPM Supply Chain Mitigation)*
+*Last Mutated: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*
 
 ---
 
@@ -292,7 +292,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-03-31 (Phase 55: AgentRx & LoRA Evolution)*
+*最終更新: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

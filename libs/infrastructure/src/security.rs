@@ -24,6 +24,13 @@ pub struct SecurityConfig {
     pub workspace_root: std::path::PathBuf,
     /// vault_path (Phase 3: DRM 隔離領域)
     pub vault_path: Option<std::path::PathBuf>,
+    /// use_runsc_sandbox (F-01)
+    #[serde(default = "default_true")]
+    pub use_runsc_sandbox: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for SecurityConfig {
@@ -57,6 +64,7 @@ impl Default for SecurityConfig {
             ],
             workspace_root: std::path::PathBuf::from("workspace"),
             vault_path: None,
+            use_runsc_sandbox: true,
         }
     }
 }
@@ -158,8 +166,8 @@ impl RuntimeJail for BastionGuard {
         // 単純な contains ではなく、エスケープを考慮した正規化後のチェックが望ましいが、
         // 現状はエスケープ文字 '\' 自体もメタ文字として扱い、コマンドラインでの直接使用を制限する。
         let dangerous_parts = [
-            ";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r", "%0a", "%0d", "\\$(",
-            "\\`", "\\{", // エスケープによる回避試行
+            ";", "&&", "||", ">", "<", "|", "`", "$(", "${", "\n", "\r", "\x0b", "\x0c", "\0",
+            "%0a", "%0d", "\\$(", "\\`", "\\{", // エスケープによる回避試行
             "{", "}", "[", "]", "*", "?", // ブレース展開・グロブ攻撃 (SEC-BRACE)
         ];
         for part in dangerous_parts {
@@ -197,12 +205,17 @@ impl RuntimeJail for BastionGuard {
 
         // 5. Script Engine constraints
         if !self.is_system_internal {
-            if (binary == "python3" || binary == "python")
-                && (args.contains(&"-c") || args.contains(&"-m"))
-            {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Security Violation: python -c/-m is forbidden.".into(),
-                });
+            if binary == "python3" || binary == "python" {
+                for arg in &args {
+                    // Check for `-c` or `-m`, including combined flags like `-Sc`
+                    if (arg.starts_with('-') && !arg.starts_with("--") && arg.contains('c'))
+                        || *arg == "-m"
+                    {
+                        return Err(AiomeError::Infrastructure {
+                            reason: "Security Violation: python -c/-m is forbidden.".into(),
+                        });
+                    }
+                }
             }
             if binary == "node" && (args.contains(&"-e") || args.contains(&"--eval")) {
                 return Err(AiomeError::Infrastructure {
@@ -220,6 +233,9 @@ impl RuntimeJail for BastionGuard {
         for arg in &args {
             let potential_paths: Vec<&str> = if arg.starts_with("--") && arg.contains('=') {
                 arg.splitn(2, '=').skip(1).collect()
+            } else if arg.starts_with('-') && !arg.starts_with("--") && arg.len() > 2 {
+                // Extracts the potential path part from a short flag like -f/etc/foo or -f..
+                vec![&arg[2..]]
             } else if !arg.starts_with('-') && !arg.is_empty() {
                 vec![arg]
             } else {
@@ -396,6 +412,80 @@ impl BastionGuard {
         }
     }
 
+    /// [Internal] 🛡️ 指定されたバイナリをサンドボックスでラップする
+    fn wrap_binary(&self, binary: &str, profile: SandboxProfile) -> (String, Vec<String>) {
+        if cfg!(target_os = "macos") && !self.is_system_internal {
+            let sandbox_exists = std::process::Command::new("which")
+                .arg("sandbox-exec")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if sandbox_exists {
+                let profile_str = match profile {
+                    SandboxProfile::LoraTraining => {
+                        "(version 1)\n                         (allow default)\n                         (allow network-outbound (remote tcp \"*:443\"))\n                         (allow network-outbound (remote tcp \"*:80\"))\n                         (deny file-write* (regex #\"^/etc\"))\n                         (deny file-write* (regex #\"^/var\"))"
+                    }
+                    _ => "(version 1) (allow default)",
+                };
+                return (
+                    "sandbox-exec".to_string(),
+                    vec![
+                        "-p".to_string(),
+                        profile_str.to_string(),
+                        binary.to_string(),
+                    ],
+                );
+            }
+        } else if cfg!(target_os = "linux") && !self.is_system_internal {
+            let runsc_exists = std::process::Command::new("which")
+                .arg("runsc")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if runsc_exists && GLOBAL_SECURITY_CONFIG.use_runsc_sandbox {
+                let mut runsc_args = Vec::new();
+                if profile == SandboxProfile::Strict || profile == SandboxProfile::WasmRun {
+                    runsc_args.push("--network=none".to_string());
+                }
+                runsc_args.push("do".to_string());
+                runsc_args.push(binary.to_string());
+                return ("runsc".to_string(), runsc_args);
+            }
+        }
+        (binary.to_string(), vec![])
+    }
+
+    /// 🛡️ [F-01] 構造化された引数を用いて Command を構築する。
+    pub fn build_safe_command_args(
+        &self,
+        program_name: &str,
+        args: Vec<String>,
+        profile: SandboxProfile,
+    ) -> Result<tokio::process::Command, AiomeError> {
+        if !self.is_system_internal
+            && !GLOBAL_SECURITY_CONFIG
+                .allowed_binaries
+                .contains(&program_name.to_string())
+        {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Security Violation: Binary '{}' is not whitelisted.",
+                    program_name
+                ),
+            });
+        }
+
+        let (actual_prog, mut actual_args) = self.wrap_binary(program_name, profile);
+
+        actual_args.extend(args);
+
+        let mut cmd = tokio::process::Command::new(actual_prog);
+        cmd.args(actual_args);
+        Ok(cmd)
+    }
+
     /// システム内部用インスタンスを生成する (G-26)
     pub fn new_internal(manifest: PermissionManifest) -> Self {
         Self {
@@ -421,7 +511,9 @@ impl BastionGuard {
                 '\'' if !in_double_quote => {
                     in_single_quote = !in_single_quote;
                 }
-                ' ' | '\t' if !in_double_quote && !in_single_quote => {
+                ' ' | '\t' | '\r' | '\n' | '\x0b' | '\x0c'
+                    if !in_double_quote && !in_single_quote =>
+                {
                     if !current.is_empty() {
                         parts.push(std::mem::take(&mut current));
                     }
@@ -583,6 +675,7 @@ mod tests {
         assert!(guard.safe_exec("ls > out.txt").await.is_err());
         assert!(guard.safe_exec("echo `whoami`").await.is_err());
         assert!(guard.safe_exec("echo $(whoami)").await.is_err());
+        assert!(guard.safe_exec("python3 -Sc import os").await.is_err()); // Red Team combined flag test
     }
 
     #[tokio::test]
@@ -594,6 +687,7 @@ mod tests {
         let guard = BastionGuard::new(manifest);
 
         assert!(guard.safe_exec("cat /etc/passwd").await.is_err());
+        assert!(guard.safe_exec("grep -f/etc/passwd foo.txt").await.is_err()); // Red Team short flag attached path test
         assert!(guard.safe_exec("ls ~/.ssh").await.is_err());
         assert!(guard.safe_exec("grep API_KEY .env").await.is_err());
     }

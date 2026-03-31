@@ -5,14 +5,17 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::security::{BastionGuard, PermissionManifest, RuntimeJail};
+use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
 use crate::soul_mutator::SoulMutator;
 use aiome_contracts::error::AiomeError;
 use aiome_contracts::llm::LlmResponse;
 use aiome_contracts::traits::{AgentEvolver, JobQueue, LoraEngine};
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
+use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 
 /// Configuration for LoRA Training
 #[derive(Debug, Clone)]
@@ -45,11 +48,15 @@ impl Default for LoraTrainingConfig {
 
 /// Service responsible for managing the lifecycle of LoRA training jobs.
 /// Uses BastionGuard to safely execute MLX / Python training scripts.
+#[derive(Clone)]
 pub struct LoraTrainingService {
-    _bastion: BastionGuard,
+    _bastion: Arc<BastionGuard>,
     core_engine: Arc<aiome_core::lora::engine::LoraEngine>,
     soul_mutator: Option<Arc<SoulMutator>>,
     job_queue: Option<Arc<dyn JobQueue>>,
+    event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+    active_jobs: Arc<RwLock<HashMap<String, CancellationToken>>>,
+    job_semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 impl std::fmt::Debug for LoraTrainingService {
@@ -66,12 +73,23 @@ impl LoraTrainingService {
         core_engine: Arc<aiome_core::lora::engine::LoraEngine>,
         soul_mutator: Option<Arc<SoulMutator>>,
         job_queue: Option<Arc<dyn JobQueue>>,
+        event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
     ) -> Self {
         Self {
-            _bastion: BastionGuard::new_internal(PermissionManifest::default()),
+            _bastion: Arc::new(BastionGuard::new(
+                aiome_core::security::PermissionManifest {
+                    allow_network: true,
+                    allow_filesystem_write: true,
+                    allow_shell_execution: false,
+                    allowed_domains: vec!["huggingface.co".into(), "hf.co".into()],
+                },
+            )),
             core_engine,
             soul_mutator,
             job_queue,
+            event_tx,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+            job_semaphore: Arc::new(tokio::sync::Semaphore::new(1)), // Limit to 1 training at a time (F-02)
         }
     }
 
@@ -105,49 +123,135 @@ impl LoraTrainingService {
         }
     }
 
-    /// Triggers the training process.
-    pub async fn start_training(&self, config: LoraTrainingConfig) -> Result<(), AiomeError> {
+    /// Triggers the training process synchronously.
+    /// Takes `job_id` and `cancel_token` to support P-23 features.
+    pub async fn start_training(
+        &self,
+        job_id: &str,
+        config: LoraTrainingConfig,
+        cancel_token: CancellationToken,
+    ) -> Result<(), AiomeError> {
         tracing::info!(
-            "🛠️ [LoraTrainingService] Starting MLX training: model={}, dataset={}",
+            "🛠️ [LoraTrainingService] Starting MLX training (job: {}): model={}, dataset={}",
+            job_id,
             config.base_model,
             config.dataset_path
         );
+
+        // SEC-PATH: P-08 Dataset Validation
+        if !std::path::Path::new(&config.dataset_path).exists() {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Dataset not found at: {}", config.dataset_path),
+            });
+        }
+        // Basic check for Dataset format
+        if let Ok(content) = std::fs::read_to_string(&config.dataset_path) {
+            if !content.contains("\"text\"") && !content.contains("\"messages\"") {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Dataset is missing 'text' or 'messages' fields (P-08)".to_string(),
+                });
+            }
+        }
 
         let adapter_output = format!("{}/adapter_model.safetensors", config.vault_path);
 
         // SEC-PATH: 検索パスの正規化 (G-21/X-001)
         let script_path = self.find_mlx_script_path()?;
 
-        // Execute the MLX training script with stderr capture
-        let mut child = Command::new("python3")
-            .arg(&script_path)
-            .arg("--model")
-            .arg(&config.base_model)
-            .arg("--data")
-            .arg(&config.dataset_path)
-            .arg("--adapter-file")
-            .arg(&adapter_output)
-            .stderr(std::process::Stdio::piped()) // Capture stderr
+        // F-02: Acquire semaphore permit
+        let _permit =
+            self.job_semaphore
+                .acquire()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to acquire job semaphore: {}", e),
+                })?;
+
+        // F-01: Use BastionGuard structured arguments
+        let mut cmd = self._bastion.build_safe_command_args(
+            "python3",
+            vec![
+                script_path.to_string_lossy().to_string(),
+                "--model".to_string(),
+                config.base_model,
+                "--data".to_string(),
+                config.dataset_path,
+                "--adapter-file".to_string(),
+                adapter_output,
+            ],
+            SandboxProfile::LoraTraining,
+        )?;
+
+        // P-21: Stream stderr
+        let mut child = cmd
+            .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to start MLX training script: {}", e),
             })?;
 
-        let status = child.wait().await.map_err(|e| AiomeError::Infrastructure {
+        let mut stderr_stream = child
+            .stderr
+            .take()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Failed to capture stderr".to_string(),
+            })?;
+
+        let event_tx_clone = self.event_tx.clone();
+        let jq_clone = self.job_queue.clone();
+        let j_id = job_id.to_string();
+
+        let progress_task = tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let mut reader = BufReader::new(stderr_stream).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                // Publish core event if wired
+                if let Some(tx) = &event_tx_clone {
+                    let mut percent = None;
+                    if line.contains("Epoch") {
+                        if let Some(p_str) = line
+                            .split('%')
+                            .next()
+                            .and_then(|s: &str| s.split_whitespace().last())
+                        {
+                            if let Ok(p) = p_str.parse::<u8>() {
+                                percent = Some(p);
+                            }
+                        }
+                    }
+                    let _ = tx.send(aiome_contracts::events::CoreEvent::TaskProgress {
+                        job_id: j_id.clone(),
+                        conductor_id: "LoraConductor".to_string(),
+                        message: line.clone(),
+                        percent,
+                    });
+                }
+                tracing::info!("🎓 [LoRA:{}] {}", j_id, line);
+            }
+        });
+
+        // P-23: Wait for process or cancellation
+        let status_res: std::io::Result<std::process::ExitStatus> = tokio::select! {
+            _ = cancel_token.cancelled() => {
+                tracing::warn!("🛑 [LoraTrainingService] Training job {} cancelled!", job_id);
+                let _ = child.kill().await;
+                return Err(AiomeError::Infrastructure {
+                    reason: "Training cancelled".to_string(),
+                });
+            }
+            res = child.wait() => res
+        };
+
+        // Ensure progress reader finishes
+        let _ = progress_task.await;
+
+        let status = status_res.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Training script failed to execute: {}", e),
         })?;
 
         if !status.success() {
-            let mut stderr_content = String::new();
-            if let Some(mut stderr) = child.stderr.take() {
-                use tokio::io::AsyncReadExt;
-                let _ = stderr.read_to_string(&mut stderr_content).await;
-            }
             return Err(AiomeError::Infrastructure {
-                reason: format!(
-                    "LoRA training script exited with error ({}): {}",
-                    status, stderr_content
-                ),
+                reason: format!("LoRA training script exited with error ({})", status),
             });
         }
 
@@ -178,8 +282,22 @@ impl LoraEngine for LoraTrainingService {
     ) -> Result<String, AiomeError> {
         let job_id = format!("job_{}", uuid::Uuid::new_v4());
 
-        // In a real app, we would enqueue this to a background worker.
-        // For GREEN stage, we trigger it and return the id.
+        let cancel_token = CancellationToken::new();
+        {
+            if dataset_id.contains("..") || dataset_id.contains("/") || dataset_id.contains("\\") {
+                return Err(aiome_contracts::error::AiomeError::SecurityViolation {
+                    reason: "Invalid dataset_id: path traversal detected".into(),
+                });
+            }
+            let mut active = self.active_jobs.write().await;
+            if active.len() >= 100 {
+                return Err(aiome_contracts::error::AiomeError::ResourceBusy {
+                    reason: "Too many pending jobs".into(),
+                });
+            }
+            active.insert(job_id.clone(), cancel_token.clone());
+        }
+
         let config = LoraTrainingConfig {
             base_model: base_model.to_string(),
             dataset_path: format!("workspace/datasets/{}", dataset_id),
@@ -188,30 +306,77 @@ impl LoraEngine for LoraTrainingService {
             ..Default::default()
         };
 
-        // Trigger training (in GREEN it's synchronous for the demo, but we should task it later)
-        self.start_training(config).await?;
+        let service_clone = self.clone();
+        let j_id = job_id.clone();
+        let b_model = base_model.to_string();
+        let d_id = dataset_id.to_string();
 
-        // 🧬 Sprint 3: Evolution integration
-        if let (Some(mutator), Some(jq)) = (&self.soul_mutator, &self.job_queue) {
-            tracing::info!("🧬 [LoraTrainingService] LoRA complete. triggering soul evolution...");
-            let mut metadata = serde_json::Map::new();
-            metadata.insert("event".into(), "lora_training_complete".into());
-            metadata.insert("model".into(), base_model.into());
-            metadata.insert("dataset".into(), dataset_id.into());
-            metadata.insert("job_id".into(), job_id.clone().into());
-
-            if let Err(e) = mutator
-                .transmute_with_metadata(&**jq, serde_json::Value::Object(metadata))
+        // Spawn as background task
+        tokio::spawn(async move {
+            match service_clone
+                .start_training(&j_id, config, cancel_token)
                 .await
             {
-                tracing::warn!(
-                    "⚠️ [LoraTrainingService] Evolution failed (Non-fatal): {}",
-                    e
-                );
+                Ok(_) => {
+                    // 🧬 Sprint 3: Evolution integration
+                    if let (Some(mutator), Some(jq)) =
+                        (&service_clone.soul_mutator, &service_clone.job_queue)
+                    {
+                        tracing::info!(
+                            "🧬 [LoraTrainingService] LoRA complete. triggering soul evolution..."
+                        );
+                        let mut metadata = serde_json::Map::new();
+                        metadata.insert("event".into(), "lora_training_complete".into());
+                        metadata.insert("model".into(), b_model.into());
+                        metadata.insert("dataset".into(), d_id.into());
+                        metadata.insert("job_id".into(), j_id.clone().into());
+
+                        if let Err(e) = mutator
+                            .transmute_with_metadata(&**jq, serde_json::Value::Object(metadata))
+                            .await
+                        {
+                            tracing::warn!(
+                                "⚠️ [LoraTrainingService] Evolution failed (Non-fatal): {}",
+                                e
+                            );
+                        }
+                    }
+                    if let Some(jq) = &service_clone.job_queue {
+                        let _ = jq
+                            .update_job_status(&j_id, aiome_contracts::traits::JobStatus::Completed)
+                            .await;
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "❌ [LoraTrainingService] Training failed for {}: {}",
+                        j_id,
+                        e
+                    );
+                    if let Some(jq) = &service_clone.job_queue {
+                        let _ = jq.fail_job(&j_id, &e.to_string()).await;
+                    }
+                }
             }
-        }
+
+            // Cleanup
+            let mut active = service_clone.active_jobs.write().await;
+            active.remove(&j_id);
+        });
 
         Ok(job_id)
+    }
+
+    async fn cancel_training(&self, job_id: &str) -> Result<(), AiomeError> {
+        let active = self.active_jobs.read().await;
+        if let Some(token) = active.get(job_id) {
+            token.cancel();
+            Ok(())
+        } else {
+            Err(AiomeError::Infrastructure {
+                reason: format!("Job {} not found or already completed", job_id),
+            })
+        }
     }
 
     /// Verifies the presence of MLX training script and mlx-lm dependency.
@@ -265,7 +430,7 @@ mod tests {
     #[tokio::test]
     async fn test_lora_training_service_initialization() {
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let _service = LoraTrainingService::new(core, None, None);
+        let _service = LoraTrainingService::new(core, None, None, None);
         assert!(true, "Instantiated service properly");
     }
 
@@ -273,22 +438,34 @@ mod tests {
     async fn test_start_training_isolates_weights_in_vault() {
         // RED test: Should assert that weights are moved to the vault.
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let service = LoraTrainingService::new(core, None, None);
+        let service = LoraTrainingService::new(core, None, None, None);
         let tmp = tempdir().unwrap();
         let output_dir = tmp.path().join("output").to_string_lossy().to_string();
         let vault_path = tmp.path().join("vault").to_string_lossy().to_string();
 
+        let dataset_path = tmp.path().join("dataset.jsonl");
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
+
         let config = LoraTrainingConfig {
             base_model: "test-model".into(),
-            dataset_path: "/dev/null".into(),
+            dataset_path: dataset_path.to_string_lossy().to_string(),
             output_dir,
             vault_path: vault_path.clone(),
             ..Default::default()
         };
 
         // When implemented, this should execute a mock script and move artifacts to vault.
-        let res = service.start_training(config).await;
-        assert!(res.is_ok());
+        let res = service
+            .start_training(
+                "mock_job",
+                config,
+                tokio_util::sync::CancellationToken::new(),
+            )
+            .await;
+        if let Err(ref e) = res {
+            println!("start_training failed: {:?}", e);
+        }
+        assert!(res.is_ok(), "start_training failed!");
 
         // Assert that the vault_path directory was created and contains the weights
         let vault_exists = std::path::Path::new(&vault_path).exists();
@@ -315,24 +492,23 @@ mod tests {
         ));
         let jq = Arc::new(GlobalMockJobQueue::default());
 
-        let service = LoraTrainingService::new(core, Some(mutator), Some(jq));
+        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None);
 
-        // MLX script exists at workspace root
-        let config = LoraTrainingConfig {
-            base_model: "test".into(),
-            dataset_path: "/dev/null".into(),
-            output_dir: "out".into(),
-            vault_path: tmp.path().join("vault").to_string_lossy().to_string(),
-            ..Default::default()
-        };
+        let dataset_dir = std::path::Path::new("workspace/datasets");
+        let _ = std::fs::create_dir_all(&dataset_dir);
+        let dataset_path = dataset_dir.join("null");
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
 
         // When implemented, this should trigger SoulMutator
-        service
-            .train("test", "null", serde_json::json!({}))
-            .await
-            .unwrap();
+        let res = service.train("test", "null", serde_json::json!({}));
+        res.await.unwrap();
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
         let mutated_content = std::fs::read_to_string(&soul_path).unwrap();
+
+        let _ = std::fs::remove_file(&dataset_path);
+
         assert_ne!(
             mutated_content, "Initial Soul",
             "Soul should have evolved after training"
@@ -351,7 +527,7 @@ mod tests {
         let jq = Arc::new(GlobalMockJobQueue::default());
 
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let service = LoraTrainingService::new(core, Some(mutator), Some(jq));
+        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None);
 
         // This method does not exist yet! (TDD RED)
         let health = service.health_check().await.unwrap();

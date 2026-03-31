@@ -807,6 +807,7 @@ impl HarnessStatus {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "Active" => HarnessStatus::Active,
@@ -823,6 +824,11 @@ pub struct HarnessRecord {
     pub description: String,
     pub code_payload: String,
     pub status: HarnessStatus,
+    pub version: i32,
+    pub agent_id: Option<uuid::Uuid>,
+    pub fire_count: u64,
+    pub false_positive_count: u64,
     pub severity: u8,
     pub created_at: String,
+    pub last_fired_at: Option<String>,
 }

@@ -1,5 +1,5 @@
 use aiome_contracts::commerce::CommerceEngine;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::sync::Arc;
 
 pub struct CommerceEngineFactory;
@@ -30,7 +30,7 @@ impl CommerceEngineFactory {
             // In release mode, the API key is MANDATORY. Fail-closed.
             #[cfg(not(debug_assertions))]
             {
-                Err(anyhow!(
+                Err(anyhow::anyhow!(
                     "🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!"
                 ))
             }

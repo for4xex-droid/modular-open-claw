@@ -6,6 +6,7 @@ pub struct AgentCard {
     pub name: String,
     pub version: String,
     pub skills: Vec<String>,
+    pub capabilities: Vec<String>,
     pub endpoints: Endpoints,
     pub security: SecurityProfile,
     pub sla: SlaConfig,
@@ -52,6 +53,7 @@ mod tests {
             name: "Aiome Shadow Worker".to_string(),
             version: "1.0".to_string(),
             skills: vec!["code_generation".to_string(), "devops_triage".to_string()],
+            capabilities: vec!["gig/publish".to_string(), "profile/info".to_string()],
             endpoints: Endpoints {
                 grpc: Some("grpc://node.aiome.local:50051".to_string()),
                 rest: Some("https://node.aiome.local:8080".to_string()),
@@ -78,6 +80,7 @@ mod tests {
             "name": "Aiome Shadow Worker",
             "version": "1.0",
             "skills": ["code_generation", "devops_triage"],
+            "capabilities": ["gig/publish", "profile/info"],
             "endpoints": {
                 "grpc": "grpc://node.aiome.local:50051",
                 "rest": "https://node.aiome.local:8080"

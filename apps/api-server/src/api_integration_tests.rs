@@ -605,6 +605,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )),
         ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+        harness_cache: Component::new(Arc::new(
+            infrastructure::skills::harness::HarnessCache::new(),
+        )),
+        upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(10))),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1135,10 +1139,15 @@ async fn test_voice_drm_roundtrip() {
     let original_audio = b"secret_ai_voice_model_data_12345".to_vec();
 
     // 1. Upload
+    let multipart = axum_test::multipart::MultipartForm::new().add_part(
+        "file",
+        axum_test::multipart::Part::bytes(original_audio.clone()).file_name("model.aivoice"),
+    );
+
     let response = server
         .post("/api/v1/voice/upload")
         .add_header(axum::http::header::AUTHORIZATION, &token)
-        .bytes(original_audio.clone().into())
+        .multipart(multipart)
         .await;
 
     assert_eq!(response.status_code(), axum::http::StatusCode::OK);
@@ -1328,10 +1337,15 @@ async fn test_inochi2d_upload() {
     let mut payload = b"INX\x02".to_vec();
     payload.extend(vec![0u8; 100]); // dummy data
 
+    let multipart = axum_test::multipart::MultipartForm::new().add_part(
+        "file",
+        axum_test::multipart::Part::bytes(payload.clone()).file_name("model.inx"),
+    );
+
     let resp = server
         .post("/api/v1/avatar/inochi2d/upload")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
-        .bytes(payload.into())
+        .multipart(multipart)
         .await;
 
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);

@@ -613,8 +613,10 @@ impl LlmProvider for AbyssVaultProvider {
 /// Google Gemini Provider
 /// Gemini Interactions API スキル実装 (Phase 5)
 pub mod interactions;
+/// Live session management for real-time LLM interaction
 pub mod live_session;
 
+/// Google Gemini LLM Provider implementation
 #[derive(Debug, Clone)]
 pub struct GeminiProvider {
     client: reqwest::Client,

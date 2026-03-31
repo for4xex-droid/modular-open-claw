@@ -117,7 +117,16 @@ impl HeartbeatWakeupService {
 
                                     let lora_clone = lora.clone();
                                     tokio::spawn(async move {
-                                        if let Err(e) = lora_clone.start_training(config).await {
+                                        let dummy_id = format!(
+                                            "auto_recovery_{}",
+                                            chrono::Utc::now().timestamp()
+                                        );
+                                        let cancel_token =
+                                            tokio_util::sync::CancellationToken::new();
+                                        if let Err(e) = lora_clone
+                                            .start_training(&dummy_id, config, cancel_token)
+                                            .await
+                                        {
                                             tracing::error!("❌ [Heartbeat] Autonomous LoRA Training failed: {:?}", e);
                                         } else {
                                             tracing::info!("✅ [Heartbeat] Autonomous LoRA Training completed successfully.");

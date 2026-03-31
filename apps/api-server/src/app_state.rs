@@ -134,4 +134,6 @@ pub struct AppState {
     // --- Phase 51 Expansion ---
     pub a2a_client: Component<Arc<dyn aiome_contracts::a2a::A2aClient>>,
     pub ws_active_connections: Arc<std::sync::atomic::AtomicUsize>,
+    pub harness_cache: Component<Arc<infrastructure::skills::harness::HarnessCache>>,
+    pub upload_semaphore: Component<Arc<tokio::sync::Semaphore>>,
 }

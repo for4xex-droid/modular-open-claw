@@ -20,11 +20,15 @@ pub mod artifact_store;
 pub mod audit_logger;
 /// 認証・JWTトークン検証モジュール (Phase 8.2)
 pub mod auth;
+/// 安全なワークスペース環境スキャン（Phase F）
+pub mod auto_profile;
 /// Capabilities and extensions registry
 pub mod capability_registry;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
+/// 外部からの安全なタスク受理ゲートウェイ（Phase F）
+pub mod gig_gateway;
 
 /// 認知健全性モニター (Phase 2A)
 pub mod cognitive_sentinel;

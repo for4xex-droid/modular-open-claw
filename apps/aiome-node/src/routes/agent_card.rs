@@ -2,18 +2,39 @@ use aiome_contracts::a2a::agent_card::{
     AgentCard, Endpoints, PricingConfig, SecurityProfile, SlaConfig, ZtasProfile,
 };
 use axum::{http::StatusCode, Json};
+use infrastructure::auto_profile::AutoProfileEngine;
+use std::path::Path;
 
 pub async fn get_agent_card() -> (StatusCode, Json<AgentCard>) {
+    let workspace = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| ".".to_string());
+    let detected = AutoProfileEngine::scan_workspace(Path::new(&workspace));
+
+    let mut skills: Vec<String> = detected
+        .into_iter()
+        .map(|s| format!("{}:{}", s.domain, s.skill))
+        .collect();
+
+    // Default fallback skill
+    if skills.is_empty() {
+        skills.push("autonomous_worker".to_string());
+    }
+
     let card = AgentCard {
         name: "Aiome Node".to_string(),
         version: "1.0".to_string(),
-        skills: vec!["autonomous_worker".to_string()],
+        skills,
+        capabilities: vec![
+            "gig/publish".to_string(),
+            "gig/status".to_string(),
+            "gig/capabilities".to_string(),
+            "profile/info".to_string(),
+        ],
         endpoints: Endpoints {
             grpc: Some("grpc://localhost:50051".to_string()),
             rest: Some("http://localhost:8080".to_string()),
         },
         security: SecurityProfile {
-            auth: vec!["oauth2".to_string()],
+            auth: vec!["mcp".to_string(), "oauth2".to_string()],
             ztas: ZtasProfile {
                 did: "did:key:placeholder".to_string(),
             },

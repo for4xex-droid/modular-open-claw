@@ -315,6 +315,66 @@ impl DreamState {
             )
             .await?;
 
+        // 4. AutoHarness Integration (Phase E-5)
+        // If domain is security or safety, generate a Shadow harness
+        let is_security_related = domain.to_lowercase().contains("security")
+            || domain.to_lowercase().contains("safety")
+            || hypothesis.to_lowercase().contains("vulnerability")
+            || hypothesis.to_lowercase().contains("exploit");
+
+        if is_security_related {
+            info!(
+                "🛡️ [DreamState] Security-related hypothesis detected. Generating AutoHarness..."
+            );
+            let harness_prompt = format!(
+                "Based on this hypothesis: '{}', generate a simple WASM-compatible Rust code that returns 'true' if the action is safe and 'false' if it's risky.\n\
+                Hypothesis: {}\n\
+                Problem: {}\n\
+                The code must be a valid Rust source that can be compiled to WASM. Just return the Rust code.",
+                hypothesis,
+                hypothesis,
+                manifest["problem"].as_str().unwrap_or("Unknown")
+            );
+
+            if let Ok(h_resp) = self
+                .llm
+                .complete(
+                    &harness_prompt,
+                    Some("You are a Security Engineer. Generate a WASM harness."),
+                )
+                .await
+            {
+                // In a real implementation, we would compile this code.
+                // For the MVP, we store the 'intent' of the code or a placeholder.
+                // Here we simulate the generation.
+                let harness_id = format!("auto_{}", uuid::Uuid::new_v4().simple());
+                let record = aiome_contracts::contracts::HarnessRecord {
+                    id: harness_id.clone(),
+                    domain: domain.to_string(),
+                    description: format!("Autonomous harness for: {}", hypothesis),
+                    code_payload: h_resp.content, // Real implementation would compile to WASM bytes
+                    status: aiome_contracts::contracts::HarnessStatus::Shadow,
+
+                    severity: 70,
+                    version: 1,
+                    agent_id: None,
+                    fire_count: 0,
+                    false_positive_count: 0,
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                    last_fired_at: None,
+                };
+
+                if let Err(e) = job_queue.store_harness_record(&record).await {
+                    warn!("⚠️ [DreamState] Failed to store autonomous harness: {}", e);
+                } else {
+                    info!(
+                        "✅ [DreamState] Autonomous Shadow harness '{}' registered.",
+                        harness_id
+                    );
+                }
+            }
+        }
+
         Ok(Some(format!(
             "Hypothesized improvement for {}: {}",
             domain, hypothesis
@@ -790,6 +850,15 @@ mod tests {
             Ok(())
         }
         async fn delete_harness_record(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_harness_record_by_id(
+            &self,
+            _: &str,
+        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+            Ok(None)
+        }
+        async fn increment_harness_stats(&self, _: &str, _: bool) -> Result<(), AiomeError> {
             Ok(())
         }
     }

@@ -20,11 +20,19 @@ pub trait ActionHarness: Send + Sync {
         output: &serde_json::Value,
     ) -> bool;
 
+    /// ハーネスの一意識別子
+    fn id(&self) -> &str;
+
     /// 制約の説明を人間可読な形で返す
     fn describe_constraint(&self) -> String;
 
     /// ハーネスのドメイン（タスクカテゴリ）
     fn domain(&self) -> &str;
+
+    /// 関連するエージェントID (オプション)
+    fn agent_id(&self) -> Option<uuid::Uuid> {
+        None
+    }
 
     /// 制約の重要度 (Shadow ModeとActiveの境界)
     fn severity(&self) -> u8 {
@@ -151,21 +159,46 @@ impl ConstraintChecker {
     }
 
     /// ステップの入出力を動的ハーネス（Shadow Mode / Active）も含めて照合し、違反リストを返す
-    pub fn evaluate_step_with_harnesses(
+    pub async fn evaluate_step_with_harnesses(
         &self,
         step: &TrajectoryStep,
-        harnesses: &[Box<dyn ActionHarness>],
+        harnesses: Vec<Box<dyn ActionHarness>>,
     ) -> Vec<ConstraintViolation> {
         let mut violations = self.evaluate_step(step);
 
+        if harnesses.is_empty() {
+            return violations;
+        }
+
+        let mut set = tokio::task::JoinSet::new();
+
         for harness in harnesses {
-            if !harness.is_legal_action(&step.action, &step.input, &step.output) {
-                violations.push(ConstraintViolation {
-                    constraint_name: format!("AutoHarness:{}", harness.domain()),
-                    expected: harness.describe_constraint(),
-                    actual: "Harness rejected this action".into(),
-                    severity: harness.severity(),
-                });
+            let action = step.action.clone();
+            let input = step.input.clone();
+            let output = step.output.clone();
+
+            set.spawn_blocking(move || {
+                let illegal = !harness.is_legal_action(&action, &input, &output);
+                if illegal {
+                    Some(ConstraintViolation {
+                        constraint_name: format!(
+                            "AutoHarness:{}:{}",
+                            harness.domain(),
+                            harness.id()
+                        ),
+                        expected: harness.describe_constraint(),
+                        actual: "Harness rejected this action".into(),
+                        severity: harness.severity(),
+                    })
+                } else {
+                    None
+                }
+            });
+        }
+
+        while let Some(res) = set.join_next().await {
+            if let Ok(Some(v)) = res {
+                violations.push(v);
             }
         }
 
@@ -273,12 +306,16 @@ mod tests {
     }
 
     struct MockHarness {
+        id: String,
         domain: String,
         desc: String,
         is_legal: bool,
     }
 
     impl ActionHarness for MockHarness {
+        fn id(&self) -> &str {
+            &self.id
+        }
         fn is_legal_action(
             &self,
             _action: &str,
@@ -295,8 +332,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_evaluate_step_with_harnesses() {
+    #[tokio::test]
+    async fn test_evaluate_step_with_harnesses() {
         let manifest = PermissionManifest {
             allow_network: true,
             allow_filesystem_write: true,
@@ -318,22 +355,24 @@ mod tests {
 
         let harnesses: Vec<Box<dyn ActionHarness>> = vec![
             Box::new(MockHarness {
+                id: "h1".into(),
                 domain: "General".into(),
                 desc: "Mock constraint 1".into(),
                 is_legal: true,
             }),
             Box::new(MockHarness {
+                id: "h2".into(),
                 domain: "Security".into(),
                 desc: "Mock constraint 2".into(),
                 is_legal: false, // This should trigger a violation
             }),
         ];
 
-        let violations = checker.evaluate_step_with_harnesses(&step, &harnesses);
+        let violations = checker.evaluate_step_with_harnesses(&step, harnesses).await;
         assert_eq!(violations.len(), 1);
 
         let v = &violations[0];
-        assert_eq!(v.constraint_name, "AutoHarness:Security");
+        assert_eq!(v.constraint_name, "AutoHarness:Security:h2");
         assert_eq!(v.expected, "Mock constraint 2");
         assert_eq!(v.actual, "Harness rejected this action");
         assert_eq!(v.severity, 80);

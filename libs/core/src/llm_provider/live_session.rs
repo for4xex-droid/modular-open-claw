@@ -28,6 +28,7 @@ pub struct LiveSessionProvider {
 }
 
 impl LiveSessionProvider {
+    /// Initializes a new LiveSessionProvider for Gemini interactions
     pub fn new(api_key: String, model: String) -> Self {
         let sessions: Arc<
             Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>,

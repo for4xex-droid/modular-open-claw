@@ -872,6 +872,14 @@ pub trait LoraEngine: Send + Sync + std::fmt::Debug {
         params: serde_json::Value,
     ) -> Result<String, AiomeError>;
 
+    /// 学習ジョブを強制キャンセルする
+    async fn cancel_training(&self, job_id: &str) -> Result<(), AiomeError> {
+        // デフォルト実装（互換性保持）
+        Err(AiomeError::Infrastructure {
+            reason: "Cancellation not supported by this engine".to_string(),
+        })
+    }
+
     async fn health_check(&self) -> Result<bool, AiomeError>;
 }
 
@@ -927,6 +935,13 @@ pub trait HarnessRegistryOps: Send + Sync + std::fmt::Debug {
     async fn update_harness_status(&self, id: &str, status: &str) -> Result<(), AiomeError>;
 
     async fn delete_harness_record(&self, id: &str) -> Result<(), AiomeError>;
+
+    async fn fetch_harness_record_by_id(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::contracts::HarnessRecord>, AiomeError>;
+
+    async fn increment_harness_stats(&self, id: &str, fire: bool) -> Result<(), AiomeError>;
 }
 
 #[cfg(test)]

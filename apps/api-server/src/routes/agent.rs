@@ -622,10 +622,7 @@ pub async fn trigger_agent_chat(
         tokio::spawn(async move {
             use aiome_core::trajectory::TrajectoryStore;
             if let Ok(trajectory) = jq.trajectory_store.fetch_trajectory(&diag_exec_id).await {
-                if trajectory
-                    .iter()
-                    .any(|s| s.is_critical_failure || !s.constraint_violations.is_empty())
-                {
+                if should_trigger_diagnostics(&trajectory) {
                     info!("🔍 [AgentRx] Failure or violation detected. Starting diagnostics for {}...", diag_exec_id);
                     let diagnostics =
                         infrastructure::diagnostics::AgentRxDiagnostics::new(provider_bg);
@@ -692,6 +689,14 @@ pub async fn trigger_agent_chat(
         "status": "success",
         "reply": final_reply
     })))
+}
+
+pub(crate) fn should_trigger_diagnostics(
+    trajectory: &[aiome_core::trajectory::TrajectoryStep],
+) -> bool {
+    trajectory
+        .iter()
+        .any(|s| s.is_critical_failure || s.constraint_violations.iter().any(|v| v.severity >= 80))
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -841,6 +846,40 @@ mod tests {
         assert!(
             description.contains("## Description"),
             "Should contain Description section"
+        );
+    }
+
+    #[test]
+    fn test_should_trigger_diagnostics() {
+        use aiome_core::trajectory::{ConstraintViolation, TrajectoryStep};
+
+        let mut step1 = TrajectoryStep::default();
+        step1.is_critical_failure = false;
+
+        assert!(
+            !should_trigger_diagnostics(&[step1.clone()]),
+            "No failure should not trigger"
+        );
+
+        let mut step2 = TrajectoryStep::default();
+        step2.is_critical_failure = true;
+        assert!(
+            should_trigger_diagnostics(&[step2.clone()]),
+            "Critical failure should trigger"
+        );
+
+        let mut step3 = TrajectoryStep::default();
+        step3.constraint_violations.push(ConstraintViolation {
+            constraint_name: "ShadowModeHarness".into(),
+            expected: "No violation".into(),
+            actual: "Violation".into(),
+            severity: 50, // Shadow mode severity (<80)
+        });
+
+        // This test will fail under the RED phase because currently ANY violation triggers diagnostics
+        assert!(
+            !should_trigger_diagnostics(&[step3]),
+            "Shadow mode violation (severity 50) MUST NOT trigger diagnostics (VULN-03)"
         );
     }
 }

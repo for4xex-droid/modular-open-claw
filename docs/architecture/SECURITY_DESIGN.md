@@ -81,6 +81,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 58 | **Cognitive Identity Drift** | **NaN emotional values lock state** | 🟡 Mid | **is_finite() filter + hard clamp regularizer (RT4-1)** |
 | 59 | **NPM Supply Chain Hijacking** | **Malicious postinstall script (Axios RAT)** | 🔴 High | **`.npmrc` ignore-scripts + 3-Layer NPM Audit** |
 | 60 | **Agent Output Abuse / DoS** | **Infinite Echo / Giant output generation** | 🔴 High | **ConstraintChecker (Max Output & Echo Filter) (Phase 55)** |
+| 61 | **Local Asset Path Traversal** | **dataset_id / path manipulation** | 🔴 High | **Strict path sanitization (.. / \\) (Red Team)** |
+| 62 | **Socket/Memory Exhaustion DoS** | **Unbounded queue / Semaphore starvation** | 🔴 High | **try_acquire() & Hard Queue Limits (Red Team)** |
 
 ## 3. Defense Architecture
 
@@ -97,6 +99,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Shadow Clone Output Sterilization (Phase 43)**: All outputs from Docker-based shadow workers are passed through `shared::guardrails::validate_input` (XSS/Malicious check) and `aiome_core::security_impl::purge_entities` (PII removal) before being returned to the parent agent or user.
 - **Local Guardrail Patterns (Phase 53)**: Implements a second layer of defense inside `guardrails.rs` using high-performance keyword matching (e.g., "Ignore all instructions", "secret_key"). This provides immediate, low-latency protection against common prompt injection and exfiltration patterns, complementing the heavier LLM-based Bastion validators.
 - **Constraint Enforcement (Phase 55)**: Implements `ConstraintChecker` in the core execution loop. It structurally blocks agents from generating outputs exceeding 100KB (`OutputSizeExceeded`) and detects `SuspiciousEchoDetected` (50+ char exact input repetition), preventing CPU/Memory DoS and repetitive hallucination loops.
+- **Path Traversal Shield (Red Team)**: Enforces strict input validation on parameters like `dataset_id` in `LoraTrainingService`, actively rejecting strings containing `..`, `/`, or `\` to prevent unauthorized access to local file systems.
+- **Resource Exhaustion Blockers (Red Team)**: Introduces hard upper bounds on background job queues (e.g., max 100 `active_jobs`) and employs non-blocking `try_acquire()` for file upload semaphores (`inochi2d`, `voice`). This combination structurally prevents slowloris-style socket starvation and unbounded memory (OOM) attacks from malicious or out-of-control agents.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
@@ -181,4 +185,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-03-31 (Security Hardening: NPM Supply Chain & Phase 55 Constraints)*
+*最終更新: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*

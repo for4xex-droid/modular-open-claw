@@ -37,6 +37,8 @@ pub enum SandboxProfile {
     ForgeBuild,
     /// 最も厳格な制限（ネットワーク・ファイル書き込み完全禁止）
     Strict,
+    /// LoRA 学習用（HuggingFace などの一部ドメインのみ透過 + 長時間実行可）
+    LoraTraining,
 }
 
 /// ⛓️ RuntimeJail

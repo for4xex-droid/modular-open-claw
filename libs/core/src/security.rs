@@ -15,6 +15,7 @@ pub use aiome_contracts::security::*;
 pub struct ConstitutionalValidator;
 
 impl ConstitutionalValidator {
+    /// Creates a new ConstitutionalValidator instance
     pub fn new() -> Self {
         Self
     }

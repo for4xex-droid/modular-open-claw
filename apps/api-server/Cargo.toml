@@ -13,7 +13,7 @@ avatar-engine = { path = "../../libs/avatar-engine" }
 aiome-contracts = { path = "../../libs/aiome-contracts", features = ["axum"] }
 aiome-commerce = { path = "../../libs/aiome-commerce" }
 tokio = { workspace = true }
-axum.workspace = true
+axum = { workspace = true, features = ["multipart"] }
 tower-http = { version = "0.5", features = ["fs", "cors", "set-header", "limit", "timeout"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -58,6 +58,7 @@ zeroize = "1.8.1"
 hmac = "0.12.1"
 sha2.workspace = true
 hex = "0.4.3"
+tempfile = "3.27.0"
 
 [features]
 default = ["dev-routes"]

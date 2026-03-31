@@ -276,12 +276,30 @@ pub async fn execute_wasm_skill(
             .await
         {
             for r in records {
-                harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
-                    r.domain,
-                    r.description,
-                    r.code_payload.into_bytes(),
-                    r.severity,
-                )));
+                let wasm_data = if let Some(cached) = state.harness_cache.get(&r.id) {
+                    cached
+                } else {
+                    let data: std::sync::Arc<[u8]> = r.code_payload.clone().into_bytes().into();
+                    state.harness_cache.set(r.id.clone(), data.clone());
+                    data
+                };
+
+                if let Some(plugin) = state
+                    .harness_cache
+                    .get_or_create_plugin(&r.id, &wasm_data)
+                    .await
+                {
+                    harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
+                        r.id,
+                        r.domain,
+                        r.description,
+                        plugin,
+                        r.severity,
+                        r.agent_id,
+                    )));
+                } else {
+                    tracing::warn!("Failed to initialize plugin for harness {}", r.id);
+                }
             }
         }
         if let Ok(records) = state
@@ -290,15 +308,45 @@ pub async fn execute_wasm_skill(
             .await
         {
             for r in records {
-                harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
-                    r.domain,
-                    r.description,
-                    r.code_payload.into_bytes(),
-                    r.severity,
-                )));
+                let wasm_data = if let Some(cached) = state.harness_cache.get(&r.id) {
+                    cached
+                } else {
+                    let data: std::sync::Arc<[u8]> = r.code_payload.clone().into_bytes().into();
+                    state.harness_cache.set(r.id.clone(), data.clone());
+                    data
+                };
+
+                if let Some(plugin) = state
+                    .harness_cache
+                    .get_or_create_plugin(&r.id, &wasm_data)
+                    .await
+                {
+                    harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
+                        r.id,
+                        r.domain,
+                        r.description,
+                        plugin,
+                        r.severity,
+                        r.agent_id,
+                    )));
+                } else {
+                    tracing::warn!("Failed to initialize plugin for harness {}", r.id);
+                }
             }
         }
-        step.constraint_violations = checker.evaluate_step_with_harnesses(&step, &harnesses);
+        step.constraint_violations = checker.evaluate_step_with_harnesses(&step, harnesses).await;
+
+        // Statistics tracking (Phase E-6)
+        for v in &step.constraint_violations {
+            if v.constraint_name.starts_with("AutoHarness:") {
+                // Format: "AutoHarness:Domain:ID"
+                let parts: Vec<&str> = v.constraint_name.split(':').collect();
+                if parts.len() >= 3 {
+                    let h_id = parts[2];
+                    let _ = state.job_queue.increment_harness_stats(h_id, false).await;
+                }
+            }
+        }
 
         // 80以上のアクティブな違反のみをブロッキング障害として扱う
         let has_critical_violation = step.constraint_violations.iter().any(|v| v.severity >= 80);

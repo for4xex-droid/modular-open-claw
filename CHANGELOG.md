@@ -1,3 +1,30 @@
+## [Unreleased] - 2026-04-01
+
+### Added
+- **Tier 0 Infrastructure Security Hardening (Wave 1-3) [完了]**
+    - **BoundaryVerifier Hardening**: システムパスブロックの拡充（`/tmp`, `/dev`, `/proc`, `/sys`, `/private`）およびパストラバーサル (`..`) の物理的拒絶を O(1) で実装。
+    - **BastionGuard (Command Parsing) Hardening**: `shell_split` の POSIX 制御文字（`\v`, `\f`, `\r`, `\n`）対応、フラグ分解ロジックの改善、密着フラグ引数（`-f/etc/passwd` 等）の抽出・検疫を実装。制御文字バイパスを完全封鎖。
+    - **Registry SSoT (Zero-Fallback)**: `check_ownership` における Webhook ログへの安全でないフォールバックを廃止。`licenses` テーブルを所有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
+    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+
+- **Red Team Security Hardening & Infrastructure Stabilization [完了]**�有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
+    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+
+- **Red Team Security Hardening & Infrastructure Stabilization [完了]**lit` の POSIX 制御文字（`\v`, `\f`, `\r`, `\n`）対応、フラグ分解ロジックの改善、密着フラグ引数（`-f/etc/passwd` 等）の抽出・検疫を実装。制御文字バイパスを完全封鎖。
+    - **Registry SSoT (Zero-Fallback)**: `check_ownership` における Webhook ログへの安全でないフォールバックを廃止。`licenses` テーブルを所有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
+    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+
+- **Red Team Security Hardening & Infrastructure Stabilization [完了]**
+    - **Path Traversal Mitigation**: `LoraTrainingService::train` にて `dataset_id` に対するディレクトリトラバーサル (`..`, `/`, `\`) を防止するサニタイズ処理を追加し、機密ファイル漏洩（Weight Poisoning）を遮断。
+    - **Resource Exhaustion Defense (Memory)**: LoRAタスクキューにおいて、`active_jobs` の最大登録数を100件に制限し、無制限のプロセスフォークによるOOM (Out Of Memory) 攻撃を防御。
+    - **Resource Exhaustion Defense (Sockets)**: マスコット (`inochi2d.rs`) および音声 (`voice.rs`) の巨大ファイルアップロード制御において、セマフォのブロッキング待機 (`acquire().await`) を `try_acquire()` に変更。DDoS攻撃時のソケット（ファイルディスクリプタ）枯渇を防止し、即座に 503 Service Unavailable を返すように修正。
+    - **Sandbox Syntax & Command Arguments**: macOS の `sandbox-exec` プロファイルでネットワーク制限のワイルドカードドメインをポート番号指定（`*:443`, `*:80`）へ修正。また `BastionGuard::build_safe_command_args` における不要なシェル判定を削除し、構造化コマンド実行のロバスト性を向上。
+    - **CI/CD Quality**: `libs/infrastructure/Cargo.toml` の features 整備や `aiome-core`, `aiome-commerce` 内の各種 Clippy 警告（未使用インポートや Iterator 警告）を解消しビルド品質を強化。
+
+- **Phase F: Open Gateway (MCP & P2P Foundation) [完了]**
+    - **Safe Auto-Profile Engine**: `AutoProfileEngine` を実装。ワークスペース内の `Cargo.toml`, `package.json`, `requirements.txt` といった環境定義ファイルをスキャンし、エージェントの有するスキル（Rust, Python, Web等）を自律的に推定して `AgentCard` の `skills` として露出。コードやプロンプトの読み取りを行わない許可リスト型の安全設計を採用。
+    - **Secure Gig Gateway**: `SecureGigGateway` を実装し、外部（他エージェント）からのタスク発注窓口を構築。Rate Limiter（DDoS防止）、AutoHarness（危険コマンドの静的遮断）、ConstitutionalValidator（Core倫理基準による検証）からなる強固な３層セキュリティ・フィルターを義務付けし、エスクロー未払い（予算0）のスパムを拒否。
+    - **JSON-RPC MCP Server Integration**: `aiome-node` に MCP モード (`aiome-node mcp` コマンド) を追加。JSON-RPC 2.0 over stdio 経由で外部の MCP クライアント（Cursor や Claude Code等）に対し `profile/info`, `gig/capabilities`, `gig/publish` ツールを公開し、P2P の複雑なネットワーク実装を省略しつつ、安全かつ標準的なプロトコルでのローカル・エージェント連携基盤を確立。
 - **Phase B-D: AutoHarness Security Architecture Integration [完了]**
     - **DB Foundation**: `harness_registry` テーブルを導入し、SQLite/Postgres 用のマイグレーションを実装。`HarnessRecord` および `HarnessRegistryOps` トレイトを追加して JobQueue で CRUD をサポート。
     - **Security Enforcement**: `ConstraintChecker` 内の正規表現解析に `RegexBuilder` を導入し、10KB のサイズ制限を設けることで ReDoS 脆弱性を構造的に遮断。

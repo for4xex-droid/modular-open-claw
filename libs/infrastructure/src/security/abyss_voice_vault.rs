@@ -145,6 +145,10 @@ mod tests {
             "CREATE TABLE stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT, processed_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         ).execute(&pool).await.unwrap();
 
+        sqlx::query(
+            "CREATE TABLE licenses (id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, asset_id TEXT NOT NULL, original_event_id TEXT, status TEXT NOT NULL DEFAULT 'active', granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        ).execute(&pool).await.unwrap();
+
         let registry = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
         let vault = AbyssVoiceVault::new_with_master_key(
             registry,
@@ -172,25 +176,17 @@ mod tests {
         // 2. 同一プールを共有する別 Vault インスタンスを作成
         let registry2 = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
         let vault2 = AbyssVoiceVault::new_with_master_key(
-            registry2,
+            registry2.clone(),
             DatabasePool::Sqlite(pool.clone()),
             test_master_key_bytes(),
         );
 
-        // 3. ライセンスチェック用のイベントを挿入
+        // 3. ライセンスの付与 (Wave 3: Registry を通じて正規に付与)
         let agent_id = Uuid::new_v4();
-        sqlx::query(
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
-        )
-        .bind("evt_test")
-        .bind("checkout.session.completed")
-        .bind(format!(
-            r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
-            agent_id, asset_id
-        ))
-        .execute(&pool)
-        .await
-        .unwrap();
+        registry2
+            .grant_license(agent_id, asset_id, "evt_test_grant".to_string())
+            .await
+            .unwrap();
 
         // 4. 別 Vault から鍵を取得し、元と一致することを確認
         let fetched = vault2

@@ -30,6 +30,7 @@ pub mod http;
 pub mod llm_provider;
 /// LoRAモデルの管理・推論支援（Phase 10.1b）
 pub mod lora;
+/// System security and validation logic
 pub mod security;
 /// JobQueue等、インフラ層に実装を依存させるためのTrait
 pub mod traits;

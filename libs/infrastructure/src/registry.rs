@@ -232,40 +232,7 @@ impl RegistryManager {
             return Ok(true);
         }
 
-        // 2. フォールバック: stripe_webhook_events
-        let q_webhook = if self.pool.is_sqlite() {
-            format!(
-                r#"
-                SELECT COUNT(*) FROM stripe_webhook_events 
-                WHERE event_type = 'checkout.session.completed' 
-                AND json_extract(metadata, '$.agent_id') = {0} 
-                AND json_extract(metadata, '$.asset_id') = {1}
-                "#,
-                self.pool.ph(0),
-                self.pool.ph(1)
-            )
-        } else {
-            format!(
-                r#"
-                SELECT COUNT(*) FROM stripe_webhook_events 
-                WHERE event_type = 'checkout.session.completed' 
-                AND metadata->>'agent_id' = {0} 
-                AND metadata->>'asset_id' = {1}
-                "#,
-                self.pool.ph(0),
-                self.pool.ph(1)
-            )
-        };
-
-        let count: (i64,) = crate::sql_fetch_one!(
-            &self.pool,
-            (i64,),
-            &q_webhook,
-            agent_id.to_string(),
-            asset_id.to_string()
-        )?;
-
-        Ok(count.0 > 0)
+        Ok(false)
     }
 
     /// デジタルアセットのライセンスを付与する
@@ -516,85 +483,25 @@ mod tests {
         // 購入前
         assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
 
-        // ダミーWebhookイベントの挿入 (所有権の記録)
-        crate::sql_exec!(
-            &registry.pool,
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
-            "evt_test_ownership",
-            "checkout.session.completed",
-            format!(
-                r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
-                agent_id, asset_id
-            )
-        )
-        .unwrap();
+        // ライセンスの付与 (正当な所有権確立)
+        registry
+            .grant_license(agent_id, asset_id, "evt_test_ownership".to_string())
+            .await
+            .unwrap();
 
         // 購入後
         assert!(registry.check_ownership(agent_id, asset_id).await.unwrap());
     }
 
     #[tokio::test]
-    async fn test_registry_check_ownership_false_positive_prevention() {
+    async fn test_registry_check_ownership_denial() {
         let pool = setup_db_for_registry().await;
         let registry = RegistryManager::new(pool);
+        let agent_id = Uuid::new_v4();
+        let asset_id = Uuid::new_v4();
 
-        let target_agent = Uuid::new_v4();
-        let target_asset = Uuid::new_v4();
-
-        // ターゲットに酷似したID（一部が共通する文字列など）を挿入
-        // 実際には UUID なので確率は低いが、LIKE 検索の脆弱性をエミュレート
-        let sibling_agent = target_agent.to_string();
-        let partial_agent = &sibling_agent[..8]; // 先頭部分のみ
-
-        crate::sql_exec!(
-            &registry.pool,
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
-            "evt_false_positive",
-            "checkout.session.completed",
-            format!(
-                r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
-                partial_agent, target_asset
-            )
-        )
-        .unwrap();
-
-        // LIKE %partial% だと target_agent (完全なUUID) にマッチしてしまう可能性がある
-        // 実際には UUID 同士だが、文字列として検索しているため危険。
-        // 現在の実装が LIKE %agent_id% なので、DB内の partial_agent に %target_agent% はマッチしないが、
-        // 逆（DBに長いIDがあり、短いIDで検索）だとマッチする。
-
-        // 正しい検証:
-        // 検索値: "123"
-        // DB値: "12345"
-        // LIKE %123% は true になる。これがバイパスのリスク。
-
-        let short_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
-        let long_id_contained = "00000000-0000-0000-0000-000000000001-suffix"; // 非UUIDだがDBには入る
-
-        crate::sql_exec!(
-            &registry.pool,
-            "INSERT INTO stripe_webhook_events (event_id, event_type, metadata) VALUES (?, ?, ?)",
-            "evt_bypass",
-            "checkout.session.completed",
-            format!(
-                r#"{{"agent_id": "{}", "asset_id": "{}"}}"#,
-                long_id_contained, target_asset
-            )
-        )
-        .unwrap();
-
-        // short_id で検索すると、long_id_contained に LIKE でマッチしてしまう
-        let result = registry
-            .check_ownership(short_id, target_asset)
-            .await
-            .unwrap();
-
-        // 本来は false であるべき（IDが完全一致していないため）
-        // 現状の実装 (LIKE) では true になってしまうはず = RED
-        assert!(
-            !result,
-            "LIKE search should not match partial IDs (Bypass Risk)"
-        );
+        // ライセンスがない場合は拒否
+        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
     }
 
     #[tokio::test]

@@ -92,13 +92,26 @@ impl BoundaryVerifier {
 
                 // システムパスへのアクセス禁止
                 if !is_system_internal {
-                    let system_roots = ["/etc", "/usr", "/System", "/var", "/bin", "/sbin"];
+                    let system_roots = [
+                        "/etc", "/usr", "/System", "/var", "/bin", "/sbin", "/tmp", "/dev",
+                        "/proc", "/sys", "/private",
+                    ];
                     for root in &system_roots {
                         if word.starts_with(root) {
                             return Err(AiomeError::Infrastructure {
                                 reason: format!("Boundary Invariant Violation: Access to system path '{}' is forbidden", word),
                             });
                         }
+                    }
+
+                    // Strict Path Traversal (..) check (Wave 3)
+                    if word.contains("..") {
+                        return Err(AiomeError::Infrastructure {
+                            reason: format!(
+                                "Boundary Invariant Violation: Path traversal '..' detected in word '{}'",
+                                word
+                            ),
+                        });
                     }
                 }
                 verified.push("path_not_system".into());

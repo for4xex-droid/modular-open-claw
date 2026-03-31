@@ -644,6 +644,15 @@ mod tests {
         async fn delete_harness_record(&self, _id: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn fetch_harness_record_by_id(
+            &self,
+            _id: &str,
+        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+            Ok(None)
+        }
+        async fn increment_harness_stats(&self, _id: &str, _fire: bool) -> Result<(), AiomeError> {
+            Ok(())
+        }
     }
 
     #[tokio::test]

@@ -13,8 +13,8 @@ mod tests {
 
     fn setup_verifier() -> BoundaryVerifier {
         BoundaryVerifier::new(
-            PathBuf::from("/tmp/aiome-workspace"),
-            Some(PathBuf::from("/tmp/aiome-vault")),
+            PathBuf::from("/mnt/aiome-workspace"),
+            Some(PathBuf::from("/mnt/aiome-vault")),
             vec![
                 "ls".to_string(),
                 "cat".to_string(),
@@ -27,7 +27,7 @@ mod tests {
     #[test]
     fn test_path_in_sandbox_pass() {
         let verifier = setup_verifier();
-        let result = verifier.verify_command("ls /tmp/aiome-workspace/docs", false);
+        let result = verifier.verify_command("ls /mnt/aiome-workspace/docs", false);
         assert!(result.is_ok());
         assert!(result.unwrap().contains(&"path_in_sandbox".to_string()));
     }
@@ -71,14 +71,14 @@ mod tests {
     #[test]
     fn test_vault_access_external_reject() {
         let verifier = setup_verifier();
-        let result = verifier.verify_command("cat /tmp/aiome-vault/secret", false);
+        let result = verifier.verify_command("cat /mnt/aiome-vault/secret", false);
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
     #[test]
     fn test_vault_access_internal_pass() {
         let verifier = setup_verifier();
-        let result = verifier.verify_command("cat /tmp/aiome-vault/secret", true);
+        let result = verifier.verify_command("cat /mnt/aiome-vault/secret", true);
         assert!(result.is_ok());
     }
 

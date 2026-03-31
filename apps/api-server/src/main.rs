@@ -660,7 +660,7 @@ async fn main() -> anyhow::Result<()> {
         artifact_store: Component::new(
             Arc::new(artifact_store) as Arc<dyn aiome_core::traits::ArtifactStore>
         ),
-        event_sender: Component::new(event_sender),
+        event_sender: Component::new(event_sender.clone()),
         context_engine: Component::new(context_engine),
         soul_mutator: Component::new(soul_mutator.clone()),
         soul_store: Component::new(soul_store),
@@ -711,6 +711,7 @@ async fn main() -> anyhow::Result<()> {
                 core_engine,
                 Some(soul_mutator.clone()),
                 Some(job_queue.clone()),
+                Some(event_sender.clone()),
             ));
             Component::new(engine as Arc<dyn aiome_contracts::traits::LoraEngine>)
         },
@@ -767,6 +768,10 @@ async fn main() -> anyhow::Result<()> {
         )),
         a2a_client: Component::new(a2a_client),
         ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+        harness_cache: Component::new(Arc::new(
+            infrastructure::skills::harness::HarnessCache::new(),
+        )),
+        upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

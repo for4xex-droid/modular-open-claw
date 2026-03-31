@@ -13,6 +13,7 @@ use rand::Rng;
 use serde_json::json;
 use std::path::PathBuf;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
 use tracing::{error, info};
 use uuid::Uuid;
 use zeroize::Zeroizing;
@@ -22,12 +23,52 @@ use zeroize::Zeroizing;
 pub async fn upload_voice_handler(
     auth: Authenticated,
     State(state): State<AppState>,
-    body: axum::body::Bytes,
+    mut multipart: axum::extract::Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    let size = body.len();
+    // F-03: Acquire upload semaphore permit to prevent OOM/DoS from large concurrent uploads
+    let _permit = state.upload_semaphore.try_acquire().map_err(|e| {
+        crate::error::AppError(aiome_core::error::AiomeError::ResourceBusy {
+            reason: format!("System busy: {}", e),
+        })
+    })?;
+
+    let mut temp_file = tokio::task::spawn_blocking(tempfile::NamedTempFile::new)
+        .await
+        .map_err(|e| AppError::internal(format!("Tokio spawn blocking failed: {}", e)))?
+        .map_err(|e| AppError::internal(format!("Failed to create tempfile: {}", e)))?;
+
+    let temp_path = temp_file.path().to_owned();
+    let mut file = fs::File::create(&temp_path)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+    let mut size = 0;
+
+    while let Some(mut field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?
+    {
+        if field.name() == Some("file") {
+            while let Some(chunk) = field
+                .chunk()
+                .await
+                .map_err(|e| AppError::internal(e.to_string()))?
+            {
+                file.write_all(&chunk)
+                    .await
+                    .map_err(|e| AppError::internal(e.to_string()))?;
+                size += chunk.len();
+            }
+        }
+    }
+
     if size == 0 {
         return Err(AppError::bad_request("Voice asset body cannot be empty"));
     }
+
+    let body = fs::read(&temp_path)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
 
     let asset_id = Uuid::new_v4();
     let agent_id = auth.agent_id; // §SEC-4: Creator Auth

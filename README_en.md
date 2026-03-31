@@ -281,7 +281,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-03-31 (Phase 55: AgentRx & LoRA Evolution)*
+*Last Updated: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

@@ -9,10 +9,11 @@ use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
 use avatar_engine::loader::Inochi2dLoader;
-use axum::{body::Bytes, extract::State, Json};
+use axum::{extract::State, Json};
 use infrastructure::registry::{AssetManifest, AssetType};
 use serde::Serialize;
 use shared::sandbox::PathSandbox;
+use tokio::io::AsyncWriteExt;
 use tracing::{error, info, warn};
 
 #[derive(Serialize)]
@@ -25,8 +26,15 @@ pub struct Inochi2dUploadResponse {
 pub async fn upload_inochi2d_handler(
     State(state): State<AppState>,
     axum::extract::Extension(user): axum::extract::Extension<AuthenticatedUser>,
-    body: Bytes,
+    mut multipart: axum::extract::Multipart,
 ) -> Result<Json<Inochi2dUploadResponse>, AppError> {
+    // F-03: Acquire upload semaphore permit to prevent OOM/DoS from large concurrent uploads
+    let _permit = state.upload_semaphore.try_acquire().map_err(|e| {
+        crate::error::AppError(aiome_core::error::AiomeError::ResourceBusy {
+            reason: format!("System busy: {}", e),
+        })
+    })?;
+
     info!(
         "🎭 [Inochi2D] Uploading mascot model for user: {}",
         user.0.sub
@@ -51,6 +59,38 @@ pub async fn upload_inochi2d_handler(
     }
 
     // 2. Format Validation
+    let mut temp_file = tokio::task::spawn_blocking(tempfile::NamedTempFile::new)
+        .await
+        .map_err(|e| AppError::internal(format!("Tokio spawn blocking failed: {}", e)))?
+        .map_err(|e| AppError::internal(format!("Failed to create tempfile: {}", e)))?;
+
+    let temp_path = temp_file.path().to_owned();
+    let mut file = tokio::fs::File::create(&temp_path)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    while let Some(mut field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?
+    {
+        if field.name() == Some("file") {
+            while let Some(chunk) = field
+                .chunk()
+                .await
+                .map_err(|e| AppError::internal(e.to_string()))?
+            {
+                file.write_all(&chunk)
+                    .await
+                    .map_err(|e| AppError::internal(e.to_string()))?;
+            }
+        }
+    }
+
+    let body = tokio::fs::read(&temp_path)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
     let _metadata = Inochi2dLoader::load_metadata(&body)
         .map_err(|e| AppError::bad_request(format!("Invalid INX file: {}", e)))?;
 

@@ -1,6 +1,21 @@
 # 🌊 Aiome Ripple Map
 
 このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
+## Phase F: Open Gateway (MCP Integration)
+
+### 1. Secure Gig Gateway & MCP Server
+- **変更理由**: Agent P2P プロトコルの設計思想に基づき、外部エージェント（Claude Code 等）からタスクを受注する機能を追加しつつ、ネットワーク越しに攻撃されるリスクを多層的に防御するため。
+- **波及効果**:
+  - `libs/infrastructure/src/gig_gateway.rs` [NEW]: `SecureGigGateway` 構造体を追加。3層のフィルタリング（Rate Limit, Constraint Validation, Constitutional Verification）を通過した要求のみを内部の `GigEngine` に委譲。
+  - `apps/aiome-node/src/mcp_server.rs` [NEW]: 標準入出力を利用した JSON-RPC ベースの MCP サーバーを実装。
+  - `apps/aiome-node/src/main.rs`: `mcp` コマンドライン引数を検知した際に独自の TCP Node ではなく MCP サーバーを起動するよう起動パスを分岐。
+
+### 2. Auto-Profile Engine
+- **変更理由**: ノードの提供可能なスキルや機能（Capabilities）を手動で登録する手間を省き、実行環境（依存パッケージやリポジトリ）の構成から安全かつ自動で検出するため。
+- **波及効果**:
+  - `libs/infrastructure/src/auto_profile.rs` [NEW]: 許可リストベースのヒューリスティックによるスキャン・ロジック（`AutoProfileEngine`）を追加。
+  - `libs/aiome-contracts/src/a2a/agent_card.rs`: `AgentCard` 構造体に `capabilities` フィールドを追加。
+  - `apps/aiome-node/src/routes/agent_card.rs`: `get_agent_card` API が、ハードコードから動的な環境スキャンへ遷移し、メタデータに能力を含めるよう改修。
 
 ## Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD)
 
