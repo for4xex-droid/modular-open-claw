@@ -57,6 +57,12 @@ pub struct FieldInfo {
 /// Rust AST を解析して API サーフェスを抽出する
 pub struct OssAstAnalyzer;
 
+impl Default for OssAstAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OssAstAnalyzer {
     pub fn new() -> Self {
         Self

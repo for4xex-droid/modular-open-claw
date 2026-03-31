@@ -621,10 +621,12 @@ mod tests {
         };
         let artifacts_root = std::env::temp_dir();
 
-        let mut expr = Expression::default();
-        expr.id = "test-1".to_string();
-        expr.content = "Hello".to_string();
-        expr.tts_status = TtsStatus::NotRequested;
+        let expr = Expression {
+            id: "test-1".to_string(),
+            content: "Hello".to_string(),
+            tts_status: TtsStatus::NotRequested,
+            ..Default::default()
+        };
 
         let queue = MockQueue { expr };
 

@@ -63,6 +63,49 @@ impl TtsProvider for OpenAiTtsProvider {
         Ok(bytes.to_vec())
     }
 
+    async fn synthesize_stream(
+        &self,
+        text: &str,
+        voice_id: &str,
+    ) -> Result<
+        std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<Vec<u8>, AiomeError>> + Send>>,
+        AiomeError,
+    > {
+        let payload = serde_json::json!({
+            "model": self.model,
+            "input": text,
+            "voice": voice_id
+        });
+
+        let resp = self
+            .client
+            .post("https://api.openai.com/v1/audio/speech")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("OpenAI TTS request failed: {}", e),
+            })?;
+
+        if !resp.status().is_success() {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("OpenAI TTS API error: {}", resp.status()),
+            });
+        }
+
+        use tokio_stream::StreamExt;
+        let stream = resp.bytes_stream().map(|chunk_res| {
+            chunk_res
+                .map(|b| b.to_vec())
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Stream read error: {}", e),
+                })
+        });
+
+        Ok(Box::pin(stream))
+    }
+
     async fn health_check(&self) -> Result<bool, AiomeError> {
         Ok(!self.api_key.is_empty())
     }

@@ -5,7 +5,6 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-
 #![forbid(unsafe_code)]
 
 pub mod ekyc;
@@ -32,6 +31,5 @@ mod tests {
     #[test]
     fn test_commerce_engine_structure() {
         // Verify module structure exists
-        assert!(true);
     }
 }

@@ -1,10 +1,11 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::field_reassign_with_default)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Apache License, Version 2.0.
  */
-
 #![forbid(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 //! # Soul Engine

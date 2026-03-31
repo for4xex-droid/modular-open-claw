@@ -90,7 +90,8 @@ impl LoraTrainingService {
             job_queue,
             event_tx,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
-            job_semaphore: compute_semaphore.unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))), // Use global compute_semaphore if provided
+            job_semaphore: compute_semaphore
+                .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))), // Use global compute_semaphore if provided
         }
     }
 
@@ -185,6 +186,8 @@ impl LoraTrainingService {
 
         // P-21: Stream stderr
         let mut child = cmd
+            .kill_on_drop(true)
+            .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|e| AiomeError::Infrastructure {
@@ -231,7 +234,7 @@ impl LoraTrainingService {
             }
         });
 
-        // P-23: Wait for process or cancellation
+        // P-23: Wait for process or cancellation (with 1 hour timeout)
         let status_res: std::io::Result<std::process::ExitStatus> = tokio::select! {
             _ = cancel_token.cancelled() => {
                 tracing::warn!("🛑 [LoraTrainingService] Training job {} cancelled!", job_id);
@@ -240,7 +243,17 @@ impl LoraTrainingService {
                     reason: "Training cancelled".to_string(),
                 });
             }
-            res = child.wait() => res
+            res = tokio::time::timeout(std::time::Duration::from_secs(3600), child.wait()) => {
+                match res {
+                    Ok(r) => r,
+                    Err(_) => {
+                        let _ = child.kill().await;
+                        return Err(AiomeError::Infrastructure {
+                            reason: "Training timed out after 1 hour".to_string(),
+                        });
+                    }
+                }
+            }
         };
 
         // Ensure progress reader finishes
@@ -301,12 +314,17 @@ impl LoraEngine for LoraTrainingService {
 
         // 🧬 Phase 1A-2: Dynamic Dataset Extraction from SoulStore
         let actual_dataset_path = if let Some(jq) = &self.job_queue {
-            let extractor = crate::dataset_extractor::DatasetExtractor::new(std::path::PathBuf::from("workspace/datasets"));
+            let extractor = crate::dataset_extractor::DatasetExtractor::new(
+                std::path::PathBuf::from("workspace/datasets"),
+            );
             match extractor.extract_to_jsonl(&**jq, dataset_id, &job_id).await {
                 Ok(path) => {
-                    tracing::info!("✅ [LoraTrainingService] Successfully extracted dataset for Soul: {}", dataset_id);
+                    tracing::info!(
+                        "✅ [LoraTrainingService] Successfully extracted dataset for Soul: {}",
+                        dataset_id
+                    );
                     path.to_string_lossy().to_string()
-                },
+                }
                 Err(e) => {
                     tracing::info!("ℹ️ [LoraTrainingService] Soul not found or extraction failed, falling back to raw path usage: {}", e);
                     format!("workspace/datasets/{}", dataset_id)

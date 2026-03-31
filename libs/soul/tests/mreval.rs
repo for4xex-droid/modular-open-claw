@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 /*
  * Aiome - The Autonomous AI Operating System
@@ -82,11 +83,13 @@ async fn test_mreval_full_pipeline() {
         .push("Talk like a medieval knight".to_string());
 
     // Pillar 2: Recalling - Set a historical memory
-    let mut past_exp = Experience::default();
-    past_exp.id = "hist-1".to_string();
-    past_exp.content = "The battle at Iron Gate was fierce. I lost my shield there.".to_string();
-    past_exp.embedding = Some(vec![1.0, 1.0, 0.0, 0.0]);
-    past_exp.is_core_memory = true;
+    let past_exp = Experience {
+        id: "hist-1".to_string(),
+        content: "The battle at Iron Gate was fierce. I lost my shield there.".to_string(),
+        embedding: Some(vec![1.0, 1.0, 0.0, 0.0]),
+        is_core_memory: true,
+        ..Default::default()
+    };
     soul.push_experience(past_exp);
 
     let pipeline = SoulPipeline::new(MREvalAdapter, MREvalEngine);

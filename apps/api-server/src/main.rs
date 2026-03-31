@@ -7,6 +7,13 @@
 
 #![forbid(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(clippy::default_constructed_unit_structs)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::redundant_pattern_matching)]
+#![allow(clippy::manual_inspect)]
 
 use crate::app_state::Component;
 use aiome_contracts::commerce::CommerceEngine;
@@ -646,6 +653,15 @@ async fn main() -> anyhow::Result<()> {
         )) as Arc<dyn aiome_contracts::a2a::A2aClient>
     };
 
+    let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
+        job_queue.get_pool().clone(),
+        500 * 1024 * 1024, // 500MB per agent
+    );
+    if let Err(e) = disk_quota_mgr.init().await {
+        error!("🚨 Failed to init disk_quota schema: {}", e);
+        std::process::exit(1);
+    }
+
     let state = AppState {
         health_monitor: Component::new(health_monitor),
         job_queue: Component::new(job_queue.clone()),
@@ -775,6 +791,7 @@ async fn main() -> anyhow::Result<()> {
         )),
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
         compute_semaphore: Component::new(compute_semaphore),
+        disk_quota: Component::new(Arc::new(disk_quota_mgr)),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

@@ -107,7 +107,13 @@ impl LiveSessionManager for LiveSessionProvider {
         match read.next().await {
             Some(Ok(Message::Text(text))) => {
                 info!("✅ [LiveSession] Setup response: {}", text);
-                // TODO: 応答内容をパースしてエラーがないか確認する
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if let Some(err) = parsed.get("error") {
+                        return Err(AiomeError::Infrastructure {
+                            reason: format!("Gemini Live API Error during setup: {}", err),
+                        });
+                    }
+                }
             }
             Some(Ok(msg)) => {
                 return Err(AiomeError::Infrastructure {

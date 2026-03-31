@@ -137,4 +137,5 @@ pub struct AppState {
     pub harness_cache: Component<Arc<infrastructure::skills::harness::HarnessCache>>,
     pub upload_semaphore: Component<Arc<tokio::sync::Semaphore>>,
     pub compute_semaphore: Component<Arc<tokio::sync::Semaphore>>,
+    pub disk_quota: Component<Arc<infrastructure::disk_quota::DiskQuotaManager>>,
 }

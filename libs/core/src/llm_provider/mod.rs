@@ -1975,9 +1975,11 @@ mod tests {
             .await;
 
         let provider = OllamaProvider::new(mock_server.uri(), "test".to_string());
-        let mut request = LlmRequest::default();
-        request.temperature = Some(0.5);
-        request.format = Some("json".into());
+        let mut request = LlmRequest {
+            temperature: Some(0.5),
+            format: Some("json".into()),
+            ..Default::default()
+        };
         request.messages.push(LlmMessage {
             role: "system".into(),
             content: "You are helpful".into(),
@@ -2006,7 +2008,9 @@ mod tests {
 
         // We expect Gemini API to receive multiple messages in "contents"
         Mock::given(method("POST"))
-            .and(path(format!("/v1beta/models/test-model:generateContent")))
+            .and(path(
+                "/v1beta/models/test-model:generateContent".to_string(),
+            ))
             .and(wiremock::matchers::body_json(serde_json::json!({
                 "contents": [
                     { "role": "user", "parts": [{ "text": "Hello" }] },

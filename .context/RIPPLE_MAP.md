@@ -1,5 +1,28 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 1B: Avatar Engine & Infrastructure Hardening
+
+### 1. Storage DoS Protection (DiskQuotaManager)
+- **変更理由**: 大量または巨大なファイルの連続アップロードによるストレージ枯渇 (DoE) 攻撃を防ぎ、システム全体の安定稼働とマルチテナント環境下での公平なリソース配分を保証するため。
+- **波及効果**:
+  - `libs/infrastructure/src/disk_quota.rs` [NEW]: `DiskQuotaManager` 構造体を実装し、エージェントごとのディスク使用量をリアルタイムでトラッキング・制限 (デフォルト500MB) する仕組みを構築。
+  - `apps/api-server/src/app_state.rs`: `AppState` に `DiskQuotaManager` コンポーネントの依存注入を追加。
+  - `apps/api-server/src/routes/voice.rs`: `upload_voice_handler` 内での検証ロジックを更新し、アップロード開始前にクォータ超過を検知して 413 Payload Too Large エラーを返すよう改修。
+  - `apps/api-server/src/api_integration_tests.rs`: 全ての統合テスト環境における `AppState` モック初期化処理に `disk_quota` フィールドを追加修正し、コンパイルエラーを解消。
+
+### 2. TTS Streaming Optimization
+- **変更理由**: 長文のテキスト読み上げにおいて音声生成完了まで待機することによる TTFB (Time to First Byte) の遅延を解消し、リアルタイムで低遅延な対話体験 (ストリーミング応答) を実現するため。
+- **波及効果**:
+  - `libs/aiome-contracts/src/traits.rs`: `TtsProvider` トレイトを非破壊的に拡張し、新たに `synthesize_stream` メソッド（デフォルト実装付き）を追加。
+  - `libs/infrastructure/src/tts.rs`: `OpenAiTtsProvider` に `synthesize_stream` をオーバーライド実装。`reqwest` の `bytes_stream` を用いて音声チャンクデータを逐次的に返却。
+  - `apps/api-server/src/routes/voice.rs`: `synthesize_voice_handler` で `stream=true` クエリパラメータを受け取り、`axum::body::Body::from_stream` を用いて chunked 転送を行う分岐を追加。
+
+### 3. LipSync Expansion (SimpleLipSyncEngine)
+- **変更理由**: Inochi2D や 3D アバターを駆動するための動的な口形（Viseme）データを外部に依存せず生成可能にし、自律的なリップシンクアニメーションの基盤をシステム内に統合するため。
+- **波及効果**:
+  - `libs/avatar-engine/src/lip_sync.rs`: 既存の `LipSyncProvider` トレイト実装として `SimpleLipSyncEngine` 構造体を新規追加。
+  - オーディオ生データからのダミーフレーム生成（一定間隔での口の開閉と `Viseme` のトグル）および、文字起こしセグメント (`TranscriptionSegment`) に基づくフレーム補完ロジックを実装。単体テストを併せて追加。
+
 ## Phase 1A-2: Dynamic Dataset Extraction (MLX Data Pipeline)
 
 ### 1. SoulStore to MLX JSONL Pipeline

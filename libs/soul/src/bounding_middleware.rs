@@ -25,6 +25,14 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> B
     }
 }
 
+impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> Default
+    for BoundingGuard<A, E>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> SoulMiddleware<A, E>
     for BoundingGuard<A, E>

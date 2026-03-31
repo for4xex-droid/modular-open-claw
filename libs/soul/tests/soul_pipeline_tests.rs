@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC

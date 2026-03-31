@@ -5,8 +5,9 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-
 #![forbid(unsafe_code)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::unnecessary_cast)]
 
 use aiome_core::contracts::{
     ApprovalState, FederatedKarma, FederationPushRequest, FederationPushResponse,
@@ -571,9 +572,9 @@ struct CreateTopicRequest {
 async fn list_topics_handler(
     State(state): State<Arc<HubState>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let query = format!(
+    let query =
         "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
-    );
+            .to_string();
     let rows: Vec<TopicRecord> =
         sql_fetch_all!(&state.pool, TopicRecord, &query).unwrap_or_default();
 
@@ -1028,7 +1029,7 @@ async fn sync_handler(
     );
     let snapshot_blob: Option<Vec<u8>> =
         shared::sql_fetch_optional!(&state.pool, (Vec<u8>,), &snapshot_query, &payload.node_id)
-            .unwrap_or(Some((None.unwrap_or_default(),)))
+            .unwrap_or_else(|_| Some((Vec::new(),)))
             .map(|t| t.0);
 
     let _next_cursor: Option<String> = if has_more {

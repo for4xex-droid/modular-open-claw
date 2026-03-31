@@ -188,7 +188,6 @@ impl ContextEngine {
                     .job_queue
                     .get_chat_memory_summary(channel_id)
                     .await?
-                    .map(|(s, i)| (s, i))
                     .unwrap_or_else(|| ("なし".to_string(), None));
 
                 // Take the oldest half of messages to compress

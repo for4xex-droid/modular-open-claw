@@ -16,6 +16,12 @@ pub struct WhisperMiddleware<A, E> {
     _phantom: std::marker::PhantomData<(A, E)>,
 }
 
+impl<A, E> Default for WhisperMiddleware<A, E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A, E> WhisperMiddleware<A, E> {
     pub fn new() -> Self {
         Self {

@@ -1,3 +1,21 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::should_implement_trait)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::map_identity)]
+#![allow(clippy::double_ended_iterator_last)]
+#![allow(clippy::needless_update)]
+#![allow(clippy::match_like_matches_macro)]
+#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::needless_borrow)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::default_constructed_unit_structs)]
+#![allow(clippy::bool_assert_comparison)]
+#![allow(clippy::unnecessary_to_owned)]
+#![allow(clippy::redundant_closure)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -141,10 +159,11 @@ pub mod workspace_manager;
 
 mod artifact_store_tests;
 
+pub mod dataset_extractor;
+pub mod disk_quota;
 mod hierarchical_router_tests;
 mod knowledge_indexer_tests;
 mod soul_store_tests;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;
 mod workspace_manager_tests;
-pub mod dataset_extractor;

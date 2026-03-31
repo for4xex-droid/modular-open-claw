@@ -80,8 +80,7 @@ impl BeliefConsistencyGate {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .subsec_nanos()
-                    % 10
-                    == 0;
+                    .is_multiple_of(10);
                 if score < self.config.contradiction_threshold && !should_verify {
                     // SLM が矛盾なしと判断した場合は早期リターン
                     return Ok(BeliefCheckResult::Consistent);

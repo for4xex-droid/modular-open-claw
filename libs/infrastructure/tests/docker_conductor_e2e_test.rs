@@ -68,7 +68,7 @@ async fn test_docker_conductor_e2e_success_flow() {
     info!("Conductor returned output: {}", output_text);
 
     assert!(
-        output_text.contains("E2E_OK_GREEN") || output_text.len() > 0,
+        output_text.contains("E2E_OK_GREEN") || !output_text.is_empty(),
         "Output should contain generated text"
     );
     assert!(

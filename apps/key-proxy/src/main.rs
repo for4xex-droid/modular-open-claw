@@ -6,6 +6,7 @@
  */
 
 #![deny(unsafe_code)]
+#![allow(clippy::collapsible_if)]
 
 use axum::{
     Json, Router,

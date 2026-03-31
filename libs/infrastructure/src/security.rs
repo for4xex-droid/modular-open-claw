@@ -88,7 +88,7 @@ impl SecurityConfig {
                         let vault = std::env::var("VAULT_PATH")
                             .unwrap_or_else(|_| "~/.aiome/vault".to_string());
                         let expanded = shared::os_utils::expand_home(&vault);
-                        let path = std::path::PathBuf::from(expanded);
+                        let path = expanded;
                         // SEC-CANONICAL: 絶対パスへの正規化とシンボリックリンク解消を強制 (G-21/G-26)
                         config.vault_path = path.canonicalize().ok().or_else(|| {
                             // canonicalize が失敗した場合は絶対パス化を試みる
@@ -103,7 +103,7 @@ impl SecurityConfig {
         config.workspace_root = workspace_root;
         let vault = std::env::var("VAULT_PATH").unwrap_or_else(|_| "~/.aiome/vault".to_string());
         let expanded = shared::os_utils::expand_home(&vault);
-        let path = std::path::PathBuf::from(expanded);
+        let path = expanded;
         // SEC-CANONICAL: デフォルト設定時も正規化を強制
         config.vault_path = path.canonicalize().ok().or_else(|| {
             // canonicalize が失敗した（ディレクトリがない等）場合は、
@@ -288,12 +288,14 @@ impl RuntimeJail for BastionGuard {
         }
 
         // Phase 36.5: Strict Profile Enforcement
-        if profile == SandboxProfile::Strict {
-            if self.manifest.allow_network || self.manifest.allow_filesystem_write {
-                return Err(AiomeError::Infrastructure {
-                    reason: "Security Violation: Strict profile requires zero-privilege (no network/write).".into(),
-                });
-            }
+        if profile == SandboxProfile::Strict
+            && (self.manifest.allow_network || self.manifest.allow_filesystem_write)
+        {
+            return Err(AiomeError::Infrastructure {
+                reason:
+                    "Security Violation: Strict profile requires zero-privilege (no network/write)."
+                        .into(),
+            });
         }
 
         // Dynamic Sandbox Wrapping

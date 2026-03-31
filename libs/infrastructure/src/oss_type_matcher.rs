@@ -31,6 +31,12 @@ pub enum MismatchCategory {
 /// 2つの API サーフェスを比較して不一致を検出する
 pub struct OssTypeMatcher;
 
+impl Default for OssTypeMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OssTypeMatcher {
     pub fn new() -> Self {
         Self

@@ -888,6 +888,22 @@ pub trait LoraEngine: Send + Sync + std::fmt::Debug {
 pub trait TtsProvider: Send + Sync + std::fmt::Debug {
     /// テキストを音声データに変換
     async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError>;
+
+    /// ストリーム形式でテキストを音声データ（チャンク）に変換（オプトイン用）
+    async fn synthesize_stream(
+        &self,
+        _text: &str,
+        _voice_id: &str,
+    ) -> Result<
+        std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<Vec<u8>, AiomeError>> + Send>>,
+        AiomeError,
+    > {
+        // デフォルトでは明示的に未サポートエラーを返す（サイレントフェイル防止・要件 X-001）
+        Err(AiomeError::Infrastructure {
+            reason: "Streaming is not supported by this TTS provider".to_owned(),
+        })
+    }
+
     async fn health_check(&self) -> Result<bool, AiomeError>;
 }
 

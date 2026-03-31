@@ -66,13 +66,15 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
         for summary in &ctx.soul.semantic_index {
             let score = cosine_similarity(query_embedding, &summary.embedding);
             if score > self.threshold {
-                let mut exp = Experience::default();
-                exp.content = format!(
-                    "[Core Insight: {}] {}",
-                    summary.topic, summary.compressed_insight
-                );
-                exp.embedding = Some(summary.embedding.clone());
-                exp.outcome_valence = summary.valence_avg;
+                let exp = Experience {
+                    content: format!(
+                        "[Core Insight: {}] {}",
+                        summary.topic, summary.compressed_insight
+                    ),
+                    embedding: Some(summary.embedding.clone()),
+                    outcome_valence: summary.valence_avg,
+                    ..Default::default()
+                };
                 matched.push((score, exp));
             }
         }

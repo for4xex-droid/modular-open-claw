@@ -1,8 +1,14 @@
 ## [Unreleased] - 2026-04-01
 
 ### Added
+- **Phase 1B: Avatar Engine & Infrastructure Hardening [完成]**
+    - **Storage DoS Protection (DiskQuotaManager)**: `DiskQuotaManager` を導入し、エージェントごとに最大 500MB のディスククォータを厳密に管理することでストレージ枯渇（DoE）攻撃を防止。アップロード処理中のリアルタイム検証とデータベース管理により安全性を向上。テストスイート内の AppState モックも完全同期。
+    - **TTS Streaming Optimization**: `TtsProvider` トレイトを非破壊的に拡張し `synthesize_stream` を追加。OpenAI バックエンド呼び出しにおいて真のチャンクストリーミング（TTFB の劇的な短縮）を実現し、`api-server` の `/api/v1/voice/synthesize` に `?stream=true` 対応を統合。
+    - **LipSync Expansion**: `avatar-engine` 内の `LipSyncProvider` トレイト実装として `SimpleLipSyncEngine` を追加。オーディオ解析や文字起こしセグメントから Inochi2D などで利用する口形（Viseme）の時系列データを生成可能なエンジン基盤を構築。
+
 - **Dynamic Dataset Extraction (F-2)**: `DatasetExtractor` を導入し、LoRA学習時に `SoulStore` の履歴 (Experiences) から自動的にMLX専用の JSONL 形式のデータセットを動的に構築・注入するパイプラインを確立。非同期API呼び出しの競合を防ぐ `job_id` アイソレーションを実装し、さらに「会話履歴全体の文脈」を1つのシーケンスブロックとして連結・維持する手法によりCatastrophic Forgettingを防止。
 - **Global Compute Semaphore (F-3 Hardware Protection) [完了]**: LoRA学習プロセスや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` に導入。`LoraTrainingService` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
+- **Tier 0 Infrastructure Security Hardening (Wave 1-3) [螳御ｺ**スや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` に導入。`LoraTrainingService` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
 - **Tier 0 Infrastructure Security Hardening (Wave 1-3) [螳御ｺ�**
     - **BoundaryVerifier Hardening**: 繧ｷ繧ｹ繝�Β繝代せ繝悶Ο繝�け縺ｮ諡｡蜈�ｼ�/tmp`, `/dev`, `/proc`, `/sys`, `/private`�峨♀繧医�繝代せ繝医Λ繝舌�繧ｵ繝ｫ (`..`) 縺ｮ迚ｩ逅�噪諡堤ｵｶ繧� O(1) 縺ｧ螳溯｣��
     - **BastionGuard (Command Parsing) Hardening**: `shell_split` 縺ｮ POSIX 蛻ｶ蠕｡譁�ｭ暦ｼ�\v`, `\f`, `\r`, `\n`�牙ｯｾ蠢懊√ヵ繝ｩ繧ｰ蛻�ｧ｣繝ｭ繧ｸ繝�け縺ｮ謾ｹ蝟�∝ｯ�捩繝輔Λ繧ｰ蠑墓焚��-f/etc/passwd` 遲会ｼ峨�謚ｽ蜃ｺ繝ｻ讀懃稔繧貞ｮ溯｣�ょ宛蠕｡譁�ｭ励ヰ繧､繝代せ繧貞ｮ悟�蟆�事縲�

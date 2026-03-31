@@ -58,6 +58,15 @@ pub async fn upload_voice_handler(
                     .await
                     .map_err(|e| AppError::internal(e.to_string()))?;
                 size += chunk.len();
+
+                // Real-time quota check during upload
+                state
+                    .disk_quota
+                    .check_quota(auth.agent_id, size as u64)
+                    .await
+                    .map_err(|e| {
+                        crate::error::AppError(e) // Wrap in AppError
+                    })?;
             }
         }
     }
@@ -140,6 +149,9 @@ pub async fn upload_voice_handler(
         })
         .await?;
 
+    // 6. 成功時にディスク使用量を記録
+    let _ = state.disk_quota.record_usage(agent_id, size as u64).await;
+
     Ok((
         StatusCode::OK,
         Json(json!({
@@ -192,22 +204,36 @@ pub struct SynthesizeRequest {
     pub voice_id: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct SynthesizeQuery {
+    pub stream: Option<bool>,
+}
+
 /// [POST] /api/v1/voice/synthesize
 /// AI Voice Synthesis via TtsProvider
 #[utoipa::path(
     post,
     path = "/api/v1/voice/synthesize",
+    params(
+        ("stream" = Option<bool>, Query, description = "Enable streaming response")
+    ),
     responses(
-        (status = 200, description = "Synthesized audio bytes")
+        (status = 200, description = "Synthesized audio bytes or stream")
     ),
     security(("api_key" = []))
 )]
+
 pub async fn synthesize_voice_handler(
     _auth: Authenticated,
     State(state): State<AppState>,
+    axum::extract::Query(query): axum::extract::Query<SynthesizeQuery>,
     Json(req): Json<SynthesizeRequest>,
-) -> Result<impl IntoResponse, AppError> {
-    info!("🎙️ [Voice] Synthesizing text: {} chars", req.text.len());
+) -> Result<axum::response::Response, AppError> {
+    info!(
+        "🎙️ [Voice] Synthesizing text: {} chars (stream={:?})",
+        req.text.len(),
+        query.stream
+    );
 
     // Use requested voice_id, or default from config, or fallback to p225
     let voice_id = req
@@ -216,18 +242,42 @@ pub async fn synthesize_voice_handler(
         .or(state.config.xtts_speaker.as_deref())
         .unwrap_or("p225");
 
-    let audio_bytes = state
-        .tts_provider
-        .synthesize(&req.text, voice_id)
-        .await
-        .map_err(|e| {
-            error!("❌ [Voice] Synthesis failed: {}", e);
-            AppError::internal(format!("TTS synthesis failed: {}", e))
-        })?;
+    let is_stream = query.stream.unwrap_or(false);
 
-    Ok((
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "audio/wav")],
-        audio_bytes,
-    ))
+    if is_stream {
+        let audio_stream = state
+            .tts_provider
+            .synthesize_stream(&req.text, voice_id)
+            .await
+            .map_err(|e| {
+                error!("❌ [Voice] Streaming synthesis failed: {}", e);
+                AppError::internal(format!("TTS streaming failed: {}", e))
+            })?;
+
+        use axum::response::IntoResponse;
+        let body = axum::body::Body::from_stream(audio_stream);
+        let mut res = body.into_response();
+        res.headers_mut().insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("audio/wav"),
+        );
+        Ok(res)
+    } else {
+        let audio_bytes = state
+            .tts_provider
+            .synthesize(&req.text, voice_id)
+            .await
+            .map_err(|e| {
+                error!("❌ [Voice] Synthesis failed: {}", e);
+                AppError::internal(format!("TTS synthesis failed: {}", e))
+            })?;
+
+        use axum::response::IntoResponse;
+        Ok((
+            StatusCode::OK,
+            [(axum::http::header::CONTENT_TYPE, "audio/wav")],
+            audio_bytes,
+        )
+            .into_response())
+    }
 }

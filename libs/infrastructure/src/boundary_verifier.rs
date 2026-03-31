@@ -129,27 +129,26 @@ impl BoundaryVerifier {
 
                 // Vault へのアクセス制限
                 if let Some(vault) = &self.vault_path {
-                    if word.contains(vault.to_str().unwrap_or("")) {
-                        if !is_system_internal {
-                            return Err(AiomeError::Infrastructure {
+                    if word.contains(vault.to_str().unwrap_or("")) && !is_system_internal {
+                        return Err(AiomeError::Infrastructure {
                                 reason: format!("Boundary Invariant Violation: Path '{}' is in the Vault and requires system internal context", word),
                             });
-                        }
                     }
                 }
                 verified.push("no_vault_access".into());
 
                 // ワークスペース内チェック
-                if !is_system_internal && word.starts_with('/') {
-                    if !word.starts_with(self.workspace_root.to_str().unwrap_or("")) {
-                        // ワークスペース外の絶対パス
-                        return Err(AiomeError::Infrastructure {
-                            reason: format!(
-                                "Boundary Invariant Violation: Path '{}' is outside sandbox jail",
-                                word
-                            ),
-                        });
-                    }
+                if !is_system_internal
+                    && word.starts_with('/')
+                    && !word.starts_with(self.workspace_root.to_str().unwrap_or(""))
+                {
+                    // ワークスペース外の絶対パス
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!(
+                            "Boundary Invariant Violation: Path '{}' is outside sandbox jail",
+                            word
+                        ),
+                    });
                 }
                 verified.push("path_in_sandbox".into());
             }

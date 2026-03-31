@@ -112,7 +112,7 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
     ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
-    
+
     async fn get_balance(
         &self,
         _agent_id: uuid::Uuid,
@@ -454,6 +454,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         100,
     ));
 
+    let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
+        job_queue.get_pool().clone(),
+        500 * 1024 * 1024,
+    );
+    let _ = disk_quota_mgr.init().await;
+
     let state = AppState {
         a2a_client: Component::new(Arc::new(
             infrastructure::grpc::mock_a2a_client::MockA2aClient::new(),
@@ -619,6 +625,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         )),
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(10))),
         compute_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(1))),
+        disk_quota: Component::new(Arc::new(disk_quota_mgr)),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -2027,11 +2034,11 @@ async fn test_oracle_job_review_api() {
 #[tokio::test]
 async fn test_compute_semaphore_limits_concurrency() {
     let (_server, state, _tmp) = create_test_server().await;
-    
+
     // compute_semaphore が正しく 1 で初期化されているかをテストする
     let semaphore = state.compute_semaphore.get_inner();
     let permits = semaphore.available_permits();
-    
+
     // Mac Unified Memory の枯渇を防ぐため、並列実行可能な重いタスク（LoRA, ImageGen）は「1つ」のみに制限されるべき
     assert_eq!(
         permits, 1,
@@ -2039,6 +2046,8 @@ async fn test_compute_semaphore_limits_concurrency() {
     );
 
     // 強制的にロックを取得して1つ消費した場合、もう available は 0 になることを確認
-    let _permit = semaphore.try_acquire().expect("Should be able to acquire the single compute permit");
+    let _permit = semaphore
+        .try_acquire()
+        .expect("Should be able to acquire the single compute permit");
     assert_eq!(semaphore.available_permits(), 0);
 }

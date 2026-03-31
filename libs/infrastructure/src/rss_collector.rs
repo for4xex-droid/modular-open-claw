@@ -123,7 +123,7 @@ impl RssCollector {
                     .bind(url)
                     .bind(&json)
                     .bind(ttl_sec)
-                    .execute(&*p)
+                    .execute(p)
                     .await
                     .map(|_| ())
             }
@@ -133,7 +133,7 @@ impl RssCollector {
                     .bind(url)
                     .bind(&json)
                     .bind(interval)
-                    .execute(&*p)
+                    .execute(p)
                     .await
                     .map(|_| ())
             }

@@ -560,7 +560,7 @@ impl FederationRegistry for UniversalJobQueue {
         since: Option<&str>,
     ) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> {
         let (k, r, m) = FederationOps::do_export_federated_data(self, since).await?;
-        Ok((k.into_iter().map(|fk| fk.into()).collect(), r, m))
+        Ok((k.into_iter().map(|fk| fk).collect(), r, m))
     }
     async fn import_federated_data(
         &self,
@@ -570,7 +570,7 @@ impl FederationRegistry for UniversalJobQueue {
     ) -> Result<(), AiomeError> {
         FederationOps::do_import_federated_data(
             self,
-            karmas.into_iter().map(|ke| ke.into()).collect(),
+            karmas.into_iter().map(|ke| ke).collect(),
             rules,
             matches,
         )
@@ -593,7 +593,7 @@ impl FederationRegistry for UniversalJobQueue {
         &self,
     ) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>), AiomeError> {
         let (k, r) = FederationOps::do_fetch_unfederated_data(self).await?;
-        Ok((k.into_iter().map(|fk| fk.into()).collect(), r))
+        Ok((k.into_iter().map(|fk| fk).collect(), r))
     }
     async fn mark_as_federated(
         &self,

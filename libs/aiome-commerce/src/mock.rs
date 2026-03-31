@@ -315,18 +315,23 @@ mod tests {
     async fn test_mock_deduct_generation_cost() {
         let engine = MockCommerceEngine::new();
         let agent_id = Uuid::new_v4();
-        
+
         // 生成コストの天引き前: 1000
         assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000);
-        
+
         // 50コイン天引きする (GenerativeEngine使用時などを想定)
-        engine.deduct_generation_cost(agent_id, 50, "image_generation").await.unwrap();
-        
+        engine
+            .deduct_generation_cost(agent_id, 50, "image_generation")
+            .await
+            .unwrap();
+
         // 天引き後: 950
         assert_eq!(engine.get_balance(agent_id).await.unwrap(), 950);
-        
+
         // 残高不足エラーの確認
-        let result = engine.deduct_generation_cost(agent_id, 2000, "video_generation").await;
+        let result = engine
+            .deduct_generation_cost(agent_id, 2000, "video_generation")
+            .await;
         assert!(result.is_err());
     }
 }

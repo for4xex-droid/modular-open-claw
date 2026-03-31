@@ -79,7 +79,7 @@ pub struct SlmTraceJsonResponse {
     pub data: SlmTraceData,
 }
 
-//// SLM バックエンドの共通インターフェース
+/// SLM バックエンドの共通インターフェース
 #[async_trait::async_trait]
 pub trait SlmBackend: std::fmt::Debug + Send + Sync {
     /// メモリを保存する

@@ -106,8 +106,10 @@ async fn test_bastion_guard_enforcement() {
     assert!(guard.safe_exec("ls").await.is_err()); // allow_shell_execution is false
 
     // 2. Blocked by injection filter
-    let mut manifest = PermissionManifest::default();
-    manifest.allow_shell_execution = true;
+    let manifest = PermissionManifest {
+        allow_shell_execution: true,
+        ..Default::default()
+    };
     let guard = BastionGuard::new(manifest);
     assert!(guard.safe_exec("ls && cat /etc/passwd").await.is_err());
 
