@@ -589,6 +589,7 @@ pub trait JobQueue:
     + BiomeRegistry
     + SystemStateOps
     + SoulStore
+    + HarnessRegistryOps
     + Send
     + Sync
     + std::fmt::Debug
@@ -908,6 +909,24 @@ pub trait LiveSessionManager: Send + Sync + std::fmt::Debug {
 pub trait NewsService: Send + Sync + std::fmt::Debug {
     /// 最新のトレンドやニュースを収集
     async fn fetch_latest(&self, query: &str) -> Result<Vec<serde_json::Value>, AiomeError>;
+}
+
+/// 13. オートハーネス・レジストリ (AutoHarness Phase B-D)
+#[async_trait]
+pub trait HarnessRegistryOps: Send + Sync + std::fmt::Debug {
+    async fn store_harness_record(
+        &self,
+        record: &crate::contracts::HarnessRecord,
+    ) -> Result<(), AiomeError>;
+
+    async fn fetch_harness_records_by_status(
+        &self,
+        status: &str,
+    ) -> Result<Vec<crate::contracts::HarnessRecord>, AiomeError>;
+
+    async fn update_harness_status(&self, id: &str, status: &str) -> Result<(), AiomeError>;
+
+    async fn delete_harness_record(&self, id: &str) -> Result<(), AiomeError>;
 }
 
 #[cfg(test)]

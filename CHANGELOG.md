@@ -1,3 +1,7 @@
+- **Phase B-D: AutoHarness Security Architecture Integration [完了]**
+    - **DB Foundation**: `harness_registry` テーブルを導入し、SQLite/Postgres 用のマイグレーションを実装。`HarnessRecord` および `HarnessRegistryOps` トレイトを追加して JobQueue で CRUD をサポート。
+    - **Security Enforcement**: `ConstraintChecker` 内の正規表現解析に `RegexBuilder` を導入し、10KB のサイズ制限を設けることで ReDoS 脆弱性を構造的に遮断。
+    - **Dynamic Guardrails**: `WasmHarness` に `severity` スコアを統合。評価ループにおいて 80 以上をブロッキング (Active mode)、それ未満をモニタリング (Shadow mode) とする評価機構を `skill_handler.rs` に実体化。
 - **Security Hardening: NPM Supply Chain Attack Mitigation [完了]**
     - **背景**: `axios@1.14.1` / `axios@0.30.4` の npm メンテナアカウント乗っ取りによるRAT（Remote Access Trojan）配備事案（2026-03-31）を受け、同種の攻撃に対する構造的防御を導入。
     - **Layer 1 — postinstall 無効化**: `.npmrc` に `ignore-scripts=true` を設定。`postinstall` フックを悪用するサプライチェーン攻撃（axios RAT, event-stream, ua-parser-js 等）のクラス全体を構造的に無力化。

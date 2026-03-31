@@ -35,6 +35,7 @@ pub mod evolution;
 pub mod expression;
 pub mod federation;
 pub mod guardrails;
+pub mod harness_registry;
 pub mod karma;
 pub mod karma_maintenance;
 pub mod migrations;

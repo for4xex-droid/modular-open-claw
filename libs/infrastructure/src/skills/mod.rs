@@ -21,6 +21,8 @@ pub mod cleanroom;
 pub mod discovery;
 /// `forge` モジュール
 pub mod forge;
+/// `harness` モジュール (AutoHarness 実装)
+pub mod harness;
 /// `importer` モジュール
 pub mod importer;
 /// スキルの並列実行と評価

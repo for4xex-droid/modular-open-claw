@@ -702,6 +702,28 @@ mod tests {
         }
     }
 
+    #[async_trait]
+    impl aiome_contracts::traits::HarnessRegistryOps for MockJQ {
+        async fn store_harness_record(
+            &self,
+            _: &aiome_contracts::contracts::HarnessRecord,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_harness_records_by_status(
+            &self,
+            _: &str,
+        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn update_harness_status(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn delete_harness_record(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn test_verify_intent_baseline() {
         let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));

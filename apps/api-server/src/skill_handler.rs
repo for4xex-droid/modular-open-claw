@@ -268,8 +268,42 @@ pub async fn execute_wasm_skill(
                 .map(|m| m.permissions)
                 .unwrap_or_default(),
         );
-        step.constraint_violations = checker.evaluate_step(&step);
-        if !step.constraint_violations.is_empty() && step.failure_category.is_none() {
+        let mut harnesses: Vec<Box<dyn infrastructure::constraint_checker::ActionHarness>> =
+            Vec::new();
+        if let Ok(records) = state
+            .job_queue
+            .fetch_harness_records_by_status("Active")
+            .await
+        {
+            for r in records {
+                harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
+                    r.domain,
+                    r.description,
+                    r.code_payload.into_bytes(),
+                    r.severity,
+                )));
+            }
+        }
+        if let Ok(records) = state
+            .job_queue
+            .fetch_harness_records_by_status("Shadow")
+            .await
+        {
+            for r in records {
+                harnesses.push(Box::new(infrastructure::skills::harness::WasmHarness::new(
+                    r.domain,
+                    r.description,
+                    r.code_payload.into_bytes(),
+                    r.severity,
+                )));
+            }
+        }
+        step.constraint_violations = checker.evaluate_step_with_harnesses(&step, &harnesses);
+
+        // 80以上のアクティブな違反のみをブロッキング障害として扱う
+        let has_critical_violation = step.constraint_violations.iter().any(|v| v.severity >= 80);
+
+        if has_critical_violation && step.failure_category.is_none() {
             step.failure_category =
                 Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
         }

@@ -137,6 +137,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🏗️ **Phase 51: Agentic Finance & GIG Loop Integration**: `TaskDispatcher` と `GigEngine` を統合し、タスク完了時に自律的にギグ（依頼）を発行・連鎖させる経済ループを構築。`gig_depth` による無限ループ防止策を備えた、AI間経済圏の自律的拡大を実現しました。
 - 🧠 **Phase 53: Society of Thought (SoT) 審議エンジン**: `Oracle::multi_review` による複数フェーズの自己批判・洗練プロセスを実装。LLMによる動的検証（JSON構造化抽出）機能を追加し、推論詳細を `SoTProgress` イベントとして SSE 配信することで、AI の「深い思考とスコアリング」をUIへリアルタイム連動させます。
 - 🛡️ **Phase 53: マルチレイヤー・セキュリティ強化**: SSRF 対策として `127.0.0.1` へのアクセスを特定ポート (Ollama/ComfyUI) に限定する厳密なバリデーションを導入。また、プロンプトインジェクションに対するローカル検知レイヤー（Guardrails）の強化と、`Stdio::null` や強制タイムアウトを駆使したサブプロセス管理（ゾンビハング解消）を統合し、インフラ全体の CI 安定性とプロセス安全性を確固たるものにしました。
+- ⚙️ **AutoHarness 動的ガードレール (Phase B-D)**: WASMベースの制約エンジンを統合。Active (Action Block) と Shadow (Monitor & Log) モードを重大度(severity)により動的に切り替え、ReDoS保護を備えた適応型防御レイヤーを構成。
 - 🛡️ **Phase 55: AgentRx 拡張 & LoRA 自律進化**: `RepairCalculator` のバグ修正と自己修復ヒントの動的注入を統合。さらに、`LoraAutotuner` を実装し、学習ロス履歴に基づいたハイパーパラメータ（LR, Epochs, Rank）の自律調整を実現しました。成長のプラトー（停滞）を検知すると、24時間のクールダウン制御付きで自律再学習をトリガーする「自律進化ループ」を完成。
 - 🛡️ **Security Hardening (2026-03-31): NPM サプライチェーン防御**: Axios RAT 攻撃等の悪意ある `postinstall` スクリプトを構造的に遮断する `.npmrc` 設定と、CI における 3 層監査（Critical Audit, registry signatures, ignore-scripts）を導入。
 

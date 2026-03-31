@@ -785,3 +785,44 @@ pub struct HypothesisManifest {
     pub experiment_design: String,
     pub created_at: String,
 }
+
+// --- Phase 12-X: AutoHarness Integration ---
+
+#[derive(
+    Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, utoipa::ToSchema, Default,
+)]
+pub enum HarnessStatus {
+    #[default]
+    Shadow,
+    Active,
+    Retired,
+}
+
+impl HarnessStatus {
+    pub fn as_str(&self) -> &str {
+        match self {
+            HarnessStatus::Shadow => "Shadow",
+            HarnessStatus::Active => "Active",
+            HarnessStatus::Retired => "Retired",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Active" => HarnessStatus::Active,
+            "Retired" => HarnessStatus::Retired,
+            _ => HarnessStatus::Shadow,
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct HarnessRecord {
+    pub id: String,
+    pub domain: String,
+    pub description: String,
+    pub code_payload: String,
+    pub status: HarnessStatus,
+    pub severity: u8,
+    pub created_at: String,
+}

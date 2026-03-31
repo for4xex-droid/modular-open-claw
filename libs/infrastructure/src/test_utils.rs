@@ -510,6 +510,28 @@ pub mod job_queue_mock {
             })
         }
     }
+
+    #[async_trait]
+    impl aiome_contracts::traits::HarnessRegistryOps for GlobalMockJobQueue {
+        async fn store_harness_record(
+            &self,
+            _record: &aiome_contracts::contracts::HarnessRecord,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn fetch_harness_records_by_status(
+            &self,
+            _status: &str,
+        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn update_harness_status(&self, _id: &str, _status: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn delete_harness_record(&self, _id: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
 }
 
 pub mod mock_soul_store {

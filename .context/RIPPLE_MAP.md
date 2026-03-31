@@ -930,3 +930,16 @@ graph TD
     - ワークスペース全体の `bastion` 依存を独自 Git フォークから Crates.io 公式パッケージ `bastion-core = "1.0.0"` へ移行。
 - **波及効果**: サプライチェーンリスクが完全に排除されました。設定値やネイティブブリッジの欠損時に不正にテストを通過したり、システムが脆弱なデフォルト状態で起動することが物理的に不可能になりました。
 
+---
+*最終更新日: 2026-03-31* (AutoHarness Phase B-D)
+
+### 🛡️ Phase B-D: AutoHarness Security Architecture Integration
+- **変更内容**: 
+    - `harness_registry` DB テーブル導入にともない、`HarnessRecord` や `HarnessRegistryOps` トレイトを追加。`UniversalJobQueue` に実装を展開。
+    - `ConstraintChecker` 内の Regex リテラル展開を `RegexBuilder` の事前コンパイル＋サイズリミット（10KB）へ変更し ReDoS 脆弱性を遮断。
+    - `ActionHarness` トレイトに `severity()` を追加し、`WasmHarness` 側で動的に重大度を受け取る構造にリファクタリング。
+    - `apps/api-server/src/skill_handler.rs` にて、JobQueue 経由で取得した Active / Shadow ハーネスを `evaluate_step_with_harnesses` ループに注入。
+- **波及効果**: 
+    - ハーネスの分離アーキテクチャが実現。重大度80以上はアクション自体をブロックする (Active mode) 一方で、80未満は制約違反として記録されるのみ (Shadow mode) という多段階防衛がAPIレイヤーで実体化。
+    - 各種 `JobQueue` モック（テスト環境）全体へ `HarnessRegistryOps` が必要となり、広範なテストファイル（`tts_worker.rs`, `dream_state.rs`, `immune_system.rs` 等）に対するトレイト実装波及を及ぼした。
+

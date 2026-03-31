@@ -10,6 +10,28 @@ use aiome_core::security::PermissionManifest;
 use aiome_core::trajectory::{ConstraintViolation, TrajectoryStep};
 use regex::Regex;
 
+/// アクション制約を検証する動的ハーネスのトレイト
+pub trait ActionHarness: Send + Sync {
+    /// LLM が提案したアクションが合法かを判定
+    fn is_legal_action(
+        &self,
+        action: &str,
+        input: &serde_json::Value,
+        output: &serde_json::Value,
+    ) -> bool;
+
+    /// 制約の説明を人間可読な形で返す
+    fn describe_constraint(&self) -> String;
+
+    /// ハーネスのドメイン（タスクカテゴリ）
+    fn domain(&self) -> &str;
+
+    /// 制約の重要度 (Shadow ModeとActiveの境界)
+    fn severity(&self) -> u8 {
+        80
+    }
+}
+
 /// AgentRx行動制約チェッカー
 pub struct ConstraintChecker {
     immune_rules: Vec<ImmuneRule>,
@@ -32,7 +54,10 @@ impl ConstraintChecker {
         // 1. ImmuneRule 制約（学習済みパターン）
         let input_str = step.input.to_string();
         for rule in &self.immune_rules {
-            if let Ok(re) = Regex::new(&rule.pattern) {
+            if let Ok(re) = regex::RegexBuilder::new(&rule.pattern)
+                .size_limit(10_000)
+                .build()
+            {
                 if re.is_match(&input_str) {
                     violations.push(ConstraintViolation {
                         constraint_name: format!("ImmuneRuleViolation: {}", rule.id),
@@ -118,6 +143,28 @@ impl ConstraintChecker {
                         .to_string(),
                     actual: "Exact duplication of input detected in output".to_string(),
                     severity: 75,
+                });
+            }
+        }
+
+        violations
+    }
+
+    /// ステップの入出力を動的ハーネス（Shadow Mode / Active）も含めて照合し、違反リストを返す
+    pub fn evaluate_step_with_harnesses(
+        &self,
+        step: &TrajectoryStep,
+        harnesses: &[Box<dyn ActionHarness>],
+    ) -> Vec<ConstraintViolation> {
+        let mut violations = self.evaluate_step(step);
+
+        for harness in harnesses {
+            if !harness.is_legal_action(&step.action, &step.input, &step.output) {
+                violations.push(ConstraintViolation {
+                    constraint_name: format!("AutoHarness:{}", harness.domain()),
+                    expected: harness.describe_constraint(),
+                    actual: "Harness rejected this action".into(),
+                    severity: harness.severity(),
                 });
             }
         }
@@ -223,5 +270,72 @@ mod tests {
         assert!(violations
             .iter()
             .any(|v| v.constraint_name == "DomainBlocked"));
+    }
+
+    struct MockHarness {
+        domain: String,
+        desc: String,
+        is_legal: bool,
+    }
+
+    impl ActionHarness for MockHarness {
+        fn is_legal_action(
+            &self,
+            _action: &str,
+            _input: &serde_json::Value,
+            _output: &serde_json::Value,
+        ) -> bool {
+            self.is_legal
+        }
+        fn describe_constraint(&self) -> String {
+            self.desc.clone()
+        }
+        fn domain(&self) -> &str {
+            &self.domain
+        }
+    }
+
+    #[test]
+    fn test_evaluate_step_with_harnesses() {
+        let manifest = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: true,
+            allow_shell_execution: true,
+            allowed_domains: vec![],
+        };
+        let checker = ConstraintChecker::new(vec![], manifest);
+
+        let step = TrajectoryStep {
+            step_id: 1,
+            job_id: None,
+            action: "think".into(),
+            tool_name: None,
+            input: json!({"thought": "I will do something"}),
+            output: json!({"status": "ok"}),
+            timestamp: "now".into(),
+            ..Default::default()
+        };
+
+        let harnesses: Vec<Box<dyn ActionHarness>> = vec![
+            Box::new(MockHarness {
+                domain: "General".into(),
+                desc: "Mock constraint 1".into(),
+                is_legal: true,
+            }),
+            Box::new(MockHarness {
+                domain: "Security".into(),
+                desc: "Mock constraint 2".into(),
+                is_legal: false, // This should trigger a violation
+            }),
+        ];
+
+        let violations = checker.evaluate_step_with_harnesses(&step, &harnesses);
+        assert_eq!(violations.len(), 1);
+
+        let v = &violations[0];
+        assert_eq!(v.constraint_name, "AutoHarness:Security");
+        assert_eq!(v.expected, "Mock constraint 2");
+        assert_eq!(v.actual, "Harness rejected this action");
+        assert_eq!(v.severity, 80);
     }
 }
