@@ -74,6 +74,7 @@ impl LoraTrainingService {
         soul_mutator: Option<Arc<SoulMutator>>,
         job_queue: Option<Arc<dyn JobQueue>>,
         event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+        compute_semaphore: Option<Arc<tokio::sync::Semaphore>>,
     ) -> Self {
         Self {
             _bastion: Arc::new(BastionGuard::new(
@@ -89,7 +90,7 @@ impl LoraTrainingService {
             job_queue,
             event_tx,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
-            job_semaphore: Arc::new(tokio::sync::Semaphore::new(1)), // Limit to 1 training at a time (F-02)
+            job_semaphore: compute_semaphore.unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))), // Use global compute_semaphore if provided
         }
     }
 
@@ -298,9 +299,26 @@ impl LoraEngine for LoraTrainingService {
             active.insert(job_id.clone(), cancel_token.clone());
         }
 
+        // 🧬 Phase 1A-2: Dynamic Dataset Extraction from SoulStore
+        let actual_dataset_path = if let Some(jq) = &self.job_queue {
+            let extractor = crate::dataset_extractor::DatasetExtractor::new(std::path::PathBuf::from("workspace/datasets"));
+            match extractor.extract_to_jsonl(&**jq, dataset_id, &job_id).await {
+                Ok(path) => {
+                    tracing::info!("✅ [LoraTrainingService] Successfully extracted dataset for Soul: {}", dataset_id);
+                    path.to_string_lossy().to_string()
+                },
+                Err(e) => {
+                    tracing::info!("ℹ️ [LoraTrainingService] Soul not found or extraction failed, falling back to raw path usage: {}", e);
+                    format!("workspace/datasets/{}", dataset_id)
+                }
+            }
+        } else {
+            format!("workspace/datasets/{}", dataset_id)
+        };
+
         let config = LoraTrainingConfig {
             base_model: base_model.to_string(),
-            dataset_path: format!("workspace/datasets/{}", dataset_id),
+            dataset_path: actual_dataset_path,
             output_dir: "workspace/output".to_string(),
             vault_path: format!("workspace/vault/lora/{}", job_id),
             ..Default::default()
@@ -430,7 +448,7 @@ mod tests {
     #[tokio::test]
     async fn test_lora_training_service_initialization() {
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let _service = LoraTrainingService::new(core, None, None, None);
+        let _service = LoraTrainingService::new(core, None, None, None, None);
         assert!(true, "Instantiated service properly");
     }
 
@@ -438,7 +456,7 @@ mod tests {
     async fn test_start_training_isolates_weights_in_vault() {
         // RED test: Should assert that weights are moved to the vault.
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let service = LoraTrainingService::new(core, None, None, None);
+        let service = LoraTrainingService::new(core, None, None, None, None);
         let tmp = tempdir().unwrap();
         let output_dir = tmp.path().join("output").to_string_lossy().to_string();
         let vault_path = tmp.path().join("vault").to_string_lossy().to_string();
@@ -492,7 +510,7 @@ mod tests {
         ));
         let jq = Arc::new(GlobalMockJobQueue::default());
 
-        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None);
+        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None);
 
         let dataset_dir = std::path::Path::new("workspace/datasets");
         let _ = std::fs::create_dir_all(&dataset_dir);
@@ -527,7 +545,7 @@ mod tests {
         let jq = Arc::new(GlobalMockJobQueue::default());
 
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None);
+        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None);
 
         // This method does not exist yet! (TDD RED)
         let health = service.health_check().await.unwrap();

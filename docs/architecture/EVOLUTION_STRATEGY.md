@@ -36,6 +36,9 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 7.  **Autonomous Evolution Layer (Phase 55 / LoraAutotuner)**:
     - **役割**: エージェントの学習プロセスを自律的に監視・最適化する。
     - **特徴**: `LoraAutotuner` がロス履歴から Stagnation（停滞）や Overfitting（過学習）を検知し、学習率 (LR) や Epoch 数、Rank を動的に調整。`HeartbeatWakeup` と連携し、24時間のクールダウンを維持しつつ、成長のプラトー（停滞）を検知した際に自律再学習を自己トリガーします。
+8.  **Data Distillation Layer (Phase 1A-2 / DatasetExtractor)**:
+    - **役割**: SoulStore（長期記憶）から会話や経験を抽出し、動的に機械学習モデル専用の訓練データへと精製する。
+    - **特徴**: `DatasetExtractor` が稼働し、AIの過去の記憶領域から文脈を維持した一続きの JSONL ブロックデータを抽出。並行ジョブ間で I/O 競合が発生しないスレッドセーフな基盤の上で、破滅的忘却を防ぎながら独自のパーソナリティを LoRA へ転写（Fine-Tuning）するパイプラインを形成します。
 
 ---
 
@@ -59,5 +62,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-03-31 (Phase 55 / AgentRx & LoRA Evolution)
+最終更新: 2026-04-01 (Phase 1A-2 / Data Distillation Pipeline)
 Aiome Development Team

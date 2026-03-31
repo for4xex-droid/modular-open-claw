@@ -1,6 +1,23 @@
 # 🌊 Aiome Ripple Map
 
-このドキュメントは、アーキテクチャ変更時におけるコード変更の影響範囲（リップル効果）を追跡するためのものです。
+## Phase 1A-2: Dynamic Dataset Extraction (MLX Data Pipeline)
+
+### 1. SoulStore to MLX JSONL Pipeline
+- **変更理由**: これまで `LoraTrainingService` は学習用データセットが物理ファイルシステム（`/tmp`等）に事前に配置されている前提で稼働していましたが、実際の運用では `SoulStore` の記憶DBから動的にExperienceを抽出・成形する必要があるため。
+- **波及効果**:
+  - `libs/infrastructure/src/dataset_extractor.rs` [NEW]: `DatasetExtractor` 構造体を新規作成。`&dyn SoulStore` から JSON 全体をロードし、`experiences` を個別の行に分割・破壊せず単一の会話ブロックとして連結したまま維持。さらに抽出ファイルを `job_id` でユニーク化することで完全なファイルI/O競合回避を実現し安全に `jsonl` 形式でダンプする。
+  - `libs/infrastructure/src/lora_training.rs`: `train` メソッドの開始時に `DatasetExtractor` を生成し、抽出に成功した場合は生成された `output_file` パスを `LoraTrainingConfig` に流し込み、失敗した場合はフォールバックとして `dataset_id` を直接の生ファイルパスとして扱うロジックに変更。
+
+## Phase 1D-1: Global Compute Semaphore (Hardware Protection)
+
+### 1. Unified Memory OOM / Kernel Panic 防御
+- **変更理由**: GenerativeEngine (画像生成) や LoraTrainingService (LoRA学習) などの重いML計算が並列に実行されると、MacのUnified Memoryが枯渇しシステムレベルのクラッシュ（カーネルパニック）を引き起こす脆弱性 (F-3) を解消するため。
+- **波及効果**:
+  - `apps/api-server/src/app_state.rs`: グローバルな `compute_semaphore: Component<Arc<tokio::sync::Semaphore>>` を共通のロック機構として追加。
+  - `apps/api-server/src/main.rs`: 許可枠 1 (`Semaphore::new(1)`) で初期化し、`AppState` に加えて `LoraTrainingService` へ静的に依存注入。
+  - `apps/api-server/src/api_integration_tests.rs`: `MockCommerceEngine` のトレイトエラー修復 (`deduct_generation_cost`) と共に、セマフォ初期化・検査テスト (`test_compute_semaphore_limits_concurrency`) を実装。
+  - `libs/infrastructure/src/lora_training.rs`: これまで独自に保持していたセマフォを廃止し、コンストラクタ経由で受け取った共通の `compute_semaphore` を利用して他の高負荷タスクと排他制御されるように改修。
+
 ## Phase F: Open Gateway (MCP Integration)
 
 ### 1. Secure Gig Gateway & MCP Server

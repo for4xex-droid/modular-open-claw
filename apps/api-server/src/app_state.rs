@@ -136,4 +136,5 @@ pub struct AppState {
     pub ws_active_connections: Arc<std::sync::atomic::AtomicUsize>,
     pub harness_cache: Component<Arc<infrastructure::skills::harness::HarnessCache>>,
     pub upload_semaphore: Component<Arc<tokio::sync::Semaphore>>,
+    pub compute_semaphore: Component<Arc<tokio::sync::Semaphore>>,
 }

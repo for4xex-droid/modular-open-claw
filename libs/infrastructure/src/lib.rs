@@ -147,3 +147,4 @@ mod soul_store_tests;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;
 mod workspace_manager_tests;
+pub mod dataset_extractor;

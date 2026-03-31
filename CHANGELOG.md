@@ -1,86 +1,88 @@
 ## [Unreleased] - 2026-04-01
 
 ### Added
-- **Tier 0 Infrastructure Security Hardening (Wave 1-3) [完了]**
-    - **BoundaryVerifier Hardening**: システムパスブロックの拡充（`/tmp`, `/dev`, `/proc`, `/sys`, `/private`）およびパストラバーサル (`..`) の物理的拒絶を O(1) で実装。
-    - **BastionGuard (Command Parsing) Hardening**: `shell_split` の POSIX 制御文字（`\v`, `\f`, `\r`, `\n`）対応、フラグ分解ロジックの改善、密着フラグ引数（`-f/etc/passwd` 等）の抽出・検疫を実装。制御文字バイパスを完全封鎖。
-    - **Registry SSoT (Zero-Fallback)**: `check_ownership` における Webhook ログへの安全でないフォールバックを廃止。`licenses` テーブルを所有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
-    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+- **Dynamic Dataset Extraction (F-2)**: `DatasetExtractor` を導入し、LoRA学習時に `SoulStore` の履歴 (Experiences) から自動的にMLX専用の JSONL 形式のデータセットを動的に構築・注入するパイプラインを確立。非同期API呼び出しの競合を防ぐ `job_id` アイソレーションを実装し、さらに「会話履歴全体の文脈」を1つのシーケンスブロックとして連結・維持する手法によりCatastrophic Forgettingを防止。
+- **Global Compute Semaphore (F-3 Hardware Protection) [完了]**: LoRA学習プロセスや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` に導入。`LoraTrainingService` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
+- **Tier 0 Infrastructure Security Hardening (Wave 1-3) [螳御ｺ�**
+    - **BoundaryVerifier Hardening**: 繧ｷ繧ｹ繝�Β繝代せ繝悶Ο繝�け縺ｮ諡｡蜈�ｼ�/tmp`, `/dev`, `/proc`, `/sys`, `/private`�峨♀繧医�繝代せ繝医Λ繝舌�繧ｵ繝ｫ (`..`) 縺ｮ迚ｩ逅�噪諡堤ｵｶ繧� O(1) 縺ｧ螳溯｣��
+    - **BastionGuard (Command Parsing) Hardening**: `shell_split` 縺ｮ POSIX 蛻ｶ蠕｡譁�ｭ暦ｼ�\v`, `\f`, `\r`, `\n`�牙ｯｾ蠢懊√ヵ繝ｩ繧ｰ蛻�ｧ｣繝ｭ繧ｸ繝�け縺ｮ謾ｹ蝟�∝ｯ�捩繝輔Λ繧ｰ蠑墓焚��-f/etc/passwd` 遲会ｼ峨�謚ｽ蜃ｺ繝ｻ讀懃稔繧貞ｮ溯｣�ょ宛蠕｡譁�ｭ励ヰ繧､繝代せ繧貞ｮ悟�蟆�事縲�
+    - **Registry SSoT (Zero-Fallback)**: `check_ownership` 縺ｫ縺翫￠繧� Webhook 繝ｭ繧ｰ縺ｸ縺ｮ螳牙�縺ｧ縺ｪ縺�ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ繧貞ｻ�ｭ｢縲Ａlicenses` 繝��繝悶Ν繧呈園譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
+    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
 
-- **Red Team Security Hardening & Infrastructure Stabilization [完了]**�有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
-    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
+    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
 
-- **Red Team Security Hardening & Infrastructure Stabilization [完了]**lit` の POSIX 制御文字（`\v`, `\f`, `\r`, `\n`）対応、フラグ分解ロジックの改善、密着フラグ引数（`-f/etc/passwd` 等）の抽出・検疫を実装。制御文字バイパスを完全封鎖。
-    - **Registry SSoT (Zero-Fallback)**: `check_ownership` における Webhook ログへの安全でないフォールバックを廃止。`licenses` テーブルを所有権確認の「唯一の正答（Single Source of Truth）」とし、論理的一貫性を保証。
-    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラテスト全件 PASS を確認。
+- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**lit` 縺ｮ POSIX 蛻ｶ蠕｡譁�ｭ暦ｼ�\v`, `\f`, `\r`, `\n`�牙ｯｾ蠢懊√ヵ繝ｩ繧ｰ蛻�ｧ｣繝ｭ繧ｸ繝�け縺ｮ謾ｹ蝟�∝ｯ�捩繝輔Λ繧ｰ蠑墓焚��-f/etc/passwd` 遲会ｼ峨�謚ｽ蜃ｺ繝ｻ讀懃稔繧貞ｮ溯｣�ょ宛蠕｡譁�ｭ励ヰ繧､繝代せ繧貞ｮ悟�蟆�事縲�
+    - **Registry SSoT (Zero-Fallback)**: `check_ownership` 縺ｫ縺翫￠繧� Webhook 繝ｭ繧ｰ縺ｸ縺ｮ螳牙�縺ｧ縺ｪ縺�ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ繧貞ｻ�ｭ｢縲Ａlicenses` 繝��繝悶Ν繧呈園譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
+    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
 
-- **Red Team Security Hardening & Infrastructure Stabilization [完了]**
-    - **Path Traversal Mitigation**: `LoraTrainingService::train` にて `dataset_id` に対するディレクトリトラバーサル (`..`, `/`, `\`) を防止するサニタイズ処理を追加し、機密ファイル漏洩（Weight Poisoning）を遮断。
-    - **Resource Exhaustion Defense (Memory)**: LoRAタスクキューにおいて、`active_jobs` の最大登録数を100件に制限し、無制限のプロセスフォークによるOOM (Out Of Memory) 攻撃を防御。
-    - **Resource Exhaustion Defense (Sockets)**: マスコット (`inochi2d.rs`) および音声 (`voice.rs`) の巨大ファイルアップロード制御において、セマフォのブロッキング待機 (`acquire().await`) を `try_acquire()` に変更。DDoS攻撃時のソケット（ファイルディスクリプタ）枯渇を防止し、即座に 503 Service Unavailable を返すように修正。
-    - **Sandbox Syntax & Command Arguments**: macOS の `sandbox-exec` プロファイルでネットワーク制限のワイルドカードドメインをポート番号指定（`*:443`, `*:80`）へ修正。また `BastionGuard::build_safe_command_args` における不要なシェル判定を削除し、構造化コマンド実行のロバスト性を向上。
-    - **CI/CD Quality**: `libs/infrastructure/Cargo.toml` の features 整備や `aiome-core`, `aiome-commerce` 内の各種 Clippy 警告（未使用インポートや Iterator 警告）を解消しビルド品質を強化。
+- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**
+    - **Path Traversal Mitigation**: `LoraTrainingService::train` 縺ｫ縺ｦ `dataset_id` 縺ｫ蟇ｾ縺吶ｋ繝�ぅ繝ｬ繧ｯ繝医Μ繝医Λ繝舌�繧ｵ繝ｫ (`..`, `/`, `\`) 繧帝亟豁｢縺吶ｋ繧ｵ繝九ち繧､繧ｺ蜃ｦ逅�ｒ霑ｽ蜉�縺励∵ｩ溷ｯ�ヵ繧｡繧､繝ｫ貍乗ｴｩ��eight Poisoning�峨ｒ驕ｮ譁ｭ縲�
+    - **Resource Exhaustion Defense (Memory)**: LoRA繧ｿ繧ｹ繧ｯ繧ｭ繝･繝ｼ縺ｫ縺翫＞縺ｦ縲～active_jobs` 縺ｮ譛螟ｧ逋ｻ骭ｲ謨ｰ繧�100莉ｶ縺ｫ蛻ｶ髯舌＠縲∫┌蛻ｶ髯舌�繝励Ο繧ｻ繧ｹ繝輔か繝ｼ繧ｯ縺ｫ繧医ｋOOM (Out Of Memory) 謾ｻ謦�ｒ髦ｲ蠕｡縲�
+    - **Resource Exhaustion Defense (Sockets)**: 繝槭せ繧ｳ繝�ヨ (`inochi2d.rs`) 縺翫ｈ縺ｳ髻ｳ螢ｰ (`voice.rs`) 縺ｮ蟾ｨ螟ｧ繝輔ぃ繧､繝ｫ繧｢繝��繝ｭ繝ｼ繝牙宛蠕｡縺ｫ縺翫＞縺ｦ縲√そ繝槭ヵ繧ｩ縺ｮ繝悶Ο繝�く繝ｳ繧ｰ蠕�ｩ� (`acquire().await`) 繧� `try_acquire()` 縺ｫ螟画峩縲�DoS謾ｻ謦�凾縺ｮ繧ｽ繧ｱ繝�ヨ�医ヵ繧｡繧､繝ｫ繝�ぅ繧ｹ繧ｯ繝ｪ繝励ち�画椡貂�ｒ髦ｲ豁｢縺励∝叉蠎ｧ縺ｫ 503 Service Unavailable 繧定ｿ斐☆繧医≧縺ｫ菫ｮ豁｣縲�
+    - **Sandbox Syntax & Command Arguments**: macOS 縺ｮ `sandbox-exec` 繝励Ο繝輔ぃ繧､繝ｫ縺ｧ繝阪ャ繝医Ρ繝ｼ繧ｯ蛻ｶ髯舌�繝ｯ繧､繝ｫ繝峨き繝ｼ繝峨ラ繝｡繧､繝ｳ繧偵�繝ｼ繝育分蜿ｷ謖�ｮ夲ｼ�*:443`, `*:80`�峨∈菫ｮ豁｣縲ゅ∪縺� `BastionGuard::build_safe_command_args` 縺ｫ縺翫￠繧倶ｸ崎ｦ√↑繧ｷ繧ｧ繝ｫ蛻､螳壹ｒ蜑企勁縺励∵ｧ矩�蛹悶さ繝槭Φ繝牙ｮ溯｡後�繝ｭ繝舌せ繝域ｧ繧貞髄荳翫�
+    - **CI/CD Quality**: `libs/infrastructure/Cargo.toml` 縺ｮ features 謨ｴ蛯吶ｄ `aiome-core`, `aiome-commerce` 蜀��蜷�ｨｮ Clippy 隴ｦ蜻奇ｼ域悴菴ｿ逕ｨ繧､繝ｳ繝昴�繝医ｄ Iterator 隴ｦ蜻奇ｼ峨ｒ隗｣豸医＠繝薙Ν繝牙刀雉ｪ繧貞ｼｷ蛹悶�
 
-- **Phase F: Open Gateway (MCP & P2P Foundation) [完了]**
-    - **Safe Auto-Profile Engine**: `AutoProfileEngine` を実装。ワークスペース内の `Cargo.toml`, `package.json`, `requirements.txt` といった環境定義ファイルをスキャンし、エージェントの有するスキル（Rust, Python, Web等）を自律的に推定して `AgentCard` の `skills` として露出。コードやプロンプトの読み取りを行わない許可リスト型の安全設計を採用。
-    - **Secure Gig Gateway**: `SecureGigGateway` を実装し、外部（他エージェント）からのタスク発注窓口を構築。Rate Limiter（DDoS防止）、AutoHarness（危険コマンドの静的遮断）、ConstitutionalValidator（Core倫理基準による検証）からなる強固な３層セキュリティ・フィルターを義務付けし、エスクロー未払い（予算0）のスパムを拒否。
-    - **JSON-RPC MCP Server Integration**: `aiome-node` に MCP モード (`aiome-node mcp` コマンド) を追加。JSON-RPC 2.0 over stdio 経由で外部の MCP クライアント（Cursor や Claude Code等）に対し `profile/info`, `gig/capabilities`, `gig/publish` ツールを公開し、P2P の複雑なネットワーク実装を省略しつつ、安全かつ標準的なプロトコルでのローカル・エージェント連携基盤を確立。
-- **Phase B-D: AutoHarness Security Architecture Integration [完了]**
-    - **DB Foundation**: `harness_registry` テーブルを導入し、SQLite/Postgres 用のマイグレーションを実装。`HarnessRecord` および `HarnessRegistryOps` トレイトを追加して JobQueue で CRUD をサポート。
-    - **Security Enforcement**: `ConstraintChecker` 内の正規表現解析に `RegexBuilder` を導入し、10KB のサイズ制限を設けることで ReDoS 脆弱性を構造的に遮断。
-    - **Dynamic Guardrails**: `WasmHarness` に `severity` スコアを統合。評価ループにおいて 80 以上をブロッキング (Active mode)、それ未満をモニタリング (Shadow mode) とする評価機構を `skill_handler.rs` に実体化。
-- **Security Hardening: NPM Supply Chain Attack Mitigation [完了]**
-    - **背景**: `axios@1.14.1` / `axios@0.30.4` の npm メンテナアカウント乗っ取りによるRAT（Remote Access Trojan）配備事案（2026-03-31）を受け、同種の攻撃に対する構造的防御を導入。
-    - **Layer 1 — postinstall 無効化**: `.npmrc` に `ignore-scripts=true` を設定。`postinstall` フックを悪用するサプライチェーン攻撃（axios RAT, event-stream, ua-parser-js 等）のクラス全体を構造的に無力化。
-    - **Layer 2 — Critical Audit Gate**: CI パイプラインに `npm audit --audit-level=critical` を追加。Critical レベルの既知脆弱性が混入した場合にビルドを即座にブロック。High レベル（ビルドツール内部のReDoS等、実害のない誤検知）はブロックしない設計により、Developer Friction を最小化。
-    - **Layer 3 — Registry Signature Verification**: `npm audit signatures` を CI に統合。npm の OIDC Trusted Publisher メカニズムによるレジストリ署名を検証し、正規CI外からの手動publish（アカウント乗っ取り攻撃の典型パターン）を検知。全192パッケージの署名検証をパス確認済み。
-    - **影響範囲**: `management-console` のみ。Rust バックエンドは crates.io ベースのため影響なし。既存ビルド・E2Eテストへの影響ゼロを統合テストで実証済み。
-- **Phase 55: AgentRx Expansion & LoRA Autotuning [完了]**
-    - **AgentRx Closed-Loop**: `RepairCalculator` の型ミスマッチを修正し、`AgentRxDiagnostics` に `suggest_repair_strategy` を実装。`API Server` のエージェント実行ループに修復ヒント（Retry/Escalate）の動的注入機構を統合。
-    - **LoRA Autotuning**: `LoraAutotuner` を新設し、過去のロス履歴に基づいた学習率、エポック数、ランクの自動チューニング（Overfitting抑制、Stagnation時のLR倍増、Oscillation時のLR半減）を実装。
-    - **Autonomous Evolution**: `HeartbeatWakeupService` に `LoraTrainingService` を統合。成長のプラトー（停滞）を検知した際に、24時間のクールダウン制御付きで自律的な自己最適化（訓練ループ）を自発的にトリガーする仕組みを完成。
-    - **System Defenses**: `ConstraintChecker` に `OutputSizeExceeded` (100KB超過) と `SuspiciousEchoDetected` (50文字以上の入力の完全なエコー攻撃) のセーフガードを追加。さらに `CognitiveSentinel` へ、最近のFail Rateが60%を超えた場合に発火する `Panic State` 防御メカニズムを追加。全機能の TDD およびワークスペースワイドな `cargo test` 通過を確認。
-- **Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD) [進行中]**
-    - **Rebirth Archiving**: `archived_lora_models` テーブルとマイグレーションを追加。`SoulStore::archive_lora_model` を実装し、`SamsaraEngine::rebirth` 時に前世代のLoRA設定をアーカイブ＆リセットすることでデータポイズニングを完全に遮断。
-    - **Secure LoRA Training**: `LoraTrainingService` を新設。`BastionGuard::new_internal()` を用いてLoRA学習プロセス（MLX/Python）を隔離実行・監視。
-    - **Vault Isolation & Ollama Integration**: 学習完了後のウェイトを `GLOBAL_SECURITY_CONFIG.vault_path` に安全に移動し、`ollama create` を用いて自律的に推論エンジンへモデルを登録するフローを確立。
-- **Phase 51: Agentic Finance & GIG Loop Integration [完了]**
-    - **TaskDispatcher Evolution**: `GigEngine` を依存注入 (DI) し、ジョブ完了時にロジックを自律トリガー可能に。
-    - **Autonomous GIG Publishing**: `karma_directives` 内の `gig_intent: true` を検知し、自動的に `GigIntent` を生成・公開するサイクルを確立。
-    - **Recursion Safety**: `gig_depth` によるガードレールを実装。無限ループ（自己発注の連鎖）を防止（最大3階層）。
-    - **Constitutional Security**: `TaskDispatcher` に `ConstitutionalValidator` を統合。AI自律発注の「安全性・倫理性」を最終検証する検閲レイヤーを構築。
-    - **Budget Guardrails**: `MAX_GIG_BUDGET` (5000) を設定し、過大な予算要求を自動クランプ。
-    - **SSE Real-time Bridge**: `TaskEvent::GigPublished` を `CoreEvent` 経由で `api-server` の SSE ストリームへブリッジ。管理コンソールでのリアルタイム可視化に対応。
+- **Phase F: Open Gateway (MCP & P2P Foundation) [螳御ｺ�**
+    - **Safe Auto-Profile Engine**: `AutoProfileEngine` 繧貞ｮ溯｣�ゅΡ繝ｼ繧ｯ繧ｹ繝壹�繧ｹ蜀�� `Cargo.toml`, `package.json`, `requirements.txt` 縺ｨ縺�▲縺溽腸蠅�ｮ夂ｾｩ繝輔ぃ繧､繝ｫ繧偵せ繧ｭ繝｣繝ｳ縺励√お繝ｼ繧ｸ繧ｧ繝ｳ繝医�譛峨☆繧九せ繧ｭ繝ｫ��ust, Python, Web遲会ｼ峨ｒ閾ｪ蠕狗噪縺ｫ謗ｨ螳壹＠縺ｦ `AgentCard` 縺ｮ `skills` 縺ｨ縺励※髴ｲ蜃ｺ縲ゅさ繝ｼ繝峨ｄ繝励Ο繝ｳ繝励ヨ縺ｮ隱ｭ縺ｿ蜿悶ｊ繧定｡後ｏ縺ｪ縺�ｨｱ蜿ｯ繝ｪ繧ｹ繝亥梛縺ｮ螳牙�險ｭ險医ｒ謗｡逕ｨ縲�
+    - **Secure Gig Gateway**: `SecureGigGateway` 繧貞ｮ溯｣�＠縲∝､夜Κ�井ｻ悶お繝ｼ繧ｸ繧ｧ繝ｳ繝茨ｼ峨°繧峨�繧ｿ繧ｹ繧ｯ逋ｺ豕ｨ遯灘哨繧呈ｧ狗ｯ峨３ate Limiter��DoS髦ｲ豁｢�峨、utoHarness�亥些髯ｺ繧ｳ繝槭Φ繝峨�髱咏噪驕ｮ譁ｭ�峨，onstitutionalValidator��ore蛟ｫ逅�渕貅悶↓繧医ｋ讀懆ｨｼ�峨°繧峨↑繧句ｼｷ蝗ｺ縺ｪ�灘ｱ､繧ｻ繧ｭ繝･繝ｪ繝�ぅ繝ｻ繝輔ぅ繝ｫ繧ｿ繝ｼ繧堤ｾｩ蜍吩ｻ倥￠縺励√お繧ｹ繧ｯ繝ｭ繝ｼ譛ｪ謇輔＞�井ｺ育ｮ�0�峨�繧ｹ繝代Β繧呈拠蜷ｦ縲�
+    - **JSON-RPC MCP Server Integration**: `aiome-node` 縺ｫ MCP 繝｢繝ｼ繝� (`aiome-node mcp` 繧ｳ繝槭Φ繝�) 繧定ｿｽ蜉�縲�SON-RPC 2.0 over stdio 邨檎罰縺ｧ螟夜Κ縺ｮ MCP 繧ｯ繝ｩ繧､繧｢繝ｳ繝茨ｼ�ursor 繧� Claude Code遲会ｼ峨↓蟇ｾ縺� `profile/info`, `gig/capabilities`, `gig/publish` 繝��繝ｫ繧貞�髢九＠縲￣2P 縺ｮ隍�尅縺ｪ繝阪ャ繝医Ρ繝ｼ繧ｯ螳溯｣�ｒ逵∫払縺励▽縺､縲∝ｮ牙�縺九▽讓呎ｺ也噪縺ｪ繝励Ο繝医さ繝ｫ縺ｧ縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ繝ｻ繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝磯｣謳ｺ蝓ｺ逶､繧堤｢ｺ遶九�
+- **Phase B-D: AutoHarness Security Architecture Integration [螳御ｺ�**
+    - **DB Foundation**: `harness_registry` 繝��繝悶Ν繧貞ｰ主�縺励ヾQLite/Postgres 逕ｨ縺ｮ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｣�ＡHarnessRecord` 縺翫ｈ縺ｳ `HarnessRegistryOps` 繝医Ξ繧､繝医ｒ霑ｽ蜉�縺励※ JobQueue 縺ｧ CRUD 繧偵し繝昴�繝医�
+    - **Security Enforcement**: `ConstraintChecker` 蜀��豁｣隕剰｡ｨ迴ｾ隗｣譫舌↓ `RegexBuilder` 繧貞ｰ主�縺励�10KB 縺ｮ繧ｵ繧､繧ｺ蛻ｶ髯舌ｒ險ｭ縺代ｋ縺薙→縺ｧ ReDoS 閼�ｼｱ諤ｧ繧呈ｧ矩�逧�↓驕ｮ譁ｭ縲�
+    - **Dynamic Guardrails**: `WasmHarness` 縺ｫ `severity` 繧ｹ繧ｳ繧｢繧堤ｵｱ蜷医りｩ穂ｾ｡繝ｫ繝ｼ繝励↓縺翫＞縺ｦ 80 莉･荳翫ｒ繝悶Ο繝�く繝ｳ繧ｰ (Active mode)縲√◎繧梧悴貅繧偵Δ繝九ち繝ｪ繝ｳ繧ｰ (Shadow mode) 縺ｨ縺吶ｋ隧穂ｾ｡讖滓ｧ九ｒ `skill_handler.rs` 縺ｫ螳滉ｽ灘喧縲�
+- **Security Hardening: NPM Supply Chain Attack Mitigation [螳御ｺ�**
+    - **閭梧勹**: `axios@1.14.1` / `axios@0.30.4` 縺ｮ npm 繝｡繝ｳ繝�リ繧｢繧ｫ繧ｦ繝ｳ繝井ｹ励▲蜿悶ｊ縺ｫ繧医ｋRAT��emote Access Trojan�蛾�蛯吩ｺ区｡茨ｼ�2026-03-31�峨ｒ蜿励￠縲∝酔遞ｮ縺ｮ謾ｻ謦�↓蟇ｾ縺吶ｋ讒矩�逧�亟蠕｡繧貞ｰ主�縲�
+    - **Layer 1 窶� postinstall 辟｡蜉ｹ蛹�**: `.npmrc` 縺ｫ `ignore-scripts=true` 繧定ｨｭ螳壹Ａpostinstall` 繝輔ャ繧ｯ繧呈が逕ｨ縺吶ｋ繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ謾ｻ謦�ｼ�xios RAT, event-stream, ua-parser-js 遲会ｼ峨�繧ｯ繝ｩ繧ｹ蜈ｨ菴薙ｒ讒矩�逧�↓辟｡蜉帛喧縲�
+    - **Layer 2 窶� Critical Audit Gate**: CI 繝代う繝励Λ繧､繝ｳ縺ｫ `npm audit --audit-level=critical` 繧定ｿｽ蜉�縲�ritical 繝ｬ繝吶Ν縺ｮ譌｢遏･閼�ｼｱ諤ｧ縺梧ｷｷ蜈･縺励◆蝣ｴ蜷医↓繝薙Ν繝峨ｒ蜊ｳ蠎ｧ縺ｫ繝悶Ο繝�け縲�igh 繝ｬ繝吶Ν�医ン繝ｫ繝峨ヤ繝ｼ繝ｫ蜀�Κ縺ｮReDoS遲峨∝ｮ溷ｮｳ縺ｮ縺ｪ縺�ｪ､讀懃衍�峨�繝悶Ο繝�け縺励↑縺�ｨｭ險医↓繧医ｊ縲．eveloper Friction 繧呈怙蟆丞喧縲�
+    - **Layer 3 窶� Registry Signature Verification**: `npm audit signatures` 繧� CI 縺ｫ邨ｱ蜷医Ｏpm 縺ｮ OIDC Trusted Publisher 繝｡繧ｫ繝九ぜ繝�縺ｫ繧医ｋ繝ｬ繧ｸ繧ｹ繝医Μ鄂ｲ蜷阪ｒ讀懆ｨｼ縺励∵ｭ｣隕修I螟悶°繧峨�謇句虚publish�医い繧ｫ繧ｦ繝ｳ繝井ｹ励▲蜿悶ｊ謾ｻ謦��蜈ｸ蝙九ヱ繧ｿ繝ｼ繝ｳ�峨ｒ讀懃衍縲ょ�192繝代ャ繧ｱ繝ｼ繧ｸ縺ｮ鄂ｲ蜷肴､懆ｨｼ繧偵ヱ繧ｹ遒ｺ隱肴ｸ医∩縲�
+    - **蠖ｱ髻ｿ遽�峇**: `management-console` 縺ｮ縺ｿ縲３ust 繝舌ャ繧ｯ繧ｨ繝ｳ繝峨� crates.io 繝吶�繧ｹ縺ｮ縺溘ａ蠖ｱ髻ｿ縺ｪ縺励よ里蟄倥ン繝ｫ繝峨�E2E繝�せ繝医∈縺ｮ蠖ｱ髻ｿ繧ｼ繝ｭ繧堤ｵｱ蜷医ユ繧ｹ繝医〒螳溯ｨｼ貂医∩縲�
+- **Phase 55: AgentRx Expansion & LoRA Autotuning [螳御ｺ�**
+    - **AgentRx Closed-Loop**: `RepairCalculator` 縺ｮ蝙九Α繧ｹ繝槭ャ繝√ｒ菫ｮ豁｣縺励～AgentRxDiagnostics` 縺ｫ `suggest_repair_strategy` 繧貞ｮ溯｣�ＡAPI Server` 縺ｮ繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝亥ｮ溯｡後Ν繝ｼ繝励↓菫ｮ蠕ｩ繝偵Φ繝茨ｼ�etry/Escalate�峨�蜍慕噪豕ｨ蜈･讖滓ｧ九ｒ邨ｱ蜷医�
+    - **LoRA Autotuning**: `LoraAutotuner` 繧呈眠險ｭ縺励�℃蜴ｻ縺ｮ繝ｭ繧ｹ螻･豁ｴ縺ｫ蝓ｺ縺･縺�◆蟄ｦ鄙堤紫縲√お繝昴ャ繧ｯ謨ｰ縲√Λ繝ｳ繧ｯ縺ｮ閾ｪ蜍輔メ繝･繝ｼ繝九Φ繧ｰ��verfitting謚大宛縲ヾtagnation譎ゅ�LR蛟榊｢励＾scillation譎ゅ�LR蜊頑ｸ幢ｼ峨ｒ螳溯｣��
+    - **Autonomous Evolution**: `HeartbeatWakeupService` 縺ｫ `LoraTrainingService` 繧堤ｵｱ蜷医よ�髟ｷ縺ｮ繝励Λ繝医��亥●貊橸ｼ峨ｒ讀懃衍縺励◆髫帙↓縲�24譎る俣縺ｮ繧ｯ繝ｼ繝ｫ繝繧ｦ繝ｳ蛻ｶ蠕｡莉倥″縺ｧ閾ｪ蠕狗噪縺ｪ閾ｪ蟾ｱ譛驕ｩ蛹厄ｼ郁ｨ鍋ｷｴ繝ｫ繝ｼ繝暦ｼ峨ｒ閾ｪ逋ｺ逧�↓繝医Μ繧ｬ繝ｼ縺吶ｋ莉慕ｵ�∩繧貞ｮ梧�縲�
+    - **System Defenses**: `ConstraintChecker` 縺ｫ `OutputSizeExceeded` (100KB雜�℃) 縺ｨ `SuspiciousEchoDetected` (50譁�ｭ嶺ｻ･荳翫�蜈･蜉帙�螳悟�縺ｪ繧ｨ繧ｳ繝ｼ謾ｻ謦�) 縺ｮ繧ｻ繝ｼ繝輔ぎ繝ｼ繝峨ｒ霑ｽ蜉�縲ゅ＆繧峨↓ `CognitiveSentinel` 縺ｸ縲∵怙霑代�Fail Rate縺�60%繧定ｶ�∴縺溷�ｴ蜷医↓逋ｺ轣ｫ縺吶ｋ `Panic State` 髦ｲ蠕｡繝｡繧ｫ繝九ぜ繝�繧定ｿｽ蜉�縲ょ�讖溯�縺ｮ TDD 縺翫ｈ縺ｳ繝ｯ繝ｼ繧ｯ繧ｹ繝壹�繧ｹ繝ｯ繧､繝峨↑ `cargo test` 騾夐℃繧堤｢ｺ隱阪�
+- **Phase 52: LoRA Archiving & Secure Training Pipeline (MVP/TDD) [騾ｲ陦御ｸｭ]**
+    - **Rebirth Archiving**: `archived_lora_models` 繝��繝悶Ν縺ｨ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧定ｿｽ蜉�縲ＡSoulStore::archive_lora_model` 繧貞ｮ溯｣�＠縲～SamsaraEngine::rebirth` 譎ゅ↓蜑堺ｸ紋ｻ｣縺ｮLoRA險ｭ螳壹ｒ繧｢繝ｼ繧ｫ繧､繝厄ｼ�Μ繧ｻ繝�ヨ縺吶ｋ縺薙→縺ｧ繝��繧ｿ繝昴う繧ｺ繝九Φ繧ｰ繧貞ｮ悟�縺ｫ驕ｮ譁ｭ縲�
+    - **Secure LoRA Training**: `LoraTrainingService` 繧呈眠險ｭ縲ＡBastionGuard::new_internal()` 繧堤畑縺�※LoRA蟄ｦ鄙偵�繝ｭ繧ｻ繧ｹ��LX/Python�峨ｒ髫秘屬螳溯｡後�逶｣隕悶�
+    - **Vault Isolation & Ollama Integration**: 蟄ｦ鄙貞ｮ御ｺ�ｾ後�繧ｦ繧ｧ繧､繝医ｒ `GLOBAL_SECURITY_CONFIG.vault_path` 縺ｫ螳牙�縺ｫ遘ｻ蜍輔＠縲～ollama create` 繧堤畑縺�※閾ｪ蠕狗噪縺ｫ謗ｨ隲悶お繝ｳ繧ｸ繝ｳ縺ｸ繝｢繝�Ν繧堤匳骭ｲ縺吶ｋ繝輔Ο繝ｼ繧堤｢ｺ遶九�
+- **Phase 51: Agentic Finance & GIG Loop Integration [螳御ｺ�**
+    - **TaskDispatcher Evolution**: `GigEngine` 繧剃ｾ晏ｭ俶ｳｨ蜈･ (DI) 縺励√ず繝ｧ繝門ｮ御ｺ�凾縺ｫ繝ｭ繧ｸ繝�け繧定�蠕九ヨ繝ｪ繧ｬ繝ｼ蜿ｯ閭ｽ縺ｫ縲�
+    - **Autonomous GIG Publishing**: `karma_directives` 蜀�� `gig_intent: true` 繧呈､懃衍縺励∬�蜍慕噪縺ｫ `GigIntent` 繧堤函謌舌�蜈ｬ髢九☆繧九し繧､繧ｯ繝ｫ繧堤｢ｺ遶九�
+    - **Recursion Safety**: `gig_depth` 縺ｫ繧医ｋ繧ｬ繝ｼ繝峨Ξ繝ｼ繝ｫ繧貞ｮ溯｣�ら┌髯舌Ν繝ｼ繝暦ｼ郁�蟾ｱ逋ｺ豕ｨ縺ｮ騾｣骼厄ｼ峨ｒ髦ｲ豁｢�域怙螟ｧ3髫主ｱ､�峨�
+    - **Constitutional Security**: `TaskDispatcher` 縺ｫ `ConstitutionalValidator` 繧堤ｵｱ蜷医�I閾ｪ蠕狗匱豕ｨ縺ｮ縲悟ｮ牙�諤ｧ繝ｻ蛟ｫ逅�ｧ縲阪ｒ譛邨よ､懆ｨｼ縺吶ｋ讀憺夢繝ｬ繧､繝､繝ｼ繧呈ｧ狗ｯ峨�
+    - **Budget Guardrails**: `MAX_GIG_BUDGET` (5000) 繧定ｨｭ螳壹＠縲�℃螟ｧ縺ｪ莠育ｮ苓ｦ∵ｱゅｒ閾ｪ蜍輔け繝ｩ繝ｳ繝励�
+    - **SSE Real-time Bridge**: `TaskEvent::GigPublished` 繧� `CoreEvent` 邨檎罰縺ｧ `api-server` 縺ｮ SSE 繧ｹ繝医Μ繝ｼ繝�縺ｸ繝悶Μ繝�ず縲らｮ｡逅�さ繝ｳ繧ｽ繝ｼ繝ｫ縺ｧ縺ｮ繝ｪ繧｢繝ｫ繧ｿ繧､繝�蜿ｯ隕門喧縺ｫ蟇ｾ蠢懊�
     - **Red Team Hardening (RT4)**:
-        - **Structured Validation**: 憲法バリデーターのコンテキストを構造化 (`--- TASK ---`) し、プロンプトインジェクションによる「安全なタスク」の偽装を防止。
-        - **Budget Floor**: 最小予算を 10 coins に設定し、ダスト・インテントによる DDoS 攻撃を抑制。
-        - **Instruction Expansion**: シークレットの流出（Exfiltration）試行を検知するようバリデーターの指示を強化。
-        - **RT5: Heartbeat Hardening**: `HEARTBEAT.md` の読み取りサイズを 5000 文字に制限。LLM 提案内容からシェルコマンド等の危険なパターンを排除するサニタイザーを実装。
-        - **RT6: Settings & WASM Hardening**: `stripe_api_key`, `openai_api_key` 等のシークレット Whitelist 拡張。WASM `fs_reader` のブラックリストを強化し、`.db`, `.sqlite`, `credentials` へのアクセスを封鎖。
-        - **RT7: Deployment & CI Hardening**: `docker-compose.production.yml` に非特権ユーザー、リソース制限、内部ポート遮断を導入。CI への **Trivy コンテナ脆弱性スキャン** 統合。
-        - **RT8: Logic & Normalization Hardening**: `＃` や `－－－` 等の全角 Unicode によるインジェクション防御機能を `sanitize_for_prompt` に実装。巨大メッセージによるコンテキスト破壊への境界保護、および感情計算における NaN/Inf 耐性を追加。
-        - **RT9: Red Team Penetration Drill**: `tests/redteam_drill.rs` を新規作成。難読化プロンプト、SSRF、WASM 隔離、おねだりパターン等の実戦的な攻撃シナリオに対する防御性能を検証し、全項目で「Blocked」を確認。
-        - **Audit Integration**: 設定変更のログを `AuditLogger` (Global Ledger) に移行。
-    - **TDD Verification**: `MockGigEngine` を用いたユニットテスト (`test_dispatcher_publishes_gig_on_completion`) を追加し、経済圏連携の堅牢性を実証。
-    - **Contract Update**: `GigIntent` に `metadata` フィールドを追加し、因果関係（親ジョブID等）の追跡を可能に。
-- **Phase 50: Agentic A2A gRPC Protocol [完了]**
-    - **DockerConductor**: 同期的な `docker exec` から、非同期の `tonic` ベース gRPC ストリーミング通信へとアーキテクチャを刷新し、タスク実行状況をリアルタイムにサブスクライブ可能に。
-    - **Shadow Worker**: 独立したコンテナ化 gRPC サーバー (`aiome-shadow-worker`) として実装。推論エンジン連携（Ollama/Gemini）によるリアルタイム応答に対応。
-    - **Security & Networking**: ランダムにアサインされるローカルポートマッピング (`127.0.0.1:0`) と UUID ベースのワンタイム・トークン認証を整備。Dockerネットワークも `aiome-internal` に完全分離。
-    - **Stability Hotfix (The Gaps)**: proto 構造の乖離、ヘルスチェック競合 (Gap C)、ストリーム異常切断対応 (Gap G)、そして `InvariantDag` の Causal Tracking 維持 (Gap B) を含む計 17 件の品質改修を実施し、最上級のセキュリティ保証を確立。
-    - **Secret Protection (Gap R/S)**: `docker run -e` コマンドライン引数経由の API キー露出 (Threat #39) を、エフェメラル `--env-file` (0600 パーミッション + 即時ワイプ) へ移行して完全封鎖。`aiome-internal` ネットワーク不在時のフェイルセーフも追加。
-- **Phase 4: Poincare Memory Lifecycle & GC [完了]**
-    - **SlmBridge Evolution**: `calculate_importance` および `calculate_importance_batch` を実装。一時ファイルを用いたバッチ処理によりプロセス起動オーバーヘッドを削減。
-    - **Autonomous GC (Watchtower)**: `do_karma_decay_sweep` に Poincare ベースのフィルタリングを統合。バッチ評価により O(1) プロセス起動での GC を実現。
-    - **NAPI Exposure**: `karma_geodesic_importance` を NAPI 経由でフロントエンドに露出。TypeScript 側から記憶の幾何学的重要度を直接クエリ可能に。
-    - **Constitutional Flexibility**: `ConstitutionalValidator` の矛盾検知閾値を 0.77 に調整し、定数として分離。`SlmBridge` をコンストラクタで受け取る設計へ改善。
-- **Phase 15: Agentic Foundation Expansion (ADR-024 Phase 1 & ADR-023) [完了]**
-    - **StrategicPlanner**: LLM による目標分解ロジックを実装。Markdown コードブロックからの堅牢な JSON 抽出に対応し、パース失敗を大幅に低減。
-    - **ToolDiscoveryEngine**: キーワード一致から LLM によるセマンティック検索へアップグレード。自然言語の意図から最適な Wasm スキルを推論可能に。
-    - **AI-Scientist Loop (Oracle)**: `multi_review` メソッドを実装。批判（Critic）→洗練（Refine）→最終判定の N 回反復ループにより、レビュー品質を極限まで向上。
-    - **Scientific Dream Mode**: `DreamState` に第4のモードを導入。Lv5 以上の AI が過去の Karma を分析し、自律的に「改善仮説」を立てて実験ジョブを投入するサイクルを構築。
-    - **Causal Trajectory**: `TrajectoryStep` に `parent_step_id` と `reasoning` を追加。`TaskDispatcher` における親子タスクの因果関係の伝播を完全にサポート。
-- **Phase 14: Syndicate L3 (Agent Guild) Implementation [完了]**
+        - **Structured Validation**: 諞ｲ豕輔ヰ繝ｪ繝��繧ｿ繝ｼ縺ｮ繧ｳ繝ｳ繝�く繧ｹ繝医ｒ讒矩�蛹� (`--- TASK ---`) 縺励√�繝ｭ繝ｳ繝励ヨ繧､繝ｳ繧ｸ繧ｧ繧ｯ繧ｷ繝ｧ繝ｳ縺ｫ繧医ｋ縲悟ｮ牙�縺ｪ繧ｿ繧ｹ繧ｯ縲阪�蛛ｽ陬�ｒ髦ｲ豁｢縲�
+        - **Budget Floor**: 譛蟆丈ｺ育ｮ励ｒ 10 coins 縺ｫ險ｭ螳壹＠縲√ム繧ｹ繝医�繧､繝ｳ繝�Φ繝医↓繧医ｋ DDoS 謾ｻ謦�ｒ謚大宛縲�
+        - **Instruction Expansion**: 繧ｷ繝ｼ繧ｯ繝ｬ繝�ヨ縺ｮ豬∝���xfiltration�芽ｩｦ陦後ｒ讀懃衍縺吶ｋ繧医≧繝舌Μ繝��繧ｿ繝ｼ縺ｮ謖�､ｺ繧貞ｼｷ蛹悶�
+        - **RT5: Heartbeat Hardening**: `HEARTBEAT.md` 縺ｮ隱ｭ縺ｿ蜿悶ｊ繧ｵ繧､繧ｺ繧� 5000 譁�ｭ励↓蛻ｶ髯舌�LM 謠先｡亥�螳ｹ縺九ｉ繧ｷ繧ｧ繝ｫ繧ｳ繝槭Φ繝臥ｭ峨�蜊ｱ髯ｺ縺ｪ繝代ち繝ｼ繝ｳ繧呈賜髯､縺吶ｋ繧ｵ繝九ち繧､繧ｶ繝ｼ繧貞ｮ溯｣��
+        - **RT6: Settings & WASM Hardening**: `stripe_api_key`, `openai_api_key` 遲峨�繧ｷ繝ｼ繧ｯ繝ｬ繝�ヨ Whitelist 諡｡蠑ｵ縲８ASM `fs_reader` 縺ｮ繝悶Λ繝�け繝ｪ繧ｹ繝医ｒ蠑ｷ蛹悶＠縲～.db`, `.sqlite`, `credentials` 縺ｸ縺ｮ繧｢繧ｯ繧ｻ繧ｹ繧貞ｰ�事縲�
+        - **RT7: Deployment & CI Hardening**: `docker-compose.production.yml` 縺ｫ髱樒音讓ｩ繝ｦ繝ｼ繧ｶ繝ｼ縲√Μ繧ｽ繝ｼ繧ｹ蛻ｶ髯舌∝�驛ｨ繝昴�繝磯�譁ｭ繧貞ｰ主�縲�I 縺ｸ縺ｮ **Trivy 繧ｳ繝ｳ繝�リ閼�ｼｱ諤ｧ繧ｹ繧ｭ繝｣繝ｳ** 邨ｱ蜷医�
+        - **RT8: Logic & Normalization Hardening**: `�チ 繧� `�搾ｼ搾ｼ港 遲峨�蜈ｨ隗� Unicode 縺ｫ繧医ｋ繧､繝ｳ繧ｸ繧ｧ繧ｯ繧ｷ繝ｧ繝ｳ髦ｲ蠕｡讖溯�繧� `sanitize_for_prompt` 縺ｫ螳溯｣�ょｷｨ螟ｧ繝｡繝�そ繝ｼ繧ｸ縺ｫ繧医ｋ繧ｳ繝ｳ繝�く繧ｹ繝育�ｴ螢翫∈縺ｮ蠅�阜菫晁ｭｷ縲√♀繧医�諢滓ュ險育ｮ励↓縺翫￠繧� NaN/Inf 閠先ｧ繧定ｿｽ蜉�縲�
+        - **RT9: Red Team Penetration Drill**: `tests/redteam_drill.rs` 繧呈眠隕丈ｽ懈�縲る屮隱ｭ蛹悶�繝ｭ繝ｳ繝励ヨ縲ヾSRF縲仝ASM 髫秘屬縲√♀縺ｭ縺�繧翫ヱ繧ｿ繝ｼ繝ｳ遲峨�螳滓姶逧�↑謾ｻ謦�す繝翫Μ繧ｪ縺ｫ蟇ｾ縺吶ｋ髦ｲ蠕｡諤ｧ閭ｽ繧呈､懆ｨｼ縺励∝�鬆�岼縺ｧ縲沓locked縲阪ｒ遒ｺ隱阪�
+        - **Audit Integration**: 險ｭ螳壼､画峩縺ｮ繝ｭ繧ｰ繧� `AuditLogger` (Global Ledger) 縺ｫ遘ｻ陦後�
+    - **TDD Verification**: `MockGigEngine` 繧堤畑縺�◆繝ｦ繝九ャ繝医ユ繧ｹ繝� (`test_dispatcher_publishes_gig_on_completion`) 繧定ｿｽ蜉�縺励∫ｵ梧ｸ亥恟騾｣謳ｺ縺ｮ蝣�欧諤ｧ繧貞ｮ溯ｨｼ縲�
+    - **Contract Update**: `GigIntent` 縺ｫ `metadata` 繝輔ぅ繝ｼ繝ｫ繝峨ｒ霑ｽ蜉�縺励∝屏譫憺未菫ゑｼ郁ｦｪ繧ｸ繝ｧ繝蜂D遲会ｼ峨�霑ｽ霍｡繧貞庄閭ｽ縺ｫ縲�
+- **Phase 50: Agentic A2A gRPC Protocol [螳御ｺ�**
+    - **DockerConductor**: 蜷梧悄逧�↑ `docker exec` 縺九ｉ縲�撼蜷梧悄縺ｮ `tonic` 繝吶�繧ｹ gRPC 繧ｹ繝医Μ繝ｼ繝溘Φ繧ｰ騾壻ｿ｡縺ｸ縺ｨ繧｢繝ｼ繧ｭ繝�け繝√Ε繧貞姐譁ｰ縺励√ち繧ｹ繧ｯ螳溯｡檎憾豕√ｒ繝ｪ繧｢繝ｫ繧ｿ繧､繝�縺ｫ繧ｵ繝悶せ繧ｯ繝ｩ繧､繝門庄閭ｽ縺ｫ縲�
+    - **Shadow Worker**: 迢ｬ遶九＠縺溘さ繝ｳ繝�リ蛹� gRPC 繧ｵ繝ｼ繝舌� (`aiome-shadow-worker`) 縺ｨ縺励※螳溯｣�よ耳隲悶お繝ｳ繧ｸ繝ｳ騾｣謳ｺ��llama/Gemini�峨↓繧医ｋ繝ｪ繧｢繝ｫ繧ｿ繧､繝�蠢懃ｭ斐↓蟇ｾ蠢懊�
+    - **Security & Networking**: 繝ｩ繝ｳ繝繝�縺ｫ繧｢繧ｵ繧､繝ｳ縺輔ｌ繧九Ο繝ｼ繧ｫ繝ｫ繝昴�繝医�繝�ヴ繝ｳ繧ｰ (`127.0.0.1:0`) 縺ｨ UUID 繝吶�繧ｹ縺ｮ繝ｯ繝ｳ繧ｿ繧､繝�繝ｻ繝医�繧ｯ繝ｳ隱崎ｨｼ繧呈紛蛯吶�ocker繝阪ャ繝医Ρ繝ｼ繧ｯ繧� `aiome-internal` 縺ｫ螳悟�蛻�屬縲�
+    - **Stability Hotfix (The Gaps)**: proto 讒矩�縺ｮ荵夜屬縲√�繝ｫ繧ｹ繝√ぉ繝�け遶ｶ蜷� (Gap C)縲√せ繝医Μ繝ｼ繝�逡ｰ蟶ｸ蛻�妙蟇ｾ蠢� (Gap G)縲√◎縺励※ `InvariantDag` 縺ｮ Causal Tracking 邯ｭ謖� (Gap B) 繧貞性繧險� 17 莉ｶ縺ｮ蜩∬ｳｪ謾ｹ菫ｮ繧貞ｮ滓命縺励∵怙荳顔ｴ壹�繧ｻ繧ｭ繝･繝ｪ繝�ぅ菫晁ｨｼ繧堤｢ｺ遶九�
+    - **Secret Protection (Gap R/S)**: `docker run -e` 繧ｳ繝槭Φ繝峨Λ繧､繝ｳ蠑墓焚邨檎罰縺ｮ API 繧ｭ繝ｼ髴ｲ蜃ｺ (Threat #39) 繧偵√お繝輔ぉ繝｡繝ｩ繝ｫ `--env-file` (0600 繝代�繝溘ャ繧ｷ繝ｧ繝ｳ + 蜊ｳ譎ゅΡ繧､繝�) 縺ｸ遘ｻ陦後＠縺ｦ螳悟�蟆�事縲Ａaiome-internal` 繝阪ャ繝医Ρ繝ｼ繧ｯ荳榊惠譎ゅ�繝輔ぉ繧､繝ｫ繧ｻ繝ｼ繝輔ｂ霑ｽ蜉�縲�
+- **Phase 4: Poincare Memory Lifecycle & GC [螳御ｺ�**
+    - **SlmBridge Evolution**: `calculate_importance` 縺翫ｈ縺ｳ `calculate_importance_batch` 繧貞ｮ溯｣�ゆｸ譎ゅヵ繧｡繧､繝ｫ繧堤畑縺�◆繝舌ャ繝∝�逅�↓繧医ｊ繝励Ο繧ｻ繧ｹ襍ｷ蜍輔が繝ｼ繝舌�繝倥ャ繝峨ｒ蜑頑ｸ帙�
+    - **Autonomous GC (Watchtower)**: `do_karma_decay_sweep` 縺ｫ Poincare 繝吶�繧ｹ縺ｮ繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ繧堤ｵｱ蜷医ゅヰ繝�メ隧穂ｾ｡縺ｫ繧医ｊ O(1) 繝励Ο繧ｻ繧ｹ襍ｷ蜍輔〒縺ｮ GC 繧貞ｮ溽樟縲�
+    - **NAPI Exposure**: `karma_geodesic_importance` 繧� NAPI 邨檎罰縺ｧ繝輔Ο繝ｳ繝医お繝ｳ繝峨↓髴ｲ蜃ｺ縲５ypeScript 蛛ｴ縺九ｉ險俶�縺ｮ蟷ｾ菴募ｭｦ逧�㍾隕∝ｺｦ繧堤峩謗･繧ｯ繧ｨ繝ｪ蜿ｯ閭ｽ縺ｫ縲�
+    - **Constitutional Flexibility**: `ConstitutionalValidator` 縺ｮ遏帷崟讀懃衍髢ｾ蛟､繧� 0.77 縺ｫ隱ｿ謨ｴ縺励∝ｮ壽焚縺ｨ縺励※蛻�屬縲ＡSlmBridge` 繧偵さ繝ｳ繧ｹ繝医Λ繧ｯ繧ｿ縺ｧ蜿励￠蜿悶ｋ險ｭ險医∈謾ｹ蝟��
+- **Phase 15: Agentic Foundation Expansion (ADR-024 Phase 1 & ADR-023) [螳御ｺ�**
+    - **StrategicPlanner**: LLM 縺ｫ繧医ｋ逶ｮ讓吝�隗｣繝ｭ繧ｸ繝�け繧貞ｮ溯｣��arkdown 繧ｳ繝ｼ繝峨ヶ繝ｭ繝�け縺九ｉ縺ｮ蝣�欧縺ｪ JSON 謚ｽ蜃ｺ縺ｫ蟇ｾ蠢懊＠縲√ヱ繝ｼ繧ｹ螟ｱ謨励ｒ螟ｧ蟷�↓菴取ｸ帙�
+    - **ToolDiscoveryEngine**: 繧ｭ繝ｼ繝ｯ繝ｼ繝我ｸ閾ｴ縺九ｉ LLM 縺ｫ繧医ｋ繧ｻ繝槭Φ繝�ぅ繝�け讀懃ｴ｢縺ｸ繧｢繝��繧ｰ繝ｬ繝ｼ繝峨り�辟ｶ險隱槭�諢丞峙縺九ｉ譛驕ｩ縺ｪ Wasm 繧ｹ繧ｭ繝ｫ繧呈耳隲門庄閭ｽ縺ｫ縲�
+    - **AI-Scientist Loop (Oracle)**: `multi_review` 繝｡繧ｽ繝�ラ繧貞ｮ溯｣�よ音蛻､��ritic�俄�豢礼ｷｴ��efine�俄�譛邨ょ愛螳壹� N 蝗槫渚蠕ｩ繝ｫ繝ｼ繝励↓繧医ｊ縲√Ξ繝薙Η繝ｼ蜩∬ｳｪ繧呈･ｵ髯舌∪縺ｧ蜷台ｸ翫�
+    - **Scientific Dream Mode**: `DreamState` 縺ｫ隨ｬ4縺ｮ繝｢繝ｼ繝峨ｒ蟆主�縲�v5 莉･荳翫� AI 縺碁℃蜴ｻ縺ｮ Karma 繧貞�譫舌＠縲∬�蠕狗噪縺ｫ縲梧隼蝟�ｻｮ隱ｬ縲阪ｒ遶九※縺ｦ螳滄ｨ薙ず繝ｧ繝悶ｒ謚募�縺吶ｋ繧ｵ繧､繧ｯ繝ｫ繧呈ｧ狗ｯ峨�
+    - **Causal Trajectory**: `TrajectoryStep` 縺ｫ `parent_step_id` 縺ｨ `reasoning` 繧定ｿｽ蜉�縲ＡTaskDispatcher` 縺ｫ縺翫￠繧玖ｦｪ蟄舌ち繧ｹ繧ｯ縺ｮ蝗�譫憺未菫ゅ�莨晄眺繧貞ｮ悟�縺ｫ繧ｵ繝昴�繝医�
+- **Phase 14: Syndicate L3 (Agent Guild) Implementation [螳御ｺ�**
     - **Guild Infrastructure**: Implemented `SqliteSyndicateStore` with CRUD operations for guilds and members (ADR-014 design).
     - **API Integration**: Exposed `/api/v1/syndicate/guilds` endpoints for guild management (create, list, delete, member management).
     - **Security Hardening (G-21 / Gap G-2)**: Implemented `purge_entities` sanitization for guild metadata and applied per-route rate limiting and 2MB request body limits.
@@ -88,218 +90,218 @@
     - **TDD Verification**: Passed full integration test suite (`test_syndicate_guild_api_flow`) covering the entire guild lifecycle.
 
 ### Added
-- **Phase 13.3: Synthetic Voice & Live Session Hardening [完了]**
-    - **TtsProvider Decoupling**: `TtsWorker` を `TtsProvider` トレイトに依存するように刷新。OpenAI, XTTS, Mock などの多様なバックエンドをプラグイン可能にし、レガシーな `ExpressionEngine` への直接依存を排除。
-    - **LiveSession Integration**: `LiveSessionManager` (Gemini 2.0 Flash) を `AppState` および LLM プロバイダーに統合。WebSocket ベースの低レイテンシ双方向音声対話の基盤を構築。
-    - **Security & Secret Management**: `main.rs` の初期化順序を調整し、`AiomeConfig` を `Arc` で共有。`config.clone()` によるメモリ内でのシークレット重複を排除し、セキュリティを強化。
-    - **TtsWorker Loop**: `api-server` 起動時に `TtsWorker` のバックグラウンドループを開始するように実装。未合成の音声ジョブを自律的に処理可能に。
-    - **Mock Testing Suite**: `MockTtsProvider` および `MockLiveSessionManager` を実装し、統合テスト全体の安定性を確保。CI/CD における不確定要素を排除。
+- **Phase 13.3: Synthetic Voice & Live Session Hardening [螳御ｺ�**
+    - **TtsProvider Decoupling**: `TtsWorker` 繧� `TtsProvider` 繝医Ξ繧､繝医↓萓晏ｭ倥☆繧九ｈ縺�↓蛻ｷ譁ｰ縲０penAI, XTTS, Mock 縺ｪ縺ｩ縺ｮ螟壽ｧ倥↑繝舌ャ繧ｯ繧ｨ繝ｳ繝峨ｒ繝励Λ繧ｰ繧､繝ｳ蜿ｯ閭ｽ縺ｫ縺励√Ξ繧ｬ繧ｷ繝ｼ縺ｪ `ExpressionEngine` 縺ｸ縺ｮ逶ｴ謗･萓晏ｭ倥ｒ謗帝勁縲�
+    - **LiveSession Integration**: `LiveSessionManager` (Gemini 2.0 Flash) 繧� `AppState` 縺翫ｈ縺ｳ LLM 繝励Ο繝舌う繝繝ｼ縺ｫ邨ｱ蜷医８ebSocket 繝吶�繧ｹ縺ｮ菴弱Ξ繧､繝�Φ繧ｷ蜿梧婿蜷鷹浹螢ｰ蟇ｾ隧ｱ縺ｮ蝓ｺ逶､繧呈ｧ狗ｯ峨�
+    - **Security & Secret Management**: `main.rs` 縺ｮ蛻晄悄蛹夜��ｺ上ｒ隱ｿ謨ｴ縺励～AiomeConfig` 繧� `Arc` 縺ｧ蜈ｱ譛峨Ａconfig.clone()` 縺ｫ繧医ｋ繝｡繝｢繝ｪ蜀�〒縺ｮ繧ｷ繝ｼ繧ｯ繝ｬ繝�ヨ驥崎､�ｒ謗帝勁縺励√そ繧ｭ繝･繝ｪ繝�ぅ繧貞ｼｷ蛹悶�
+    - **TtsWorker Loop**: `api-server` 襍ｷ蜍墓凾縺ｫ `TtsWorker` 縺ｮ繝舌ャ繧ｯ繧ｰ繝ｩ繧ｦ繝ｳ繝峨Ν繝ｼ繝励ｒ髢句ｧ九☆繧九ｈ縺�↓螳溯｣�よ悴蜷域�縺ｮ髻ｳ螢ｰ繧ｸ繝ｧ繝悶ｒ閾ｪ蠕狗噪縺ｫ蜃ｦ逅�庄閭ｽ縺ｫ縲�
+    - **Mock Testing Suite**: `MockTtsProvider` 縺翫ｈ縺ｳ `MockLiveSessionManager` 繧貞ｮ溯｣�＠縲∫ｵｱ蜷医ユ繧ｹ繝亥�菴薙�螳牙ｮ壽ｧ繧堤｢ｺ菫昴�I/CD 縺ｫ縺翫￠繧倶ｸ咲｢ｺ螳夊ｦ∫ｴ�繧呈賜髯､縲�
 
 ## [Unreleased] - 2026-03-31
 
 ### Added
-- **Phase 54: Agentic Evolution Engine (LoRA & Personality) [完了]**
-    - **Domain Abstraction**: `AgentEvolver` トレイトに `transmute` および `transmute_with_metadata` を追加し、全進化コンポーネントに対する統一的なインターフェースを提供。
-    - **Soul Evolution**: `SoulMutator` を `AgentEvolver` の実装としてリファクタリング。`belief_gate` と連携し、LLM による証拠駆動での安全な自己変容 (`SOUL.md` 更新) サイクルを構築。
-    - **LoRA Observability**: `LoraTrainingService` に `find_mlx_script_path` および `health_check` メソッドを実装。`api-server` の `/api/health` 監視項目に `lora_engine` を追加し、MLX 学習環境の可用性をリアルタイム監視。
-- **Phase 53: Society of Thought (SoT) & Security Hardening [完了]**
-    - **SoT Multi-Review Pipeline (Active JSON Scoring)**: `Oracle::multi_review` を実装し、批判・洗練・判定の反復ループによる高度な意思決定基盤を確立。さらに `SoTEngine` の `evaluate_scores` において、LLM による **JSON 構造化抽出とスコア・クランプ (0-10)** を実装し、パース失敗時の安全なフォールバックを徹底。
-    - **SoT Progress Visibility (End-to-End SSE)**: `SoTProgress` イベントを新設。バックエンドの `Oracle` 審議から、フロントエンドのリアルタイム・トースト通知表示までの SSE ルーティングを統合。
-    - **Port-Level SSRF Protection (IPv6 Hardening)**: `SecurityPolicy` において、`127.0.0.1` および **IPv6 ループバック (`::1`, `[::1]`)** へのアクセスを、特定の内部ポート（8188: Test Node, 11434: Ollama）のみに厳密に制限。バイパス不可能な多層防御を構築。
-    - **Local Guardrail Patterns**: `guardrails.rs` に指示無視や秘密情報流出の典型パターンに対するローカル検知レイヤーを追加。Bastion 外部バリデータとの二重化を実現。
-    - **Polite Begging Detection**: `BeggingSupervisor` を強化し、日本語の丁寧な表現を用いた金銭・ギフト要求も検知・遮断対象に。
-    - **System Stability & Zombie Prevention**: `SlmBridge` において `Stdio::null()`、タイムアウト、`kill_on_drop(true)` を強制。さらに **RAII ベースの一時ファイル管理 (`tempfile::NamedTempFile`)** を導入し、プロセスハングとファイルリークの両面を完全封鎖。
-    - **Test Suite Validation**: 難読化・SSRF 検証を含む `tests/redteam_drill.rs` や `society_of_thought.rs` の TDD モック拡張を整備し、警告ゼロと全テスト（206 件のインフラテストを含む）の完全 PASS を確認。
-- **Red Team Security Hardening (Round 1-3) & Supply Chain Security [完了]**
-    - **Fail-Closed Migration**: `sentinel` (Native Bridge) および `Settings` (Infrastructure) における Fail-Open 挙動を完全に排除。内部エラー発生時は「拒否/例外」として処理する Fail-Closed 姿勢へ統一。
-    - **Resource Exhaustion Defense**: `ContextEngine` での 10,000 文字制限、および TTS API エラーレスポンスの 2048 バイト制限を実装。悪意ある巨大データによるメモリ枯渇を防止。
-    - **Supply Chain Hardening**: セキュリティコアである `bastion` ライブラリを、独自の Git 依存から **Crates.io 公式版 (`bastion-core` v1.0.0)** へ切り替え。`cargo audit` による透過的な脆弱性管理を実現。
+- **Phase 54: Agentic Evolution Engine (LoRA & Personality) [螳御ｺ�**
+    - **Domain Abstraction**: `AgentEvolver` 繝医Ξ繧､繝医↓ `transmute` 縺翫ｈ縺ｳ `transmute_with_metadata` 繧定ｿｽ蜉�縺励∝�騾ｲ蛹悶さ繝ｳ繝昴�繝阪Φ繝医↓蟇ｾ縺吶ｋ邨ｱ荳逧�↑繧､繝ｳ繧ｿ繝ｼ繝輔ぉ繝ｼ繧ｹ繧呈署萓帙�
+    - **Soul Evolution**: `SoulMutator` 繧� `AgentEvolver` 縺ｮ螳溯｣�→縺励※繝ｪ繝輔ぃ繧ｯ繧ｿ繝ｪ繝ｳ繧ｰ縲Ａbelief_gate` 縺ｨ騾｣謳ｺ縺励´LM 縺ｫ繧医ｋ險ｼ諡�鬧�虚縺ｧ縺ｮ螳牙�縺ｪ閾ｪ蟾ｱ螟牙ｮｹ (`SOUL.md` 譖ｴ譁ｰ) 繧ｵ繧､繧ｯ繝ｫ繧呈ｧ狗ｯ峨�
+    - **LoRA Observability**: `LoraTrainingService` 縺ｫ `find_mlx_script_path` 縺翫ｈ縺ｳ `health_check` 繝｡繧ｽ繝�ラ繧貞ｮ溯｣�Ａapi-server` 縺ｮ `/api/health` 逶｣隕夜��岼縺ｫ `lora_engine` 繧定ｿｽ蜉�縺励｀LX 蟄ｦ鄙堤腸蠅��蜿ｯ逕ｨ諤ｧ繧偵Μ繧｢繝ｫ繧ｿ繧､繝�逶｣隕悶�
+- **Phase 53: Society of Thought (SoT) & Security Hardening [螳御ｺ�**
+    - **SoT Multi-Review Pipeline (Active JSON Scoring)**: `Oracle::multi_review` 繧貞ｮ溯｣�＠縲∵音蛻､繝ｻ豢礼ｷｴ繝ｻ蛻､螳壹�蜿榊ｾｩ繝ｫ繝ｼ繝励↓繧医ｋ鬮伜ｺｦ縺ｪ諢乗晄ｱｺ螳壼渕逶､繧堤｢ｺ遶九ゅ＆繧峨↓ `SoTEngine` 縺ｮ `evaluate_scores` 縺ｫ縺翫＞縺ｦ縲´LM 縺ｫ繧医ｋ **JSON 讒矩�蛹匁歓蜃ｺ縺ｨ繧ｹ繧ｳ繧｢繝ｻ繧ｯ繝ｩ繝ｳ繝� (0-10)** 繧貞ｮ溯｣�＠縲√ヱ繝ｼ繧ｹ螟ｱ謨玲凾縺ｮ螳牙�縺ｪ繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ繧貞ｾｹ蠎輔�
+    - **SoT Progress Visibility (End-to-End SSE)**: `SoTProgress` 繧､繝吶Φ繝医ｒ譁ｰ險ｭ縲ゅヰ繝�け繧ｨ繝ｳ繝峨� `Oracle` 蟇ｩ隴ｰ縺九ｉ縲√ヵ繝ｭ繝ｳ繝医お繝ｳ繝峨�繝ｪ繧｢繝ｫ繧ｿ繧､繝�繝ｻ繝医�繧ｹ繝磯夂衍陦ｨ遉ｺ縺ｾ縺ｧ縺ｮ SSE 繝ｫ繝ｼ繝�ぅ繝ｳ繧ｰ繧堤ｵｱ蜷医�
+    - **Port-Level SSRF Protection (IPv6 Hardening)**: `SecurityPolicy` 縺ｫ縺翫＞縺ｦ縲～127.0.0.1` 縺翫ｈ縺ｳ **IPv6 繝ｫ繝ｼ繝励ヰ繝�け (`::1`, `[::1]`)** 縺ｸ縺ｮ繧｢繧ｯ繧ｻ繧ｹ繧偵∫音螳壹�蜀�Κ繝昴�繝茨ｼ�8188: Test Node, 11434: Ollama�峨�縺ｿ縺ｫ蜴ｳ蟇�↓蛻ｶ髯舌ゅヰ繧､繝代せ荳榊庄閭ｽ縺ｪ螟壼ｱ､髦ｲ蠕｡繧呈ｧ狗ｯ峨�
+    - **Local Guardrail Patterns**: `guardrails.rs` 縺ｫ謖�､ｺ辟｡隕悶ｄ遘伜ｯ�ュ蝣ｱ豬∝�縺ｮ蜈ｸ蝙九ヱ繧ｿ繝ｼ繝ｳ縺ｫ蟇ｾ縺吶ｋ繝ｭ繝ｼ繧ｫ繝ｫ讀懃衍繝ｬ繧､繝､繝ｼ繧定ｿｽ蜉�縲�astion 螟夜Κ繝舌Μ繝��繧ｿ縺ｨ縺ｮ莠碁㍾蛹悶ｒ螳溽樟縲�
+    - **Polite Begging Detection**: `BeggingSupervisor` 繧貞ｼｷ蛹悶＠縲∵律譛ｬ隱槭�荳∝ｯｧ縺ｪ陦ｨ迴ｾ繧堤畑縺�◆驥鷹姦繝ｻ繧ｮ繝輔ヨ隕∵ｱゅｂ讀懃衍繝ｻ驕ｮ譁ｭ蟇ｾ雎｡縺ｫ縲�
+    - **System Stability & Zombie Prevention**: `SlmBridge` 縺ｫ縺翫＞縺ｦ `Stdio::null()`縲√ち繧､繝�繧｢繧ｦ繝医～kill_on_drop(true)` 繧貞ｼｷ蛻ｶ縲ゅ＆繧峨↓ **RAII 繝吶�繧ｹ縺ｮ荳譎ゅヵ繧｡繧､繝ｫ邂｡逅� (`tempfile::NamedTempFile`)** 繧貞ｰ主�縺励√�繝ｭ繧ｻ繧ｹ繝上Φ繧ｰ縺ｨ繝輔ぃ繧､繝ｫ繝ｪ繝ｼ繧ｯ縺ｮ荳｡髱｢繧貞ｮ悟�蟆�事縲�
+    - **Test Suite Validation**: 髮｣隱ｭ蛹悶�SSRF 讀懆ｨｼ繧貞性繧 `tests/redteam_drill.rs` 繧� `society_of_thought.rs` 縺ｮ TDD 繝｢繝�け諡｡蠑ｵ繧呈紛蛯吶＠縲∬ｭｦ蜻翫ぞ繝ｭ縺ｨ蜈ｨ繝�せ繝茨ｼ�206 莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝医ｒ蜷ｫ繧�峨�螳悟� PASS 繧堤｢ｺ隱阪�
+- **Red Team Security Hardening (Round 1-3) & Supply Chain Security [螳御ｺ�**
+    - **Fail-Closed Migration**: `sentinel` (Native Bridge) 縺翫ｈ縺ｳ `Settings` (Infrastructure) 縺ｫ縺翫￠繧� Fail-Open 謖吝虚繧貞ｮ悟�縺ｫ謗帝勁縲ょ�驛ｨ繧ｨ繝ｩ繝ｼ逋ｺ逕滓凾縺ｯ縲梧拠蜷ｦ/萓句､悶阪→縺励※蜃ｦ逅�☆繧� Fail-Closed 蟋ｿ蜍｢縺ｸ邨ｱ荳縲�
+    - **Resource Exhaustion Defense**: `ContextEngine` 縺ｧ縺ｮ 10,000 譁�ｭ怜宛髯舌√♀繧医� TTS API 繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ 2048 繝舌う繝亥宛髯舌ｒ螳溯｣�よが諢上≠繧句ｷｨ螟ｧ繝��繧ｿ縺ｫ繧医ｋ繝｡繝｢繝ｪ譫ｯ貂�ｒ髦ｲ豁｢縲�
+    - **Supply Chain Hardening**: 繧ｻ繧ｭ繝･繝ｪ繝�ぅ繧ｳ繧｢縺ｧ縺ゅｋ `bastion` 繝ｩ繧､繝悶Λ繝ｪ繧偵∫峡閾ｪ縺ｮ Git 萓晏ｭ倥°繧� **Crates.io 蜈ｬ蠑冗沿 (`bastion-core` v1.0.0)** 縺ｸ蛻�ｊ譖ｿ縺医Ａcargo audit` 縺ｫ繧医ｋ騾城℃逧�↑閼�ｼｱ諤ｧ邂｡逅�ｒ螳溽樟縲�
 
 ## [Unreleased] - 2026-03-30
 
 ### Added
-- **Phase 2B: ContextEngine Expansion & Emotional Injection [完了]**
-    - **Somatic Valence DB Persistence**: `migrations` にて `karma_logs` テーブルへ `somatic_valence` (REAL/DOUBLE PRECISION) カラムを追加し、永続化レイヤーでの感情トラッキング基盤を整備。
-    - **ContextBudget Extension**: `ContextBudget` のパラメーターに `max_somatic_chars` を新設し、感情データに対する独立したコンテキストバジェット制限を実装。
-    - **Emotional RAG Injection**: `ContextEngine::calculate_mood_summary` メソッドを実装し、過去の経験（Karma）からエージェントの平均感情値（Mood）を動的算出。`get_context_with_facts` および `fetch_budgeted_context` でLLMのシステムプロンプトに `### Current Emotional State` として直接注入するメカニズムを確立。
-    - **TDD Verification**: データベース抽出漏れを防ぐための `test_sqlite_job_queue_karma_somatic_valence` テスト、および `calculate_mood_summary` の単体テストをオールグリーン検証完了。
-    - **Security Hardening (Red Team Pass 4)**: `somatic_valence` の平均計算ロジックにおける2件の深刻な認知ハイジャック脆弱性を修正。
-        - **RT4-1 (NaN Poisoning)**: DB注入による `f64::NAN` の起因でエージェントが永久に「Extremely Negative」にロックされるバグを排除 (`.filter(is_finite)` 適用)。
-        - **RT4-2 (Extreme Value Disruption)**: 任意の極端値 (99999.0 等) で算術平均を汚染する攻撃に対し、ハード境界 `-1.0` 〜 `1.0` への `clamp` 正規化を適用し感情乗っ取りを防止。
-    - **Security Hardening (Red Team Pass 5 - TDD)**: プロンプト構築プロセスの認知堅牢化。
-        - **RT5-1 (Markdown Injection)**: `shared/guardrails.rs` に `sanitize_for_prompt` を実装し、Karma/Summary 内の `#` 行をエスケープすることでプロンプト構造の偽装を防止。
-        - **RT5-2 (Context DoS)**: `get_context_with_facts` における累積文字数制限（Budget enforcement）を実装し、コンテキスト溢れによる動作不全を回避。
+- **Phase 2B: ContextEngine Expansion & Emotional Injection [螳御ｺ�**
+    - **Somatic Valence DB Persistence**: `migrations` 縺ｫ縺ｦ `karma_logs` 繝��繝悶Ν縺ｸ `somatic_valence` (REAL/DOUBLE PRECISION) 繧ｫ繝ｩ繝�繧定ｿｽ蜉�縺励∵ｰｸ邯壼喧繝ｬ繧､繝､繝ｼ縺ｧ縺ｮ諢滓ュ繝医Λ繝�く繝ｳ繧ｰ蝓ｺ逶､繧呈紛蛯吶�
+    - **ContextBudget Extension**: `ContextBudget` 縺ｮ繝代Λ繝｡繝ｼ繧ｿ繝ｼ縺ｫ `max_somatic_chars` 繧呈眠險ｭ縺励∵─諠�ョ繝ｼ繧ｿ縺ｫ蟇ｾ縺吶ｋ迢ｬ遶九＠縺溘さ繝ｳ繝�く繧ｹ繝医ヰ繧ｸ繧ｧ繝�ヨ蛻ｶ髯舌ｒ螳溯｣��
+    - **Emotional RAG Injection**: `ContextEngine::calculate_mood_summary` 繝｡繧ｽ繝�ラ繧貞ｮ溯｣�＠縲�℃蜴ｻ縺ｮ邨碁ｨ難ｼ�arma�峨°繧峨お繝ｼ繧ｸ繧ｧ繝ｳ繝医�蟷ｳ蝮�─諠�､��ood�峨ｒ蜍慕噪邂怜�縲Ａget_context_with_facts` 縺翫ｈ縺ｳ `fetch_budgeted_context` 縺ｧLLM縺ｮ繧ｷ繧ｹ繝�Β繝励Ο繝ｳ繝励ヨ縺ｫ `### Current Emotional State` 縺ｨ縺励※逶ｴ謗･豕ｨ蜈･縺吶ｋ繝｡繧ｫ繝九ぜ繝�繧堤｢ｺ遶九�
+    - **TDD Verification**: 繝��繧ｿ繝吶�繧ｹ謚ｽ蜃ｺ貍上ｌ繧帝亟縺舌◆繧√� `test_sqlite_job_queue_karma_somatic_valence` 繝�せ繝医√♀繧医� `calculate_mood_summary` 縺ｮ蜊倅ｽ薙ユ繧ｹ繝医ｒ繧ｪ繝ｼ繝ｫ繧ｰ繝ｪ繝ｼ繝ｳ讀懆ｨｼ螳御ｺ��
+    - **Security Hardening (Red Team Pass 4)**: `somatic_valence` 縺ｮ蟷ｳ蝮�ｨ育ｮ励Ο繧ｸ繝�け縺ｫ縺翫￠繧�2莉ｶ縺ｮ豺ｱ蛻ｻ縺ｪ隱咲衍繝上う繧ｸ繝｣繝�け閼�ｼｱ諤ｧ繧剃ｿｮ豁｣縲�
+        - **RT4-1 (NaN Poisoning)**: DB豕ｨ蜈･縺ｫ繧医ｋ `f64::NAN` 縺ｮ襍ｷ蝗�縺ｧ繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝医′豌ｸ荵�↓縲窪xtremely Negative縲阪↓繝ｭ繝�け縺輔ｌ繧九ヰ繧ｰ繧呈賜髯､ (`.filter(is_finite)` 驕ｩ逕ｨ)縲�
+        - **RT4-2 (Extreme Value Disruption)**: 莉ｻ諢上�讌ｵ遶ｯ蛟､ (99999.0 遲�) 縺ｧ邂苓｡灘ｹｳ蝮�ｒ豎壽沒縺吶ｋ謾ｻ謦�↓蟇ｾ縺励√ワ繝ｼ繝牙｢�阜 `-1.0` 縲� `1.0` 縺ｸ縺ｮ `clamp` 豁｣隕丞喧繧帝←逕ｨ縺玲─諠�ｹ励▲蜿悶ｊ繧帝亟豁｢縲�
+    - **Security Hardening (Red Team Pass 5 - TDD)**: 繝励Ο繝ｳ繝励ヨ讒狗ｯ峨�繝ｭ繧ｻ繧ｹ縺ｮ隱咲衍蝣�欧蛹悶�
+        - **RT5-1 (Markdown Injection)**: `shared/guardrails.rs` 縺ｫ `sanitize_for_prompt` 繧貞ｮ溯｣�＠縲゜arma/Summary 蜀�� `#` 陦後ｒ繧ｨ繧ｹ繧ｱ繝ｼ繝励☆繧九％縺ｨ縺ｧ繝励Ο繝ｳ繝励ヨ讒矩�縺ｮ蛛ｽ陬�ｒ髦ｲ豁｢縲�
+        - **RT5-2 (Context DoS)**: `get_context_with_facts` 縺ｫ縺翫￠繧狗ｴｯ遨肴枚蟄玲焚蛻ｶ髯撰ｼ�udget enforcement�峨ｒ螳溯｣�＠縲√さ繝ｳ繝�く繧ｹ繝域ｺ｢繧後↓繧医ｋ蜍穂ｽ應ｸ榊�繧貞屓驕ｿ縲�
 
-- **Phase 3D: TimesFM Time-Series Engine Integration [完了]**
-    - **TimesFM Sidecar**: 独立した Python FastAPI コンテナ (`aiome-timesfm-sidecar`) を構築し、Google Research の `timesfm-2.5-200m-pytorch` モデルを用いた時系列予測 API を提供。内部ネットワークで完全に隔離。
-    - **ForecastProvider Trait**: 新規に `ForecastProvider` トレイトを定義し、Rust 側からサイドカーへ透過的にアクセスする `TimesFmProvider` HTTP クライアントを実装。
-    - **ScoreTracker (Plateau Detection)**: `ScoreTracker` モジュールを実装し、エージェントの Karma や EXP の直近データに基づいて TimesFM で成長の停滞 (Plateau) を数学的に予測。
-    - **Heartbeat Wakeup Extension**: `HeartbeatWakeupService` ランタイムに `ScoreTracker` を統合し、Heartbeat 発火時に自動で日次スナップショット (`score_snapshots` テーブル) を記録・停滞検知を実行。
+- **Phase 3D: TimesFM Time-Series Engine Integration [螳御ｺ�**
+    - **TimesFM Sidecar**: 迢ｬ遶九＠縺� Python FastAPI 繧ｳ繝ｳ繝�リ (`aiome-timesfm-sidecar`) 繧呈ｧ狗ｯ峨＠縲；oogle Research 縺ｮ `timesfm-2.5-200m-pytorch` 繝｢繝�Ν繧堤畑縺�◆譎らｳｻ蛻嶺ｺ域ｸｬ API 繧呈署萓帙ょ�驛ｨ繝阪ャ繝医Ρ繝ｼ繧ｯ縺ｧ螳悟�縺ｫ髫秘屬縲�
+    - **ForecastProvider Trait**: 譁ｰ隕上↓ `ForecastProvider` 繝医Ξ繧､繝医ｒ螳夂ｾｩ縺励ヽust 蛛ｴ縺九ｉ繧ｵ繧､繝峨き繝ｼ縺ｸ騾城℃逧�↓繧｢繧ｯ繧ｻ繧ｹ縺吶ｋ `TimesFmProvider` HTTP 繧ｯ繝ｩ繧､繧｢繝ｳ繝医ｒ螳溯｣��
+    - **ScoreTracker (Plateau Detection)**: `ScoreTracker` 繝｢繧ｸ繝･繝ｼ繝ｫ繧貞ｮ溯｣�＠縲√お繝ｼ繧ｸ繧ｧ繝ｳ繝医� Karma 繧� EXP 縺ｮ逶ｴ霑代ョ繝ｼ繧ｿ縺ｫ蝓ｺ縺･縺�※ TimesFM 縺ｧ謌宣聞縺ｮ蛛懈ｻ� (Plateau) 繧呈焚蟄ｦ逧�↓莠域ｸｬ縲�
+    - **Heartbeat Wakeup Extension**: `HeartbeatWakeupService` 繝ｩ繝ｳ繧ｿ繧､繝�縺ｫ `ScoreTracker` 繧堤ｵｱ蜷医＠縲？eartbeat 逋ｺ轣ｫ譎ゅ↓閾ｪ蜍輔〒譌･谺｡繧ｹ繝翫ャ繝励す繝ｧ繝�ヨ (`score_snapshots` 繝��繝悶Ν) 繧定ｨ倬鹸繝ｻ蛛懈ｻ樊､懃衍繧貞ｮ溯｡後�
 
-- **Phase 3C: Oracle Asynchronous Review Integration [完了]**
-    - **TaskDispatcher Async Evaluator**: `requires_review` フラグ付きのジョブに対し、`tokio::spawn` と `timeout(60s)` による非同期 Oracle 評価機構を実装完了。メイン・ディスパッチ・ループのブロッキングを排除。
-    - **Zombie Reclamation Update**: SQLite/Postgres 両方の `do_reclaim_zombie_jobs` で `status IN ('Processing', 'Evaluating')` を対象とし、Oracle 評価中（`Evaluating`）にクラッシュしても自動的に `Failed` として回収される堅牢な耐障害性を設計。
-    - **API Extension**: `POST /api/v1/jobs/:id/review` サブミットエンドポイントを新設。
-    - **Code Quality Refactoring**: `aiome-commerce` パッケージをインフラストラクチャー層から独立したクレートとして完全分離し、依存関係の循環を解決 (`infrastructure/src/commerce` を削除)。`napi-bridge`、`api-server` 等の対応を完了し、ビルド警告ゼロを達成。
+- **Phase 3C: Oracle Asynchronous Review Integration [螳御ｺ�**
+    - **TaskDispatcher Async Evaluator**: `requires_review` 繝輔Λ繧ｰ莉倥″縺ｮ繧ｸ繝ｧ繝悶↓蟇ｾ縺励～tokio::spawn` 縺ｨ `timeout(60s)` 縺ｫ繧医ｋ髱槫酔譛� Oracle 隧穂ｾ｡讖滓ｧ九ｒ螳溯｣�ｮ御ｺ�ゅΓ繧､繝ｳ繝ｻ繝�ぅ繧ｹ繝代ャ繝√�繝ｫ繝ｼ繝励�繝悶Ο繝�く繝ｳ繧ｰ繧呈賜髯､縲�
+    - **Zombie Reclamation Update**: SQLite/Postgres 荳｡譁ｹ縺ｮ `do_reclaim_zombie_jobs` 縺ｧ `status IN ('Processing', 'Evaluating')` 繧貞ｯｾ雎｡縺ｨ縺励＾racle 隧穂ｾ｡荳ｭ��Evaluating`�峨↓繧ｯ繝ｩ繝�す繝･縺励※繧り�蜍慕噪縺ｫ `Failed` 縺ｨ縺励※蝗槫庶縺輔ｌ繧句��欧縺ｪ閠宣囿螳ｳ諤ｧ繧定ｨｭ險医�
+    - **API Extension**: `POST /api/v1/jobs/:id/review` 繧ｵ繝悶Α繝�ヨ繧ｨ繝ｳ繝峨�繧､繝ｳ繝医ｒ譁ｰ險ｭ縲�
+    - **Code Quality Refactoring**: `aiome-commerce` 繝代ャ繧ｱ繝ｼ繧ｸ繧偵う繝ｳ繝輔Λ繧ｹ繝医Λ繧ｯ繝√Ε繝ｼ螻､縺九ｉ迢ｬ遶九＠縺溘け繝ｬ繝ｼ繝医→縺励※螳悟�蛻�屬縺励∽ｾ晏ｭ倬未菫ゅ�蠕ｪ迺ｰ繧定ｧ｣豎ｺ (`infrastructure/src/commerce` 繧貞炎髯､)縲Ａnapi-bridge`縲～api-server` 遲峨�蟇ｾ蠢懊ｒ螳御ｺ�＠縲√ン繝ｫ繝芽ｭｦ蜻翫ぞ繝ｭ繧帝＃謌舌�
 
 ## [Unreleased] - 2026-03-28
 
 ### Added
-- **Phase 52: Infrastructure Hardening & ZTAS Preparation [進行中]**
-    - **UserLearner Evolution (TDD)**: セッションからユーザーの構造化プロファイル（好み、美的スタイル、性格的特徴）を JSON 形式で抽出し、メモリ上の `UserProfile` と `USER.md` の両方を自動更新するインテリジェントな学習ロジックを実装。
-    - **RegistryManager Safety**: SQLite と PostgreSQL 間のクエリ戻り値の型不整合を吸収するため `DatabasePool` マクロ (`sql_exec!`, `sql_fetch_one!`) を適用。重要パスからパニックを誘発する `unwrap()` を排除し、完全な `AiomeError` マッピングへ移行。
-    - **Compile Error Remediation**: `UserLearner` での JSON パーシング、`MockLlm` トレイト不整合、`DockerConductor` のストリーム型推論不全、`MockCommerceEngine` の初期化不備など、インフラ全域の型不整合やコンパイルエラーを解消。
+- **Phase 52: Infrastructure Hardening & ZTAS Preparation [騾ｲ陦御ｸｭ]**
+    - **UserLearner Evolution (TDD)**: 繧ｻ繝�す繝ｧ繝ｳ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ讒矩�蛹悶�繝ｭ繝輔ぃ繧､繝ｫ�亥･ｽ縺ｿ縲∫ｾ守噪繧ｹ繧ｿ繧､繝ｫ縲∵ｧ譬ｼ逧�音蠕ｴ�峨ｒ JSON 蠖｢蠑上〒謚ｽ蜃ｺ縺励√Γ繝｢繝ｪ荳翫� `UserProfile` 縺ｨ `USER.md` 縺ｮ荳｡譁ｹ繧定�蜍墓峩譁ｰ縺吶ｋ繧､繝ｳ繝�Μ繧ｸ繧ｧ繝ｳ繝医↑蟄ｦ鄙偵Ο繧ｸ繝�け繧貞ｮ溯｣��
+    - **RegistryManager Safety**: SQLite 縺ｨ PostgreSQL 髢薙�繧ｯ繧ｨ繝ｪ謌ｻ繧雁､縺ｮ蝙倶ｸ肴紛蜷医ｒ蜷ｸ蜿弱☆繧九◆繧� `DatabasePool` 繝槭け繝ｭ (`sql_exec!`, `sql_fetch_one!`) 繧帝←逕ｨ縲る㍾隕√ヱ繧ｹ縺九ｉ繝代ル繝�け繧定ｪ倡匱縺吶ｋ `unwrap()` 繧呈賜髯､縺励∝ｮ悟�縺ｪ `AiomeError` 繝槭ャ繝斐Φ繧ｰ縺ｸ遘ｻ陦後�
+    - **Compile Error Remediation**: `UserLearner` 縺ｧ縺ｮ JSON 繝代�繧ｷ繝ｳ繧ｰ縲～MockLlm` 繝医Ξ繧､繝井ｸ肴紛蜷医～DockerConductor` 縺ｮ繧ｹ繝医Μ繝ｼ繝�蝙区耳隲紋ｸ榊�縲～MockCommerceEngine` 縺ｮ蛻晄悄蛹紋ｸ榊ｙ縺ｪ縺ｩ縲√う繝ｳ繝輔Λ蜈ｨ蝓溘�蝙倶ｸ肴紛蜷医ｄ繧ｳ繝ｳ繝代う繝ｫ繧ｨ繝ｩ繝ｼ繧定ｧ｣豸医�
 
-- **Phase B/C: Rust-Native Inference Integration [完了]**
-    - **Strategy Pattern Migration**: `SlmBridge` を CLI ベースから `SlmBackend` トレイトへの Strategy パターンへリファクタリングし、拡張性を確保。
-    - **Native Embedding Provider**: HuggingFace の `candle` を用いた Rust ネイティブなベクトル埋め込み生成（`all-MiniLM-L6-v2`）を実装し、ローカルインファレンスのスループットを向上（`native-inference` feature 指定時）。
-    - **Dynamic Dimension Resolution**: `EmbeddingProvider` トレイトに `embedding_dim()` メソッドを追加し、`artifact_store.rs`, `karma.rs`, `semantic_cache.rs` 内に存在した `768` 次元ハードコードをプロバイダーからの動的取得に改修。依存する12モジュールに対する結合・単体テストをオールグリーンで通過。
+- **Phase B/C: Rust-Native Inference Integration [螳御ｺ�**
+    - **Strategy Pattern Migration**: `SlmBridge` 繧� CLI 繝吶�繧ｹ縺九ｉ `SlmBackend` 繝医Ξ繧､繝医∈縺ｮ Strategy 繝代ち繝ｼ繝ｳ縺ｸ繝ｪ繝輔ぃ繧ｯ繧ｿ繝ｪ繝ｳ繧ｰ縺励∵僑蠑ｵ諤ｧ繧堤｢ｺ菫昴�
+    - **Native Embedding Provider**: HuggingFace 縺ｮ `candle` 繧堤畑縺�◆ Rust 繝阪う繝�ぅ繝悶↑繝吶け繝医Ν蝓九ａ霎ｼ縺ｿ逕滓���all-MiniLM-L6-v2`�峨ｒ螳溯｣�＠縲√Ο繝ｼ繧ｫ繝ｫ繧､繝ｳ繝輔ぃ繝ｬ繝ｳ繧ｹ縺ｮ繧ｹ繝ｫ繝ｼ繝励ャ繝医ｒ蜷台ｸ奇ｼ�native-inference` feature 謖�ｮ壽凾�峨�
+    - **Dynamic Dimension Resolution**: `EmbeddingProvider` 繝医Ξ繧､繝医↓ `embedding_dim()` 繝｡繧ｽ繝�ラ繧定ｿｽ蜉�縺励～artifact_store.rs`, `karma.rs`, `semantic_cache.rs` 蜀�↓蟄伜惠縺励◆ `768` 谺｡蜈�ワ繝ｼ繝峨さ繝ｼ繝峨ｒ繝励Ο繝舌う繝繝ｼ縺九ｉ縺ｮ蜍慕噪蜿門ｾ励↓謾ｹ菫ｮ縲ゆｾ晏ｭ倥☆繧�12繝｢繧ｸ繝･繝ｼ繝ｫ縺ｫ蟇ｾ縺吶ｋ邨仙粋繝ｻ蜊倅ｽ薙ユ繧ｹ繝医ｒ繧ｪ繝ｼ繝ｫ繧ｰ繝ｪ繝ｼ繝ｳ縺ｧ騾夐℃縲�
 
 
-- **Phase 51: Aiome Node Foundation & mDNS Discovery [完了]**
+- **Phase 51: Aiome Node Foundation & mDNS Discovery [螳御ｺ�**
     - **Aiome Node (`aiome-node`)**: Created a standalone node process adhering to BUSL-1.1 that serves Agent Card details over `/.well-known/agent.json`.
     - **mDNS P2P Broadcaster**: Implemented `mdns_broadcaster` leveraging `mdns-sd` to announce `_aiome._tcp.local.` services upon Aiome Node startup, broadcasting its public DID.
     - **Samsara Hub Registry**: Augmented `HubState` with an in-memory `AgentRegistry` and an `mdns_listener`. The Hub asynchronously discovers local Aiome Nodes and exposes them through `GET /api/v1/registry/agents`.
-    - **Core ↔ Node IPC Integration**: Set the structural foundation for `api-server` internal logic using an `AgentNodeClient` interface pointing to the externalized Aiome Node's gRPC endpoint.
+    - **Core 竊� Node IPC Integration**: Set the structural foundation for `api-server` internal logic using an `AgentNodeClient` interface pointing to the externalized Aiome Node's gRPC endpoint.
     - **E2E TDD Integration**: Concluded phase with a full E2E discovery flow test ensuring mock nodes launched via `mdns-sd` are properly cataloged by the Hub's registry API.
-- **Phase 50: A2A gRPC Native Support [Planning 完了]**
-    - **Architecture Strategy**: Core/Node 分離アーキテクチャおよび gRPC 駆動型 A2A 通信網（A2A v1.0 / ACP 準拠）を策定。
-    - **Security Hardening (Phase 50)**: Threat #36-38 (Unauthorized Access, Message Tampering, Zombie Worker) に対する緩和策（Localhost IPC, ワンタイムトークン, gRPC Deadline）を計画。
-    - **Implementation Plan**: DockerConductor の同期実行から gRPC ストリーミング受信への全面リファクタリング、および `libs/aiome-contracts` への proto 統合を含む 26 ステップの精密計画を作成。
-    - **Perfect Planning**: 4 回の反復検証により 20 件の潜在的欠陥を特定・修正し、実装可能な最高品質の計画を確立。
-- **Phase 49: BeliefShift Causal Integrity [完了]**
-    - **BeliefConsistencyGate**: 新規 Karma 候補をコア信念（`SOUL.md`）と照合する 2 段階検証ゲート（SLM 高速スクリーニング + LLM 詳細判定）を実装。
-    - **Evidence-Driven Revision**: 信念と矛盾するが強力な証拠を持つ情報を `RevisionCandidate` として検出し、ハッシュチェーン（軌跡）に証拠付きで記録する仕組みを構築。
-    - **SoulMutator Integration**: 証拠の蓄積が閾値を超えるまで `SOUL.md` の安易な書き換え（意見のブレ）を物理的に抑制するゲートを統合。
+- **Phase 50: A2A gRPC Native Support [Planning 螳御ｺ�**
+    - **Architecture Strategy**: Core/Node 蛻�屬繧｢繝ｼ繧ｭ繝�け繝√Ε縺翫ｈ縺ｳ gRPC 鬧�虚蝙� A2A 騾壻ｿ｡邯ｲ��2A v1.0 / ACP 貅匁侠�峨ｒ遲門ｮ壹�
+    - **Security Hardening (Phase 50)**: Threat #36-38 (Unauthorized Access, Message Tampering, Zombie Worker) 縺ｫ蟇ｾ縺吶ｋ邱ｩ蜥檎ｭ厄ｼ�ocalhost IPC, 繝ｯ繝ｳ繧ｿ繧､繝�繝医�繧ｯ繝ｳ, gRPC Deadline�峨ｒ險育判縲�
+    - **Implementation Plan**: DockerConductor 縺ｮ蜷梧悄螳溯｡後°繧� gRPC 繧ｹ繝医Μ繝ｼ繝溘Φ繧ｰ蜿嶺ｿ｡縺ｸ縺ｮ蜈ｨ髱｢繝ｪ繝輔ぃ繧ｯ繧ｿ繝ｪ繝ｳ繧ｰ縲√♀繧医� `libs/aiome-contracts` 縺ｸ縺ｮ proto 邨ｱ蜷医ｒ蜷ｫ繧 26 繧ｹ繝�ャ繝励�邊ｾ蟇�ｨ育判繧剃ｽ懈�縲�
+    - **Perfect Planning**: 4 蝗槭�蜿榊ｾｩ讀懆ｨｼ縺ｫ繧医ｊ 20 莉ｶ縺ｮ貎懷惠逧�ｬ�髯･繧堤音螳壹�菫ｮ豁｣縺励∝ｮ溯｣�庄閭ｽ縺ｪ譛鬮伜刀雉ｪ縺ｮ險育判繧堤｢ｺ遶九�
+- **Phase 49: BeliefShift Causal Integrity [螳御ｺ�**
+    - **BeliefConsistencyGate**: 譁ｰ隕� Karma 蛟呵｣懊ｒ繧ｳ繧｢菫｡蠢ｵ��SOUL.md`�峨→辣ｧ蜷医☆繧� 2 谿ｵ髫取､懆ｨｼ繧ｲ繝ｼ繝茨ｼ�LM 鬮倬溘せ繧ｯ繝ｪ繝ｼ繝九Φ繧ｰ + LLM 隧ｳ邏ｰ蛻､螳夲ｼ峨ｒ螳溯｣��
+    - **Evidence-Driven Revision**: 菫｡蠢ｵ縺ｨ遏帷崟縺吶ｋ縺悟ｼｷ蜉帙↑險ｼ諡�繧呈戟縺､諠��ｱ繧� `RevisionCandidate` 縺ｨ縺励※讀懷�縺励√ワ繝�す繝･繝√ぉ繝ｼ繝ｳ�郁ｻ瑚ｷ｡�峨↓險ｼ諡�莉倥″縺ｧ險倬鹸縺吶ｋ莉慕ｵ�∩繧呈ｧ狗ｯ峨�
+    - **SoulMutator Integration**: 險ｼ諡�縺ｮ闢�ｩ阪′髢ｾ蛟､繧定ｶ�∴繧九∪縺ｧ `SOUL.md` 縺ｮ螳画�縺ｪ譖ｸ縺肴鋤縺茨ｼ域э隕九�繝悶Ξ�峨ｒ迚ｩ逅�噪縺ｫ謚大宛縺吶ｋ繧ｲ繝ｼ繝医ｒ邨ｱ蜷医�
     - **Security Hardening (Red Team)**: 
-        - **RT-1 (Prompt Injection)**: `<karma>` タグによるカプセル化と命令文サニタイズ。
-        - **RT-2 (OOM Defense)**: 証拠ストアへの FIFO 制限（100件）の実装。
-        - **RT-3 (SLM Bypass)**: SLM 判定結果の 10% ランダム再検証ロジックを追加。
-        - **RT-5 (Empty Soul)**: `SOUL.md` 不在時の警告およびデフォルト信念のフォールバック処理を強化。
+        - **RT-1 (Prompt Injection)**: `<karma>` 繧ｿ繧ｰ縺ｫ繧医ｋ繧ｫ繝励そ繝ｫ蛹悶→蜻ｽ莉､譁�し繝九ち繧､繧ｺ縲�
+        - **RT-2 (OOM Defense)**: 險ｼ諡�繧ｹ繝医い縺ｸ縺ｮ FIFO 蛻ｶ髯撰ｼ�100莉ｶ�峨�螳溯｣��
+        - **RT-3 (SLM Bypass)**: SLM 蛻､螳夂ｵ先棡縺ｮ 10% 繝ｩ繝ｳ繝繝�蜀肴､懆ｨｼ繝ｭ繧ｸ繝�け繧定ｿｽ蜉�縲�
+        - **RT-5 (Empty Soul)**: `SOUL.md` 荳榊惠譎ゅ�隴ｦ蜻翫♀繧医�繝�ヵ繧ｩ繝ｫ繝井ｿ｡蠢ｵ縺ｮ繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ蜃ｦ逅�ｒ蠑ｷ蛹悶�
 
 ### Added
-- **Phase 48: Invariant-DAG (Causal Hash Chain) [完了]**
-    - **Hash-Chain Core**: SHA-256 を用いた状態遷移のハッシュチェーン構造を実装。全アクションに `parent_hash` を持たせることで、数学的な改ざん検知を実現。
-    - **Rollback Logic**: 指定したハッシュ値またはステップ ID までのオートマトン状態ロールバック機能を実装。
-    - **Dispatcher Integrity**: サブジョブ実行前に親ジョブのハッシュ整合性を自動検証するゲートウェイを `TaskDispatcher` に統合。
-- **Phase 47: BoundaryVerifier (O(1) Tautology Check) [完了]**
-    - **Static Invariant Engine**: LLM に依存しない高速な検証エンジンを実装。コマンドサイズ (64KB制限)、メタ文字、システムパス保護、バイナリホワイトリストを O(1) で強制。
-    - **BastionGuard Integration**: `safe_exec` のプリフィルタとして統合。全てのシェル実行に対してハードウェアレベルに近い厳格な境界検証を適用。
-- **Infrastructure Stabilization [完了]**
-    - **Global Mock Refactoring**: `MockJobQueue` 等の名称衝突を解消するため、`GlobalMockJobQueue` / `GlobalMockLlm` へ改称し `test_utils.rs` に集約。
-    - **UniversalJobQueue Restoration**: フィールド（`karma_cache`, `slm_bridge`, `trajectory_store` 等）の復元と、`TrajectoryStore` の非 `Debug` 性を考慮した手動 `Debug` トレイト実装により、ビルド不整合を解消。
-    - **LLM Provider Type Alignment**: `dynamic.rs` における設定取得フローを刷新。`Option<String>` から `String` への型整合性を確保し、各種プロバイダーコンストラクタとの衝突を修正。
-    - **DB Reference Fix**: `rss_collector.rs` での `sqlx` 実行時にプールへの適切な参照 (`&*p`) を渡すように修正。
+- **Phase 48: Invariant-DAG (Causal Hash Chain) [螳御ｺ�**
+    - **Hash-Chain Core**: SHA-256 繧堤畑縺�◆迥ｶ諷矩�遘ｻ縺ｮ繝上ャ繧ｷ繝･繝√ぉ繝ｼ繝ｳ讒矩�繧貞ｮ溯｣�ょ�繧｢繧ｯ繧ｷ繝ｧ繝ｳ縺ｫ `parent_hash` 繧呈戟縺溘○繧九％縺ｨ縺ｧ縲∵焚蟄ｦ逧�↑謾ｹ縺悶ｓ讀懃衍繧貞ｮ溽樟縲�
+    - **Rollback Logic**: 謖�ｮ壹＠縺溘ワ繝�す繝･蛟､縺ｾ縺溘�繧ｹ繝�ャ繝� ID 縺ｾ縺ｧ縺ｮ繧ｪ繝ｼ繝医�繝医Φ迥ｶ諷九Ο繝ｼ繝ｫ繝舌ャ繧ｯ讖溯�繧貞ｮ溯｣��
+    - **Dispatcher Integrity**: 繧ｵ繝悶ず繝ｧ繝門ｮ溯｡悟燕縺ｫ隕ｪ繧ｸ繝ｧ繝悶�繝上ャ繧ｷ繝･謨ｴ蜷域ｧ繧定�蜍墓､懆ｨｼ縺吶ｋ繧ｲ繝ｼ繝医え繧ｧ繧､繧� `TaskDispatcher` 縺ｫ邨ｱ蜷医�
+- **Phase 47: BoundaryVerifier (O(1) Tautology Check) [螳御ｺ�**
+    - **Static Invariant Engine**: LLM 縺ｫ萓晏ｭ倥＠縺ｪ縺�ｫ倬溘↑讀懆ｨｼ繧ｨ繝ｳ繧ｸ繝ｳ繧貞ｮ溯｣�ゅさ繝槭Φ繝峨し繧､繧ｺ (64KB蛻ｶ髯�)縲√Γ繧ｿ譁�ｭ励√す繧ｹ繝�Β繝代せ菫晁ｭｷ縲√ヰ繧､繝翫Μ繝帙Ρ繧､繝医Μ繧ｹ繝医ｒ O(1) 縺ｧ蠑ｷ蛻ｶ縲�
+    - **BastionGuard Integration**: `safe_exec` 縺ｮ繝励Μ繝輔ぅ繝ｫ繧ｿ縺ｨ縺励※邨ｱ蜷医ょ�縺ｦ縺ｮ繧ｷ繧ｧ繝ｫ螳溯｡後↓蟇ｾ縺励※繝上�繝峨え繧ｧ繧｢繝ｬ繝吶Ν縺ｫ霑代＞蜴ｳ譬ｼ縺ｪ蠅�阜讀懆ｨｼ繧帝←逕ｨ縲�
+- **Infrastructure Stabilization [螳御ｺ�**
+    - **Global Mock Refactoring**: `MockJobQueue` 遲峨�蜷咲ｧｰ陦晉ｪ√ｒ隗｣豸医☆繧九◆繧√～GlobalMockJobQueue` / `GlobalMockLlm` 縺ｸ謾ｹ遘ｰ縺� `test_utils.rs` 縺ｫ髮�ｴ��
+    - **UniversalJobQueue Restoration**: 繝輔ぅ繝ｼ繝ｫ繝会ｼ�karma_cache`, `slm_bridge`, `trajectory_store` 遲会ｼ峨�蠕ｩ蜈�→縲～TrajectoryStore` 縺ｮ髱� `Debug` 諤ｧ繧定��縺励◆謇句虚 `Debug` 繝医Ξ繧､繝亥ｮ溯｣�↓繧医ｊ縲√ン繝ｫ繝我ｸ肴紛蜷医ｒ隗｣豸医�
+    - **LLM Provider Type Alignment**: `dynamic.rs` 縺ｫ縺翫￠繧玖ｨｭ螳壼叙蠕励ヵ繝ｭ繝ｼ繧貞姐譁ｰ縲ＡOption<String>` 縺九ｉ `String` 縺ｸ縺ｮ蝙区紛蜷域ｧ繧堤｢ｺ菫昴＠縲∝推遞ｮ繝励Ο繝舌う繝繝ｼ繧ｳ繝ｳ繧ｹ繝医Λ繧ｯ繧ｿ縺ｨ縺ｮ陦晉ｪ√ｒ菫ｮ豁｣縲�
+    - **DB Reference Fix**: `rss_collector.rs` 縺ｧ縺ｮ `sqlx` 螳溯｡梧凾縺ｫ繝励�繝ｫ縺ｸ縺ｮ驕ｩ蛻�↑蜿ら� (`&*p`) 繧呈ｸ｡縺吶ｈ縺�↓菫ｮ豁｣縲�
 
 ### Added
-- **Phase 1: Vectorless RAG (Hierarchical Knowledge Router - HKR) [完了]**
-    - **Knowledge Indexer**: Markdown を階層的な `TreeNode` にパースする機能を実装。シンボリックリンク排除、プロンプトインジェクション対策済みのサニタイズ機能を搭載。
-    - **Hierarchical Router**: LLM による多段階ツリー探索エンジンを実装。セマフォによるリソース制御と、1時間 TTL / ドキュメントハッシュ検証付きの `RouteCache` を統合。
-    - **API Integration**: SSE ストリーム (`stream.rs`) において、教訓検索が OOD (Out of Distribution) となった際に HKR が自動起動するフォールバックフローを実装。
-    - **Security Validation**: HKR の検索結果を `ConstitutionalValidator` で最終検証してからユーザーへ提供するセキュアなパイプラインを構築。
-    - **TDD Verification**: インデクサーとルーターに対し、正常系・異常系・セキュリティ・キャッシュの各レイヤーで GREEN パスを達成。
+- **Phase 1: Vectorless RAG (Hierarchical Knowledge Router - HKR) [螳御ｺ�**
+    - **Knowledge Indexer**: Markdown 繧帝嚴螻､逧�↑ `TreeNode` 縺ｫ繝代�繧ｹ縺吶ｋ讖溯�繧貞ｮ溯｣�ゅす繝ｳ繝懊Μ繝�け繝ｪ繝ｳ繧ｯ謗帝勁縲√�繝ｭ繝ｳ繝励ヨ繧､繝ｳ繧ｸ繧ｧ繧ｯ繧ｷ繝ｧ繝ｳ蟇ｾ遲匁ｸ医∩縺ｮ繧ｵ繝九ち繧､繧ｺ讖溯�繧呈政霈峨�
+    - **Hierarchical Router**: LLM 縺ｫ繧医ｋ螟壽ｮｵ髫弱ヤ繝ｪ繝ｼ謗｢邏｢繧ｨ繝ｳ繧ｸ繝ｳ繧貞ｮ溯｣�ゅそ繝槭ヵ繧ｩ縺ｫ繧医ｋ繝ｪ繧ｽ繝ｼ繧ｹ蛻ｶ蠕｡縺ｨ縲�1譎る俣 TTL / 繝峨く繝･繝｡繝ｳ繝医ワ繝�す繝･讀懆ｨｼ莉倥″縺ｮ `RouteCache` 繧堤ｵｱ蜷医�
+    - **API Integration**: SSE 繧ｹ繝医Μ繝ｼ繝� (`stream.rs`) 縺ｫ縺翫＞縺ｦ縲∵蕗險捺､懃ｴ｢縺� OOD (Out of Distribution) 縺ｨ縺ｪ縺｣縺滄圀縺ｫ HKR 縺瑚�蜍戊ｵｷ蜍輔☆繧九ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ繝輔Ο繝ｼ繧貞ｮ溯｣��
+    - **Security Validation**: HKR 縺ｮ讀懃ｴ｢邨先棡繧� `ConstitutionalValidator` 縺ｧ譛邨よ､懆ｨｼ縺励※縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ縺ｸ謠蝉ｾ帙☆繧九そ繧ｭ繝･繧｢縺ｪ繝代う繝励Λ繧､繝ｳ繧呈ｧ狗ｯ峨�
+    - **TDD Verification**: 繧､繝ｳ繝�け繧ｵ繝ｼ縺ｨ繝ｫ繝ｼ繧ｿ繝ｼ縺ｫ蟇ｾ縺励∵ｭ｣蟶ｸ邉ｻ繝ｻ逡ｰ蟶ｸ邉ｻ繝ｻ繧ｻ繧ｭ繝･繝ｪ繝�ぅ繝ｻ繧ｭ繝｣繝�す繝･縺ｮ蜷�Ξ繧､繝､繝ｼ縺ｧ GREEN 繝代せ繧帝＃謌舌�
 
 ### Added
-- **Phase 5: Gemini Interactions API 統合基盤 [完了]**
-    - **InteractionsGeminiProvider**: Gemini Interactions API (REST) へのステートフル接続、指数バックオフ再試行、および Ollama への自動フェイルオーバー機能を実装。
-    - **Hybrid Context Management**: Gemini 側のセッションステート (`interaction_id`) とローカル SQLite の履歴同期の第1段階を実装。
-    - **Schema Expansion**: `TrajectoryStep` および `chat_memory_summaries` に `interaction_id` フィールドを追加。SQLite/Postgres 両方で推論ログの永続化に対応。
-    - **Infrastructure Resilience**: スキーマ変更に伴う全モック実装 (`test_utils`, `soul_mutator`, `dream_state`, `immune_system`) および `napi-bridge` のトレイト適合性を確保。
-    - **Fix**: `20260326000003` ミグレーションにおける `trajectory_steps` テーブルのカラム重複定義（reasoning等）を削除し、統合テストのパニックを解消。
+- **Phase 5: Gemini Interactions API 邨ｱ蜷亥渕逶､ [螳御ｺ�**
+    - **InteractionsGeminiProvider**: Gemini Interactions API (REST) 縺ｸ縺ｮ繧ｹ繝��繝医ヵ繝ｫ謗･邯壹∵欠謨ｰ繝舌ャ繧ｯ繧ｪ繝募�隧ｦ陦後√♀繧医� Ollama 縺ｸ縺ｮ閾ｪ蜍輔ヵ繧ｧ繧､繝ｫ繧ｪ繝ｼ繝舌�讖溯�繧貞ｮ溯｣��
+    - **Hybrid Context Management**: Gemini 蛛ｴ縺ｮ繧ｻ繝�す繝ｧ繝ｳ繧ｹ繝��繝� (`interaction_id`) 縺ｨ繝ｭ繝ｼ繧ｫ繝ｫ SQLite 縺ｮ螻･豁ｴ蜷梧悄縺ｮ隨ｬ1谿ｵ髫弱ｒ螳溯｣��
+    - **Schema Expansion**: `TrajectoryStep` 縺翫ｈ縺ｳ `chat_memory_summaries` 縺ｫ `interaction_id` 繝輔ぅ繝ｼ繝ｫ繝峨ｒ霑ｽ蜉�縲４QLite/Postgres 荳｡譁ｹ縺ｧ謗ｨ隲悶Ο繧ｰ縺ｮ豌ｸ邯壼喧縺ｫ蟇ｾ蠢懊�
+    - **Infrastructure Resilience**: 繧ｹ繧ｭ繝ｼ繝槫､画峩縺ｫ莨ｴ縺��繝｢繝�け螳溯｣� (`test_utils`, `soul_mutator`, `dream_state`, `immune_system`) 縺翫ｈ縺ｳ `napi-bridge` 縺ｮ繝医Ξ繧､繝磯←蜷域ｧ繧堤｢ｺ菫昴�
+    - **Fix**: `20260326000003` 繝溘げ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ縺ｫ縺翫￠繧� `trajectory_steps` 繝��繝悶Ν縺ｮ繧ｫ繝ｩ繝�驥崎､�ｮ夂ｾｩ��easoning遲会ｼ峨ｒ蜑企勁縺励∫ｵｱ蜷医ユ繧ｹ繝医�繝代ル繝�け繧定ｧ｣豸医�
 ### Fixed
-- **SQLite Migration Conflict**: `trajectory_steps` テーブルへの重複したカラム追加（`reasoning` 等）を解消し、初期化パニックを修正。
-- **Infrastructure Test Regression**: `test_sqlite_trajectory_store` のデータ不整合を修正。
-- **Security G-21 (Vault Isolation)**: `BastionGuard` において、通常スキルが Vault 領域へアクセス可能だった脆弱性を修正。アクセスをシステム内部プロセスのみに制限。
+- **SQLite Migration Conflict**: `trajectory_steps` 繝��繝悶Ν縺ｸ縺ｮ驥崎､�＠縺溘き繝ｩ繝�霑ｽ蜉���reasoning` 遲会ｼ峨ｒ隗｣豸医＠縲∝�譛溷喧繝代ル繝�け繧剃ｿｮ豁｣縲�
+- **Infrastructure Test Regression**: `test_sqlite_trajectory_store` 縺ｮ繝��繧ｿ荳肴紛蜷医ｒ菫ｮ豁｣縲�
+- **Security G-21 (Vault Isolation)**: `BastionGuard` 縺ｫ縺翫＞縺ｦ縲�壼ｸｸ繧ｹ繧ｭ繝ｫ縺� Vault 鬆伜沺縺ｸ繧｢繧ｯ繧ｻ繧ｹ蜿ｯ閭ｽ縺�縺｣縺溯ф蠑ｱ諤ｧ繧剃ｿｮ豁｣縲ゅい繧ｯ繧ｻ繧ｹ繧偵す繧ｹ繝�Β蜀�Κ繝励Ο繧ｻ繧ｹ縺ｮ縺ｿ縺ｫ蛻ｶ髯舌�
 
 ### Security
-- **Deep Scan (AST Phase)**: プロジェクト全域の AST 診断を実施。G-19〜G-23 の充足を確認および G-21 の論理的脆弱性を特定・修正完了。
-- **Payload Limit Enforcement**: 画像や音声のアップロードルートに最適化された Request Body 制限（50MB/500MB）を適用。
-- **Structural Refactoring**: `LlmRequest` / `LlmResponse` へのメタデータ・推論ログ用フィールド追加に伴うシステム全体（Orchestrator, Proxy, Cache等）の初期化コードを修正。
-- **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [完了]**
-    - **Trajectory Expansion**: `TrajectoryStep` に `job_id` および `tool_name` フィールドを追加。タスクの実行軌跡と特定のジョブ・ツールの紐付けを可能に。
-    - **JobQueue Persistence**: `JobQueue` トレイトに `store_trajectory_step` および `fetch_trajectory_steps` を追加。SQLite 実装 (`UniversalJobQueue`) で永続化をサポート。
-    - **Sub-job Dispatching**: `TaskDispatcher` において、`Goal` ジョブを受け取った際にプランナーが生成したステップを個別のサブジョブとして `enqueue` するロジックを実装。
-    - **Mock Infrastructure Recovery**: 変更に伴う `test_utils`, `soul_mutator`, `dream_state`, `immune_system` 内の MockJobQueue 実装を全て最新化。
+- **Deep Scan (AST Phase)**: 繝励Ο繧ｸ繧ｧ繧ｯ繝亥�蝓溘� AST 險ｺ譁ｭ繧貞ｮ滓命縲�-19縲廨-23 縺ｮ蜈�ｶｳ繧堤｢ｺ隱阪♀繧医� G-21 縺ｮ隲也炊逧�ф蠑ｱ諤ｧ繧堤音螳壹�菫ｮ豁｣螳御ｺ��
+- **Payload Limit Enforcement**: 逕ｻ蜒上ｄ髻ｳ螢ｰ縺ｮ繧｢繝��繝ｭ繝ｼ繝峨Ν繝ｼ繝医↓譛驕ｩ蛹悶＆繧後◆ Request Body 蛻ｶ髯撰ｼ�50MB/500MB�峨ｒ驕ｩ逕ｨ縲�
+- **Structural Refactoring**: `LlmRequest` / `LlmResponse` 縺ｸ縺ｮ繝｡繧ｿ繝��繧ｿ繝ｻ謗ｨ隲悶Ο繧ｰ逕ｨ繝輔ぅ繝ｼ繝ｫ繝芽ｿｽ蜉�縺ｫ莨ｴ縺�す繧ｹ繝�Β蜈ｨ菴難ｼ�rchestrator, Proxy, Cache遲会ｼ峨�蛻晄悄蛹悶さ繝ｼ繝峨ｒ菫ｮ豁｣縲�
+- **ADR-024 Phase 2: Autonomous Strategy & Trajectory Persistence [螳御ｺ�**
+    - **Trajectory Expansion**: `TrajectoryStep` 縺ｫ `job_id` 縺翫ｈ縺ｳ `tool_name` 繝輔ぅ繝ｼ繝ｫ繝峨ｒ霑ｽ蜉�縲ゅち繧ｹ繧ｯ縺ｮ螳溯｡瑚ｻ瑚ｷ｡縺ｨ迚ｹ螳壹�繧ｸ繝ｧ繝悶�繝��繝ｫ縺ｮ邏蝉ｻ倥￠繧貞庄閭ｽ縺ｫ縲�
+    - **JobQueue Persistence**: `JobQueue` 繝医Ξ繧､繝医↓ `store_trajectory_step` 縺翫ｈ縺ｳ `fetch_trajectory_steps` 繧定ｿｽ蜉�縲４QLite 螳溯｣� (`UniversalJobQueue`) 縺ｧ豌ｸ邯壼喧繧偵し繝昴�繝医�
+    - **Sub-job Dispatching**: `TaskDispatcher` 縺ｫ縺翫＞縺ｦ縲～Goal` 繧ｸ繝ｧ繝悶ｒ蜿励￠蜿悶▲縺滄圀縺ｫ繝励Λ繝ｳ繝翫�縺檎函謌舌＠縺溘せ繝�ャ繝励ｒ蛟句挨縺ｮ繧ｵ繝悶ず繝ｧ繝悶→縺励※ `enqueue` 縺吶ｋ繝ｭ繧ｸ繝�け繧貞ｮ溯｣��
+    - **Mock Infrastructure Recovery**: 螟画峩縺ｫ莨ｴ縺� `test_utils`, `soul_mutator`, `dream_state`, `immune_system` 蜀�� MockJobQueue 螳溯｣�ｒ蜈ｨ縺ｦ譛譁ｰ蛹悶�
 
-- **Phase 44: Shadow Clone Job Control & Task History [完了]**
-    - **Job Cancellation API**: `POST /api/v1/jobs/:id/cancel` を実装。実行中の影分身タスクを `CancellationToken` を介して安全に停止可能。
-    - **Task History & Logs API**: `GET /api/v1/jobs/:id/logs` を実装。ジョブの実行ステータス、エラーメッセージ、および詳細な実行ログの取得に対応。
-    - **Deterministic Container Management**: `DockerConductor` において `aiome-job-{id}` 形式の確定的な命名規約を採用し、キャンセル時の確実なコンテナ停止（`docker stop` / `docker rm`）を保証。
-    - **Robust Error Handling**: ジョブ未検出時の 404 レポンス（`ArtifactNotFound` へのマッピング）をインフラ層から API 層まで一貫して実装。
-    - **TaskDispatcher Evolution**: `active_jobs` マップによる実行中タスクの動的追跡と、`JobQueue` へのキャンセルシグナル伝搬を統合。
+- **Phase 44: Shadow Clone Job Control & Task History [螳御ｺ�**
+    - **Job Cancellation API**: `POST /api/v1/jobs/:id/cancel` 繧貞ｮ溯｣�ょｮ溯｡御ｸｭ縺ｮ蠖ｱ蛻�ｺｫ繧ｿ繧ｹ繧ｯ繧� `CancellationToken` 繧剃ｻ九＠縺ｦ螳牙�縺ｫ蛛懈ｭ｢蜿ｯ閭ｽ縲�
+    - **Task History & Logs API**: `GET /api/v1/jobs/:id/logs` 繧貞ｮ溯｣�ゅず繝ｧ繝悶�螳溯｡後せ繝��繧ｿ繧ｹ縲√お繝ｩ繝ｼ繝｡繝�そ繝ｼ繧ｸ縲√♀繧医�隧ｳ邏ｰ縺ｪ螳溯｡後Ο繧ｰ縺ｮ蜿門ｾ励↓蟇ｾ蠢懊�
+    - **Deterministic Container Management**: `DockerConductor` 縺ｫ縺翫＞縺ｦ `aiome-job-{id}` 蠖｢蠑上�遒ｺ螳夂噪縺ｪ蜻ｽ蜷崎ｦ冗ｴ�ｒ謗｡逕ｨ縺励√く繝｣繝ｳ繧ｻ繝ｫ譎ゅ�遒ｺ螳溘↑繧ｳ繝ｳ繝�リ蛛懈ｭ｢��docker stop` / `docker rm`�峨ｒ菫晁ｨｼ縲�
+    - **Robust Error Handling**: 繧ｸ繝ｧ繝匁悴讀懷�譎ゅ� 404 繝ｬ繝昴Φ繧ｹ��ArtifactNotFound` 縺ｸ縺ｮ繝槭ャ繝斐Φ繧ｰ�峨ｒ繧､繝ｳ繝輔Λ螻､縺九ｉ API 螻､縺ｾ縺ｧ荳雋ｫ縺励※螳溯｣��
+    - **TaskDispatcher Evolution**: `active_jobs` 繝槭ャ繝励↓繧医ｋ螳溯｡御ｸｭ繧ｿ繧ｹ繧ｯ縺ｮ蜍慕噪霑ｽ霍｡縺ｨ縲～JobQueue` 縺ｸ縺ｮ繧ｭ繝｣繝ｳ繧ｻ繝ｫ繧ｷ繧ｰ繝翫Ν莨晄成繧堤ｵｱ蜷医�
 
 ### Added
-- **Phase 43: Shadow Clone × Cmux Integration [完了]**
-    - **DockerConductor Implementation**: 影分身タスクの安全実行を司る Conductor を実装。5層の多層防御（セマフォによる Fork Bomb 防御、CommerceEngine による自律課金、BastionGuard による厳格なサンドボックス、タイムアウト監視、出力浄化）を統合。
-    - **Async Shadow Clone Dispatch**: `agent.rs` の同期実行を廃止し、`JobQueue` を用いた完全非同期ディスパッチへ移行。LLM は分身の起動を待たずに即座に応答可能に。
-    - **SSE Progress Streaming**: 内部の `TaskEvent` を `CoreEvent` にブリッジし、SSE 経由でフロントエンド（Cmux）へ分身の進捗（Progress/Completed/Failed）をリアルタイム配信する仕組みを構築。
-    - **Graceful Shutdown**: API サーバーの終了シグナルに `TaskDispatcher` の停止処理を連動させ、仕掛かり中の非同期タスクの安全な終了を実現。
-- **Phase 42: Multi-Agent Orchestration Evolution [完了]**
+- **Phase 43: Shadow Clone ﾃ� Cmux Integration [螳御ｺ�**
+    - **DockerConductor Implementation**: 蠖ｱ蛻�ｺｫ繧ｿ繧ｹ繧ｯ縺ｮ螳牙�螳溯｡後ｒ蜿ｸ繧� Conductor 繧貞ｮ溯｣��5螻､縺ｮ螟壼ｱ､髦ｲ蠕｡�医そ繝槭ヵ繧ｩ縺ｫ繧医ｋ Fork Bomb 髦ｲ蠕｡縲，ommerceEngine 縺ｫ繧医ｋ閾ｪ蠕玖ｪｲ驥代。astionGuard 縺ｫ繧医ｋ蜴ｳ譬ｼ縺ｪ繧ｵ繝ｳ繝峨�繝�け繧ｹ縲√ち繧､繝�繧｢繧ｦ繝育屮隕悶∝�蜉帶ｵ�喧�峨ｒ邨ｱ蜷医�
+    - **Async Shadow Clone Dispatch**: `agent.rs` 縺ｮ蜷梧悄螳溯｡後ｒ蟒�ｭ｢縺励～JobQueue` 繧堤畑縺�◆螳悟�髱槫酔譛溘ョ繧｣繧ｹ繝代ャ繝√∈遘ｻ陦後�LM 縺ｯ蛻�ｺｫ縺ｮ襍ｷ蜍輔ｒ蠕�◆縺壹↓蜊ｳ蠎ｧ縺ｫ蠢懃ｭ泌庄閭ｽ縺ｫ縲�
+    - **SSE Progress Streaming**: 蜀�Κ縺ｮ `TaskEvent` 繧� `CoreEvent` 縺ｫ繝悶Μ繝�ず縺励ヾSE 邨檎罰縺ｧ繝輔Ο繝ｳ繝医お繝ｳ繝会ｼ�mux�峨∈蛻�ｺｫ縺ｮ騾ｲ謐暦ｼ�rogress/Completed/Failed�峨ｒ繝ｪ繧｢繝ｫ繧ｿ繧､繝�驟堺ｿ｡縺吶ｋ莉慕ｵ�∩繧呈ｧ狗ｯ峨�
+    - **Graceful Shutdown**: API 繧ｵ繝ｼ繝舌�縺ｮ邨ゆｺ�す繧ｰ繝翫Ν縺ｫ `TaskDispatcher` 縺ｮ蛛懈ｭ｢蜃ｦ逅�ｒ騾｣蜍輔＆縺帙∽ｻ墓寺縺九ｊ荳ｭ縺ｮ髱槫酔譛溘ち繧ｹ繧ｯ縺ｮ螳牙�縺ｪ邨ゆｺ�ｒ螳溽樟縲�
+- **Phase 42: Multi-Agent Orchestration Evolution [螳御ｺ�**
     - **TaskEvent & TaskConductor Traits**: Defined strict boundaries for background execution and observability tracking (`Spawned`, `Progress`, `Completed`, `Failed`).
     - **TaskDispatcher**: Implemented an event-driven `tokio::sync::broadcast` stream to asynchronously monitor agent progress without blocking, achieving a pull-based UI architecture.
     - **OssIntegrationOrchestrator Refactoring**: Adapted the monolithic integration flow into an observable `TaskConductor`, enabling granular job tracking.
-- **Phase 37a: Stripe Subscription & Whisper Integration [完了]**
-    - **Stripe Subscriptions API**: `StripeCommerceEngine` に `create_subscription` および `cancel_subscription` を実装。UUID ベースの顧客管理とメタデータ連携、およびテスト環境用の `sk_test_mock` バイパスモードを導入。
-    - **Whisper Inner Monologue**: `SoulPipeline` の L2.5 層として `WhisperMiddleware` を追加。経験の価数 (Valence) が閾値を超えた際、AIが「内なる声 (Whisper)」という独自のログを生成し自己省察を記録。
-    - **Pipeline Architecture Upgrade**: 経験のバッファへの蓄積 (`push_experience`) を全ミドルウェアチェーンの最終段にシフトし、Whisper や MetaThoughts などの付加情報が完全に履歴へ残るよう改善。
+- **Phase 37a: Stripe Subscription & Whisper Integration [螳御ｺ�**
+    - **Stripe Subscriptions API**: `StripeCommerceEngine` 縺ｫ `create_subscription` 縺翫ｈ縺ｳ `cancel_subscription` 繧貞ｮ溯｣�６UID 繝吶�繧ｹ縺ｮ鬘ｧ螳｢邂｡逅�→繝｡繧ｿ繝��繧ｿ騾｣謳ｺ縲√♀繧医�繝�せ繝育腸蠅�畑縺ｮ `sk_test_mock` 繝舌う繝代せ繝｢繝ｼ繝峨ｒ蟆主�縲�
+    - **Whisper Inner Monologue**: `SoulPipeline` 縺ｮ L2.5 螻､縺ｨ縺励※ `WhisperMiddleware` 繧定ｿｽ蜉�縲らｵ碁ｨ薙�萓｡謨ｰ (Valence) 縺碁明蛟､繧定ｶ�∴縺滄圀縲、I縺後悟�縺ｪ繧句｣ｰ (Whisper)縲阪→縺�≧迢ｬ閾ｪ縺ｮ繝ｭ繧ｰ繧堤函謌舌＠閾ｪ蟾ｱ逵∝ｯ溘ｒ險倬鹸縲�
+    - **Pipeline Architecture Upgrade**: 邨碁ｨ薙�繝舌ャ繝輔ぃ縺ｸ縺ｮ闢�ｩ� (`push_experience`) 繧貞�繝溘ラ繝ｫ繧ｦ繧ｧ繧｢繝√ぉ繝ｼ繝ｳ縺ｮ譛邨よｮｵ縺ｫ繧ｷ繝輔ヨ縺励仝hisper 繧� MetaThoughts 縺ｪ縺ｩ縺ｮ莉伜刈諠��ｱ縺悟ｮ悟�縺ｫ螻･豁ｴ縺ｸ谿九ｋ繧医≧謾ｹ蝟��
 - **License Compliance Hardening**
-    - `NOTICE` file (Apache 2.0 §4(d) compliance)
+    - `NOTICE` file (Apache 2.0 ﾂｧ4(d) compliance)
     - `THIRD_PARTY_NOTICES.md` with attribution for AutoResearchClaw, MetaClaw, Inochi2D, and Trojan's Whisper research
-    - `scripts/license_check.py` — automated 11-point license compliance test suite
+    - `scripts/license_check.py` 窶� automated 11-point license compliance test suite
     - Copyright headers added to 49 `.rs` files that were missing them
     - `license` field added to 3 `Cargo.toml` files (`aiome-migrate`, `avatar-engine`, `soul`)
-- **Phase 36.5: gVisor Sandbox & CSAM Pipeline [完了]**
+- **Phase 36.5: gVisor Sandbox & CSAM Pipeline [螳御ｺ�**
     - **SandboxProfile API**: Added `SandboxProfile` enum and updated `BastionGuard::safe_exec_with_profile` for fine-grained isolation control (WasmRun, WasmBuild, PythonForge).
     - **CSAM Binary Verification**: Integrated `ProportionsChecker` directly into the Avatar upload binary parsing to prevent illegal asset distribution.
-    - **AgentHook Lifecycle**: `UserLearner` integrated via `HookManager`, allowing the agent to self-reflect and learn via `on_post_execute` after each session。
+    - **AgentHook Lifecycle**: `UserLearner` integrated via `HookManager`, allowing the agent to self-reflect and learn via `on_post_execute` after each session縲�
     - **Stripe Commerce Update**: Extended `CommerceEngine` with `SubscriptionStatus`, `create_subscription`, `cancel_subscription` in preparation for Phase 37.
     - **Inner Monologue**: Developed `WhisperMiddleware` within `SoulPipeline` (L2.5) to capture introspective reflections based on outcome valence.
     - **Deep Scan Validation**: Completed AST Matrix structural validation across infrastructure to ensure absolute compliance with Project NURTURE requirements.
 - **Security**: G-21 Vault isolation hardening (Restricted /vault access to internal processes).
 - **Core**: G-14 SoulSnapshot LoRA metadata synchronization (Cached LoRA config in snapshot).
 - **Audit**: Conducted comprehensive Deep Scan (AST Matrix) and verified all Project NURTURE Gates.
-- **Phase 35: PostgreSQL 移行 & 最終検証 [完了]**
+- **Phase 35: PostgreSQL 遘ｻ陦� & 譛邨よ､懆ｨｼ [螳御ｺ�**
     - **Dual DB Testing Infrastructure**: Ensured all 86 integration tests and CI scripts run equivalently on both SQLite and PostgreSQL backends via `TEST_POSTGRES_URL` configuration (`docker-compose.test.yml`).
-    - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing。
-- **Phase 32: DeerFlow Architectural Pattern Integration [完了]**
-    - **Middleware Chain**: `SoulPipeline` を Reactive, Deliberative, Meta-cognitive の 3 層ミドルウェア構造に刷新。`async-trait` による拡張性とスレッド安全性を両立。
-    - **Progressive Skill Loading**: `WasmSkillManager` に `mtime` ベースのキャッシュ無効化ロジックを導入。WASM ファイルの更新を自動検知し、実行時に最新化。
-    - **Virtual Path System**: `PathSandbox` に論理パスマッピング機能を統合。`/mnt/workspace` などの仮想パスを物理ディレクトリに安全にバインド。
-    - **Fact Extraction**: `MemoryCrystallizer` に `FactCategory` (Preference, Knowledge, Context, Behavior, Goal) による事実抽出・分類機能を実装。
-    - **Test Utility**: `VerifiedSkill::new_for_test` を追加し、統合テストにおける WASM スキルのモック・検証を容易化。
+    - **PostgreSQL Audit Trigger (Phase 35)**: Replaced application-layer ledger tracking with robust PL/pgSQL database triggers for automated `audit_ledger_global` lineage and hashing縲�
+- **Phase 32: DeerFlow Architectural Pattern Integration [螳御ｺ�**
+    - **Middleware Chain**: `SoulPipeline` 繧� Reactive, Deliberative, Meta-cognitive 縺ｮ 3 螻､繝溘ラ繝ｫ繧ｦ繧ｧ繧｢讒矩�縺ｫ蛻ｷ譁ｰ縲Ａasync-trait` 縺ｫ繧医ｋ諡｡蠑ｵ諤ｧ縺ｨ繧ｹ繝ｬ繝�ラ螳牙�諤ｧ繧剃ｸ｡遶九�
+    - **Progressive Skill Loading**: `WasmSkillManager` 縺ｫ `mtime` 繝吶�繧ｹ縺ｮ繧ｭ繝｣繝�す繝･辟｡蜉ｹ蛹悶Ο繧ｸ繝�け繧貞ｰ主�縲８ASM 繝輔ぃ繧､繝ｫ縺ｮ譖ｴ譁ｰ繧定�蜍墓､懃衍縺励∝ｮ溯｡梧凾縺ｫ譛譁ｰ蛹悶�
+    - **Virtual Path System**: `PathSandbox` 縺ｫ隲也炊繝代せ繝槭ャ繝斐Φ繧ｰ讖溯�繧堤ｵｱ蜷医Ａ/mnt/workspace` 縺ｪ縺ｩ縺ｮ莉ｮ諠ｳ繝代せ繧堤黄逅�ョ繧｣繝ｬ繧ｯ繝医Μ縺ｫ螳牙�縺ｫ繝舌う繝ｳ繝峨�
+    - **Fact Extraction**: `MemoryCrystallizer` 縺ｫ `FactCategory` (Preference, Knowledge, Context, Behavior, Goal) 縺ｫ繧医ｋ莠句ｮ滓歓蜃ｺ繝ｻ蛻�｡樊ｩ溯�繧貞ｮ溯｣��
+    - **Test Utility**: `VerifiedSkill::new_for_test` 繧定ｿｽ蜉�縺励∫ｵｱ蜷医ユ繧ｹ繝医↓縺翫￠繧� WASM 繧ｹ繧ｭ繝ｫ縺ｮ繝｢繝�け繝ｻ讀懆ｨｼ繧貞ｮｹ譏灘喧縲�
 
 ### Changed
 - **Phase 37a: Security & Infra Refactoring**:
-    - `BastionGuard::safe_exec` および `safe_exec_with_profile` を完全同期から非同期 (`async`) 実行へ移行。これによりスレッドプールの枯渇を防止。
-    - `api-server` の `AppState` に `soul_pipeline` インスタンスを統合。
+    - `BastionGuard::safe_exec` 縺翫ｈ縺ｳ `safe_exec_with_profile` 繧貞ｮ悟�蜷梧悄縺九ｉ髱槫酔譛� (`async`) 螳溯｡後∈遘ｻ陦後ゅ％繧後↓繧医ｊ繧ｹ繝ｬ繝�ラ繝励�繝ｫ縺ｮ譫ｯ貂�ｒ髦ｲ豁｢縲�
+    - `api-server` 縺ｮ `AppState` 縺ｫ `soul_pipeline` 繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧堤ｵｱ蜷医�
 - **Code Quality & Refactoring**:
-    - `WritingContext` に `#[derive(Default)]` と `#[default]` 属性を追加し、ボイラープレートを削減。
-    - `MlockedVec` の `Drop` 実装における安全な `munlock` 呼び出しの条件判定を最適化。
-    - `SqliteVaultBackend` のマスターキー取得ロジックにおける関数ポインタの直接渡しによる簡略化。
-    - `UniversalJobQueue` 内の SQLite 数値キャスト（`i32`）の整合性を修正。
+    - `WritingContext` 縺ｫ `#[derive(Default)]` 縺ｨ `#[default]` 螻樊ｧ繧定ｿｽ蜉�縺励√�繧､繝ｩ繝ｼ繝励Ξ繝ｼ繝医ｒ蜑頑ｸ帙�
+    - `MlockedVec` 縺ｮ `Drop` 螳溯｣�↓縺翫￠繧句ｮ牙�縺ｪ `munlock` 蜻ｼ縺ｳ蜃ｺ縺励�譚｡莉ｶ蛻､螳壹ｒ譛驕ｩ蛹悶�
+    - `SqliteVaultBackend` 縺ｮ繝槭せ繧ｿ繝ｼ繧ｭ繝ｼ蜿門ｾ励Ο繧ｸ繝�け縺ｫ縺翫￠繧矩未謨ｰ繝昴う繝ｳ繧ｿ縺ｮ逶ｴ謗･貂｡縺励↓繧医ｋ邁｡逡･蛹悶�
+    - `UniversalJobQueue` 蜀�� SQLite 謨ｰ蛟､繧ｭ繝｣繧ｹ繝茨ｼ�i32`�峨�謨ｴ蜷域ｧ繧剃ｿｮ豁｣縲�
 
-- **Phase 31: 信頼性向上 & LLM TDD 実装 [完了]**
+- **Phase 31: 菫｡鬆ｼ諤ｧ蜷台ｸ� & LLM TDD 螳溯｣� [螳御ｺ�**
 
 ## [Unreleased] - 2026-03-23
 
 ### Added
-- **Phase 28: 基盤強化 (ADR-019 Phase B / L1 強化) [完了]**
-    - `SqliteVaultBackend` への LRU キャッシュ (1000 keys) 統合。`MlockedVec` によるメモリ保護を維持。
-    - `lru` クレイトの導入（ワークスペース依存関係）。
+- **Phase 28: 蝓ｺ逶､蠑ｷ蛹� (ADR-019 Phase B / L1 蠑ｷ蛹�) [螳御ｺ�**
+    - `SqliteVaultBackend` 縺ｸ縺ｮ LRU 繧ｭ繝｣繝�す繝･ (1000 keys) 邨ｱ蜷医ＡMlockedVec` 縺ｫ繧医ｋ繝｡繝｢繝ｪ菫晁ｭｷ繧堤ｶｭ謖√�
+    - `lru` 繧ｯ繝ｬ繧､繝医�蟆主��医Ρ繝ｼ繧ｯ繧ｹ繝壹�繧ｹ萓晏ｭ倬未菫ゑｼ峨�
 - `VaultBackend` trait (ADR-019 Phase A)
 - `SqliteVaultBackend` based on `MlockedVec`
 
 ### Changed
-- **L1 強化 (Code Quality)**:
-    - `api-server` の `commerce_engine` 初期化における `.unwrap()` を `.expect()` に置換し、デバッグ性を向上。
-    - `TcpListener::bind` 失敗時のエラーメッセージを詳細化。
-    - `cfg!(debug_assertions)` を `#[cfg(debug_assertions)]` に統一し、コンパイル時判定を最適化 (guardrails, gift_engine)。
-    - `infrastructure` クレイト内のドキュメント警告 (FederationOps, MockJobQueue等) をすべて解消し、警告ゼロを達成。
-- **Phase 28.5: `std::env::set_var` 脱却 [完了]**:
-    - `SqliteVaultBackend::new_with_master_key()` コンストラクタを追加。テスト環境で環境変数操作なしに Master Key を注入可能に。
-    - `AbyssVoiceVault` テストから `std::env::set_var` を完全排除。スレッドセーフかつ並列テスト安全な設計に移行。
+- **L1 蠑ｷ蛹� (Code Quality)**:
+    - `api-server` 縺ｮ `commerce_engine` 蛻晄悄蛹悶↓縺翫￠繧� `.unwrap()` 繧� `.expect()` 縺ｫ鄂ｮ謠帙＠縲√ョ繝舌ャ繧ｰ諤ｧ繧貞髄荳翫�
+    - `TcpListener::bind` 螟ｱ謨玲凾縺ｮ繧ｨ繝ｩ繝ｼ繝｡繝�そ繝ｼ繧ｸ繧定ｩｳ邏ｰ蛹悶�
+    - `cfg!(debug_assertions)` 繧� `#[cfg(debug_assertions)]` 縺ｫ邨ｱ荳縺励√さ繝ｳ繝代う繝ｫ譎ょ愛螳壹ｒ譛驕ｩ蛹� (guardrails, gift_engine)縲�
+    - `infrastructure` 繧ｯ繝ｬ繧､繝亥�縺ｮ繝峨く繝･繝｡繝ｳ繝郁ｭｦ蜻� (FederationOps, MockJobQueue遲�) 繧偵☆縺ｹ縺ｦ隗｣豸医＠縲∬ｭｦ蜻翫ぞ繝ｭ繧帝＃謌舌�
+- **Phase 28.5: `std::env::set_var` 閼ｱ蜊ｴ [螳御ｺ�**:
+    - `SqliteVaultBackend::new_with_master_key()` 繧ｳ繝ｳ繧ｹ繝医Λ繧ｯ繧ｿ繧定ｿｽ蜉�縲ゅユ繧ｹ繝育腸蠅�〒迺ｰ蠅�､画焚謫堺ｽ懊↑縺励↓ Master Key 繧呈ｳｨ蜈･蜿ｯ閭ｽ縺ｫ縲�
+    - `AbyssVoiceVault` 繝�せ繝医°繧� `std::env::set_var` 繧貞ｮ悟�謗帝勁縲ゅせ繝ｬ繝�ラ繧ｻ繝ｼ繝輔°縺､荳ｦ蛻励ユ繧ｹ繝亥ｮ牙�縺ｪ險ｭ險医↓遘ｻ陦後�
 - Refactored `AbyssVoiceVault` to use `SqliteVaultBackend` internally
-- Updated `SECURITY_DESIGN.md` §6.5 with vault abstraction specs.
+- Updated `SECURITY_DESIGN.md` ﾂｧ6.5 with vault abstraction specs.
 
 ---
 
@@ -343,7 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Audit Logging**: Fixed `NEW.id` reference error in SQLite triggers for `system_state` and other tables with non-standard primary keys. Added `DROP TRIGGER IF EXISTS` to migration logic for reliable updates.
 - **Path Sandbox**: Fixed `validate_path` in `PathSandbox` by using canonical paths for comparison, preventing incorrect "Out of sandbox" errors on valid relative paths.
 - **Autonomous Demo**: Added automatic database cleanup of gig-related tables before starting a new demo cycle to ensure state consistency.
-- **Autonomous Demo — SQLite Lock (ADR-014)**: Resolved `database is locked (SQLITE_BUSY 517)` errors that halted the demo at Steps 5–7. Root cause: `gig_engine` transactions held exclusive SQLite WRITE locks while audit triggers cascaded additional writes, compounded by SSE multi-tab connection pool exhaustion (`max_connections=10`). Fix: rewrote `autonomous_demo.rs` to use individual SQL queries (no transactions), temporarily disable audit triggers during demo execution, and yield connections between writes. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md`.
+- **Autonomous Demo 窶� SQLite Lock (ADR-014)**: Resolved `database is locked (SQLITE_BUSY 517)` errors that halted the demo at Steps 5窶�7. Root cause: `gig_engine` transactions held exclusive SQLite WRITE locks while audit triggers cascaded additional writes, compounded by SSE multi-tab connection pool exhaustion (`max_connections=10`). Fix: rewrote `autonomous_demo.rs` to use individual SQL queries (no transactions), temporarily disable audit triggers during demo execution, and yield connections between writes. See `docs/decisions/014-sqlite-pool-exhaustion-demo-strategy.md`.
 - **Authentication**: Updated `MockAuthManager` to allow `mock_token` for seamless local testing and E2E verification.
 - **OAuth 2.1 Mock Endpoints**:
     - Added stub handlers for `/api/v1/auth/authorize` and `/api/v1/auth/token` in `api-server`.
@@ -499,7 +501,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Phase 7.2 (Legal Guardrails & A2C Gratitude)**:
     - **Begging Supervisor**: Added `BeggingSupervisor` to `shared/guardrails` to detect and block AI-driven dark patterns (e.g., asking for money or gifts).
     - **Gift Engine (Tremendous API)**: Implemented `TremendousGiftEngine` in `libs/infrastructure` to enable autonomous real-world gift generation for users with high Karma.
-    - **Autonomous Gratitude (A2C 恩返し)**: Integrated gift-triggering logic into `AutonomousBiomeEngine`, rewarding helpful human peers with $1-5 gift codes.
+    - **Autonomous Gratitude (A2C 諱ｩ霑斐＠)**: Integrated gift-triggering logic into `AutonomousBiomeEngine`, rewarding helpful human peers with $1-5 gift codes.
 - **CSAM Defense & Inochi2D Foundation (Phase 7.1)**:
     - **Asset Separation Layer**: Implemented a mandatory asset/origin separation in `avatar-engine` to isolate local unvetted assets from Hub-syncable official assets.
     - **Protocol-Level CSAM Filter**: Integrated binary content detection (`data:image/`, `data:video/`, `;base64,`) into `samsara-hub` relay and `api-server` biome endpoints to strictly prohibit binary data embedding in the P2P network.
@@ -508,7 +510,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **SSE Avatar Parameters**: Extended the Server-Sent Events (SSE) stream to push `avatar_params` updates in real-time via the `avatar_expression` event.
     - **InxRenderer (WASM Foundation)**: Integrated `InxRenderer` into the management console's `DioramaView`, supporting the future `.inx` (Inochi2D) WASM runtime.
 - **Context Management System (4-Layer Guardrails)**: Implemented an autonomous guardrail system to prevent AI agent contextual collapse and cascade errors. Includes `.context/RIPPLE_MAP.md` for deterministic dependency tracking, `preflight` workflow commands, Architecture Decision Records (ADRs `001` through `007`), and rigorous documentation synchronization rules.
-- **Comprehensive Documentation Update**: Replaced 254 instances of "自動補完" (placeholder) documentation with context-aware, inferred descriptions across 47 Rust files. Resolved all `missing_documentation` warnings workspace-wide.
+- **Comprehensive Documentation Update**: Replaced 254 instances of "閾ｪ蜍戊｣懷ｮ�" (placeholder) documentation with context-aware, inferred descriptions across 47 Rust files. Resolved all `missing_documentation` warnings workspace-wide.
 - **Preserve Intent Policy**: Established a workspace-wide policy (ADR 007) to suppress unused code/import warnings via `#[allow(...)]` instead of deletion, preserving developer context and intent for future features. Updated CI and all crate roots (`shared`, `infrastructure`, `soul`, `core`, `api-server`, `watchtower`) to enforce this policy.
 - **Soul Engine (Phase 4 - Autonomic Deepening)**:
     - **Step 0 (Soul Memory)**: Added `SoulSnapshot` cache to `SqliteSoulStore` mapping memory to the chat LLM via `build_system_instructions`, eliminating DB latency on hot paths.
@@ -585,7 +587,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Management Console (Dashboard v2)**: Launched a Tauri React-based desktop shell (`apps/management-console`) featuring Quantum Glass UI, live Karma stream, and Synapse Resonance Graph.
 - **LLM Hybrid Architecture (Pattern B)**: Front-end uses Gemini Cloud (`gemini-2.5-flash`), background tasks use Ollama Local (`qwen3.5:9b`).
 - **AI Name Customization**: Users can set a custom AI name during onboarding and change it later via Settings.
-- **Onboarding Wizard v2**: 4-step onboarding (Welcome → Name → Avatar → Security) with avatar selection (gender + style).
+- **Onboarding Wizard v2**: 4-step onboarding (Welcome 竊� Name 竊� Avatar 竊� Security) with avatar selection (gender + style).
 - **Background LLM Settings UI**: Added Background LLM configuration section to Settings page.
 - **IME Input Fix**: Fixed Japanese IME input clearing bug in Agent Console and Settings.
 

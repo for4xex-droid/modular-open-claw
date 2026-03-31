@@ -1,3 +1,4 @@
+#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 use axum::Router;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

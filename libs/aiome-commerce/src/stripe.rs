@@ -233,6 +233,28 @@ impl CommerceEngine for StripeCommerceEngine {
         // P0-1: Mock implementation for Stripe
         Ok("tx_stripe_transfer_mock".into())
     }
+
+    async fn deduct_generation_cost(
+        &self,
+        agent_id: Uuid,
+        amount: u64,
+        generation_type: &str,
+    ) -> Result<(), AiomeError> {
+        // 🚨 [SECURITY: Fail-Closed]
+        // Phase 1C: Stripe の Usage-based billing (Metered billing) か、
+        // ローカル残高の連携が実装されるまでは、本番環境での Generative Engine は
+        // 「タダ乗り」を防ぐため無条件で利用をブロックしなければならない。
+        tracing::error!(
+            "🛑 [StripeCommerceEngine] Blocked generation request for '{}' by Agent {}. Billing integration not yet implemented.",
+            generation_type, agent_id
+        );
+        Err(AiomeError::Infrastructure {
+            reason: format!(
+                "Generative billing is not yet implemented in Stripe engine. Cannot deduct {} units.",
+                amount
+            ),
+        })
+    }
 }
 
 #[cfg(test)]

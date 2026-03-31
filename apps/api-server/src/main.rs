@@ -281,6 +281,7 @@ async fn main() -> anyhow::Result<()> {
 
     let llm_semaphore = Arc::new(tokio::sync::Semaphore::new(10));
     let forge_semaphore = Arc::new(tokio::sync::Semaphore::new(2));
+    let compute_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
 
     let wasm_skill_manager = Arc::new(
         infrastructure::skills::WasmSkillManager::new(
@@ -712,6 +713,7 @@ async fn main() -> anyhow::Result<()> {
                 Some(soul_mutator.clone()),
                 Some(job_queue.clone()),
                 Some(event_sender.clone()),
+                Some(compute_semaphore.clone()),
             ));
             Component::new(engine as Arc<dyn aiome_contracts::traits::LoraEngine>)
         },
@@ -772,6 +774,7 @@ async fn main() -> anyhow::Result<()> {
             infrastructure::skills::harness::HarnessCache::new(),
         )),
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
+        compute_semaphore: Component::new(compute_semaphore),
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)

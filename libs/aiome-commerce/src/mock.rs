@@ -203,6 +203,30 @@ impl CommerceEngine for MockCommerceEngine {
             })
         }
     }
+
+    async fn deduct_generation_cost(
+        &self,
+        agent_id: Uuid,
+        amount: u64,
+        generation_type: &str,
+    ) -> Result<(), AiomeError> {
+        let mut balance = self.balances.entry(agent_id).or_insert(1000);
+        if *balance >= amount {
+            *balance -= amount;
+            info!(
+                "💳 [MockCommerceEngine] Deducted {} for '{}'. Remaining: {}",
+                amount, generation_type, *balance
+            );
+            Ok(())
+        } else {
+            Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Insufficient funds for {} generation. Needed: {}, Have: {}",
+                    generation_type, amount, *balance
+                ),
+            })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -285,5 +309,24 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(engine.get_balance(recipient_id).await.unwrap(), 1200);
+    }
+
+    #[tokio::test]
+    async fn test_mock_deduct_generation_cost() {
+        let engine = MockCommerceEngine::new();
+        let agent_id = Uuid::new_v4();
+        
+        // 生成コストの天引き前: 1000
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000);
+        
+        // 50コイン天引きする (GenerativeEngine使用時などを想定)
+        engine.deduct_generation_cost(agent_id, 50, "image_generation").await.unwrap();
+        
+        // 天引き後: 950
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 950);
+        
+        // 残高不足エラーの確認
+        let result = engine.deduct_generation_cost(agent_id, 2000, "video_generation").await;
+        assert!(result.is_err());
     }
 }

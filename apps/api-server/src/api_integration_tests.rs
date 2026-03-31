@@ -104,6 +104,15 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
 struct MockCommerceEngine;
 #[async_trait::async_trait]
 impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
+    async fn deduct_generation_cost(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+        _generation_type: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+    
     async fn get_balance(
         &self,
         _agent_id: uuid::Uuid,
@@ -609,6 +618,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::skills::harness::HarnessCache::new(),
         )),
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(10))),
+        compute_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(1))),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -2011,4 +2021,24 @@ async fn test_oracle_job_review_api() {
         axum::http::StatusCode::ACCEPTED,
         "Expected ACCEPTED or OK from new review endpoint"
     );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_compute_semaphore_limits_concurrency() {
+    let (_server, state, _tmp) = create_test_server().await;
+    
+    // compute_semaphore が正しく 1 で初期化されているかをテストする
+    let semaphore = state.compute_semaphore.get_inner();
+    let permits = semaphore.available_permits();
+    
+    // Mac Unified Memory の枯渇を防ぐため、並列実行可能な重いタスク（LoRA, ImageGen）は「1つ」のみに制限されるべき
+    assert_eq!(
+        permits, 1,
+        "compute_semaphore must restrict heavy tasks to 1 concurrent execution to prevent OOM / Kernel panic"
+    );
+
+    // 強制的にロックを取得して1つ消費した場合、もう available は 0 になることを確認
+    let _permit = semaphore.try_acquire().expect("Should be able to acquire the single compute permit");
+    assert_eq!(semaphore.available_permits(), 0);
 }
