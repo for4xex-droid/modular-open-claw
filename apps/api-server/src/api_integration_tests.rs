@@ -9,6 +9,7 @@ use super::*;
 use crate::app_state::Component;
 use aiome_contracts::traits::AgentEvolver;
 use aiome_contracts::traits::JobQueue;
+use aiome_contracts::traits::TaskRegistry;
 use axum_test::TestServer;
 use infrastructure::auth::AuthManager;
 use serde_json::json;
@@ -393,10 +394,13 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         forge_dir.to_str().unwrap(),
         skills_dir.to_str().unwrap(),
     ));
-    let artifact_store = Arc::new(infrastructure::artifact_store::UniversalArtifactStore::new(
-        job_queue.get_pool().clone(),
-        artifacts_dir.clone(),
-    ));
+    let artifact_store = Arc::new(
+        infrastructure::artifact_store::UniversalArtifactStore::new(
+            job_queue.get_pool().clone(),
+            artifacts_dir.clone(),
+        )
+        .with_job_queue(job_queue.clone()),
+    );
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
         provider.clone(),
         job_queue.clone(),
@@ -626,6 +630,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(10))),
         compute_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(1))),
         disk_quota: Component::new(Arc::new(disk_quota_mgr)),
+        generative_engine: Component::new(Arc::new(
+            infrastructure::generative_engine::mock::MockGenerativeEngine::default(),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -882,6 +889,54 @@ async fn test_lora_training_start() {
 
     let json = resp.json::<serde_json::Value>();
     assert!(json.get("job_id").is_some());
+}
+
+#[serial]
+#[tokio::test]
+async fn test_lora_training_status() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // Arrange: Insert a dummy job
+    let mut job = aiome_contracts::traits::Job::default();
+    job.id = "mock_lora_job_id".to_string();
+    job.category = "LORA_TRAINING".to_string();
+    job.status = aiome_contracts::traits::JobStatus::InProgress;
+
+    // We must use enqueue to insert it if possible, but the JobQueue trait might not support inserting arbitrary jobs with arbitrary IDs.
+    // However, JobQueue has `store_job` or similar in Mock, but let's just use `enqueue` and get the real job_id.
+    let job_id = state
+        .job_queue
+        .enqueue(
+            "LORA_TRAINING",
+            "mock_lora_job",
+            "training",
+            None,
+            None,
+            None,
+            0,
+        )
+        .await
+        .expect("Failed to enqueue job");
+
+    // We also need to update its status to something verifiable
+    state
+        .job_queue
+        .update_job_status(&job_id, aiome_contracts::traits::JobStatus::Completed)
+        .await
+        .unwrap();
+
+    let url = format!("/api/v1/lora/status/{}", job_id);
+    let resp = server
+        .get(&url)
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    // This is expected to FAIL (RED) with 404 Not Found initially
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json.get("status").unwrap().as_str().unwrap(), "Completed");
 }
 
 #[serial]

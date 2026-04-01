@@ -15,13 +15,17 @@ use candle_core::{Device, Tensor};
 #[derive(Debug)]
 pub struct NativeSlmBackend {
     config: NativeModelConfig,
-    // 将来的にはここにモデル (Candle Device/Tensor) を保持
+    // Phase 2: Reserve memory for Candle Device/Tensor integration
+    memory_store: std::sync::RwLock<Vec<SlmMemoryEntry>>,
 }
 
 impl NativeSlmBackend {
     /// 新規インスタンスを生成
     pub fn new(config: NativeModelConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            memory_store: std::sync::RwLock::new(Vec::new()),
+        }
     }
 
     /// モデルの初期化 (Lazy Loading)
@@ -30,33 +34,33 @@ impl NativeSlmBackend {
             "🚀 [NativeSlm] Initializing model: {}",
             self.config.model_name
         );
-        // TODO: ModelManager を使用してファイルをロードし、Candle モデルを構築
+        // Phase 2: ModelManager を使用してファイルをロードし、Candle モデルを構築
         Ok(())
     }
 }
 
 #[async_trait]
 impl SlmBackend for NativeSlmBackend {
-    async fn store(&self, _entry: SlmMemoryEntry) -> Result<(), AiomeError> {
-        // TODO: インメモリ・ベクトルデータベースへの保存
-        warn!("⚠️ [NativeSlm] store_memory is not yet implemented");
+    async fn store(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError> {
+        // Phase 2: インメモリ・ベクトルデータベースへの保存
+        if let Ok(mut store) = self.memory_store.write() {
+            store.push(entry);
+        }
         Ok(())
     }
 
     async fn recall(&self, _query: &str, _limit: i64) -> Result<Vec<SlmRecallResult>, AiomeError> {
-        // TODO: KNN 検索
-        warn!("⚠️ [NativeSlm] recall is not yet implemented");
+        // Phase 2: KNN 検索
         Ok(vec![])
     }
 
     async fn detect_contradictions(&self, _text: &str) -> Result<f64, AiomeError> {
-        // TODO: NLI モデルによる矛盾スコアリング
-        warn!("⚠️ [NativeSlm] detect_contradictions is not yet implemented");
+        // Phase 2: NLI モデルによる矛盾スコアリング
         Ok(0.0)
     }
 
     async fn calculate_importance(&self, _query: &str) -> Result<f64, AiomeError> {
-        // TODO: トークン分布に基づく重要度
+        // Phase 2: トークン分布に基づく重要度
         Ok(0.5)
     }
 

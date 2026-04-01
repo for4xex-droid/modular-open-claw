@@ -282,7 +282,8 @@ async fn main() -> anyhow::Result<()> {
         std::path::PathBuf::from("workspace/artifacts"),
     )
     .with_embeddings(embed_provider.clone())
-    .with_audit_logger(audit_logger.clone());
+    .with_audit_logger(audit_logger.clone())
+    .with_job_queue(job_queue.clone());
 
     let (event_sender, _) = tokio::sync::broadcast::channel(100);
 
@@ -792,6 +793,47 @@ async fn main() -> anyhow::Result<()> {
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
         compute_semaphore: Component::new(compute_semaphore),
         disk_quota: Component::new(Arc::new(disk_quota_mgr)),
+        generative_engine: {
+            let engine_type =
+                std::env::var("GENERATIVE_ENGINE").unwrap_or_else(|_| "mock".to_string());
+            let engine: Arc<dyn aiome_contracts::traits::GenerativeEngine> = match engine_type
+                .as_str()
+            {
+                "comfyui" => {
+                    let base_url = std::env::var("COMFYUI_URL")
+                        .unwrap_or_else(|_| "http://localhost:8188".to_string());
+                    std::env::remove_var("COMFYUI_URL");
+                    Arc::new(
+                        infrastructure::generative_engine::ComfyUiGenerativeEngine::new(base_url),
+                    )
+                }
+                "falai" => {
+                    let api_key = std::env::var("FAL_KEY").unwrap_or_default();
+                    std::env::remove_var("FAL_KEY");
+                    Arc::new(
+                        infrastructure::generative_engine::FalAiGenerativeEngine::new(
+                            secrecy::SecretString::from(api_key),
+                        ),
+                    )
+                }
+                _ => {
+                    #[cfg(any(test, debug_assertions))]
+                    {
+                        tracing::warn!("⚠️ [GenerativeEngine] Using Mock engine for development.");
+                        Arc::new(
+                            infrastructure::generative_engine::mock::MockGenerativeEngine::default(
+                            ),
+                        )
+                    }
+                    #[cfg(not(any(test, debug_assertions)))]
+                    {
+                        tracing::error!("🚨 [FATAL] GenerativeEngine must be explicitly configured in production (GENERATIVE_ENGINE=comfyui|falai).");
+                        std::process::exit(1);
+                    }
+                }
+            };
+            Component::new(engine)
+        },
     };
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)
