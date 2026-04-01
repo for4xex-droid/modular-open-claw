@@ -23,10 +23,13 @@ pub mod discovery;
 pub mod forge;
 /// `harness` モジュール (AutoHarness 実装)
 pub mod harness;
+/// Tool Execution Hooks
+pub mod hooks;
 /// `importer` モジュール
 pub mod importer;
 /// スキルの並列実行と評価
 pub mod skill_arena;
+
 use contracts::requires;
 
 /// 状態: 未検証の外部Skill (TypeState Pattern)

@@ -71,8 +71,8 @@ pub async fn list_skills(
     }
 
     // 3. Marketplace Skills (Local Discovery)
-    let marketplace_path = "workspace/skills/marketplace";
-    if let Ok(entries) = std::fs::read_dir(marketplace_path) {
+    let marketplace_path = state.config.resolver.resolve("skills/marketplace");
+    if let Ok(entries) = std::fs::read_dir(&marketplace_path) {
         use infrastructure::skills::importer::SkillImporter;
         for entry in entries.flatten() {
             let path = entry.path();
@@ -233,7 +233,7 @@ pub async fn import_skill(
     // 3. Process via Cleanroom (N2)
     let cleanroom = Cleanroom::new(
         (**state.skill_forge).clone(),
-        std::path::PathBuf::from("workspace/cleanroom"),
+        state.config.resolver.resolve("cleanroom"),
         Some((*state.provider).clone()),
     );
 

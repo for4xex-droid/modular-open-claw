@@ -130,7 +130,9 @@ pub async fn generate_expression(
     }
 
     // 2. Fetch Soul Prompt
-    let soul_prompt = crate::routes::agent::read_workspace_file("SOUL.md");
+    let soul_prompt =
+        crate::agent_engine::read_app_data_file(&state.config.resolver, "config/SOUL_PROMPT.md")
+            .await;
 
     // 3. VRAM Arbitration (15-C): Wait for GPU resource availability
     let _permit = tokio::time::timeout(
@@ -216,14 +218,15 @@ pub async fn generate_expression(
         };
 
         if let Ok((audio_bytes, dur)) = audio_res {
-            let path = format!("workspace/audio/{}.{}", expression.id, ext);
-            let _ = std::fs::create_dir_all("workspace/audio");
+            let audio_dir = state.config.resolver.resolve("audio");
+            let _ = std::fs::create_dir_all(&audio_dir);
+            let path = audio_dir.join(format!("{}.{}", expression.id, ext));
             if let Err(e) = std::fs::write(&path, audio_bytes) {
-                tracing::error!("Failed to write audio file {}: {}", path, e);
+                tracing::error!("Failed to write audio file {}: {}", path.display(), e);
             } else {
-                expression.audio_path = Some(path.clone());
+                expression.audio_path = Some(path.to_string_lossy().to_string());
                 expression.duration_ms = Some(dur as i32);
-                tracing::info!("✅ [TTS] Audio saved to {} ({}ms)", path, dur);
+                tracing::info!("✅ [TTS] Audio saved to {} ({}ms)", path.display(), dur);
             }
         } else if audio_res.is_err() && tts_prov != "none" {
             tracing::warn!(

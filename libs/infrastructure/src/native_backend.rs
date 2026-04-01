@@ -117,21 +117,24 @@ mod tests {
             embedding_dim: Some(768),
         };
         let backend = NativeSlmBackend::new(config);
-        
+
         let entry = crate::slm_bridge::SlmMemoryEntry {
             timestamp: 12345,
             action: "TEST".to_string(),
             belief_affected: None,
             source_job_id: None,
         };
-        
+
         // Storing currently pushes to an in-memory Vec but doesn't persist
         let _ = backend.store(entry).await;
-        
+
         // Because Phase 2 KNN search is not implemented, recall is ALWAYS empty.
         // Once Phase 2 is implemented, THIS TEST WILL FAIL AND MUST BE REWRITTEN.
         // It acts as a tripwire to ensure we don't deploy half-baked SLM memory.
-        let results = backend.recall("query", 10).await.expect("Native recall failed");
+        let results = backend
+            .recall("query", 10)
+            .await
+            .expect("Native recall failed");
         assert_eq!(
             results.len(),
             0,

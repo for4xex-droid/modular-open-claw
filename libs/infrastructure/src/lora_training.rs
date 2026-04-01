@@ -127,7 +127,7 @@ impl LoraTrainingService {
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
             job_semaphore: compute_semaphore
                 .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))),
-            datasets_dir: std::path::PathBuf::from("workspace/datasets"),
+            datasets_dir: shared::app_data::AppDataResolver::new().resolve("datasets"),
         }
     }
 
@@ -394,9 +394,8 @@ impl LoraEngine for LoraTrainingService {
 
         // 🧬 Phase 1A-2: Dynamic Dataset Extraction from SoulStore
         let actual_dataset_path = if let Some(jq) = &self.job_queue {
-            let extractor = crate::dataset_extractor::DatasetExtractor::new(
-                self.datasets_dir.clone(),
-            );
+            let extractor =
+                crate::dataset_extractor::DatasetExtractor::new(self.datasets_dir.clone());
             match extractor.extract_to_jsonl(&**jq, dataset_id, &job_id).await {
                 Ok(path) => {
                     tracing::info!(
@@ -407,20 +406,30 @@ impl LoraEngine for LoraTrainingService {
                 }
                 Err(e) => {
                     tracing::info!("ℹ️ [LoraTrainingService] Soul not found or extraction failed, falling back to raw path usage: {}", e);
-                    format!("workspace/datasets/{}", dataset_id)
+                    self.datasets_dir
+                        .join(dataset_id)
+                        .to_string_lossy()
+                        .to_string()
                 }
             }
         } else {
-            format!("workspace/datasets/{}", dataset_id)
+            self.datasets_dir
+                .join(dataset_id)
+                .to_string_lossy()
+                .to_string()
         };
+
+        let resolver = shared::app_data::AppDataResolver::new();
 
         // Use the parameters passed in from the frontend (or Autotuner)
         let config = LoraTrainingConfig::from_params(
             &params,
             base_model,
             &actual_dataset_path,
-            "workspace/output",
-            &format!("workspace/vault/lora/{}", job_id),
+            &resolver.resolve("output").to_string_lossy(),
+            &resolver
+                .resolve(format!("vault/lora/{}", job_id))
+                .to_string_lossy(),
         );
 
         let service_clone = self.clone();

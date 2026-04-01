@@ -15,6 +15,18 @@ use serde_json::json;
 
 pub struct AppError(pub AiomeError);
 
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl std::fmt::Debug for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AppError({:?})", self.0)
+    }
+}
+
 impl AppError {
     /// SEC-2: IDOR/ Authorization error (403 Forbidden)
     pub fn forbidden(reason: impl Into<String>) -> Self {

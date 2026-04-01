@@ -34,9 +34,13 @@ impl GenerativeEngine for ComfyUiGenerativeEngine {
     ) -> Result<ArtifactResponse, AiomeError> {
         // F-02: Acquire compute semaphore to prevent OOM when running alongside LoRA training
         let _permit = if let Some(sem) = &self.compute_semaphore {
-            Some(sem.acquire().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to acquire compute semaphore: {}", e),
-            })?)
+            Some(
+                sem.acquire()
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to acquire compute semaphore: {}", e),
+                    })?,
+            )
         } else {
             None
         };
@@ -65,8 +69,11 @@ impl GenerativeEngine for ComfyUiGenerativeEngine {
                         .ok_or_else(|| AiomeError::Infrastructure {
                             reason: "Missing prompt_id in ComfyUI response".into(),
                         })?;
+                let output_path = shared::app_data::AppDataResolver::new()
+                    .resolve("artifacts")
+                    .join(format!("comfy_output_{}.png", prompt_id));
                 Ok(ArtifactResponse {
-                    output_path: format!("workspace/artifacts/comfy_output_{}.png", prompt_id),
+                    output_path: output_path.to_string_lossy().to_string(),
                     job_id: prompt_id.to_string(),
                 })
             }

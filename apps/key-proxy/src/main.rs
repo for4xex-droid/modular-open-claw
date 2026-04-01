@@ -132,9 +132,10 @@ async fn main() -> anyhow::Result<()> {
     quotas.insert("api-server".to_string(), 1000);
     quotas.insert("aiome-agent".to_string(), 1000);
 
+    let resolver = shared::app_data::AppDataResolver::new();
     let persistence_path = env::var("QUOTA_DB_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("workspace/config/key_proxy_state.json"));
+        .unwrap_or_else(|_| resolver.resolve("config/key_proxy_state.json"));
 
     if let Some(parent) = persistence_path.parent() {
         let _ = std::fs::create_dir_all(parent);

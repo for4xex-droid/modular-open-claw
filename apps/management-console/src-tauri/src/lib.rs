@@ -10,8 +10,10 @@
 #![warn(missing_docs)]
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn get_api_url() -> String {
+    // Phase 51 NOTE: In production, the api-server might be on a dynamic port.
+    // For now, we return the standard 3015 but allow override by A2A_NODE_URL
+    std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://localhost:3015".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,7 +21,7 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![get_api_url])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

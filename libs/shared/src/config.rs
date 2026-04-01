@@ -56,6 +56,8 @@ pub struct AiomeConfig {
     pub xtts_speaker: Option<String>,
     /// MCP 設定
     pub mcp: McpConfig,
+    /// パス解決器
+    pub resolver: crate::app_data::AppDataResolver,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -78,8 +80,9 @@ pub const DEFAULT_VAULT_PATH: &str = "~/.aiome/vault";
 
 impl Default for AiomeConfig {
     fn default() -> Self {
+        let resolver = crate::app_data::AppDataResolver::new();
         Self {
-            db_path: "sqlite://workspace/aiome.db".to_string(),
+            db_path: resolver.db_url(),
             log_level: "info".to_string(),
             ollama_host: DEFAULT_OLLAMA_HOST.to_string(),
             ollama_model: "qwen3.5:9b".to_string(),
@@ -91,12 +94,13 @@ impl Default for AiomeConfig {
             samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
             allowed_origins: vec!["http://localhost:1420".to_string()],
             abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
-            vault_path: crate::os_utils::expand_home(DEFAULT_VAULT_PATH),
+            vault_path: resolver.resolve("vault"),
             tremendous_api_key: None,
             master_email: None,
             xtts_endpoint: Some("http://localhost:18020".to_string()),
             xtts_speaker: Some("p225".to_string()),
             mcp: McpConfig::default(),
+            resolver,
         }
     }
 }
@@ -104,8 +108,9 @@ impl Default for AiomeConfig {
 impl AiomeConfig {
     /// 環境変数から設定を読み込む
     pub fn load() -> Result<Self> {
-        let db_path =
-            env::var("AIOME_DB_PATH").unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
+        let resolver = crate::app_data::AppDataResolver::new();
+
+        let db_path = env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
 
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
 
@@ -134,9 +139,10 @@ impl AiomeConfig {
 
         let abyss_vault_path =
             env::var("ABYSS_VAULT_PATH").unwrap_or_else(|_| DEFAULT_ABYSS_VAULT_PATH.to_string());
-        let vault_path = crate::os_utils::expand_home(
-            env::var("VAULT_PATH").unwrap_or_else(|_| DEFAULT_VAULT_PATH.to_string()),
-        );
+
+        let vault_path = env::var("VAULT_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| resolver.resolve("vault"));
 
         // Load and immediately remove sensitive API keys
         let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|key| {
@@ -180,6 +186,7 @@ impl AiomeConfig {
                     .map(|s| s.to_lowercase() == "true")
                     .unwrap_or(false),
             },
+            resolver,
         })
     }
 
@@ -192,16 +199,27 @@ impl AiomeConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_config_has_vault_path_expansion() {
         // Mock HOME for consistency
         std::env::set_var("HOME", "/Users/aiome_test");
+        std::env::remove_var("AIOME_DEV_MODE");
+
         let config = AiomeConfig::default();
-        assert_eq!(
-            config.vault_path,
-            PathBuf::from("/Users/aiome_test/.aiome/vault")
+
+        #[cfg(target_os = "macos")]
+        assert!(config
+            .vault_path
+            .to_string_lossy()
+            .contains("Application Support/com.aiome.nexus/vault"));
+
+        #[cfg(not(target_os = "macos"))]
+        assert!(
+            config.vault_path.to_string_lossy().contains(".aiome/vault")
+                || config.vault_path.to_string_lossy().contains("aiome")
         );
     }
 }

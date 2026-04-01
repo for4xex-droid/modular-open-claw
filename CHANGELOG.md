@@ -9,10 +9,21 @@
     - **Workspace Path Standardization**: `LoraTrainingService` 内のハードコードされた `workspace/datasets/` パスを `datasets_dir` 設定値に置き換え、テストやカスタム環境でのディレクトリトラバーサル脆弱性を根絶。
     - **Doc-Sync (ADR Integrity)**: `docs/decisions` 内に混在していた `ADR-` プレフィックスの重複や欠番(027)を再連番・正規化 (`026` から `028` へ整理)。
 
+- **Phase B: Autonomous Chat Loop Hardening (ToolCallRouter Integration) [完成]**
+    - **ToolCallRouter Trait**: 複数の実行経路（`stream.rs`, `agent_engine.rs`, `mcp/server.rs`）で発生していたツール実行ロジックとセキュリティチェック（Guardrails / ImmuneSystem / HookChain）の重複を排除する `ToolCallRouter` トレイトとその `DefaultToolCallRouter` 実装を追加。
+    - **Security Execution Precedence**: すべてのツール実行において、1. 意図検証 (Intent/Immune)、2. HookChain Pre-exec、3. Executor、4. HookChain Post-exec の順序を統一。Hook ブロック時や Guardrails 遮断時も適正にエラー結果（`[BLOCKED] ...`）を返却し、実行結果をストリームへ提供（SSE対応）。
+    - **Fail-Safe Intent Sync**: テストモック (`MockLlm` / `SentinelLlm`) を整備し、アーキテクチャの変更が TDD アプローチ内でフェイルセーフに構築されることを保証 (`cargo test --workspace` を全件クリア)。
+    - **OOM / Context Expansion Defense**: ツールの実行結果の 50KB を超える出力の自動トランケート (`safe_truncate`) を統合し、長期自律ループ中の OOM を防止。
+
 - **Phase 1C: Generative Engine Infrastructure Integration [完了]**
     - **GenerativeEngine Trait Integration**: `aiome-contracts` で定義された `GenerativeEngine` トレイトの具象実装として、`ComfyUiGenerativeEngine` および `FalAiGenerativeEngine` を `libs/infrastructure` 内に追加。ローカルGPU（ComfyUI）とクラウドAPI（Fal.ai）の両バックエンドに透過的に対応。
     - **AppState Injection**: `api-server` の `main.rs` において環境変数 (`GENERATIVE_ENGINE`, `COMFYUI_URL`, `FAL_KEY`) に基づく動的なエンジンの初期化と `AppState` への注入を実装。開発環境用には安全な `MockGenerativeEngine` へのフォールバックを提供しつつ、プロダクション (`--release`) 環境では設定漏れ時に Fail-Fast (panic) する厳格なガードレールを構築。
     - **TDD-Driven Robustness**: `mock` モジュールを `#[cfg(any(test, debug_assertions))]` で隔離し、本番環境への混入を防止。さらに、不正なエンドポイントや無効なAPIキーに対する HTTP クライアントのフェイルクローズ処理（401 Unauthorized 等のハンドリング）をカバーする包括的な TDD テストスイートを構築し、ワークスペース全体の 1379 テストをクリーンパス。
+
+- **Phase F: Security Hook Framework & Precedence Execution [完了]**
+    - **HookChain Implementation**: `AgentEngine` の `process_generated_tool_calls` メソッドに `HookChain` と `AdaptiveImmuneSystem` の統合ロジックを実装。すべてのツールコールに対してPre-execution/Post-executionフックによるセキュアな検証・変換プロセスを確立。
+    - **Architecture Restructuring**: `AgentEngine` 内部にツールコール抽出、検証、および実行処理の責務を集約。循環参照エラーを解消しつつ、`MockGenerativeEngine` などの分離に合わせたテスト容易かつ TDD コンプライアンスを満たす設計へ進化。
+    - **Sentinel & Hook Enforcement**: `AdaptiveImmuneSystem` に基づいて `rm -rf /` のような致命的コマンドをフック評価前にブロックする「Sentinel Block」機構を実装し、Hook層（`Allow`/`Deny`/`Transform`）との確実な優先順位付けと分離を実現。ワークスペース全体で59の結合テストに完全パス。
 
 - **Phase 1B: Avatar Engine & Infrastructure Hardening [完成]**
     - **Storage DoS Protection (DiskQuotaManager)**: `DiskQuotaManager` を導入し、エージェントごとに最大 500MB のディスククォータを厳密に管理することでストレージ枯渇（DoE）攻撃を防止。アップロード処理中のリアルタイム検証とデータベース管理により安全性を向上。テストスイート内の AppState モックも完全同期。

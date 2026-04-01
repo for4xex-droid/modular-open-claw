@@ -420,7 +420,14 @@ mod tests {
         assert_eq!(verdict.alignment_score, 0.95);
         assert_eq!(verdict.growth_score, 0.8);
         assert!(verdict.should_evolve);
-        assert_eq!(verdict.classification.as_ref().expect("Should have classification").domain, "Creative");
+        assert_eq!(
+            verdict
+                .classification
+                .as_ref()
+                .expect("Should have classification")
+                .domain,
+            "Creative"
+        );
     }
 
     #[tokio::test]

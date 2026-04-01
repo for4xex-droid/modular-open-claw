@@ -111,9 +111,17 @@ impl HeartbeatWakeupService {
                                     let mut config =
                                         crate::lora_training::LoraTrainingConfig::default();
                                     config.base_model = "autonomous-recovery".into();
-                                    config.dataset_path = "workspace/datasets/auto_exp".into();
-                                    config.output_dir = "workspace/output".into();
-                                    config.vault_path = "workspace/vault/auto_recovery".into();
+                                    let resolver = shared::app_data::AppDataResolver::new();
+                                    config.dataset_path = resolver
+                                        .resolve("datasets/auto_exp")
+                                        .to_string_lossy()
+                                        .to_string();
+                                    config.output_dir =
+                                        resolver.resolve("output").to_string_lossy().to_string();
+                                    config.vault_path = resolver
+                                        .resolve("vault/auto_recovery")
+                                        .to_string_lossy()
+                                        .to_string();
 
                                     let lora_clone = lora.clone();
                                     tokio::spawn(async move {

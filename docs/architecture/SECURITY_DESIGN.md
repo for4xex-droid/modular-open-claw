@@ -103,6 +103,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Resource Exhaustion Blockers (Red Team)**: Introduces hard upper bounds on background job queues (e.g., max 100 `active_jobs`) and employs non-blocking `try_acquire()` for file upload semaphores (`inochi2d`, `voice`). This combination structurally prevents slowloris-style socket starvation and unbounded memory (OOM) attacks from malicious or out-of-control agents.
 
 ### Layer 2: SecurityPolicy (Execution Control)
+- **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream borders.
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
 - **Belief Consistency Check (Phase 49)**: ALL memory distillations pass through the `BeliefConsistencyGate`. Uses a fast SLM screening for contradictions with a 10% random LLM re-verification (RT-3) plus a mandatory LLM check for potential revisions. Evidence accumulation is capped at 100 entries (RT-2) to prevent memory exhaustion (OOM).
@@ -185,4 +186,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*
+*最終更新: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*

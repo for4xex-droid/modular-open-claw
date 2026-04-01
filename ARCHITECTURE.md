@@ -27,7 +27,6 @@ graph TD
         samsara-hub[samsara-hub]
         key-proxy[key-proxy]
         management-console[management-console]
-        watchtower[watchtower]
         aiome-migrate[aiome-migrate]
         shadow-worker[shadow-worker]
         aiome-node[aiome-node]
@@ -69,9 +68,6 @@ graph TD
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
-    watchtower --> aiome-core
-    watchtower --> infrastructure
-    watchtower --> shared
     soul --> aiome-contracts
     aiome-migrate --> aiome-core
     aiome-migrate --> infrastructure
@@ -102,7 +98,6 @@ graph TD
 | `fs_writer` | `libs/wasm-skills/fs_writer` | (Core Module) |
 | `napi-bridge` | `libs/napi-bridge` | (Core Module) |
 | `management-console` | `apps/management-console/src-tauri` | A Tauri App |
-| `watchtower` | `apps/watchtower` | (Core Module) |
 | `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
 | `soul` | `libs/soul` | (Core Module) |
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |

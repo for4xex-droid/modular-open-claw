@@ -10,6 +10,7 @@
 #![warn(missing_docs)]
 
 /// 認証・認可関連のロジック
+pub mod app_data;
 pub mod auth;
 pub mod cleaner;
 /// アプリケーション設定の管理

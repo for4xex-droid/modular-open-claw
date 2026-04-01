@@ -1,5 +1,25 @@
 # 🌊 Aiome Ripple Map
 
+## Phase B: Autonomous Chat Loop Hardening (ToolCallRouter Integration)
+
+### 1. Unified ToolCallRouter Architecture
+- **変更理由**: 複数の実行コンテキスト（自律ループ `agent_engine.rs`、チャットストリーム `stream.rs`、MCPプロトコル等）で重複していたツール実行とセキュリティ検証（Guardrails / Sentinel / HookChain）のロジックを一元化し、アーキテクチャ上の抜け穴（バイパス）を完全に塞ぐため。
+- **波及効果**:
+  - `apps/api-server/src/tool_call_router.rs` [NEW & UPDATED]: `ToolCallRouter` トレイトと `DefaultToolCallRouter` の完全実装。同期/非同期の双方で扱える共通の `ToolExecutionEvent` 列挙体を定義し、フックの適用（Allow/Deny/Transform）をプロキシとして包括。
+  - `apps/api-server/src/tool_call_processor.rs`: LLMからの生の出力をパースし、直接手動でツール評価・実行を行なっていたロジックを `DefaultToolCallRouter` を経由する形に大幅リファクタリング（責務の分離とカプセル化）。
+  - `apps/api-server/src/stream.rs` (SSE Handler): 中のツール実行ループについて、既存の冗長な実行ロジックを手動で回すのではなく、`ToolCallRouter::execute_skill` が返す Receiver を監視し、ストリームに `tool_result` イベントや `heartbeat`、エラーブロック通知を一元的にフォワードする設計へ移行。
+  - `libs/infrastructure/src/immune_system.rs` & `guardrails`: `evaluate_security` の中で必ず `Guardrails` によるチェックと `AdaptiveImmuneSystem::verify_intent` の判定を並列または直列で完了させてからツール実行フェーズに進行するように統一。
+
+## Phase F: Security Hook Framework & Precedence Execution
+
+### 1. HookChain & AdaptiveImmuneSystem Precedence
+- **変更理由**: エージェントが生成したツールコール（WASM実行、Forgeコマンド等）が実際に発火する前に、セキュリティポリシー違反やコンテキスト不整合をリアルタイムで検知・遮断（または変換）する中央集権型のインターセプター機構を確立するため。
+- **波及効果**:
+  - `libs/infrastructure/src/skills/hooks.rs` [NEW]: `ToolHook` トレイト、および `HookVerdict` (Allow/Deny/Transform)、並びにフック群を管理・直列評価する `HookChain` を実装。
+  - `apps/api-server/src/agent_engine.rs` (現 `tool_call_processor.rs` へ移行): これまで点在していた `parse_tool_calls` や LLM出力を処理するロジックを抽出・再構築し、実行前に `AdaptiveImmuneSystem::verify_intent` -> `HookChain::execute_pre` を評価し、実行後に `HookChain::execute_post` を評価する制御フローを実装。
+  - `apps/api-server/src/app_state.rs` & `apps/api-server/src/main.rs`: `AppState` に `hook_chain: Component<Arc<HookChain>>` を追加し、起動時に依存注入。
+  - `apps/api-server/src/api_integration_tests.rs`: `AppState` のモック群全般に `hook_chain` フィールドを追加修正し、コンパイルエラーを解消。全59テストの疎通を回復。
+
 ## Phase 1C: Generative Engine Infrastructure Integration
 
 ### 1. Concrete GenerativeEngine Implementations

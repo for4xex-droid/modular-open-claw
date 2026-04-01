@@ -43,7 +43,7 @@
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
 | `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
 | `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
-| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase 32** で `mtime` ベースの Progressive Loading と `VerifiedSkill` による型安全実行を強化。 | **Phase 32 完了** |
+| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。 | **Phase B 完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
@@ -60,4 +60,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-01 (Phase 1A-2: Date Distillation Pipeline)*
+*最終更新: 2026-04-01 (Phase B: Autonomous Chat Loop Hardening / ToolCallRouter)*

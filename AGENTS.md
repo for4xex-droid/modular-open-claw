@@ -175,6 +175,7 @@ When you receive a heartbeat poll, don't just reply `HEARTBEAT_OK` every time. U
 6. **ADR** — 重要な設計判断を行った場合、`docs/decisions/` に記録したか？
 7. **cargo test** — 変更後にワークスペース全体のテスト (`cargo check --workspace --tests && cargo test --workspace`) がPASSしたか？
 8. **Golden Rules** — コード変更・ドキュメント操作・UI改修の前に必ず `.agent/skills/docs-ui-ux-golden-rules.md` を遵守せよ。特に B-001（ビルド即検証）、B-002（コマンド出力確認）、X-001（根本原因特定義務）は最重要。
+9. **Mission Control Principles** — 大規模なアーキテクチャ変更や計画立案の前に必ず `.agent/skills/mission-control-principles.md` の4原則（ASTディープスキャン、波及分析、事前の悪魔の弁護人検証、不要コードの完全除外）を実行せよ。記憶と推測による当てずっぽうな計画立案は厳禁とする。
 
 ドキュメントの鮮度は、AIシステム全体の信頼性に直結する。
 

@@ -465,6 +465,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let _ = disk_quota_mgr.init().await;
 
     let state = AppState {
+        hook_chain: Default::default(),
         a2a_client: Component::new(Arc::new(
             infrastructure::grpc::mock_a2a_client::MockA2aClient::new(),
         )),
@@ -517,26 +518,25 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             "test_fed_secret".to_string(),
         ))),
         config: Component::new({
-            let config = AiomeConfig {
-                db_path: db_path.to_str().unwrap().to_string(),
-                log_level: "info".to_string(),
-                ollama_host: "".to_string(),
-                ollama_model: "".to_string(),
-                gemini_api_key: None,
-                openai_api_key: None,
-                anthropic_api_key: None,
-                api_server_port: 0,
-                key_proxy_url: "".to_string(),
-                samsara_hub_url: "".to_string(),
-                allowed_origins: vec![],
-                abyss_vault_path: tmp_dir.path().to_str().unwrap().to_string(),
-                tremendous_api_key: None,
-                master_email: None,
-                xtts_endpoint: None,
-                xtts_speaker: None,
-                vault_path: tmp_dir.path().join("vault"),
-                mcp: shared::config::McpConfig::default(),
-            };
+            let mut config = AiomeConfig::default();
+            config.resolver = shared::app_data::AppDataResolver::new();
+            config.log_level = "info".to_string();
+            config.ollama_host = "".to_string();
+            config.ollama_model = "".to_string();
+            config.gemini_api_key = None;
+            config.openai_api_key = None;
+            config.anthropic_api_key = None;
+            config.api_server_port = 0;
+            config.key_proxy_url = "".to_string();
+            config.samsara_hub_url = "".to_string();
+            config.allowed_origins = vec![];
+            config.abyss_vault_path = tmp_dir.path().to_str().unwrap().to_string();
+            config.tremendous_api_key = None;
+            config.master_email = None;
+            config.xtts_endpoint = None;
+            config.xtts_speaker = None;
+            config.vault_path = tmp_dir.path().join("vault");
+            config.mcp = shared::config::McpConfig::default();
             Arc::new(config)
         }),
         gift_engine: Component::new(Arc::new(MockGiftEngine)),
@@ -1586,13 +1586,24 @@ async fn test_fallback_router_failover() {
     );
 
     // 3. Register state with this router
-    let mut state = AppState::default();
-    state.provider = Component::new(router.clone());
-    state.job_queue = Component::new(job_queue);
-
-    // Minimal mock for health check
-    state.health_monitor = Component::new(Arc::new(Mutex::new(HealthMonitor::new())));
-    state.config = Component::new(Arc::new(shared::config::AiomeConfig::default()));
+    let state = AppState {
+        hook_chain: Default::default(),
+        registry: Component::new(Arc::new(infrastructure::registry::RegistryManager::new(
+            job_queue.get_pool().clone(),
+        ))),
+        wasm_skill_manager: Component::new(Arc::new(
+            infrastructure::skills::WasmSkillManager::new(
+                tmp_dir.path().join("skills").to_str().unwrap(),
+                tmp_dir.path().join("sandbox").to_str().unwrap(),
+            )
+            .unwrap(),
+        )),
+        job_queue: Component::new(job_queue.clone()),
+        config: Component::new(std::sync::Arc::new(shared::config::AiomeConfig::default())),
+        provider: Component::new(router.clone()),
+        health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
+        ..Default::default()
+    };
 
     let metrics_handle = GLOBAL_METRICS_HANDLE.clone();
 
@@ -2105,4 +2116,65 @@ async fn test_compute_semaphore_limits_concurrency() {
         .try_acquire()
         .expect("Should be able to acquire the single compute permit");
     assert_eq!(semaphore.available_permits(), 0);
+}
+
+/// P1-3: Architectural Guard — HookChain Bypass Eradication Test
+///
+/// This test statically verifies that every call to `execute_wasm_skill` and
+/// `execute_forge_command` in the api-server source code is preceded by a
+/// HookChain check. Files that call these functions must also reference
+/// `HookVerdict` (proving HookChain integration).
+///
+/// If this test fails, a new bypass path has been introduced.
+#[test]
+fn test_hookchain_bypass_eradication() {
+    use std::fs;
+    use std::path::Path;
+
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+
+    // Files allowed to call execute_wasm_skill/execute_forge_command directly
+    // (because they ARE the execution layer, not callers)
+    let allowlist = [
+        "skill_handler.rs",         // Definition site
+        "api_integration_tests.rs", // Test infrastructure
+    ];
+
+    let mut violations = Vec::new();
+
+    fn scan_dir(dir: &Path, allowlist: &[&str], violations: &mut Vec<String>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    scan_dir(&path, allowlist, violations);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let filename = path.file_name().unwrap().to_str().unwrap();
+                    if allowlist.contains(&filename) {
+                        continue;
+                    }
+                    if let Ok(content) = fs::read_to_string(&path) {
+                        let has_direct_call = content.contains("execute_wasm_skill")
+                            || content.contains("execute_forge_command");
+                        let has_hookchain = content.contains("HookVerdict");
+
+                        if has_direct_call && !has_hookchain {
+                            violations.push(format!(
+                                "{}: calls execute_wasm_skill/execute_forge_command without HookChain (missing HookVerdict)",
+                                path.display()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    scan_dir(&src_dir, &allowlist, &mut violations);
+
+    assert!(
+        violations.is_empty(),
+        "🚨 HookChain BYPASS DETECTED! The following files call skill execution functions without HookChain integration:\n{}",
+        violations.join("\n")
+    );
 }

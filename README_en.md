@@ -136,6 +136,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - 🧠 **Phase 53: Society of Thought (SoT) Deliberation Engine**: Implemented `Oracle::multi_review` for multi-phase self-criticism and refinement processes. Added dynamic LLM verification (JSON structured extraction) and broadcast reasoning details as `SoTProgress` SSE events to mirror AI's "deep thinking and scoring" in the UI in real-time.
 - 🛡️ **Phase 53: Multi-Layer Security Hardening**: Introduced SSRF countermeasures with strict port-level validation (restricting `127.0.0.1` traffic entirely to Ollama/ComfyUI). Bolstered local detection layers (Guardrails) against prompt injection, and managed subprocesses with `Stdio::null` and hard timeouts to resolve zombie hangs, cementing CI stability and infrastructural safety.
 - ⚙️ **AutoHarness Dynamic Guardrails (Phase B-D)**: Integrated WASM-based constraint evaluation. Autonomously switches between Active (Action Block) and Shadow (Monitor & Log) modes based on dynamically evaluated severity scores. Built-in structural defense against ReDoS ensuring an adaptive, high-performance security layer.
+- 🛡️ **Phase B: ToolCallRouter & Security Execution Precedence**: Unified the tool execution flow into a single un-bypassable trait (`ToolCallRouter`). Physically guarantees that both HookChain (pre/post-intercepts) and Intent Verification (Guardrails/Immunity) are evaluated strictly *before* any tool parsing occurs, across both async (SSE) and sync agent execution paths.
 - 🛡️ **Phase 55: AgentRx Expansion & LoRA Autonomous Evolution**: Resolved `RepairCalculator` bugs and integrated dynamic repair hint scaling. Implemented `LoraAutotuner` for self-adjusting hyperparameters (LR, Epochs, Rank) based on loss history. Completed the "Autonomous Evolution Loop" with 24-hour cooldown logic, mathematically detecting performance plateaus to trigger self-optimization.
 - 🛡️ **Security Hardening (2026-03-31): NPM Supply Chain Mitigation**: Structural blocking of malicious `postinstall` scripts (e.g., Axios RAT) via `.npmrc` and a 3-layer CI audit (Critical Vulnerabilities, Registry Signatures, and `ignore-scripts` enforcement).
 
@@ -170,7 +171,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 hash-chain causal auditing and O(1) microsecond boundary verification engine |
-| **Last Updated:** | 2026-03-31 | Phase 53: SoT & Security Hardening |
+| **Last Updated:** | 2026-04-01 | Phase B: ToolCallRouter Integration |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -281,7 +282,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-04-01 (Red Team Security Hardening & Infrastructure Stabilization)*
+*Last Updated: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

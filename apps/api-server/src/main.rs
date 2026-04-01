@@ -55,6 +55,7 @@ use tower_http::timeout::TimeoutLayer;
 use tracing::{debug, error, info, warn};
 use utoipa::OpenApi;
 
+pub mod agent_engine;
 mod api;
 #[cfg(test)]
 mod api_integration_tests;
@@ -63,6 +64,7 @@ mod auth;
 mod autonomous_demo;
 mod docker;
 mod error;
+pub mod internal_services;
 #[cfg(test)]
 mod job_management_tests;
 mod logging;
@@ -72,6 +74,9 @@ mod router;
 mod routes;
 mod skill_handler;
 mod stream;
+pub mod system_instructions;
+pub mod tool_call_processor;
+pub mod tool_call_router;
 
 pub use app_state::AppState;
 pub use router::build_app;
@@ -101,17 +106,24 @@ async fn main() -> anyhow::Result<()> {
     let health_monitor = shared::health::HealthMonitor::new();
     let health_monitor = Arc::new(Mutex::new(health_monitor));
 
-    let db_url = std::env::var("AIOME_DB_PATH")
-        .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
-    if !std::path::Path::new("workspace").exists() {
-        std::fs::create_dir_all("workspace").unwrap_or_else(|e| {
-            error!("🚨 [CRITICAL] Failed to create workspace directory: {}", e);
+    let resolver = shared::app_data::AppDataResolver::new();
+    let root = resolver.root();
+    if !root.exists() {
+        std::fs::create_dir_all(root).unwrap_or_else(|e| {
+            error!(
+                "🚨 [CRITICAL] Failed to create app data directory at {}: {}",
+                root.display(),
+                e
+            );
             std::process::exit(1);
         });
     }
 
-    if !std::path::Path::new("workspace/gig_artifacts").exists() {
-        let _ = std::fs::create_dir_all("workspace/gig_artifacts");
+    let db_url = std::env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
+
+    let gig_artifacts = resolver.resolve("gig_artifacts");
+    if !gig_artifacts.exists() {
+        let _ = std::fs::create_dir_all(&gig_artifacts);
     }
 
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -280,7 +292,7 @@ async fn main() -> anyhow::Result<()> {
     let artifact_store = Arc::new(
         infrastructure::artifact_store::UniversalArtifactStore::new(
             job_queue.get_pool().clone(),
-            std::path::PathBuf::from("workspace/artifacts"),
+            resolver.resolve("artifacts"),
         )
         .with_embeddings(embed_provider.clone())
         .with_audit_logger(audit_logger.clone())
@@ -295,15 +307,15 @@ async fn main() -> anyhow::Result<()> {
 
     let wasm_skill_manager = Arc::new(
         infrastructure::skills::WasmSkillManager::new(
-            "workspace/wasm_storage",
-            "workspace/sandbox",
+            resolver.resolve("wasm_storage"),
+            resolver.resolve("sandbox"),
         )
         .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?,
     );
 
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
-        "workspace/forge_template",
-        "workspace/wasm_storage",
+        resolver.resolve("forge_template"),
+        resolver.resolve("wasm_storage"),
     ));
 
     let commerce_engine = {
@@ -562,7 +574,7 @@ async fn main() -> anyhow::Result<()> {
             .clone()
             .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,
         provider.clone(),
-        std::path::PathBuf::from("workspace/gig_artifacts"),
+        config.resolver.resolve("gig_artifacts"),
     )) as Arc<dyn aiome_contracts::gig::GigEngine>;
 
     // [Step 1.7] Initialize TranscriptionEngine
@@ -597,7 +609,8 @@ async fn main() -> anyhow::Result<()> {
         ),
     );
 
-    let soul_md = std::fs::read_to_string("workspace/SOUL.md").unwrap_or_else(|_| String::new());
+    let soul_path = resolver.resolve("SOUL.md");
+    let soul_md = std::fs::read_to_string(&soul_path).unwrap_or_else(|_| String::new());
     let oracle = Arc::new(
         infrastructure::oracle::Oracle::new(bg_provider.clone(), soul_md.clone())
             .with_event_tx(event_sender.clone()),
@@ -610,7 +623,7 @@ async fn main() -> anyhow::Result<()> {
         Some(tool_discovery as Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>),
         Some(strategic_planner as Arc<dyn aiome_contracts::traits::StrategicPlanner>),
         Some(validator.clone()),
-        Some(std::path::PathBuf::from("workspace/SOUL.md")),
+        Some(soul_path),
         Some(oracle),
         Some(gig_engine.clone()),
     );
@@ -627,9 +640,11 @@ async fn main() -> anyhow::Result<()> {
     task_dispatcher.register_conductor(docker_conductor);
 
     // Register CsamScanConductor
-    let csam_conductor = Arc::new(infrastructure::task_orchestrator::csam::CsamScanConductor::new(
-        Some(artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>),
-    ));
+    let csam_conductor = Arc::new(
+        infrastructure::task_orchestrator::csam::CsamScanConductor::new(Some(
+            artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>,
+        )),
+    );
     task_dispatcher.register_conductor(csam_conductor);
 
     let task_dispatcher = Arc::new(task_dispatcher);
@@ -650,6 +665,8 @@ async fn main() -> anyhow::Result<()> {
     let a2a_client = {
         let endpoint_url =
             std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string());
+        let resolver = shared::app_data::AppDataResolver::new();
+        let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
         let auth_token = std::env::var("A2A_NODE_TOKEN")
             .unwrap_or_else(|_| "placeholder_for_phase51".to_string());
         let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
@@ -672,6 +689,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let state = AppState {
+        hook_chain: Default::default(),
         health_monitor: Component::new(health_monitor),
         job_queue: Component::new(job_queue.clone()),
         wasm_skill_manager: Component::new(wasm_skill_manager),
@@ -776,7 +794,7 @@ async fn main() -> anyhow::Result<()> {
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
             aiome_commerce::syndicate::SqliteSyndicateStore::new(
-                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool 
+                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool
                 // to support PostgreSQL dynamically without unwrapping here.
                 job_queue
                     .get_pool()
@@ -817,7 +835,7 @@ async fn main() -> anyhow::Result<()> {
                         infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
                             base_url,
                             Some(compute_semaphore.clone()),
-                        )
+                        ),
                     )
                 }
                 "falai" => {
@@ -849,6 +867,9 @@ async fn main() -> anyhow::Result<()> {
         },
     };
 
+    // [Step 1.8.5] Spawn Unified Internal Services (Watchtower & Heartbeat)
+    internal_services::spawn_all(state.clone()).await;
+
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)
     let tts_worker_jq = state.job_queue.get_inner().clone();
     let tts_worker_provider = state.tts_provider.get_inner().clone();
@@ -858,7 +879,7 @@ async fn main() -> anyhow::Result<()> {
         .xtts_speaker
         .clone()
         .unwrap_or_else(|| "p225".to_string());
-    let tts_worker_artifacts = std::path::PathBuf::from("workspace/artifacts");
+    let tts_worker_artifacts = state.config.resolver.resolve("artifacts");
 
     tokio::spawn(async move {
         info!("🎙️ [TtsWorker] Starting background synthesis loop...");

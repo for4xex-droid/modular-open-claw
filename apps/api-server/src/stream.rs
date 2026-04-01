@@ -19,13 +19,13 @@ use futures::stream::Stream;
 // use infrastructure::skills::UnverifiedSkill;
 use crate::skill_handler;
 use futures::StreamExt;
+use infrastructure::skills::hooks::HookVerdict;
 use std::sync::Arc;
 use tokio::time::{interval, timeout, Duration};
 use tracing::{debug, error, info, warn};
 
-use crate::routes::agent::{
-    build_system_instructions, parse_tool_calls, read_workspace_file, AgentChatRequest,
-};
+use crate::agent_engine::{build_system_instructions, parse_tool_calls, read_app_data_file};
+use crate::routes::agent::AgentChatRequest;
 use crate::AppState;
 
 pub async fn trigger_agent_chat_stream(
@@ -44,23 +44,32 @@ pub async fn trigger_agent_chat_stream(
 
         // Discovery B: Immune System check (Security Layer 1)
         let immune_system = infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone());
-        if let Ok(Some(rule)) = immune_system.verify_intent(&payload.prompt, state.job_queue.as_ref()).await {
-            let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
-            let _ = state.job_queue.record_evolution_event(
-                stats.level,
-                "ImmuneAlert",
-                &format!("Block: {} (Pattern: {})", rule.action, rule.pattern),
-                None,
-                None
-            ).await;
-            yield Ok::<Event, Infallible>(Event::default().event("security_block").data(format!("🚨 [SENTINEL BLOCK] {}\nPattern: {}", rule.action, rule.pattern)));
-            return;
+        match immune_system.verify_intent(&payload.prompt, state.job_queue.as_ref()).await {
+            Ok(Some(rule)) => {
+                tracing::warn!("Sentinel Block activated in SSE: pattern `{}`", rule.pattern);
+                let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
+                let _ = state.job_queue.record_evolution_event(
+                    stats.level,
+                    "ImmuneAlert",
+                    &format!("Block: {} (Pattern: {})", rule.action, rule.pattern),
+                    None,
+                    None
+                ).await;
+                yield Ok::<Event, Infallible>(Event::default().event("security_block").data(format!("🚨 [SENTINEL BLOCK] {}\nPattern: {}", rule.action, rule.pattern)));
+                return;
+            }
+            Err(e) => {
+                tracing::error!("Adaptive Immune System evaluation failed in SSE: {:?}", e);
+                // fail-open: proceed with caution
+            }
+            _ => {}
         }
 
         let soul_hash = {
             use std::hash::{Hash, Hasher};
-            let soul = read_workspace_file("SOUL.md");
-            let evolving_soul = read_workspace_file("EVOLVING_SOUL.md");
+            let resolver = &state.config.get_inner().resolver;
+            let soul = read_app_data_file(resolver, "SOUL.md").await;
+            let evolving_soul = read_app_data_file(resolver, "EVOLVING_SOUL.md").await;
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             format!("{}{}", soul, evolving_soul).hash(&mut hasher);
             format!("{:x}", hasher.finish())
@@ -272,6 +281,15 @@ pub async fn trigger_agent_chat_stream(
                     }
                 }
 
+                let router = crate::tool_call_router::DefaultToolCallRouter;
+                use crate::tool_call_router::{ToolCallRouter, ToolExecutionEvent};
+
+                if let Err(block_msg) = router.evaluate_security(&full_reply, &state).await {
+                    tracing::warn!("🛡️ [Router] Security block: {}", block_msg);
+                    yield Ok(Event::default().event("error").data(&block_msg));
+                    break;
+                }
+
                 let calls = parse_tool_calls(&full_reply);
 
                 if calls.is_empty() {
@@ -281,54 +299,31 @@ pub async fn trigger_agent_chat_stream(
                     let mut skill_results = Vec::new();
                     for (skill_name, skill_input) in calls {
                         info!("🛠️ [AgentStreamLoop] Executing skill: {}", skill_name);
-                        yield Ok(Event::default().event("tool_exec").data(format!("Executing {}", skill_name)));
 
-                        if skill_name.starts_with("forge_") {
-                            // Phase 12-C: SSE Heartbeat implementation for long-running forge tasks
-                            let mut heartbeat_ticker = interval(Duration::from_secs(5));
-                            let forge_future = skill_handler::execute_forge_command(&skill_name, &skill_input, &state);
-                            tokio::pin!(forge_future);
+                        let mut rx = router.execute_skill(&skill_name, &skill_input, &state).await;
 
-                            loop {
-                                tokio::select! {
-                                    _ = heartbeat_ticker.tick() => {
-                                        yield Ok(Event::default().event("heartbeat").data("build in progress..."));
-                                    }
-                                    res = &mut forge_future => {
-                                        match res {
-                                            Ok(out) => {
-                                                skill_results.push(out.clone());
-                                                yield Ok(Event::default().event("tool_result").data(out));
-                                            }
-                                            Err(e) => {
-                                                skill_results.push(format!("[{} Error: {}]", skill_name, e));
-                                                yield Ok(Event::default().event("tool_result").data(format!("Error: {}", e)));
-                                            }
-                                        }
-                                        break;
-                                    }
+                        while let Some(evt) = rx.recv().await {
+                            match evt {
+                                ToolExecutionEvent::Start(sn) => {
+                                    yield Ok(Event::default().event("tool_exec").data(format!("Executing {}", sn)));
+                                }
+                                ToolExecutionEvent::Heartbeat(msg) => {
+                                    yield Ok(Event::default().event("heartbeat").data(msg));
+                                }
+                                ToolExecutionEvent::Result(res) => {
+                                    yield Ok(Event::default().event("tool_result").data(&res));
+                                    skill_results.push(res);
+                                }
+                                ToolExecutionEvent::Error(err) => {
+                                    let blocked_display = if err.starts_with("[Hook") {
+                                        err.replace("[Hook Block]", "[BLOCKED]").replace("[Hook Post-Block]", "[BLOCKED]")
+                                    } else {
+                                        err.clone()
+                                    };
+                                    yield Ok(Event::default().event("tool_result").data(&blocked_display));
+                                    skill_results.push(err);
                                 }
                             }
-                        } else if skill_name == "describe_skill" {
-                            let out = skill_handler::describe_skill(&skill_input, &state).await;
-                            skill_results.push(out.clone());
-                            yield Ok(Event::default().event("tool_result").data(format!("{}: metadata returned", skill_name)));
-                        } else {
-                            let out = skill_handler::execute_wasm_skill(&skill_name, &skill_input, &state, None, 0).await;
-
-                            // Phase 2B: Record skill execution
-                            let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
-                            let status = if out.contains("Error:") { "failed" } else { "success" };
-                            let _ = state.job_queue.record_evolution_event(
-                                stats.level,
-                                "SkillExecution",
-                                &format!("Exec: {} -> {}", skill_name, status),
-                                Some(&skill_name),
-                                None
-                            ).await;
-
-                            skill_results.push(out.clone());
-                            yield Ok(Event::default().event("tool_result").data(format!("{}: {}", skill_name, status)));
                         }
                     }
 

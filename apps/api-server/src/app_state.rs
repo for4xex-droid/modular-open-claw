@@ -139,4 +139,5 @@ pub struct AppState {
     pub compute_semaphore: Component<Arc<tokio::sync::Semaphore>>,
     pub disk_quota: Component<Arc<infrastructure::disk_quota::DiskQuotaManager>>,
     pub generative_engine: Component<Arc<dyn aiome_contracts::traits::GenerativeEngine>>,
+    pub hook_chain: Component<Arc<infrastructure::skills::hooks::HookChain>>,
 }

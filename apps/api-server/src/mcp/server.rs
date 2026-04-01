@@ -235,15 +235,50 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     },
                 }
             } else {
-                // Handled via Wasm Skill
-                let result_text = crate::skill_handler::execute_wasm_skill(
-                    name,
-                    &arguments.to_string(),
-                    state,
-                    None,
-                    0,
-                )
-                .await;
+                // Handled via Wasm Skill — with HookChain enforcement
+                use infrastructure::skills::hooks::HookVerdict;
+
+                // Pre-execution hook
+                let input_str = arguments.to_string();
+                let pre_verdict = state.hook_chain.execute_pre(name, &input_str).await;
+                let actual_input = match pre_verdict {
+                    HookVerdict::Deny(reason) => {
+                        warn!("Hook blocked MCP tool `{}` pre-execution: {}", name, reason);
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32600,
+                                message: format!("[Hook Block] {}", reason),
+                                data: None,
+                            }),
+                        };
+                    }
+                    HookVerdict::Transform(new_input) => new_input,
+                    HookVerdict::Allow => input_str,
+                };
+
+                let executor_output =
+                    crate::skill_handler::execute_wasm_skill(name, &actual_input, state, None, 0)
+                        .await;
+
+                // Post-execution hook
+                let post_verdict = state.hook_chain.execute_post(name, &executor_output).await;
+                let is_blocked = matches!(&post_verdict, HookVerdict::Deny(_));
+                let final_output = match post_verdict {
+                    HookVerdict::Deny(reason) => {
+                        warn!(
+                            "Hook blocked MCP tool `{}` post-execution: {}",
+                            name, reason
+                        );
+                        format!("[Hook Post-Block] {}", reason)
+                    }
+                    HookVerdict::Transform(new_output) => new_output,
+                    HookVerdict::Allow => executor_output,
+                };
+
+                let result_text = crate::system_instructions::safe_truncate(&final_output, 50000);
 
                 JsonRpcResponse {
                     jsonrpc: "2.0".into(),
@@ -251,7 +286,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     result: Some(
                         serde_json::to_value(CallToolResult {
                             content: vec![McpContent::Text { text: result_text }],
-                            is_error: false,
+                            is_error: is_blocked,
                         })
                         .unwrap_or_default(),
                     ),

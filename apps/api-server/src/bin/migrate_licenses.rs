@@ -14,9 +14,10 @@ use uuid::Uuid;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. 環境変数のセットアップ
     let _ = dotenvy::dotenv(); // Load .env
+    let resolver = shared::app_data::AppDataResolver::new();
     let db_url = env::var("AIOME_DB_PATH")
         .or_else(|_| env::var("DATABASE_URL"))
-        .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
+        .unwrap_or_else(|_| resolver.db_url());
     println!("🚀 Starting migration script...");
     println!("📂 Using database: {}", db_url);
 

@@ -126,25 +126,24 @@ pub async fn execute_forge_command(
                     }
 
                     // Security Gate: Use deliver_output for safe atomic moves (Sec-1)
-                    let source = std::path::Path::new("workspace/skills/custom")
-                        .join(format!("{}.wasm", req.skill_name));
-                    let meta_src = std::path::Path::new("workspace/skills/custom")
-                        .join(format!("{}.meta.json", req.skill_name));
+                    let custom_skills_dir = state.config.resolver.resolve("skills/custom");
+                    let source = custom_skills_dir.join(format!("{}.wasm", req.skill_name));
+                    let meta_src = custom_skills_dir.join(format!("{}.meta.json", req.skill_name));
 
                     if source.exists() {
                         // Deliver WASM
+                        let skills_dir = state.config.resolver.resolve("skills");
                         match infrastructure::workspace_manager::WorkspaceManager::deliver_output(
                             "forge_publish",
                             &source,
-                            "workspace/skills",
+                            &skills_dir.to_string_lossy(),
                         )
                         .await
                         {
                             Ok(dest_path) => {
-                                // Deliver Metadata (Simple copy for now as deliver_output adds prefix which we don't want for meta yet)
-                                // Ideally WasmSkillManager would handle prefixed names.
-                                let meta_dest = std::path::Path::new("workspace/skills")
-                                    .join(format!("{}.meta.json", req.skill_name));
+                                // Deliver Metadata (Simple copy for now)
+                                let meta_dest =
+                                    skills_dir.join(format!("{}.meta.json", req.skill_name));
                                 let _ = std::fs::copy(meta_src, meta_dest);
 
                                 state.wasm_skill_manager.invalidate_cache(&req.skill_name);
