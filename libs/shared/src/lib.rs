@@ -11,7 +11,9 @@
 
 /// 認証・認可関連のロジック
 pub mod app_data;
+/// 認証モジュール
 pub mod auth;
+/// クリーナー機能
 pub mod cleaner;
 /// アプリケーション設定の管理
 pub mod config;
@@ -22,14 +24,19 @@ pub mod csam;
 /// データベース・共通マクロ
 pub mod db;
 
+/// ガードレール機能
 pub mod guardrails;
 /// システムヘルスモニタリング
 pub mod health;
+/// OS依存ユーティリティ
 pub mod os_utils;
+/// 出力バリデーター機能
 pub mod output_validator;
+/// サンドボックス環境機能
 pub mod sandbox;
 /// ネットワークセキュリティポリシー
 pub mod security;
+/// ウォッチタワー機能
 pub mod watchtower;
 
 /// Macros use these re-exports to avoid requiring dependencies in caller crates.

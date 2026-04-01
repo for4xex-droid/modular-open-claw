@@ -14,6 +14,12 @@ pub struct AppDataResolver {
     root: PathBuf,
 }
 
+impl Default for AppDataResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppDataResolver {
     /// 新規作成。内部的に環境変数をチェックしてルートパスを決定します。
     pub fn new() -> Self {

@@ -235,48 +235,45 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     },
                 }
             } else {
-                // Handled via Wasm Skill — with HookChain enforcement
-                use infrastructure::skills::hooks::HookVerdict;
-
-                // Pre-execution hook
+                use crate::tool_call_router::{DefaultToolCallRouter, ToolCallRouter, ToolExecutionEvent};
+                let router = DefaultToolCallRouter;
                 let input_str = arguments.to_string();
-                let pre_verdict = state.hook_chain.execute_pre(name, &input_str).await;
-                let actual_input = match pre_verdict {
-                    HookVerdict::Deny(reason) => {
-                        warn!("Hook blocked MCP tool `{}` pre-execution: {}", name, reason);
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".into(),
-                            id,
-                            result: None,
-                            error: Some(JsonRpcError {
-                                code: -32600,
-                                message: format!("[Hook Block] {}", reason),
-                                data: None,
-                            }),
-                        };
-                    }
-                    HookVerdict::Transform(new_input) => new_input,
-                    HookVerdict::Allow => input_str,
-                };
 
-                let executor_output =
-                    crate::skill_handler::execute_wasm_skill(name, &actual_input, state, None, 0)
-                        .await;
+                if let Err(security_error) = router.evaluate_security(&input_str, state).await {
+                    warn!("MCP Security Evaluation blocked tool `{}`: {}", name, security_error);
+                    return JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32600,
+                            message: security_error, // Remove redundant [Security Block] prefix
+                            data: None,
+                        }),
+                    };
+                }
 
-                // Post-execution hook
-                let post_verdict = state.hook_chain.execute_post(name, &executor_output).await;
-                let is_blocked = matches!(&post_verdict, HookVerdict::Deny(_));
-                let final_output = match post_verdict {
-                    HookVerdict::Deny(reason) => {
-                        warn!(
-                            "Hook blocked MCP tool `{}` post-execution: {}",
-                            name, reason
-                        );
-                        format!("[Hook Post-Block] {}", reason)
+                // 2. Execute via Router (HookChain is enforced inside)
+                let mut rx = router.execute_skill(name, &input_str, state).await;
+                let mut final_output = String::new();
+                let mut is_error = false;
+
+                while let Some(evt) = rx.recv().await {
+                    match evt {
+                        ToolExecutionEvent::Result(res) => {
+                            final_output.push_str(&res);
+                        }
+                        ToolExecutionEvent::Error(err) => {
+                            final_output.push_str(&err);
+                            is_error = true;
+                        }
+                        _ => {} // Ignore Start and Heartbeat for MCP
                     }
-                    HookVerdict::Transform(new_output) => new_output,
-                    HookVerdict::Allow => executor_output,
-                };
+                }
+
+                if final_output.starts_with("Error:") || final_output.starts_with("[Hook") || final_output.contains(" Error:") {
+                    is_error = true;
+                }
 
                 let result_text = crate::system_instructions::safe_truncate(&final_output, 50000);
 
@@ -286,7 +283,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     result: Some(
                         serde_json::to_value(CallToolResult {
                             content: vec![McpContent::Text { text: result_text }],
-                            is_error: is_blocked,
+                            is_error,
                         })
                         .unwrap_or_default(),
                     ),
@@ -313,5 +310,42 @@ fn is_skill_whitelisted(name: &str) -> bool {
         "fs_reader" | "MarketDataFetcher" | "StringRepeater" | "transcribe" => true,
         "terminal_exec" | "fs_writer" | "forge_publish" => false, // Protected internal tools
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app_state::Component;
+    use infrastructure::skills::hooks::HookChain;
+    use std::sync::Arc;
+
+    async fn setup_mock_state() -> AppState {
+        let (_, state, _) = crate::api_integration_tests::create_test_server().await;
+        state
+    }
+
+    #[tokio::test]
+    async fn test_mcp_evaluate_security_and_hookchain() {
+        let mut state = setup_mock_state().await;
+        let chain = HookChain::new();
+        state.hook_chain = Component::new(Arc::new(chain));
+
+        // Let's create an MCP tool call request with an intent that should trigger Sentinel Block
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: None,
+            method: "tools/call".into(),
+            params: Some(serde_json::json!({
+                "name": "fs_reader",
+                "arguments": "rm -rf /"  // Known bad pattern
+            })),
+        };
+
+        let response = handle_mcp_request(req, &state).await;
+        assert!(response.error.is_some(), "Expected an error due to security block");
+        let err = response.error.unwrap();
+        assert!(err.message.contains("GUARDRAIL") || err.message.contains("SENTINEL") || err.message.contains("Hook Block"), 
+                "Expected Guardrail, Sentinel, or Hook block, got: {}", err.message);
     }
 }

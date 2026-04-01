@@ -10,8 +10,9 @@ Accepted
 In the `aiome` codebase, the execution of WASM tools and built-in skills occurred across two completely separate paradigms:
 1. **Synchronous/Batch Execution** (`apps/api-server/src/agent_engine.rs`): Utilized `process_generated_tool_calls`, where `ToolHook` chains and intent verifiers (`AdaptiveImmuneSystem`) were manually invoked prior to `execute_skill`.
 2. **Asynchronous/Streaming Execution** (`apps/api-server/src/stream.rs`): Tool execution occurred as Server-Sent Events (SSE) were yielded. Pre-execution checks, such as `Guardrails` logic, were either duplicated or awkwardly integrated into the SSE streaming closure, leading to architectural bypasses.
+3. **MCP Server Execution** (`apps/api-server/src/mcp/server.rs`): External MCP clients executed tools directly via JSON-RPC, meaning the execution logic manually parsed arguments and managed execution without leveraging the system-wide security orchestrator.
 
-This bifurcation inherently violated the **Zero-Trust for LLM** core principle. We needed a mechanism that mathematically guarantees that every tool call, irrespective of its execution site (SSE stream or sequential loop), runs through a unified security and hook lifecycle before being parsed or executed.
+This bifurcation inherently violated the **Zero-Trust for LLM** core principle. We needed a mechanism that mathematically guarantees that every tool call, irrespective of its execution site (SSE stream, sequential loop, or MCP API), runs through a unified security and hook lifecycle before being parsed or executed.
 
 ## Decision
 We implemented a centralized architectural barrier, `ToolCallRouter` (and its concrete implementation `DefaultToolCallRouter`), which subsumes the direct call paths to `execute_skill` and `ToolFactory::parse`.
@@ -20,7 +21,7 @@ The router enforces the following **Security Execution Precedence**:
 1. `evaluate_security(tool_name, tool_args)`: Intercepts raw tool strings. Runs Local Guardrails and the `AdaptiveImmuneSystem` (Fail-Closed).
 2. `execute_skill(tool_name, tool_args)`: Only called if Step 1 succeeds. This method wraps the actual WASM logic execution between `ToolHook::pre_execute` and `ToolHook::post_execute`.
 
-All call sites in `stream.rs` and `agent_engine.rs` were modified to exclusively depend on the `ToolCallRouter` trait. 
+All call sites in `stream.rs`, `agent_engine.rs`, and `mcp/server.rs` were modified to exclusively depend on the `ToolCallRouter` trait.
 
 ## Consequences
 

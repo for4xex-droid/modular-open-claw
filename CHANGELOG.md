@@ -14,6 +14,7 @@
     - **Security Execution Precedence**: すべてのツール実行において、1. 意図検証 (Intent/Immune)、2. HookChain Pre-exec、3. Executor、4. HookChain Post-exec の順序を統一。Hook ブロック時や Guardrails 遮断時も適正にエラー結果（`[BLOCKED] ...`）を返却し、実行結果をストリームへ提供（SSE対応）。
     - **Fail-Safe Intent Sync**: テストモック (`MockLlm` / `SentinelLlm`) を整備し、アーキテクチャの変更が TDD アプローチ内でフェイルセーフに構築されることを保証 (`cargo test --workspace` を全件クリア)。
     - **OOM / Context Expansion Defense**: ツールの実行結果の 50KB を超える出力の自動トランケート (`safe_truncate`) を統合し、長期自律ループ中の OOM を防止。
+    - **MCP Tool Execution Security (B-QG-1)**: MCPリクエスト (`apps/api-server/src/mcp/server.rs`) が `ToolCallRouter` を経由するように統合し、`AdaptiveImmuneSystem` と `HookChain` を完全サポート。MCP仕様に対する `isError` フラグ準拠およびストリームの安全な集約を追加。
 
 - **Phase 1C: Generative Engine Infrastructure Integration [完了]**
     - **GenerativeEngine Trait Integration**: `aiome-contracts` で定義された `GenerativeEngine` トレイトの具象実装として、`ComfyUiGenerativeEngine` および `FalAiGenerativeEngine` を `libs/infrastructure` 内に追加。ローカルGPU（ComfyUI）とクラウドAPI（Fal.ai）の両バックエンドに透過的に対応。
