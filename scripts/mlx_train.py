@@ -11,6 +11,8 @@ def main():
     parser.add_argument("--iters", type=int, default=100, help="Number of training iterations")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size")
     parser.add_argument("--learning-rate", type=float, default=1e-5, help="Learning rate")
+    parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--lora-rank", type=int, default=8, help="Rank of the LoRA adapter")
     parser.add_argument("--adapter-file", type=str, default="adapters.safetensors", help="Output file")
     
     args = parser.parse_args()

@@ -102,4 +102,40 @@ mod tests {
         let res = backend.calculate_importance("test").await;
         assert!(res.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_native_backend_guardrail_silent_data_loss() {
+        // This test ensures that developers in Phase 2 realize that store() doesn't actually
+        // save to disk yet, and recall() always returns empty!
+        let config = aiome_contracts::llm::NativeModelConfig {
+            model_name: "test-model".into(),
+            model_path: "path/to/model".into(),
+            tokenizer_path: "path/to/tokenizer".into(),
+            context_size: 512,
+            device: "cpu".into(),
+            quantization: None,
+            embedding_dim: Some(768),
+        };
+        let backend = NativeSlmBackend::new(config);
+        
+        let entry = crate::slm_bridge::SlmMemoryEntry {
+            timestamp: 12345,
+            action: "TEST".to_string(),
+            belief_affected: None,
+            source_job_id: None,
+        };
+        
+        // Storing currently pushes to an in-memory Vec but doesn't persist
+        let _ = backend.store(entry).await;
+        
+        // Because Phase 2 KNN search is not implemented, recall is ALWAYS empty.
+        // Once Phase 2 is implemented, THIS TEST WILL FAIL AND MUST BE REWRITTEN.
+        // It acts as a tripwire to ensure we don't deploy half-baked SLM memory.
+        let results = backend.recall("query", 10).await.expect("Native recall failed");
+        assert_eq!(
+            results.len(),
+            0,
+            "CRITICAL: If recall() is now working, you must remove this Guardrail test and implement proper disk-backed persistence!"
+        );
+    }
 }

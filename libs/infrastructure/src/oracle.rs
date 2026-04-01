@@ -416,11 +416,11 @@ mod tests {
             .await;
 
         assert!(res.is_ok());
-        let verdict = res.unwrap();
+        let verdict = res.expect("Should return verdict");
         assert_eq!(verdict.alignment_score, 0.95);
         assert_eq!(verdict.growth_score, 0.8);
         assert!(verdict.should_evolve);
-        assert_eq!(verdict.classification.as_ref().unwrap().domain, "Creative");
+        assert_eq!(verdict.classification.as_ref().expect("Should have classification").domain, "Creative");
     }
 
     #[tokio::test]
@@ -465,7 +465,7 @@ mod tests {
         let verdict = oracle
             .evaluate_multi_judge(7, "AI Ethics", "Formal", 1000, 100, "[]")
             .await
-            .unwrap();
+            .expect("Should return consensus verdict");
 
         assert!(
             verdict.should_evolve,
@@ -504,7 +504,7 @@ mod tests {
         let res = oracle.multi_review("Bad content", &context, config).await;
 
         assert!(res.is_ok(), "Multi-review failed: {:?}", res.err());
-        let result = res.unwrap();
+        let result = res.expect("Should have result");
         assert_eq!(result.overall_score, 8.5);
         assert_eq!(
             result.decision,
@@ -546,7 +546,7 @@ mod tests {
         let res = oracle.multi_review("Content", &context, config).await;
 
         assert!(res.is_ok());
-        let result = res.unwrap();
+        let result = res.expect("Should have result");
         assert_eq!(
             result.decision,
             aiome_contracts::contracts::ReviewDecision::Accept

@@ -28,21 +28,44 @@ const InxRenderer: React.FC<InxRendererProps> = ({ modelUrl, avatarState }) => {
             return;
         }
 
-        // Mock Loading Process
-        console.log(`[InxRenderer] Initiating payload load for ${modelUrl}...`);
-        
-        // TODO: Import @inochi2d/inochi2d-wasm and parse model buffer
-        setTimeout(() => {
-            if (active) {
-                console.log(`[InxRenderer] Successfully loaded ${modelUrl}`);
-                setIsLoaded(true);
+        let wasmInstance: any = null;
+
+        const loadModel = async () => {
+            console.log(`[InxRenderer] Initiating payload load for ${modelUrl}...`);
+            try {
+                // [Phase 2 Deferred]: The @nicebyte/inochi2d-es package is currently 
+                // unavailable on the public NPM registry. Actual integration of the 
+                // Inochi2D WASM runtime is moved to Phase 2 (or later) when an official 
+                // release or alternative packaging method is established.
+                // 
+                // Future Implementation:
+                // const { Inochi2D } = await import('@nicebyte/inochi2d-es');
+                // await Inochi2D.init();
+                // const res = await fetch(modelUrl);
+                // const buffer = await res.arrayBuffer();
+                // wasmInstance = new Inochi2D();
+                // wasmInstance.loadModel(buffer);
+                
+                // Simulate network/WASM latency for Phase 1
+                await new Promise((resolve) => setTimeout(resolve, 800));
+
+                if (active) {
+                    console.log(`[InxRenderer] Successfully loaded ${modelUrl}`);
+                    setIsLoaded(true);
+                }
+            } catch (err) {
+                console.error(`[InxRenderer] WASM initialization failed:`, err);
             }
-        }, 1000);
+        };
+
+        loadModel();
 
         return () => {
             active = false;
             console.log(`[InxRenderer] Destroying Inochi2D instance for ${modelUrl}`);
-            // TODO: Inochi2d Cleanup goes here
+            if (wasmInstance) {
+                // wasmInstance.destroy();
+            }
         };
     }, [modelUrl]);
 
@@ -69,8 +92,8 @@ const InxRenderer: React.FC<InxRendererProps> = ({ modelUrl, avatarState }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    fontFamily: 'monospace'
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-mono)'
                 }}>
                     [ Inochi2D Runtime Initializing... ]
                 </div>

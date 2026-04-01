@@ -27,6 +27,7 @@ use tracing::{debug, error, info, warn};
 const MAX_GIG_BUDGET: u64 = 5000;
 
 pub mod planner;
+pub mod csam;
 
 /// Task orchestration event. Provides observability (like cmux read-screen).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

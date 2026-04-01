@@ -1,6 +1,14 @@
 ## [Unreleased] - 2026-04-01
 
 ### Added
+- **Phase 1 Final & Security Audit Remediation [完成]**
+    - **Global Compute Semaphore (F-3 Hardware Protection)**: LoRA学習プロセスや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` から `ComfyUiGenerativeEngine` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
+    - **CSAM Release Safe-Guard**: `CsamScanConductor` スタブに `#cfg(not(debug_assertions))` のフェイルセーフを追加し、Releaseビルドで（ダミー実装を持ったまま）コンプライアンススキャンを突破できないようゼロトラストを強制。
+    - **Vault IO Resilience**: `LoraTrainingService` 内で外部プロセス (MLX Python script) を起動する直前に `std::fs::create_dir_all(&config.vault_path)` を実行するようにし、ディレクトリ非存在による学習フェーズのサイレントフォールトを防止＆無視されていた隔離テストを復旧。
+    - **PG Migration Preparation**: `SyndicateStore` に対して `DatabasePool` を受け取るようにインターフェースを拡張（現在は `SqlitePool` にフォールバックするTODO付き）、将来の Phase 4C の PostgreSQL 化へのシームレスな移行パスを確保。
+    - **Workspace Path Standardization**: `LoraTrainingService` 内のハードコードされた `workspace/datasets/` パスを `datasets_dir` 設定値に置き換え、テストやカスタム環境でのディレクトリトラバーサル脆弱性を根絶。
+    - **Doc-Sync (ADR Integrity)**: `docs/decisions` 内に混在していた `ADR-` プレフィックスの重複や欠番(027)を再連番・正規化 (`026` から `028` へ整理)。
+
 - **Phase 1C: Generative Engine Infrastructure Integration [完了]**
     - **GenerativeEngine Trait Integration**: `aiome-contracts` で定義された `GenerativeEngine` トレイトの具象実装として、`ComfyUiGenerativeEngine` および `FalAiGenerativeEngine` を `libs/infrastructure` 内に追加。ローカルGPU（ComfyUI）とクラウドAPI（Fal.ai）の両バックエンドに透過的に対応。
     - **AppState Injection**: `api-server` の `main.rs` において環境変数 (`GENERATIVE_ENGINE`, `COMFYUI_URL`, `FAL_KEY`) に基づく動的なエンジンの初期化と `AppState` への注入を実装。開発環境用には安全な `MockGenerativeEngine` へのフォールバックを提供しつつ、プロダクション (`--release`) 環境では設定漏れ時に Fail-Fast (panic) する厳格なガードレールを構築。

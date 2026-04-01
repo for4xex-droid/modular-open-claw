@@ -143,7 +143,7 @@ const GraphView: React.FC = () => {
                 </div>
             </div>
 
-            <div ref={containerRef} style={{ flex: 1, background: 'radial-gradient(circle at center, #0d1117 0%, #050505 100%)' }} />
+            <div ref={containerRef} style={{ flex: 1, background: 'radial-gradient(circle at center, var(--bg-glass-heavy) 0%, var(--bg-dark-obsidian) 100%)' }} />
 
             {/* Overlay Controls */}
             <div style={{ position: 'absolute', right: '1.5rem', bottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>

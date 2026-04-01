@@ -29,3 +29,8 @@ Aiome は「自身で考え、改善し、世界と関わる自律エージェ�
 3. **Database Consistency**: Keep SQLite and PostgreSQL migrations strictly in sync.
 
 *Memo to self:* Never make undocumented DB schema changes across the dual DB setup. Always preserve the intent of any code when suppressing warnings. Make sure `CHANGELOG.md` and `RIPPLE_MAP.md` are updated faithfully.
+
+### 📌 Perfect Planning & MVP Architecture Limits (2026-04-01)
+- **Drop-Dead Garbage Collection**: MVPでは `napi-bridge`, `key-proxy` 等の不要コンポーネントを無視・保守対象から外す。
+- **Monolith-First for MVP**: `watchtower`（Discord/TG等Bot）のような独立プロセスはTauriのサイドカー監視の鬼門（ゾンビ化・権限の複雑化）となるため、`api-server` 内に `tokio::spawn` で統合する。
+- **Continuous Architecture Mapping**: LLMのコンテキスト溢れによる「不要な車輪の再開発」や「パス修正漏れ（40箇所に及ぶ `workspace/` ハードコード問題）」を防ぐため、計画前には必ず `nurture_auditor.py` を実行して ASTマトリクス (`deep_scan_matrix.md`) を参照すること。

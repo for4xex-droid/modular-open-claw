@@ -277,13 +277,15 @@ async fn main() -> anyhow::Result<()> {
         embed_type,
     );
 
-    let artifact_store = infrastructure::artifact_store::UniversalArtifactStore::new(
-        job_queue.get_pool().clone(),
-        std::path::PathBuf::from("workspace/artifacts"),
-    )
-    .with_embeddings(embed_provider.clone())
-    .with_audit_logger(audit_logger.clone())
-    .with_job_queue(job_queue.clone());
+    let artifact_store = Arc::new(
+        infrastructure::artifact_store::UniversalArtifactStore::new(
+            job_queue.get_pool().clone(),
+            std::path::PathBuf::from("workspace/artifacts"),
+        )
+        .with_embeddings(embed_provider.clone())
+        .with_audit_logger(audit_logger.clone())
+        .with_job_queue(job_queue.clone()),
+    );
 
     let (event_sender, _) = tokio::sync::broadcast::channel(100);
 
@@ -624,6 +626,12 @@ async fn main() -> anyhow::Result<()> {
     ));
     task_dispatcher.register_conductor(docker_conductor);
 
+    // Register CsamScanConductor
+    let csam_conductor = Arc::new(infrastructure::task_orchestrator::csam::CsamScanConductor::new(
+        Some(artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>),
+    ));
+    task_dispatcher.register_conductor(csam_conductor);
+
     let task_dispatcher = Arc::new(task_dispatcher);
 
     // Spawn the loop
@@ -676,7 +684,7 @@ async fn main() -> anyhow::Result<()> {
         ))),
         mcp_manager: Component::new(mcp_manager),
         artifact_store: Component::new(
-            Arc::new(artifact_store) as Arc<dyn aiome_core::traits::ArtifactStore>
+            artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>
         ),
         event_sender: Component::new(event_sender.clone()),
         context_engine: Component::new(context_engine),
@@ -768,6 +776,8 @@ async fn main() -> anyhow::Result<()> {
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
             aiome_commerce::syndicate::SqliteSyndicateStore::new(
+                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool 
+                // to support PostgreSQL dynamically without unwrapping here.
                 job_queue
                     .get_pool()
                     .get_sqlite_pool()
@@ -791,7 +801,7 @@ async fn main() -> anyhow::Result<()> {
             infrastructure::skills::harness::HarnessCache::new(),
         )),
         upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
-        compute_semaphore: Component::new(compute_semaphore),
+        compute_semaphore: Component::new(compute_semaphore.clone()),
         disk_quota: Component::new(Arc::new(disk_quota_mgr)),
         generative_engine: {
             let engine_type =
@@ -804,7 +814,10 @@ async fn main() -> anyhow::Result<()> {
                         .unwrap_or_else(|_| "http://localhost:8188".to_string());
                     std::env::remove_var("COMFYUI_URL");
                     Arc::new(
-                        infrastructure::generative_engine::ComfyUiGenerativeEngine::new(base_url),
+                        infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
+                            base_url,
+                            Some(compute_semaphore.clone()),
+                        )
                     )
                 }
                 "falai" => {

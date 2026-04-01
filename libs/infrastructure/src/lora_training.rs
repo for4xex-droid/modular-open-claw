@@ -46,6 +46,40 @@ impl Default for LoraTrainingConfig {
     }
 }
 
+impl LoraTrainingConfig {
+    /// Extracts training hyperparameters from a JSON payload, falling back to defaults.
+    pub fn from_params(
+        params: &serde_json::Value,
+        base_model: &str,
+        dataset_path: &str,
+        output_dir: &str,
+        vault_path: &str,
+    ) -> Self {
+        let mut config = Self {
+            base_model: base_model.to_string(),
+            dataset_path: dataset_path.to_string(),
+            output_dir: output_dir.to_string(),
+            vault_path: vault_path.to_string(),
+            ..Default::default()
+        };
+
+        if let Some(lr) = params.get("learning_rate").and_then(|v| v.as_f64()) {
+            config.learning_rate = lr;
+        }
+        if let Some(epochs) = params.get("epochs").and_then(|v| v.as_u64()) {
+            config.epochs = epochs as u32;
+        }
+        if let Some(rank) = params.get("lora_rank").and_then(|v| v.as_u64()) {
+            config.lora_rank = rank as u32;
+        }
+        if let Some(bs) = params.get("batch_size").and_then(|v| v.as_u64()) {
+            config.batch_size = bs as u32;
+        }
+
+        config
+    }
+}
+
 /// Service responsible for managing the lifecycle of LoRA training jobs.
 /// Uses BastionGuard to safely execute MLX / Python training scripts.
 #[derive(Clone)]
@@ -57,6 +91,7 @@ pub struct LoraTrainingService {
     event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
     active_jobs: Arc<RwLock<HashMap<String, CancellationToken>>>,
     job_semaphore: Arc<tokio::sync::Semaphore>,
+    datasets_dir: std::path::PathBuf,
 }
 
 impl std::fmt::Debug for LoraTrainingService {
@@ -91,8 +126,15 @@ impl LoraTrainingService {
             event_tx,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
             job_semaphore: compute_semaphore
-                .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))), // Use global compute_semaphore if provided
+                .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))),
+            datasets_dir: std::path::PathBuf::from("workspace/datasets"),
         }
+    }
+
+    /// Allow overriding the datasets directory (useful for testing)
+    pub fn with_datasets_dir(mut self, path: std::path::PathBuf) -> Self {
+        self.datasets_dir = path;
+        self
     }
 
     fn find_mlx_script_path(&self) -> Result<std::path::PathBuf, AiomeError> {
@@ -160,6 +202,11 @@ impl LoraTrainingService {
         // SEC-PATH: 検索パスの正規化 (G-21/X-001)
         let script_path = self.find_mlx_script_path()?;
 
+        // B-002: Ensure vault directory exists before external script writes to it
+        std::fs::create_dir_all(&config.vault_path).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create vault directory for LoRA: {}", e),
+        })?;
+
         // F-02: Acquire semaphore permit
         let _permit =
             self.job_semaphore
@@ -180,6 +227,14 @@ impl LoraTrainingService {
                 config.dataset_path,
                 "--adapter-file".to_string(),
                 adapter_output,
+                "--learning-rate".to_string(),
+                config.learning_rate.to_string(),
+                "--epochs".to_string(),
+                config.epochs.to_string(),
+                "--lora-rank".to_string(),
+                config.lora_rank.to_string(),
+                "--batch-size".to_string(),
+                config.batch_size.to_string(),
             ],
             SandboxProfile::LoraTraining,
         )?;
@@ -340,7 +395,7 @@ impl LoraEngine for LoraTrainingService {
         // 🧬 Phase 1A-2: Dynamic Dataset Extraction from SoulStore
         let actual_dataset_path = if let Some(jq) = &self.job_queue {
             let extractor = crate::dataset_extractor::DatasetExtractor::new(
-                std::path::PathBuf::from("workspace/datasets"),
+                self.datasets_dir.clone(),
             );
             match extractor.extract_to_jsonl(&**jq, dataset_id, &job_id).await {
                 Ok(path) => {
@@ -359,13 +414,14 @@ impl LoraEngine for LoraTrainingService {
             format!("workspace/datasets/{}", dataset_id)
         };
 
-        let config = LoraTrainingConfig {
-            base_model: base_model.to_string(),
-            dataset_path: actual_dataset_path,
-            output_dir: "workspace/output".to_string(),
-            vault_path: format!("workspace/vault/lora/{}", job_id),
-            ..Default::default()
-        };
+        // Use the parameters passed in from the frontend (or Autotuner)
+        let config = LoraTrainingConfig::from_params(
+            &params,
+            base_model,
+            &actual_dataset_path,
+            "workspace/output",
+            &format!("workspace/vault/lora/{}", job_id),
+        );
 
         let service_clone = self.clone();
         let j_id = job_id.clone();
@@ -496,9 +552,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Vault dir not created because LoraTrainingService delegates to external python3 \
-                 script via BastionGuard::build_safe_command_args which does NOT create parent dirs. \
-                 Fix: add std::fs::create_dir_all(&config.vault_path) before spawning the script."]
     async fn test_start_training_isolates_weights_in_vault() {
         // RED test: Should assert that weights are moved to the vault.
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
@@ -556,18 +609,20 @@ mod tests {
         ));
         let jq = Arc::new(GlobalMockJobQueue::default());
 
-        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None);
+        let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None)
+            .with_datasets_dir(std::path::PathBuf::from("workspace/datasets"));
 
         let dataset_dir = std::path::Path::new("workspace/datasets");
         let _ = std::fs::create_dir_all(&dataset_dir);
-        let dataset_path = dataset_dir.join("null");
+        let dataset_path = dataset_dir.join("test_dataset");
         std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
 
         // When implemented, this should trigger SoulMutator
-        let res = service.train("test", "null", serde_json::json!({}));
+        let res = service.train("test", "test_dataset", serde_json::json!({}));
         res.await.unwrap();
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // Give it enough time to spawn python and execute (which should be fast as it's mocked, but still)
+        tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
 
         let mutated_content = std::fs::read_to_string(&soul_path).unwrap();
 
@@ -593,11 +648,29 @@ mod tests {
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None);
 
-        // This method does not exist yet! (TDD RED)
         let health = service.health_check().await.unwrap();
         assert!(
             health,
             "Health check should pass in test environment (STUB mode)"
         );
+    }
+
+    #[test]
+    fn test_lora_training_config_from_params() {
+        let params = serde_json::json!({
+            "learning_rate": 0.0002,
+            "epochs": 10,
+            "lora_rank": 32,
+            "batch_size": 8
+        });
+
+        // TDD RED: We want a method that extracts these precisely.
+        let config = LoraTrainingConfig::from_params(&params, "base", "data", "out", "vault");
+
+        assert_eq!(config.learning_rate, 0.0002);
+        assert_eq!(config.epochs, 10);
+        assert_eq!(config.lora_rank, 32);
+        assert_eq!(config.batch_size, 8);
+        assert_eq!(config.base_model, "base");
     }
 }

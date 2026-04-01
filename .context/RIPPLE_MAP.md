@@ -79,10 +79,17 @@
   - `libs/infrastructure/src/samsara_engine.rs`: `DefaultSamsaraEngine::rebirth` に `SoulStore` インスタンスを（Option で）注入し、アーカイブ処理を挟んだ後、`new_soul.lora_hash`, `lora_adapter_path`, `lora_base_model` を `None` にリセット。
 
 ### 2. Secure LoRA Training Execution (LoraTrainingService)
-- **変更理由**: 動的な学習スクリプト（MLX/Python）実行時の特権昇格や不要なシステムアクセスを防ぎ、安全な場所にウェイト出力させるため。
+- **変更理由**: 動的な学習スクリプト（MLX/Python）実行時の特権昇格や不要なシステムアクセスを防ぎ、安全な場所にウェイト出力させるため。コマンドライン引数としてハイパーパラメータ（Epochs, Rank等）を流し込むため。
 - **波及効果**:
-  - `libs/infrastructure/src/lora_training.rs` [NEW]: `LoraTrainingService` 構造体の追加。`BastionGuard::new_internal()`（RAIIパターン）による隔離保護空間でのスクリプト実行 (`Command::new`) を開始。
+  - `libs/infrastructure/src/lora_training.rs` [NEW]: `LoraTrainingService` 構造体の追加。`BastionGuard::new_internal()`（RAIIパターン）による隔離保護空間でのスクリプト実行 (`Command::new`) を開始。`LoraTrainingConfig` によるパラメータ適用に対応。
   - **Vault 保護**: 出力されるセーフテンサー(`adapter_model.safetensors`)をセキュアな保管庫 (`GLOBAL_SECURITY_CONFIG.vault_path`) に移動し、`ollama create` コマンドを発行して自動的に推論エンジンにモデルを読み込ませるフローを確立。
+
+### 3. CSAM Conductor Integration
+- **変更理由**: Phase 1の要件であるCSAMスキャン検証バックグラウンドワーカの導通を完了し、セキュリティコンプライアンスを保証するため。
+- **波及効果**:
+  - `libs/infrastructure/src/task_orchestrator/csam.rs` [NEW]: `CsamScanConductor` 構造体の実装。
+  - `apps/api-server/src/main.rs`: `TaskDispatcher` に `CsamScanConductor` を注入し、タスクの実行を確立。
+
 
 ## Phase 53: SoT Deliberation Engine & Security Hardening (Phase 53 実装)
 
