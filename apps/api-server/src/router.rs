@@ -236,6 +236,10 @@ pub fn build_app(
             post(routes::voice::synthesize_voice_handler),
         )
         .route("/api/v1/lora/train", post(routes::lora::train_lora_handler))
+        .route(
+            "/api/v1/lora/status/:job_id",
+            get(routes::lora::status_lora_handler),
+        )
         .route("/api/wiki", get(routes::general::list_wiki_files))
         .route("/api/wiki/content", get(routes::general::get_wiki_content))
         .route(

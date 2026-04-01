@@ -5,8 +5,6 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use std::collections::HashMap;
-
 /// Result of hyperparameter tuning
 #[derive(Debug, Clone, PartialEq)]
 pub struct TunedHyperparams {
@@ -85,6 +83,29 @@ impl LoraAutotuner {
 
         new_params
     }
+
+    /// Converts tuned hyperparameters into a [`LoraTrainingConfig`](crate::lora_training::LoraTrainingConfig).
+    ///
+    /// This is intentionally a static method on `LoraAutotuner` (rather than a free function)
+    /// to namespace the conversion within the autotuner's responsibility boundary.
+    pub fn create_training_config(
+        params: &TunedHyperparams,
+        base_model: String,
+        dataset_path: String,
+        output_dir: String,
+        vault_path: String,
+    ) -> crate::lora_training::LoraTrainingConfig {
+        crate::lora_training::LoraTrainingConfig {
+            base_model,
+            dataset_path,
+            output_dir,
+            vault_path,
+            learning_rate: params.learning_rate,
+            epochs: params.epochs,
+            lora_rank: params.lora_rank,
+            batch_size: params.batch_size,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -153,5 +174,32 @@ mod tests {
             new_params.epochs < 5,
             "Epochs should decrease to prevent overfitting"
         );
+    }
+
+    #[test]
+    fn test_create_training_config_maps_all_fields() {
+        let params = TunedHyperparams {
+            learning_rate: 3e-5,
+            epochs: 7,
+            lora_rank: 32,
+            batch_size: 16,
+        };
+
+        let config = LoraAutotuner::create_training_config(
+            &params,
+            "my-base-model".into(),
+            "/data/train.jsonl".into(),
+            "/out".into(),
+            "/vault".into(),
+        );
+
+        assert_eq!(config.base_model, "my-base-model");
+        assert_eq!(config.dataset_path, "/data/train.jsonl");
+        assert_eq!(config.output_dir, "/out");
+        assert_eq!(config.vault_path, "/vault");
+        assert_eq!(config.learning_rate, 3e-5);
+        assert_eq!(config.epochs, 7);
+        assert_eq!(config.lora_rank, 32);
+        assert_eq!(config.batch_size, 16);
     }
 }

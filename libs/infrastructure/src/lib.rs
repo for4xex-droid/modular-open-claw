@@ -45,6 +45,7 @@ pub mod capability_registry;
 /// 外部チャットプラットフォームとの通信ブリッジ
 pub mod channel_bridge;
 pub mod circuit_breaker;
+pub mod generative_engine;
 /// 外部からの安全なタスク受理ゲートウェイ（Phase F）
 pub mod gig_gateway;
 

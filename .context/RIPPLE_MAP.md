@@ -1,5 +1,16 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 1C: Generative Engine Infrastructure Integration
+
+### 1. Concrete GenerativeEngine Implementations
+- **変更理由**: 画像・音声など複数モーダルな生成を可能にするため、ローカルで完結する `ComfyUiGenerativeEngine` とクラウド利用の `FalAiGenerativeEngine` の2つの具象実装を整備し、`GenerativeEngine` トレイトを通じた一元的な生成基盤を構築するため。
+- **波及効果**:
+  - `libs/infrastructure/src/generative_engine.rs` [NEW]: コンポーネントおよびテストモック（`MockGenerativeEngine`）を含む新規モジュール作成。
+  - `libs/infrastructure/src/lib.rs`: 新規モジュール `generative_engine` をエクスポート。
+  - `apps/api-server/src/app_state.rs`: `AppState` に `generative_engine: Component<Arc<dyn aiome_contracts::traits::GenerativeEngine>>` を追加。
+  - `apps/api-server/src/main.rs`: 環境変数 `GENERATIVE_ENGINE` (comfyui / falai) に応じたエンジン初期化と注入ロジックを追加。プロダクション (`--release`) 環境での無指定時にはセキュアなフェイルファスト (`std::process::exit(1)`) を実装。
+  - `apps/api-server/src/api_integration_tests.rs`: テスト環境用の `AppState` モック設定に `MockGenerativeEngine` の初期化処理を統合し、全エンドツーエンドテストの疎通を回復。
+
 ## Phase 1B: Avatar Engine & Infrastructure Hardening
 
 ### 1. Storage DoS Protection (DiskQuotaManager)

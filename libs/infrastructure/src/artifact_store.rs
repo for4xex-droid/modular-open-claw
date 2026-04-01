@@ -315,12 +315,19 @@ impl ArtifactStore for UniversalArtifactStore {
         }
 
         // Phase 1 Step C: Enqueue CSAM async scan
-        if let Some(jq) = &self.job_queue {
-            if let Err(e) = jq
-                .enqueue("csam_scan", &id, "security", None, None, None, 0)
-                .await
-            {
-                tracing::error!("🚨 [Security] CSAM scan enqueue failed for {}: {:?}", id, e);
+        if matches!(req.category, ArtifactCategory::Image) {
+            if let Some(jq) = &self.job_queue {
+                if let Err(e) = jq
+                    .enqueue("csam_scan", &id, "security", None, None, None, 0)
+                    .await
+                {
+                    tracing::error!("🚨 [Security] CSAM scan enqueue failed for {}: {:?}", id, e);
+                }
+            } else {
+                tracing::error!(
+                    "🚨 [Security] csam_scan bypassed for {} because job_queue is NOT injected! This is a severe compliance risk.",
+                    id
+                );
             }
         }
 

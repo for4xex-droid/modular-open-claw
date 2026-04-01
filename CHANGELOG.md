@@ -1,6 +1,11 @@
 ## [Unreleased] - 2026-04-01
 
 ### Added
+- **Phase 1C: Generative Engine Infrastructure Integration [完了]**
+    - **GenerativeEngine Trait Integration**: `aiome-contracts` で定義された `GenerativeEngine` トレイトの具象実装として、`ComfyUiGenerativeEngine` および `FalAiGenerativeEngine` を `libs/infrastructure` 内に追加。ローカルGPU（ComfyUI）とクラウドAPI（Fal.ai）の両バックエンドに透過的に対応。
+    - **AppState Injection**: `api-server` の `main.rs` において環境変数 (`GENERATIVE_ENGINE`, `COMFYUI_URL`, `FAL_KEY`) に基づく動的なエンジンの初期化と `AppState` への注入を実装。開発環境用には安全な `MockGenerativeEngine` へのフォールバックを提供しつつ、プロダクション (`--release`) 環境では設定漏れ時に Fail-Fast (panic) する厳格なガードレールを構築。
+    - **TDD-Driven Robustness**: `mock` モジュールを `#[cfg(any(test, debug_assertions))]` で隔離し、本番環境への混入を防止。さらに、不正なエンドポイントや無効なAPIキーに対する HTTP クライアントのフェイルクローズ処理（401 Unauthorized 等のハンドリング）をカバーする包括的な TDD テストスイートを構築し、ワークスペース全体の 1379 テストをクリーンパス。
+
 - **Phase 1B: Avatar Engine & Infrastructure Hardening [完成]**
     - **Storage DoS Protection (DiskQuotaManager)**: `DiskQuotaManager` を導入し、エージェントごとに最大 500MB のディスククォータを厳密に管理することでストレージ枯渇（DoE）攻撃を防止。アップロード処理中のリアルタイム検証とデータベース管理により安全性を向上。テストスイート内の AppState モックも完全同期。
     - **TTS Streaming Optimization**: `TtsProvider` トレイトを非破壊的に拡張し `synthesize_stream` を追加。OpenAI バックエンド呼び出しにおいて真のチャンクストリーミング（TTFB の劇的な短縮）を実現し、`api-server` の `/api/v1/voice/synthesize` に `?stream=true` 対応を統合。

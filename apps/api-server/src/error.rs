@@ -30,6 +30,13 @@ impl AppError {
         })
     }
 
+    /// Not Found (404 Not Found)
+    pub fn not_found(reason: impl Into<String>) -> Self {
+        Self(AiomeError::NotFound {
+            reason: reason.into(),
+        })
+    }
+
     /// Internal Server Error (500)
     pub fn internal(reason: impl Into<String>) -> Self {
         Self(AiomeError::Infrastructure {

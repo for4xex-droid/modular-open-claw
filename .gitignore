@@ -43,3 +43,8 @@ docs/vision/
 *buyout*.md
 *business_plan*.md
 libs/infrastructure/workspace/
+
+# Test artifacts (CWD debris from cargo test)
+libs/infrastructure/scripts/
+libs/infrastructure/test_vault/
+libs/infrastructure/test_output/

@@ -28,6 +28,7 @@ const DiagnosticsHistory = React.lazy(() => import("./components/DiagnosticsHist
 const GraphView = React.lazy(() => import("./components/GraphView"));
 const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
+const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
@@ -178,7 +179,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome', 'causal'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome', 'causal', 'lora'];
     const advanced = [...intermediate, 'graph', 'audit', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -343,6 +344,14 @@ function App() {
               onClick={() => setActiveTab("vault")}
             />
           )}
+          {isVisible("lora") && (
+            <NavItem
+              icon={<BrainCircuit size={20} />}
+              label="LoRA Autotuner"
+              active={activeTab === "lora"}
+              onClick={() => setActiveTab("lora")}
+            />
+          )}
           {isVisible("settings") && (
             <NavItem
               icon={<SettingsIcon size={20} />}
@@ -392,6 +401,7 @@ function App() {
             {activeTab === "biome" && "Biome Collaborative Lab"}
             {activeTab === "store" && "Creator Voice Store"}
             {activeTab === "causal" && "Causal Reasoning Trace"}
+            {activeTab === "lora" && "LoRA Autotuner"}
             {activeTab === "settings" && "System Settings"}
           </motion.h2>
 
@@ -423,6 +433,7 @@ function App() {
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}
               {activeTab === "causal" && <CausalVisualizer />}
+              {activeTab === "lora" && <LoraTrainingView />}
               {activeTab === "settings" && <SettingsPage />}
             </motion.div>
           </React.Suspense>
