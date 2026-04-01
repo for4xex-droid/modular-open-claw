@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use aiome_contracts::a2a::{
     internal::docker_conductor_client::DockerConductorClient, A2aClient, A2aTaskProgress,
     A2aTaskRequest,

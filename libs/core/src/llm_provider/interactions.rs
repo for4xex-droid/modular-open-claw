@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use crate::error::AiomeError;
 use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
 use async_trait::async_trait;

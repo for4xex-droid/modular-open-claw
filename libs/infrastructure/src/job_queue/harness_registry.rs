@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use aiome_contracts::contracts::{HarnessRecord, HarnessStatus};
 use aiome_contracts::traits::HarnessRegistryOps;
 use aiome_core::error::AiomeError;

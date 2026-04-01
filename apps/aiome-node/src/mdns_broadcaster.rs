@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 
 pub fn start_mdns_broadcaster(port: u16, did: &str) -> Result<ServiceDaemon, String> {

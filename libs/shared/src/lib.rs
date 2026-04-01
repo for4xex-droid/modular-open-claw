@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 //! Aiome共有ライブラリ — 設定、ヘルス、セキュリティ等の横断的機能を提供
 #![forbid(unsafe_code)]

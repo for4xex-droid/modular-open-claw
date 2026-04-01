@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use crate::grpc::a2a_grpc_client::{A2aGrpcClient, GrpcClientConfig};
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
 use crate::task_orchestrator::{TaskConductor, TaskEvent};

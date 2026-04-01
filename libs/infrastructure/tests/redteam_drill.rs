@@ -1,6 +1,7 @@
 /*
  * Aiome - Red Team Penetration Drill
  * Copyright (C) 2026 motivationstudio, LLC
+ * Licensed under the Business Source License 1.1.
  */
 
 use shared::guardrails::{validate_input, BeggingSupervisor, ValidationResult};

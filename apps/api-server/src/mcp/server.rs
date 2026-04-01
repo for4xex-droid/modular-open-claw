@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 
 use super::types::*;
@@ -235,12 +235,17 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     },
                 }
             } else {
-                use crate::tool_call_router::{DefaultToolCallRouter, ToolCallRouter, ToolExecutionEvent};
+                use crate::tool_call_router::{
+                    DefaultToolCallRouter, ToolCallRouter, ToolExecutionEvent,
+                };
                 let router = DefaultToolCallRouter;
                 let input_str = arguments.to_string();
 
                 if let Err(security_error) = router.evaluate_security(&input_str, state).await {
-                    warn!("MCP Security Evaluation blocked tool `{}`: {}", name, security_error);
+                    warn!(
+                        "MCP Security Evaluation blocked tool `{}`: {}",
+                        name, security_error
+                    );
                     return JsonRpcResponse {
                         jsonrpc: "2.0".into(),
                         id,
@@ -271,7 +276,10 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                     }
                 }
 
-                if final_output.starts_with("Error:") || final_output.starts_with("[Hook") || final_output.contains(" Error:") {
+                if final_output.starts_with("Error:")
+                    || final_output.starts_with("[Hook")
+                    || final_output.contains(" Error:")
+                {
                     is_error = true;
                 }
 
@@ -343,9 +351,17 @@ mod tests {
         };
 
         let response = handle_mcp_request(req, &state).await;
-        assert!(response.error.is_some(), "Expected an error due to security block");
+        assert!(
+            response.error.is_some(),
+            "Expected an error due to security block"
+        );
         let err = response.error.unwrap();
-        assert!(err.message.contains("GUARDRAIL") || err.message.contains("SENTINEL") || err.message.contains("Hook Block"), 
-                "Expected Guardrail, Sentinel, or Hook block, got: {}", err.message);
+        assert!(
+            err.message.contains("GUARDRAIL")
+                || err.message.contains("SENTINEL")
+                || err.message.contains("Hook Block"),
+            "Expected Guardrail, Sentinel, or Hook block, got: {}",
+            err.message
+        );
     }
 }

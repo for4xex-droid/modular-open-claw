@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 use axum::Router;
 use std::net::SocketAddr;
