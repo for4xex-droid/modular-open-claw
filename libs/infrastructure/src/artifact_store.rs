@@ -316,9 +316,12 @@ impl ArtifactStore for UniversalArtifactStore {
 
         // Phase 1 Step C: Enqueue CSAM async scan
         if let Some(jq) = &self.job_queue {
-            let _ = jq
+            if let Err(e) = jq
                 .enqueue("csam_scan", &id, "security", None, None, None, 0)
-                .await;
+                .await
+            {
+                tracing::error!("🚨 [Security] CSAM scan enqueue failed for {}: {:?}", id, e);
+            }
         }
 
         Ok(id)

@@ -43,8 +43,13 @@ impl NativeSlmBackend {
 impl SlmBackend for NativeSlmBackend {
     async fn store(&self, entry: SlmMemoryEntry) -> Result<(), AiomeError> {
         // Phase 2: インメモリ・ベクトルデータベースへの保存
-        if let Ok(mut store) = self.memory_store.write() {
-            store.push(entry);
+        match self.memory_store.write() {
+            Ok(mut store) => store.push(entry),
+            Err(e) => {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Native backend memory lock poisoned: {}", e),
+                });
+            }
         }
         Ok(())
     }
