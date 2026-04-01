@@ -102,6 +102,18 @@ impl ToolCallRouter for DefaultToolCallRouter {
         tokio::spawn(async move {
             let _ = tx_clone.send(ToolExecutionEvent::Start(sn.clone())).await;
 
+            // === Security Guardrail: Path Traversal Prevention ===
+            if sn.contains('/') || sn.contains('\\') || sn.contains("..") {
+                tracing::warn!("Path traversal blocked in skill execution: {}", sn);
+                let _ = tx_clone
+                    .send(ToolExecutionEvent::Error(
+                        "[Guardrail Block] Invalid skill name: potential path traversal detected"
+                            .to_string(),
+                    ))
+                    .await;
+                return;
+            }
+
             // === Pre-Hook ===
             use infrastructure::skills::hooks::HookVerdict;
             let pre_verdict = state_rc.hook_chain.execute_pre(&sn, &si).await;

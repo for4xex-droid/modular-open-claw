@@ -59,6 +59,7 @@ hmac = "0.12.1"
 sha2.workspace = true
 hex = "0.4.3"
 tempfile = "3.27.0"
+moka = { version = "0.12.15", features = ["future"] }
 
 [features]
 default = ["dev-routes"]

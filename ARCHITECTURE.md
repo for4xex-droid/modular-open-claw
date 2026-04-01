@@ -42,6 +42,7 @@ graph TD
         fs_writer(fs_writer)
         napi-bridge(napi-bridge)
         aiome-contracts(aiome-contracts)
+        aiome-core-contracts(aiome-core-contracts)
         soul(soul)
         aiome-commerce(aiome-commerce)
     end
@@ -50,7 +51,7 @@ graph TD
     api-server --> infrastructure
     api-server --> shared
     api-server --> avatar-engine
-    api-server --> aiome-contracts
+    api-server --> aiome-core-contracts
     api-server --> aiome-commerce
     samsara-hub --> aiome-core
     samsara-hub --> shared
@@ -58,26 +59,27 @@ graph TD
     key-proxy --> shared
     key-proxy --> infrastructure
     aiome-core --> shared
-    aiome-core --> aiome-contracts
+    aiome-core --> aiome-core-contracts
     aiome-core --> avatar-engine
     infrastructure --> soul
-    infrastructure --> aiome-contracts
+    infrastructure --> aiome-core-contracts
     infrastructure --> shared
-    shared --> aiome-contracts
-    avatar-engine --> aiome-contracts
+    shared --> aiome-core-contracts
+    avatar-engine --> aiome-core-contracts
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
-    soul --> aiome-contracts
+    aiome-core-contracts --> aiome-contracts
+    soul --> aiome-core-contracts
     aiome-migrate --> aiome-core
     aiome-migrate --> infrastructure
-    shadow-worker --> aiome-contracts
+    shadow-worker --> aiome-core-contracts
     shadow-worker --> aiome-core
-    aiome-node --> aiome-contracts
+    aiome-node --> aiome-core-contracts
     aiome-node --> shared
     aiome-node --> infrastructure
-    aiome-node --> aiome-contracts
-    aiome-commerce --> aiome-contracts
+    aiome-node --> aiome-core-contracts
+    aiome-commerce --> aiome-core-contracts
     aiome-commerce --> aiome-core
     aiome-commerce --> shared
 ```
@@ -99,6 +101,7 @@ graph TD
 | `napi-bridge` | `libs/napi-bridge` | (Core Module) |
 | `management-console` | `apps/management-console/src-tauri` | A Tauri App |
 | `aiome-contracts` | `libs/aiome-contracts` | (Core Module) |
+| `aiome-core-contracts` | `libs/aiome-core-contracts` | (Core Module) |
 | `soul` | `libs/soul` | (Core Module) |
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
@@ -112,4 +115,4 @@ API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_L
 ```
 
 ---
-*Last Auto-Generated: 2026-04-01 UTC*
+*Last Auto-Generated: 2026-04-02 UTC*

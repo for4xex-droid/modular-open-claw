@@ -35,6 +35,8 @@ pub mod job_queue_mock {
         pub fetched_job: std::sync::Mutex<Option<Job>>,
         pub completed: std::sync::Mutex<bool>,
         pub karmas: std::sync::Mutex<Vec<Value>>,
+        pub diagnosis: std::sync::Mutex<Option<aiome_core_contracts::trajectory::AgentDiagnosis>>,
+        pub trajectory: std::sync::Mutex<Vec<TrajectoryStep>>,
     }
 
     #[async_trait]
@@ -135,15 +137,36 @@ pub mod job_queue_mock {
         async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn store_trajectory_step(&self, _: TrajectoryStep) -> Result<(), AiomeError> {
+        async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError> {
+            self.trajectory.lock().unwrap().push(step);
             Ok(())
         }
         async fn fetch_trajectory_steps(&self, _: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
-            Ok(Vec::new())
+            Ok(self.trajectory.lock().unwrap().clone())
         }
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            self.trajectory.lock().unwrap().clear();
             Ok(())
         }
+
+        async fn fetch_diagnosis(
+            &self,
+            _: &str,
+        ) -> Result<
+            Option<aiome_core_contracts::trajectory::AgentDiagnosis>,
+            aiome_core_contracts::error::AiomeError,
+        > {
+            Ok(self.diagnosis.lock().unwrap().clone())
+        }
+        async fn store_diagnosis(
+            &self,
+            _: &str,
+            diag: aiome_core_contracts::trajectory::AgentDiagnosis,
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
+            *self.diagnosis.lock().unwrap() = Some(diag);
+            Ok(())
+        }
+
         async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
             Ok(0)
         }

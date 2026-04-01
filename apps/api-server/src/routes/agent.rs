@@ -146,6 +146,11 @@ mod tests {
             wasm_skill_manager: Component::new(wsm),
             job_queue: Component::new(jq),
             config: Component::new(Arc::new(shared::config::AiomeConfig::default())),
+            project_rules_cache: Component::new(Arc::new(
+                moka::future::Cache::builder()
+                    .time_to_live(std::time::Duration::from_secs(30))
+                    .build(),
+            )),
             ..Default::default()
         };
 
@@ -178,6 +183,7 @@ mod tests {
             "no karma",
             None,
             Some("Aiome".to_string()),
+            None,
             None,
             None,
             None,

@@ -99,6 +99,7 @@ pub struct TaskDispatcher {
     soul_path: Option<std::path::PathBuf>,
     pub oracle: Option<Arc<crate::oracle::Oracle>>,
     gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
+    diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
 }
 
 impl TaskDispatcher {
@@ -113,6 +114,7 @@ impl TaskDispatcher {
         soul_path: Option<std::path::PathBuf>,
         oracle: Option<Arc<crate::oracle::Oracle>>,
         gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
+        diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -178,6 +180,7 @@ impl TaskDispatcher {
             soul_path,
             oracle,
             gig_engine,
+            diagnostics,
         }
     }
 
@@ -341,8 +344,34 @@ impl TaskDispatcher {
             let categories_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
 
             match self.job_queue.dequeue(&categories_refs).await {
-                Ok(Some(job)) => {
+                Ok(Some(mut job)) => {
                     info!("📥 Dequeued job: {} (category: {})", job.id, job.category);
+
+                    // --- Phase C-2: Watchtower Read-Path ---
+                    if let Ok(Some(d)) = self.job_queue.fetch_diagnosis(&job.id).await {
+                        // Use a specific tag for the insight to help LLM distinguish it from user task
+                        let hint = format!("\n<WATCHTOWER_INSIGHT>\nPast Failure: {}\nSelf-Repair Hint: {}\n</WATCHTOWER_INSIGHT>\n", d.root_cause, d.self_repair_hint);
+
+                        // Idempotency: Avoid double appending if already present in raw string
+                        if !job.topic.contains("<WATCHTOWER_INSIGHT>") {
+                            if let Ok(mut payload) =
+                                serde_json::from_str::<serde_json::Value>(&job.topic)
+                            {
+                                if let Some(tp) = payload["task_prompt"].as_str() {
+                                    if !tp.contains("<WATCHTOWER_INSIGHT>") {
+                                        payload["task_prompt"] =
+                                            serde_json::json!(format!("{}{}", tp, hint));
+                                        job.topic =
+                                            serde_json::to_string(&payload).unwrap_or(job.topic);
+                                    }
+                                } else {
+                                    job.topic.push_str(&hint);
+                                }
+                            } else {
+                                job.topic.push_str(&hint);
+                            }
+                        }
+                    }
 
                     // --- Phase 13: Strategic Planning ---
                     if job.category == "Goal" {
@@ -401,6 +430,7 @@ impl TaskDispatcher {
                         let oracle_clone = self.oracle.clone();
                         let gig_engine_clone = self.gig_engine.clone();
                         let validator_clone = self.validator.clone();
+                        let diagnostics_clone = self.diagnostics.clone();
                         tokio::spawn(async move {
                             // Phase 48-D: Invariant-DAG Verification before execution
                             if let Some(directives_str) = &job.karma_directives {
@@ -455,7 +485,7 @@ impl TaskDispatcher {
                                         error: "Cancelled by user".to_string(),
                                     }).await;
                                 }
-                                result = conductor_clone.conduct(job, progress_tx.clone()) => {
+                                result = conductor_clone.conduct(job.clone(), progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
                                             let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>| async move {
@@ -551,6 +581,40 @@ impl TaskDispatcher {
                                         Err(e) => {
                                             error!("Task {} failed: {:?}", job_id, e);
                                             let is_poisoned = job_queue_clone.increment_job_retry_count(&job_id).await.unwrap_or(true);
+
+                                            // Phase C-2: Watchtower Write-Path
+                                            // Extract trajectory early to prevent race condition with cleanup
+                                            let steps = job_queue_clone.fetch_trajectory_steps(&job_id).await.unwrap_or_default();
+                                            let err_msg = e.to_string();
+
+                                            if let Some(diag) = diagnostics_clone.clone() {
+                                                info!("🔍 [Watchtower] Triggering post-mortem diagnosis for job {}", job_id);
+                                                let d_id = job_id.clone();
+                                                let d_jq = job_queue_clone.clone();
+                                                let d_job = job.clone();
+                                                tokio::spawn(async move {
+                                                    match diag.diagnose(&steps, &d_job).await {
+                                                        Ok(agent_diagnosis) => {
+                                                            if let Err(e) = d_jq.store_diagnosis(&d_id, agent_diagnosis).await {
+                                                                tracing::error!("🔥 [Watchtower] Critical Failure: Could not store diagnosis for {}: {:?}", d_id, e);
+                                                            }
+                                                        }
+                                                        Err(e) => {
+                                                            tracing::warn!("⚠️ [Watchtower] Diagnostic LLM failed for {}: {}. Fallback to fail-safe record.", d_id, e);
+                                                            let fallback = aiome_core_contracts::trajectory::AgentDiagnosis {
+                                                                critical_failure_step: 0,
+                                                                category: aiome_core_contracts::trajectory::FailureCategory::SystemFailure,
+                                                                root_cause: format!("Diagnostic Engine Failure: {}", e),
+                                                                evidence: vec![],
+                                                                self_repair_hint: "The system diagnosis process failed. Proceed with manual inspection or retry with increased developer logs.".into(),
+                                                                diagnosed_at: chrono::Utc::now().to_rfc3339(),
+                                                            };
+                                                            let _ = d_jq.store_diagnosis(&d_id, fallback).await;
+                                                        }
+                                                    }
+                                                });
+                                            }
+
                                             if is_poisoned {
                                                 let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
                                                 let _ = progress_tx
@@ -815,6 +879,7 @@ mod tests {
             None,
             None,
             None, // gig_engine
+            None, // diagnostics
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -944,6 +1009,7 @@ mod tests {
             None,
             None,
             Some(mock_gig.clone()), // This argument causes compilation failure
+            None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -989,6 +1055,7 @@ mod tests {
             None,
             None,
             Some(mock_gig.clone()),
+            None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1002,6 +1069,128 @@ mod tests {
         assert!(
             intent_lock.is_none(),
             "GIG Intent should NOT have been published due to depth limit"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_watchtower_diagnostic_loop() {
+        use aiome_core::llm_provider::{LlmProvider, LlmResponse, StopReason};
+        use aiome_core_contracts::llm::LlmRequest;
+
+        #[derive(Debug)]
+        struct MockLlmForDiagnostics;
+        #[async_trait]
+        impl LlmProvider for MockLlmForDiagnostics {
+            async fn complete(&self, _: &str, _: Option<&str>) -> Result<LlmResponse, AiomeError> {
+                let json_resp = serde_json::json!({
+                    "critical_failure_step": 1,
+                    "failure_category": "SystemFailure",
+                    "root_cause": "Forced failure for testing watchtower",
+                    "self_repair_hint": "Try writing better code"
+                })
+                .to_string();
+                Ok(LlmResponse {
+                    content: format!("```json\n{}\n```", json_resp),
+                    stop_reason: StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+            fn name(&self) -> &str {
+                "Mock"
+            }
+            async fn complete_with_cache(&self, _: LlmRequest) -> Result<LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+        }
+
+        struct FailingConductor;
+        #[async_trait]
+        impl TaskConductor for FailingConductor {
+            fn conductor_name(&self) -> &str {
+                "FailingConductor"
+            }
+            fn capable_categories(&self) -> Vec<String> {
+                vec!["test_cat".into()]
+            }
+            async fn conduct(
+                &self,
+                _: Job,
+                _: mpsc::Sender<TaskEvent>,
+            ) -> Result<(String, Option<String>), AiomeError> {
+                Err(AiomeError::Infrastructure {
+                    reason: "Forced test failure".into(),
+                })
+            }
+        }
+
+        let mut job = Job::default();
+        job.id = "failed-job".into();
+        job.category = "test_cat".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            ..Default::default()
+        });
+
+        // Add a mock trajectory step so the diagnosis check succeeds
+        {
+            use aiome_core_contracts::trajectory::TrajectoryStep;
+            let step = TrajectoryStep {
+                step_id: 1,
+                action: "Test Action".into(),
+                is_critical_failure: true,
+                ..Default::default()
+            };
+            let _ = job_queue.store_trajectory_step(step).await;
+        }
+
+        let diag_engine = Arc::new(crate::diagnostics::AgentRxDiagnostics::new(Arc::new(
+            MockLlmForDiagnostics,
+        )));
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(diag_engine),
+        );
+        dispatcher.register_conductor(Arc::new(FailingConductor));
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        // POLLING: Wait for the watchtower diagnostic (async) to complete without relying on a fixed sleep
+        let mut diagnosis = None;
+        for _ in 0..40 {
+            // Max 2 seconds (50ms * 40)
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            let current = job_queue.diagnosis.lock().unwrap().clone();
+            if current.is_some() {
+                diagnosis = current;
+                break;
+            }
+        }
+
+        assert!(
+            diagnosis.is_some(),
+            "Watchtower should have generated a diagnosis within timeout"
+        );
+        let diagnosis = diagnosis.unwrap();
+        assert_eq!(diagnosis.self_repair_hint, "Try writing better code");
+        assert_eq!(
+            diagnosis.category,
+            aiome_core_contracts::trajectory::FailureCategory::SystemFailure
         );
     }
 }

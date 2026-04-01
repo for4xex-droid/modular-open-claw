@@ -90,7 +90,7 @@ cargo run -p aiome-synergy  # (Coming Soon)
 ```
 * **Synergy Bootstrapper**: 対話型のCLIを通じて、Aiomeの「魂（SOUL）」の初期設定、Watchtower（Discord）接続、外部API（Ollama / Gemini等）へのプロキシ経路のセキュアな確立を自律的に支援します。
 *   **The First Breath (初回呼吸)**: 初期ハッシュチェーンの生成と、最初のサンドボックス（WASM）のドライラン隔離検証が目の前で行われます。
-*Last Mutated: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*
+*Last Mutated: 2026-04-02 (Phase C-2: Watchtower Diagnostic Loop Hardening)*
 
 ---
 
@@ -140,6 +140,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - ⚙️ **AutoHarness 動的ガードレール (Phase B-D)**: WASMベースの制約エンジンを統合。Active (Action Block) と Shadow (Monitor & Log) モードを重大度(severity)により動的に切り替え、ReDoS保護を備えた適応型防御レイヤーを構成。
 - 🛡️ **Phase B: ToolCallRouter & Security Execution Precedence**: ツール実行フローを単一のトレイト (`ToolCallRouter`) に統合。非同期ストリーム (SSE) と同期エージェントループの双方において、HookChain (事前事後インターセプト) と Intent Verification (免疫・Guardrails) がツール解析より前に必ず評価される絶対順序を物理的に強制し、アーキテクチャ上の自律バイパスを根絶しました。
 - 🛡️ **Phase 55: AgentRx 拡張 & LoRA 自律進化**: `RepairCalculator` のバグ修正と自己修復ヒントの動的注入を統合。さらに、`LoraAutotuner` を実装し、学習ロス履歴に基づいたハイパーパラメータ（LR, Epochs, Rank）の自律調整を実現しました。成長のプラトー（停滞）を検知すると、24時間のクールダウン制御付きで自律再学習をトリガーする「自律進化ループ」を完成。
+- 🛡️ **Phase C-2: Watchtower Diagnostic Loop Hardening**: `TaskDispatcher` における自己修復プロンプトの冪等性注入、LLM 診断の 30s タイムアウト強制、および空の実行軌跡に対するフェイルセーフ保護を実装。失敗したジョブから自律的に教訓を抽出し、次回の試行へ確実にフィードバックする強固な診断ループを確立しました。
 - 🛡️ **Security Hardening (2026-03-31): NPM サプライチェーン防御**: Axios RAT 攻撃等の悪意ある `postinstall` スクリプトを構造的に遮断する `.npmrc` 設定と、CI における 3 層監査（Critical Audit, registry signatures, ignore-scripts）を導入。
 
 ---
@@ -171,7 +172,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 準拠の 3層（Reactive/Deliberative/Meta）＋ 0.5層 (Whisper) による思考パイプライン |
 | **Orchestration** | Shadow Clone (Async) | `TaskDispatcher` と `DockerConductor` による非同期マルチエージェント委譲・ジョブ制御 |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 ハッシュチェーンによる因果関係監査と、O(1) レベルの不変条件強制エンジン |
-| **Last Updated:** | 2026-04-01 | Phase B: ToolCallRouter Integration |
+| **Last Updated:** | 2026-04-02 | Phase C-2: Watchtower Diagnostic Loop |
 
 ---
 
@@ -293,7 +294,7 @@ Aiome 管理コンソールでは、エージェントの自律的な進化を�
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**
-*最終更新: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*
+*最終更新: 2026-04-02 (Phase C-2: Watchtower Diagnostic Loop Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

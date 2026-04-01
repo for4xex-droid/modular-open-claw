@@ -452,6 +452,19 @@ mod tests {
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn fetch_diagnosis(
+            &self,
+            _: &str,
+        ) -> Result<Option<aiome_core_contracts::trajectory::AgentDiagnosis>, AiomeError> {
+            Ok(None)
+        }
+        async fn store_diagnosis(
+            &self,
+            _: &str,
+            _: aiome_core_contracts::trajectory::AgentDiagnosis,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
     }
 
     #[async_trait]

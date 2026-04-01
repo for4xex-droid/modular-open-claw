@@ -29,29 +29,55 @@ impl AgentRxDiagnostics {
         trajectory: &[TrajectoryStep],
         job: &Job,
     ) -> Result<AgentDiagnosis, AiomeError> {
-        let trajectory_json = serde_json::to_string_pretty(trajectory).unwrap_or_default();
-        let job_json = serde_json::to_string_pretty(job).unwrap_or_default();
+        if trajectory.is_empty() {
+            return Err(AiomeError::Infrastructure {
+                reason: "Cannot diagnose empty execution trajectory".to_string(),
+            });
+        }
+
+        let trajectory_json =
+            serde_json::to_string_pretty(trajectory).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize trajectory: {}", e),
+            })?;
+        let job_json =
+            serde_json::to_string_pretty(job).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize job: {}", e),
+            })?;
 
         let prompt = format!(
-            "あなたはAIエージェントの失敗原因を特定するフォレンジックエンジニアです。\n\
-             以下の実行軌跡（Trajectory）とジョブ内容を分析し、最初の回復不能な失敗（Critical Failure Step）を特定してください。\n\n\
+            "あなたはAIエージェントの失敗原因を特定するシニア・フォレンジックエンジニアです。\n\
+             以下の実行軌跡（Trajectory）とジョブ内容を詳細に分析し、エージェントが目標達成に失敗した【根本原因（Root Cause）】と【最初に致命的な失敗が起きたステップ（Critical Failure Step）】を特定してください。\n\
+             また、同じ失敗を繰り返さないための【具体的な行動修正・自己修復ヒント（Self-Repair Hint）】を提示してください。ヒントは「ツール A の代わりにツール B を使う」「引数 X ではなく Y を渡す」など、エージェントが直接行動に移せる実行可能なレベルで記述すること。\n\n\
              ### Job Context\n{}\n\n\
              ### Execution Trajectory\n{}\n\n\
-             分析結果を以下の JSON 形式で返してください：\n\
+             分析結果を以下の厳密な JSON 形式で返してください：\n\
              {{\n  \
                \"critical_failure_step\": ステップID,\n  \
-               \"failure_category\": \"FailureCategoryの文字列\",\n  \
-               \"root_cause\": \"なぜ失敗したかの技術的・論理的分析\",\n  \
-               \"self_repair_hint\": \"次回のリトライで何を修正すべきか（KarmaDirectivesへの指示形式）\"\n\
-             }}\n\n\
-             FailureCategory一覧: PlanAdherenceFailure, InventionOfNewInformation, InvalidInvocation, MisinterpretationOfOutput, IntentPlanMisalignment, UnderSpecifiedIntent, IntentNotSupported, GuardrailsTriggered, SystemFailure",
+               \"failure_category\": \"PlanAdherenceFailure, InventionOfNewInformation, InvalidInvocation, MisinterpretationOfOutput, IntentPlanMisalignment, UnderSpecifiedIntent, IntentNotSupported, GuardrailsTriggered, または SystemFailure のいずれか\",\n  \
+               \"root_cause\": \"なぜ失敗したかの具体的な技術的・論理的分析\",\n  \
+               \"self_repair_hint\": \"次回のリトライで何を修正すべきか（具体的かつ行動可能な指示）\"\n\
+             }}\n",
             job_json, trajectory_json
         );
 
-        let resp = self
-            .provider
-            .complete(&prompt, Some("厳格なJSON形式で応答してください。"))
-            .await?;
+        let complete_future = self.provider.complete(
+            &prompt,
+            Some("厳格なJSON形式で応答してください。マクロな文字列を含めないでください。"),
+        );
+
+        // FAIL-SAFE: 30秒のタイムアウトを設定して診断エンジンのハングを防ぐ
+        let resp_result =
+            tokio::time::timeout(std::time::Duration::from_secs(30), complete_future).await;
+
+        let resp = match resp_result {
+            Ok(Ok(response)) => response,
+            Ok(Err(e)) => return Err(e),
+            Err(_) => {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Diagnostics text generation timed out after 30 seconds".to_string(),
+                })
+            }
+        };
 
         // JSON抽出（既存のロジックを想定、あるいはシンプルにパース）
         let json_str = crate::concept_manager::extract_json(&resp.content)?;
@@ -60,11 +86,26 @@ impl AgentRxDiagnostics {
                 reason: format!("Failed to parse diagnostic JSON: {}", e),
             })?;
 
-        let step_id = v["critical_failure_step"].as_u64().unwrap_or(0) as u32;
+        let step_id =
+            v["critical_failure_step"]
+                .as_u64()
+                .ok_or_else(|| AiomeError::Infrastructure {
+                    reason: "Missing critical_failure_step in diagnosis response".into(),
+                })? as u32;
         let cat_str = v["failure_category"].as_str().unwrap_or("SystemFailure");
         let category = cat_str.parse().unwrap_or(FailureCategory::SystemFailure);
-        let root_cause = v["root_cause"].as_str().unwrap_or("Unknown").to_string();
-        let hint = v["self_repair_hint"].as_str().unwrap_or("").to_string();
+        let root_cause = v["root_cause"]
+            .as_str()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Missing root_cause in diagnosis response".into(),
+            })?
+            .to_string();
+        let hint = v["self_repair_hint"]
+            .as_str()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Missing self_repair_hint in diagnosis response".into(),
+            })?
+            .to_string();
 
         // 当該ステップの違反情報を収集
         let evidence = trajectory

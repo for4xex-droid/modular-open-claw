@@ -1,6 +1,17 @@
-## [Unreleased] - 2026-04-01
+## [Unreleased] - 2026-04-02
 
 ### Added
+- **Phase C-2: Aiome Watchtower Diagnostic Loop Hardening [完成]**
+    - **AgentRx Diagnostic Loop**: `TaskDispatcher` に失敗タスクをバックグラウンドで LLM 診断し、次回の再試行時にヒント（KarmaDirectives）を挿入する自己修復ループを統合。
+    - **Fail-Safe Diagnostics**: LLM 呼び出しに固いタイムアウト (30s) を導入。LLM 停止時や空のシークエンスに対してもフォールバック用の診断レコードを永続化し、システム全体の不稼働を回避。
+    - **Prompt Idempotency**: 注入されるヒントを `<WATCHTOWER_INSIGHT>` タグで保護。リトライごとにプロンプトが肥大化するのを防ぐ冪等性ガードを実装。
+    - **Stability Polling**: E2E テストにおいて固定 sleep をポーリングループに置き換え、CI 環境におけるテストの信頼性を飛躍的に向上。
+- **Phase A MVP Bootstrap Hardening [完成]**
+    - **A-1 Task Dispatcher Synchronization**: 起動時の `TaskDispatcher` 初期化直後に `tokio::time::sleep(2秒)` を導入し、SQLiteウォールなどの内部ワーカーの競合を防ぐクリーンなオフセット待機を実装。
+    - **A-2 Dynamic Project Rules Discovery**: `api-server/src/system_instructions.rs` にディレクトリルート方向への段階的な `.aiome.md -> AIOME.md -> .cursorrules` 探索ロジックを追加。mokaによる30秒TTLキャッシュでI/O負荷を低減し、コンテキスト予算内でLLMのシステムプロンプトヘ動的注入。パストラバーサル防御テストも完備。
+    - **A-3 Startup Self-Diagnosis**: 起動シーケンス初期に `self_diagnosis.rs` を追加し、ディレクトリのR/W権限、データベースの接続性、DockerデーモンのAPI疎通を検証。異常な環境では素早くFail-Fastする安全網を構築。
+    - **A-4 Bootstrap Graph Expansion**: `main.rs` の肥大化した1000行近い初期化ロジックを `bootstrap.rs` の `boot_sequence()` へ抽出。起動グラフを「Pre-flight -> Database -> Engine -> Core Services -> Registry -> Workers -> Network」の明確な7段階ステージへアーキテクチャ分離。
+
 - **Phase 1 Final & Security Audit Remediation [完成]**
     - **Global Compute Semaphore (F-3 Hardware Protection)**: LoRA学習プロセスや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` から `ComfyUiGenerativeEngine` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
     - **CSAM Release Safe-Guard**: `CsamScanConductor` スタブに `#cfg(not(debug_assertions))` のフェイルセーフを追加し、Releaseビルドで（ダミー実装を持ったまま）コンプライアンススキャンを突破できないようゼロトラストを強制。
@@ -34,25 +45,11 @@
 - **Dynamic Dataset Extraction (F-2)**: `DatasetExtractor` を導入し、LoRA学習時に `SoulStore` の履歴 (Experiences) から自動的にMLX専用の JSONL 形式のデータセットを動的に構築・注入するパイプラインを確立。非同期API呼び出しの競合を防ぐ `job_id` アイソレーションを実装し、さらに「会話履歴全体の文脈」を1つのシーケンスブロックとして連結・維持する手法によりCatastrophic Forgettingを防止。
 - **Global Compute Semaphore (F-3 Hardware Protection) [完了]**: LoRA学習プロセスや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` に導入。`LoraTrainingService` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
 - **Tier 0 Infrastructure Security Hardening (Wave 1-3) [螳御ｺ**スや画像/音声生成処理での重いML計算が同時に実行された際の Unified Memory OOM（Macのカーネルパニック）を防ぐため、システム全体を横断する `compute_semaphore` (Available permits = 1) を `AppState` に導入。`LoraTrainingService` 等へ依存注入し、ハードウェアリソースの安全な排他制御を確立。
-- **Tier 0 Infrastructure Security Hardening (Wave 1-3) [螳御ｺ�**
-    - **BoundaryVerifier Hardening**: 繧ｷ繧ｹ繝�Β繝代せ繝悶Ο繝�け縺ｮ諡｡蜈�ｼ�/tmp`, `/dev`, `/proc`, `/sys`, `/private`�峨♀繧医�繝代せ繝医Λ繝舌�繧ｵ繝ｫ (`..`) 縺ｮ迚ｩ逅�噪諡堤ｵｶ繧� O(1) 縺ｧ螳溯｣��
-    - **BastionGuard (Command Parsing) Hardening**: `shell_split` 縺ｮ POSIX 蛻ｶ蠕｡譁�ｭ暦ｼ�\v`, `\f`, `\r`, `\n`�牙ｯｾ蠢懊√ヵ繝ｩ繧ｰ蛻�ｧ｣繝ｭ繧ｸ繝�け縺ｮ謾ｹ蝟�∝ｯ�捩繝輔Λ繧ｰ蠑墓焚��-f/etc/passwd` 遲会ｼ峨�謚ｽ蜃ｺ繝ｻ讀懃稔繧貞ｮ溯｣�ょ宛蠕｡譁�ｭ励ヰ繧､繝代せ繧貞ｮ悟�蟆�事縲�
-    - **Registry SSoT (Zero-Fallback)**: `check_ownership` 縺ｫ縺翫￠繧� Webhook 繝ｭ繧ｰ縺ｸ縺ｮ螳牙�縺ｧ縺ｪ縺�ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ繧貞ｻ�ｭ｢縲Ａlicenses` 繝��繝悶Ν繧呈園譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
-    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
-
-- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
-    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
-
-- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**lit` 縺ｮ POSIX 蛻ｶ蠕｡譁�ｭ暦ｼ�\v`, `\f`, `\r`, `\n`�牙ｯｾ蠢懊√ヵ繝ｩ繧ｰ蛻�ｧ｣繝ｭ繧ｸ繝�け縺ｮ謾ｹ蝟�∝ｯ�捩繝輔Λ繧ｰ蠑墓焚��-f/etc/passwd` 遲会ｼ峨�謚ｽ蜃ｺ繝ｻ讀懃稔繧貞ｮ溯｣�ょ宛蠕｡譁�ｭ励ヰ繧､繝代せ繧貞ｮ悟�蟆�事縲�
-    - **Registry SSoT (Zero-Fallback)**: `check_ownership` 縺ｫ縺翫￠繧� Webhook 繝ｭ繧ｰ縺ｸ縺ｮ螳牙�縺ｧ縺ｪ縺�ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ繧貞ｻ�ｭ｢縲Ａlicenses` 繝��繝悶Ν繧呈園譛画ｨｩ遒ｺ隱阪�縲悟髪荳縺ｮ豁｣遲費ｼ�ingle Source of Truth�峨阪→縺励∬ｫ也炊逧�ｸ雋ｫ諤ｧ繧剃ｿ晁ｨｼ縲�
-    - **Infrastructure Reliability**: `WasmHarness` 縺ｮ髱槫酔譛溷�譛溷喧縺ｨ `OnceCell` 縺ｫ繧医ｋ繧ｭ繝｣繝�す繝･遶ｶ蜷茨ｼ�hundering Herd�峨�髦ｲ豁｢繧貞ｮ溯｣��230莉ｶ縺ｮ繧､繝ｳ繝輔Λ繝�せ繝亥�莉ｶ PASS 繧堤｢ｺ隱阪�
-
-- **Red Team Security Hardening & Infrastructure Stabilization [螳御ｺ�**
-    - **Path Traversal Mitigation**: `LoraTrainingService::train` 縺ｫ縺ｦ `dataset_id` 縺ｫ蟇ｾ縺吶ｋ繝�ぅ繝ｬ繧ｯ繝医Μ繝医Λ繝舌�繧ｵ繝ｫ (`..`, `/`, `\`) 繧帝亟豁｢縺吶ｋ繧ｵ繝九ち繧､繧ｺ蜃ｦ逅�ｒ霑ｽ蜉�縺励∵ｩ溷ｯ�ヵ繧｡繧､繝ｫ貍乗ｴｩ��eight Poisoning�峨ｒ驕ｮ譁ｭ縲�
-    - **Resource Exhaustion Defense (Memory)**: LoRA繧ｿ繧ｹ繧ｯ繧ｭ繝･繝ｼ縺ｫ縺翫＞縺ｦ縲～active_jobs` 縺ｮ譛螟ｧ逋ｻ骭ｲ謨ｰ繧�100莉ｶ縺ｫ蛻ｶ髯舌＠縲∫┌蛻ｶ髯舌�繝励Ο繧ｻ繧ｹ繝輔か繝ｼ繧ｯ縺ｫ繧医ｋOOM (Out Of Memory) 謾ｻ謦�ｒ髦ｲ蠕｡縲�
-    - **Resource Exhaustion Defense (Sockets)**: 繝槭せ繧ｳ繝�ヨ (`inochi2d.rs`) 縺翫ｈ縺ｳ髻ｳ螢ｰ (`voice.rs`) 縺ｮ蟾ｨ螟ｧ繝輔ぃ繧､繝ｫ繧｢繝��繝ｭ繝ｼ繝牙宛蠕｡縺ｫ縺翫＞縺ｦ縲√そ繝槭ヵ繧ｩ縺ｮ繝悶Ο繝�く繝ｳ繧ｰ蠕�ｩ� (`acquire().await`) 繧� `try_acquire()` 縺ｫ螟画峩縲�DoS謾ｻ謦�凾縺ｮ繧ｽ繧ｱ繝�ヨ�医ヵ繧｡繧､繝ｫ繝�ぅ繧ｹ繧ｯ繝ｪ繝励ち�画椡貂�ｒ髦ｲ豁｢縺励∝叉蠎ｧ縺ｫ 503 Service Unavailable 繧定ｿ斐☆繧医≧縺ｫ菫ｮ豁｣縲�
-    - **Sandbox Syntax & Command Arguments**: macOS 縺ｮ `sandbox-exec` 繝励Ο繝輔ぃ繧､繝ｫ縺ｧ繝阪ャ繝医Ρ繝ｼ繧ｯ蛻ｶ髯舌�繝ｯ繧､繝ｫ繝峨き繝ｼ繝峨ラ繝｡繧､繝ｳ繧偵�繝ｼ繝育分蜿ｷ謖�ｮ夲ｼ�*:443`, `*:80`�峨∈菫ｮ豁｣縲ゅ∪縺� `BastionGuard::build_safe_command_args` 縺ｫ縺翫￠繧倶ｸ崎ｦ√↑繧ｷ繧ｧ繝ｫ蛻､螳壹ｒ蜑企勁縺励∵ｧ矩�蛹悶さ繝槭Φ繝牙ｮ溯｡後�繝ｭ繝舌せ繝域ｧ繧貞髄荳翫�
-    - **CI/CD Quality**: `libs/infrastructure/Cargo.toml` 縺ｮ features 謨ｴ蛯吶ｄ `aiome-core`, `aiome-commerce` 蜀��蜷�ｨｮ Clippy 隴ｦ蜻奇ｼ域悴菴ｿ逕ｨ繧､繝ｳ繝昴�繝医ｄ Iterator 隴ｦ蜻奇ｼ峨ｒ隗｣豸医＠繝薙Ν繝牙刀雉ｪ繧貞ｼｷ蛹悶�
+- **Red Team Security Hardening & Infrastructure Stabilization [完成]**
+    - **BoundaryVerifier Hardening**: システムパスブロックの拡張（`/tmp`, `/dev`, `/proc`, `/sys`, `/private`）およびパストラバーサル（`..`）の物理的拒絶を O(1) で実装。
+    - **BastionGuard (Command Parsing) Hardening**: `shell_split` の POSIX 制御文字（`\v`, `\f`, `\r`, `\n`）対応、フラグ分解ロジックの改善。制御文字バイパスを完全封鎖。
+    - **Registry SSoT (Zero-Fallback)**: `check_ownership` における安全でないフォールバックを廃止。`licenses` テーブルを所有権確認の「唯一の正解（Single Source of Truth）」とし、論理的一貫性を保証。
+    - **Infrastructure Reliability**: `WasmHarness` の非同期初期化と `OnceCell` によるキャッシュ競合（Thundering Herd）の防止を実装。230件のインフラストラクチャテスト全件 PASS を確認。
 
 - **Phase F: Open Gateway (MCP & P2P Foundation) [螳御ｺ�**
     - **Safe Auto-Profile Engine**: `AutoProfileEngine` 繧貞ｮ溯｣�ゅΡ繝ｼ繧ｯ繧ｹ繝壹�繧ｹ蜀�� `Cargo.toml`, `package.json`, `requirements.txt` 縺ｨ縺�▲縺溽腸蠅�ｮ夂ｾｩ繝輔ぃ繧､繝ｫ繧偵せ繧ｭ繝｣繝ｳ縺励√お繝ｼ繧ｸ繧ｧ繝ｳ繝医�譛峨☆繧九せ繧ｭ繝ｫ��ust, Python, Web遲会ｼ峨ｒ閾ｪ蠕狗噪縺ｫ謗ｨ螳壹＠縺ｦ `AgentCard` 縺ｮ `skills` 縺ｨ縺励※髴ｲ蜃ｺ縲ゅさ繝ｼ繝峨ｄ繝励Ο繝ｳ繝励ヨ縺ｮ隱ｭ縺ｿ蜿悶ｊ繧定｡後ｏ縺ｪ縺�ｨｱ蜿ｯ繝ｪ繧ｹ繝亥梛縺ｮ螳牙�險ｭ險医ｒ謗｡逕ｨ縲�

@@ -342,6 +342,15 @@ pub trait AuditStore: Send + Sync + std::fmt::Debug {
         job_id: &str,
     ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
     async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn fetch_diagnosis(
+        &self,
+        job_id: &str,
+    ) -> Result<Option<crate::trajectory::AgentDiagnosis>, AiomeError>;
+    async fn store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: crate::trajectory::AgentDiagnosis,
+    ) -> Result<(), AiomeError>;
     async fn get_security_request_count(
         &self,
         agent_id: Option<uuid::Uuid>,

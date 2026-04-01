@@ -23,6 +23,7 @@ pub struct ContextBudget {
     pub max_history_chars: usize,
     pub reserved_system_chars: usize,
     pub max_somatic_chars: usize,
+    pub max_project_rules_chars: usize,
 }
 
 impl Default for ContextBudget {
@@ -33,6 +34,7 @@ impl Default for ContextBudget {
             max_history_chars: 4000,
             reserved_system_chars: 500,
             max_somatic_chars: 500,
+            max_project_rules_chars: 3000,
         }
     }
 }

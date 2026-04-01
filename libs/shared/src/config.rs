@@ -58,6 +58,10 @@ pub struct AiomeConfig {
     pub mcp: McpConfig,
     /// パス解決器
     pub resolver: crate::app_data::AppDataResolver,
+    /// フロントエンドの静的ファイルパス
+    pub frontend_static_path: String,
+    /// システムプロンプトに注入するプロジェクトルールの最大文字数
+    pub max_project_rules_chars: usize,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -101,6 +105,8 @@ impl Default for AiomeConfig {
             xtts_speaker: Some("p225".to_string()),
             mcp: McpConfig::default(),
             resolver,
+            frontend_static_path: "apps/api-server/static".to_string(),
+            max_project_rules_chars: 3000,
         }
     }
 }
@@ -187,6 +193,12 @@ impl AiomeConfig {
                     .unwrap_or(false),
             },
             resolver,
+            frontend_static_path: env::var("FRONTEND_STATIC_PATH")
+                .unwrap_or_else(|_| "apps/api-server/static".to_string()),
+            max_project_rules_chars: env::var("MAX_PROJECT_RULES_CHARS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3000),
         })
     }
 

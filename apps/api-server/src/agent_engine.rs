@@ -126,6 +126,7 @@ impl AgentEngine {
             None,
             None,
             soul_snapshot,
+            None,
         )
         .await;
 
@@ -176,26 +177,28 @@ impl AgentEngine {
                 Ok(Ok(resp)) => {
                     let reply = resp.content.trim().to_string();
                     final_reply = reply.clone();
+                    // Phase B-2 Enhancement: Store assistant response BEFORE tool execution
+                    // This ensures the audit trail reflects the intent even if execution crashes.
+                    if let Err(e) = state
+                        .job_queue
+                        .get_inner()
+                        .store_chat_message(&actual_channel_id, "assistant", &reply)
+                        .await
+                    {
+                        error!("❌ Failed to store intent response: {:?}", e);
+                    }
+
                     let skill_results = crate::tool_call_processor::process_generated_tool_calls(
                         &reply,
                         state,
                         &mut total_steps,
+                        Some(&actual_channel_id),
                     )
                     .await;
 
                     if !skill_results.is_empty() {
-                        // FIX: Store intermediate tool invocations to feed the context engine on the next loop iteration
-                        if let Err(e) = state
-                            .job_queue
-                            .get_inner()
-                            .store_chat_message(&actual_channel_id, "assistant", &reply)
-                            .await
-                        {
-                            error!(
-                                "❌ Failed to store intermediate assistant response: {:?}",
-                                e
-                            );
-                        }
+                        // FIX: Intermediate results are already persisted in trajectory_steps.
+                        // ChatStore remains a high-level summary of the final outcome.
 
                         let combined_results = skill_results.join("\n\n");
                         let sys_msg = format!("[Tool Output]\n{}", combined_results);

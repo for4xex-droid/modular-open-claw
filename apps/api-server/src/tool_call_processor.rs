@@ -12,6 +12,7 @@ pub(crate) async fn process_generated_tool_calls(
     reply: &str,
     state: &AppState,
     total_steps: &mut i32,
+    job_id: Option<&str>,
 ) -> Vec<String> {
     let mut skill_results = Vec::new();
     let router = crate::tool_call_router::DefaultToolCallRouter;
@@ -29,12 +30,59 @@ pub(crate) async fn process_generated_tool_calls(
         // 2. Unified Tool Execution Stream
         let mut rx = router.execute_skill(&skill_name, &skill_input, state).await;
 
+        let mut step_errors = Vec::new();
+
         while let Some(evt) = rx.recv().await {
             use crate::tool_call_router::ToolExecutionEvent;
             match evt {
                 ToolExecutionEvent::Result(res) => skill_results.push(res),
-                ToolExecutionEvent::Error(err) => skill_results.push(err),
+                ToolExecutionEvent::Error(err) => {
+                    step_errors.push(err.clone());
+                    skill_results.push(err);
+                }
                 _ => {} // Ignore Start and Heartbeat in synchronous execution
+            }
+        }
+
+        // --- C-1: Direct Trajectory Persistence ---
+        if let Some(jid) = job_id {
+            use aiome_core::trajectory::TrajectoryStep;
+
+            let output_value = if !step_errors.is_empty() {
+                serde_json::json!({ "error": step_errors.join("; ") })
+            } else {
+                let last_res = skill_results.last().map(|s| s.as_str()).unwrap_or("");
+                serde_json::Value::String(last_res.to_string())
+            };
+
+            let mut input_val: serde_json::Value = serde_json::from_str(&skill_input)
+                .unwrap_or(serde_json::Value::String(skill_input.clone()));
+
+            let mut step = TrajectoryStep {
+                step_id: *total_steps as u32,
+                action: format!("call_tool: {}", skill_name),
+                tool_name: Some(skill_name.clone()),
+                input: input_val,
+                output: output_value,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                is_critical_failure: !step_errors.is_empty(),
+                ..Default::default()
+            };
+
+            // Security Hardening: Scrub secrets before persisting to SQLite audit trail
+            step.scrub();
+
+            if let Err(e) = state
+                .job_queue
+                .get_inner()
+                .trajectory_store
+                .record_step(jid, step)
+                .await
+            {
+                error!(
+                    "Failed to persist trajectory step for {}: {:?}",
+                    skill_name, e
+                );
             }
         }
     }
@@ -95,6 +143,7 @@ mod tests {
     use super::*;
     use crate::app_state::Component;
     use aiome_core::error::AiomeError;
+    use aiome_core_contracts::TaskRegistry;
     use async_trait::async_trait;
     use infrastructure::immune_system::AdaptiveImmuneSystem;
     use infrastructure::job_queue::UniversalJobQueue;
@@ -162,6 +211,7 @@ mod tests {
             job_queue: Component::new(jq),
             config: Component::new(Arc::new(config)),
             provider: Component::new(Arc::new(MockLlm)),
+            hook_chain: Component::new(Arc::new(infrastructure::skills::hooks::HookChain::new())),
             ..Default::default()
         };
 
@@ -219,7 +269,7 @@ mod tests {
 some_skill { "data": "hello" }"#;
 
         let mut steps = 0;
-        let results = process_generated_tool_calls(reply_from_llm, &state, &mut steps).await;
+        let results = process_generated_tool_calls(reply_from_llm, &state, &mut steps, None).await;
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], "[Hook Block] Hook Policy Block");
@@ -278,7 +328,7 @@ some_skill { "data": "hello" }"#;
         let reply_from_llm = r#"bad_skill { "cmd": "rm -rf /" }"#;
 
         let mut steps = 0;
-        let results = process_generated_tool_calls(reply_from_llm, &state, &mut steps).await;
+        let results = process_generated_tool_calls(reply_from_llm, &state, &mut steps, None).await;
 
         assert_eq!(results.len(), 1);
         let msg = &results[0];
@@ -287,5 +337,38 @@ some_skill { "data": "hello" }"#;
             "Expected a security block, got: {}",
             msg
         );
+    }
+
+    #[tokio::test]
+    async fn test_trajectory_step_persistence() {
+        let (state, _tmp) = setup_test_state().await;
+
+        let reply_from_llm = r#"some_skill { "data": "hello" }"#;
+        let mut steps = 0;
+
+        let jq = state.job_queue.get_inner();
+        let job_id = jq
+            .enqueue("test", "test_topic", "default", None, None, None, 1)
+            .await
+            .unwrap();
+
+        // process tool calls with a job_id
+        let _ =
+            process_generated_tool_calls(reply_from_llm, &state, &mut steps, Some(&job_id)).await;
+
+        // Verify trajectory step was recorded in SQLite!
+        let trajectory = state
+            .job_queue
+            .get_inner()
+            .trajectory_store
+            .fetch_trajectory(&job_id)
+            .await
+            .unwrap();
+        assert_eq!(trajectory.len(), 1);
+
+        let step = &trajectory[0];
+        assert_eq!(step.action, "call_tool: some_skill");
+        assert_eq!(step.tool_name, Some("some_skill".to_string()));
+        assert_eq!(step.input, serde_json::json!({ "data": "hello" }));
     }
 }

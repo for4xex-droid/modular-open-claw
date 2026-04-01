@@ -138,6 +138,7 @@ Aiome を導入することで、以下のような自律型ワークフロー�
 - ⚙️ **AutoHarness Dynamic Guardrails (Phase B-D)**: Integrated WASM-based constraint evaluation. Autonomously switches between Active (Action Block) and Shadow (Monitor & Log) modes based on dynamically evaluated severity scores. Built-in structural defense against ReDoS ensuring an adaptive, high-performance security layer.
 - 🛡️ **Phase B: ToolCallRouter & Security Execution Precedence**: Unified the tool execution flow into a single un-bypassable trait (`ToolCallRouter`). Physically guarantees that both HookChain (pre/post-intercepts) and Intent Verification (Guardrails/Immunity) are evaluated strictly *before* any tool parsing occurs, across both async (SSE) and sync agent execution paths.
 - 🛡️ **Phase 55: AgentRx Expansion & LoRA Autonomous Evolution**: Resolved `RepairCalculator` bugs and integrated dynamic repair hint scaling. Implemented `LoraAutotuner` for self-adjusting hyperparameters (LR, Epochs, Rank) based on loss history. Completed the "Autonomous Evolution Loop" with 24-hour cooldown logic, mathematically detecting performance plateaus to trigger self-optimization.
+- 🛡️ **Phase C-2: Watchtower Diagnostic Loop Hardening**: Implemented idempotent injection of self-repair prompts in `TaskDispatcher`, enforced 30s timeouts for LLM diagnostics, and added fail-safe protection for empty trajectories. Established a robust diagnostic loop that autonomously extracts lessons from failed jobs and feeds them back into subsequent attempts.
 - 🛡️ **Security Hardening (2026-03-31): NPM Supply Chain Mitigation**: Structural blocking of malicious `postinstall` scripts (e.g., Axios RAT) via `.npmrc` and a 3-layer CI audit (Critical Vulnerabilities, Registry Signatures, and `ignore-scripts` enforcement).
 
 ---
@@ -171,7 +172,7 @@ Aiome の真の力は、**WASM（WebAssembly）を利用した極めて高い拡
 | **Cognition** | Soul Middleware Chain | DeerFlow 2.0 compliant 3-layer cognitive pipeline (Reactive/Deliberative/Meta) + 0.5 layer (Whisper) |
 | **Orchestration** | Shadow Clone (Async) | Asynchronous multi-agent delegation & job control via `TaskDispatcher` and `DockerConductor` |
 | **Audit/Security** | Invariant-DAG / BoundaryVerifier | SHA-256 hash-chain causal auditing and O(1) microsecond boundary verification engine |
-| **Last Updated:** | 2026-04-01 | Phase B: ToolCallRouter Integration |
+| **Last Updated:** | 2026-04-02 | Phase C-2: Watchtower Diagnostic Loop |
 ---
 
 ## 🛰️ 実行コンポーネント
@@ -282,7 +283,7 @@ Explore the autonomous evolution of agents visually in the Aiome Management Cons
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 開発参加のルール。
 - **[ライセンス同意書 (CLA.md)](CLA.md)**: 権利関係の合意。
 - **[行動規範 (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md)**: 行動基準。
-*Last Updated: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*
+*Last Updated: 2026-04-02 (Phase C-2: Watchtower Diagnostic Loop Hardening)*
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティの連絡先。
 
 ---

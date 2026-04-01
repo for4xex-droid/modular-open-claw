@@ -311,6 +311,21 @@ impl AuditStore for UniversalJobQueue {
     async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError> {
         self.trajectory_store.clear_trajectory_steps(job_id).await
     }
+    async fn fetch_diagnosis(
+        &self,
+        job_id: &str,
+    ) -> Result<Option<aiome_core_contracts::trajectory::AgentDiagnosis>, AiomeError> {
+        self.trajectory_store.fetch_diagnosis(job_id).await
+    }
+    async fn store_diagnosis(
+        &self,
+        job_id: &str,
+        diagnosis: aiome_core_contracts::trajectory::AgentDiagnosis,
+    ) -> Result<(), AiomeError> {
+        self.trajectory_store
+            .store_diagnosis(job_id, diagnosis)
+            .await
+    }
     async fn get_security_request_count(&self, agent_id: Option<Uuid>) -> Result<u32, AiomeError> {
         Box::pin(self.do_get_security_request_count(agent_id)).await
     }

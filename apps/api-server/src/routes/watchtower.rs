@@ -226,6 +226,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         None,
         economic_context,
         None,
+        None,
     )
     .await;
     let _llm_permit = state.llm_semaphore.acquire().await.map_err(|e| {

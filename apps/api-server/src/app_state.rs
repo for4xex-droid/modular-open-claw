@@ -140,4 +140,5 @@ pub struct AppState {
     pub disk_quota: Component<Arc<infrastructure::disk_quota::DiskQuotaManager>>,
     pub generative_engine: Component<Arc<dyn aiome_core_contracts::traits::GenerativeEngine>>,
     pub hook_chain: Component<Arc<infrastructure::skills::hooks::HookChain>>,
+    pub project_rules_cache: Component<Arc<moka::future::Cache<std::path::PathBuf, String>>>,
 }

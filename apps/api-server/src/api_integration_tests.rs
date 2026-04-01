@@ -477,6 +477,11 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         wasm_skill_manager: Component::new(wasm_skill_manager),
         skill_forge: Component::new(skill_forge),
         docs_path: tmp_dir.path().to_str().unwrap().to_string(),
+        project_rules_cache: Component::new(Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(30))
+                .build(),
+        )),
         llm_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(1))),
         forge_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(1))),
         mcp_sessions: Component::new(Arc::new(tokio::sync::RwLock::new(
@@ -593,6 +598,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 Some(tmp_dir.path().join("SOUL.md")),
                 None, // oracle
                 None, // gig_engine
+                None, // diagnostics
             ));
 
             // G-22 Fix: Spawn dispatcher loop in background for integration tests

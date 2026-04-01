@@ -1036,3 +1036,16 @@ graph TD
     - ハーネスの分離アーキテクチャが実現。重大度80以上はアクション自体をブロックする (Active mode) 一方で、80未満は制約違反として記録されるのみ (Shadow mode) という多段階防衛がAPIレイヤーで実体化。
     - 各種 `JobQueue` モック（テスト環境）全体へ `HarnessRegistryOps` が必要となり、広範なテストファイル（`tts_worker.rs`, `dream_state.rs`, `immune_system.rs` 等）に対するトレイト実装波及を及ぼした。
 
+
+---
+*最終更新日: 2026-04-02* (Phase C-2: Watchtower Diagnostic Loop Hardening)
+
+### 🛡️ Phase C-2: Aiome Watchtower Diagnostic Loop Hardening
+- **変更内容**: 
+    - `libs/infrastructure/src/task_orchestrator/mod.rs`: `TaskDispatcher` に `AgentRxDiagnostics` を注入。ジョブ失敗時にバックグラウンドで自己診断をトリガーし、結果を `AuditStore` (`TrajectoryStore`) に保存するループを構築。
+    - `libs/infrastructure/src/diagnostics.rs`: `AgentRxDiagnostics` に LLM タイムアウト (30s) を導入。実行軌跡が空の場合のガード、および LLM 応答エラー時のダミーレコード生成によるフェイルセーフを追加。
+    - プロンプト注入 (Read-path): 注入箇所を `<WATCHTOWER_INSIGHT>` タグで保護し、冪等性 (Idempotency) を確保。リトライ時のプロンプト肥大化を防止。
+    - テスト安定化: `test_dispatcher_watchtower_diagnostic_loop` において、固定 sleep を状態監視ポーリングループに置き換え、CI 上の Flakiness を解消。
+- **波及効果**: 
+    - `AuditStore` (`TrajectoryStore`) トレイトの拡張が必要となり、全モック実装 (`GlobalMockJobQueue`, `immune_system.rs`, `dream_state.rs`, `soul_mutator.rs`) に `fetch_diagnosis` / `store_diagnosis` 等の実装が波及。
+    - `TaskDispatcher` の初期化引数が増加し、`api-server/src/app_state.rs` および `main.rs` での依存注入コードが更新された。
