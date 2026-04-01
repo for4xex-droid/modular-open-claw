@@ -5,8 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::{TranscriptionEngine, TranscriptionResult, TranscriptionSegment};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::traits::{
+    TranscriptionEngine, TranscriptionResult, TranscriptionSegment,
+};
 use async_trait::async_trait;
 use std::path::Path;
 

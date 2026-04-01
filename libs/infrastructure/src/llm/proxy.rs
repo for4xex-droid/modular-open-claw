@@ -35,7 +35,7 @@ struct ProxyRequest {
 #[derive(Deserialize)]
 struct ProxyResponse {
     content: String,
-    stop_reason: aiome_contracts::llm::StopReason,
+    stop_reason: aiome_core_contracts::llm::StopReason,
     reasoning: Option<String>,
     metadata: Option<std::collections::HashMap<String, String>>,
 }

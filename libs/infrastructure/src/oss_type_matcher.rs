@@ -7,8 +7,8 @@
 
 use crate::llm::utils::extract_code_block;
 use crate::oss_ast_analyzer::{ApiSurface, EnumInfo, FunctionInfo, StructInfo};
-use aiome_contracts::llm::LlmProvider;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
 use std::sync::Arc;
 
 /// 型やシグネチャの不一致情報

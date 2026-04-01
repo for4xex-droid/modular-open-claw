@@ -7,18 +7,18 @@
 
 use crate::job_queue::EvaluationOps;
 use crate::trend_sonar::ExternalTrendSonar;
-use aiome_contracts::biome::BiomeMessage;
-use aiome_contracts::contracts::{
+use aiome_core_contracts::biome::BiomeMessage;
+use aiome_core_contracts::contracts::{
     ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
 };
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::security::PermissionManifest;
-use aiome_contracts::traits::{
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::security::PermissionManifest;
+use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry, TrendSource,
 };
-use aiome_contracts::types::AgentStats;
+use aiome_core_contracts::types::AgentStats;
 use async_trait::async_trait;
 use rand::Rng;
 use serde_json::Value;
@@ -348,12 +348,12 @@ impl DreamState {
                 // For the MVP, we store the 'intent' of the code or a placeholder.
                 // Here we simulate the generation.
                 let harness_id = format!("auto_{}", uuid::Uuid::new_v4().simple());
-                let record = aiome_contracts::contracts::HarnessRecord {
+                let record = aiome_core_contracts::contracts::HarnessRecord {
                     id: harness_id.clone(),
                     domain: domain.to_string(),
                     description: format!("Autonomous harness for: {}", hypothesis),
                     code_payload: h_resp.content, // Real implementation would compile to WASM bytes
-                    status: aiome_contracts::contracts::HarnessStatus::Shadow,
+                    status: aiome_core_contracts::contracts::HarnessStatus::Shadow,
 
                     severity: 70,
                     version: 1,
@@ -385,15 +385,15 @@ impl DreamState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::biome::BiomeMessage;
-    use aiome_contracts::contracts::{
+    use aiome_core_contracts::biome::BiomeMessage;
+    use aiome_core_contracts::contracts::{
         ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
     };
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::traits::{
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::traits::{
         Expression, Job, JobQueue, JobStatus, KarmaSearchResult, SnsMetricsRecord, SoulStore,
     };
-    use aiome_contracts::types::AgentStats;
+    use aiome_core_contracts::types::AgentStats;
     use async_trait::async_trait;
     use serde_json::Value;
     use uuid::Uuid;
@@ -401,7 +401,7 @@ mod tests {
     #[derive(Debug)]
     struct BusyJQ;
     #[async_trait::async_trait]
-    impl aiome_contracts::traits::SystemStateOps for BusyJQ {
+    impl aiome_core_contracts::traits::SystemStateOps for BusyJQ {
         async fn store_system_state(
             &self,
             _: &str,
@@ -516,7 +516,7 @@ mod tests {
         async fn update_job_status(
             &self,
             _: &str,
-            _: aiome_contracts::traits::JobStatus,
+            _: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -568,14 +568,14 @@ mod tests {
         }
         async fn store_trajectory_step(
             &self,
-            _: aiome_contracts::trajectory::TrajectoryStep,
+            _: aiome_core_contracts::trajectory::TrajectoryStep,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_trajectory_steps(
             &self,
             _: &str,
-        ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::trajectory::TrajectoryStep>, AiomeError> {
             Ok(Vec::new())
         }
         async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
@@ -796,7 +796,7 @@ mod tests {
         }
         async fn store_biome_message(
             &self,
-            _: &aiome_contracts::biome::BiomeMessage,
+            _: &aiome_core_contracts::biome::BiomeMessage,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -833,17 +833,17 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::HarnessRegistryOps for BusyJQ {
+    impl aiome_core_contracts::traits::HarnessRegistryOps for BusyJQ {
         async fn store_harness_record(
             &self,
-            _: &aiome_contracts::contracts::HarnessRecord,
+            _: &aiome_core_contracts::contracts::HarnessRecord,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_harness_records_by_status(
             &self,
             _: &str,
-        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(vec![])
         }
         async fn update_harness_status(&self, _: &str, _: &str) -> Result<(), AiomeError> {
@@ -855,7 +855,7 @@ mod tests {
         async fn fetch_harness_record_by_id(
             &self,
             _: &str,
-        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(None)
         }
         async fn increment_harness_stats(&self, _: &str, _: bool) -> Result<(), AiomeError> {
@@ -887,7 +887,7 @@ mod tests {
             }
             async fn complete_with_cache(
                 &self,
-                _: aiome_contracts::llm::LlmRequest,
+                _: aiome_core_contracts::llm::LlmRequest,
             ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
                 self.complete("", None).await
             }

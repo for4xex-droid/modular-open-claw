@@ -8,7 +8,7 @@
 #[cfg(test)]
 mod tests {
     use crate::boundary_verifier::BoundaryVerifier;
-    use aiome_contracts::error::AiomeError;
+    use aiome_core_contracts::error::AiomeError;
     use std::path::PathBuf;
 
     fn setup_verifier() -> BoundaryVerifier {

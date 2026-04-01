@@ -7,8 +7,8 @@
 use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
-use aiome_contracts::traits::{AgentEvolver, JobQueue};
-use aiome_contracts::treasure::{TreasureFeedback, TreasureItem};
+use aiome_core_contracts::traits::{AgentEvolver, JobQueue};
+use aiome_core_contracts::treasure::{TreasureFeedback, TreasureItem};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -49,7 +49,8 @@ pub async fn get_treasure(
         }
     })?;
 
-    let bids: Vec<aiome_contracts::gig::GigBid> = adapter.fetch_bids_for_intent(&intent).await?;
+    let bids: Vec<aiome_core_contracts::gig::GigBid> =
+        adapter.fetch_bids_for_intent(&intent).await?;
 
     // 3. Map to TreasureItems
     let items: Vec<TreasureItem> = bids

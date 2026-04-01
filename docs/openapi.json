@@ -4,8 +4,8 @@
     "title": "Aiome Management Console API",
     "description": "Core API for the Autonomous AI Operating System",
     "license": {
-      "name": "Apache-2.0",
-      "identifier": "Apache-2.0"
+      "name": "BUSL-1.1",
+      "identifier": "BUSL-1.1"
     },
     "version": "0.1.0"
   },

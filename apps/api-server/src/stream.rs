@@ -5,10 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::traits::{
+use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
 };
-use aiome_core::llm_provider::LlmProvider;
 use axum::{
     extract::{Json, State},
     response::sse::{Event, KeepAlive, Sse},

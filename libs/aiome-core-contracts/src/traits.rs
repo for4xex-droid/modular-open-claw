@@ -796,7 +796,7 @@ pub trait Publisher: Send + Sync {
     fn platform_name(&self) -> &str;
 }
 
-// LlmProvider is now defined in aiome_contracts::llm (ADR-021)
+// LlmProvider is now defined in aiome_core_contracts::llm (ADR-021)
 
 /// 憲法バリデーター (ConstitutionalValidator)
 #[async_trait]

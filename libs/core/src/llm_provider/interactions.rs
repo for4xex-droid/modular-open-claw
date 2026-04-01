@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::error::AiomeError;
-use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
+use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
 use async_trait::async_trait;
 use std::fmt::Debug;
 
@@ -171,13 +171,13 @@ impl LlmProvider for InteractionsGeminiProvider {
     ) -> Result<LlmResponse, AiomeError> {
         let mut messages = Vec::new();
         if let Some(sys) = system {
-            messages.push(aiome_contracts::llm::LlmMessage {
+            messages.push(aiome_core_contracts::llm::LlmMessage {
                 role: "system".to_string(),
                 content: sys.to_string(),
                 cache: false,
             });
         }
-        messages.push(aiome_contracts::llm::LlmMessage {
+        messages.push(aiome_core_contracts::llm::LlmMessage {
             role: "user".to_string(),
             content: prompt.to_string(),
             cache: false,

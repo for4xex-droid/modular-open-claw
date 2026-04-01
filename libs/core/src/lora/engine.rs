@@ -6,8 +6,8 @@
  */
 
 use crate::error::AiomeError;
-use aiome_contracts::llm::{LlmResponse, StopReason};
-use aiome_contracts::traits::LoraEngine as LoraEngineTrait;
+use aiome_core_contracts::llm::{LlmResponse, StopReason};
+use aiome_core_contracts::traits::LoraEngine as LoraEngineTrait;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 

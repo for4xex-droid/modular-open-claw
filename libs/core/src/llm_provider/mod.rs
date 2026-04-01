@@ -15,7 +15,7 @@ use serde_json;
 use std::pin::Pin;
 use tokio_stream::Stream;
 
-pub use aiome_contracts::llm::{
+pub use aiome_core_contracts::llm::{
     EmbeddingProvider, LlmMessage, LlmProvider, LlmRequest, LlmResponse, StopReason,
 };
 
@@ -187,7 +187,7 @@ impl OllamaProvider {
 impl LlmProvider for OllamaProvider {
     async fn complete_with_cache(
         &self,
-        request: aiome_contracts::llm::LlmRequest,
+        request: aiome_core_contracts::llm::LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
         let url = format!("{}/api/chat", self.host);
         let messages: Vec<serde_json::Value> = request
@@ -268,7 +268,7 @@ impl LlmProvider for OllamaProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let mut messages = Vec::new();
         if let Some(sys) = system {
             messages.push(LlmMessage {
@@ -765,7 +765,7 @@ impl LlmProvider for GeminiProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let mut messages = Vec::new();
         if let Some(sys) = system {
             messages.push(LlmMessage {
@@ -1069,7 +1069,7 @@ impl LlmProvider for OpenAiProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let mut messages = Vec::new();
         if let Some(sys) = system {
             messages.push(LlmMessage {
@@ -1315,7 +1315,7 @@ impl LlmProvider for ClaudeProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let mut messages = Vec::new();
         if let Some(sys) = system {
             messages.push(LlmMessage {
@@ -1847,7 +1847,7 @@ mod tests {
 
         // 現時点ではコードが未実装（format: json を送っていない）ため、
         // wiremock がマッチせず 404 を返し、テストが失敗するはず。
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let request = LlmRequest {
             messages: vec![LlmMessage {
                 role: "user".into(),
@@ -1951,7 +1951,7 @@ mod tests {
     #[tokio::test]
     async fn test_ollama_complete_with_cache_success() {
         let mock_server = MockServer::start().await;
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
 
         // 期待値: キャッシュフラグが含まれたメッセージリストが送信されること
         Mock::given(method("POST"))
@@ -2036,7 +2036,7 @@ mod tests {
             mock_server.uri(),
         );
 
-        use aiome_contracts::llm::{LlmMessage, LlmRequest};
+        use aiome_core_contracts::llm::{LlmMessage, LlmRequest};
         let request = LlmRequest {
             messages: vec![
                 LlmMessage {

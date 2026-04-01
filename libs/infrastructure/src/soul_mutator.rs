@@ -6,9 +6,9 @@
  */
 
 use crate::job_queue::EvaluationOps;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::LlmProvider;
-use aiome_contracts::traits::{
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
+use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry,
@@ -48,8 +48,8 @@ impl SoulMutator {
 
 #[async_trait]
 impl AgentEvolver for SoulMutator {
-    async fn get_agent_stats(&self) -> Result<aiome_contracts::types::AgentStats, AiomeError> {
-        Ok(aiome_contracts::types::AgentStats::default())
+    async fn get_agent_stats(&self) -> Result<aiome_core_contracts::types::AgentStats, AiomeError> {
+        Ok(aiome_core_contracts::types::AgentStats::default())
     }
     async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> {
         Ok(())
@@ -62,7 +62,7 @@ impl AgentEvolver for SoulMutator {
     }
     async fn sync_samsara_level(
         &self,
-    ) -> Result<Option<aiome_contracts::contracts::SamsaraEvent>, AiomeError> {
+    ) -> Result<Option<aiome_core_contracts::contracts::SamsaraEvent>, AiomeError> {
         Ok(None)
     }
 
@@ -138,14 +138,14 @@ impl AgentEvolver for SoulMutator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::contracts::{
+    use aiome_core_contracts::contracts::{
         ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
     };
-    use aiome_contracts::llm::{LlmResponse, StopReason};
-    use aiome_contracts::traits::{
+    use aiome_core_contracts::llm::{LlmResponse, StopReason};
+    use aiome_core_contracts::traits::{
         Expression, Job, JobStatus, KarmaSearchResult, SnsMetricsRecord, SoulStore,
     };
-    use aiome_contracts::types::AgentStats;
+    use aiome_core_contracts::types::AgentStats;
     use serde_json::json;
     use uuid::Uuid;
 
@@ -166,7 +166,7 @@ mod tests {
         }
         async fn complete_with_cache(
             &self,
-            _request: aiome_contracts::llm::LlmRequest,
+            _request: aiome_core_contracts::llm::LlmRequest,
         ) -> Result<LlmResponse, AiomeError> {
             self.complete("", None).await
         }
@@ -184,7 +184,7 @@ mod tests {
         stats: AgentStats,
     }
     #[async_trait::async_trait]
-    impl aiome_contracts::traits::SystemStateOps for MockJobQueue {
+    impl aiome_core_contracts::traits::SystemStateOps for MockJobQueue {
         async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -269,7 +269,7 @@ mod tests {
             _: &str,
             _: &str,
             _: Option<&str>,
-            _: Option<aiome_contracts::security::PermissionManifest>,
+            _: Option<aiome_core_contracts::security::PermissionManifest>,
             _: Option<Uuid>,
             _: i32,
         ) -> Result<String, AiomeError> {
@@ -293,7 +293,7 @@ mod tests {
         async fn update_job_status(
             &self,
             _: &str,
-            _: aiome_contracts::traits::JobStatus,
+            _: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -345,14 +345,14 @@ mod tests {
         }
         async fn store_trajectory_step(
             &self,
-            _: aiome_contracts::trajectory::TrajectoryStep,
+            _: aiome_core_contracts::trajectory::TrajectoryStep,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_trajectory_steps(
             &self,
             _: &str,
-        ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::trajectory::TrajectoryStep>, AiomeError> {
             Ok(Vec::new())
         }
         async fn get_security_request_count(&self, _: Option<Uuid>) -> Result<u32, AiomeError> {
@@ -588,7 +588,7 @@ mod tests {
         }
         async fn store_biome_message(
             &self,
-            _: &aiome_contracts::biome::BiomeMessage,
+            _: &aiome_core_contracts::biome::BiomeMessage,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -625,17 +625,17 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::HarnessRegistryOps for MockJobQueue {
+    impl aiome_core_contracts::traits::HarnessRegistryOps for MockJobQueue {
         async fn store_harness_record(
             &self,
-            _record: &aiome_contracts::contracts::HarnessRecord,
+            _record: &aiome_core_contracts::contracts::HarnessRecord,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_harness_records_by_status(
             &self,
             _status: &str,
-        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(vec![])
         }
         async fn update_harness_status(&self, _id: &str, _status: &str) -> Result<(), AiomeError> {
@@ -647,7 +647,7 @@ mod tests {
         async fn fetch_harness_record_by_id(
             &self,
             _id: &str,
-        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(None)
         }
         async fn increment_harness_stats(&self, _id: &str, _fire: bool) -> Result<(), AiomeError> {

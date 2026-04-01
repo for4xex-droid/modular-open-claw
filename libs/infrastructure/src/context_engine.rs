@@ -6,9 +6,9 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
-use aiome_contracts::traits::{ChatStore, JobQueue, KarmaRegistry};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
+use aiome_core_contracts::traits::{ChatStore, JobQueue, KarmaRegistry};
 use async_trait::async_trait;
 use shared::guardrails::sanitize_for_prompt;
 use std::sync::Arc;
@@ -241,7 +241,9 @@ impl ContextEngine {
     }
 
     /// Calculate the current emotional state summary from karma entries, resilient to extreme/NaN values
-    pub fn calculate_mood_summary(entries: &[aiome_contracts::traits::KarmaEntry]) -> &'static str {
+    pub fn calculate_mood_summary(
+        entries: &[aiome_core_contracts::traits::KarmaEntry],
+    ) -> &'static str {
         let mut valences: Vec<f64> = entries
             .iter()
             .filter_map(|e| e.somatic_valence)
@@ -422,7 +424,7 @@ impl ContextEngine {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use aiome_contracts::traits::{KarmaEntry, KarmaRegistry, TaskRegistry};
+    use aiome_core_contracts::traits::{KarmaEntry, KarmaRegistry, TaskRegistry};
     use std::sync::Arc;
 
     #[test]

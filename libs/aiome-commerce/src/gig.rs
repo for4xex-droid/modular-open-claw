@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::commerce::CommerceEngine;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::gig::{
+use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::gig::{
     AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, VerificationResult,
 };
 use async_trait::async_trait;
@@ -17,7 +17,7 @@ use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use aiome_contracts::llm::LlmProvider;
+use aiome_core_contracts::llm::LlmProvider;
 
 use shared::sandbox::PathSandbox;
 use std::path::PathBuf;

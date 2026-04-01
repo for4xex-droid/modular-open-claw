@@ -7,10 +7,10 @@
 
 use super::UniversalJobQueue;
 use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
-use aiome_contracts::expression::ResourceUsageLog;
 use aiome_core::error::AiomeError;
 use aiome_core::expression::Expression;
 use aiome_core::traits::JobQueue;
+use aiome_core_contracts::expression::ResourceUsageLog;
 use async_trait::async_trait;
 use sqlx::Row;
 use tracing::{error, info, warn};
@@ -93,7 +93,7 @@ impl ExpressionOps for UniversalJobQueue {
                             .get::<Option<String>, _>("avatar_params")
                             .and_then(|s| serde_json::from_str(&s).ok()),
                         created_at: row.get("created_at"),
-                        tts_status: aiome_contracts::expression::TtsStatus::from_string(
+                        tts_status: aiome_core_contracts::expression::TtsStatus::from_string(
                             &row.get::<String, _>("tts_status"),
                         ),
                     });
@@ -120,7 +120,7 @@ impl ExpressionOps for UniversalJobQueue {
                             .get::<Option<serde_json::Value>, _>("avatar_params")
                             .and_then(|v| serde_json::from_value(v).ok()),
                         created_at: row.get("created_at"),
-                        tts_status: aiome_contracts::expression::TtsStatus::from_string(
+                        tts_status: aiome_core_contracts::expression::TtsStatus::from_string(
                             &row.get::<String, _>("tts_status"),
                         ),
                     });

@@ -6,8 +6,8 @@
  */
 
 use crate::job_queue::UniversalJobQueue;
-use aiome_contracts::traits::{NewsService, TrendItem, TrendSource};
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::{NewsService, TrendItem, TrendSource};
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json;

@@ -34,11 +34,11 @@ async fn main() {
         // MVP: Using a stub implementation for the GigEngine/Validator to satisfy the Gateway
         // In a real production deployment, this would inject the UniversalGigEngine and ConstitutionalValidator.
         use ::uuid::Uuid;
-        use aiome_contracts::error::AiomeError;
-        use aiome_contracts::gig::{
+        use aiome_core_contracts::error::AiomeError;
+        use aiome_core_contracts::gig::{
             GigBid, GigDeliverable, GigEngine, GigIntent, VerificationResult,
         };
-        use aiome_contracts::traits::ConstitutionalValidator;
+        use aiome_core_contracts::traits::ConstitutionalValidator;
         use async_trait::async_trait;
         use infrastructure::gig_gateway::SecureGigGateway;
         use infrastructure::rate_limiter::AgentRateLimiter;

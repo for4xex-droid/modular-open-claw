@@ -84,11 +84,11 @@ pub async fn generate_expression(
         .commerce_engine
         .get_subscription_status(auth.agent_id)
         .await
-        .unwrap_or(aiome_contracts::commerce::SubscriptionStatus::None);
+        .unwrap_or(aiome_core_contracts::commerce::SubscriptionStatus::None);
 
     let is_pro = matches!(
         sub_status,
-        aiome_contracts::commerce::SubscriptionStatus::Active
+        aiome_core_contracts::commerce::SubscriptionStatus::Active
     );
 
     if !is_pro {
@@ -107,7 +107,7 @@ pub async fn generate_expression(
                 if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&oldest.created_at) {
                     if (chrono::Utc::now() - dt.with_timezone(&chrono::Utc)).num_hours() < 1 {
                         return Err(aiome_core::error::AiomeError::BudgetExhausted(
-                            aiome_contracts::error::BudgetExhaustedError {
+                            aiome_core_contracts::error::BudgetExhaustedError {
                                 limit: 5.0,
                                 actual: 5.0,
                             },
@@ -140,12 +140,14 @@ pub async fn generate_expression(
         state.llm_semaphore.acquire(),
     )
     .await
-    .map_err(|_| aiome_contracts::error::AiomeError::ResourceBusy {
+    .map_err(|_| aiome_core_contracts::error::AiomeError::ResourceBusy {
         reason: "GPU/VRAM contention (Generation).".to_string(),
     })?
-    .map_err(|e| aiome_contracts::error::AiomeError::Infrastructure {
-        reason: format!("Semaphore acquire error: {}", e),
-    })?;
+    .map_err(
+        |e| aiome_core_contracts::error::AiomeError::Infrastructure {
+            reason: format!("Semaphore acquire error: {}", e),
+        },
+    )?;
 
     // 4. Generate Expression
     let mut expression =

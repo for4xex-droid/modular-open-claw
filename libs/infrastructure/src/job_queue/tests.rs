@@ -15,15 +15,15 @@ use super::watchtower::WatchtowerOps;
 use super::UniversalJobQueue;
 use crate::job_queue::karma::KarmaOps;
 use crate::job_queue::trajectory_store::TrajectoryOps;
-use aiome_contracts::traits::{
-    AgentEvolver, AuditStore, BiomeRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
-    TaskRegistry,
-};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::security::PermissionManifest;
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};
 use aiome_core::trajectory::TrajectoryStore;
+use aiome_core_contracts::traits::{
+    AgentEvolver, AuditStore, BiomeRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
+    TaskRegistry,
+};
 use async_trait::async_trait;
 use chrono::Utc;
 use sqlx::Row;
@@ -51,7 +51,7 @@ impl LlmProvider for MockLlmProvider {
     }
     async fn complete_with_cache(
         &self,
-        request: aiome_contracts::llm::LlmRequest,
+        request: aiome_core_contracts::llm::LlmRequest,
     ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
         let content = request
             .messages
@@ -1005,8 +1005,8 @@ async fn test_sqlite_trajectory_store() {
 #[tokio::test]
 async fn test_sqlite_expression_tts_status() {
     use crate::job_queue::expression::ExpressionOps;
-    use aiome_contracts::expression::TtsStatus;
     use aiome_core::expression::Expression;
+    use aiome_core_contracts::expression::TtsStatus;
 
     let (jq, _tmp) = create_test_queue().await;
 

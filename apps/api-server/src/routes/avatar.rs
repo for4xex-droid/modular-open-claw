@@ -65,7 +65,7 @@ pub async fn upload_avatar_handler(
             "⚠️ [Avatar] User {} is NOT identity verified. Upload blocked.",
             user.0.sub
         );
-        return Err(aiome_contracts::error::AiomeError::SecurityViolation {
+        return Err(aiome_core_contracts::error::AiomeError::SecurityViolation {
             reason: "eKYC verification required for custom asset upload".to_string(),
         }
         .into());
@@ -75,7 +75,7 @@ pub async fn upload_avatar_handler(
     let content_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.content_base64)
         .map_err(|_| {
-            AppError(aiome_contracts::error::AiomeError::Infrastructure {
+            AppError(aiome_core_contracts::error::AiomeError::Infrastructure {
                 reason: "Invalid base64 encoding".to_string(),
             })
         })?;
@@ -84,7 +84,7 @@ pub async fn upload_avatar_handler(
     let (hash, is_csam_hit) = {
         let hasher = ImageHasher::new();
         let h = hasher.compute_hash(&content_bytes).map_err(|e| {
-            AppError(aiome_contracts::error::AiomeError::Infrastructure {
+            AppError(aiome_core_contracts::error::AiomeError::Infrastructure {
                 reason: format!("Hash processing error: {}", e),
             })
         })?;

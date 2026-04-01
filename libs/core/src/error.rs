@@ -7,4 +7,4 @@
 
 //! ドメインエラー型
 
-pub use aiome_contracts::error::{AiomeError, BudgetExhaustedError};
+pub use aiome_core_contracts::error::{AiomeError, BudgetExhaustedError};

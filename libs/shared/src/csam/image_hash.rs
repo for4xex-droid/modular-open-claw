@@ -21,9 +21,9 @@ pub enum CsamError {
     HashError,
 }
 
-impl From<CsamError> for aiome_contracts::error::AiomeError {
+impl From<CsamError> for aiome_core_contracts::error::AiomeError {
     fn from(e: CsamError) -> Self {
-        aiome_contracts::error::AiomeError::Infrastructure {
+        aiome_core_contracts::error::AiomeError::Infrastructure {
             reason: format!("[CSAM] {}", e),
         }
     }

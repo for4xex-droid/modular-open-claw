@@ -6,8 +6,8 @@
  */
 
 use crate::slm_bridge::SlmBridge;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::LlmProvider;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

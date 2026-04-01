@@ -4,9 +4,9 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::contracts::{HarnessRecord, HarnessStatus};
-use aiome_contracts::traits::HarnessRegistryOps;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::contracts::{HarnessRecord, HarnessStatus};
+use aiome_core_contracts::traits::HarnessRegistryOps;
 use async_trait::async_trait;
 use sqlx::Row;
 

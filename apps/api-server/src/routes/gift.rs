@@ -7,7 +7,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_contracts::commerce::GiftRequest;
+use aiome_core_contracts::commerce::GiftRequest;
 use axum::{
     extract::{Path, State},
     http::StatusCode,

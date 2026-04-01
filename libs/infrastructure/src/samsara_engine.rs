@@ -20,7 +20,7 @@ use soul::model::AgentSoul;
 pub struct DefaultSamsaraEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     distillation_prompt: String,
-    store: Option<Arc<dyn aiome_contracts::traits::SoulStore>>,
+    store: Option<Arc<dyn aiome_core_contracts::traits::SoulStore>>,
 }
 
 impl DefaultSamsaraEngine {
@@ -34,7 +34,7 @@ impl DefaultSamsaraEngine {
     }
 
     /// (Optional) SoulStore を注入する (LoRAモデルのアーカイブ処理などに利用可能)
-    pub fn with_store(mut self, store: Arc<dyn aiome_contracts::traits::SoulStore>) -> Self {
+    pub fn with_store(mut self, store: Arc<dyn aiome_core_contracts::traits::SoulStore>) -> Self {
         self.store = Some(store);
         self
     }
@@ -423,7 +423,7 @@ mod tests {
             } else {
                 Ok(LlmResponse {
                     content: self.response_content.clone(),
-                    stop_reason: aiome_contracts::StopReason::EndTurn,
+                    stop_reason: aiome_core_contracts::StopReason::EndTurn,
                     reasoning: None,
                     metadata: None,
                 })

@@ -6,7 +6,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_contracts::gig::{GigBid, GigDeliverable, GigIntent, VerificationResult};
+use aiome_core_contracts::gig::{GigBid, GigDeliverable, GigIntent, VerificationResult};
 use axum::{
     extract::{Path, State},
     http::StatusCode,

@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::ekyc::{EkycEngine, EkycSession};
+use aiome_core_contracts::ekyc::{EkycEngine, EkycSession};
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, Secret};
 use tracing::{error, info};

@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::CommerceEngine;
 use anyhow::Result;
 use std::sync::Arc;
 

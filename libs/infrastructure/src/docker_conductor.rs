@@ -7,10 +7,10 @@
 use crate::grpc::a2a_grpc_client::{A2aGrpcClient, GrpcClientConfig};
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
-use aiome_contracts::a2a::{A2aClient, A2aTaskRequest};
-use aiome_contracts::commerce::CommerceEngine;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::Job;
+use aiome_core_contracts::a2a::{A2aClient, A2aTaskRequest};
+use aiome_core_contracts::commerce::CommerceEngine;
 use async_trait::async_trait;
 use base64::Engine;
 use futures::StreamExt;

@@ -16,13 +16,13 @@
 #![allow(clippy::manual_inspect)]
 
 use crate::app_state::Component;
-use aiome_contracts::commerce::CommerceEngine;
-use aiome_contracts::commerce::GiftEngine;
-use aiome_contracts::commerce::GiftPolicyContext;
-use aiome_contracts::ekyc::EkycEngine;
-use aiome_contracts::ekyc::EkycSessionStore;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::traits::TranscriptionEngine;
+use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::GiftEngine;
+use aiome_core_contracts::commerce::GiftPolicyContext;
+use aiome_core_contracts::ekyc::EkycEngine;
+use aiome_core_contracts::ekyc::EkycSessionStore;
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
@@ -158,7 +158,7 @@ async fn main() -> anyhow::Result<()> {
     });
     let config = Arc::new(config);
 
-    let live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>> = {
+    let live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>> = {
         use secrecy::ExposeSecret;
         config.gemini_api_key.as_ref().map(|key| {
             Arc::new(
@@ -166,7 +166,7 @@ async fn main() -> anyhow::Result<()> {
                     key.expose_secret().to_string(),
                     "gemini-2.0-flash-exp".to_string(),
                 ),
-            ) as Arc<dyn aiome_contracts::traits::LiveSessionManager>
+            ) as Arc<dyn aiome_core_contracts::traits::LiveSessionManager>
         })
     };
 
@@ -575,7 +575,7 @@ async fn main() -> anyhow::Result<()> {
             .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,
         provider.clone(),
         config.resolver.resolve("gig_artifacts"),
-    )) as Arc<dyn aiome_contracts::gig::GigEngine>;
+    )) as Arc<dyn aiome_core_contracts::gig::GigEngine>;
 
     // [Step 1.7] Initialize TranscriptionEngine
     let stt_enabled = std::env::var("AIOME_STT_ENABLED")
@@ -620,8 +620,8 @@ async fn main() -> anyhow::Result<()> {
         job_queue.clone(),
         std::time::Duration::from_millis(100),
         Some(event_sender.clone()),
-        Some(tool_discovery as Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>),
-        Some(strategic_planner as Arc<dyn aiome_contracts::traits::StrategicPlanner>),
+        Some(tool_discovery as Arc<dyn aiome_core_contracts::traits::ToolDiscoveryEngine>),
+        Some(strategic_planner as Arc<dyn aiome_core_contracts::traits::StrategicPlanner>),
         Some(validator.clone()),
         Some(soul_path),
         Some(oracle),
@@ -676,7 +676,7 @@ async fn main() -> anyhow::Result<()> {
         };
         Arc::new(infrastructure::grpc::a2a_grpc_client::A2aGrpcClient::new(
             grpc_config,
-        )) as Arc<dyn aiome_contracts::a2a::A2aClient>
+        )) as Arc<dyn aiome_core_contracts::a2a::A2aClient>
     };
 
     let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
@@ -758,38 +758,39 @@ async fn main() -> anyhow::Result<()> {
                 Some(event_sender.clone()),
                 Some(compute_semaphore.clone()),
             ));
-            Component::new(engine as Arc<dyn aiome_contracts::traits::LoraEngine>)
+            Component::new(engine as Arc<dyn aiome_core_contracts::traits::LoraEngine>)
         },
         tts_provider: {
             let tts_type = std::env::var("TTS_PROVIDER").unwrap_or_else(|_| "mock".to_string());
-            let provider: Arc<dyn aiome_contracts::traits::TtsProvider> = match tts_type.as_str() {
-                "openai" => {
-                    use secrecy::ExposeSecret;
-                    let key = std::env::var("TTS_OPENAI_API_KEY").unwrap_or_else(|_| {
-                        config
-                            .openai_api_key
-                            .as_ref()
-                            .map(|s| s.expose_secret().to_string())
-                            .unwrap_or_default()
-                    });
-                    let model =
-                        std::env::var("TTS_OPENAI_MODEL").unwrap_or_else(|_| "tts-1".to_string());
-                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
-                }
-                "xtts" => {
-                    let endpoint = std::env::var("XTTS_ENDPOINT")
-                        .unwrap_or_else(|_| "http://localhost:18020".to_string());
-                    Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
-                }
-                _ => Arc::new(infrastructure::tts::MockTtsProvider::default()),
-            };
+            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> =
+                match tts_type.as_str() {
+                    "openai" => {
+                        use secrecy::ExposeSecret;
+                        let key = std::env::var("TTS_OPENAI_API_KEY").unwrap_or_else(|_| {
+                            config
+                                .openai_api_key
+                                .as_ref()
+                                .map(|s| s.expose_secret().to_string())
+                                .unwrap_or_default()
+                        });
+                        let model = std::env::var("TTS_OPENAI_MODEL")
+                            .unwrap_or_else(|_| "tts-1".to_string());
+                        Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
+                    }
+                    "xtts" => {
+                        let endpoint = std::env::var("XTTS_ENDPOINT")
+                            .unwrap_or_else(|_| "http://localhost:18020".to_string());
+                        Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                    }
+                    _ => Arc::new(infrastructure::tts::MockTtsProvider::default()),
+                };
             Component::new(provider)
         },
         news_service: {
             let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(
                 job_queue.clone(),
             ));
-            Component::new(rss as Arc<dyn aiome_contracts::traits::NewsService>)
+            Component::new(rss as Arc<dyn aiome_core_contracts::traits::NewsService>)
         },
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
@@ -824,7 +825,7 @@ async fn main() -> anyhow::Result<()> {
         generative_engine: {
             let engine_type =
                 std::env::var("GENERATIVE_ENGINE").unwrap_or_else(|_| "mock".to_string());
-            let engine: Arc<dyn aiome_contracts::traits::GenerativeEngine> = match engine_type
+            let engine: Arc<dyn aiome_core_contracts::traits::GenerativeEngine> = match engine_type
                 .as_str()
             {
                 "comfyui" => {

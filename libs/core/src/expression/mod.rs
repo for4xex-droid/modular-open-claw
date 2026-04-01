@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-pub use aiome_contracts::expression::Expression;
+pub use aiome_core_contracts::expression::Expression;
 
 /// 感情テキストとメタデータを生成する推論アルゴリズム
 pub mod engine;

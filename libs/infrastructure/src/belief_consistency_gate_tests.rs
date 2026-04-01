@@ -9,8 +9,8 @@
 mod tests {
     use super::super::belief_consistency_gate::*;
     use crate::slm_bridge::SlmBridge;
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::llm::{LlmProvider, LlmResponse, StopReason};
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::llm::{LlmProvider, LlmResponse, StopReason};
     use async_trait::async_trait;
     use std::sync::Arc;
 

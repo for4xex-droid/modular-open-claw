@@ -6,9 +6,9 @@
  */
 
 use crate::skills::WasmSkillManager;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::ToolDiscoveryEngine;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::traits::ToolDiscoveryEngine;
 use async_trait::async_trait;
 use serde_json::json;
 use std::sync::Arc;
@@ -118,10 +118,10 @@ mod tests {
             &self,
             _prompt: &str,
             _system: Option<&str>,
-        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
-            Ok(aiome_contracts::llm::LlmResponse {
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
+            Ok(aiome_core_contracts::llm::LlmResponse {
                 content: self.response.clone(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -134,8 +134,8 @@ mod tests {
         }
         async fn complete_with_cache(
             &self,
-            _req: aiome_contracts::llm::LlmRequest,
-        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            _req: aiome_core_contracts::llm::LlmRequest,
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
             unimplemented!()
         }
     }

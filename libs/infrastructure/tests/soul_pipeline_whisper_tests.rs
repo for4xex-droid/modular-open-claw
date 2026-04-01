@@ -33,14 +33,14 @@ impl LlmProvider for MockLlm {
     ) -> Result<LlmResponse, AiomeError> {
         Ok(LlmResponse {
             content: "[]".to_string(),
-            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
             reasoning: None,
             metadata: None,
         })
     }
     async fn complete_with_cache(
         &self,
-        _request: aiome_contracts::llm::LlmRequest,
+        _request: aiome_core_contracts::llm::LlmRequest,
     ) -> Result<LlmResponse, AiomeError> {
         self.complete("", None).await
     }

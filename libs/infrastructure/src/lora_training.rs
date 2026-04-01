@@ -7,9 +7,9 @@
 
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
 use crate::soul_mutator::SoulMutator;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::LlmResponse;
-use aiome_contracts::traits::{AgentEvolver, JobQueue, LoraEngine};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::LlmResponse;
+use aiome_core_contracts::traits::{AgentEvolver, JobQueue, LoraEngine};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -88,7 +88,7 @@ pub struct LoraTrainingService {
     core_engine: Arc<aiome_core::lora::engine::LoraEngine>,
     soul_mutator: Option<Arc<SoulMutator>>,
     job_queue: Option<Arc<dyn JobQueue>>,
-    event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+    event_tx: Option<tokio::sync::broadcast::Sender<aiome_core_contracts::events::CoreEvent>>,
     active_jobs: Arc<RwLock<HashMap<String, CancellationToken>>>,
     job_semaphore: Arc<tokio::sync::Semaphore>,
     datasets_dir: std::path::PathBuf,
@@ -108,7 +108,7 @@ impl LoraTrainingService {
         core_engine: Arc<aiome_core::lora::engine::LoraEngine>,
         soul_mutator: Option<Arc<SoulMutator>>,
         job_queue: Option<Arc<dyn JobQueue>>,
-        event_tx: Option<tokio::sync::broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+        event_tx: Option<tokio::sync::broadcast::Sender<aiome_core_contracts::events::CoreEvent>>,
         compute_semaphore: Option<Arc<tokio::sync::Semaphore>>,
     ) -> Self {
         Self {
@@ -278,7 +278,7 @@ impl LoraTrainingService {
                             }
                         }
                     }
-                    let _ = tx.send(aiome_contracts::events::CoreEvent::TaskProgress {
+                    let _ = tx.send(aiome_core_contracts::events::CoreEvent::TaskProgress {
                         job_id: j_id.clone(),
                         conductor_id: "LoraConductor".to_string(),
                         message: line.clone(),
@@ -372,20 +372,20 @@ impl LoraEngine for LoraTrainingService {
         // Ensure newly enqueued job status transitions to InProgress
         if let Some(jq) = &self.job_queue {
             let _ = jq
-                .update_job_status(&job_id, aiome_contracts::traits::JobStatus::InProgress)
+                .update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::InProgress)
                 .await;
         }
 
         let cancel_token = CancellationToken::new();
         {
             if dataset_id.contains("..") || dataset_id.contains("/") || dataset_id.contains("\\") {
-                return Err(aiome_contracts::error::AiomeError::SecurityViolation {
+                return Err(aiome_core_contracts::error::AiomeError::SecurityViolation {
                     reason: "Invalid dataset_id: path traversal detected".into(),
                 });
             }
             let mut active = self.active_jobs.write().await;
             if active.len() >= 100 {
-                return Err(aiome_contracts::error::AiomeError::ResourceBusy {
+                return Err(aiome_core_contracts::error::AiomeError::ResourceBusy {
                     reason: "Too many pending jobs".into(),
                 });
             }
@@ -469,7 +469,10 @@ impl LoraEngine for LoraTrainingService {
                     }
                     if let Some(jq) = &service_clone.job_queue {
                         let _ = jq
-                            .update_job_status(&j_id, aiome_contracts::traits::JobStatus::Completed)
+                            .update_job_status(
+                                &j_id,
+                                aiome_core_contracts::traits::JobStatus::Completed,
+                            )
                             .await;
                     }
                 }

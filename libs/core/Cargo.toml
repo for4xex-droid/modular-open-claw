@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 shared = { path = "../shared" }
-aiome-contracts = { path = "../aiome-contracts" }
+aiome-core-contracts = { path = "../aiome-core-contracts" }
 avatar-engine = { path = "../avatar-engine" }
 async-trait = "0.1"
 anyhow = { workspace = true }

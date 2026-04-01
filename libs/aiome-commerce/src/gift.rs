@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::audit::AuditLogger;
-use aiome_contracts::commerce::GiftEngine;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::audit::AuditLogger;
+use aiome_core_contracts::commerce::GiftEngine;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::json;
@@ -180,7 +180,7 @@ impl GiftEngine for TremendousGiftEngine {
     async fn get_policy_context(
         &self,
         agent_id: Uuid,
-    ) -> Result<aiome_contracts::commerce::GiftPolicyContext, AiomeError> {
+    ) -> Result<aiome_core_contracts::commerce::GiftPolicyContext, AiomeError> {
         let agent_str = agent_id.to_string();
 
         let q = format!(
@@ -208,7 +208,7 @@ impl GiftEngine for TremendousGiftEngine {
         // とりあえず日次 5 件 or 合計 $20.0 を上限とする
         let daily_limit_reached = count >= 5 || total >= 20.0;
 
-        Ok(aiome_contracts::commerce::GiftPolicyContext {
+        Ok(aiome_core_contracts::commerce::GiftPolicyContext {
             max_amount_usd: 5.0,
             daily_limit_reached,
             daily_sent_count: count as u32,
@@ -220,7 +220,7 @@ impl GiftEngine for TremendousGiftEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::audit::AuditLogger;
+    use aiome_core_contracts::audit::AuditLogger;
     use shared::db::DatabasePool;
     use sqlx::SqlitePool;
 

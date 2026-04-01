@@ -9,10 +9,10 @@
 pub mod affiliate_adapter;
 pub use affiliate_adapter::AffiliateAdapter;
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::gig::{AcceptanceCriteria, GigIntent, IntentCategory};
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::security_impl::sanitize_llm_output;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::gig::{AcceptanceCriteria, GigIntent, IntentCategory};
 use regex::Regex;
 use shared::sandbox::PathSandbox;
 use std::sync::{Arc, OnceLock};
@@ -27,7 +27,7 @@ pub struct IntentGenerator {
     _context_engine: Arc<crate::context_engine::ContextEngine>,
     llm: Arc<dyn LlmProvider + Send + Sync>,
     firewall: Arc<IntentFirewall>,
-    soul_store: Arc<dyn aiome_contracts::traits::SoulStore + Send + Sync>,
+    soul_store: Arc<dyn aiome_core_contracts::traits::SoulStore + Send + Sync>,
 }
 
 impl IntentGenerator {
@@ -36,7 +36,7 @@ impl IntentGenerator {
         context_engine: Arc<crate::context_engine::ContextEngine>,
         llm: Arc<dyn LlmProvider + Send + Sync>,
         firewall: Arc<IntentFirewall>,
-        soul_store: Arc<dyn aiome_contracts::traits::SoulStore + Send + Sync>,
+        soul_store: Arc<dyn aiome_core_contracts::traits::SoulStore + Send + Sync>,
     ) -> Self {
         Self {
             _context_engine: context_engine,
@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl aiome_contracts::traits::SoulStore for MockSoulStore {
+    impl aiome_core_contracts::traits::SoulStore for MockSoulStore {
         async fn load_soul(&self, _: &str) -> Result<Option<serde_json::Value>, AiomeError> {
             Ok(Some(serde_json::json!({
                 "attachment": { "style": self.style }

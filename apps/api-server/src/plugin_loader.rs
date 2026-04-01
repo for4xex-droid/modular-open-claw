@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::plugin::AiomePlugin;
+use aiome_core_contracts::plugin::AiomePlugin;
 use axum::Router;
 use std::sync::Arc;
 use tracing::{info, warn};

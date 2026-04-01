@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 aiome_core = { path = "../core", package = "aiome-core" }
 soul = { path = "../soul" }
-aiome-contracts = { workspace = true }
+aiome-core-contracts = { workspace = true }
 # tuning = { path = "../tuning" } (Moved to commercial repo)
 shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }
@@ -74,7 +74,7 @@ tokenizers = { version = "0.21.0", optional = true }
 
 [features]
 test-utils = []
-grpc = ["tonic", "aiome-contracts/grpc", "tonic-health"]
+grpc = ["tonic", "aiome-core-contracts/grpc", "tonic-health"]
 native-inference = ["candle-core", "candle-nn", "candle-transformers", "hf-hub", "tokenizers"]
 
 [dev-dependencies]

@@ -4,11 +4,11 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::a2a::{
+use aiome_core_contracts::a2a::{
     internal::docker_conductor_client::DockerConductorClient, A2aClient, A2aTaskProgress,
     A2aTaskRequest,
 };
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
@@ -98,7 +98,7 @@ impl A2aClient for A2aGrpcClient {
 
             let mut client = DockerConductorClient::new(channel);
 
-            let mut grpc_req = tonic::Request::new(aiome_contracts::a2a::internal::ExecuteTaskRequest {
+            let mut grpc_req = tonic::Request::new(aiome_core_contracts::a2a::internal::ExecuteTaskRequest {
                 job_id: request_clone.job_id,
                 prompt_b64: request_clone.prompt_b64,
                 artifact_path: request_clone.artifact_path.unwrap_or_default(),
@@ -148,7 +148,7 @@ impl A2aClient for A2aGrpcClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::a2a::internal::{
+    use aiome_core_contracts::a2a::internal::{
         docker_conductor_server::{DockerConductor, DockerConductorServer},
         ExecuteTaskRequest as ProtoExecuteTaskRequest, TaskProgress as ProtoTaskProgress,
     };

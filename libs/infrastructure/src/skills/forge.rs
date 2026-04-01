@@ -7,8 +7,8 @@
 
 use crate::llm::utils::extract_code_block;
 use crate::security::{BastionGuard, PermissionManifest, RuntimeJail, SandboxProfile};
-use aiome_contracts::llm::LlmProvider;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

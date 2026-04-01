@@ -10,7 +10,7 @@ soul = { path = "../../libs/soul" }
 infrastructure = { path = "../../libs/infrastructure", features = ["grpc"] }
 shared = { path = "../../libs/shared" }
 avatar-engine = { path = "../../libs/avatar-engine" }
-aiome-contracts = { path = "../../libs/aiome-contracts", features = ["axum"] }
+aiome-core-contracts = { path = "../../libs/aiome-core-contracts", features = ["axum"] }
 aiome-commerce = { path = "../../libs/aiome-commerce" }
 tokio = { workspace = true }
 axum = { workspace = true, features = ["multipart"] }

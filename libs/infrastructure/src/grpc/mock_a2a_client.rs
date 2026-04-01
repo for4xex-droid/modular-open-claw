@@ -4,8 +4,8 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::a2a::{A2aClient, A2aTaskProgress, A2aTaskRequest};
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::a2a::{A2aClient, A2aTaskProgress, A2aTaskRequest};
+use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 use std::sync::{Arc, Mutex};

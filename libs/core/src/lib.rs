@@ -37,7 +37,7 @@ pub mod traits;
 
 /// 行動履歴やプラン（Trajectory）の管理
 pub mod trajectory {
-    pub use aiome_contracts::trajectory::*;
+    pub use aiome_core_contracts::trajectory::*;
 }
 pub mod security_impl;
 

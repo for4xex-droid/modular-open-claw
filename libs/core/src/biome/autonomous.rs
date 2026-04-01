@@ -41,7 +41,7 @@ impl AutonomousBiomeEngine {
         llm: Arc<dyn LlmProvider>,
         running: Arc<AtomicBool>,
         llm_semaphore: Arc<Semaphore>,
-        gift_engine: Option<Arc<dyn aiome_contracts::commerce::GiftEngine>>,
+        gift_engine: Option<Arc<dyn aiome_core_contracts::commerce::GiftEngine>>,
         master_email: Option<String>,
     ) {
         info!(

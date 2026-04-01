@@ -4,8 +4,8 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::traits::JobQueue;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::JobQueue;
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
@@ -73,7 +73,7 @@ impl CognitiveSentinel {
         if recent_jobs.len() >= 10 {
             let failed_count = recent_jobs
                 .iter()
-                .filter(|j| j.status == aiome_contracts::traits::JobStatus::Failed)
+                .filter(|j| j.status == aiome_core_contracts::traits::JobStatus::Failed)
                 .count();
             let fail_rate = failed_count as f64 / recent_jobs.len() as f64;
 

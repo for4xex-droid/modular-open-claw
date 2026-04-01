@@ -4,9 +4,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmRequest, LlmResponse};
-use aiome_contracts::security::AgentHook;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{LlmRequest, LlmResponse};
+use aiome_core_contracts::security::AgentHook;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -52,7 +52,7 @@ impl HookManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::llm::LlmMessage;
+    use aiome_core_contracts::llm::LlmMessage;
 
     #[derive(Debug)]
     struct MockHook {

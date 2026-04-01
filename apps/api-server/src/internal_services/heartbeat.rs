@@ -6,8 +6,8 @@
  */
 
 use crate::AppState;
-use aiome_contracts::events::CoreEvent;
-use aiome_contracts::traits::AgentEvolver;
+use aiome_core_contracts::events::CoreEvent;
+use aiome_core_contracts::traits::AgentEvolver;
 use infrastructure::heartbeat_wakeup::HeartbeatWakeupService;
 use infrastructure::score_tracker::ScoreTracker;
 use std::sync::Arc;

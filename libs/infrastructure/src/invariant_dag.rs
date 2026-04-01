@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::invariant::InvariantDagNode;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::invariant::InvariantDagNode;
 use chrono::Utc;
 use sha2::{Digest, Sha256};
 

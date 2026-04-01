@@ -84,7 +84,7 @@ pub async fn get_job_logs_handler(
             "logs": job.execution_log,
             "error": job.error_message,
         }))),
-        None => Err(aiome_contracts::error::AiomeError::ArtifactNotFound {
+        None => Err(aiome_core_contracts::error::AiomeError::ArtifactNotFound {
             path: format!("job:{}", job_id),
         }
         .into()),
@@ -160,7 +160,7 @@ pub async fn get_diagnosis_handler(
 
     match diagnosis {
         Some(d) => Ok(Json(json!(d))),
-        None => Err(aiome_contracts::error::AiomeError::ArtifactNotFound {
+        None => Err(aiome_core_contracts::error::AiomeError::ArtifactNotFound {
             path: format!("diagnosis:{}", job_id),
         }
         .into()),

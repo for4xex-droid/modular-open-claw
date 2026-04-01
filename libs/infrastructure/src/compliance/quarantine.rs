@@ -11,8 +11,8 @@
 
 use crate::db::DatabasePool;
 use crate::sql_exec;
-use aiome_contracts::contracts::QuarantinedAsset;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::contracts::QuarantinedAsset;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

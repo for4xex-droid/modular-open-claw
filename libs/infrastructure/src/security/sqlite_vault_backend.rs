@@ -7,8 +7,8 @@
 
 use crate::db::DatabasePool;
 use crate::sql_exec;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::vault_backend::VaultBackend;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::vault_backend::VaultBackend;
 use async_trait::async_trait;
 use lru::LruCache;
 use std::num::NonZeroUsize;

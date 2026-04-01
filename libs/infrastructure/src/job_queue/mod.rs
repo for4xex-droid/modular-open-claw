@@ -5,20 +5,20 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::contracts::{
+use aiome_core::error::AiomeError;
+use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
+use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
+use aiome_core_contracts::contracts::{
     ArenaMatch, ArtifactCategory, ArtifactEdge, ArtifactMeta, FederatedMetrics, ImmuneRule,
     JobMetrics, KarmaEntry, KarmaMetrics, OracleVerdict, SamsaraEvent,
 };
-use aiome_contracts::security::PermissionManifest;
-use aiome_contracts::traits::{
+use aiome_core_contracts::security::PermissionManifest;
+use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
     SnsMetricsRecord, SoulStore, SystemStateOps, TaskRegistry,
 };
-use aiome_contracts::types::AgentStats;
-use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
-use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
+use aiome_core_contracts::types::AgentStats;
 
 use async_trait::async_trait;
 use sqlx::Row;
@@ -49,7 +49,7 @@ pub mod trajectory_store;
 pub mod watchtower;
 
 #[async_trait]
-impl aiome_contracts::traits::SystemStateOps for UniversalJobQueue {
+impl aiome_core_contracts::traits::SystemStateOps for UniversalJobQueue {
     async fn store_system_state(&self, key: &str, value: &str) -> Result<(), AiomeError> {
         let q = match &self.pool {
             crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
@@ -631,7 +631,7 @@ impl BiomeRegistry for UniversalJobQueue {
     }
     async fn store_biome_message(
         &self,
-        message: &aiome_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::biome::BiomeMessage,
     ) -> Result<(), AiomeError> {
         Box::pin(self.do_store_biome_message(message)).await
     }

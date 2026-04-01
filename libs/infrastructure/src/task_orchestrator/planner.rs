@@ -5,10 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::StrategicPlanner;
-use aiome_contracts::trajectory::TrajectoryStep;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::traits::StrategicPlanner;
+use aiome_core_contracts::trajectory::TrajectoryStep;
 use async_trait::async_trait;
 use chrono::Utc;
 use serde_json::json;
@@ -71,9 +71,9 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                     job_id: context["job_id"].as_str().map(|s| s.to_string()),
                     parent_step_id: None,
                     step_category: match v["step_category"].as_str().unwrap_or("Execution") {
-                        "Planning" => aiome_contracts::trajectory::StepCategory::Planning,
-                        "Verification" => aiome_contracts::trajectory::StepCategory::Review,
-                        _ => aiome_contracts::trajectory::StepCategory::Execution,
+                        "Planning" => aiome_core_contracts::trajectory::StepCategory::Planning,
+                        "Verification" => aiome_core_contracts::trajectory::StepCategory::Review,
+                        _ => aiome_core_contracts::trajectory::StepCategory::Execution,
                     },
                     action: v["description"].as_str().unwrap_or("").to_string(),
                     tool_name: None,
@@ -101,7 +101,7 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                 step_id: current_step_id,
                 job_id: context["job_id"].as_str().map(|s| s.to_string()),
                 parent_step_id: None,
-                step_category: aiome_contracts::trajectory::StepCategory::Decision,
+                step_category: aiome_core_contracts::trajectory::StepCategory::Decision,
                 action: "Final Decision".into(),
                 tool_name: None,
                 input: serde_json::Value::Null,
@@ -126,7 +126,7 @@ impl StrategicPlanner for DefaultStrategicPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::trajectory::StepCategory;
+    use aiome_core_contracts::trajectory::StepCategory;
     use std::sync::Arc;
 
     #[derive(Debug)]
@@ -140,10 +140,10 @@ mod tests {
             &self,
             _prompt: &str,
             _system: Option<&str>,
-        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
-            Ok(aiome_contracts::llm::LlmResponse {
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
+            Ok(aiome_core_contracts::llm::LlmResponse {
                 content: self.response.clone(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -156,8 +156,8 @@ mod tests {
         }
         async fn complete_with_cache(
             &self,
-            _req: aiome_contracts::llm::LlmRequest,
-        ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            _req: aiome_core_contracts::llm::LlmRequest,
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
             unimplemented!()
         }
     }

@@ -8,7 +8,7 @@
 #[cfg(test)]
 mod tests {
     use crate::security::ConstitutionalValidator;
-    use aiome_contracts::security::PermissionManifest;
+    use aiome_core_contracts::security::PermissionManifest;
 
     #[tokio::test]
     async fn test_constitutional_violation_rejection() {

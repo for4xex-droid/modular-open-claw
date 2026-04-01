@@ -4,10 +4,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmRequest, LlmResponse};
-use aiome_contracts::security::AgentHook;
-use aiome_contracts::traits::JobQueue;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{LlmRequest, LlmResponse};
+use aiome_core_contracts::security::AgentHook;
+use aiome_core_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use shared::sandbox::PathSandbox;
 use std::sync::Arc;
@@ -88,7 +88,7 @@ impl AgentHook for BehaviorMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::llm::{LlmMessage, StopReason};
+    use aiome_core_contracts::llm::{LlmMessage, StopReason};
 
     #[tokio::test]
     async fn test_behavior_monitor_blocks_after_limit() {
@@ -140,7 +140,7 @@ mod tests {
         // Normal response
         let ok_response = LlmResponse {
             content: "{\"safe\": true}".into(),
-            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
             reasoning: None,
             metadata: None,
         };

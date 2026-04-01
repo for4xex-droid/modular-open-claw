@@ -6,7 +6,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
+use aiome_core_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
 use axum::{
     extract::{Path, State},
     http::StatusCode,

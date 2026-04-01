@@ -8,8 +8,8 @@
 use crate::job_queue::UniversalJobQueue;
 use crate::polar_quant::PolarQuantEncoder;
 use crate::vector_ops::{StandardVectorOps, VectorOps};
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmResponse, StopReason};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{LlmResponse, StopReason};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;

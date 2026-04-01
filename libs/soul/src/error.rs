@@ -25,24 +25,28 @@ pub enum SoulError {
     Internal(String),
 }
 
-impl From<SoulError> for aiome_contracts::error::AiomeError {
+impl From<SoulError> for aiome_core_contracts::error::AiomeError {
     fn from(e: SoulError) -> Self {
         match e {
             SoulError::DistillationFailed(r) => {
-                aiome_contracts::error::AiomeError::Infrastructure {
+                aiome_core_contracts::error::AiomeError::Infrastructure {
                     reason: format!("[SoulDistill] {}", r),
                 }
             }
-            SoulError::RebirthFailed(r) => aiome_contracts::error::AiomeError::Infrastructure {
-                reason: format!("[SoulRebirth] {}", r),
-            },
-            SoulError::AdapterError(r) => aiome_contracts::error::AiomeError::Infrastructure {
+            SoulError::RebirthFailed(r) => {
+                aiome_core_contracts::error::AiomeError::Infrastructure {
+                    reason: format!("[SoulRebirth] {}", r),
+                }
+            }
+            SoulError::AdapterError(r) => aiome_core_contracts::error::AiomeError::Infrastructure {
                 reason: format!("[SoulAdapter] {}", r),
             },
-            SoulError::InvalidTransition(r) => aiome_contracts::error::AiomeError::Infrastructure {
-                reason: format!("[SoulTransition] {}", r),
-            },
-            SoulError::Internal(r) => aiome_contracts::error::AiomeError::Infrastructure {
+            SoulError::InvalidTransition(r) => {
+                aiome_core_contracts::error::AiomeError::Infrastructure {
+                    reason: format!("[SoulTransition] {}", r),
+                }
+            }
+            SoulError::Internal(r) => aiome_core_contracts::error::AiomeError::Infrastructure {
                 reason: format!("[SoulInternal] {}", r),
             },
         }

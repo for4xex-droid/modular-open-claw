@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::traits::SoulStore;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::SoulStore;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use soul::{self, AgentSoul};
@@ -482,7 +482,7 @@ impl UniversalSoulStore {
 
 #[async_trait]
 #[async_trait]
-impl aiome_contracts::traits::SoulStore for UniversalSoulStore {
+impl aiome_core_contracts::traits::SoulStore for UniversalSoulStore {
     async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError> {
         if let Some(soul) = self.load_soul(id).await? {
             let val = serde_json::to_value(soul).map_err(|e| AiomeError::Infrastructure {

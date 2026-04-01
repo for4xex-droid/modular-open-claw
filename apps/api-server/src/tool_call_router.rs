@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::AppState;
-use aiome_contracts::traits::{
+use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
 };
 use async_trait::async_trait;
@@ -213,9 +213,9 @@ impl ToolCallRouter for DefaultToolCallRouter {
 mod tests {
     use super::*;
     use crate::app_state::Component;
-    use aiome_contracts::traits::JobQueue;
-    use aiome_contracts::AgentStats;
     use aiome_core::error::AiomeError;
+    use aiome_core_contracts::traits::JobQueue;
+    use aiome_core_contracts::AgentStats;
     use infrastructure::skills::hooks::{HookChain, HookVerdict, ToolHook};
     use std::sync::Arc;
 

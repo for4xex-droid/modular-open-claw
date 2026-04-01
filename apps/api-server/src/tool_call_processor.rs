@@ -139,12 +139,13 @@ mod tests {
                 &self,
                 _prompt: &str,
                 _sys: Option<&str>,
-            ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
-                Ok(aiome_contracts::LlmResponse {
+            ) -> Result<aiome_core_contracts::LlmResponse, aiome_core::error::AiomeError>
+            {
+                Ok(aiome_core_contracts::LlmResponse {
                     content: "Mocked Execution Result".into(),
                     metadata: Some(std::collections::HashMap::new()),
                     reasoning: None,
-                    stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                    stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 })
             }
             async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
@@ -196,13 +197,13 @@ mod tests {
                 &self,
                 _prompt: &str,
                 _system: Option<&str>,
-            ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
                 unimplemented!()
             }
             async fn complete_with_cache(
                 &self,
-                _a: aiome_contracts::llm::LlmRequest,
-            ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+                _a: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
                 unimplemented!()
             }
             fn name(&self) -> &str {
@@ -252,14 +253,14 @@ some_skill { "data": "hello" }"#;
                 &self,
                 _prompt: &str,
                 _system: Option<&str>,
-            ) -> Result<aiome_contracts::llm::LlmResponse, AiomeError> {
+            ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
                 // AdaptiveImmuneSystem expects a JSON array or object with a violated rule
                 let json_resp = r#"{"status": "blocked", "reason": "malicious code execution detected", "violated_pattern": "rm -rf"} "#;
-                Ok(aiome_contracts::llm::LlmResponse {
+                Ok(aiome_core_contracts::llm::LlmResponse {
                     content: json_resp.into(),
                     metadata: Some(std::collections::HashMap::new()),
                     reasoning: None,
-                    stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                    stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 })
             }
             fn name(&self) -> &str {

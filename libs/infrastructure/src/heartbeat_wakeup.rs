@@ -6,8 +6,8 @@
  */
 
 use crate::score_tracker::ScoreTracker;
-use aiome_contracts::traits::AgentEvolver;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::traits::AgentEvolver;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;

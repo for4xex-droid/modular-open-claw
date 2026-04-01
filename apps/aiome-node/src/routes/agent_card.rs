@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::a2a::agent_card::{
+use aiome_core_contracts::a2a::agent_card::{
     AgentCard, Endpoints, PricingConfig, SecurityProfile, SlaConfig, ZtasProfile,
 };
 use axum::{http::StatusCode, Json};

@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::EmbeddingProvider;
-use aiome_contracts::traits::{
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::EmbeddingProvider;
+use aiome_core_contracts::traits::{
     ArtifactCategory, ArtifactEdge, ArtifactFile, ArtifactMeta, ArtifactStore,
     CreateArtifactRequest,
 };
@@ -35,8 +35,8 @@ pub struct UniversalArtifactStore {
     base_dir: PathBuf,           // workspace/artifacts
     vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     embed_provider: Option<Arc<dyn EmbeddingProvider>>,
-    audit_logger: Option<Arc<dyn aiome_contracts::audit::AuditLogger>>,
-    job_queue: Option<Arc<dyn aiome_contracts::traits::TaskRegistry>>,
+    audit_logger: Option<Arc<dyn aiome_core_contracts::audit::AuditLogger>>,
+    job_queue: Option<Arc<dyn aiome_core_contracts::traits::TaskRegistry>>,
 }
 
 const MAX_ARTIFACT_FILE_SIZE: usize = 10 * 1024 * 1024; // 10MB
@@ -70,7 +70,7 @@ impl UniversalArtifactStore {
     /// 監査ロガーを設定する
     pub fn with_audit_logger(
         mut self,
-        logger: Arc<dyn aiome_contracts::audit::AuditLogger>,
+        logger: Arc<dyn aiome_core_contracts::audit::AuditLogger>,
     ) -> Self {
         self.audit_logger = Some(logger);
         self
@@ -79,7 +79,7 @@ impl UniversalArtifactStore {
     /// ジョブキューを設定する
     pub fn with_job_queue(
         mut self,
-        job_queue: Arc<dyn aiome_contracts::traits::TaskRegistry>,
+        job_queue: Arc<dyn aiome_core_contracts::traits::TaskRegistry>,
     ) -> Self {
         self.job_queue = Some(job_queue);
         self

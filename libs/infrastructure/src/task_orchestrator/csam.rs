@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
-use aiome_contracts::traits::{ArtifactStore, Job};
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::{ArtifactStore, Job};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::mpsc;

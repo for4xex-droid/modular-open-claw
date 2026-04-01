@@ -5,8 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::forecast::{AnomalyResult, ForecastConfig, ForecastProvider, ForecastResult};
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::forecast::{
+    AnomalyResult, ForecastConfig, ForecastProvider, ForecastResult,
+};
 use async_trait::async_trait;
 use serde_json::json;
 use std::time::Duration;

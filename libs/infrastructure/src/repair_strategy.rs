@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::types::AgentStats;
 use aiome_core::trajectory::FailureCategory;
+use aiome_core_contracts::types::AgentStats;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

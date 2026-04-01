@@ -548,7 +548,7 @@ pub mod mlock;
 pub mod sqlite_vault_backend;
 use crate::db::DatabasePool;
 pub use abyss_voice_vault::AbyssVoiceVault;
-use aiome_contracts::voice_vault::VoiceKeyVault;
+use aiome_core_contracts::voice_vault::VoiceKeyVault;
 use zeroize::Zeroizing;
 
 /// Phase 9: Voice Core DRM (Digital Rights Management)

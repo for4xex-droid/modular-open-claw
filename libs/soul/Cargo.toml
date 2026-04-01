@@ -10,7 +10,7 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
-aiome-contracts = { workspace = true }
+aiome-core-contracts = { workspace = true }
 uuid = { workspace = true }
 sha2 = "0.10"
 async-trait = "0.1.89"

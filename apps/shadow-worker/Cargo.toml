@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-aiome-contracts = { workspace = true, features = ["grpc"] }
+aiome-core-contracts = { workspace = true, features = ["grpc"] }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
 tonic = { workspace = true }
 tonic-health = "0.12"

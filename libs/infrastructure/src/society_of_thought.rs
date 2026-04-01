@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::contracts::{SoTConfig, SoTEvent, SoTOutcome, SoTTrigger};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::contracts::{SoTConfig, SoTEvent, SoTOutcome, SoTTrigger};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -142,14 +142,14 @@ impl SoTEngine {
                 }
             }
 
-            let explorer_req = aiome_contracts::llm::LlmRequest {
+            let explorer_req = aiome_core_contracts::llm::LlmRequest {
                 messages: vec![
-                    aiome_contracts::llm::LlmMessage {
+                    aiome_core_contracts::llm::LlmMessage {
                         role: "system".to_string(),
                         content: format!("You are the {}.", role),
                         cache: true,
                     },
-                    aiome_contracts::llm::LlmMessage {
+                    aiome_core_contracts::llm::LlmMessage {
                         role: "user".to_string(),
                         content: explorer_prompt.clone(),
                         cache: false,
@@ -232,7 +232,7 @@ impl SoTEngine {
     async fn evaluate_scores(
         &self,
         content: &str,
-        criteria: &[aiome_contracts::contracts::ScoringCriterion],
+        criteria: &[aiome_core_contracts::contracts::ScoringCriterion],
     ) -> Result<Vec<(String, f64)>, AiomeError> {
         info!(
             "🔮 [SoT] Evaluating deliberation against {} criteria via LLM",
@@ -334,7 +334,7 @@ mod tests {
         ) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: self.content.clone(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -342,7 +342,7 @@ mod tests {
         async fn complete_with_cache(&self, _req: LlmRequest) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: self.content.clone(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -408,7 +408,7 @@ mod tests {
         let config = SoTConfig {
             enabled: true,
             max_rounds: 1,
-            scoring_criteria: vec![aiome_contracts::contracts::ScoringCriterion {
+            scoring_criteria: vec![aiome_core_contracts::contracts::ScoringCriterion {
                 name: "Safety".to_string(),
                 min_score: 9.0,
                 weight: 1.0,

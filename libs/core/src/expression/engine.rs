@@ -90,7 +90,7 @@ impl ExpressionEngine {
             karma_refs: karma_ids,
             audio_path: None,  // DP-9: Initially None, set when TTS is processed
             duration_ms: None, // DP-9: Initially None
-            tts_status: aiome_contracts::expression::TtsStatus::NotRequested, // Phase 10.1a
+            tts_status: aiome_core_contracts::expression::TtsStatus::NotRequested, // Phase 10.1a
             avatar_params: params_json,
             created_at: Utc::now().to_rfc3339(),
         })

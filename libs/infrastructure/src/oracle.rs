@@ -6,10 +6,10 @@
  */
 
 use crate::society_of_thought::SoTEngine;
-use aiome_contracts::events::CoreEvent;
 use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::events::CoreEvent;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
@@ -221,16 +221,16 @@ impl Oracle {
     pub async fn multi_review(
         &self,
         content: &str,
-        context: &aiome_contracts::contracts::ReviewContext,
-        config: aiome_contracts::contracts::ReviewConfig,
-    ) -> Result<aiome_contracts::contracts::MultiReviewResult, AiomeError> {
+        context: &aiome_core_contracts::contracts::ReviewContext,
+        config: aiome_core_contracts::contracts::ReviewConfig,
+    ) -> Result<aiome_core_contracts::contracts::MultiReviewResult, AiomeError> {
         // Phase B: SoT (Society of Thought) が有効な場合はそちらに委譲する
         if let Some(sot_config) = config.sot_config {
             if sot_config.enabled {
                 info!("🔮 [Oracle] Delegating deliberation to SoT Engine (P-1, P-3, P-10)");
 
                 let budget = context.job_id.as_ref().map(|_| 1.0).unwrap_or(1.0);
-                let trigger = aiome_contracts::contracts::SoTTrigger::Manual;
+                let trigger = aiome_core_contracts::contracts::SoTTrigger::Manual;
                 let task_desc = format!("Goal: {:?}\nContent: {}", context.goal, content);
 
                 // P-8: SSE イベントブリッジング
@@ -263,13 +263,13 @@ impl Oracle {
                     scores.iter().map(|(_, s)| s).sum::<f64>() / scores.len() as f64
                 };
 
-                return Ok(aiome_contracts::contracts::MultiReviewResult {
+                return Ok(aiome_core_contracts::contracts::MultiReviewResult {
                     overall_score: avg_score as f32,
                     decision: match outcome {
-                        aiome_contracts::contracts::SoTOutcome::AllCriteriaPassed => {
-                            aiome_contracts::contracts::ReviewDecision::Accept
+                        aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed => {
+                            aiome_core_contracts::contracts::ReviewDecision::Accept
                         }
-                        _ => aiome_contracts::contracts::ReviewDecision::Reject,
+                        _ => aiome_core_contracts::contracts::ReviewDecision::Reject,
                     },
                     reflections: scores
                         .iter()
@@ -336,12 +336,13 @@ impl Oracle {
             .await?;
 
         let json_str = crate::concept_manager::extract_json(&final_resp.content)?;
-        let mut result = serde_json::from_str::<aiome_contracts::contracts::MultiReviewResult>(
-            json_str.as_str(),
-        )
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to parse MultiReview JSON: {}", e),
-        })?;
+        let mut result =
+            serde_json::from_str::<aiome_core_contracts::contracts::MultiReviewResult>(
+                json_str.as_str(),
+            )
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to parse MultiReview JSON: {}", e),
+            })?;
 
         result.reflections = reflections;
         Ok(result)
@@ -380,7 +381,7 @@ mod tests {
         }
         async fn complete_with_cache(
             &self,
-            _request: aiome_contracts::llm::LlmRequest,
+            _request: aiome_core_contracts::llm::LlmRequest,
         ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
             self.complete("", None).await
         }
@@ -497,12 +498,12 @@ mod tests {
         });
 
         let oracle = Oracle::new(provider, "Be ethical.".to_string());
-        let context = aiome_contracts::contracts::ReviewContext {
+        let context = aiome_core_contracts::contracts::ReviewContext {
             job_id: Some("test-job".to_string()),
             topic: "AI Ethics".to_string(),
             goal: Some("Create a fair AI".to_string()),
         };
-        let config = aiome_contracts::contracts::ReviewConfig {
+        let config = aiome_core_contracts::contracts::ReviewConfig {
             num_reflections: 2,
             temperature: 0.1,
             sot_config: None,
@@ -515,7 +516,7 @@ mod tests {
         assert_eq!(result.overall_score, 8.5);
         assert_eq!(
             result.decision,
-            aiome_contracts::contracts::ReviewDecision::Accept
+            aiome_core_contracts::contracts::ReviewDecision::Accept
         );
         assert_eq!(
             result.reflections.len(),
@@ -534,16 +535,16 @@ mod tests {
         let (core_tx, mut core_rx) = broadcast::channel(10);
         let oracle = Oracle::new(provider, "Be ethical.".to_string()).with_event_tx(core_tx);
 
-        let context = aiome_contracts::contracts::ReviewContext {
+        let context = aiome_core_contracts::contracts::ReviewContext {
             job_id: Some("sot-test-job".to_string()),
             topic: "Ethics".to_string(),
             goal: Some("Fairness".to_string()),
         };
 
-        let config = aiome_contracts::contracts::ReviewConfig {
+        let config = aiome_core_contracts::contracts::ReviewConfig {
             num_reflections: 1,
             temperature: 0.1,
-            sot_config: Some(aiome_contracts::contracts::SoTConfig {
+            sot_config: Some(aiome_core_contracts::contracts::SoTConfig {
                 enabled: true,
                 max_rounds: 1,
                 ..Default::default()
@@ -556,7 +557,7 @@ mod tests {
         let result = res.expect("Should have result");
         assert_eq!(
             result.decision,
-            aiome_contracts::contracts::ReviewDecision::Accept
+            aiome_core_contracts::contracts::ReviewDecision::Accept
         );
 
         // SSE イベントがブリッジされているか確認

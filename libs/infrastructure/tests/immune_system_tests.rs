@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::traits::{KarmaRegistry, TaskRegistry};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::traits::{KarmaRegistry, TaskRegistry};
 use async_trait::async_trait;
 use infrastructure::immune_system::AdaptiveImmuneSystem;
 use infrastructure::job_queue::UniversalJobQueue;
@@ -34,7 +34,7 @@ impl LlmProvider for MockLlmProvider {
     }
     async fn complete_with_cache(
         &self,
-        _request: aiome_contracts::llm::LlmRequest,
+        _request: aiome_core_contracts::llm::LlmRequest,
     ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
         self.complete("", None).await
     }

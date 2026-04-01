@@ -6,8 +6,8 @@
  */
 
 use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::TtsProvider;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::traits::TtsProvider;
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;

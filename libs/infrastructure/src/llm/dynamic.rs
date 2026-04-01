@@ -8,9 +8,9 @@
 use crate::circuit_breaker::CircuitBreaker;
 use crate::job_queue::UniversalJobQueue;
 use crate::slo_engine::SloEngine;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{EmbeddingProvider, LlmProvider, LlmRequest, LlmResponse};
-use aiome_contracts::traits::JobQueue;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{EmbeddingProvider, LlmProvider, LlmRequest, LlmResponse};
+use aiome_core_contracts::traits::JobQueue;
 use async_trait::async_trait;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -40,7 +40,7 @@ pub struct DynamicLlmProvider {
     /// hook_manager
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
     /// live_manager (Phase 6)
-    pub live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
+    pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
 }
 
 #[async_trait]
@@ -55,7 +55,7 @@ impl LlmProvider for DynamicLlmProvider {
 
         // --- Phase 36: Security Hooks ---
         let request = LlmRequest {
-            messages: vec![aiome_contracts::llm::LlmMessage {
+            messages: vec![aiome_core_contracts::llm::LlmMessage {
                 role: "user".to_string(),
                 content: prompt.to_string(),
                 cache: false,
@@ -417,7 +417,7 @@ pub struct BackgroundLlmProvider {
     /// hook_manager
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
     /// live_manager (Phase 6)
-    pub live_manager: Option<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
+    pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
 }
 
 #[async_trait]
@@ -432,7 +432,7 @@ impl LlmProvider for BackgroundLlmProvider {
 
         // --- Phase 36: Security Hooks ---
         let request = LlmRequest {
-            messages: vec![aiome_contracts::llm::LlmMessage {
+            messages: vec![aiome_core_contracts::llm::LlmMessage {
                 role: "user".to_string(),
                 content: prompt.to_string(),
                 cache: false,

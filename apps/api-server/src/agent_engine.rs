@@ -8,9 +8,9 @@
 use crate::error::AppError;
 use crate::skill_handler;
 use crate::AppState;
-use aiome_contracts::events::CoreEvent;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{ChatStore, KarmaRegistry};
+use aiome_core_contracts::events::CoreEvent;
 use shared::guardrails;
 use std::time::Duration;
 use tokio::fs;

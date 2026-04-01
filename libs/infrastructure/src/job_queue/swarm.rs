@@ -42,7 +42,7 @@ pub trait SwarmOps {
     ) -> Result<Vec<serde_json::Value>, AiomeError>;
     async fn do_store_biome_message(
         &self,
-        message: &aiome_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::biome::BiomeMessage,
     ) -> Result<(), AiomeError>;
     async fn do_update_biome_reputation(&self, pubkey: &str, delta: f64)
         -> Result<f64, AiomeError>;
@@ -102,7 +102,7 @@ impl SwarmOps for UniversalJobQueue {
     }
     async fn do_store_biome_message(
         &self,
-        _message: &aiome_contracts::biome::BiomeMessage,
+        _message: &aiome_core_contracts::biome::BiomeMessage,
     ) -> Result<(), AiomeError> {
         Ok(())
     }

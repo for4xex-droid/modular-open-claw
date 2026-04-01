@@ -10,4 +10,4 @@
 //! AIエージェントが自律的に経済活動（決済、購入、報酬受取）を行うためのインターフェースを定義する。
 //! このモジュールは `nurture` feature が有効な場合のみ機能する。
 
-pub use aiome_contracts::commerce::{CommerceEngine, EconomicContext, SubscriptionStatus};
+pub use aiome_core_contracts::commerce::{CommerceEngine, EconomicContext, SubscriptionStatus};

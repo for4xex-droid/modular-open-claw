@@ -87,7 +87,7 @@ impl AsyncAuditLogger {
     }
 }
 
-use aiome_contracts::audit::AuditLogger;
+use aiome_core_contracts::audit::AuditLogger;
 use async_trait::async_trait;
 
 #[async_trait]

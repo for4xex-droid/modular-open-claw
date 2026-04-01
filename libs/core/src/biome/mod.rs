@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-pub use aiome_contracts::biome::*;
+pub use aiome_core_contracts::biome::*;
 
 /// 自律的なP2P対話エンジンの実装
 pub mod autonomous;

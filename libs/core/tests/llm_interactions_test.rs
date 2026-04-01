@@ -4,8 +4,8 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::llm::{LlmMessage, LlmProvider, LlmRequest};
 use aiome_core::llm_provider::interactions::InteractionsGeminiProvider;
+use aiome_core_contracts::llm::{LlmMessage, LlmProvider, LlmRequest};
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};

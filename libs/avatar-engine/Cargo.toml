@@ -12,7 +12,7 @@ serde_json = "1.0"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 thiserror = "2.0"
 tracing = "0.1"
-aiome-contracts = { path = "../aiome-contracts" }
+aiome-core-contracts = { path = "../aiome-core-contracts" }
 async-trait = "0.1"
 rubato = "0.16"
 anyhow = "1.0"

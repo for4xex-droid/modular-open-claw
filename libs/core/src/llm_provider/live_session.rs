@@ -6,8 +6,8 @@
  */
 
 use crate::error::AiomeError;
-use aiome_contracts::live_types::{LiveEvent, LiveSessionState, ThinkingLevel};
-use aiome_contracts::traits::LiveSessionManager;
+use aiome_core_contracts::live_types::{LiveEvent, LiveSessionState, ThinkingLevel};
+use aiome_core_contracts::traits::LiveSessionManager;
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
@@ -182,7 +182,7 @@ impl LiveSessionManager for LiveSessionProvider {
     async fn receive_events(
         &self,
         _session_id: &str,
-    ) -> Result<Vec<aiome_contracts::live_types::LiveEvent>, AiomeError> {
+    ) -> Result<Vec<aiome_core_contracts::live_types::LiveEvent>, AiomeError> {
         // イベント受信バッファからの取得ロジック
         Ok(vec![])
     }

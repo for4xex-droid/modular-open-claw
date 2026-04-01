@@ -5,4 +5,4 @@
  * Licensed under the Business Source License 1.1.
  */
 
-pub use aiome_contracts::traits::*;
+pub use aiome_core_contracts::traits::*;

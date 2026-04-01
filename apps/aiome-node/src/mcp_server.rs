@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use infrastructure::gig_gateway::{ExternalTaskRequest, SecureGigGateway};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

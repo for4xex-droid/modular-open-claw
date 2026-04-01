@@ -4,9 +4,9 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::gig::{GigEngine, GigIntent};
-use aiome_contracts::traits::ConstitutionalValidator;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::gig::{GigEngine, GigIntent};
+use aiome_core_contracts::traits::ConstitutionalValidator;
 use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -120,7 +120,7 @@ impl SecureGigGateway {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::gig::{GigBid, GigDeliverable, VerificationResult};
+    use aiome_core_contracts::gig::{GigBid, GigDeliverable, VerificationResult};
     use async_trait::async_trait;
 
     /// Mock GigEngine for gateway testing

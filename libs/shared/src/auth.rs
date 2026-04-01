@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use ed25519_dalek::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use serde::{Deserialize, Serialize};

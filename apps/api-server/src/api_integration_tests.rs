@@ -7,9 +7,9 @@
 
 use super::*;
 use crate::app_state::Component;
-use aiome_contracts::traits::AgentEvolver;
-use aiome_contracts::traits::JobQueue;
-use aiome_contracts::traits::TaskRegistry;
+use aiome_core_contracts::traits::AgentEvolver;
+use aiome_core_contracts::traits::JobQueue;
+use aiome_core_contracts::traits::TaskRegistry;
 use axum_test::TestServer;
 use infrastructure::auth::AuthManager;
 use serde_json::json;
@@ -37,7 +37,7 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         &self,
         prompt: &str,
         sys: Option<&str>,
-    ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
+    ) -> Result<aiome_core_contracts::LlmResponse, aiome_core::error::AiomeError> {
         let is_json_req = sys
             .map(|s| s.contains("JSON format") || s.contains("category\": \"Learning"))
             .unwrap_or(false)
@@ -56,17 +56,17 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         } else {
             "Dummy Output".to_string()
         };
-        Ok(aiome_contracts::LlmResponse {
+        Ok(aiome_core_contracts::LlmResponse {
             content,
-            stop_reason: aiome_contracts::StopReason::EndTurn,
+            stop_reason: aiome_core_contracts::StopReason::EndTurn,
             reasoning: None,
             metadata: None,
         })
     }
     async fn complete_with_cache(
         &self,
-        request: aiome_contracts::llm::LlmRequest,
-    ) -> Result<aiome_contracts::LlmResponse, aiome_core::error::AiomeError> {
+        request: aiome_core_contracts::llm::LlmRequest,
+    ) -> Result<aiome_core_contracts::LlmResponse, aiome_core::error::AiomeError> {
         let content = request
             .messages
             .last()
@@ -104,7 +104,7 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
 #[derive(Debug)]
 struct MockCommerceEngine;
 #[async_trait::async_trait]
-impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
+impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     async fn deduct_generation_cost(
         &self,
         _agent_id: uuid::Uuid,
@@ -197,11 +197,12 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
     async fn get_subscription_status(
         &self,
         agent_id: uuid::Uuid,
-    ) -> Result<aiome_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError> {
+    ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError>
+    {
         if agent_id == uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap() {
-            return Ok(aiome_contracts::commerce::SubscriptionStatus::None);
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::None);
         }
-        Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
+        Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active)
     }
 
     async fn transfer(
@@ -246,7 +247,7 @@ impl aiome_contracts::commerce::CommerceEngine for MockCommerceEngine {
 #[derive(Debug)]
 struct MockGiftEngine;
 #[async_trait::async_trait]
-impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
+impl aiome_core_contracts::commerce::GiftEngine for MockGiftEngine {
     async fn send_gift_code(
         &self,
         _recipient_email: &str,
@@ -267,8 +268,9 @@ impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
     async fn get_policy_context(
         &self,
         _agent_id: uuid::Uuid,
-    ) -> Result<aiome_contracts::commerce::GiftPolicyContext, aiome_core::error::AiomeError> {
-        Ok(aiome_contracts::commerce::GiftPolicyContext {
+    ) -> Result<aiome_core_contracts::commerce::GiftPolicyContext, aiome_core::error::AiomeError>
+    {
+        Ok(aiome_core_contracts::commerce::GiftPolicyContext {
             max_amount_usd: 5.0,
             daily_limit_reached: false,
             daily_sent_count: 0,
@@ -279,10 +281,10 @@ impl aiome_contracts::commerce::GiftEngine for MockGiftEngine {
 #[derive(Debug, Default)]
 struct MockLiveSessionManager;
 #[async_trait::async_trait]
-impl aiome_contracts::traits::LiveSessionManager for MockLiveSessionManager {
+impl aiome_core_contracts::traits::LiveSessionManager for MockLiveSessionManager {
     async fn create_session(
         &self,
-        _level: aiome_contracts::live_types::ThinkingLevel,
+        _level: aiome_core_contracts::live_types::ThinkingLevel,
     ) -> Result<String, aiome_core::error::AiomeError> {
         Ok("mock_session".into())
     }
@@ -306,7 +308,8 @@ impl aiome_contracts::traits::LiveSessionManager for MockLiveSessionManager {
     async fn receive_events(
         &self,
         _session_id: &str,
-    ) -> Result<Vec<aiome_contracts::live_types::LiveEvent>, aiome_core::error::AiomeError> {
+    ) -> Result<Vec<aiome_core_contracts::live_types::LiveEvent>, aiome_core::error::AiomeError>
+    {
         Ok(vec![])
     }
 }
@@ -314,15 +317,15 @@ impl aiome_contracts::traits::LiveSessionManager for MockLiveSessionManager {
 #[derive(Debug, Default)]
 struct MockLoraEngine;
 #[async_trait::async_trait]
-impl aiome_contracts::traits::LoraEngine for MockLoraEngine {
+impl aiome_core_contracts::traits::LoraEngine for MockLoraEngine {
     async fn complete_with_lora(
         &self,
         _prompt: &str,
         _lora_id: &str,
-    ) -> Result<aiome_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
-        Ok(aiome_contracts::llm::LlmResponse {
+    ) -> Result<aiome_core_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
+        Ok(aiome_core_contracts::llm::LlmResponse {
             content: "LlmResponse from MockLoraEngine".to_string(),
-            stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+            stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
             reasoning: None,
             metadata: None,
         })
@@ -556,7 +559,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             Arc::new(MockCommerceEngine),
             provider.clone(),
             tmp_dir.path().join("gig_artifacts"),
-        )) as Arc<dyn aiome_contracts::gig::GigEngine>),
+        )) as Arc<dyn aiome_core_contracts::gig::GigEngine>),
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
@@ -705,8 +708,8 @@ async fn test_expression_generation_plan_limits() {
     let (server, state, _tmp) = create_test_server().await;
     let bearer =
         "Bearer mock_valid_token_test_user:00000000-0000-0000-0000-000000000002".to_string();
-    use aiome_contracts::expression::TtsStatus;
     use aiome_core::expression::Expression;
+    use aiome_core_contracts::expression::TtsStatus;
     // Simulate 5 recently generated expressions
     for i in 0..5 {
         let mut expr = Expression::default();
@@ -898,10 +901,10 @@ async fn test_lora_training_status() {
     let bearer = test_bearer();
 
     // Arrange: Insert a dummy job
-    let mut job = aiome_contracts::traits::Job::default();
+    let mut job = aiome_core_contracts::traits::Job::default();
     job.id = "mock_lora_job_id".to_string();
     job.category = "LORA_TRAINING".to_string();
-    job.status = aiome_contracts::traits::JobStatus::InProgress;
+    job.status = aiome_core_contracts::traits::JobStatus::InProgress;
 
     // We must use enqueue to insert it if possible, but the JobQueue trait might not support inserting arbitrary jobs with arbitrary IDs.
     // However, JobQueue has `store_job` or similar in Mock, but let's just use `enqueue` and get the real job_id.
@@ -922,7 +925,7 @@ async fn test_lora_training_status() {
     // We also need to update its status to something verifiable
     state
         .job_queue
-        .update_job_status(&job_id, aiome_contracts::traits::JobStatus::Completed)
+        .update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::Completed)
         .await
         .unwrap();
 
@@ -1261,7 +1264,7 @@ async fn test_voice_drm_roundtrip() {
     );
     vault.restore_keys_from_db().await.unwrap();
 
-    use aiome_contracts::voice_vault::VoiceKeyVault;
+    use aiome_core_contracts::voice_vault::VoiceKeyVault;
     let decrypted = vault
         .decrypt_stream(agent_id, asset_id, &encrypted_data)
         .await
@@ -1624,9 +1627,9 @@ async fn test_fallback_router_failover() {
 #[serial]
 #[tokio::test]
 async fn test_tts_worker_flow_red() {
-    use aiome_contracts::expression::TtsStatus;
     use aiome_core::expression::tts_worker::TtsWorker;
     use aiome_core::expression::Expression;
+    use aiome_core_contracts::expression::TtsStatus;
 
     let (server, state, tmp) = create_test_server().await;
     let jq = state.job_queue.clone();
@@ -1762,7 +1765,7 @@ async fn test_gig_lifecycle() {
         .add_header(axum::http::header::AUTHORIZATION, &auth)
         .await;
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
-    let verify_res = resp.json::<aiome_contracts::gig::VerificationResult>();
+    let verify_res = resp.json::<aiome_core_contracts::gig::VerificationResult>();
     assert!(verify_res.passed);
 }
 
@@ -1892,7 +1895,7 @@ async fn test_treasure_get_recommendations() {
     assert_eq!(response.status_code(), axum::http::StatusCode::OK);
 
     // Check if resonance increased (via AgentStats)
-    let stats: aiome_contracts::types::AgentStats = state
+    let stats: aiome_core_contracts::types::AgentStats = state
         .job_queue
         .get_agent_stats()
         .await
@@ -1952,10 +1955,10 @@ async fn test_subscription_lifecycle() {
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
     assert_eq!(status_resp.status_code(), StatusCode::OK);
-    let status_json = status_resp.json::<aiome_contracts::commerce::SubscriptionStatus>();
+    let status_json = status_resp.json::<aiome_core_contracts::commerce::SubscriptionStatus>();
     assert_eq!(
         status_json,
-        aiome_contracts::commerce::SubscriptionStatus::Active
+        aiome_core_contracts::commerce::SubscriptionStatus::Active
     );
 
     // 3. Cancel Subscription
@@ -1997,7 +2000,7 @@ async fn test_syndicate_guild_api_flow() {
         .add_header("Authorization", &bearer)
         .await;
     resp.assert_status(axum::http::StatusCode::OK);
-    let guilds: Vec<aiome_contracts::syndicate::Guild> = resp.json();
+    let guilds: Vec<aiome_core_contracts::syndicate::Guild> = resp.json();
     assert!(guilds.iter().any(|g| g.id == guild_id));
 
     // 3. Add Member
@@ -2019,7 +2022,7 @@ async fn test_syndicate_guild_api_flow() {
         .add_header("Authorization", &bearer)
         .await;
     resp.assert_status(axum::http::StatusCode::OK);
-    let members: Vec<aiome_contracts::syndicate::GuildMember> = resp.json();
+    let members: Vec<aiome_core_contracts::syndicate::GuildMember> = resp.json();
     assert_eq!(members.len(), 2); // Owner + New Member
 
     // 5. Delete Guild
@@ -2059,7 +2062,7 @@ async fn test_syndicate_guild_sanitization() {
         .add_header("Authorization", &bearer)
         .await;
     resp.assert_status(axum::http::StatusCode::OK);
-    let guilds: Vec<aiome_contracts::syndicate::Guild> = resp.json();
+    let guilds: Vec<aiome_core_contracts::syndicate::Guild> = resp.json();
     let guild = guilds
         .iter()
         .find(|g| g.id == guild_id)

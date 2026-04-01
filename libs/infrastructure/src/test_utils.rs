@@ -11,20 +11,20 @@ pub mod job_queue_mock {
         EvaluationOps, EvolutionOps, FederationOps, GuardrailOps, KarmaOps, SecurityOps,
         SettingsOps, SoulStoreOps, SwarmOps,
     };
-    use aiome_contracts::contracts::{
+    use aiome_core_contracts::contracts::{
         ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
     };
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::llm::{LlmProvider, LlmResponse};
-    use aiome_contracts::security::PermissionManifest;
-    use aiome_contracts::traits::{
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::llm::{LlmProvider, LlmResponse};
+    use aiome_core_contracts::security::PermissionManifest;
+    use aiome_core_contracts::traits::{
         AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
         ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
         SnsMetricsRecord, SoulStore, SystemStateOps, TaskRegistry,
     };
-    use aiome_contracts::traits::{StrategicPlanner, ToolDiscoveryEngine};
-    use aiome_contracts::trajectory::TrajectoryStep;
-    use aiome_contracts::types::AgentStats;
+    use aiome_core_contracts::traits::{StrategicPlanner, ToolDiscoveryEngine};
+    use aiome_core_contracts::trajectory::TrajectoryStep;
+    use aiome_core_contracts::types::AgentStats;
     use async_trait::async_trait;
     use serde_json::Value;
     use uuid::Uuid;
@@ -88,7 +88,7 @@ pub mod job_queue_mock {
         async fn update_job_status(
             &self,
             _: &str,
-            _: aiome_contracts::traits::JobStatus,
+            _: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -298,7 +298,7 @@ pub mod job_queue_mock {
         }
         async fn store_biome_message(
             &self,
-            _: &aiome_contracts::biome::BiomeMessage,
+            _: &aiome_core_contracts::biome::BiomeMessage,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -487,7 +487,7 @@ pub mod job_queue_mock {
         async fn complete(&self, _: &str, _: Option<&str>) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: "mock".to_string(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -500,11 +500,11 @@ pub mod job_queue_mock {
         }
         async fn complete_with_cache(
             &self,
-            _: aiome_contracts::llm::LlmRequest,
+            _: aiome_core_contracts::llm::LlmRequest,
         ) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: "mock".to_string(),
-                stop_reason: aiome_contracts::llm::StopReason::EndTurn,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
                 reasoning: None,
                 metadata: None,
             })
@@ -512,17 +512,17 @@ pub mod job_queue_mock {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::HarnessRegistryOps for GlobalMockJobQueue {
+    impl aiome_core_contracts::traits::HarnessRegistryOps for GlobalMockJobQueue {
         async fn store_harness_record(
             &self,
-            _record: &aiome_contracts::contracts::HarnessRecord,
+            _record: &aiome_core_contracts::contracts::HarnessRecord,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_harness_records_by_status(
             &self,
             _status: &str,
-        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(vec![])
         }
         async fn update_harness_status(&self, _id: &str, _status: &str) -> Result<(), AiomeError> {
@@ -534,7 +534,7 @@ pub mod job_queue_mock {
         async fn fetch_harness_record_by_id(
             &self,
             _id: &str,
-        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(None)
         }
         async fn increment_harness_stats(&self, _id: &str, _fire: bool) -> Result<(), AiomeError> {
@@ -544,8 +544,8 @@ pub mod job_queue_mock {
 }
 
 pub mod mock_soul_store {
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::traits::SoulStore;
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::traits::SoulStore;
     use async_trait::async_trait;
     use serde_json::Value;
 

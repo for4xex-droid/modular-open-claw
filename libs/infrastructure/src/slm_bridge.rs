@@ -6,7 +6,7 @@
  */
 
 use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -291,7 +291,7 @@ impl SlmBridge {
 
     /// ネイティブ推論バックエンドを生成する (Phase 2)
     #[cfg(feature = "native-inference")]
-    pub fn new_native(config: aiome_contracts::llm::NativeModelConfig) -> Self {
+    pub fn new_native(config: aiome_core_contracts::llm::NativeModelConfig) -> Self {
         Self::with_backend(Box::new(crate::native_backend::NativeSlmBackend::new(
             config,
         )))

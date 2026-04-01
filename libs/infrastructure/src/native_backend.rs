@@ -5,8 +5,8 @@
  */
 
 use crate::slm_bridge::{SlmBackend, SlmMemoryEntry, SlmRecallResult};
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::NativeModelConfig;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::NativeModelConfig;
 use async_trait::async_trait;
 
 #[cfg(feature = "native-inference")]
@@ -108,7 +108,7 @@ mod tests {
     async fn test_native_backend_guardrail_silent_data_loss() {
         // This test ensures that developers in Phase 2 realize that store() doesn't actually
         // save to disk yet, and recall() always returns empty!
-        let config = aiome_contracts::llm::NativeModelConfig {
+        let config = aiome_core_contracts::llm::NativeModelConfig {
             model_name: "test-model".into(),
             model_path: "path/to/model".into(),
             tokenizer_path: "path/to/tokenizer".into(),

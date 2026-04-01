@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::traits::BiomeRegistry;
 use aiome_core::biome::BiomeMessage;
+use aiome_core_contracts::traits::BiomeRegistry;
 use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]

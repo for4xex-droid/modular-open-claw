@@ -5,11 +5,11 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::commerce::GiftEngine;
-use aiome_contracts::ekyc::EkycEngine;
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::{ArtifactStore, JobQueue, TranscriptionEngine};
+use aiome_core_contracts::commerce::GiftEngine;
+use aiome_core_contracts::ekyc::EkycEngine;
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
@@ -31,7 +31,7 @@ use shared::watchtower::CoreEvent;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use aiome_contracts::ekyc::EkycSessionStore;
+use aiome_core_contracts::ekyc::EkycSessionStore;
 
 #[derive(Clone, Debug)]
 pub struct Component<T>(pub Option<T>);
@@ -108,7 +108,7 @@ pub struct AppState {
     pub system_agent_id: uuid::Uuid,
     pub voice_drm: Component<Arc<VoiceCoreDrm>>,
     pub registry: Component<Arc<RegistryManager>>,
-    pub gig_engine: Component<Arc<dyn aiome_contracts::gig::GigEngine>>,
+    pub gig_engine: Component<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
     pub intent_generator: Component<Arc<infrastructure::intent::IntentGenerator>>,
     pub intent_firewall: Component<Arc<infrastructure::intent::IntentFirewall>>,
     pub audit_logger: Component<Arc<AsyncAuditLogger>>,
@@ -124,20 +124,20 @@ pub struct AppState {
     pub transcription_engine: Component<Arc<dyn TranscriptionEngine>>,
     pub task_dispatcher: Component<Arc<infrastructure::task_orchestrator::TaskDispatcher>>,
     // --- Phase 0-4 Expansion ---
-    pub lora_engine: Component<Arc<dyn aiome_contracts::traits::LoraEngine>>,
-    pub tts_provider: Component<Arc<dyn aiome_contracts::traits::TtsProvider>>,
-    pub news_service: Component<Arc<dyn aiome_contracts::traits::NewsService>>,
-    pub live_session_manager: Component<Arc<dyn aiome_contracts::traits::LiveSessionManager>>,
+    pub lora_engine: Component<Arc<dyn aiome_core_contracts::traits::LoraEngine>>,
+    pub tts_provider: Component<Arc<dyn aiome_core_contracts::traits::TtsProvider>>,
+    pub news_service: Component<Arc<dyn aiome_core_contracts::traits::NewsService>>,
+    pub live_session_manager: Component<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
     pub syndicate_store: Component<Arc<aiome_commerce::syndicate::SqliteSyndicateStore>>,
     pub hierarchical_router:
         Component<Arc<infrastructure::hierarchical_router::HierarchicalRouter>>,
     // --- Phase 51 Expansion ---
-    pub a2a_client: Component<Arc<dyn aiome_contracts::a2a::A2aClient>>,
+    pub a2a_client: Component<Arc<dyn aiome_core_contracts::a2a::A2aClient>>,
     pub ws_active_connections: Arc<std::sync::atomic::AtomicUsize>,
     pub harness_cache: Component<Arc<infrastructure::skills::harness::HarnessCache>>,
     pub upload_semaphore: Component<Arc<tokio::sync::Semaphore>>,
     pub compute_semaphore: Component<Arc<tokio::sync::Semaphore>>,
     pub disk_quota: Component<Arc<infrastructure::disk_quota::DiskQuotaManager>>,
-    pub generative_engine: Component<Arc<dyn aiome_contracts::traits::GenerativeEngine>>,
+    pub generative_engine: Component<Arc<dyn aiome_core_contracts::traits::GenerativeEngine>>,
     pub hook_chain: Component<Arc<infrastructure::skills::hooks::HookChain>>,
 }

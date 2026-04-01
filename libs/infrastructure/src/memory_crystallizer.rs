@@ -8,10 +8,10 @@
 use crate::belief_consistency_gate::{BeliefCheckResult, BeliefConsistencyGate};
 use crate::job_queue::{UniversalJobQueue, WatchtowerOps};
 use crate::slm_bridge::SlmBridge;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::LlmProvider;
-use aiome_contracts::trajectory::{StepCategory, TrajectoryStep};
-use aiome_contracts::AuditStore;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
+use aiome_core_contracts::trajectory::{StepCategory, TrajectoryStep};
+use aiome_core_contracts::AuditStore;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
@@ -171,7 +171,7 @@ impl MemoryCrystallizer {
 mod tests {
     use super::*;
     use crate::slm_bridge::SlmBridge;
-    use aiome_contracts::llm::{LlmProvider, LlmResponse, StopReason};
+    use aiome_core_contracts::llm::{LlmProvider, LlmResponse, StopReason};
     use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
@@ -184,7 +184,7 @@ mod tests {
             &self,
             _prompt: &str,
             _system: Option<&str>,
-        ) -> Result<LlmResponse, aiome_contracts::error::AiomeError> {
+        ) -> Result<LlmResponse, aiome_core_contracts::error::AiomeError> {
             Ok(LlmResponse {
                 content: "[Knowledge] TDD is essential for quality.".into(),
                 stop_reason: StopReason::EndTurn,
@@ -192,7 +192,7 @@ mod tests {
                 metadata: None,
             })
         }
-        async fn test_connection(&self) -> Result<(), aiome_contracts::error::AiomeError> {
+        async fn test_connection(&self) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
         fn name(&self) -> &str {

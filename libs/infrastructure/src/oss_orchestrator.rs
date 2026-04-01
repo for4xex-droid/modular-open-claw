@@ -9,13 +9,13 @@ use crate::oss_ast_analyzer::OssAstAnalyzer;
 use crate::oss_repository_indexer::OssRepositoryIndexer;
 use crate::oss_type_matcher::{OssAdapterCodeGen, OssTypeMatcher};
 use crate::skills::forge::SkillForge;
-use aiome_contracts::llm::LlmProvider;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
 use std::sync::Arc;
 use tracing::info;
 
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
-use aiome_contracts::traits::Job;
+use aiome_core_contracts::traits::Job;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 

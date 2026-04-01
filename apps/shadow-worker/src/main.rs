@@ -4,11 +4,11 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-use aiome_contracts::a2a::internal::{
+use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
+use aiome_core_contracts::a2a::internal::{
     ExecuteTaskRequest, TaskProgress,
     docker_conductor_server::{DockerConductor, DockerConductorServer},
 };
-use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
 use base64::{Engine as _, engine::general_purpose};
 use sha2::{Digest, Sha256};
 use std::env;

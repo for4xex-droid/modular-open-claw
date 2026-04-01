@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::commerce::CommerceEngine;
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use stripe::Webhook;
 use uuid::Uuid;
@@ -306,9 +306,9 @@ impl CommerceEngine for StripeCommerceEngine {
     async fn get_subscription_status(
         &self,
         _agent_id: Uuid,
-    ) -> Result<aiome_contracts::commerce::SubscriptionStatus, AiomeError> {
+    ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, AiomeError> {
         // P0-1: Future implementation
-        Ok(aiome_contracts::commerce::SubscriptionStatus::Active)
+        Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active)
     }
 
     async fn transfer(

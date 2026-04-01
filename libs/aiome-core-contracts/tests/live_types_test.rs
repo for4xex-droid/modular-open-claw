@@ -5,7 +5,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use aiome_contracts::*;
+use aiome_core_contracts::*;
 
 #[test]
 fn test_live_types_existence() {

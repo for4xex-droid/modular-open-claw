@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-pub use aiome_contracts::security::*;
+use aiome_core_contracts::error::AiomeError;
+pub use aiome_core_contracts::security::*;
 
 /// 🛡️ ConstitutionalValidator
 ///

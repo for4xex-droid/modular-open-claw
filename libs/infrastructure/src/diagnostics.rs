@@ -87,7 +87,7 @@ impl AgentRxDiagnostics {
     pub fn suggest_repair_strategy(
         &self,
         diagnosis: &AgentDiagnosis,
-        stats: &aiome_contracts::types::AgentStats,
+        stats: &aiome_core_contracts::types::AgentStats,
         current_retries: u32,
     ) -> crate::repair_strategy::RepairStrategy {
         let max_retries = crate::repair_strategy::RepairCalculator::calculate_max_retries(stats);

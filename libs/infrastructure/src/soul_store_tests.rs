@@ -9,8 +9,8 @@
 mod tests {
     use crate::db::DatabasePool;
     use crate::soul_store::UniversalSoulStore;
-    use aiome_contracts::traits::SoulStore;
     use aiome_core::error::AiomeError;
+    use aiome_core_contracts::traits::SoulStore;
     use soul::AgentSoul;
 
     async fn setup_db() -> DatabasePool {

@@ -9,7 +9,7 @@ use crate::error::AiomeError;
 use crate::expression::engine::ExpressionEngine;
 use crate::expression::Expression;
 use crate::traits::JobQueue;
-use aiome_contracts::expression::TtsStatus;
+use aiome_core_contracts::expression::TtsStatus;
 use chrono::Utc;
 use tracing::{error, info, warn};
 
@@ -26,7 +26,7 @@ impl TtsWorker {
     /// * `artifacts_root` - 音声ファイルを保存するルートディレクトリ
     pub async fn process_pending_tts(
         queue: &dyn JobQueue,
-        tts_provider: &dyn aiome_contracts::traits::TtsProvider,
+        tts_provider: &dyn aiome_core_contracts::traits::TtsProvider,
         speaker_id: &str,
         artifacts_root: &std::path::Path,
     ) -> Result<usize, AiomeError> {
@@ -117,8 +117,8 @@ impl TtsWorker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::traits::{JobQueue, TtsProvider};
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::traits::{JobQueue, TtsProvider};
     use async_trait::async_trait;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
@@ -170,14 +170,14 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::TaskRegistry for MockQueue {
+    impl aiome_core_contracts::traits::TaskRegistry for MockQueue {
         async fn enqueue(
             &self,
             _: &str,
             _: &str,
             _: &str,
             _: Option<&str>,
-            _: Option<aiome_contracts::security::PermissionManifest>,
+            _: Option<aiome_core_contracts::security::PermissionManifest>,
             _: Option<uuid::Uuid>,
             _: i32,
         ) -> Result<String, AiomeError> {
@@ -186,13 +186,13 @@ mod tests {
         async fn dequeue(
             &self,
             _: &[&str],
-        ) -> Result<Option<aiome_contracts::traits::Job>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::traits::Job>, AiomeError> {
             unimplemented!()
         }
         async fn fetch_job(
             &self,
             _: &str,
-        ) -> Result<Option<aiome_contracts::traits::Job>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::traits::Job>, AiomeError> {
             unimplemented!()
         }
         async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
@@ -204,7 +204,7 @@ mod tests {
         async fn fetch_top_performing_jobs(
             &self,
             _: i64,
-        ) -> Result<Vec<aiome_contracts::traits::Job>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::traits::Job>, AiomeError> {
             unimplemented!()
         }
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
@@ -213,7 +213,7 @@ mod tests {
         async fn update_job_status(
             &self,
             _: &str,
-            _: aiome_contracts::traits::JobStatus,
+            _: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
             unimplemented!()
         }
@@ -232,7 +232,7 @@ mod tests {
         async fn fetch_recent_jobs(
             &self,
             _: i64,
-        ) -> Result<Vec<aiome_contracts::traits::Job>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::traits::Job>, AiomeError> {
             unimplemented!()
         }
         async fn get_pending_job_count(&self) -> Result<i64, AiomeError> {
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::SystemStateOps for MockQueue {
+    impl aiome_core_contracts::traits::SystemStateOps for MockQueue {
         async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -269,20 +269,20 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::AuditStore for MockQueue {
+    impl aiome_core_contracts::traits::AuditStore for MockQueue {
         async fn store_execution_log(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn store_trajectory_step(
             &self,
-            _: aiome_contracts::trajectory::TrajectoryStep,
+            _: aiome_core_contracts::trajectory::TrajectoryStep,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_trajectory_steps(
             &self,
             _: &str,
-        ) -> Result<Vec<aiome_contracts::trajectory::TrajectoryStep>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::trajectory::TrajectoryStep>, AiomeError> {
             Ok(vec![])
         }
         async fn get_security_request_count(
@@ -303,7 +303,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::ChatStore for MockQueue {
+    impl aiome_core_contracts::traits::ChatStore for MockQueue {
         async fn fetch_chat_history(
             &self,
             _: &str,
@@ -334,15 +334,15 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::KarmaRegistry for MockQueue {
+    impl aiome_core_contracts::traits::KarmaRegistry for MockQueue {
         async fn fetch_relevant_karma(
             &self,
             _: &str,
             _: &str,
             _: i64,
             _: &str,
-        ) -> Result<aiome_contracts::traits::KarmaSearchResult, AiomeError> {
-            Ok(aiome_contracts::traits::KarmaSearchResult::empty())
+        ) -> Result<aiome_core_contracts::traits::KarmaSearchResult, AiomeError> {
+            Ok(aiome_core_contracts::traits::KarmaSearchResult::empty())
         }
         async fn store_karma(
             &self,
@@ -367,7 +367,7 @@ mod tests {
         async fn fetch_undistilled_jobs(
             &self,
             _: i64,
-        ) -> Result<Vec<aiome_contracts::traits::Job>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::traits::Job>, AiomeError> {
             Ok(vec![])
         }
         async fn mark_karma_extracted(&self, _: &str) -> Result<(), AiomeError> {
@@ -395,15 +395,15 @@ mod tests {
             _: &str,
             _: &str,
             _: i64,
-        ) -> Result<aiome_contracts::traits::KarmaSearchResult, AiomeError> {
-            Ok(aiome_contracts::traits::KarmaSearchResult::empty())
+        ) -> Result<aiome_core_contracts::traits::KarmaSearchResult, AiomeError> {
+            Ok(aiome_core_contracts::traits::KarmaSearchResult::empty())
         }
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::AgentEvolver for MockQueue {
-        async fn get_agent_stats(&self) -> Result<aiome_contracts::AgentStats, AiomeError> {
-            Ok(aiome_contracts::AgentStats::default())
+    impl aiome_core_contracts::traits::AgentEvolver for MockQueue {
+        async fn get_agent_stats(&self) -> Result<aiome_core_contracts::AgentStats, AiomeError> {
+            Ok(aiome_core_contracts::AgentStats::default())
         }
         async fn add_resonance(&self, _: i32) -> Result<(), AiomeError> {
             Ok(())
@@ -416,7 +416,7 @@ mod tests {
         }
         async fn sync_samsara_level(
             &self,
-        ) -> Result<Option<aiome_contracts::SamsaraEvent>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::SamsaraEvent>, AiomeError> {
             Ok(None)
         }
         async fn record_evolution_event(
@@ -441,10 +441,10 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::ImmuneSystemOps for MockQueue {
+    impl aiome_core_contracts::traits::ImmuneSystemOps for MockQueue {
         async fn store_immune_rule(
             &self,
-            _: &aiome_contracts::contracts::ImmuneRule,
+            _: &aiome_core_contracts::contracts::ImmuneRule,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -453,32 +453,32 @@ mod tests {
         }
         async fn fetch_active_immune_rules(
             &self,
-        ) -> Result<Vec<aiome_contracts::contracts::ImmuneRule>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::ImmuneRule>, AiomeError> {
             Ok(vec![])
         }
         async fn record_arena_match(
             &self,
-            _: &aiome_contracts::contracts::ArenaMatch,
+            _: &aiome_core_contracts::contracts::ArenaMatch,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn get_immune_rules(
             &self,
-        ) -> Result<Vec<aiome_contracts::contracts::ImmuneRule>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::ImmuneRule>, AiomeError> {
             Ok(vec![])
         }
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::FederationRegistry for MockQueue {
+    impl aiome_core_contracts::traits::FederationRegistry for MockQueue {
         async fn export_federated_data(
             &self,
             _: Option<&str>,
         ) -> Result<
             (
-                Vec<aiome_contracts::contracts::KarmaEntry>,
-                Vec<aiome_contracts::contracts::ImmuneRule>,
-                Vec<aiome_contracts::contracts::ArenaMatch>,
+                Vec<aiome_core_contracts::contracts::KarmaEntry>,
+                Vec<aiome_core_contracts::contracts::ImmuneRule>,
+                Vec<aiome_core_contracts::contracts::ArenaMatch>,
             ),
             AiomeError,
         > {
@@ -486,9 +486,9 @@ mod tests {
         }
         async fn import_federated_data(
             &self,
-            _: Vec<aiome_contracts::contracts::KarmaEntry>,
-            _: Vec<aiome_contracts::contracts::ImmuneRule>,
-            _: Vec<aiome_contracts::contracts::ArenaMatch>,
+            _: Vec<aiome_core_contracts::contracts::KarmaEntry>,
+            _: Vec<aiome_core_contracts::contracts::ImmuneRule>,
+            _: Vec<aiome_core_contracts::contracts::ArenaMatch>,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -505,8 +505,8 @@ mod tests {
             &self,
         ) -> Result<
             (
-                Vec<aiome_contracts::contracts::KarmaEntry>,
-                Vec<aiome_contracts::contracts::ImmuneRule>,
+                Vec<aiome_core_contracts::contracts::KarmaEntry>,
+                Vec<aiome_core_contracts::contracts::ImmuneRule>,
             ),
             AiomeError,
         > {
@@ -521,13 +521,13 @@ mod tests {
         }
         async fn fetch_federated_metrics(
             &self,
-        ) -> Result<aiome_contracts::contracts::FederatedMetrics, AiomeError> {
-            Ok(aiome_contracts::contracts::FederatedMetrics::default())
+        ) -> Result<aiome_core_contracts::contracts::FederatedMetrics, AiomeError> {
+            Ok(aiome_core_contracts::contracts::FederatedMetrics::default())
         }
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::BiomeRegistry for MockQueue {
+    impl aiome_core_contracts::traits::BiomeRegistry for MockQueue {
         async fn get_biome_topic_status(
             &self,
             _: &str,
@@ -546,7 +546,7 @@ mod tests {
         }
         async fn store_biome_message(
             &self,
-            _: &aiome_contracts::biome::BiomeMessage,
+            _: &aiome_core_contracts::biome::BiomeMessage,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -559,7 +559,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::SoulStore for MockQueue {
+    impl aiome_core_contracts::traits::SoulStore for MockQueue {
         async fn load_soul(&self, _: &str) -> Result<Option<serde_json::Value>, AiomeError> {
             Ok(None)
         }
@@ -583,17 +583,17 @@ mod tests {
     }
 
     #[async_trait]
-    impl aiome_contracts::traits::HarnessRegistryOps for MockQueue {
+    impl aiome_core_contracts::traits::HarnessRegistryOps for MockQueue {
         async fn store_harness_record(
             &self,
-            _: &aiome_contracts::contracts::HarnessRecord,
+            _: &aiome_core_contracts::contracts::HarnessRecord,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn fetch_harness_records_by_status(
             &self,
             _: &str,
-        ) -> Result<Vec<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Vec<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(vec![])
         }
         async fn update_harness_status(&self, _: &str, _: &str) -> Result<(), AiomeError> {
@@ -605,7 +605,7 @@ mod tests {
         async fn fetch_harness_record_by_id(
             &self,
             _: &str,
-        ) -> Result<Option<aiome_contracts::contracts::HarnessRecord>, AiomeError> {
+        ) -> Result<Option<aiome_core_contracts::contracts::HarnessRecord>, AiomeError> {
             Ok(None)
         }
         async fn increment_harness_stats(&self, _: &str, _: bool) -> Result<(), AiomeError> {

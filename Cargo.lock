@@ -91,8 +91,8 @@ dependencies = [
 name = "aiome-commerce"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
  "aiome-core",
+ "aiome-core-contracts",
  "anyhow",
  "async-stripe",
  "async-trait",
@@ -155,7 +155,7 @@ dependencies = [
 name = "aiome-core"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
+ "aiome-core-contracts",
  "ammonia",
  "anyhow",
  "async-stream",
@@ -190,6 +190,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "aiome-core-contracts"
+version = "0.1.0"
+dependencies = [
+ "aiome-contracts",
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "axum 0.7.9",
+ "base64 0.22.1",
+ "bastion-core",
+ "chacha20poly1305",
+ "chrono",
+ "futures",
+ "prost 0.13.5",
+ "rand 0.8.5",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "utoipa",
+ "uuid 1.22.0",
+ "zeroize",
+]
+
+[[package]]
 name = "aiome-migrate"
 version = "0.1.0"
 dependencies = [
@@ -213,7 +245,7 @@ dependencies = [
 name = "aiome-node"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
+ "aiome-core-contracts",
  "anyhow",
  "async-trait",
  "axum 0.7.9",
@@ -340,8 +372,8 @@ name = "api-server"
 version = "0.1.0"
 dependencies = [
  "aiome-commerce",
- "aiome-contracts",
  "aiome-core",
+ "aiome-core-contracts",
  "anyhow",
  "async-stream",
  "async-stripe",
@@ -724,7 +756,7 @@ dependencies = [
 name = "avatar-engine"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
+ "aiome-core-contracts",
  "anyhow",
  "async-trait",
  "rubato",
@@ -4909,8 +4941,8 @@ name = "infrastructure"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
- "aiome-contracts",
  "aiome-core",
+ "aiome-core-contracts",
  "ammonia",
  "anyhow",
  "async-recursion",
@@ -9096,8 +9128,8 @@ dependencies = [
 name = "shadow-worker"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
  "aiome-core",
+ "aiome-core-contracts",
  "anyhow",
  "base64 0.22.1",
  "hex",
@@ -9125,7 +9157,7 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
+ "aiome-core-contracts",
  "anyhow",
  "async-trait",
  "base64 0.22.1",
@@ -9332,7 +9364,7 @@ dependencies = [
 name = "soul"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
+ "aiome-core-contracts",
  "anyhow",
  "async-trait",
  "chrono",

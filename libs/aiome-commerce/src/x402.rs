@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use thiserror::Error;
 use std::str::FromStr;
-use aiome_contracts::x402::PaymentProof;
+use aiome_core_contracts::x402::PaymentProof;
 
 #[derive(Debug, Error)]
 pub enum X402Error {

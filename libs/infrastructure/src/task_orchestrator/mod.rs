@@ -10,12 +10,12 @@ use crate::job_queue::{
     EvaluationOps, EvolutionOps, FederationOps, GuardrailOps, KarmaOps, SecurityOps, SettingsOps,
     SoulStoreOps, SwarmOps,
 };
-use aiome_contracts::traits::{
+use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, SnsMetricsRecord, SoulStore,
     TaskRegistry,
 };
-use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use serde_json::json;
 use shared::guardrails;
@@ -89,16 +89,16 @@ pub struct TaskDispatcher {
     job_queue: Arc<dyn JobQueue>,
     event_tx: broadcast::Sender<TaskEvent>,
     poll_interval: Duration,
-    core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
+    core_event_tx: Option<broadcast::Sender<aiome_core_contracts::events::CoreEvent>>,
     active_jobs: Arc<
         tokio::sync::RwLock<std::collections::HashMap<String, tokio_util::sync::CancellationToken>>,
     >,
-    tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
-    planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
-    validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+    tool_discovery: Option<Arc<dyn aiome_core_contracts::traits::ToolDiscoveryEngine>>,
+    planner: Option<Arc<dyn aiome_core_contracts::traits::StrategicPlanner>>,
+    validator: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>,
     soul_path: Option<std::path::PathBuf>,
     pub oracle: Option<Arc<crate::oracle::Oracle>>,
-    gig_engine: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
+    gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
 }
 
 impl TaskDispatcher {
@@ -106,13 +106,13 @@ impl TaskDispatcher {
     pub fn new(
         job_queue: Arc<dyn JobQueue>,
         poll_interval: Duration,
-        core_event_tx: Option<broadcast::Sender<aiome_contracts::events::CoreEvent>>,
-        tool_discovery: Option<Arc<dyn aiome_contracts::traits::ToolDiscoveryEngine>>,
-        planner: Option<Arc<dyn aiome_contracts::traits::StrategicPlanner>>,
-        validator: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+        core_event_tx: Option<broadcast::Sender<aiome_core_contracts::events::CoreEvent>>,
+        tool_discovery: Option<Arc<dyn aiome_core_contracts::traits::ToolDiscoveryEngine>>,
+        planner: Option<Arc<dyn aiome_core_contracts::traits::StrategicPlanner>>,
+        validator: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>,
         soul_path: Option<std::path::PathBuf>,
         oracle: Option<Arc<crate::oracle::Oracle>>,
-        gig_engine: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
+        gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -126,14 +126,14 @@ impl TaskDispatcher {
                             conductor_id,
                             message,
                             percent,
-                        } => aiome_contracts::events::CoreEvent::TaskProgress {
+                        } => aiome_core_contracts::events::CoreEvent::TaskProgress {
                             job_id,
                             conductor_id,
                             message,
                             percent,
                         },
                         TaskEvent::Completed { job_id, result } => {
-                            aiome_contracts::events::CoreEvent::TaskCompleted {
+                            aiome_core_contracts::events::CoreEvent::TaskCompleted {
                                 job_id,
                                 result,
                                 topic: String::new(), // Optional fields for standard generation
@@ -142,17 +142,17 @@ impl TaskDispatcher {
                             }
                         }
                         TaskEvent::Evaluating { job_id } => {
-                            aiome_contracts::events::CoreEvent::TaskEvaluating { job_id }
+                            aiome_core_contracts::events::CoreEvent::TaskEvaluating { job_id }
                         }
                         TaskEvent::Failed { job_id, error } => {
-                            aiome_contracts::events::CoreEvent::TaskFailed { job_id, error }
+                            aiome_core_contracts::events::CoreEvent::TaskFailed { job_id, error }
                         }
                         TaskEvent::GigPublished {
                             job_id,
                             intent_id,
                             description,
                             budget,
-                        } => aiome_contracts::events::CoreEvent::GigPublished {
+                        } => aiome_core_contracts::events::CoreEvent::GigPublished {
                             job_id,
                             intent_id,
                             description,
@@ -192,8 +192,8 @@ impl TaskDispatcher {
 
     async fn maybe_publish_gig_intent(
         q: Arc<dyn JobQueue>,
-        g_engine_opt: Option<Arc<dyn aiome_contracts::gig::GigEngine>>,
-        validator_opt: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>,
+        g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
+        validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>,
         p_tx: mpsc::Sender<TaskEvent>,
         j_id: &str,
         karma_directives: Option<String>,
@@ -256,7 +256,7 @@ impl TaskDispatcher {
                                     }
                                 }
 
-                                let mut intent = aiome_contracts::gig::GigIntent::new(
+                                let mut intent = aiome_core_contracts::gig::GigIntent::new(
                                     current_job.agent_id.unwrap_or_else(uuid::Uuid::nil),
                                     description.clone(),
                                     budget,
@@ -458,7 +458,7 @@ impl TaskDispatcher {
                                 result = conductor_clone.conduct(job, progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
-                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_contracts::traits::ConstitutionalValidator>>| async move {
+                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>| async move {
                                                 let _ = q.complete_job(&j_id, Some(&res_out)).await;
                                                 let _ = p_tx
                                                     .send(TaskEvent::Completed {
@@ -511,7 +511,7 @@ impl TaskDispatcher {
                                                 let r_hash = result_hash_opt.clone();
                                                 let out_clone = out.clone();
 
-                                                let _ = q.update_job_status(&j_id, aiome_contracts::traits::JobStatus::Evaluating).await;
+                                                let _ = q.update_job_status(&j_id, aiome_core_contracts::traits::JobStatus::Evaluating).await;
                                                 let _ = p_tx.send(TaskEvent::Evaluating { job_id: j_id.clone() }).await;
 
                                                 tokio::spawn(async move {
@@ -618,7 +618,7 @@ impl TaskDispatcher {
             &job.topic
         };
 
-        let steps: Vec<aiome_contracts::trajectory::TrajectoryStep> =
+        let steps: Vec<aiome_core_contracts::trajectory::TrajectoryStep> =
             planner.plan_goal(instruction, context).await?;
 
         // --- Phase 3: Constitutional Validation ---
@@ -763,8 +763,8 @@ impl TaskDispatcher {
 mod tests {
     use super::*;
     use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
-    use aiome_contracts::traits::*;
     use aiome_core::error::AiomeError;
+    use aiome_core_contracts::traits::*;
     use tokio::time::timeout;
 
     struct TestConductor;
@@ -864,15 +864,15 @@ mod tests {
     }
 
     struct MockGigEngine {
-        pub published_intent: Arc<tokio::sync::Mutex<Option<aiome_contracts::gig::GigIntent>>>,
+        pub published_intent: Arc<tokio::sync::Mutex<Option<aiome_core_contracts::gig::GigIntent>>>,
     }
 
     #[async_trait]
-    impl aiome_contracts::gig::GigEngine for MockGigEngine {
+    impl aiome_core_contracts::gig::GigEngine for MockGigEngine {
         async fn publish_intent(
             &self,
-            intent: aiome_contracts::gig::GigIntent,
-        ) -> Result<uuid::Uuid, aiome_contracts::error::AiomeError> {
+            intent: aiome_core_contracts::gig::GigIntent,
+        ) -> Result<uuid::Uuid, aiome_core_contracts::error::AiomeError> {
             let mut lock = self.published_intent.lock().await;
             let id = intent.id;
             *lock = Some(intent);
@@ -880,29 +880,31 @@ mod tests {
         }
         async fn submit_bid(
             &self,
-            _bid: aiome_contracts::gig::GigBid,
-        ) -> Result<(), aiome_contracts::error::AiomeError> {
+            _bid: aiome_core_contracts::gig::GigBid,
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
         async fn accept_bid(
             &self,
             _intent_id: uuid::Uuid,
             _bid_id: uuid::Uuid,
-        ) -> Result<(), aiome_contracts::error::AiomeError> {
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
         async fn deliver(
             &self,
-            _deliverable: aiome_contracts::gig::GigDeliverable,
-        ) -> Result<(), aiome_contracts::error::AiomeError> {
+            _deliverable: aiome_core_contracts::gig::GigDeliverable,
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
         async fn verify_and_settle(
             &self,
             _order_id: uuid::Uuid,
-        ) -> Result<aiome_contracts::gig::VerificationResult, aiome_contracts::error::AiomeError>
-        {
-            Ok(aiome_contracts::gig::VerificationResult {
+        ) -> Result<
+            aiome_core_contracts::gig::VerificationResult,
+            aiome_core_contracts::error::AiomeError,
+        > {
+            Ok(aiome_core_contracts::gig::VerificationResult {
                 order_id: uuid::Uuid::new_v4(),
                 passed: true,
                 score: 1.0,

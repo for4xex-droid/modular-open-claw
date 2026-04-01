@@ -9,7 +9,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use rand::Rng;
 use zeroize::Zeroizing;
 

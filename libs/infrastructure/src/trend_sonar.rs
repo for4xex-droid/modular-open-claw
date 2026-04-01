@@ -10,9 +10,9 @@
 //! 定時でトレンドキーワードを取得する。
 //! 外部への通信はすべて reqwest で行い、HTML/URLの除去等の検疫処理（Context Sanitization）を実施する。
 
-use aiome_contracts::contracts::{TrendRequest, TrendResponse};
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::traits::{TrendItem, TrendSource};
+use aiome_core_contracts::contracts::{TrendRequest, TrendResponse};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::traits::{TrendItem, TrendSource};
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

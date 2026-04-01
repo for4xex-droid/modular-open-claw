@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::traits::{TrendItem, TrendSource};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::traits::{TrendItem, TrendSource};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tracing::{error, info, warn};
@@ -33,7 +33,7 @@ impl DefaultConstitutionalValidator {
 // ConstitutionalValidator trait was removed or moved to core-internal.
 // We keep the struct but remove the trait impl if it's not found in aiome-contracts.
 #[async_trait]
-impl aiome_contracts::traits::ConstitutionalValidator for DefaultConstitutionalValidator {
+impl aiome_core_contracts::traits::ConstitutionalValidator for DefaultConstitutionalValidator {
     async fn verify_constitutional(
         &self,
         content: &str,
@@ -185,8 +185,8 @@ impl DefaultConstitutionalValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::traits::ConstitutionalValidator;
     use aiome_core::llm_provider::{LlmProvider, LlmResponse};
+    use aiome_core_contracts::traits::ConstitutionalValidator;
 
     #[derive(Debug)]
     struct MockLlm {

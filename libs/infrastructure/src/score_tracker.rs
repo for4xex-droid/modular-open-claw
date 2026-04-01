@@ -6,9 +6,9 @@
  */
 
 use crate::db::DatabasePool;
-use aiome_contracts::forecast::{ForecastConfig, ForecastProvider};
-use aiome_contracts::traits::AgentEvolver;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::forecast::{ForecastConfig, ForecastProvider};
+use aiome_core_contracts::traits::AgentEvolver;
 use chrono::{Datelike, Utc};
 use sqlx::Row;
 use std::sync::Arc;

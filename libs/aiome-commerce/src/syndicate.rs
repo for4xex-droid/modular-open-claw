@@ -4,8 +4,8 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
 use async_trait::async_trait;
 use sqlx::{Row, SqlitePool};
 use tracing::error;

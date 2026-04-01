@@ -7,5 +7,5 @@
 
 //! # Watchtower — システム監視とイベント定義
 
-pub use aiome_contracts::events::{ControlCommand, CoreEvent};
-pub use aiome_contracts::types::{AgentStats, LogEntry, SystemStatus};
+pub use aiome_core_contracts::events::{ControlCommand, CoreEvent};
+pub use aiome_core_contracts::types::{AgentStats, LogEntry, SystemStatus};

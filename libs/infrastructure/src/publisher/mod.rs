@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::LlmProvider;
-use aiome_contracts::traits::{Job, JobQueue, JobStatus, Publisher};
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
+use aiome_core_contracts::traits::{Job, JobQueue, JobStatus, Publisher};
 use async_trait::async_trait;
 use std::path::PathBuf;
 use tracing::info;

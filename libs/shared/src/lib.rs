@@ -41,5 +41,5 @@ pub mod watchtower;
 
 /// Macros use these re-exports to avoid requiring dependencies in caller crates.
 pub mod reexport {
-    pub use aiome_contracts::error::AiomeError;
+    pub use aiome_core_contracts::error::AiomeError;
 }

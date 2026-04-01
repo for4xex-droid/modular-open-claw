@@ -24,7 +24,7 @@ pub struct LipSyncFrame {
     pub viseme: Viseme,
 }
 
-use aiome_contracts::traits::TranscriptionSegment;
+use aiome_core_contracts::traits::TranscriptionSegment;
 
 impl LipSyncFrame {
     /// 文字起こしセグメントから LipSync フレームを生成する (簡易版)
@@ -47,7 +47,7 @@ impl LipSyncFrame {
     }
 }
 
-use aiome_contracts::error::AiomeError;
+use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 
 #[async_trait]

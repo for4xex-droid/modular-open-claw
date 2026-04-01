@@ -8,7 +8,7 @@
 use crate::artifact_store::UniversalArtifactStore;
 use crate::job_queue::UniversalJobQueue;
 use crate::soul_store::UniversalSoulStore;
-use aiome_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore, TaskRegistry};
+use aiome_core_contracts::traits::{ArtifactStore, CreateArtifactRequest, SoulStore, TaskRegistry};
 use aiome_core::traits::JobQueue;
 use soul::model::AgentSoul;
 use std::env;
@@ -144,7 +144,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
     let jail = bastion::fs_guard::Jail::new("/tmp/pg_jail").expect("Failed to create jail");
     let req = CreateArtifactRequest {
         title: "PG Artifact Test".to_string(),
-        category: aiome_contracts::traits::ArtifactCategory::Report,
+        category: aiome_core_contracts::traits::ArtifactCategory::Report,
         files: vec![(
             "test.txt".to_string(),
             vec![1, 2, 3],

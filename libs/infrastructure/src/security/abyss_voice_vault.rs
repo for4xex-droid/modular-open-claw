@@ -7,8 +7,8 @@
 
 use crate::registry::RegistryManager;
 use crate::security::mlock::MlockedVec;
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::voice_vault::VoiceKeyVault;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::voice_vault::VoiceKeyVault;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -19,7 +19,7 @@ use sqlx::SqlitePool;
 
 use crate::db::DatabasePool;
 use crate::security::sqlite_vault_backend::UniversalVaultBackend;
-use aiome_contracts::vault_backend::VaultBackend;
+use aiome_core_contracts::vault_backend::VaultBackend;
 
 /// 物理的に隔離されたキーストレージ (モック実装)
 /// 将来的に Abyss Security Proxy 実ストレージまたは HSM と統合

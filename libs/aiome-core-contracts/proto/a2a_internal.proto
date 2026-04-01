@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package aiome.a2a.internal.v1;
+
+// Internal service for Shadow Clone communication.
+service DockerConductor {
+  // Executes a task inside a Docker container and streams progress back to the host.
+  rpc ExecuteTask(ExecuteTaskRequest) returns (stream TaskProgress);
+}
+
+message ExecuteTaskRequest {
+  string job_id = 1;
+  string prompt_b64 = 2; // base64 encoded prompt
+  string artifact_path = 3;
+  string agent_yaml_b64 = 4;   // base64 encoded agent.yaml
+  string auth_token = 5;       // One-time token
+  string proof_of_intent = 6;  // ZTAS: PoI crypto signature (Phase 52)
+  string sender_did = 7;       // ZTAS: DID (Phase 52)
+}
+
+message TaskProgress {
+  string message = 1;
+  uint32 percent = 2;   // 0-100
+  bool is_completed = 3;
+  bool is_failed = 4;
+  string result = 5;    // Populated if is_completed is true
+  string error = 6;     // Populated if is_failed is true
+  string result_hash = 7; // Invariant-DAG tracking hash
+}

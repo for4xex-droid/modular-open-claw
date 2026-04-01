@@ -7,7 +7,7 @@
 
 use crate::agent_engine::AgentEngine;
 use crate::AppState;
-use aiome_contracts::events::{ControlCommand, CoreEvent};
+use aiome_core_contracts::events::{ControlCommand, CoreEvent};
 use infrastructure::channel_bridge::{ChannelBridge, DiscordBridge, TelegramBridge};
 use std::sync::Arc;
 use tokio::sync::mpsc;

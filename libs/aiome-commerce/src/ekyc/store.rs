@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::ekyc::EkycSessionStore;
+use aiome_core_contracts::ekyc::EkycSessionStore;
 use async_trait::async_trait;
 use shared::db::DatabasePool;
 use shared::sql_exec;

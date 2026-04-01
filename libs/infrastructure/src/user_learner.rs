@@ -5,9 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_contracts::error::AiomeError;
-use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse};
-use aiome_contracts::security::AgentHook;
+use aiome_core_contracts::error::AiomeError;
+use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse};
+use aiome_core_contracts::security::AgentHook;
 use async_trait::async_trait;
 use std::fs;
 use std::sync::Arc;
@@ -193,9 +193,9 @@ impl AgentHook for UserLearner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aiome_contracts::error::AiomeError;
-    use aiome_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
-    use aiome_contracts::security::AgentHook;
+    use aiome_core_contracts::error::AiomeError;
+    use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
+    use aiome_core_contracts::security::AgentHook;
 
     #[derive(Debug)]
     struct MockLlm {
@@ -227,7 +227,7 @@ mod tests {
 
         async fn complete_with_cache(
             &self,
-            _req: aiome_contracts::llm::LlmRequest,
+            _req: aiome_core_contracts::llm::LlmRequest,
         ) -> Result<LlmResponse, AiomeError> {
             self.complete("", None).await
         }

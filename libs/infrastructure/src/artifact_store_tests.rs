@@ -8,7 +8,7 @@
 mod tests {
     use crate::artifact_store::UniversalArtifactStore;
     use crate::db::DatabasePool;
-    use aiome_contracts::traits::{ArtifactCategory, ArtifactStore, CreateArtifactRequest};
+    use aiome_core_contracts::traits::{ArtifactCategory, ArtifactStore, CreateArtifactRequest};
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -118,7 +118,7 @@ mod tests {
 
         let result = store.save_artifact(req, &jail).await;
         assert!(result.is_err(), "Should fail for files larger than 10MB");
-        if let Err(aiome_contracts::error::AiomeError::Infrastructure { reason }) = result {
+        if let Err(aiome_core_contracts::error::AiomeError::Infrastructure { reason }) = result {
             assert!(
                 reason.contains("File size limit exceeded"),
                 "Error message should mention limit"
@@ -194,8 +194,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_save_artifact_enqueues_csam_scan() {
-        use aiome_contracts::error::AiomeError;
-        use aiome_contracts::traits::TaskRegistry;
+        use aiome_core_contracts::error::AiomeError;
+        use aiome_core_contracts::traits::TaskRegistry;
         use async_trait::async_trait;
         use std::sync::Arc;
         use std::sync::Mutex;
@@ -214,7 +214,7 @@ mod tests {
                 topic: &str,
                 _style: &str,
                 _karma_directives: Option<&str>,
-                _permission_manifest: Option<aiome_contracts::security::PermissionManifest>,
+                _permission_manifest: Option<aiome_core_contracts::security::PermissionManifest>,
                 _agent_id: Option<Uuid>,
                 _priority: i32,
             ) -> Result<String, AiomeError> {
@@ -227,13 +227,13 @@ mod tests {
             async fn dequeue(
                 &self,
                 _categories: &[&str],
-            ) -> Result<Option<aiome_contracts::traits::Job>, AiomeError> {
+            ) -> Result<Option<aiome_core_contracts::traits::Job>, AiomeError> {
                 Ok(None)
             }
             async fn fetch_job(
                 &self,
                 _: &str,
-            ) -> Result<Option<aiome_contracts::traits::Job>, AiomeError> {
+            ) -> Result<Option<aiome_core_contracts::traits::Job>, AiomeError> {
                 Ok(None)
             }
             async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
@@ -251,7 +251,7 @@ mod tests {
             async fn update_job_status(
                 &self,
                 _: &str,
-                _: aiome_contracts::traits::JobStatus,
+                _: aiome_core_contracts::traits::JobStatus,
             ) -> Result<(), AiomeError> {
                 Ok(())
             }
@@ -270,13 +270,13 @@ mod tests {
             async fn fetch_recent_jobs(
                 &self,
                 _: i64,
-            ) -> Result<Vec<aiome_contracts::traits::Job>, AiomeError> {
+            ) -> Result<Vec<aiome_core_contracts::traits::Job>, AiomeError> {
                 Ok(vec![])
             }
             async fn fetch_top_performing_jobs(
                 &self,
                 _: i64,
-            ) -> Result<Vec<aiome_contracts::traits::Job>, AiomeError> {
+            ) -> Result<Vec<aiome_core_contracts::traits::Job>, AiomeError> {
                 Ok(vec![])
             }
             async fn fetch_job_retry_count(&self, _: &str) -> Result<i64, AiomeError> {
