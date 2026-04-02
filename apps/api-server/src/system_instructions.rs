@@ -11,6 +11,7 @@ use infrastructure::soul_store::SoulSnapshot;
 use tokio::fs;
 use tracing::warn;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn build_system_instructions(
     state: &AppState,
     karma_str: &str,

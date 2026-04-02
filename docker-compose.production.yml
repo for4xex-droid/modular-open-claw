@@ -99,7 +99,10 @@ services:
       - "127.0.0.1:3016:3016"
 
   ruri-embed-server:
-    image: ghcr.io/motivationstudio-llc/ruri-embed-server:latest
+    # NOTE: This image is not publicly available on GHCR.
+    # Build locally: docker build -t ruri-embed-server ./tools/ruri-embed-server
+    # Or use any sentence-transformer compatible embedding server on port 8100.
+    image: ruri-embed-server:latest
     restart: always
     security_opt:
       - no-new-privileges:true

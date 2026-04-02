@@ -1,0 +1,7 @@
+# False Positives for Aiome OSS release
+33609dd93b8929ff5d240eb55f5148c6506f9a08:docs/architecture/deep_scan_matrix.md:generic-api-key:162
+b5f6b4990725b66eb40e146aeb7ed4a921c30249:docs/architecture/deep_scan_matrix.md:generic-api-key:162
+eaadf4ba22df17aed531d35802f82979a3e29dc8:apps/aiome-node/src/main.rs:generic-api-key:27
+eaadf4ba22df17aed531d35802f82979a3e29dc8:libs/aiome-contracts/src/a2a/agent_card.rs:generic-api-key:62
+eaadf4ba22df17aed531d35802f82979a3e29dc8:libs/aiome-contracts/src/a2a/agent_card.rs:generic-api-key:87
+3d97bf121690c8bd3f62d49fc9f7821b99e7b11e:test_forge.sh:curl-auth-header:29

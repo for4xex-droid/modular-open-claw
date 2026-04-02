@@ -1,4 +1,6 @@
-## [Unreleased] - 2026-04-02
+## [Unreleased]
+
+## [0.1.0] - 2026-04-02 (Genesis Phase Complete)
 
 ### Added
 - **Phase C-2: Aiome Watchtower Diagnostic Loop Hardening [完成]**

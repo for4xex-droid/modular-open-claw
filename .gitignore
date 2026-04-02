@@ -1,6 +1,6 @@
 /target/
 **/*.rs.bk
-.DS_Store
+**/.DS_Store
 .env
 *.swp
 *.swo
@@ -12,6 +12,15 @@
 /workspace/
 /libs/infrastructure/workspace/artifacts/
 /resources/bgm/
+
+# Legacy project remnants
+.openclaw/
+states/
+logs/
+*.bak
+
+# Aiome runtime config
+.aiome/
 *.db
 *.db-journal
 *.db-shm
@@ -33,8 +42,10 @@ dist/
 /apps/management-console/node_modules/
 /apps/management-console/src-tauri/target/
 
-# Strategic & Private documents
+# Strategic & Private documents (NEVER public)
 PITCH_DECK.md
+docs/MASTER_BLUEPRINT.md
+specs/AIOME_VISION_MANIFESTO.md
 scripts/update_headers.py
 check_output.txt
 docs/vision/
@@ -43,6 +54,40 @@ docs/vision/
 *buyout*.md
 *business_plan*.md
 libs/infrastructure/workspace/
+
+# Agent memory (personal dev logs)
+MEMORY.md
+memory/
+.agents/memory/
+.agent/memory/
+
+# Sentinel build artifacts & binaries
+packages/sentinel/node_modules/
+packages/sentinel/dist/
+packages/sentinel/*.tgz
+packages/sentinel/*.node
+
+# Forge build artifacts & runtime workspace
+apps/api-server/workspace/
+
+# Dev-only compose files (OSS uses docker-compose.quickstart.yml)
+docker-compose.yml
+docker-compose.test.yml
+docker-compose.nurture.yml
+
+# Local daemon config (contains machine-specific paths)
+scripts/com.aiome.daemon.plist
+
+# SQLite databases (all extensions)
+*.sqlite
+*.sqlite3
+
+# Dev debris scripts
+build_check.sh
+clippy_fix.sh
+test_forge.sh
+Dockerfile.shadow-worker
+docs/deep_scan_result.txt
 
 # Test artifacts (CWD debris from cargo test)
 libs/infrastructure/scripts/

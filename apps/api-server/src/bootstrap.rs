@@ -127,9 +127,18 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     });
     let plugin_registry = plugin_loader::PluginRegistry::new();
 
+    use std::str::FromStr;
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+    let opts =
+        sqlx::sqlite::SqliteConnectOptions::from_str(&db_url.replace("sqlite://", "sqlite:"))
+            .unwrap_or_else(|e| {
+                eprintln!("🚨 [CRITICAL] Invalid AIOME_DB_PATH URL: {}", e);
+                std::process::exit(1);
+            })
+            .create_if_missing(true);
+
     let pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .connect(&db_url.replace("sqlite://", "sqlite:"))
+        .connect_with(opts)
         .await
         .unwrap_or_else(|e| {
             eprintln!("🚨 Failed to connect to SQLite for logging: {}", e);

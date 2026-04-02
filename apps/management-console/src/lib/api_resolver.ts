@@ -37,7 +37,9 @@ export class APIResolver {
 
     // 2. ブラウザ環境・フォールバック
     const envBase = import.meta.env.VITE_API_BASE;
-    const finalFallback = envBase || "http://localhost:3015";
+    // In production (Docker), static UI is served by the backend, so we use window.location.origin.
+    // In dev, the UI and API run on different ports, so we default to 3015.
+    const finalFallback = envBase || (import.meta.env.DEV ? "http://localhost:3015" : window.location.origin);
     this.cachedUrl = finalFallback;
     return finalFallback;
   }

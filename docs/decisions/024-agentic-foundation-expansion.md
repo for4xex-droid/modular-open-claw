@@ -292,7 +292,7 @@ struct UserProfile {
 #### [NEW] `infrastructure/src/strategic_planner.rs`
 - `StrategicPlanner`, `Goal`, `Milestone`, `GoalStatus`
 
-#### [MODIFY] [task_orchestrator.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator.rs)
+#### [MODIFY] [task_orchestrator.rs](libs/infrastructure/src/task_orchestrator.rs)
 - `TaskDispatcher::run_dispatch_loop()` 内で `ToolDiscoveryEngine` を呼び出すフォールバック追加
 
 ---
@@ -305,7 +305,7 @@ struct UserProfile {
 #### [NEW] `infrastructure/src/cognitive_sentinel.rs`
 - `CognitiveSentinel`, `CognitiveThresholds`, `CognitiveAnomaly`
 
-#### [MODIFY] [dream_state.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/dream_state.rs)
+#### [MODIFY] [dream_state.rs](libs/infrastructure/src/dream_state.rs)
 - `reflective_dream()` 内に `CognitiveSentinel::diagnose()` 呼び出しを追加
 
 ---

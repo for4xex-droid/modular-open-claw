@@ -7,7 +7,7 @@
 - **Pattern B Architecture**: Front-end uses Gemini Cloud (`gemini-2.5-flash`), Background tasks use Ollama Local (`qwen3.5:9b`).
 - **Abyss Vault**: Physical isolation of API keys in `key-proxy` process. Main AI engine holds no keys.
 - **WASM/Docker Sandboxing**: Strict isolation for executing dynamic AI skills.
-- **Context Management**: コード変更時は必ず影響範囲をまとめた [RIPPLE_MAP.md](file:///Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md) を参照し、重要な判断は `docs/decisions/` (ADR) に記録すること。
+- **Context Management**: コード変更時は必ず影響範囲をまとめた [RIPPLE_MAP.md](.context/RIPPLE_MAP.md) を参照し、重要な判断は `docs/decisions/` (ADR) に記録すること。
 <!-- MANUAL_PARADIGM_END -->
 
 ## 2. Key Data Flow

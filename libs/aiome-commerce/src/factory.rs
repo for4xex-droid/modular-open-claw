@@ -26,20 +26,12 @@ impl CommerceEngineFactory {
                 pool,
             )))
         } else {
-            // When building in debug mode without a key, fallback to mock
-            #[cfg(debug_assertions)]
-            {
-                tracing::warn!("⚠️ [CommerceFactory] STRIPE_API_KEY not set. Using MockCommerceEngine for development.");
-                Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
-            }
-
-            // In release mode, the API key is MANDATORY. Fail-closed.
-            #[cfg(not(debug_assertions))]
-            {
-                Err(anyhow::anyhow!(
-                    "🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production!"
-                ))
-            }
+            // When building without a key, fallback to mock.
+            // This allows the OSS community and single-node users to run the
+            // Aiome economy (Agent Jobs, Gigs, etc) with a fake balance system
+            // safely in both development and production (release) builds.
+            tracing::warn!("⚠️ [CommerceFactory] STRIPE_API_KEY not set. Using MockCommerceEngine for local/OSS economy.");
+            Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
         }
     }
 }

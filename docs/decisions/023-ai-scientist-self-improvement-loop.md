@@ -126,7 +126,7 @@ SkillArena（再対決）← ループが閉じる
 
 ### DreamState
 
-#### [MODIFY] [dream_state.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/dream_state.rs)
+#### [MODIFY] [dream_state.rs](libs/infrastructure/src/dream_state.rs)
 
 - `scientific_dream` メソッドの追加
 - `HypothesisManifest` 構造体の定義
@@ -136,7 +136,7 @@ SkillArena（再対決）← ループが閉じる
 
 ### Oracle
 
-#### [MODIFY] [oracle.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/oracle.rs)
+#### [MODIFY] [oracle.rs](libs/infrastructure/src/oracle.rs)
 
 - `multi_review()` メソッドの追加
 - `ReviewConfig` / `MultiReviewResult` / `ReviewDecision` 型の定義
@@ -146,7 +146,7 @@ SkillArena（再対決）← ループが閉じる
 
 ### Contracts
 
-#### [MODIFY] [contracts.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/aiome-contracts/src/contracts.rs)
+#### [MODIFY] [contracts.rs](libs/aiome-contracts/src/contracts.rs)
 
 - `HypothesisManifest` / `ReviewDecision` を契約型として追加
 

@@ -2187,3 +2187,90 @@ fn test_hookchain_bypass_eradication() {
         violations.join("\n")
     );
 }
+
+#[serial]
+#[tokio::test]
+async fn test_security_regression_sentinel_block() {
+    let (_server, mut state, _tmp) = create_test_server().await;
+
+    // We mock the LLM to return a Sentinel block response.
+    #[derive(Debug)]
+    struct SentinelLlm;
+    #[async_trait::async_trait]
+    impl aiome_core::llm_provider::LlmProvider for SentinelLlm {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _sys: Option<&str>,
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
+            Ok(aiome_core_contracts::llm::LlmResponse {
+                content: r#"{"status": "blocked", "reason": "malicious code execution detected", "violated_pattern": "rm -rf"} "#.into(),
+                metadata: None,
+                reasoning: None,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+            })
+        }
+        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "SentinelLlm"
+        }
+    }
+
+    // Use the sentinel LLM
+    state.provider = Component::new(std::sync::Arc::new(SentinelLlm));
+
+    let reply = r#"malicious_tool { "cmd": "rm -rf /" }"#;
+    let mut steps = 0;
+
+    let results =
+        crate::tool_call_processor::process_generated_tool_calls(reply, &state, &mut steps, None)
+            .await;
+
+    assert_eq!(results.len(), 1);
+    let msg = &results[0];
+    assert!(
+        msg.contains("[SENTINEL BLOCK]") || msg.contains("[GUARDRAIL BLOCK]"),
+        "Expected rm -rf to be blocked by sentinel, got: {}",
+        msg
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_security_regression_path_traversal() {
+    let (_server, state, _tmp) = create_test_server().await;
+
+    // Attempt to parse tool calls with path traversal
+    let reply = r#"../../etc/passwd { "data": "exploit" }"#;
+    let calls = crate::tool_call_processor::parse_tool_calls(reply);
+
+    // Test that the tool parser actually ignores or fails to parse invalid skill names
+    // We expect the parser to drop it, or process_generated_tool_calls to block it
+
+    let mut steps = 0;
+    let results =
+        crate::tool_call_processor::process_generated_tool_calls(reply, &state, &mut steps, None)
+            .await;
+
+    // The parse_tool_calls function safely drops tool names with invalid characters (like `/` or `.`).
+    // If it dropped it, results is empty, which means it safely blocked the traversal.
+    // If it somehow parsed it, it MUST have blocked it via Sentinel/Guardrail.
+    if results.is_empty() {
+        // Success condition: the parser refused to parse the exploit
+        // Successfully passed Watchtower DR rules
+    } else {
+        let msg = &results[0];
+        assert!(
+            msg.contains("Error")
+                || msg.contains("not found")
+                || msg.contains("Invalid")
+                || msg.contains("[SENTINEL BLOCK]")
+                || msg.contains("Failed to evaluate")
+                || msg.contains("Unknown"),
+            "Expected explicit failure for path traversal, got: {}",
+            msg
+        );
+    }
+}

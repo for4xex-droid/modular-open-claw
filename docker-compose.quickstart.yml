@@ -1,0 +1,36 @@
+services:
+
+  ollama:
+    image: ollama/ollama
+    container_name: aiome-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Note: For GPU support, you should run this using docker compose up with --gpus=all flag on Linux.
+    # On Mac, native Ollama installation is recommended instead of using this container.
+
+  api-server:
+    # Use the pre-built image to save 10+ minutes of build time
+    image: ghcr.io/motivationstudio/aiome:v0.1.0
+    container_name: aiome-api-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1420:1420"
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+      # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"
+      OLLAMA_MODEL: "llama3"
+      RUST_LOG: "info,aiome=debug"
+      WORKSPACE_DIR: "/data"
+      API_SERVER_SECRET: "quickstart_secret_change_in_production"
+      VAULT_MASTER_KEY: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      # Optionals:
+      # STRIPE_API_KEY: "" # Leave empty for automatic mock mode capability
+    volumes:
+      - aiome_data:/data
+volumes:
+  ollama_data:
+  aiome_data:

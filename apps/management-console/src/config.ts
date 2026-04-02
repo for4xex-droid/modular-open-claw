@@ -6,7 +6,7 @@
  */
 import { APIResolver } from "./lib/api_resolver";
 
-export let API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3015";
+export let API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? "http://localhost:3015" : window.location.origin);
 
 /**
  * [Milestone 3] UI Dynamic Discovery
