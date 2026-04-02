@@ -93,3 +93,12 @@ docs/deep_scan_result.txt
 libs/infrastructure/scripts/
 libs/infrastructure/test_vault/
 libs/infrastructure/test_output/
+
+# TLA+ tooling (download via: curl -sLO https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar)
+tla2tools.jar
+
+# Stray root files
+debug_shield.rs
+
+# Internal development context
+.context/
