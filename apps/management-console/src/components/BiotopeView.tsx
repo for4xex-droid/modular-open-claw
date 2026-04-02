@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Zap } from 'lucide-react';
 import { AgentStats, VitalityUIEvent } from '../types';
+import { useTranslation } from '../i18n';
 import { TreasureBox } from './TreasureBox';
 
 interface BiotopeViewProps {
@@ -17,6 +18,7 @@ interface BiotopeViewProps {
 }
 
 const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEvents }) => {
+    const { t } = useTranslation();
     const [pulseLevel, setPulseLevel] = useState(0);
 
     // Local visual pulse effect still responds to stats changes for flair
@@ -43,7 +45,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
             }}>
                 <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', zIndex: 10 }}>
                     <Activity size={20} color="var(--accent-cyan)" className="ani-breath" />
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>LIVE SYSTEM VITALITY</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>{t('biotope.liveVitality')}</h3>
                 </div>
 
                 {/* MoodRing & Pulsing Aura Background */}
@@ -89,14 +91,14 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
 
                     <div style={{ textAlign: 'center', background: 'rgba(5, 7, 10, 0.7)', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-glass-bright)', width: '320px' }}>
                         <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '1.25rem', textShadow: '0 0 15px rgba(255,255,255,0.3)', letterSpacing: '-0.02em' }}>
-                            Level {stats.level} <span style={{ color: 'var(--accent-purple)', fontSize: '0.9rem', fontWeight: 600, textShadow: 'var(--glow-purple)', verticalAlign: 'middle', marginLeft: '0.5rem' }}>Ascension {Math.floor(stats.level / 10)}</span>
+                            {t('sidebar.level')} {stats.level} <span style={{ color: 'var(--accent-purple)', fontSize: '0.9rem', fontWeight: 600, textShadow: 'var(--glow-purple)', verticalAlign: 'middle', marginLeft: '0.5rem' }}>{t('biotope.ascension', { n: Math.floor(stats.level / 10) })}</span>
                         </h2>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             {/* Resonance Meter */}
                             <div style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                                    <span>RESONANCE</span>
+                                    <span>{t('biotope.resonance')}</span>
                                     <span>{stats.resonance}%</span>
                                 </div>
                                 <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -111,7 +113,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                             {/* Creativity Meter */}
                             <div style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem', color: 'var(--accent-amber)', fontWeight: 700 }}>
-                                    <span>CREATIVITY</span>
+                                    <span>{t('biotope.creativity')}</span>
                                     <span>{stats.creativity}%</span>
                                 </div>
                                 <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -126,7 +128,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                             {/* Fatigue Meter (Inverse color logic: red is high) */}
                             <div style={{ width: '100%' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem', color: stats.fatigue > 70 ? 'var(--accent-rose)' : 'var(--text-muted)', fontWeight: 700 }}>
-                                    <span>NEURAL FATIGUE</span>
+                                    <span>{t('biotope.neuralFatigue')}</span>
                                     <span>{stats.fatigue}%</span>
                                 </div>
                                 <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -139,7 +141,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                             </div>
 
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', justifyContent: 'center', marginTop: '0.5rem' }}>
-                                <Zap size={12} color="var(--accent-amber)" /> {Math.floor(stats.exp / 10)} Tech Experience
+                                <Zap size={12} color="var(--accent-amber)" /> {Math.floor(stats.exp / 10)} {t('biotope.techExperience')}
                             </div>
                         </div>
                     </div>
@@ -150,13 +152,13 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                 <div className="main-panel ani-slide-right" style={{ padding: '0', flex: 1 }}>
                     <div className="panel-header" style={{ padding: '1rem 1.5rem' }}>
-                        <h4 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', fontWeight: 700 }}>CHRONICLE PULSE</h4>
+                        <h4 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', fontWeight: 700 }}>{t('biotope.chroniclePulse')}</h4>
                     </div>
                     <div style={{ overflowY: 'auto', padding: '1rem' }}>
                         <AnimatePresence mode="popLayout">
                             {recentEvents.length === 0 ? (
                                 <div key="empty" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                    Monitoring neural activity...
+                                    {t('biotope.monitoringActivity')}
                                 </div>
                             ) : (
                                 recentEvents.map(event => (
@@ -194,9 +196,9 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                 </div>
 
                 <div className="stat-card ani-slide-right" style={{ padding: '1.25rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>SYNERGY HEARTBEAT</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('biotope.synergyHeartbeat')}</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {isConnected ? "STABLE" : "WEAK"}
+                        {isConnected ? t('biotope.stable') : t('biotope.weak')}
                         <motion.div
                             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
                             transition={{ duration: 1, repeat: Infinity }}

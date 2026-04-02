@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldAlert, Zap, Loader2 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 interface AuthOverlayProps {
     onAuthenticated: () => void;
@@ -18,6 +19,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
     const [token, setToken] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { t } = useTranslation();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,12 +40,12 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                 setAuthToken(token);
                 onAuthenticated();
             } else if (response.status === 401) {
-                setError('Invalid Secret Key. 開発環境では "mock_valid_token_dev" を使用してください。');
+                setError(t('auth.errorInvalidKey'));
             } else {
-                setError(`Server Error (${response.status}). API Server が起動しているか確認してください。`);
+                setError(t('auth.errorServer', { status: response.status }));
             }
         } catch (err) {
-            setError('Failed to connect to API Server. "cargo run --bin api-server" が起動しているか確認してください。');
+            setError(t('auth.errorConnection'));
         } finally {
             setIsLoading(false);
         }
@@ -102,14 +104,14 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                     marginBottom: '0.5rem',
                     letterSpacing: '-0.02em'
                 }}>
-                    Abyss Vault Access
+                    {t('auth.title')}
                 </h2>
                 <p style={{ 
                     color: 'rgba(255, 255, 255, 0.5)', 
                     fontSize: '0.9rem', 
                     marginBottom: '2rem' 
                 }}>
-                    Please enter your Aiome Secret to synchronize with the neural foundation.
+                    {t('auth.description')}
                 </p>
 
                 <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
@@ -123,7 +125,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                             marginBottom: '0.5rem',
                             fontWeight: 600
                         }}>
-                            Vault Secret Key
+                            {t('auth.secretKeyLabel')}
                         </label>
                         <input 
                             type="password"
@@ -196,14 +198,14 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                         ) : (
                             <>
                                 <Zap size={20} />
-                                Synchronize
+                                {t('auth.synchronize')}
                             </>
                         )}
                     </button>
                 </form>
 
                 <div style={{ marginTop: '2rem', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)' }}>
-                    Aiome Secure Gateway v1.0.2
+                    {t('auth.gateway')}
                 </div>
             </motion.div>
         </motion.div>

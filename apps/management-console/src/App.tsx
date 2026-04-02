@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useState, useEffect, useMemo } from "react";
+import { useTranslation, useLanguage } from "./i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -50,6 +51,8 @@ import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 
 function App() {
+  const { t } = useTranslation();
+  const { lang, setLang } = useLanguage();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState<AgentStats>({ level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 });
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -85,30 +88,30 @@ function App() {
       case 'level_up': {
         const d = data as AgentStats;
         setStats(prev => ({ ...prev, level: d.level, exp: d.exp }));
-        addEvent('Level Up', `Ascension Level ${d.level}`, 'var(--accent-cyan)', <Activity size={16} />);
+        addEvent(t('event.levelUp'), t('event.ascensionLevel', { level: d.level }), 'var(--accent-cyan)', <Activity size={16} />);
         break;
       }
       case 'karma_update': {
         const d = data as Karma;
-        addEvent('Karma Assimilated', `Synapses merged: ${d.id.substring(0, 8)}`, 'var(--accent-purple)', <GitMerge size={16} />);
+        addEvent(t('event.karmaAssimilated'), t('event.synapsesMerged', { id: d.id.substring(0, 8) }), 'var(--accent-purple)', <GitMerge size={16} />);
         break;
       }
       case 'immune_alert': {
         const d = data as any;
-        addEvent('Security Alert', d.description || "Anomaly detected.", 'var(--accent-rose)', <Shield size={16} />);
+        addEvent(t('event.securityAlert'), d.description || t('event.anomalyDetected'), 'var(--accent-rose)', <Shield size={16} />);
         break;
       }
       case 'job_started': {
-        addEvent('Deliberation Started', typeof data === 'string' ? data : 'Thinking...', 'var(--accent-amber)', <Activity size={16} />);
+        addEvent(t('event.deliberationStarted'), typeof data === 'string' ? data : t('event.thinking'), 'var(--accent-amber)', <Activity size={16} />);
         break;
       }
       case 'skill_execution': {
-        addEvent('Skill Activating', typeof data === 'string' ? data : 'Tool Execution', 'var(--accent-emerald)', <Zap size={16} />);
+        addEvent(t('event.skillActivating'), typeof data === 'string' ? data : t('event.toolExecution'), 'var(--accent-emerald)', <Zap size={16} />);
         break;
       }
       case 'inspiration': {
         const d = data as any;
-        addEvent('Inspiration', d.description || "Creative spark detected.", 'var(--accent-rose)', <BrainCircuit size={16} />);
+        addEvent(t('event.inspiration'), d.description || t('event.creativeSpark'), 'var(--accent-rose)', <BrainCircuit size={16} />);
         break;
       }
       case 'agent_stats': {
@@ -118,12 +121,12 @@ function App() {
       }
       case 'proactive_talk': {
         const d = data as string;
-        addEvent('Aiome Message', d, 'var(--accent-cyan)', <MessageSquare size={16} />);
+        addEvent(t('event.aiomeMessage'), d, 'var(--accent-cyan)', <MessageSquare size={16} />);
         break;
       }
       case 'sot_progress': {
         const d = data as SoTEvent;
-        addEvent('Society of Thought', `Deliberation update: ${d.event.type}`, 'var(--accent-purple)', <BrainCircuit size={16} />);
+        addEvent(t('event.societyOfThought'), t('event.deliberationUpdate', { type: d.event.type }), 'var(--accent-purple)', <BrainCircuit size={16} />);
         break;
       }
       default:
@@ -139,26 +142,26 @@ function App() {
 
     switch (connectionStatus) {
       case "connected":
-        text = lastPingMs !== null ? `Connected ${lastPingMs}ms` : "Samsara Hub Connected";
+        text = lastPingMs !== null ? t('status.connectedMs', { ms: lastPingMs }) : t('status.hubConnected');
         // Default classes are fine
         break;
       case "connecting":
         badgeClass += ' disconnected'; // Using disconnected style for connecting state
         dotClass += ' offline'; // Using offline dot style for connecting state
         dotClass += ' ani-pulse';
-        text = "Reconnecting...";
+        text = t('status.reconnecting');
         break;
       case "paused":
         badgeClass += ' paused';
         dotClass += ' offline';
         dotClass = dotClass.replace('offline', 'paused'); // Custom styling inline if needed
-        text = "Sync Paused";
+        text = t('status.syncPaused');
         break;
       case "disconnected":
       default:
         badgeClass += ' disconnected';
         dotClass += ' offline';
-        text = "Connection Lost";
+        text = t('status.connectionLost');
         break;
     }
 
@@ -241,11 +244,11 @@ function App() {
         </div>
 
         <nav className="nav-group">
-          <h4>Synergy Hub</h4>
+          <h4>{t('nav.section.synergyHub')}</h4>
           {isVisible("dashboard") && (
             <NavItem
               icon={<Activity size={20} />}
-              label="Biotope"
+              label={t('nav.biotope')}
               active={activeTab === "dashboard"}
               onClick={() => setActiveTab("dashboard")}
             />
@@ -253,7 +256,7 @@ function App() {
           {isVisible("demo") && (
             <NavItem
               icon={<Play size={20} />}
-              label="Synergy Demo"
+              label={t('nav.demo')}
               active={activeTab === "demo"}
               onClick={() => setActiveTab("demo")}
             />
@@ -261,7 +264,7 @@ function App() {
           {isVisible("karma") && (
             <NavItem
               icon={<Clock size={20} />}
-              label="Chronicle"
+              label={t('nav.chronicle')}
               active={activeTab === "karma"}
               onClick={() => setActiveTab("karma")}
             />
@@ -269,7 +272,7 @@ function App() {
           {isVisible("graph") && (
             <NavItem
               icon={<GitMerge size={20} />}
-              label="Resonance Map"
+              label={t('nav.resonanceMap')}
               active={activeTab === "graph"}
               onClick={() => setActiveTab("graph")}
             />
@@ -277,7 +280,7 @@ function App() {
           {isVisible("causal") && (
             <NavItem
               icon={<Activity size={20} />}
-              label="Causal Trace"
+              label={t('nav.causalTrace')}
               active={activeTab === "causal"}
               onClick={() => setActiveTab("causal")}
             />
@@ -285,7 +288,7 @@ function App() {
           {isVisible("artifacts") && (
             <NavItem
               icon={<Box size={20} />}
-              label="Artifact Vault"
+              label={t('nav.artifactVault')}
               active={activeTab === "artifacts"}
               onClick={() => setActiveTab("artifacts")}
             />
@@ -293,7 +296,7 @@ function App() {
           {isVisible("audit") && (
             <NavItem
               icon={<Activity size={20} />}
-              label="Audit"
+              label={t('nav.audit')}
               active={activeTab === "audit"}
               onClick={() => setActiveTab("audit")}
             />
@@ -301,7 +304,7 @@ function App() {
           {isVisible("expressions") && (
             <NavItem
               icon={<Sparkles size={20} />}
-              label="Expressions"
+              label={t('nav.expressions')}
               active={activeTab === "expressions"}
               onClick={() => setActiveTab("expressions")}
             />
@@ -309,7 +312,7 @@ function App() {
           {isVisible("biome") && (
             <NavItem
               icon={<Network size={20} />}
-              label="Biome Lab"
+              label={t('nav.biomeLab')}
               active={activeTab === "biome"}
               onClick={() => setActiveTab("biome")}
             />
@@ -317,7 +320,7 @@ function App() {
           {isVisible("store") && (
             <NavItem
               icon={<Crown size={20} />}
-              label="Voice Store"
+              label={t('nav.voiceStore')}
               active={activeTab === "store"}
               onClick={() => setActiveTab("store")}
             />
@@ -325,11 +328,11 @@ function App() {
         </nav>
 
         <nav className="nav-group">
-          <h4>Control</h4>
+          <h4>{t('nav.section.control')}</h4>
           {isVisible("immune") && (
             <NavItem
               icon={<Shield size={20} />}
-              label="Immune System"
+              label={t('nav.immuneSystem')}
               active={activeTab === "immune"}
               onClick={() => setActiveTab("immune")}
             />
@@ -337,7 +340,7 @@ function App() {
           {isVisible("agent") && (
             <NavItem
               icon={<MessageSquare size={20} />}
-              label="Agent Console"
+              label={t('nav.agentConsole')}
               active={activeTab === "agent"}
               onClick={() => setActiveTab("agent")}
             />
@@ -345,7 +348,7 @@ function App() {
           {isVisible("vault") && (
             <NavItem
               icon={<Package size={20} />}
-              label="Skill Vault"
+              label={t('nav.skillVault')}
               active={activeTab === "vault"}
               onClick={() => setActiveTab("vault")}
             />
@@ -353,7 +356,7 @@ function App() {
           {isVisible("lora") && (
             <NavItem
               icon={<BrainCircuit size={20} />}
-              label="LoRA Autotuner"
+              label={t('nav.loraAutotuner')}
               active={activeTab === "lora"}
               onClick={() => setActiveTab("lora")}
             />
@@ -361,7 +364,7 @@ function App() {
           {isVisible("settings") && (
             <NavItem
               icon={<SettingsIcon size={20} />}
-              label="Settings"
+              label={t('nav.settings')}
               active={activeTab === "settings"}
               onClick={() => setActiveTab("settings")}
             />
@@ -370,8 +373,8 @@ function App() {
 
         <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontSize: '0.8rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Samsara Tier</span>
-            <span style={{ color: 'var(--accent-purple)' }}>Level {stats.level}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{t('sidebar.samsaraTier')}</span>
+            <span style={{ color: 'var(--accent-purple)' }}>{t('sidebar.level')} {stats.level}</span>
           </div>
           <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
             <motion.div
@@ -382,6 +385,40 @@ function App() {
           </div>
           <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
             AIOME v1.0.2
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
+            <button
+              onClick={() => setLang('en')}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                border: lang === 'en' ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+                background: lang === 'en' ? 'rgba(0, 242, 255, 0.1)' : 'transparent',
+                color: lang === 'en' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                transition: 'all 0.2s'
+              }}
+            >
+              🇺🇸 {t('language.en')}
+            </button>
+            <button
+              onClick={() => setLang('ja')}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                border: lang === 'ja' ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+                background: lang === 'ja' ? 'rgba(0, 242, 255, 0.1)' : 'transparent',
+                color: lang === 'ja' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                transition: 'all 0.2s'
+              }}
+            >
+              🇯🇵 {t('language.ja')}
+            </button>
           </div>
         </div>
       </aside>
@@ -394,21 +431,21 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             key={activeTab}
           >
-            {activeTab === "dashboard" && "Biotope Overview"}
-            {activeTab === "demo" && "Autonomous Demo"}
-            {activeTab === "karma" && "Eternal Chronicle"}
-            {activeTab === "graph" && "Resonance Map"}
-            {activeTab === "immune" && "Immune System"}
-            {activeTab === "agent" && "Agent Console"}
-            {activeTab === "vault" && "Neural Skill Vault"}
-            {activeTab === "artifacts" && "Artifact Vault"}
-            {activeTab === "audit" && "System Audit Log"}
-            {activeTab === "expressions" && "AI Self-Expression Pipeline"}
-            {activeTab === "biome" && "Biome Collaborative Lab"}
-            {activeTab === "store" && "Creator Voice Store"}
-            {activeTab === "causal" && "Causal Reasoning Trace"}
-            {activeTab === "lora" && "LoRA Autotuner"}
-            {activeTab === "settings" && "System Settings"}
+            {activeTab === "dashboard" && t('page.biotope')}
+            {activeTab === "demo" && t('page.demo')}
+            {activeTab === "karma" && t('page.chronicle')}
+            {activeTab === "graph" && t('page.resonanceMap')}
+            {activeTab === "immune" && t('page.immuneSystem')}
+            {activeTab === "agent" && t('page.agentConsole')}
+            {activeTab === "vault" && t('page.skillVault')}
+            {activeTab === "artifacts" && t('page.artifactVault')}
+            {activeTab === "audit" && t('page.audit')}
+            {activeTab === "expressions" && t('page.expressions')}
+            {activeTab === "biome" && t('page.biomeLab')}
+            {activeTab === "store" && t('page.voiceStore')}
+            {activeTab === "causal" && t('page.causalTrace')}
+            {activeTab === "lora" && t('page.loraAutotuner')}
+            {activeTab === "settings" && t('page.settings')}
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -418,7 +455,7 @@ function App() {
 
         <AnimatePresence mode="wait">
           {/* Use Suspense for lazy loaded components */}
-          <React.Suspense fallback={<div style={{ height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>NEURAL SYNC...</div></div>}>
+          <React.Suspense fallback={<div style={{ height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{t('loading')}</div></div>}>
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 10 }}

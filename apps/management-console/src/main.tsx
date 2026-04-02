@@ -10,6 +10,7 @@ import App from "./App";
 import "./App.css";
 import { AvatarCharacterProvider } from "./hooks/AvatarContext";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { LanguageProvider } from "./i18n";
 import { initApiBase } from "./config";
 
 /**
@@ -29,9 +30,11 @@ async function boot() {
     ReactDOM.createRoot(root).render(
       <React.StrictMode>
         <ErrorBoundary>
-          <AvatarCharacterProvider>
-            <App />
-          </AvatarCharacterProvider>
+          <LanguageProvider>
+            <AvatarCharacterProvider>
+              <App />
+            </AvatarCharacterProvider>
+          </LanguageProvider>
         </ErrorBoundary>
       </React.StrictMode>,
     );

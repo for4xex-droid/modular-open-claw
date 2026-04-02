@@ -10,6 +10,7 @@ import { Play, CheckCircle, Clock, Check, BrainCircuit, Activity, Zap, Cpu, Netw
 import { AgentStats } from '../types';
 import { API_BASE } from '../config';
 import { getAuthHeaders } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 interface DemoViewProps {
   stats: AgentStats;
@@ -17,18 +18,20 @@ interface DemoViewProps {
   isConnected: boolean;
 }
 
-const DEMO_STEPS_META = [
-  { step: 1, title: "Intent Generation", icon: <BrainCircuit size={18}/> },
-  { step: 2, title: "Trend Analysis", icon: <Activity size={18}/> },
-  { step: 3, title: "Gig Publishing", icon: <Network size={18}/> },
-  { step: 4, title: "Bidding Simulation", icon: <Zap size={18}/> },
-  { step: 5, title: "Acceptance Simulation", icon: <ShieldCheck size={18}/> },
-  { step: 6, title: "Delivery Simulation", icon: <Cpu size={18}/> },
-  { step: 7, title: "Settlement & Karma", icon: <Clock size={18}/> },
-  { step: 8, title: "Evolution Complete", icon: <CheckCircle size={18}/> }
-];
-
 export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProps) {
+  const { t } = useTranslation();
+
+  const DEMO_STEPS_META = [
+    { step: 1, title: t('demo.steps.intentGeneration'), icon: <BrainCircuit size={18}/> },
+    { step: 2, title: t('demo.steps.trendAnalysis'), icon: <Activity size={18}/> },
+    { step: 3, title: t('demo.steps.gigPublishing'), icon: <Network size={18}/> },
+    { step: 4, title: t('demo.steps.biddingSimulation'), icon: <Zap size={18}/> },
+    { step: 5, title: t('demo.steps.acceptanceSimulation'), icon: <ShieldCheck size={18}/> },
+    { step: 6, title: t('demo.steps.deliverySimulation'), icon: <Cpu size={18}/> },
+    { step: 7, title: t('demo.steps.settlementKarma'), icon: <Clock size={18}/> },
+    { step: 8, title: t('demo.steps.evolutionComplete'), icon: <CheckCircle size={18}/> }
+  ];
+
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [messages, setMessages] = useState<Record<number, string>>({});
   const [isRunning, setIsRunning] = useState(false);
@@ -113,8 +116,8 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
     <div className="glass-panel" style={{ padding: '2rem', minHeight: '80vh', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>Autonomous AI Economy Demo</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Observe the 60-second autonomous evolution cycle: Sense → Market → Deliver → Evolve.</p>
+          <h2 style={{ marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>{t('demo.title')}</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('demo.description')}</p>
         </div>
         <button 
           className="panel-button" 
@@ -129,7 +132,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
           }}
         >
           {isRunning ? <Clock className="ani-pulse"/> : <Play />}
-          {isRunning ? 'Demo in Progress...' : 'Start Demo'}
+          {isRunning ? t('demo.running') : t('demo.startDemo')}
         </button>
       </div>
 
@@ -145,10 +148,10 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
         >
           <WifiOff size={20} />
           <div style={{ flex: 1 }}>
-            <strong>SSE 未接続</strong>: Samsara Hub との接続が確立されていません。デモのリアルタイム更新には SSE 接続が必要です。
+            <strong>{t('demo.sseWarning').split(':')[0]}</strong>: {t('demo.sseWarning').split(':').slice(1).join(':')}
             <br/>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Settingsで正しい API Secret を入力してください（開発環境: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>mock_valid_token_dev</code>）
+              {t('demo.sseHint')}
             </span>
           </div>
         </motion.div>
@@ -178,7 +181,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
         
         {/* Left: Timeline */}
         <div className="glass-panel timeline" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)' }}>
-          <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Execution Timeline</h3>
+          <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('demo.executionTimeline')}</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {DEMO_STEPS_META.map((meta) => {
@@ -206,7 +209,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontWeight: 'bold', color: isActive || isPast ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      Step {num}: {meta.title}
+                      {t('demo.step')} {num}: {meta.title}
                     </div>
                     {message && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -224,16 +227,16 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h4 style={{ marginBottom: '1rem', color: 'var(--accent-purple)' }}>Agent Status Array</h4>
+            <h4 style={{ marginBottom: '1rem', color: 'var(--accent-purple)' }}>{t('demo.agentStatusArray')}</h4>
             
             <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
               <div style={{ padding: '1rem', border: '1px solid rgba(0,242,255,0.3)', borderRadius: '8px', background: currentStep > 0 && currentStep <= 4 ? 'rgba(0,242,255,0.05)' : 'transparent', transition: 'all 0.5s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 'bold' }}>Agent A (Requester)</span>
+                  <span style={{ fontWeight: 'bold' }}>{t('demo.agentA')}</span>
                   <span style={{ color: 'var(--accent-cyan)' }}>Lvl {stats.level}</span>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  State: {currentStep === 0 ? 'Idle' : currentStep < 3 ? 'Analyzing Intents' : currentStep < 5 ? 'Awaiting Bids' : currentStep < 7 ? 'Escrow Locked' : 'Harvesting Karma'}
+                  {t('demo.status')}: {currentStep === 0 ? t('demo.stateIdle') : currentStep < 3 ? t('demo.stateAnalyzing') : currentStep < 5 ? t('demo.stateAwaiting') : currentStep < 7 ? t('demo.stateEscrow') : t('demo.stateHarvesting')}
                 </div>
               </div>
 
@@ -244,11 +247,11 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                     style={{ padding: '1rem', border: '1px solid rgba(188,140,255,0.3)', borderRadius: '8px', background: currentStep >= 4 && currentStep < 7 ? 'rgba(188,140,255,0.05)' : 'transparent', transition: 'all 0.5s' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 'bold' }}>Swarm Agent B (Deliverer)</span>
-                      <span style={{ color: 'var(--accent-purple)' }}>External</span>
+                      <span style={{ fontWeight: 'bold' }}>{t('demo.agentB')}</span>
+                      <span style={{ color: 'var(--accent-purple)' }}>{t('demo.external')}</span>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      State: {currentStep < 5 ? 'Bidding' : currentStep < 6 ? 'Delivering Artifact' : 'Task Completed'}
+                      {t('demo.status')}: {currentStep < 5 ? t('demo.stateBidding') : currentStep < 6 ? t('demo.stateDelivering') : t('demo.stateCompleted')}
                     </div>
                   </motion.div>
                 )}
@@ -257,7 +260,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
           </div>
 
           <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
-            <h4 style={{ marginBottom: '1rem', color: 'var(--accent-emerald)' }}>Evolution Pulse (Karma)</h4>
+            <h4 style={{ marginBottom: '1rem', color: 'var(--accent-emerald)' }}>{t('demo.evolutionPulse')}</h4>
             
             <div style={{ height: '120px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
               {[...Array(12)].map((_, i) => {
@@ -279,7 +282,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
             </div>
             
             <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Resonance Buffer</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('demo.resonanceBuffer')}</span>
               <motion.span style={{ color: 'var(--accent-emerald)', fontWeight: 'bold', fontSize: '1.2rem' }}>
                 {fakeKarma} µ
               </motion.span>
@@ -290,18 +293,18 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
           <div className="glass-panel" style={{ padding: '1rem', maxHeight: '180px', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <h4 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Debug Console
+                {t('demo.debugConsole')}
               </h4>
               <button 
                 onClick={() => setDebugLog([])} 
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.7rem' }}
               >
-                <RefreshCw size={12} /> Clear
+                <RefreshCw size={12} /> {t('demo.clear')}
               </button>
             </div>
             <div style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               {debugLog.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No events yet. Click "Start Demo" to begin.</div>
+                <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('demo.noEvents')}</div>
               ) : (
                 debugLog.map((log, i) => (
                   <div key={i} style={{ 
