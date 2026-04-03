@@ -113,34 +113,71 @@ impl CortexIngester {
             });
         }
 
+        let raw_md = html2md::parse_html(&html);
+
+        let mut sample_for_llm = raw_md.clone();
+        if sample_for_llm.len() > 8000 {
+            sample_for_llm.truncate(8000);
+        }
+
+        let title_regex = regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>").unwrap();
+        let html_title = title_regex
+            .captures(&html)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str().trim().to_string())
+            .unwrap_or_else(|| "Web Article".to_string());
+
         let prompt = format!(
-            "Please extract the main article content from the following HTML and convert it to clean, well-structured Markdown. Retain headers, code blocks, and tables. Keep it under 10000 characters if possible. Only output the markdown content without explanation.\n\nHTML:\n{}",
-            html
+            "Please generate a short JSON metadata block for this document. Keys: `title`, `summary` (1-2 sentences), `tags` (array of up to 5 keywords). Use the provided HTML Title if relevant. Provide ONLY valid JSON.\n\nHTML Title: {}\n\nContent Sample:\n{}",
+            html_title, sample_for_llm
         );
 
         let llm_resp = self
             .llm_provider
-            .complete(&prompt, Some("You are a smart webpage content extractor."))
+            .complete(&prompt, Some("You are a helpful JSON extractor."))
             .await?;
 
-        let content_md = llm_resp.content.trim().to_string();
+        // Extract JSON
+        let content_json = llm_resp
+            .content
+            .trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+        let metadata_val: serde_json::Value =
+            serde_json::from_str(content_json).unwrap_or_default();
 
-        if content_md.len() < 100 {
-            return Err(AiomeError::Infrastructure {
-                reason: "Extracted markdown is too short. extraction failed.".to_string(),
-            });
-        }
+        let title = metadata_val
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&html_title)
+            .to_string();
+        let summary = metadata_val
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let tags: Vec<String> = metadata_val
+            .get("tags")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
 
         let doc = CortexDocument {
             id: uuid::Uuid::new_v4().to_string(),
-            title: "Web Article".to_string(), // In future, extract title from HTML
+            title,
             source_url: Some(url.to_string()),
-            content_md: content_md.clone(),
-            content_hash: Self::compute_hash(&content_md),
+            content_md: raw_md.clone(),
+            content_hash: Self::compute_hash(&raw_md),
             source_type: SourceType::Web,
             ingested_at: chrono::Utc::now().to_rfc3339(),
-            tags: vec![],
-            summary: None,
+            tags,
+            summary,
             wiki_article_refs: vec![],
         };
 
@@ -177,28 +214,62 @@ impl CortexIngester {
                 reason: format!("Failed to extract text from PDF: {}", e),
             })?;
 
+        let mut sample_for_llm = text.clone();
+        if sample_for_llm.len() > 8000 {
+            sample_for_llm.truncate(8000);
+        }
+
         let prompt = format!(
-            "Please format the following raw PDF text into well-structured Markdown. Fix any broken line breaks, retain headings, and try to make it readable. Only output the Markdown.\n\nRAW TEXT:\n{}",
-            text
+            "Please generate a short JSON metadata block for this PDF document. Keys: `title` (infer from text if necessary as string), `summary` (1-2 sentences), `tags` (array of up to 5 keywords). Provide ONLY valid JSON.\n\nProvided Title: {}\n\nContent Sample:\n{}",
+            title, sample_for_llm
         );
 
         let llm_resp = self
             .llm_provider
-            .complete(&prompt, Some("You are a text structure formatter."))
+            .complete(&prompt, Some("You are a helpful JSON extractor."))
             .await?;
 
-        let content_md = llm_resp.content.trim().to_string();
+        // Extract JSON
+        let content_json = llm_resp
+            .content
+            .trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+        let metadata_val: serde_json::Value =
+            serde_json::from_str(content_json).unwrap_or_default();
+
+        let final_title = metadata_val
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or(title)
+            .to_string();
+        let summary = metadata_val
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let tags: Vec<String> = metadata_val
+            .get("tags")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
 
         let doc = CortexDocument {
             id: uuid::Uuid::new_v4().to_string(),
-            title: title.to_string(),
+            title: final_title,
             source_url: None,
-            content_md: content_md.clone(),
-            content_hash: Self::compute_hash(&content_md),
+            content_md: text.clone(),
+            content_hash: Self::compute_hash(&text),
             source_type: SourceType::Pdf,
             ingested_at: chrono::Utc::now().to_rfc3339(),
-            tags: vec![],
-            summary: None,
+            tags,
+            summary,
             wiki_article_refs: vec![],
         };
 
