@@ -1238,6 +1238,73 @@
         ]
       }
     },
+    "/api/v1/cortex/wiki": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "list_wiki_articles_handler",
+        "responses": {
+          "200": {
+            "description": "List of wiki articles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WikiArticleSummary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/wiki/{id}": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "get_wiki_article_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wiki Article ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wiki article detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiArticle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Wiki article not found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/ekyc/session": {
       "post": {
         "tags": [
@@ -3669,6 +3736,86 @@
           "score": {
             "type": "number",
             "format": "float"
+          }
+        }
+      },
+      "WikiArticle": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content_md",
+          "concepts",
+          "backlinks",
+          "source_refs",
+          "content_hash",
+          "version"
+        ],
+        "properties": {
+          "backlinks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "content_hash": {
+            "type": "string"
+          },
+          "content_md": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "WikiArticleSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "concepts",
+          "version",
+          "updated_at"
+        ],
+        "properties": {
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       }

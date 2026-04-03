@@ -4,13 +4,14 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Send, Sparkles, Volume2, VolumeX, Cpu, Wifi, WifiOff } from 'lucide-react';
 import FlowCard, { FlowCardType } from './FlowCard';
 import { useAgentChat } from '../../hooks/useAgentChat';
 import { VitalityEvent } from '../../hooks/useSystemVitality';
 import { useTranslation } from '../../i18n';
+import { useCortexSuggestions } from '../../hooks/useCortexSuggestions';
 
 /** Unified timeline entry for rendering */
 interface TimelineEntry {
@@ -63,6 +64,14 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
     const { t } = useTranslation();
     const chat = useAgentChat();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    const { suggestions, fetchSuggestions } = useCortexSuggestions();
+
+    useEffect(() => {
+        if (isInputFocused) {
+            fetchSuggestions();
+        }
+    }, [isInputFocused, fetchSuggestions]);
 
     // Build unified timeline: chat history + system events
     const timeline = useMemo<TimelineEntry[]>(() => {
@@ -272,6 +281,50 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             </div>
 
             {/* Input Area */}
+            <AnimatePresence>
+                {isInputFocused && suggestions.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="cortex-suggestions"
+                        style={{
+                            display: 'flex',
+                            gap: '0.4rem',
+                            padding: '0 1rem 0.5rem 1rem',
+                            overflowX: 'auto',
+                            scrollbarWidth: 'none',
+                        }}
+                    >
+                        {suggestions.map((sug, i) => (
+                            <button
+                                key={i}
+                                className="suggestion-chip"
+                                onClick={() => {
+                                    chat.setInput(sug);
+                                }}
+                                style={{
+                                    background: 'rgba(0, 243, 255, 0.08)',
+                                    border: '1px solid rgba(0, 243, 255, 0.25)',
+                                    color: 'var(--accent-cyan)',
+                                    borderRadius: '16px',
+                                    padding: '0.35rem 0.75rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = 'rgba(0, 243, 255, 0.15)'; }}
+                                onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = 'rgba(0, 243, 255, 0.08)'; }}
+                            >
+                                <Sparkles size={10} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle', marginTop: '-2px' }} />
+                                {sug}
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <div style={{
                 padding: '0.75rem 1rem',
                 borderTop: '1px solid var(--border-glass)',
@@ -302,8 +355,15 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             resize: 'none',
                             transition: 'border-color 0.2s',
                         }}
-                        onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0, 242, 255, 0.3)'; }}
-                        onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                        onFocus={e => { 
+                            setIsInputFocused(true);
+                            (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0, 242, 255, 0.3)'; 
+                        }}
+                        onBlur={e => { 
+                            // Delay hiding to allow chip click to register
+                            setTimeout(() => setIsInputFocused(false), 200);
+                            (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; 
+                        }}
                     />
                     <button
                         onClick={chat.sendMessage}

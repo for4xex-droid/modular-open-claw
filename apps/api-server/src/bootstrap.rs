@@ -893,6 +893,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .time_to_live(std::time::Duration::from_secs(30))
                 .build(),
         )),
+        cortex_query: Component::new(Arc::new(
+            infrastructure::cortex_query::CortexQueryEngine::new(
+                router_provider.clone(),
+                job_queue.get_pool().clone(),
+            ),
+        )),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===
@@ -924,6 +930,36 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             .await
             {
                 error!("🚨 [TtsWorker] Loop error: {}", e);
+            }
+        }
+    });
+
+    // [Step 1.10] Initialize and Spawn CortexCompiler Background Loop (Phase B)
+    let compiler_provider = state.provider.get_inner().clone();
+    let compiler_pool = state.job_queue.get_pool().clone();
+    let compiler_semaphore = state.compute_semaphore.get_inner().clone();
+    let compiler_gate = Some(belief_gate.clone());
+    tokio::spawn(async move {
+        tracing::info!("📚 [Cortex] Starting compilation loop...");
+        let compiler = infrastructure::cortex_compiler::CortexCompiler::new(
+            compiler_provider,
+            compiler_pool,
+            compiler_gate,
+            compiler_semaphore,
+        );
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1800));
+        loop {
+            interval.tick().await;
+            match compiler.run_compilation_cycle().await {
+                Ok(ref report) if report.new_articles > 0 || report.updated_articles > 0 => {
+                    tracing::info!(
+                        "📚 [Cortex] Compilation: {} new, {} updated",
+                        report.new_articles,
+                        report.updated_articles
+                    );
+                }
+                Err(e) => tracing::error!("🚨 [Cortex] Compilation error: {}", e),
+                _ => {} // Ignore empty cycles
             }
         }
     });

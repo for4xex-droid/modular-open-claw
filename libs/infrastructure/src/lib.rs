@@ -62,6 +62,11 @@ pub mod context_engine;
 pub mod cortex_ingester;
 #[cfg(test)]
 mod cortex_ingester_tests;
+
+pub mod cortex_compiler;
+#[cfg(test)]
+mod cortex_compiler_tests;
+pub mod cortex_query;
 pub mod lora_autotuner;
 pub mod repair_strategy;
 /// タスクキュー・非同期実行・リトライ

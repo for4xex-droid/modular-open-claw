@@ -252,6 +252,13 @@ pub fn build_app(
                     "/documents/:id",
                     delete(routes::cortex::delete_document_handler),
                 )
+                .route("/wiki", get(routes::cortex::list_wiki_articles_handler))
+                .route("/wiki/:id", get(routes::cortex::get_wiki_article_handler))
+                .route("/query", post(routes::cortex::query_handler))
+                .route(
+                    "/suggestions",
+                    get(routes::cortex::suggest_questions_handler),
+                )
                 .route_layer(
                     tower::ServiceBuilder::new()
                         .layer(axum::error_handling::HandleErrorLayer::new(

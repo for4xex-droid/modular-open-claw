@@ -65,6 +65,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 
 - 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Mathematical safety is guaranteed via Model-Based Testing.
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
+- 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. The LLM extracts concepts from multiple documents and self-reconstructs its knowledge as an interconnected web.
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail.
 - 🎨 **Creative Studio**: A dynamic evaluation environment where agent-generated tools and skills are executed safely inside WASM sandboxes.
 - 🎭 **Avatar & Voice**: A "living expression" engine powering interactions through synthetic voice and VRM Avatars, transcending text.

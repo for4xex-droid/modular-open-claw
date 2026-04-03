@@ -186,4 +186,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-01 (Phase B: ToolCallRouter Integration / Security Hardening)*
+*最終更新: 2026-04-04 (Phase C: Cortex Knowledge Base UI Integration / Query Engine)*

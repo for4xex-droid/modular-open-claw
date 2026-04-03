@@ -24,6 +24,12 @@ pub struct ContextBudget {
     pub reserved_system_chars: usize,
     pub max_somatic_chars: usize,
     pub max_project_rules_chars: usize,
+    #[serde(default = "default_cortex_chars")]
+    pub max_cortex_chars: usize,
+}
+
+fn default_cortex_chars() -> usize {
+    8000
 }
 
 impl Default for ContextBudget {
@@ -35,6 +41,7 @@ impl Default for ContextBudget {
             reserved_system_chars: 500,
             max_somatic_chars: 500,
             max_project_rules_chars: 3000,
+            max_cortex_chars: default_cortex_chars(),
         }
     }
 }

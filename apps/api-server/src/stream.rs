@@ -112,6 +112,21 @@ pub async fn trigger_agent_chat_stream(
                     Err(e) => error!("🚨 [HKR] Router error: {:?}", e),
                 }
             }
+
+            // [Cortex Integration] Phase C Query Engine Fallback
+            if let Some(engine) = state.cortex_query.as_opt() {
+                tracing::info!("🔍 [Cortex] Semantic query fallback...");
+                if let Ok(cortex_ans) = engine.query(&payload.prompt).await {
+                    if cortex_ans.confidence >= 0.5 {
+                        tracing::info!("✅ [Cortex] Knowledge found via Cortex.");
+                        let text = format!("💡 Cortex Wiki（{:?}）から補足情報を取得しました。", cortex_ans.source_articles);
+                        yield Ok::<axum::response::sse::Event, std::convert::Infallible>(
+                            axum::response::sse::Event::default().event("knowledge_notice").data(text)
+                        );
+                        karma_str.push_str(&format!("\n\n### Cortex Wiki ナレッジ\n{}\n", cortex_ans.answer_md));
+                    }
+                }
+            }
         }
 
         // Notify client about relevant karma being used (Sprint 4-A)

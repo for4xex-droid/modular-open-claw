@@ -7,6 +7,17 @@
     - **CortexIngester Core**: LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジンを実装。pdf-extractクレートの統合と外部データ取得パイプラインを確立。
     - **API Integration**: `/api/v1/cortex/ingest` (URL), `/api/v1/cortex/ingest/text` およびドキュメント一覧・削除のRESTエンドポイントを `routes::cortex` に統合し、`api-server` の DI (AppState) コンテナと連動化。
     - **Security & Reliability**: `SecurityPolicy::validate_url` を用いたSSRF防御と、`AiomeError::NetworkError` バリアント追加によるネットワークエラー層の切り分けと回復性を向上。MockLLMを用いた結合テストも完備。
+- **Cortex Knowledge Base Phase B (Wiki Compiler) [完成]:**
+    - **Compiler Core**: `CortexCompiler` を実装し、複数の未コンパイルドキュメントから概念（Concepts）を抽出し、2つ以上の情報源をもとにWiki記事（タイトル、Markdown本文、概念タグ、バックリンク、参照情報）を自律生成するロジックを確立。
+    - **Resource & Transaction Safety**: `compute_semaphore` を依存注入し、LLM推論でのリソース競合を防止。DBの読み取りと行ごとの更新トランザクションを分離し、SQLiteロック（`database is locked`）を回避する安全な設計を採用。
+    - **API & Background Loop**: `/api/v1/cortex/wiki` および `/api/v1/cortex/wiki/:id` エンドポイントを実装し、生成されたWiki記事の取得をサポート。同時に `api-server` 起動時に30分間隔で定期コンパイルを実行するバックグラウンドワーカーを統合。
+    - **Perfect Plan Fixes**: 冪等性の強化 (途中失敗時の重複生成防止)、`Authenticated` エクストラクタの適用、プロンプトインジェクション防御 (`sanitize_for_prompt`)、概念名の正規化と一貫したハッシュ (SHA-256) 採用など、Phase B全体の堅牢性を極める9つの必須/推奨修正を完了。
+- **Cortex Knowledge Base Phase C (Query Engine Integration) [完成]:**
+    - **CortexQueryEngine & API**: 意味検索用エンジン `CortexQueryEngine` を実装し、未加工のドキュメントとコンパイル済みWikiの双方からナレッジを引き出せる `/api/v1/cortex/query`, `/api/v1/cortex/suggestions` をパブリック・エンドポイントとして登録。
+    - **Semantic Streaming Fallback**: チャットストリーム中の未知の質問 (OOD: Out of Distribution) に対し、HKRフォールバックに加えてこのCortex Queryエンジンを利用し、外部知識からの回答生成能力を飛躍的に向上。
+    - **MCP Tool Exposure**: `cortex_search` MCPツールを実装・公開し、Claude Codeなど外部エージェントも直接CortexシステムのWikiナレッジをセマンティック検索できるように設計完了。
+    - **TDD Hardening (P-1/P-2/P-3)**: コンテキスト注入文字数の設定可能化 (`with_max_context_chars` builder pattern / デフォルト8000)、`suggest_questions` のDB概念ベース動的生成化（空DB時フォールバック付き）、大規模データ向けFTS5移行計画をTODOとして文書化。8テスト全GREEN。
+    - **Frontend Integration**: Management Consoleの主インターフェース（StoryFlow）にCortex Query Engineを統合する動的サジェストチップ（Suggestion Chips）UIを実装、カスタムフック化ならびにPlaywrightによるE2Eテスト網も確立しGREENパス。
 
 ### Fixed
 - **Infrastructure:** Fixed `test_slm_bridge_cli_hang_timeout_red` failing test in preflight. The timeout test script was not generated dynamically, leading to immediate non-timeout failure. Now safely writes to /tmp and respects Unix execution modes.

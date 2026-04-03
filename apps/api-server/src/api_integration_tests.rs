@@ -648,6 +648,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 job_queue.get_pool().clone(),
             ),
         )),
+        cortex_query: Component::new(Arc::new(
+            infrastructure::cortex_query::CortexQueryEngine::new(
+                provider.clone(),
+                job_queue.get_pool().clone(),
+            ),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -2279,4 +2285,57 @@ async fn test_security_regression_path_traversal() {
             msg
         );
     }
+}
+
+#[serial]
+#[tokio::test]
+async fn test_cortex_wiki_unauthorized() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let response = server.get("/api/v1/cortex/wiki").await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_cortex_wiki_authorized() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // Insert dummy article directly into DB so we can test the API
+    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    sqlx::query(
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, concepts, backlinks, source_refs, content_hash, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind("test-article-id")
+    .bind("Test Article")
+    .bind("## Content")
+    .bind("[\"Test\"]")
+    .bind("[]")
+    .bind("[\"doc1\"]")
+    .bind("hash123")
+    .bind(1)
+    .execute(pool)
+    .await.unwrap();
+
+    let response = server
+        .get("/api/v1/cortex/wiki")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(response.status_code(), StatusCode::OK);
+    let articles: Vec<serde_json::Value> = response.json();
+    assert_eq!(articles.len(), 1);
+    assert_eq!(articles[0]["id"], "test-article-id");
+    assert_eq!(articles[0]["title"], "Test Article");
+
+    let response = server
+        .get("/api/v1/cortex/wiki/test-article-id")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(response.status_code(), StatusCode::OK);
+    let article: serde_json::Value = response.json();
+    assert_eq!(article["id"], "test-article-id");
+    assert_eq!(article["title"], "Test Article");
+    assert_eq!(article["content_md"], "## Content");
 }

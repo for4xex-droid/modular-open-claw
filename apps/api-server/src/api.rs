@@ -85,7 +85,11 @@ use utoipa::OpenApi;
         crate::routes::cortex::ingest_url_handler,
         crate::routes::cortex::ingest_text_handler,
         crate::routes::cortex::list_documents_handler,
-        crate::routes::cortex::delete_document_handler
+        crate::routes::cortex::delete_document_handler,
+        crate::routes::cortex::list_wiki_articles_handler,
+        crate::routes::cortex::get_wiki_article_handler,
+        crate::routes::cortex::query_handler,
+        crate::routes::cortex::suggest_questions_handler
     ),
     components(
         schemas(
@@ -142,6 +146,10 @@ use utoipa::OpenApi;
             crate::routes::cortex::IngestResp,
             infrastructure::cortex_ingester::CortexDocument,
             infrastructure::cortex_ingester::SourceType,
+            infrastructure::cortex_compiler::WikiArticle,
+            crate::routes::cortex::WikiArticleSummary,
+            crate::routes::cortex::QueryReq,
+            infrastructure::cortex_query::CortexAnswer,
         )
     ),
     info(

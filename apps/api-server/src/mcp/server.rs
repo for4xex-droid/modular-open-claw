@@ -149,6 +149,24 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                 }),
             });
 
+            // 3. Register Cortex Query Tool (Phase C)
+            tools.push(McpTool {
+                name: "cortex_search".to_string(),
+                description: Some(
+                    "Search the global memory (Cortex Wiki) for project knowledge.".to_string(),
+                ),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question or search query"
+                        }
+                    },
+                    "required": ["question"]
+                }),
+            });
+
             JsonRpcResponse {
                 jsonrpc: "2.0".into(),
                 id,
@@ -234,6 +252,49 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
                         }),
                     },
                 }
+            } else if name == "cortex_search" {
+                let question = arguments
+                    .get("question")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if question.is_empty() {
+                    return JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: "Missing question".into(),
+                            data: None,
+                        }),
+                    };
+                }
+                match state.cortex_query.get_inner().query(question).await {
+                    Ok(ans) => JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: Some(
+                            serde_json::to_value(CallToolResult {
+                                content: vec![McpContent::Text {
+                                    text: ans.answer_md,
+                                }],
+                                is_error: false,
+                            })
+                            .unwrap_or_default(),
+                        ),
+                        error: None,
+                    },
+                    Err(e) => JsonRpcResponse {
+                        jsonrpc: "2.0".into(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32603,
+                            message: format!("Cortex search failed: {:?}", e),
+                            data: None,
+                        }),
+                    },
+                }
             } else {
                 use crate::tool_call_router::{
                     DefaultToolCallRouter, ToolCallRouter, ToolExecutionEvent,
@@ -315,7 +376,9 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
 fn is_skill_whitelisted(name: &str) -> bool {
     // Phase 17 Strict Review: RBAC Whitelist
     match name {
-        "fs_reader" | "MarketDataFetcher" | "StringRepeater" | "transcribe" => true,
+        "fs_reader" | "MarketDataFetcher" | "StringRepeater" | "transcribe" | "cortex_search" => {
+            true
+        }
         "terminal_exec" | "fs_writer" | "forge_publish" => false, // Protected internal tools
         _ => false,
     }
