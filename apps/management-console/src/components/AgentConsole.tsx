@@ -4,166 +4,38 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Send, Cpu, Brain, Sparkles, ThumbsUp, ThumbsDown, BookOpen } from 'lucide-react';
-import { API_BASE } from "../config";
-import { ChatMessage } from '../types';
-import { authenticatedFetch } from '../lib/auth';
 import { Volume2, VolumeX } from 'lucide-react';
+import { useTranslation } from '../i18n';
+import { useAgentChat } from '../hooks/useAgentChat';
 
 const AgentConsole: React.FC = () => {
-    const [input, setInput] = useState("");
-    const [history, setHistory] = useState<ChatMessage[]>([]);
-    const [isTyping, setIsTyping] = useState(false);
-    const [streamingText, setStreamingText] = useState("");
-    const [autoTts, setAutoTts] = useState(true);
+    const { t } = useTranslation();
+    const {
+        history,
+        input,
+        isTyping,
+        streamingText,
+        status,
+        autoTts,
+        relevantKarma,
+        relevantKarmaData,
+        activeKnowledge,
+        setInput,
+        sendMessage,
+        setAutoTts,
+        handleFeedback,
+    } = useAgentChat();
+
     const chatEndRef = useRef<HTMLDivElement>(null);
-    const [status, setStatus] = useState<string>("IDLE");
-    const [relevantKarma, setRelevantKarma] = useState<string | null>(null);
-    const [relevantKarmaData, setRelevantKarmaData] = useState<{ is_ood: boolean, entries: { id: string, lesson: string }[] } | null>(null);
-    const [activeKnowledge, setActiveKnowledge] = useState<string | null>(null);
-    const [channelId] = useState(() => {
-        const stored = sessionStorage.getItem('aiome_console_channel_id');
-        if (stored) return stored;
-        const newId = crypto.randomUUID();
-        sessionStorage.setItem('aiome_console_channel_id', newId);
-        return newId;
-    });
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
     useEffect(scrollToBottom, [history, streamingText]);
-
-    const playTts = async (text: string) => {
-        if (!text) return;
-        try {
-            const response = await authenticatedFetch(`${API_BASE}/api/v1/voice/synthesize`, {
-                method: 'POST',
-                body: JSON.stringify({ text })
-            });
-            if (!response.ok) throw new Error("TTS failed");
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const audio = new Audio(url);
-            await audio.play();
-        } catch (e) {
-            console.error("TTS Playback failed:", e);
-        }
-    };
-
-    const sendMessage = async () => {
-        if (!input.trim() || isTyping) return;
-
-        const currentPrompt = input;
-        const userMsg: ChatMessage = { role: "user", content: currentPrompt };
-        setHistory(prev => [...prev, userMsg]);
-        setInput("");
-        setIsTyping(true);
-        setStreamingText("");
-        setStatus("THINKING");
-        setRelevantKarma(null);
-        setRelevantKarmaData(null);
-        setActiveKnowledge(null);
-
-        try {
-            const response = await authenticatedFetch(`${API_BASE}/api/stream/chat`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    prompt: currentPrompt,
-                    history: history,
-                    channel_id: channelId
-                })
-            });
-
-            if (!response.body) throw new Error("No response body");
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let accumulatedText = "";
-            let currentEvent = "";
-            let buffer = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-
-                // Keep the last partial line in the buffer
-                buffer = lines.pop() || "";
-
-                for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine) continue;
-
-                    if (trimmedLine.startsWith('event: ')) {
-                        currentEvent = trimmedLine.replace('event: ', '');
-                    } else if (trimmedLine.startsWith('data: ')) {
-                        const data = trimmedLine.replace('data: ', '');
-
-                        if (currentEvent === 'text') {
-                            accumulatedText += data;
-                            setStreamingText(accumulatedText);
-                        } else if (currentEvent === 'tool_exec' || currentEvent === 'tool_detect') {
-                            setStatus(`EXECUTING: ${data}`);
-                        } else if (currentEvent === 'error') {
-                            setHistory(prev => [...prev, { role: "assistant", content: `🚨 Error: ${data}`, isError: true }]);
-                        } else if (currentEvent === 'done') {
-                            setStatus("IDLE");
-                        } else if (currentEvent === 'karma') {
-                            setRelevantKarma(data);
-                        } else if (currentEvent === 'karma_data') {
-                            try {
-                                setRelevantKarmaData(JSON.parse(data));
-                            } catch (e) {
-                                console.error("Failed to parse karma_data", e);
-                            }
-                        } else if (currentEvent === 'knowledge') {
-                            setActiveKnowledge(data);
-                        }
-                    }
-                }
-            }
-
-            if (accumulatedText) {
-                setHistory(prev => [...prev, { role: "assistant", content: accumulatedText }]);
-                setStreamingText("");
-                if (autoTts) {
-                    playTts(accumulatedText);
-                }
-            }
-        } catch (e) {
-            setHistory(prev => [...prev, { role: "assistant", content: "⚠️ Connection error to Aiome layer.", isError: true }]);
-        } finally {
-            setIsTyping(false);
-            setStatus("IDLE");
-        }
-    };
-
-    const handleFeedback = async (_index: number, type: 'positive' | 'negative') => {
-        if (!relevantKarmaData || !relevantKarmaData.entries || relevantKarmaData.entries.length === 0) return;
-
-        // Apply feedback to the primary mapped Karma
-        const primaryKarmaId = relevantKarmaData.entries[0].id;
-
-        try {
-            await authenticatedFetch(`${API_BASE}/api/agent/feedback`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    karma_id: primaryKarmaId,
-                    is_positive: type === 'positive'
-                })
-            });
-            setStatus(`FEEDBACK RECORDED: ${type.toUpperCase()}`);
-            setTimeout(() => setStatus("IDLE"), 2000);
-        } catch (e) {
-            console.error("Failed to send feedback", e);
-        }
-    };
 
     return (
         <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
@@ -181,7 +53,7 @@ const AgentConsole: React.FC = () => {
                         )}
                     </div>
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>GENESIS NEURAL CONSOLE</h3>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('agent.title')}</h3>
                         <div style={{ fontSize: '0.7rem', color: isTyping ? 'var(--accent-cyan)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <span style={{ width: 6, height: 6, borderRadius: '50%', background: isTyping ? 'var(--accent-cyan)' : 'var(--accent-emerald)' }} />
                             {status}
@@ -215,7 +87,7 @@ const AgentConsole: React.FC = () => {
                 {history.length === 0 && !streamingText && (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center' }}>
                         <Cpu size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
-                        <h4 style={{ fontWeight: 600, color: 'rgba(255,255,255,0.2)' }}>SYNAPTIC INTERFACE READY</h4>
+                        <h4 style={{ fontWeight: 600, color: 'rgba(255,255,255,0.2)' }}>{t('agent.ready')}</h4>
                         <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginTop: '0.5rem' }}>Issue natural language commands to synthesize skills or explore the biome.</p>
                     </div>
                 )}
@@ -308,14 +180,14 @@ const AgentConsole: React.FC = () => {
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
                                     title="Helpful Lesson"
                                 >
-                                    <ThumbsUp size={14} hover-color="var(--accent-emerald)" />
+                                    <ThumbsUp size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleFeedback(i, 'negative')}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
                                     title="Not Helpful Lesson"
                                 >
-                                    <ThumbsDown size={14} hover-color="var(--accent-rose)" />
+                                    <ThumbsDown size={14} />
                                 </button>
                             </div>
                         )}

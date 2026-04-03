@@ -724,7 +724,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         context_engine: Component::new(context_engine),
         soul_mutator: Component::new(soul_mutator.clone()),
         soul_store: Component::new(soul_store),
-        provider: Component::new(router_provider),
+        provider: Component::new(router_provider.clone()),
         autonomous_running: Component::new(autonomous_running),
         autonomous_config: Component::new(autonomous_config),
         http_client: Component::new(http_client.clone()),
@@ -882,6 +882,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             };
             Component::new(engine)
         },
+        cortex_ingester: Component::new(Arc::new(
+            infrastructure::cortex_ingester::CortexIngester::new(
+                router_provider.clone(),
+                job_queue.get_pool().clone(),
+            ),
+        )),
         project_rules_cache: Component::new(Arc::new(
             moka::future::Cache::builder()
                 .time_to_live(std::time::Duration::from_secs(30))

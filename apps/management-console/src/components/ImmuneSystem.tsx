@@ -11,8 +11,10 @@ import { API_BASE } from "../config";
 
 import { ImmuneRule } from "../types";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 const ImmuneSystem: React.FC = () => {
+    const { t } = useTranslation();
     const [rules, setRules] = useState<ImmuneRule[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [newRule, setNewRule] = useState({ pattern: '', severity: 50, action: 'BLOCK' });
@@ -112,7 +114,7 @@ const ImmuneSystem: React.FC = () => {
             <div className="panel-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Shield size={20} color="var(--accent-rose)" />
-                    <h3>Sentinel Immune System</h3>
+                    <h3>{t('immune.title')}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
@@ -307,7 +309,7 @@ const ImmuneSystem: React.FC = () => {
 
                 <div style={{ marginTop: '3rem', padding: '2rem', border: '1px dashed var(--border-glass)', borderRadius: 'var(--radius-xl)', textAlign: 'center' }}>
                     <Shield size={32} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h4 style={{ color: 'var(--text-secondary)' }}>Advanced Heuristics Active</h4>
+                    <h4 style={{ color: 'var(--text-secondary)' }}>{t('immune.heuristicsActive')}</h4>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                         The Abyss Vault enforces these rules at the memory-page level. <br />
                         Unauthorized modifications to the sentinel state are physically impossible.

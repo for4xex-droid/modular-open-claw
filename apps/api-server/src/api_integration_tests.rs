@@ -642,6 +642,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         generative_engine: Component::new(Arc::new(
             infrastructure::generative_engine::mock::MockGenerativeEngine::default(),
         )),
+        cortex_ingester: Component::new(Arc::new(
+            infrastructure::cortex_ingester::CortexIngester::new(
+                provider.clone(),
+                job_queue.get_pool().clone(),
+            ),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

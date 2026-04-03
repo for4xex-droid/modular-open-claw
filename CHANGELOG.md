@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added
+- **UI:** Home v2 Beta. Phase 1 of Aiome Management Console overhaul, featuring new 4-screen layout (Home, Shop, Status, World) with CharacterPanel and StoryFlow integration.
+- **Workflow:** Implement Perfect Planning Phase 1 Final v5, including embedded 3D Avatar viewing with OrbitControls.
+- **Cortex Knowledge Base Phase A (Ingestion) [完成]:**
+    - **CortexIngester Core**: LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジンを実装。pdf-extractクレートの統合と外部データ取得パイプラインを確立。
+    - **API Integration**: `/api/v1/cortex/ingest` (URL), `/api/v1/cortex/ingest/text` およびドキュメント一覧・削除のRESTエンドポイントを `routes::cortex` に統合し、`api-server` の DI (AppState) コンテナと連動化。
+    - **Security & Reliability**: `SecurityPolicy::validate_url` を用いたSSRF防御と、`AiomeError::NetworkError` バリアント追加によるネットワークエラー層の切り分けと回復性を向上。MockLLMを用いた結合テストも完備。
+
+### Fixed
+- **Infrastructure:** Fixed `test_slm_bridge_cli_hang_timeout_red` failing test in preflight. The timeout test script was not generated dynamically, leading to immediate non-timeout failure. Now safely writes to /tmp and respects Unix execution modes.
+
 ## [0.1.0] - 2026-04-02 (Genesis Phase Complete)
 
 ### Added

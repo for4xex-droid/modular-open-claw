@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 interface Skill {
     name: string;
@@ -31,6 +32,7 @@ interface Skill {
 }
 
 const SkillVault: React.FC = () => {
+    const { t } = useTranslation();
     const [skills, setSkills] = useState<Skill[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'my' | 'market'>('all');
@@ -71,16 +73,16 @@ const SkillVault: React.FC = () => {
                 <div>
                     <h4 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', letterSpacing: '0.1em' }}>LIBRARY CATEGORIES</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <FilterButton active={filter === 'all'} onClick={() => setFilter('all')} icon={<Box size={18} />} label="All Skillsets" />
+                        <FilterButton active={filter === 'all'} onClick={() => setFilter('all')} icon={<Box size={18} />} label={t('skill.all')} />
                         <FilterButton active={filter === 'my'} onClick={() => setFilter('my')} icon={<Cpu size={18} />} label="Active Skills" />
-                        <FilterButton active={filter === 'market'} onClick={() => setFilter('market')} icon={<Cloud size={18} />} label="Marketplace" />
+                        <FilterButton active={filter === 'market'} onClick={() => setFilter('market')} icon={<Cloud size={18} />} label={t('skill.marketplace')} />
                     </div>
                 </div>
 
                 <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(0,242,255,0.05)', borderRadius: '12px', border: '1px border var(--accent-cyan)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>
                         <ShieldCheck size={16} />
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>BASTION VERIFIED</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t('skill.verified')}</span>
                     </div>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                         All WASM skills are mathematically verified for memory safety before execution.
@@ -94,7 +96,7 @@ const SkillVault: React.FC = () => {
                     <Search size={20} color="var(--text-muted)" />
                     <input
                         type="text"
-                        placeholder="Search for tools, capabilities, or sources..."
+                        placeholder={t('skill.search')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', flex: 1, fontSize: '0.95rem' }}
@@ -110,7 +112,7 @@ const SkillVault: React.FC = () => {
                             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
                                 <Settings size={40} />
                             </motion.div>
-                            <p style={{ marginTop: '1rem' }}>Loading neural capabilities...</p>
+                            <p style={{ marginTop: '1rem' }}>{t('skill.loading')}</p>
                         </div>
                     ) : filteredSkills.length === 0 ? (
                         <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
@@ -147,6 +149,7 @@ const FilterButton: React.FC<{ active: boolean, onClick: () => void, icon: React
 );
 
 const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) => {
+    const { t } = useTranslation();
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -186,14 +189,14 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
             </p>
 
             <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>EXPOSED TOOLS</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>{t('skill.exposedTools')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     {skill.tools.map(tool => (
                         <code key={tool} style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.3)', color: 'var(--accent-cyan)' }}>
                             {tool}
                         </code>
                     ))}
-                    {skill.tools.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>No direct tools</span>}
+                    {skill.tools.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('skill.noTools')}</span>}
                 </div>
             </div>
 

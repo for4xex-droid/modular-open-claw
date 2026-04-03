@@ -9,8 +9,10 @@ import { motion } from 'framer-motion';
 import { Zap, Terminal, BrainCircuit, Clock, Sparkles } from 'lucide-react';
 import { API_BASE } from "../config";
 import { authenticatedFetch } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 const Timeline: React.FC = () => {
+    const { t } = useTranslation();
     const [events, setEvents] = useState<any[]>([]);
     const [selfNodeId, setSelfNodeId] = useState<string>("");
     const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ const Timeline: React.FC = () => {
             <div className="panel-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Clock size={20} color="var(--accent-cyan)" />
-                    <h3>Eternal Chronicle - Karma Timeline</h3>
+                    <h3>{t('timeline.title')}</h3>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {events.length} CHRONICLES
@@ -64,12 +66,12 @@ const Timeline: React.FC = () => {
             <div style={{ padding: '1.5rem', maxHeight: '75vh', overflowY: 'auto' }}>
                 {loading ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <div className="ani-pulse">Synchronizing Chronicles...</div>
+                        <div className="ani-pulse">{t('timeline.syncing')}</div>
                     </div>
                 ) : events.length === 0 ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <Zap size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                        <p>No records found in this aeon.</p>
+                        <p>{t('timeline.noRecords')}</p>
                     </div>
                 ) : (
                     <div style={{ position: 'relative' }}>

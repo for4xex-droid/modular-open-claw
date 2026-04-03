@@ -11,12 +11,14 @@ import { GitMerge, ZoomIn, ZoomOut, RefreshCw, Layers } from 'lucide-react';
 import { API_BASE } from "../config";
 import { GraphNode, GraphEdge } from '../types';
 import { authenticatedFetch } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 const GraphView: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
     const [nodeCount, setNodeCount] = useState(0);
     const [artifactCount, setArtifactCount] = useState(0);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -136,7 +138,7 @@ const GraphView: React.FC = () => {
             <div className="panel-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-glass)', zIndex: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <GitMerge size={20} color="var(--accent-cyan)" />
-                    <h3>Synapse & Creative Lineage Map</h3>
+                    <h3>{t('graph.title')}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>

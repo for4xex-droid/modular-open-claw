@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 interface BiomeMessage {
   id: number;
@@ -40,6 +41,7 @@ interface AutonomousStatus {
 }
 
 const BiomeDialogueView: React.FC = () => {
+    const { t } = useTranslation();
   const [messages, setMessages] = useState<BiomeMessage[]>([]);
   const [status, setStatus] = useState<AutonomousStatus | null>(null);
   const [peerPubkey, setPeerPubkey] = useState("PEER_NODE_DEFAULT_B");
@@ -129,7 +131,7 @@ const BiomeDialogueView: React.FC = () => {
         <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <Network color="var(--accent-cyan)" size={20} />
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>AI-to-AI Dialogue Stream</h3>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t('biome.dialogueStream')}</h3>
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -137,7 +139,7 @@ const BiomeDialogueView: React.FC = () => {
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Wifi size={12} color={status?.running ? "var(--accent-emerald)" : "var(--text-muted)"} />
-              {status?.running ? "Autonomous Active" : "Manual Mode"}
+              {status?.running ? t('biome.autonomousActive') : t('biome.manualMode')}
             </span>
           </div>
         </div>
@@ -157,7 +159,7 @@ const BiomeDialogueView: React.FC = () => {
           {messages.length === 0 && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', opacity: 0.5 }}>
               <MessageSquare size={48} style={{ marginBottom: '1rem' }} />
-              <p>Waiting for Biome messages...</p>
+              <p>{t('biome.waitingMessages')}</p>
             </div>
           )}
 
@@ -179,7 +181,7 @@ const BiomeDialogueView: React.FC = () => {
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.42rem' }}>
                     {isSelf ? <Bot size={12} color="var(--accent-cyan)" /> : <User size={12} color="var(--accent-purple)" />}
-                    {isSelf ? "Local Intelligence" : `Peer [${msg.sender_pubkey.substring(0, 8)}]`}
+                    {isSelf ? t('biome.localIntelligence') : `${t('biome.peer')} [${msg.sender_pubkey.substring(0, 8)}]`}
                     <span style={{ opacity: 0.5 }}>• {new Date(msg.created_at).toLocaleTimeString()}</span>
                   </div>
                   <div style={{ 
@@ -211,7 +213,7 @@ const BiomeDialogueView: React.FC = () => {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
              <div className="input-field-container">
-               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Target Peer Pubkey</label>
+               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('biome.targetPeer')}</label>
                <input 
                  className="custom-input"
                  value={peerPubkey} 
@@ -220,7 +222,7 @@ const BiomeDialogueView: React.FC = () => {
                />
              </div>
              <div className="input-field-container">
-               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Topic Identity</label>
+               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('biome.topicIdentity')}</label>
                <input 
                  className="custom-input"
                  value={topicId} 
@@ -244,7 +246,7 @@ const BiomeDialogueView: React.FC = () => {
                 className="primary-button"
                 style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                >
-                 <Play size={16} fill="currentColor" /> {isStarting ? "Initializing..." : "Start AI Dialogue"}
+                 <Play size={16} fill="currentColor" /> {isStarting ? t('biome.initializing') : t('biome.startDialogue')}
                </button>
              )}
           </div>
@@ -256,11 +258,11 @@ const BiomeDialogueView: React.FC = () => {
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Messages Sent:</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('biome.messagesSent')}:</span>
               <span style={{ fontWeight: 700 }}>{messages.length}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Protocol Version:</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('biome.protocolVersion')}:</span>
               <span style={{ fontWeight: 700 }}>v20-BIOME</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

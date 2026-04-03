@@ -17,8 +17,10 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 const LoraTrainingView: React.FC = () => {
+    const { t } = useTranslation();
     const [baseModel, setBaseModel] = useState('mistral-7b');
     const [datasetId, setDatasetId] = useState('');
     const [epochs, setEpochs] = useState<number>(3);
@@ -115,7 +117,7 @@ const LoraTrainingView: React.FC = () => {
             <div className="main-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', color: 'var(--accent-purple)' }}>
                     <BrainCircuit size={28} />
-                    <h2 style={{ margin: 0, fontWeight: 700 }}>LoRA Autotuner</h2>
+                    <h2 style={{ margin: 0, fontWeight: 700 }}>{t('lora.title')}</h2>
                 </div>
 
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5 }}>
@@ -131,7 +133,7 @@ const LoraTrainingView: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
                     <div className="form-group">
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            <Network size={14} /> Base Model
+                            <Network size={14} /> {t('lora.baseModel')}
                         </label>
                         <select 
                             value={baseModel} 
@@ -161,7 +163,7 @@ const LoraTrainingView: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div className="form-group">
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Epochs</label>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('lora.epochs')}</label>
                             <input 
                                 type="number" 
                                 min="1" max="100"
@@ -172,7 +174,7 @@ const LoraTrainingView: React.FC = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Learning Rate</label>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('lora.learningRate')}</label>
                             <input 
                                 type="number" 
                                 step="0.00001"
@@ -186,7 +188,7 @@ const LoraTrainingView: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div className="form-group">
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>LoRA Rank (Dim)</label>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('lora.loraRank')}</label>
                             <input 
                                 type="number" 
                                 min="4" max="256" step="4"
@@ -197,7 +199,7 @@ const LoraTrainingView: React.FC = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Batch Size</label>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('lora.batchSize')}</label>
                             <input 
                                 type="number" 
                                 min="1" max="128" step="1"
@@ -245,7 +247,7 @@ const LoraTrainingView: React.FC = () => {
                 {!jobId ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem' }}>
                         <Settings size={48} style={{ opacity: 0.2 }} />
-                        <p>No active training session</p>
+                        <p>{t('lora.noActiveSession')}</p>
                     </div>
                 ) : (
                     <AnimatePresence>
@@ -256,11 +258,11 @@ const LoraTrainingView: React.FC = () => {
                         >
                             <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Job ID</span>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('lora.jobId')}</span>
                                     <span style={{ fontFamily: 'monospace', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{jobId}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Status</span>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('lora.status')}</span>
                                     <span style={{ 
                                         color: status === 'Completed' ? 'var(--accent-emerald)' : 
                                                status === 'Failed' ? 'var(--accent-rose)' : 

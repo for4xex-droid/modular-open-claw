@@ -550,13 +550,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_slm_bridge_cli_hang_timeout_red() {
-        let hang_script = "/tmp/hang_cmd.sh";
+        #[cfg(unix)]
+        use std::os::unix::fs::PermissionsExt;
+        let hang_script = "/tmp/slm_hang_cmd.sh";
+        let _ = std::fs::write(hang_script, "#!/bin/sh\nsleep 10\n");
+        #[cfg(unix)]
+        let _ = std::fs::set_permissions(hang_script, std::fs::Permissions::from_mode(0o755));
+
+        // Wait for the filesystem write
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
         let backend = CliSlmBackend::new(hang_script);
 
         let start = std::time::Instant::now();
         // 5秒でタイムアウトすることを期待する (デフォルト設定を5秒とする)
         let res = backend.calculate_importance("test").await;
         let elapsed = start.elapsed();
+        let _ = std::fs::remove_file(hang_script);
 
         assert!(res.is_err(), "Should return an error on timeout");
         assert!(

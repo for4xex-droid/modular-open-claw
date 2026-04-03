@@ -12,6 +12,7 @@ pub mod avatar;
 pub mod biome;
 pub mod commerce;
 pub mod commerce_webhook;
+pub mod cortex;
 pub mod demo;
 pub mod ekyc;
 pub mod expression;

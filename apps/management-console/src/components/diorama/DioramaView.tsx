@@ -36,6 +36,7 @@ const DioramaView: React.FC<DioramaViewProps> = ({ status, mode, activeTab }) =>
         setHasError(false);
     }, [mode]);
 
+    if (activeTab === 'home-v2') return null;
     if (mode === 'off') return null;
 
     if (mode === 'lite' || hasError) {

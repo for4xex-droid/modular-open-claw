@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
+const HomePage = React.lazy(() => import("./components/home/HomePage"));
 const BiotopeView = React.lazy(() => import("./components/BiotopeView"));
 const Timeline = React.lazy(() => import("./components/Timeline"));
 const ImmuneSystem = React.lazy(() => import("./components/ImmuneSystem"));
@@ -53,14 +54,14 @@ import { useViewMode } from "./hooks/useViewMode";
 function App() {
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("home-v2");
   const [stats, setStats] = useState<AgentStats>({ level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showBirth, setShowBirth] = useState(false);
   const [recentEvents, setRecentEvents] = useState<VitalityUIEvent[]>([]);
   const [isAuth, setIsAuth] = useState(isAuthenticated());
 
-  const { lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
+  const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
 
   const isConnected = connectionStatus === 'connected';
 
@@ -81,7 +82,7 @@ function App() {
 
     const addEvent = (title: string, desc: string, color: string, icon: React.ReactNode) => {
       const id = Date.now();
-      setRecentEvents((prev: VitalityUIEvent[]) => [{ id, title, desc, color, icon }, ...prev].slice(0, 5));
+      setRecentEvents((prev: VitalityUIEvent[]) => [{ id, title, desc, color, icon }, ...prev].slice(0, 30));
     };
 
     switch (type) {
@@ -187,7 +188,7 @@ function App() {
   const { viewMode } = useViewMode();
 
   const isVisible = (tab: string) => {
-    const beginner = ['dashboard', 'demo', 'karma', 'expressions', 'settings'];
+    const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
     const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome', 'causal', 'lora'];
     const advanced = [...intermediate, 'graph', 'audit', 'immune'];
     
@@ -236,8 +237,8 @@ function App() {
         )), [])}
       </div>
 
-      {/* Sidebar */}
-      <aside className="sidebar">
+      {/* Sidebar — advanced mode only */}
+      {viewMode === 'advanced' && <aside className="sidebar">
         <div className="brand">
           <BrainCircuit size={28} color="#00f2ff" />
           <span>Aiome</span>
@@ -245,6 +246,14 @@ function App() {
 
         <nav className="nav-group">
           <h4>{t('nav.section.synergyHub')}</h4>
+          {isVisible("home-v2") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label={t('nav.homeV2')}
+              active={activeTab === "home-v2"}
+              onClick={() => setActiveTab("home-v2")}
+            />
+          )}
           {isVisible("dashboard") && (
             <NavItem
               icon={<Activity size={20} />}
@@ -421,7 +430,7 @@ function App() {
             </button>
           </div>
         </div>
-      </aside>
+      </aside>}
 
       {/* Main Content */}
       <main className="main-content">
@@ -431,6 +440,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             key={activeTab}
           >
+            {activeTab === "home-v2" && t('page.homeV2')}
             {activeTab === "dashboard" && t('page.biotope')}
             {activeTab === "demo" && t('page.demo')}
             {activeTab === "karma" && t('page.chronicle')}
@@ -463,6 +473,7 @@ function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
+              {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} />}
               {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} />}
               {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
               {activeTab === "karma" && <Timeline />}

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 interface Expression {
   id: string;
@@ -38,6 +39,7 @@ interface PipelineStatus {
 }
 
 const ExpressionPipeline: React.FC = () => {
+    const { t } = useTranslation();
   const [expressions, setExpressions] = useState<Expression[]>([]);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -161,9 +163,9 @@ const ExpressionPipeline: React.FC = () => {
               ACTIVE DELIBERATION
             </div>
             
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-primary)' }}>Current Insight (Internal State)</h3>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('expression.currentInsight')}</h3>
             <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.5 }}>
-              &quot;{status?.last_insight || "Analyzing recent karma flow..."}&quot;
+              &quot;{status?.last_insight || t('expression.analyzingKarma')}&quot;
             </p>
             
             <div style={{ paddingTop: '1rem', display: 'flex', alignItems: 'center', gap: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -191,7 +193,7 @@ const ExpressionPipeline: React.FC = () => {
           </div>
           <div>
             <div style={{ fontSize: '1.5rem', fontStyle: 'normal', fontWeight: 800, letterSpacing: '0.1em' }}>{status?.status?.toUpperCase() || "IDLE"}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>PIPELINE STATE</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{t('expression.pipelineState')}</div>
           </div>
           <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
             <motion.div 
@@ -257,8 +259,8 @@ const ExpressionPipeline: React.FC = () => {
         {expressions.length === 0 && (
           <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass-light)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-glass)' }}>
             <MessageCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-            <p>No self-expressions recorded yet.</p>
-            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Trigger a manual generation or enable Autonomous Mode to start.</p>
+            <p>{t('expression.noExpressions')}</p>
+            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{t('expression.triggerHint')}</p>
           </div>
         )}
       </div>

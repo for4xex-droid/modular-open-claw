@@ -12,6 +12,7 @@ import { API_BASE } from "../config";
 import { TrajectoryStep, AgentDiagnosis } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../i18n';
 
 const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -23,6 +24,7 @@ const CausalVisualizer: React.FC = () => {
     const [jobId, setJobId] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     const fetchTrajectory = async (id: string) => {
         if (!id) return;
@@ -124,7 +126,7 @@ const CausalVisualizer: React.FC = () => {
     const validateAndFetch = (id: string) => {
         const jobIdRegex = /^[a-zA-Z0-9_\-]+$/;
         if (!jobIdRegex.test(id)) {
-            setError("Invalid Job ID format. Only alphanumeric, _, and - allowed.");
+            setError(t('causal.invalidJobId'));
             return;
         }
         fetchTrajectory(id);
@@ -135,13 +137,13 @@ const CausalVisualizer: React.FC = () => {
             <div className="panel-header" style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <GitBranch size={20} color="var(--accent-cyan)" />
-                    <h3>Causal Reasoning Trace</h3>
+                    <h3>{t('causal.title')}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <div className="neural-input-container" style={{ position: 'relative' }}>
                         <input
                             type="text"
-                            placeholder="Job ID (e.g. job_123...)"
+                            placeholder={t('causal.jobIdPlaceholder')}
                             className="neural-input"
                             style={{ paddingRight: '3rem', width: '280px' }}
                             value={jobId}
@@ -165,7 +167,7 @@ const CausalVisualizer: React.FC = () => {
                     
                     {loading && (
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', zIndex: 20 }}>
-                            <div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>FETCHING NEURAL PATHWAYS...</div>
+                            <div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{t('causal.fetchingPaths')}</div>
                         </div>
                     )}
                     
@@ -180,7 +182,7 @@ const CausalVisualizer: React.FC = () => {
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center' }}>
                             <div>
                                 <GitBranch size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                                <p>Enter a Job ID to visualize its causal graph</p>
+                                <p>{t('causal.enterJobId')}</p>
                             </div>
                         </div>
                     )}
@@ -199,10 +201,10 @@ const CausalVisualizer: React.FC = () => {
                                 <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(255, 77, 148, 0.1)', border: '1px solid rgba(255, 77, 148, 0.3)', borderRadius: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-rose)', marginBottom: '0.75rem' }}>
                                         <AlertCircle size={18} />
-                                        <h4 style={{ margin: 0 }}>Critical Failure Diagnosis</h4>
+                                        <h4 style={{ margin: 0 }}>{t('causal.failureDiagnosis')}</h4>
                                     </div>
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                                        <strong>Category:</strong> {diagnosis.category}
+                                        <strong>{t('causal.category')}:</strong> {diagnosis.category}
                                     </div>
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                                         {diagnosis.root_cause}
@@ -228,9 +230,9 @@ const CausalVisualizer: React.FC = () => {
                                     <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>{selectedStep.action}</h3>
 
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Reasoning & Intent</h5>
+                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.reasoningIntent')}</h5>
                                         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                                            {selectedStep.reasoning || "No reasoning provided for this step."}
+                                            {selectedStep.reasoning || t('causal.noReasoning')}
                                         </p>
                                     </div>
 
@@ -246,22 +248,22 @@ const CausalVisualizer: React.FC = () => {
                                     )}
 
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Tool & Parameters</h5>
+                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.toolParams')}</h5>
                                         <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.75rem', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto' }}>
-                                            <div style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{selectedStep.tool_name || "Internal"}</div>
+                                            <div style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{selectedStep.tool_name || t('causal.internal')}</div>
                                             <pre style={{ color: 'var(--text-muted)' }}>{JSON.stringify(selectedStep.input, null, 2)}</pre>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Result Output</h5>
+                                        <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.resultOutput')}</h5>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '200px' }}>
                                             <pre style={{ color: 'var(--text-secondary)' }}>{JSON.stringify(selectedStep.output, null, 2)}</pre>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                !diagnosis && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '4rem' }}>Click a node to view details</div>
+                                !diagnosis && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '4rem' }}>{t('causal.clickNode')}</div>
                             )}
                         </motion.div>
                     )}

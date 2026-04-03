@@ -6,6 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
+import { useTranslation } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
 import {
     Monitor, Lock, Database,
@@ -26,6 +27,7 @@ interface SettingEntry {
 const SettingsPage: React.FC = () => {
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
     const { mode, setMode } = useDisplayMode();
+    const { t } = useTranslation();
     const [settings, setSettings] = useState<SettingEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
@@ -74,7 +76,7 @@ const SettingsPage: React.FC = () => {
 
     const testConnection = async (service: string, url: string, model?: string) => {
         if (!url) {
-            setTestResults(prev => ({ ...prev, [service]: { success: false, message: 'URL is required', loading: false } }));
+            setTestResults(prev => ({ ...prev, [service]: { success: false, message: t('settings.urlRequired'), loading: false } }));
             return;
         }
         setTestResults(prev => ({ ...prev, [service]: { success: false, message: '', loading: true } }));
@@ -86,7 +88,7 @@ const SettingsPage: React.FC = () => {
             const data = await res.json();
             setTestResults(prev => ({ ...prev, [service]: { success: data.success, message: data.message, loading: false } }));
         } catch (error) {
-            setTestResults(prev => ({ ...prev, [service]: { success: false, message: 'Connection failed', loading: false } }));
+            setTestResults(prev => ({ ...prev, [service]: { success: false, message: t('settings.connectionFailed'), loading: false } }));
         }
     };
 
@@ -108,12 +110,12 @@ const SettingsPage: React.FC = () => {
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Monitor size={24} color="var(--accent-cyan)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Appearance</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.appearance')}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <div>
-                            <label style={labelStyle}>AI Name</label>
+                            <label style={labelStyle}>{t('settings.aiName')}</label>
                             <input
                                 type="text"
                                 value={getSetting('ai_name')}
@@ -133,33 +135,33 @@ const SettingsPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Avatar Character</label>
+                            <label style={labelStyle}>{t('settings.avatarCharacter')}</label>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div onClick={() => setCharacter('female')} style={charCardStyle(character === 'female', 'purple')}>
                                     <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♀</div>
-                                    <div style={{ fontSize: '0.9rem' }}>Female</div>
+                                    <div style={{ fontSize: '0.9rem' }}>{t('settings.female')}</div>
                                 </div>
                                 <div onClick={() => setCharacter('male')} style={charCardStyle(character === 'male', 'cyan')}>
                                     <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♂</div>
-                                    <div style={{ fontSize: '0.9rem' }}>Male</div>
+                                    <div style={{ fontSize: '0.9rem' }}>{t('settings.male')}</div>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Avatar Style</label>
+                            <label style={labelStyle}>{t('settings.avatarStyle')}</label>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div onClick={() => setProportion('chibi')} style={styleCardStyle(proportion === 'chibi', character)}>
-                                    Cute Chibi (SD)
+                                    {t('settings.cuteChibi')}
                                 </div>
                                 <div onClick={() => setProportion('taller')} style={styleCardStyle(proportion === 'taller', character)}>
-                                    Modern Taller
+                                    {t('settings.modernTaller')}
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Display Mode</label>
+                            <label style={labelStyle}>{t('settings.displayMode')}</label>
                             <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '10px' }}>
                                 {['vrm', 'lite', 'off'].map((m) => (
                                     <button
@@ -179,12 +181,12 @@ const SettingsPage: React.FC = () => {
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Database size={24} color="var(--accent-purple)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>LLM Engine</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.llmEngine')}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div>
-                            <label style={labelStyle}>LLM Provider</label>
+                            <label style={labelStyle}>{t('settings.llmProvider')}</label>
                             <select
                                 value={getSetting('llm_provider') || 'ollama'}
                                 onChange={(e) => update_setting_handler(e.target.value, 'llm_provider', 'llm')}
@@ -238,18 +240,18 @@ const SettingsPage: React.FC = () => {
                             <>
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                        <label style={{ ...labelStyle, marginBottom: 0 }}>API Key</label>
+                                        <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.apiKey')}</label>
                                         {saving === 'llm_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
                                     </div>
                                     <input
                                         type="password"
                                         defaultValue={getSetting('llm_api_key')}
-                                        placeholder="Enter your API key"
+                                        placeholder={t('settings.enterApiKey')}
                                         onBlur={(e) => update_setting_handler(e.target.value, 'llm_api_key', 'llm')}
                                         style={inputStyle}
                                     />
                                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                        Masked for security. Priority: .env &gt; Database.
+                                        {t('settings.maskedSecurity')}
                                     </div>
                                 </div>
                                 <SettingInput
@@ -276,7 +278,7 @@ const SettingsPage: React.FC = () => {
                                 disabled={testResults['ollama']?.loading}
                             >
                                 {testResults['ollama']?.loading ? <Loader2 className="ani-spin" size={14} /> : <Cpu size={14} />}
-                                Test {(getSetting('llm_provider') || 'ollama').toUpperCase()} Connection
+                                Test {(getSetting('llm_provider') || 'ollama').toUpperCase()} {t('settings.testConnection', { provider: '' }).replace('  ', ' ')}
                             </button>
                             {testResults['ollama'] && (
                                 <div style={testResultStyle(testResults['ollama'].success)}>
@@ -292,12 +294,12 @@ const SettingsPage: React.FC = () => {
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Cpu size={24} color="var(--accent-fuchsia)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Background LLM (Autonomous)</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.bgLlm')}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div>
-                            <label style={labelStyle}>Provider</label>
+                            <label style={labelStyle}>{t('settings.provider')}</label>
                             <select
                                 value={getSetting('bg_llm_provider') || 'gemini'}
                                 onChange={(e) => update_setting_handler(e.target.value, 'bg_llm_provider', 'llm')}
@@ -314,18 +316,18 @@ const SettingsPage: React.FC = () => {
                         {(getSetting('bg_llm_provider') === 'gemini' || getSetting('bg_llm_provider') === 'openai' || getSetting('bg_llm_provider') === 'claude') && (
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                    <label style={{ ...labelStyle, marginBottom: 0 }}>API Key</label>
+                                    <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.apiKey')}</label>
                                     {saving === 'bg_llm_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
                                 </div>
                                 <input
                                     type="password"
                                     defaultValue={getSetting('bg_llm_api_key')}
-                                    placeholder="Enter Background API key (or leave empty for .env default)"
+                                    placeholder={t('settings.bgApiKeyPlaceholder')}
                                     onBlur={(e) => update_setting_handler(e.target.value, 'bg_llm_api_key', 'llm')}
                                     style={inputStyle}
                                 />
                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                    If left empty, falls back to the main LLM API Key or .env API keys.
+                                    {t('settings.bgApiKeyHint')}
                                 </div>
                             </div>
                         )}
@@ -344,7 +346,7 @@ const SettingsPage: React.FC = () => {
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <MessageSquare size={24} color="#5865F2" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Channel Bridges</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.channelBridges')}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -372,8 +374,8 @@ const SettingsPage: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                                 <Globe size={18} color="var(--accent-cyan)" />
                                 <div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Enable Watchtower</div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Background bridge service</div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.enableWatchtower')}</div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('settings.bgBridgeService')}</div>
                                 </div>
                             </div>
                             <button
@@ -415,7 +417,7 @@ const SettingsPage: React.FC = () => {
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
                                 <Mic size={18} color="var(--accent-cyan)" />
-                                <label style={{ ...labelStyle, marginBottom: 0 }}>Text-to-Speech (TTS)</label>
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.tts')}</label>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div>
@@ -462,7 +464,7 @@ const SettingsPage: React.FC = () => {
                         />
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.9rem' }}>Enforce Guardrails</div>
+                            <div style={{ fontSize: '0.9rem' }}>{t('settings.enforceGuardrails')}</div>
                             <button
                                 onClick={() => update_setting_handler(getSetting('enforce_guardrail') === 'true' ? 'false' : 'true', 'enforce_guardrail', 'security')}
                                 style={toggleBtnStyle(getSetting('enforce_guardrail') === 'true')}
@@ -472,7 +474,7 @@ const SettingsPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Log Level</label>
+                            <label style={labelStyle}>{t('settings.logLevel')}</label>
                             <select
                                 value={getSetting('log_level')}
                                 onChange={(e) => update_setting_handler(e.target.value, 'log_level', 'system')}

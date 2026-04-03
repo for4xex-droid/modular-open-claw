@@ -27,7 +27,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
 
         setIsLoading(true);
         setError('');
-
+        console.log("DEBUG: handleLogin started fetching...");
         try {
             // 認証が必要なエンドポイントで検証する（/api/health は公開なのでトークン検証にならない）
             const response = await fetch(`${API_BASE}/api/v1/settings`, {
@@ -35,6 +35,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                     'Authorization': `Bearer ${token}`
                 }
             });
+            console.log("DEBUG: fetch completed, status:", response.status);
 
             if (response.ok || response.status === 200) {
                 setAuthToken(token);
@@ -45,8 +46,10 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                 setError(t('auth.errorServer', { status: response.status }));
             }
         } catch (err) {
+            console.log("DEBUG: fetch failed with error:", err);
             setError(t('auth.errorConnection'));
         } finally {
+            console.log("DEBUG: finally block executed");
             setIsLoading(false);
         }
     };

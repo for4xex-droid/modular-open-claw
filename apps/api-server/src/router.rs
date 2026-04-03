@@ -242,6 +242,25 @@ pub fn build_app(
         )
         .route("/api/wiki", get(routes::general::list_wiki_files))
         .route("/api/wiki/content", get(routes::general::get_wiki_content))
+        .nest(
+            "/api/v1/cortex",
+            Router::new()
+                .route("/ingest", post(routes::cortex::ingest_url_handler))
+                .route("/ingest/text", post(routes::cortex::ingest_text_handler))
+                .route("/documents", get(routes::cortex::list_documents_handler))
+                .route(
+                    "/documents/:id",
+                    delete(routes::cortex::delete_document_handler),
+                )
+                .route_layer(
+                    tower::ServiceBuilder::new()
+                        .layer(axum::error_handling::HandleErrorLayer::new(
+                            handle_rate_limit,
+                        ))
+                        .buffer(5)
+                        .rate_limit(5, std::time::Duration::from_secs(1)),
+                ),
+        )
         .route(
             "/api/v1/settings",
             get(routes::settings::get_settings)

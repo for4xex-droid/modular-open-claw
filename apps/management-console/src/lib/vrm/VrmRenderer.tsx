@@ -24,7 +24,7 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
 
     return (
         <Canvas
-            camera={{ position: [0, 0.45, 5.5], fov: 35 }}
+            camera={{ position: [0, 0.25, 3.5], fov: 35 }}
             gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
             style={{ background: 'transparent', pointerEvents: 'none' }}
             onCreated={({ gl }) => {
@@ -62,48 +62,51 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
             {/* Under-glow for dramatic effect */}
             <pointLight position={[0, -1, 1]} intensity={15} color={accentColor} />
 
-            {/* === Character Billboard — The New "Living" Avatar === */}
-            <Float speed={1.5} rotationIntensity={0.02} floatIntensity={0.1}>
-                <Suspense fallback={null}>
-                    <CharacterBillboard url={modelUrl} avatarState={avatarState} />
-                </Suspense>
-            </Float>
+            {/* Scene offset — shift model down so halo is visible, floor may clip (OK) */}
+            <group position={[0, -0.25, 0]}>
+                {/* === Character Billboard — The New "Living" Avatar === */}
+                <Float speed={1.5} rotationIntensity={0.02} floatIntensity={0.1}>
+                    <Suspense fallback={null}>
+                        <CharacterBillboard url={modelUrl} avatarState={avatarState} />
+                    </Suspense>
+                </Float>
 
-            {/* === Reflector Floor === */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, 0]}>
-                <planeGeometry args={[30, 30]} />
-                <MeshReflectorMaterial
-                    blur={[400, 200]}
-                    resolution={1024}
-                    mixBlur={1}
-                    mixStrength={80}
-                    roughness={0.85}
-                    depthScale={1.5}
-                    minDepthThreshold={0.3}
-                    maxDepthThreshold={1.5}
-                    color="#080808"
-                    metalness={0.6}
-                    mirror={0.15}
+                {/* === Reflector Floor === */}
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, 0]}>
+                    <planeGeometry args={[30, 30]} />
+                    <MeshReflectorMaterial
+                        blur={[400, 200]}
+                        resolution={1024}
+                        mixBlur={1}
+                        mixStrength={80}
+                        roughness={0.85}
+                        depthScale={1.5}
+                        minDepthThreshold={0.3}
+                        maxDepthThreshold={1.5}
+                        color="#080808"
+                        metalness={0.6}
+                        mirror={0.15}
+                    />
+                </mesh>
+
+                {/* === Particles === */}
+                <Sparkles
+                    count={isAwakened ? 120 : 50}
+                    scale={[6, 4, 6]}
+                    size={isAwakened ? 3 : 2}
+                    speed={0.3}
+                    color={accentColor}
+                    opacity={0.5}
                 />
-            </mesh>
-
-            {/* === Particles === */}
-            <Sparkles
-                count={isAwakened ? 120 : 50}
-                scale={[6, 4, 6]}
-                size={isAwakened ? 3 : 2}
-                speed={0.3}
-                color={accentColor}
-                opacity={0.5}
-            />
-            <Sparkles
-                count={30}
-                scale={[4, 3, 4]}
-                size={1}
-                speed={0.15}
-                color="#ffffff"
-                opacity={0.15}
-            />
+                <Sparkles
+                    count={30}
+                    scale={[4, 3, 4]}
+                    size={1}
+                    speed={0.15}
+                    color="#ffffff"
+                    opacity={0.15}
+                />
+            </group>
         </Canvas>
     );
 };

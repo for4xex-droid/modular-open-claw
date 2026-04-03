@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 interface ArtifactFile {
   name: string;
@@ -60,6 +61,7 @@ interface Artifact {
 }
 
 const ArtifactVault = () => {
+    const { t } = useTranslation();
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
@@ -106,7 +108,7 @@ const ArtifactVault = () => {
 
   const deleteArtifact = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this artifact? This action is permanent and will purge physical files.")) return;
+    if (!confirm(t('artifact.confirmDelete'))) return;
 
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/artifacts/${id}`, {
@@ -130,7 +132,7 @@ const ArtifactVault = () => {
           <Search size={18} />
           <input
             type="text"
-            placeholder="Search artifacts or tags..."
+            placeholder={t('artifact.search')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -152,7 +154,7 @@ const ArtifactVault = () => {
       {loading ? (
         <div style={{ padding: '4rem', textAlign: 'center' }}>
           <Box className="ani-pulse" size={48} color="var(--accent-cyan)" style={{ margin: '0 auto 1.5rem' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Decrypting Artifact Vault...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('artifact.decrypting')}</p>
         </div>
       ) : (
         <div className="artifact-grid">
@@ -193,14 +195,14 @@ const ArtifactVault = () => {
               {artifact.signature && (
                 <div className="signature-badge">
                   <Shield size={10} />
-                  <span>VERIFIED</span>
+                  <span>{t('artifact.verified')}</span>
                 </div>
               )}
 
               <button
                 className="delete-btn"
                 onClick={(e) => deleteArtifact(e, artifact.id)}
-                title="Purge Artifact"
+                title={t('artifact.purge')}
               >
                 <Trash2 size={14} />
               </button>

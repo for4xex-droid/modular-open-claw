@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 interface Diagnosis {
   id: number;
@@ -38,6 +39,7 @@ interface AuditEntry {
 }
 
 const DiagnosticsHistory: React.FC = () => {
+    const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"diagnostics" | "ledger">("diagnostics");
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [ledger, setLedger] = useState<AuditEntry[]>([]);
@@ -90,7 +92,7 @@ const DiagnosticsHistory: React.FC = () => {
               <Hash size={12} /> {d.job_id.slice(0, 8)}
             </div>
             <div className="timestamp">
-              <Clock size={12} /> {d.timestamp ? new Date(d.timestamp).toLocaleString() : "Unknown"}
+              <Clock size={12} /> {d.timestamp ? new Date(d.timestamp).toLocaleString() : t('diagnostics.unknown')}
             </div>
           </div>
           
@@ -100,7 +102,7 @@ const DiagnosticsHistory: React.FC = () => {
               <h4 style={{ color: getCategoryColor(d.failure_category) }}>
                 {d.failure_category?.toUpperCase() || "LOG"}
               </h4>
-              <p className="root-cause">{d.root_cause || "No root cause identified"}</p>
+              <p className="root-cause">{d.root_cause || t('diagnostics.noRootCause')}</p>
             </div>
           </div>
 
@@ -154,7 +156,7 @@ const DiagnosticsHistory: React.FC = () => {
       <div className="panel-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <Activity size={20} color="var(--accent-rose)" />
-          <h3>Audit & Immunity Ledger</h3>
+          <h3>{t('diagnostics.title')}</h3>
         </div>
         <div className="tab-switcher">
           <button className={activeTab === 'diagnostics' ? 'active' : ''} onClick={() => setActiveTab('diagnostics')}>
@@ -170,7 +172,7 @@ const DiagnosticsHistory: React.FC = () => {
         {loading && page === 1 ? (
           <div className="loading-state">
             <RefreshCw className="ani-pulse" size={48} color="var(--accent-rose)" />
-            <p>Syncing Ledger with Blockchain State...</p>
+            <p>{t('diagnostics.syncing')}</p>
           </div>
         ) : (
           activeTab === 'diagnostics' ? renderDiagnostics() : renderLedger()

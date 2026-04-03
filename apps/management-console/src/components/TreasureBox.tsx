@@ -9,9 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ExternalLink, Info, Loader2, RefreshCw } from 'lucide-react';
 import { useTreasure } from '../hooks/useTreasure';
 import { TreasureItem } from '../types';
+import { useTranslation } from '../i18n';
 
 export const TreasureBox: React.FC = () => {
     const { items, loading, error, refresh, recordFeedback } = useTreasure();
+    const { t } = useTranslation();
     const [showEffect, setShowEffect] = useState(false);
 
     const handleClick = async (item: TreasureItem) => {
@@ -36,8 +38,8 @@ export const TreasureBox: React.FC = () => {
                         <Sparkles className="w-5 h-5 text-indigo-400" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight">エージェントの感覚 (Sense)</h2>
-                        <p className="text-xs text-indigo-300/60 leading-none">AIが惹かれた「宝箱」</p>
+                        <h2 className="text-lg font-bold text-white tracking-tight">{t('treasure.title')}</h2>
+                        <p className="text-xs text-indigo-300/60 leading-none">{t('treasure.subtitle')}</p>
                     </div>
                 </div>
                 <button 
@@ -60,7 +62,7 @@ export const TreasureBox: React.FC = () => {
             {loading && items.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                    <p className="text-sm text-white/40">Senseを調律中...</p>
+                    <p className="text-sm text-white/40">{t('treasure.loading')}</p>
                 </div>
             )}
 
@@ -114,7 +116,7 @@ export const TreasureBox: React.FC = () => {
             {!loading && items.length === 0 && !error && (
                 <div className="text-center py-12 opacity-30 select-none">
                     <Info className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-sm">まだ何も見つかりませんでした</p>
+                    <p className="text-sm">{t('treasure.empty')}</p>
                 </div>
             )}
 
@@ -129,7 +131,7 @@ export const TreasureBox: React.FC = () => {
                     >
                         <div className="px-4 py-2 bg-indigo-500 text-white font-bold rounded-full shadow-lg shadow-indigo-500/50 flex items-center gap-2">
                             <Sparkles className="w-4 h-4" />
-                            <span>共鳴度 +5!</span>
+                            <span>{t('treasure.resonance')}</span>
                         </div>
                     </motion.div>
                 )}

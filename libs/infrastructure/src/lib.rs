@@ -59,6 +59,9 @@ pub mod concept_manager;
 pub mod constraint_checker;
 /// LLM向けコンテキスト生成エンジン
 pub mod context_engine;
+pub mod cortex_ingester;
+#[cfg(test)]
+mod cortex_ingester_tests;
 pub mod lora_autotuner;
 pub mod repair_strategy;
 /// タスクキュー・非同期実行・リトライ

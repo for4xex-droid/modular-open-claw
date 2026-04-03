@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from '../i18n';
 
 interface VoiceAsset {
   id: string;
@@ -47,6 +48,7 @@ const mockAssets: VoiceAsset[] = [
 ];
 
 export default function VoiceStore() {
+    const { t } = useTranslation();
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -141,7 +143,7 @@ export default function VoiceStore() {
           gap: "1rem"
         }}>
           <div>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Wallet Balance</span>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{t('voice.walletBalance')}</span>
             <div style={{ fontWeight: "bold", color: "var(--accent-cyan)", fontSize: "1.2rem" }}>
               {balance.toLocaleString()} KC
             </div>
@@ -207,7 +209,7 @@ export default function VoiceStore() {
                 disabled={purchasing === asset.id || balance < asset.price_coins}
               >
                 {purchasing === asset.id ? (
-                  <span className="ani-pulse">Securing...</span>
+                  <span className="ani-pulse">{t('voice.securing')}</span>
                 ) : (
                   <>
                     <ShoppingCart size={16} /> Purchase

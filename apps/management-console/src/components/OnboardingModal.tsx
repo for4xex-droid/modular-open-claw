@@ -10,6 +10,7 @@ import { BrainCircuit, Sparkles, Shield, User, UserCheck } from 'lucide-react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { useTranslation } from '../i18n';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -17,6 +18,7 @@ interface OnboardingModalProps {
 }
 
 const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) => {
+    const { t } = useTranslation();
     const [step, setStep] = useState(0);
     const [aiName, setAiName] = useState("Watchtower");
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
@@ -95,7 +97,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                             }}
                          >
                              <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♀</div>
-                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Female</div>
+                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{t('settings.female')}</div>
                          </button>
                          <button 
                             onClick={() => setCharacter('male')}
@@ -107,7 +109,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                             }}
                          >
                              <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♂</div>
-                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Male</div>
+                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{t('settings.male')}</div>
                          </button>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
@@ -149,9 +151,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
                     {[
-                        { id: 'beginner', label: 'Beginner', desc: 'Simplified UI, essential features only.' },
-                        { id: 'intermediate', label: 'Intermediate', desc: 'Full control, standard dashboard.' },
-                        { id: 'advanced', label: 'Advanced', desc: 'Raw logs, expert settings enabled.' }
+                        { id: 'beginner', label: t('onboarding.beginner'), desc: t('onboarding.beginnerDesc') },
+                        { id: 'intermediate', label: t('onboarding.intermediate'), desc: t('onboarding.intermediateDesc') },
+                        { id: 'advanced', label: t('onboarding.advanced'), desc: t('onboarding.advancedDesc') }
                     ].map((lvl) => (
                         <button
                             key={lvl.id}

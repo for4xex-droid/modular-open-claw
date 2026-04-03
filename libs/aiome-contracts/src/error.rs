@@ -87,6 +87,9 @@ pub enum AiomeError {
         source: anyhow::Error,
     },
 
+    #[error("ネットワークエラー: {reason}")]
+    NetworkError { reason: String },
+
     #[error("インフラ構造エラー: {reason}")]
     Infrastructure { reason: String },
 

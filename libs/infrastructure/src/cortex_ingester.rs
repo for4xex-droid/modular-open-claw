@@ -1,0 +1,303 @@
+use crate::db::DatabasePool;
+use aiome_core::error::AiomeError;
+use aiome_core_contracts::llm::LlmProvider;
+use sha2::{Digest, Sha256};
+use shared::security::SecurityPolicy;
+use std::sync::Arc;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum SourceType {
+    Web,
+    Pdf,
+    Manual,
+    GitHub,
+    Rss,
+}
+
+impl SourceType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SourceType::Web => "web",
+            SourceType::Pdf => "pdf",
+            SourceType::Manual => "manual",
+            SourceType::GitHub => "github",
+            SourceType::Rss => "rss",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "web" => Ok(SourceType::Web),
+            "pdf" => Ok(SourceType::Pdf),
+            "manual" => Ok(SourceType::Manual),
+            "github" => Ok(SourceType::GitHub),
+            "rss" => Ok(SourceType::Rss),
+            _ => Err(format!("Unknown source type: {}", s)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CortexDocument {
+    pub id: String,
+    pub title: String,
+    pub source_url: Option<String>,
+    pub content_md: String,
+    pub content_hash: String,
+    pub source_type: SourceType,
+    pub ingested_at: String,
+    pub tags: Vec<String>,
+    pub summary: Option<String>,
+    pub wiki_article_refs: Vec<String>,
+}
+
+#[derive(Clone)]
+pub struct CortexIngester {
+    llm_provider: Arc<dyn LlmProvider>,
+    pool: DatabasePool,
+    http_client: reqwest::Client,
+}
+
+impl CortexIngester {
+    pub fn new(llm_provider: Arc<dyn LlmProvider>, pool: DatabasePool) -> Self {
+        Self {
+            llm_provider,
+            pool,
+            http_client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .unwrap_or_default(),
+        }
+    }
+
+    fn compute_hash(content: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(content.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    pub async fn ingest_url(&self, url: &str) -> Result<CortexDocument, AiomeError> {
+        let policy = SecurityPolicy::default();
+        if policy.validate_url(url).await.is_err() {
+            return Err(AiomeError::SecurityViolation {
+                reason: "Invalid or restricted URL".to_string(),
+            });
+        }
+
+        let resp =
+            self.http_client
+                .get(url)
+                .send()
+                .await
+                .map_err(|e| AiomeError::NetworkError {
+                    reason: format!("Failed to fetch URL: {}", e),
+                })?;
+
+        if let Some(len) = resp.content_length() {
+            if len > 1_048_576 * 2 {
+                // 2MB limit
+                return Err(AiomeError::Infrastructure {
+                    reason: "File too large. Max 2MB allowed for Cortex Ingestion.".to_string(),
+                });
+            }
+        }
+
+        let html = resp.text().await.map_err(|e| AiomeError::NetworkError {
+            reason: format!("Failed to read response body: {}", e),
+        })?;
+
+        if html.trim().is_empty() {
+            return Err(AiomeError::Infrastructure {
+                reason: "Extracted content is empty. This page might require javascript to render."
+                    .to_string(),
+            });
+        }
+
+        let prompt = format!(
+            "Please extract the main article content from the following HTML and convert it to clean, well-structured Markdown. Retain headers, code blocks, and tables. Keep it under 10000 characters if possible. Only output the markdown content without explanation.\n\nHTML:\n{}",
+            html
+        );
+
+        let llm_resp = self
+            .llm_provider
+            .complete(&prompt, Some("You are a smart webpage content extractor."))
+            .await?;
+
+        let content_md = llm_resp.content.trim().to_string();
+
+        if content_md.len() < 100 {
+            return Err(AiomeError::Infrastructure {
+                reason: "Extracted markdown is too short. extraction failed.".to_string(),
+            });
+        }
+
+        let doc = CortexDocument {
+            id: uuid::Uuid::new_v4().to_string(),
+            title: "Web Article".to_string(), // In future, extract title from HTML
+            source_url: Some(url.to_string()),
+            content_md: content_md.clone(),
+            content_hash: Self::compute_hash(&content_md),
+            source_type: SourceType::Web,
+            ingested_at: chrono::Utc::now().to_rfc3339(),
+            tags: vec![],
+            summary: None,
+            wiki_article_refs: vec![],
+        };
+
+        self.save_document(&doc).await?;
+        Ok(doc)
+    }
+
+    pub async fn ingest_text(
+        &self,
+        title: &str,
+        content: &str,
+    ) -> Result<CortexDocument, AiomeError> {
+        let content_md = content.to_string();
+        let doc = CortexDocument {
+            id: uuid::Uuid::new_v4().to_string(),
+            title: title.to_string(),
+            source_url: None,
+            content_md: content_md.clone(),
+            content_hash: Self::compute_hash(&content_md),
+            source_type: SourceType::Manual,
+            ingested_at: chrono::Utc::now().to_rfc3339(),
+            tags: vec![],
+            summary: None,
+            wiki_article_refs: vec![],
+        };
+
+        self.save_document(&doc).await?;
+        Ok(doc)
+    }
+
+    pub async fn ingest_pdf(&self, data: &[u8], title: &str) -> Result<CortexDocument, AiomeError> {
+        let text =
+            pdf_extract::extract_text_from_mem(data).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to extract text from PDF: {}", e),
+            })?;
+
+        let prompt = format!(
+            "Please format the following raw PDF text into well-structured Markdown. Fix any broken line breaks, retain headings, and try to make it readable. Only output the Markdown.\n\nRAW TEXT:\n{}",
+            text
+        );
+
+        let llm_resp = self
+            .llm_provider
+            .complete(&prompt, Some("You are a text structure formatter."))
+            .await?;
+
+        let content_md = llm_resp.content.trim().to_string();
+
+        let doc = CortexDocument {
+            id: uuid::Uuid::new_v4().to_string(),
+            title: title.to_string(),
+            source_url: None,
+            content_md: content_md.clone(),
+            content_hash: Self::compute_hash(&content_md),
+            source_type: SourceType::Pdf,
+            ingested_at: chrono::Utc::now().to_rfc3339(),
+            tags: vec![],
+            summary: None,
+            wiki_article_refs: vec![],
+        };
+
+        self.save_document(&doc).await?;
+        Ok(doc)
+    }
+
+    async fn save_document(&self, doc: &CortexDocument) -> Result<(), AiomeError> {
+        let pool = self.pool.get_sqlite_pool_or_err()?; // we use sqlite primarily for the cortex db
+
+        let tags_json = serde_json::to_string(&doc.tags).unwrap_or_default();
+        let wiki_refs_json = serde_json::to_string(&doc.wiki_article_refs).unwrap_or_default();
+
+        sqlx::query(
+            "INSERT INTO cortex_documents (
+                id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&doc.id)
+        .bind(&doc.title)
+        .bind(&doc.source_url)
+        .bind(&doc.content_md)
+        .bind(&doc.content_hash)
+        .bind(doc.source_type.as_str())
+        .bind(&tags_json)
+        .bind(&doc.summary)
+        .bind(&wiki_refs_json)
+        .bind(&doc.ingested_at)
+        .execute(pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to insert cortex_document: {}", e),
+        })?;
+
+        Ok(())
+    }
+
+    pub async fn list_documents(&self, limit: i64) -> Result<Vec<CortexDocument>, AiomeError> {
+        let pool = self.pool.get_sqlite_pool_or_err()?;
+
+        let rows = sqlx::query(
+            "SELECT id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at 
+             FROM cortex_documents ORDER BY ingested_at DESC LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to query cortex_documents: {}", e),
+        })?;
+
+        let mut docs = Vec::new();
+        for row in rows {
+            use sqlx::Row;
+            let id: String = row.try_get("id").unwrap_or_default();
+            let title: String = row.try_get("title").unwrap_or_default();
+            let source_url: Option<String> = row.try_get("source_url").unwrap_or_default();
+            let content_md: String = row.try_get("content_md").unwrap_or_default();
+            let content_hash: String = row.try_get("content_hash").unwrap_or_default();
+            let source_type_str: String = row.try_get("source_type").unwrap_or_default();
+            let tags_json: String = row.try_get("tags").unwrap_or_else(|_| "[]".to_string());
+            let summary: Option<String> = row.try_get("summary").unwrap_or_default();
+            let wiki_refs_json: String = row
+                .try_get("wiki_article_refs")
+                .unwrap_or_else(|_| "[]".to_string());
+            let ingested_at: String = row.try_get("ingested_at").unwrap_or_default();
+
+            let source_type = SourceType::from_str(&source_type_str).unwrap_or(SourceType::Manual);
+            let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+            let wiki_article_refs: Vec<String> =
+                serde_json::from_str(&wiki_refs_json).unwrap_or_default();
+
+            docs.push(CortexDocument {
+                id,
+                title,
+                source_url,
+                content_md,
+                content_hash,
+                source_type,
+                ingested_at,
+                tags,
+                summary,
+                wiki_article_refs,
+            });
+        }
+        Ok(docs)
+    }
+
+    pub async fn delete_document(&self, id: &str) -> Result<(), AiomeError> {
+        let pool = self.pool.get_sqlite_pool_or_err()?;
+
+        sqlx::query("DELETE FROM cortex_documents WHERE id = ?")
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to delete cortex_document: {}", e),
+            })?;
+
+        Ok(())
+    }
+}
