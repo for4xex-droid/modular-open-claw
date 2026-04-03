@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use shared::security::SecurityPolicy;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub enum SourceType {
     Web,
     Pdf,
@@ -37,7 +37,7 @@ impl SourceType {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct CortexDocument {
     pub id: String,
     pub title: String,

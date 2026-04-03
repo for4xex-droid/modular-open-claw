@@ -1111,6 +1111,133 @@
         ]
       }
     },
+    "/api/v1/cortex/documents": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "list_documents_handler",
+        "responses": {
+          "200": {
+            "description": "List all documents inside Cortex",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CortexDocument"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/documents/{id}": {
+      "delete": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "delete_document_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the document to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Document deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/ingest": {
+      "post": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "ingest_url_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestUrlReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "URL ingrained into Cortex successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResp"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/ingest/text": {
+      "post": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "ingest_text_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestTextReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Text ingrained into Cortex successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestResp"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/ekyc/session": {
       "post": {
         "tags": [
@@ -2388,6 +2515,63 @@
           }
         }
       },
+      "CortexDocument": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content_md",
+          "content_hash",
+          "source_type",
+          "ingested_at",
+          "tags",
+          "wiki_article_refs"
+        ],
+        "properties": {
+          "content_hash": {
+            "type": "string"
+          },
+          "content_md": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ingested_at": {
+            "type": "string"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType"
+          },
+          "source_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "wiki_article_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "CreateGuildRequest": {
         "type": "object",
         "required": [
@@ -2824,6 +3008,47 @@
           }
         }
       },
+      "IngestResp": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "IngestTextReq": {
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "IngestUrlReq": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "IntentCategory": {
         "type": "string",
         "description": "インテントカテゴリ（AgentSense 用）",
@@ -3116,6 +3341,16 @@
             }
           }
         }
+      },
+      "SourceType": {
+        "type": "string",
+        "enum": [
+          "Web",
+          "Pdf",
+          "Manual",
+          "GitHub",
+          "Rss"
+        ]
       },
       "StartAutonomousRequest": {
         "type": "object",

@@ -80,7 +80,12 @@ use utoipa::OpenApi;
         crate::routes::syndicate::list_guilds,
         crate::routes::syndicate::delete_guild,
         crate::routes::syndicate::add_member,
-        crate::routes::syndicate::list_members
+        crate::routes::syndicate::list_members,
+        // Cortex
+        crate::routes::cortex::ingest_url_handler,
+        crate::routes::cortex::ingest_text_handler,
+        crate::routes::cortex::list_documents_handler,
+        crate::routes::cortex::delete_document_handler
     ),
     components(
         schemas(
@@ -131,6 +136,12 @@ use utoipa::OpenApi;
             aiome_core_contracts::syndicate::GuildMember,
             crate::routes::syndicate::CreateGuildRequest,
             crate::routes::syndicate::AddMemberRequest,
+            // Cortex
+            crate::routes::cortex::IngestUrlReq,
+            crate::routes::cortex::IngestTextReq,
+            crate::routes::cortex::IngestResp,
+            infrastructure::cortex_ingester::CortexDocument,
+            infrastructure::cortex_ingester::SourceType,
         )
     ),
     info(
