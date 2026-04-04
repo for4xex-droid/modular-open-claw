@@ -294,7 +294,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     info!(
         "🧠 [LLM] Front-end: DynamicLlm (DB-configured), Background: {} ({}), Embedding: {}",
         std::env::var("BG_LLM_PROVIDER").unwrap_or_else(|_| "ollama".to_string()),
-        std::env::var("BG_LLM_MODEL").unwrap_or_else(|_| "qwen3.5:9b".to_string()),
+        std::env::var("BG_LLM_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string()),
         embed_type,
     );
 
@@ -704,6 +704,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         std::process::exit(1);
     }
 
+    // Commerce engine reference — unwrap here for both AppState and LoRA Marketplace
+    let commerce_engine_arc: Arc<dyn aiome_core_contracts::commerce::CommerceEngine> =
+        commerce_engine.ok_or_else(|| {
+            anyhow::anyhow!(
+                "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)"
+            )
+        })?;
     let state = AppState {
         hook_chain: Default::default(),
         health_monitor: Component::new(health_monitor),
@@ -736,11 +743,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             }
             policy
         },
-        commerce_engine: Component::new(commerce_engine.ok_or_else(|| {
-            anyhow::anyhow!(
-                "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)"
-            )
-        })?),
+        commerce_engine: Component::new(commerce_engine_arc.clone()),
         gig_engine: Component::new(gig_engine),
         circuit_breaker: Component::new(circuit_breaker),
         rate_limiter: Component::new(rate_limiter),
@@ -899,6 +902,20 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 job_queue.get_pool().clone(),
             ),
         )),
+        lora_marketplace: {
+            let vault_root = config.resolver.resolve("vault");
+            let commerce_for_marketplace = commerce_engine_arc.clone();
+            let marketplace = Arc::new(
+                infrastructure::lora_marketplace::UniversalLoraMarketplace::new(
+                    job_queue.get_pool().clone(),
+                    commerce_for_marketplace,
+                    vault_root,
+                ),
+            );
+            Component::new(
+                marketplace as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>,
+            )
+        },
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

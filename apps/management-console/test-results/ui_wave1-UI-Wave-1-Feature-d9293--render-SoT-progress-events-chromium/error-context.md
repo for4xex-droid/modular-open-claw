@@ -1,0 +1,83 @@
+# Page snapshot
+
+```yaml
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - heading "Home v2" [level=2] [ref=e6]
+    - button "Connected 0ms" [ref=e8] [cursor=pointer]: Connected 0ms
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e17]:
+          - heading "Level 1" [level=3] [ref=e18]
+          - generic [ref=e19]: 0 / 1000 EXP
+        - generic [ref=e21]:
+          - generic [ref=e22]: Lvl 1 | Awake
+          - generic [ref=e23]: ✓ Verified
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - text: Secure
+          - generic [ref=e27]:
+            - img [ref=e28]
+            - text: Curious
+        - generic [ref=e31]:
+          - generic [ref=e32]: Resonance
+          - generic [ref=e33]: "0"
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - img [ref=e38]
+            - generic [ref=e41]:
+              - heading "Agent Sense" [level=2] [ref=e42]
+              - paragraph [ref=e43]: AI's Treasure Box
+          - button [ref=e44]:
+            - img [ref=e45]
+        - generic [ref=e51]:
+          - generic [ref=e52]: AI推薦 / 広告
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - text: Artistic Expansion Summit
+              - img [ref=e55]
+            - paragraph [ref=e59]: "Based on your current sense: Explore a new domain for creative growth and challenge."
+            - generic [ref=e60]:
+              - text: Learning
+              - generic [ref=e61]: 10 COINS
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - button "Home" [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - text: Home
+        - button "Shop" [ref=e69] [cursor=pointer]:
+          - img [ref=e70]
+          - text: Shop
+        - button "World" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+          - text: World
+        - button "Settings" [ref=e77] [cursor=pointer]:
+          - img [ref=e78]
+          - text: Settings
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - heading "Active Feed" [level=2] [ref=e85]: Active Feed
+          - generic [ref=e87]:
+            - button "TTS" [ref=e88] [cursor=pointer]:
+              - img [ref=e89]
+              - text: TTS
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - text: SSE
+        - generic [ref=e99]:
+          - img [ref=e100]
+          - generic [ref=e103]: SYNAPTIC INTERFACE READY
+          - paragraph [ref=e104]: Send a message to start a conversation. System events will appear here in real-time.
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - textbox "SYNAPTIC INTERFACE READY" [ref=e107]
+            - button [disabled] [ref=e108]:
+              - img [ref=e109]
+          - generic [ref=e112]:
+            - generic [ref=e113]: Shift+Enter newline
+            - generic [ref=e114]:
+              - img [ref=e115]
+              - text: ENHANCED
+```

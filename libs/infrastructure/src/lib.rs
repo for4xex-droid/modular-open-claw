@@ -67,6 +67,9 @@ pub mod cortex_compiler;
 #[cfg(test)]
 mod cortex_compiler_tests;
 pub mod cortex_query;
+pub mod cortex_synth;
+#[cfg(test)]
+mod cortex_synth_tests;
 pub mod lora_autotuner;
 pub mod repair_strategy;
 /// タスクキュー・非同期実行・リトライ
@@ -107,6 +110,8 @@ pub mod job_queue;
 pub mod knowledge_indexer;
 /// LLMプロバイダの動的選択・プロキシ
 pub mod llm;
+/// LoRA アダプター取引マーケットプレイス
+pub mod lora_marketplace;
 pub mod lora_training;
 /// 短期記憶→長期Karma結晶化
 pub mod memory_crystallizer;

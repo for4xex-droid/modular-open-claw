@@ -421,6 +421,11 @@ impl LoraEngine for LoraTrainingService {
 
         let resolver = shared::app_data::AppDataResolver::new();
 
+        // LoRA Adapter Family Isolation:
+        // Organize adapters by base model family (e.g., "gemma4", "qwen3.5")
+        // so that adapters from different base models coexist and can be switched.
+        let model_family = extract_model_family(base_model);
+
         // Use the parameters passed in from the frontend (or Autotuner)
         let config = LoraTrainingConfig::from_params(
             &params,
@@ -428,7 +433,7 @@ impl LoraEngine for LoraTrainingService {
             &actual_dataset_path,
             &resolver.resolve("output").to_string_lossy(),
             &resolver
-                .resolve(format!("vault/lora/{}", job_id))
+                .resolve(format!("vault/lora/{}/{}", model_family, job_id))
                 .to_string_lossy(),
         );
 
@@ -549,6 +554,127 @@ impl LoraEngine for LoraTrainingService {
             }
         }
     }
+}
+
+/// Extracts the model family name from a full model identifier.
+/// Examples:
+///   - "gemma4:26b" → "gemma4"
+///   - "qwen3.5:9b" → "qwen3.5"
+///   - "llama3:8b-instruct" → "llama3"
+///   - "huggingface.co/author/model:tag" → "huggingface.co_author_model"
+///   - "my-custom-model" → "my-custom-model"
+pub fn extract_model_family(model_name: &str) -> String {
+    // Strip the tag (everything after ':')
+    let base = model_name.split(':').next().unwrap_or(model_name);
+    // Prevent path traversal and keep directory structure flat
+    base.replace(['/', '\\'], "_")
+}
+
+/// Metadata about a stored LoRA adapter family and its individual adapters.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct AdapterFamilyInfo {
+    pub model_family: String,
+    pub adapter_count: usize,
+    pub adapter_ids: Vec<String>,
+}
+
+/// Lists all adapter families stored in the vault, grouped by base model family.
+/// Returns a list of families with their adapter IDs, enabling the UI to switch
+/// between Qwen-based and Gemma-based adapters.
+pub fn list_adapter_families() -> Vec<AdapterFamilyInfo> {
+    let resolver = shared::app_data::AppDataResolver::new();
+    let vault_lora_dir = resolver.resolve("vault/lora");
+
+    let mut families = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(&vault_lora_dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                let family_name = entry.file_name().to_string_lossy().to_string();
+                let mut adapter_ids = Vec::new();
+
+                if let Ok(adapters) = std::fs::read_dir(entry.path()) {
+                    for adapter in adapters.flatten() {
+                        if adapter.path().is_dir() {
+                            adapter_ids.push(adapter.file_name().to_string_lossy().to_string());
+                        }
+                    }
+                }
+
+                if !adapter_ids.is_empty() {
+                    families.push(AdapterFamilyInfo {
+                        model_family: family_name,
+                        adapter_count: adapter_ids.len(),
+                        adapter_ids,
+                    });
+                }
+            }
+        }
+    }
+
+    families
+}
+
+/// アダプターファイルの詳細情報（マーケットプレイス出品用）
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct AdapterFileInfo {
+    /// ファイルの絶対パス
+    pub path: std::path::PathBuf,
+    /// SHA-256 完全性ハッシュ
+    pub hash: String,
+    /// ファイルサイズ（バイト）
+    pub size_bytes: u64,
+    /// モデルファミリー
+    pub model_family: String,
+}
+
+/// 指定 Vault パス配下のアダプターファイル（.safetensors）の情報を取得する。
+///
+/// マーケットプレイスへの出品時に、SHA-256 ハッシュとファイルサイズを
+/// 事前計算するために使用される。
+pub fn get_adapter_info(
+    vault_adapter_dir: &std::path::Path,
+    model_family: &str,
+) -> Result<AdapterFileInfo, AiomeError> {
+    use sha2::{Digest, Sha256};
+
+    // Find .safetensors file in the directory
+    let safetensor_path = if vault_adapter_dir.is_file() {
+        vault_adapter_dir.to_path_buf()
+    } else {
+        let mut found: Option<std::path::PathBuf> = None;
+        if let Ok(entries) = std::fs::read_dir(vault_adapter_dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.extension().map_or(false, |ext| ext == "safetensors") {
+                    found = Some(p);
+                    break;
+                }
+            }
+        }
+        found.ok_or_else(|| AiomeError::Infrastructure {
+            reason: format!(
+                "No .safetensors file found in {}",
+                vault_adapter_dir.display()
+            ),
+        })?
+    };
+
+    let data = std::fs::read(&safetensor_path).map_err(|e| AiomeError::Infrastructure {
+        reason: format!("Failed to read adapter file: {}", e),
+    })?;
+
+    let size_bytes = data.len() as u64;
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    let hash = format!("{:x}", hasher.finalize());
+
+    Ok(AdapterFileInfo {
+        path: safetensor_path,
+        hash,
+        size_bytes,
+        model_family: model_family.to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -684,5 +810,19 @@ mod tests {
         assert_eq!(config.lora_rank, 32);
         assert_eq!(config.batch_size, 8);
         assert_eq!(config.base_model, "base");
+    }
+
+    #[test]
+    fn test_extract_model_family() {
+        assert_eq!(extract_model_family("gemma4:26b"), "gemma4");
+        assert_eq!(extract_model_family("qwen3.5:9b"), "qwen3.5");
+        assert_eq!(extract_model_family("llama3:8b-instruct"), "llama3");
+        assert_eq!(
+            extract_model_family("huggingface.co/author/model:latest"),
+            "huggingface.co_author_model"
+        );
+        assert_eq!(extract_model_family("../../etc/passwd"), ".._.._etc_passwd");
+        assert_eq!(extract_model_family("my-custom-model"), "my-custom-model");
+        assert_eq!(extract_model_family(""), "");
     }
 }

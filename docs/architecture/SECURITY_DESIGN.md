@@ -83,6 +83,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 60 | **Agent Output Abuse / DoS** | **Infinite Echo / Giant output generation** | 🔴 High | **ConstraintChecker (Max Output & Echo Filter) (Phase 55)** |
 | 61 | **Local Asset Path Traversal** | **dataset_id / path manipulation** | 🔴 High | **Strict path sanitization (.. / \\) (Red Team)** |
 | 62 | **Socket/Memory Exhaustion DoS** | **Unbounded queue / Semaphore starvation** | 🔴 High | **try_acquire() & Hard Queue Limits (Red Team)** |
+| 63 | **LoRA Path Traversal / BOLA** | **Malicious adapter_path or unauthorized purchase complete** | 🔴 High | **Strict 3-Layer Check (PathSandbox, CallerAuth, 64KB OOM Chunking) (LoRA Market)** |
+| 64 | **Transaction Divergence (Ghost State)** | **DB lock fails after external escrow moves funds** | 🔴 High | **Saga Compensating Tx (DB First, rollback on API failure) (LoRA Market)** |
 
 ## 3. Defense Architecture
 
@@ -186,4 +188,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-04 (Phase C: Cortex Knowledge Base UI Integration / Query Engine)*
+*最終更新: 2026-04-04 (LoRA Marketplace Security Hardening)*

@@ -89,7 +89,15 @@ use utoipa::OpenApi;
         crate::routes::cortex::list_wiki_articles_handler,
         crate::routes::cortex::get_wiki_article_handler,
         crate::routes::cortex::query_handler,
-        crate::routes::cortex::suggest_questions_handler
+        crate::routes::cortex::suggest_questions_handler,
+        crate::routes::cortex::synth_dataset_handler,
+        // LoRA Marketplace
+        crate::routes::lora_market::list_market,
+        crate::routes::lora_market::publish_listing,
+        crate::routes::lora_market::purchase_listing,
+        crate::routes::lora_market::complete_purchase,
+        crate::routes::lora_market::delist_listing,
+        crate::routes::lora_market::my_listings
     ),
     components(
         schemas(
@@ -150,6 +158,15 @@ use utoipa::OpenApi;
             crate::routes::cortex::WikiArticleSummary,
             crate::routes::cortex::QueryReq,
             infrastructure::cortex_query::CortexAnswer,
+            crate::routes::cortex::SynthReq,
+            // LoRA Marketplace
+            aiome_core_contracts::lora_marketplace::ListingStatus,
+            aiome_core_contracts::lora_marketplace::PurchaseStatus,
+            aiome_core_contracts::lora_marketplace::LoraListing,
+            aiome_core_contracts::lora_marketplace::LoraPurchase,
+            crate::routes::lora_market::PublishListingRequest,
+            crate::routes::lora_market::PurchaseRequest,
+            crate::routes::lora_market::PurchaseResponse
         )
     ),
     info(

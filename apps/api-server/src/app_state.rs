@@ -143,4 +143,6 @@ pub struct AppState {
     pub project_rules_cache: Component<Arc<moka::future::Cache<std::path::PathBuf, String>>>,
     pub cortex_ingester: Component<Arc<infrastructure::cortex_ingester::CortexIngester>>,
     pub cortex_query: Component<Arc<infrastructure::cortex_query::CortexQueryEngine>>,
+    pub lora_marketplace:
+        Component<Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>>,
 }

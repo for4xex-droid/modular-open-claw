@@ -36,6 +36,7 @@
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。**Phase 13.3** で Gemini 2.0 Flash Live 用の `LiveSessionManager` を統合。Ollama の LoRA 動内ビルダも統合済。 | **第3世代進化** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
+| `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
@@ -63,4 +64,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-04 (Phase C: Cortex Knowledge Base UI Integration / Query Engine)*
+*最終更新: 2026-04-04 (LoRA Marketplace Security Hardening)*

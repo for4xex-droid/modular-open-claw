@@ -22,6 +22,20 @@ interface CharacterPanelProps {
 }
 
 const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode }) => {
+    const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
+    const [soulState, setSoulState] = React.useState<string>('Awake');
+
+    React.useEffect(() => {
+        fetch('/api/v1/ekyc/status')
+            .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
+            .then(d => setEkycStatus(d.verified))
+            .catch(e => console.error('EKYC fetch error', e));
+        fetch('/api/v1/soul/status')
+            .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
+            .then(d => setSoulState(d.state || 'Awake'))
+            .catch(e => console.error('Soul state fetch error', e));
+    }, []);
+
     return (
         <div className="character-panel" style={{
             background: 'var(--panel-bg)',
@@ -54,7 +68,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                             <ErrorBoundary fallback={null}>
                                 {mode === 'vrm' && <VrmRenderer modelUrl={modelUrl} avatarState={avatarState} />}
-                                {mode === 'glb' && <GlbRenderer modelUrl={modelUrl} avatarState={avatarState as any} />}
+                                {mode === 'glb' && <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />}
                                 {mode === 'inx' && <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />}
                             </ErrorBoundary>
                         </div>
@@ -83,6 +97,19 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                    Lvl {stats.level} | {soulState}
+                </span>
+                {ekycStatus === true && (
+                    <span style={{ background: 'rgba(0, 255, 100, 0.1)', color: 'var(--success, #00ff64)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                        ✓ Verified
+                    </span>
+                )}
+                {ekycStatus === false && (
+                    <span style={{ background: 'rgba(255, 100, 100, 0.1)', color: 'var(--danger, #ff6464)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                        ⚠ Unverified
+                    </span>
+                )}
                 <span style={{ background: 'rgba(0, 242, 255, 0.1)', color: 'var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Shield size={12} /> Secure
                 </span>

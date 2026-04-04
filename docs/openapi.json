@@ -1238,6 +1238,97 @@
         ]
       }
     },
+    "/api/v1/cortex/query": {
+      "post": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "query_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Query answered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CortexAnswer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/suggestions": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "suggest_questions_handler",
+        "responses": {
+          "200": {
+            "description": "Dynamically generated question suggestions based on Cortex concept index. Falls back to a default suggestion when the knowledge base is empty.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cortex/synth": {
+      "post": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "synth_dataset_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynthReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Synthetic dataset generation started and LoRA training enqueued"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/cortex/wiki": {
       "get": {
         "tags": [
@@ -1729,6 +1820,222 @@
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market": {
+      "get": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[GET] /api/v1/lora/market — 出品一覧取得",
+        "operationId": "list_market",
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "description": "Filter by model family (e.g. gemma4)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status (Open, Sold, Delisted)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max records to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marketplace listings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoraListing"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market/complete/{purchase_id}": {
+      "post": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[POST] /api/v1/lora/market/complete/{purchase_id} — 購入完了（ハッシュ検証と資金移動）",
+        "operationId": "complete_purchase",
+        "parameters": [
+          {
+            "name": "purchase_id",
+            "in": "path",
+            "description": "The ID of the purchase to complete",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Purchase completed successfully"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market/my-listings": {
+      "get": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[GET] /api/v1/lora/market/my-listings — 自分の出品一覧",
+        "operationId": "my_listings",
+        "responses": {
+          "200": {
+            "description": "Agent's own listings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoraListing"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market/publish": {
+      "post": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[POST] /api/v1/lora/market/publish — LoRA を出品",
+        "operationId": "publish_listing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Listing published"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market/purchase": {
+      "post": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[POST] /api/v1/lora/market/purchase — LoRA を購入（エスクロー開始）",
+        "operationId": "purchase_listing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Purchase escrowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lora/market/{listing_id}": {
+      "delete": {
+        "tags": [
+          "crate::routes::lora_market"
+        ],
+        "summary": "[DELETE] /api/v1/lora/market/{listing_id} — 出品取り下げ",
+        "operationId": "delist_listing",
+        "parameters": [
+          {
+            "name": "listing_id",
+            "in": "path",
+            "description": "The ID of the listing to delist",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing removed"
           }
         },
         "security": [
@@ -2582,6 +2889,33 @@
           }
         }
       },
+      "CortexAnswer": {
+        "type": "object",
+        "required": [
+          "question",
+          "answer_md",
+          "source_articles",
+          "confidence"
+        ],
+        "properties": {
+          "answer_md": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "question": {
+            "type": "string"
+          },
+          "source_articles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "CortexDocument": {
         "type": "object",
         "required": [
@@ -3178,6 +3512,15 @@
           }
         }
       },
+      "ListingStatus": {
+        "type": "string",
+        "description": "LoRA 出品ステータス",
+        "enum": [
+          "Open",
+          "Sold",
+          "Delisted"
+        ]
+      },
       "LogEntryResponse": {
         "type": "object",
         "required": [
@@ -3208,6 +3551,124 @@
           }
         }
       },
+      "LoraListing": {
+        "type": "object",
+        "description": "LoRA 出品情報",
+        "required": [
+          "id",
+          "seller_id",
+          "adapter_path",
+          "model_family",
+          "base_model",
+          "title",
+          "description",
+          "price_coins",
+          "adapter_hash",
+          "adapter_size_bytes",
+          "tags",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "adapter_hash": {
+            "type": "string",
+            "description": "SHA-256 完全性ハッシュ"
+          },
+          "adapter_path": {
+            "type": "string",
+            "description": "ArtifactStore 上の成果物パス"
+          },
+          "adapter_size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ファイルサイズ（バイト）",
+            "minimum": 0
+          },
+          "base_model": {
+            "type": "string",
+            "description": "ベースモデル名 (\"gemma4:26b\" 等)"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "出品日時"
+          },
+          "description": {
+            "type": "string",
+            "description": "説明"
+          },
+          "id": {
+            "type": "string",
+            "description": "出品 ID"
+          },
+          "model_family": {
+            "type": "string",
+            "description": "モデルファミリー (\"gemma4\", \"qwen3.5\" 等)"
+          },
+          "price_coins": {
+            "type": "integer",
+            "format": "int64",
+            "description": "コイン価格",
+            "minimum": 0
+          },
+          "seller_id": {
+            "type": "string",
+            "description": "出品者（Agent ID）"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus",
+            "description": "ステータス"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "タグ (例: [\"japanese\", \"creative-writing\"])"
+          },
+          "title": {
+            "type": "string",
+            "description": "出品タイトル"
+          }
+        }
+      },
+      "LoraPurchase": {
+        "type": "object",
+        "description": "LoRA 購入記録",
+        "required": [
+          "id",
+          "listing_id",
+          "buyer_id",
+          "escrow_id",
+          "status",
+          "purchased_at"
+        ],
+        "properties": {
+          "buyer_id": {
+            "type": "string",
+            "description": "購入者（Agent ID）"
+          },
+          "escrow_id": {
+            "type": "string",
+            "description": "エスクロー ID"
+          },
+          "id": {
+            "type": "string",
+            "description": "購入 ID"
+          },
+          "listing_id": {
+            "type": "string",
+            "description": "出品 ID"
+          },
+          "purchased_at": {
+            "type": "string",
+            "description": "購入日時"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PurchaseStatus",
+            "description": "ステータス"
+          }
+        }
+      },
       "McpSpawnRequest": {
         "type": "object",
         "required": [
@@ -3230,30 +3691,110 @@
           }
         }
       },
+      "PublishListingRequest": {
+        "type": "object",
+        "required": [
+          "adapter_path",
+          "model_family",
+          "base_model",
+          "title",
+          "price_coins",
+          "adapter_hash",
+          "adapter_size_bytes"
+        ],
+        "properties": {
+          "adapter_hash": {
+            "type": "string",
+            "description": "SHA-256 ハッシュ"
+          },
+          "adapter_path": {
+            "type": "string",
+            "description": "アダプターファイルの Vault 相対パス"
+          },
+          "adapter_size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ファイルサイズ（バイト）",
+            "minimum": 0
+          },
+          "base_model": {
+            "type": "string",
+            "description": "ベースモデル名 (\"gemma4:26b\" 等)"
+          },
+          "description": {
+            "type": "string",
+            "description": "説明"
+          },
+          "model_family": {
+            "type": "string",
+            "description": "モデルファミリー (\"gemma4\", \"qwen3.5\" 等)"
+          },
+          "price_coins": {
+            "type": "integer",
+            "format": "int64",
+            "description": "コイン価格",
+            "minimum": 0
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "タグ"
+          },
+          "title": {
+            "type": "string",
+            "description": "出品タイトル"
+          }
+        }
+      },
       "PurchaseRequest": {
         "type": "object",
         "required": [
-          "item_id",
-          "metadata"
+          "listing_id"
         ],
         "properties": {
-          "item_id": {
-            "type": "string"
-          },
-          "metadata": {}
+          "listing_id": {
+            "type": "string",
+            "description": "購入対象の出品 ID"
+          }
         }
       },
       "PurchaseResponse": {
         "type": "object",
         "required": [
-          "transaction_id",
+          "purchase_id",
+          "escrow_id",
           "status"
         ],
         "properties": {
-          "status": {
+          "escrow_id": {
             "type": "string"
           },
-          "transaction_id": {
+          "purchase_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "PurchaseStatus": {
+        "type": "string",
+        "description": "LoRA 購入ステータス",
+        "enum": [
+          "Escrowed",
+          "Completed",
+          "Refunded"
+        ]
+      },
+      "QueryReq": {
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "properties": {
+          "question": {
             "type": "string"
           }
         }
@@ -3462,6 +4003,17 @@
           "Review",
           "Decision"
         ]
+      },
+      "SynthReq": {
+        "type": "object",
+        "required": [
+          "base_model"
+        ],
+        "properties": {
+          "base_model": {
+            "type": "string"
+          }
+        }
       },
       "SystemSetting": {
         "type": "object",

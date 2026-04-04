@@ -28,6 +28,7 @@ pub mod forecast;
 pub mod gig;
 pub mod invariant;
 pub mod live_types;
+pub mod lora_marketplace;
 pub mod syndicate;
 pub mod traits;
 pub mod trajectory;

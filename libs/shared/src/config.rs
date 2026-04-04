@@ -89,7 +89,7 @@ impl Default for AiomeConfig {
             db_path: resolver.db_url(),
             log_level: "info".to_string(),
             ollama_host: DEFAULT_OLLAMA_HOST.to_string(),
-            ollama_model: "qwen3.5:9b".to_string(),
+            ollama_model: "gemma4:26b".to_string(),
             gemini_api_key: None,
             openai_api_key: None,
             anthropic_api_key: None,
@@ -123,7 +123,7 @@ impl AiomeConfig {
         let ollama_host =
             env::var("OLLAMA_HOST").unwrap_or_else(|_| DEFAULT_OLLAMA_HOST.to_string());
 
-        let ollama_model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3.5:9b".to_string());
+        let ollama_model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string());
 
         let api_server_port = env::var("PORT")
             .ok()

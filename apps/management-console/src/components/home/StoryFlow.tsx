@@ -30,26 +30,28 @@ interface TimelineEntry {
  */
 const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | null => {
     const ts = Date.now() - index * 100; // approximate ordering
-    const data = event.data as Record<string, unknown>;
+    const d = (event.data || {}) as Record<string, unknown>;
 
     switch (event.type) {
         case 'level_up':
-            return { id: `sys-${index}`, type: 'system', title: 'LEVEL UP', content: `Level ${(data as any)?.level ?? '?'} reached! 🎉`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: 'LEVEL UP', content: `Level ${String(d?.level ?? '?')} reached! 🎉`, timestamp: ts };
         case 'karma_update':
-            return { id: `sys-${index}`, type: 'system', title: 'KARMA', content: `${(data as any)?.lesson ?? 'Memory updated'}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: 'KARMA', content: `${String(d?.lesson ?? 'Memory updated')}`, timestamp: ts };
         case 'job_started':
-            return { id: `sys-${index}`, type: 'tool_exec', title: 'JOB STARTED', content: `${(data as any)?.job_type ?? 'Task'} initiated`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'tool_exec', title: 'JOB STARTED', content: `${String(d?.job_type ?? 'Task')} initiated`, timestamp: ts };
         case 'job_completed':
             return { id: `sys-${index}`, type: 'system', title: 'JOB COMPLETE', content: `Task finished successfully`, timestamp: ts };
         case 'skill_loaded':
         case 'skill_ready':
-            return { id: `sys-${index}`, type: 'system', title: 'SKILL', content: `${(data as any)?.name ?? 'Skill'} loaded`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: 'SKILL', content: `${String(d?.name ?? 'Skill')} loaded`, timestamp: ts };
         case 'immune_alert':
-            return { id: `sys-${index}`, type: 'system', title: '🛡️ IMMUNE ALERT', content: `${(data as any)?.message ?? 'Security event detected'}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: '🛡️ IMMUNE ALERT', content: `${String(d?.message ?? 'Security event detected')}`, timestamp: ts };
         case 'skill_execution':
-            return { id: `sys-${index}`, type: 'tool_exec', title: 'EXECUTING', content: `${(data as any)?.name ?? 'Tool'}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'tool_exec', title: 'EXECUTING', content: `${String(d?.name ?? 'Tool')}`, timestamp: ts };
         case 'proactive_talk':
-            return { id: `sys-${index}`, type: 'chat_assistant', title: 'AIOME (PROACTIVE)', content: `${(data as any)?.message ?? ''}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'chat_assistant', title: 'AIOME (PROACTIVE)', content: `${String(d?.message ?? '')}`, timestamp: ts };
+        case 'sot_progress':
+            return { id: `sys-${index}`, type: 'system', title: 'SOCIETY OF THOUGHT', content: `${String(d?.message ?? 'Deliberation in progress')}`, timestamp: ts };
         default:
             return null;
     }

@@ -128,6 +128,28 @@ pub fn build_app(
         )
         .route("/api/v1/gig/deliver", post(routes::gig::deliver))
         .route("/api/v1/gig/verify/:order_id", post(routes::gig::verify))
+        // --- LoRA Marketplace ---
+        .route("/api/v1/lora/market", get(routes::lora_market::list_market))
+        .route(
+            "/api/v1/lora/market/publish",
+            post(routes::lora_market::publish_listing),
+        )
+        .route(
+            "/api/v1/lora/market/purchase",
+            post(routes::lora_market::purchase_listing),
+        )
+        .route(
+            "/api/v1/lora/market/complete/:purchase_id",
+            post(routes::lora_market::complete_purchase),
+        )
+        .route(
+            "/api/v1/lora/market/:listing_id",
+            axum::routing::delete(routes::lora_market::delist_listing),
+        )
+        .route(
+            "/api/v1/lora/market/my-listings",
+            get(routes::lora_market::my_listings),
+        )
         .route("/api/biome/status", get(routes::biome::biome_status))
         .route(
             "/api/biome/topics",
@@ -259,6 +281,7 @@ pub fn build_app(
                     "/suggestions",
                     get(routes::cortex::suggest_questions_handler),
                 )
+                .route("/synth", post(routes::cortex::synth_dataset_handler))
                 .route_layer(
                     tower::ServiceBuilder::new()
                         .layer(axum::error_handling::HandleErrorLayer::new(

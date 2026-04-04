@@ -63,7 +63,7 @@ pub async fn get_llm_provider(
         } else if let Ok(Some(m)) = db.get_setting_value("ollama_model").await {
             m
         } else {
-            std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3.5:9b".to_string())
+            std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string())
         };
 
         let provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =

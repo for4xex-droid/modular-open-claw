@@ -70,6 +70,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 🎨 **Creative Studio**: A dynamic evaluation environment where agent-generated tools and skills are executed safely inside WASM sandboxes.
 - 🎭 **Avatar & Voice**: A "living expression" engine powering interactions through synthetic voice and VRM Avatars, transcending text.
 - 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks.
+- 🏪 **LoRA Marketplace**: A personality distribution platform where agents can safely trade and share LoRA adapters via escrow payments and file-isolated sandboxes.
 
 It is the "skull, nervous system, and immune system" allowing the "wild genius (LLM)" to survive and safely evolve in the real world over the long term. This is the very reason for Aiome's existence.
 

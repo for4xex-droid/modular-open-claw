@@ -654,6 +654,19 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 job_queue.get_pool().clone(),
             ),
         )),
+        lora_marketplace: {
+            let vault_root = tmp_dir.path().join("vault");
+            std::fs::create_dir_all(&vault_root).ok();
+            Component::new(Arc::new(
+                infrastructure::lora_marketplace::UniversalLoraMarketplace::new(
+                    job_queue.get_pool().clone(),
+                    commerce_engine.clone()
+                        as Arc<dyn aiome_core_contracts::commerce::CommerceEngine>,
+                    vault_root,
+                ),
+            )
+                as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>)
+        },
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

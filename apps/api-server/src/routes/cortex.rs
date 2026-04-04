@@ -274,3 +274,78 @@ pub async fn suggest_questions_handler(
     let suggestions = engine.suggest_questions().await?;
     Ok((StatusCode::OK, Json(suggestions)))
 }
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct SynthReq {
+    pub base_model: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/cortex/synth",
+    request_body = SynthReq,
+    responses(
+        (status = 202, description = "Synthetic dataset generation started and LoRA training enqueued")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn synth_dataset_handler(
+    State(state): State<crate::AppState>,
+    _auth: crate::auth::Authenticated,
+    Json(req): Json<SynthReq>,
+) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+    // Phase D: Synth -> LoRA integration
+    let provider = state.provider.get_inner().clone();
+    let pool = state.job_queue.get_pool().clone();
+
+    let synth = infrastructure::cortex_synth::CortexSynthesizer::new(provider, pool, None);
+
+    let jq = state.job_queue.get_inner().clone();
+    let base_model = req.base_model;
+
+    tokio::spawn(async move {
+        match synth.generate_dataset().await {
+            Ok(dataset) => {
+                let temp_id = uuid::Uuid::new_v4().to_string();
+                let dataset_id = format!("synth_{}.jsonl", temp_id);
+                let datasets_dir = shared::app_data::AppDataResolver::new().resolve("datasets");
+                if let Err(e) = tokio::fs::create_dir_all(&datasets_dir).await {
+                    tracing::error!("Failed to create datasets directory: {}", e);
+                    return;
+                }
+
+                let out_path = datasets_dir.join(&dataset_id);
+                if let Err(e) = synth.export_to_jsonl(&dataset, &out_path) {
+                    tracing::error!("Failed to export dataset: {}", e);
+                    return;
+                }
+
+                use infrastructure::job_queue::CoreOps;
+                if let Err(e) = jq
+                    .do_enqueue(
+                        "LORA_TRAINING",
+                        &base_model,
+                        &dataset_id,
+                        None,
+                        None,
+                        None,
+                        0,
+                    )
+                    .await
+                {
+                    tracing::error!("Failed to enqueue LoRA training: {}", e);
+                }
+
+                tracing::info!(
+                    "Synthetic dataset generated: {} pairs. Enqueued LoRA.",
+                    dataset.pairs.len()
+                );
+            }
+            Err(e) => {
+                tracing::error!("Synthetic dataset generation failed: {}", e);
+            }
+        }
+    });
+
+    Ok((StatusCode::ACCEPTED, "Generation started"))
+}

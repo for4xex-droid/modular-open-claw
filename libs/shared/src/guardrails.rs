@@ -7,7 +7,7 @@
 
 //! # Guardrails — プロンプトインジェクション防御モジュール
 //!
-//! LLM (Qwen) に送信する前にユーザー入力を検証し、
+//! LLM (Gemma 4 / Ollama) に送信する前にユーザー入力を検証し、
 //! プロンプトインジェクション・XSS・DoS攻撃を防ぐ。
 //!
 //! Meta: Security Guardrails Policy

@@ -1,6 +1,10 @@
 ## [Unreleased]
 
 ### Added
+- **Gemma 4 Default LLM Migration [完了]:**
+    - **デフォルトモデル切替**: ローカル推論のデフォルトモデルを `qwen3.5:9b` から `gemma4:26b` (MoE, Apache 2.0) に変更。Google の最新オープンモデルファミリー Gemma 4 を採用し、3.8B 活性化パラメータによる高速推論と 256K コンテキスト長を活用可能に。
+    - **LoRA Adapter Family Isolation**: アダプター保存パスにベースモデルファミリー名を含める構造 (`vault/lora/{family}/{job_id}`) に変更。`extract_model_family` ヘルパーと `list_adapter_families` API により、Qwen/Gemma 等のアダプターの共存・切り替えをサポート。
+    - **影響範囲**: `shared/config.rs`, `napi-bridge/state.rs`, `.env.example`, `lora_training.rs`, `guardrails.rs` (ドキュメント更新)
 - **UI:** Home v2 Beta. Phase 1 of Aiome Management Console overhaul, featuring new 4-screen layout (Home, Shop, Status, World) with CharacterPanel and StoryFlow integration.
 - **Workflow:** Implement Perfect Planning Phase 1 Final v5, including embedded 3D Avatar viewing with OrbitControls.
 - **Cortex Knowledge Base Phase A (Ingestion) [完成]:**
@@ -18,6 +22,19 @@
     - **MCP Tool Exposure**: `cortex_search` MCPツールを実装・公開し、Claude Codeなど外部エージェントも直接CortexシステムのWikiナレッジをセマンティック検索できるように設計完了。
     - **TDD Hardening (P-1/P-2/P-3)**: コンテキスト注入文字数の設定可能化 (`with_max_context_chars` builder pattern / デフォルト8000)、`suggest_questions` のDB概念ベース動的生成化（空DB時フォールバック付き）、大規模データ向けFTS5移行計画をTODOとして文書化。8テスト全GREEN。
     - **Frontend Integration**: Management Consoleの主インターフェース（StoryFlow）にCortex Query Engineを統合する動的サジェストチップ（Suggestion Chips）UIを実装、カスタムフック化ならびにPlaywrightによるE2Eテスト網も確立しGREENパス。
+- **LoRA Marketplace 基礎実装 & セキュリティ・ハードニング [完成]:**
+    - **安全なアダプター取引基盤**: LoRA アダプター（`.safetensors`）の出品・購入・転送を安全に仲介するマーケットプレイスを実装。SHA-256 ハッシュ検証、エスクロー（`CommerceEngine` 連携）、PathSandbox 分離を備える。
+    - **コントラクト型定義**: `LoraListing`, `LoraPurchase`, `ListingFilter`, `LoraMarketplace` トレイトを `aiome-core-contracts` に新設。
+    - **インフラ実装**: `UniversalLoraMarketplace` (SQLite/PostgreSQL) を `infrastructure` に実装。出品→エスクロー→ハッシュ検証→Vaultコピー→エスクロー解放のステートマシンフローを確立。
+    - **Sagaパターン (補償トランザクション)の適用**: 決済時に外部API通信の前にローカルDBステータスを更新し、通信失敗時は確実に戻すフロー（Compensating Transaction）を導入。二重決済やステート宙吊り状態の発生を防止。
+    - **REST API & OpenAPI 完全準拠**: `/api/v1/lora/market/*` の6エンドポイントを JWT 認証付きで公開し、全てに対して `#[utoipa::path]` マクロを設定。フロントエンドチームが `npm run generate-types` から完全な型安全クライアントを生成可能に。
+    - **5大セキュリティ・フェイルチェック (Reflexion)**:
+        1. **BOLA遮断**: `complete_purchase` において `caller_id` 照合を強制し、第三者による代理確定を防止。
+        2. **経路攻撃 (Path Traversal) 遮断**: `model_family` と `base_model` に対する `/`, `\`, `.` 混入チェックを実施し、Vault 外への任意ファイル生成攻撃を無効化。
+        3. **OOM 対策**: 500MB に達するハッシュ計算 (`compute_file_hash`) において、一括メモリ展開を廃止し 64KB のストリーミング読み込みバッファループに変更。エッジ端末でのクラッシュを防止。
+        4. **Nil UUID 漏洩防止**: データベースからのデシリアライズ失敗時に `unwrap_or_default` による隠蔽を廃止し、破損行のみを静かにフィルター（スキップ）する耐障害性に優れた抽出へ変更。
+        5. **PG トリガー不具合修正**: PostgreSQL における非標準構文である `CREATE TRIGGER IF NOT EXISTS` を `DROP TRIGGER IF EXISTS` によるイデムポテント構築へ修正。
+    - **テスト**: 出品・購入・取下・エラー系のマルチモジュール・テストは全て GREEN を維持。
 
 ### Fixed
 - **Infrastructure:** Fixed `test_slm_bridge_cli_hang_timeout_red` failing test in preflight. The timeout test script was not generated dynamically, leading to immediate non-timeout failure. Now safely writes to /tmp and respects Unix execution modes.

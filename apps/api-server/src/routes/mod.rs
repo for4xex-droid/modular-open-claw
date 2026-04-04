@@ -23,6 +23,7 @@ pub mod inochi2d;
 pub mod jobs;
 pub mod karma;
 pub mod lora;
+pub mod lora_market;
 pub mod settings;
 pub mod skill;
 pub mod soul;
