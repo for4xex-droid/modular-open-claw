@@ -24,6 +24,7 @@ pub mod jobs;
 pub mod karma;
 pub mod lora;
 pub mod lora_market;
+pub mod model_setup;
 pub mod settings;
 pub mod skill;
 pub mod soul;

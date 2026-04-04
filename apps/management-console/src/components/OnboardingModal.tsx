@@ -11,6 +11,7 @@ import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { ModelSetupStep } from './ModelSetupStep';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -79,6 +80,13 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                     />
                 </div>
             )
+        },
+        {
+            title: t('onboarding.llmSetup.title') || "LLM Engine Setup",
+            description: t('onboarding.llmSetup.desc') || "Select the AI engine that will power your companion.",
+            icon: <BrainCircuit size={48} color="var(--accent-cyan)" />,
+            content: <ModelSetupStep onNext={() => setStep(step + 1)} onSkip={() => setStep(step + 1)} />,
+            hideNext: true // We hide the global "next" button for this step
         },
         {
             title: "Choose Manifestation",
@@ -238,7 +246,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
 
                         <div style={{ marginTop: '2rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                                {step < steps.length - 1 ? (
+                                {(!steps[step].hideNext && step < steps.length - 1) ? (
                                     <button
                                         onClick={() => setStep(step + 1)}
                                         style={{

@@ -257,6 +257,11 @@ pub fn build_app(
             "/api/v1/voice/synthesize",
             post(routes::voice::synthesize_voice_handler),
         )
+        .route(
+            "/api/v1/models/status",
+            get(routes::model_setup::get_model_status),
+        )
+        .route("/api/v1/models/pull", post(routes::model_setup::pull_model))
         .route("/api/v1/lora/train", post(routes::lora::train_lora_handler))
         .route(
             "/api/v1/lora/status/:job_id",

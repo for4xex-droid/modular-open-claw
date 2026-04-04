@@ -210,7 +210,33 @@
     "advancedDesc": "Raw logs, expert settings enabled.",
     "next": "Next",
     "begin": "Begin Journey",
-    "skip": "Skip"
+    "skip": "Skip",
+    "llmSetup": {
+      "title": "LLM Engine Setup",
+      "desc": "Select the AI engine that will power your companion.",
+      "checking": "Checking Ollama connection...",
+      "notConnected": "Ollama is not connected",
+      "installGuide": "Please install Ollama and start it locally to run local models.",
+      "skipCloud": "Skip & Use Cloud LLM",
+      "modelReady": "Model Ready",
+      "modelReadyDesc": "{{model}} is configured and ready.",
+      "downloading": "Downloading Model...",
+      "downloadingDesc": "This may take a while depending on your network.",
+      "options": {
+        "gemma4_26b": {
+          "title": "Gemma 4 (26B) - Recommended",
+          "desc": "High reasoning capability. Requires 16GB+ VRAM."
+        },
+        "gemma4_12b": {
+          "title": "Gemma 4 (12B) - Balanced",
+          "desc": "Good balance of speed and quality. 8-16GB VRAM."
+        },
+        "gemma4_4b": {
+          "title": "Gemma 4 (4B) - Fast",
+          "desc": "Lightweight, runs on CPU or low-end GPUs."
+        }
+      }
+    }
   },
   "timeline": {
     "title": "Eternal Chronicle - Karma Timeline",

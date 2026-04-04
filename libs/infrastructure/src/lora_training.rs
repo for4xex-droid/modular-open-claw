@@ -646,7 +646,7 @@ pub fn get_adapter_info(
         if let Ok(entries) = std::fs::read_dir(vault_adapter_dir) {
             for entry in entries.flatten() {
                 let p = entry.path();
-                if p.extension().map_or(false, |ext| ext == "safetensors") {
+                if p.extension().is_some_and(|ext| ext == "safetensors") {
                     found = Some(p);
                     break;
                 }

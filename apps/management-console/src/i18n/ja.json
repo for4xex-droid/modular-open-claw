@@ -210,7 +210,33 @@
     "advancedDesc": "生ログ、エキスパート設定が有効になります。",
     "next": "次へ",
     "begin": "旅を始める",
-    "skip": "スキップ"
+    "skip": "スキップ",
+    "llmSetup": {
+      "title": "LLMエンジンセットアップ",
+      "desc": "パートナーの頭脳となるAIモデルを選択してください。",
+      "checking": "Ollamaの接続を確認中...",
+      "notConnected": "Ollamaに接続されていません",
+      "installGuide": "ローカルモデルを実行するには、Ollamaをインストールして起動してください。",
+      "skipCloud": "スキップ（クラウドLLMを使う）",
+      "modelReady": "モデル準備完了",
+      "modelReadyDesc": "{{model}} の準備が完了しました。",
+      "downloading": "モデルをダウンロード中...",
+      "downloadingDesc": "ネットワーク環境により時間がかかる場合があります。",
+      "options": {
+        "gemma4_26b": {
+          "title": "Gemma 4 (26B) - 推奨",
+          "desc": "高度な推論能力。VRAM 16GB以上推奨。"
+        },
+        "gemma4_12b": {
+          "title": "Gemma 4 (12B) - バランス",
+          "desc": "速度と品質のバランス型。VRAM 8-16GB推奨。"
+        },
+        "gemma4_4b": {
+          "title": "Gemma 4 (4B) - 軽量",
+          "desc": "軽量型。CPUや低スペックGPUでも動作します。"
+        }
+      }
+    }
   },
   "timeline": {
     "title": "永遠のクロニクル - カルマタイムライン",

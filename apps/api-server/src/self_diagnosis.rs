@@ -71,8 +71,59 @@ pub async fn run_startup_diagnosis(config: &shared::config::AiomeConfig) -> Resu
             info!("✅ [Self-Diagnosis] Docker daemon is perfectly reachable.");
         }
         _ => {
-            error!("🚨 [Self-Diagnosis] Docker daemon is NOT reachable. Please ensure Docker is running and accessible.");
-            anyhow::bail!("Docker unreachable");
+            tracing::warn!("⚠️ [Self-Diagnosis] Docker daemon is NOT reachable. Some features (like Docker-based Actions) may not work.");
+            // We no longer bail here because Docker is not strictly required for users using Cloud LLMs or native actions.
+        }
+    }
+
+    // 4. Ollama Availability Check (Best Effort)
+    let client = reqwest::Client::new();
+    let ollama_host = config.ollama_host.trim_end_matches('/');
+    let ollama_url = format!("{}/api/version", ollama_host);
+    match client
+        .get(&ollama_url)
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+    {
+        Ok(res) if res.status().is_success() => {
+            info!(
+                "✅ [Self-Diagnosis] Ollama daemon discovered at {}. Local LLM ready.",
+                ollama_host
+            );
+
+            // Check if model exists
+            let tags_url = format!("{}/api/tags", ollama_host);
+            if let Ok(res) = client
+                .get(&tags_url)
+                .timeout(std::time::Duration::from_secs(2))
+                .send()
+                .await
+            {
+                if let Ok(json) = res.json::<serde_json::Value>().await {
+                    let has_model = json
+                        .get("models")
+                        .and_then(|m| m.as_array())
+                        .map(|arr| {
+                            arr.iter().any(|v| {
+                                v.get("name").and_then(|n| n.as_str()) == Some(&config.ollama_model)
+                            })
+                        })
+                        .unwrap_or(false);
+
+                    if !has_model {
+                        tracing::warn!("⚠️ [Self-Diagnosis] Configured model '{}' is not installed in Ollama. It will be downloaded during the Smart Onboarding phase.", config.ollama_model);
+                    } else {
+                        info!(
+                            "✅ [Self-Diagnosis] Configured model '{}' is ready.",
+                            config.ollama_model
+                        );
+                    }
+                }
+            }
+        }
+        _ => {
+            tracing::warn!("⚠️ [Self-Diagnosis] Ollama daemon is NOT reachable at {}. If you don't use Cloud LLMs, please install Ollama.", ollama_host);
         }
     }
 

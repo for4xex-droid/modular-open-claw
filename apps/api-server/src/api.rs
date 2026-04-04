@@ -57,6 +57,7 @@ use utoipa::OpenApi;
         crate::routes::gift::get_gift_policy,
         // Voice & Avatar
         crate::routes::voice::list_voice_assets_handler,
+        crate::routes::model_setup::get_model_status,
         // Artifacts
         crate::routes::artifacts::list_artifacts_handler,
         crate::routes::artifacts::get_artifact_handler,
@@ -126,6 +127,7 @@ use utoipa::OpenApi;
             crate::routes::gift::GiftResponse,
             crate::routes::gift::GiftPolicyResponse,
             crate::routes::artifacts::ListArtifactsParams,
+            crate::routes::model_setup::ModelStatusResponse,
             crate::routes::general::AuditLedgerResponse,
             crate::routes::general::DiagnosisResponse,
             crate::routes::general::TrendsResponse,

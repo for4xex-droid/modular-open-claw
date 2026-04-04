@@ -2352,3 +2352,26 @@ async fn test_cortex_wiki_authorized() {
     assert_eq!(article["title"], "Test Article");
     assert_eq!(article["content_md"], "## Content");
 }
+
+#[serial]
+#[tokio::test]
+async fn test_model_status_unauthorized() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let response = server.get("/api/v1/models/status").await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_model_status_authorized() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // We expect 501 Not Implemented because of TDD RED phase
+    let response = server
+        .get("/api/v1/models/status")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(response.status_code(), StatusCode::OK);
+}

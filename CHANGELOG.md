@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Added
+- **Smart Model Bootstrap (Setup UI & API Phase) [完了]:**
+    - **Self-Diagnosis Hardening**: `apps/api-server/src/self_diagnosis.rs` において、Dockerデーモン疎通失敗時も継続可能なように緩和し、Ollamaデーモンおよび設定モデル (`gemma4:26b` 等) の実在確認ロジックを追加。
+    - **Models Status API**: `GET /api/v1/models/status` エンドポイントを実装し、Ollamaへの接続状態、インストール済みモデル、設定されたモデル名、セットアップ必要性（`setup_required`）を評価しフロントエンドへ一元提供する基盤を構築。
+    - **Model Pulling SSE API**: `POST /api/v1/models/pull` エンドポイントを実装。OllamaのPull APIを安全に中継し、SSE 形式で非同期ダウンロード進捗（プログレス）を配信。SSRF防御およびOOM防止のためのセマフォ(`compute_semaphore`)による安全保護を統合。
+    - **Setup Wizard Integration**: Management Consoleの `OnboardingModal` 内に「LLM Engine Setup」ステップ（`ModelSetupStep.tsx`）を新規統合。`useModelStatus` カスタムフックを用いた状態監視やダウンロードバー可視化機能を実装し、安全かつ堅牢な初回時のモデル（Gemma 4推奨）導入導線を確保。
 - **Gemma 4 Default LLM Migration [完了]:**
     - **デフォルトモデル切替**: ローカル推論のデフォルトモデルを `qwen3.5:9b` から `gemma4:26b` (MoE, Apache 2.0) に変更。Google の最新オープンモデルファミリー Gemma 4 を採用し、3.8B 活性化パラメータによる高速推論と 256K コンテキスト長を活用可能に。
     - **LoRA Adapter Family Isolation**: アダプター保存パスにベースモデルファミリー名を含める構造 (`vault/lora/{family}/{job_id}`) に変更。`extract_model_family` ヘルパーと `list_adapter_families` API により、Qwen/Gemma 等のアダプターの共存・切り替えをサポート。

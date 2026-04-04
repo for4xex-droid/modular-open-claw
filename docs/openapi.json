@@ -2045,6 +2045,31 @@
         ]
       }
     },
+    "/api/v1/models/status": {
+      "get": {
+        "tags": [
+          "crate::routes::model_setup"
+        ],
+        "operationId": "get_model_status",
+        "responses": {
+          "200": {
+            "description": "Status of LLM Model Setup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/ollama/models": {
       "get": {
         "tags": [
@@ -3688,6 +3713,46 @@
           },
           "id": {
             "type": "string"
+          }
+        }
+      },
+      "ModelStatusResponse": {
+        "type": "object",
+        "required": [
+          "ollama_connected",
+          "installed_models",
+          "configured_model",
+          "configured_model_available",
+          "recommended_model",
+          "setup_required"
+        ],
+        "properties": {
+          "configured_model": {
+            "type": "string"
+          },
+          "configured_model_available": {
+            "type": "boolean"
+          },
+          "installed_models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ollama_connected": {
+            "type": "boolean"
+          },
+          "ollama_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recommended_model": {
+            "type": "string"
+          },
+          "setup_required": {
+            "type": "boolean"
           }
         }
       },
