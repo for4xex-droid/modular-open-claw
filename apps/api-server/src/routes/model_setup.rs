@@ -144,7 +144,8 @@ pub async fn pull_model(
     Json(payload): Json<PullModelRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, AppError> {
     // 1. Validate model name to prevent command injection or strange paths
-    let re = regex::Regex::new(r"^[a-zA-Z0-9._:-]+$").unwrap();
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = RE.get_or_init(|| regex::Regex::new(r"^[a-zA-Z0-9._:-]+$").unwrap());
     if !re.is_match(&payload.name) {
         return Err(AppError::bad_request(
             "Invalid model name format. Only alphanumeric characters, dots, underscores, colons, and hyphens are allowed.",
@@ -200,12 +201,15 @@ pub async fn pull_model(
 
         let mut byte_stream = response.bytes_stream();
         use futures::StreamExt;
+        let mut buffer = Vec::new();
 
         while let Some(chunk_res) = byte_stream.next().await {
             match chunk_res {
                 Ok(bytes) => {
-                    if let Ok(text) = String::from_utf8(bytes.to_vec()) {
-                        for line in text.lines() {
+                    buffer.extend_from_slice(&bytes);
+                    while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
+                        let line_bytes = buffer.drain(..=pos).collect::<Vec<_>>();
+                        if let Ok(line) = String::from_utf8(line_bytes) {
                             let line = line.trim();
                             if !line.is_empty() {
                                 yield Ok(Event::default().event("progress").data(line));
