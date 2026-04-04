@@ -27,6 +27,7 @@ use tracing::{debug, error, info, warn};
 const MAX_GIG_BUDGET: u64 = 5000;
 
 pub mod csam;
+pub mod llm_conductor;
 pub mod planner;
 
 /// Task orchestration event. Provides observability (like cmux read-screen).
@@ -642,10 +643,24 @@ impl TaskDispatcher {
                         continue;
                     } else {
                         error!("Dequeued job {}, but no capable conductor found. This shouldn't happen due to dequeue filter.", job.id);
-                        let _ = self
-                            .job_queue
-                            .fail_job(&job.id, "No capable conductor found")
-                            .await;
+
+                        let fallback_msg = if let Some(discovery) = &self.tool_discovery {
+                            let instruction = if !job.topic.is_empty() {
+                                &job.topic
+                            } else {
+                                "No instruction provided"
+                            };
+                            match discovery.suggest_tools(instruction).await {
+                                Ok(tools) if !tools.is_empty() => {
+                                    format!("No conductor found. However, ToolDiscoveryEngine suggests downloading: {}", tools.join(", "))
+                                }
+                                _ => "No capable conductor found and no alternative tools discovered.".to_string(),
+                            }
+                        } else {
+                            "No capable conductor found.".to_string()
+                        };
+
+                        let _ = self.job_queue.fail_job(&job.id, &fallback_msg).await;
                     }
                 }
                 Ok(None) => {
@@ -1191,6 +1206,71 @@ mod tests {
         assert_eq!(
             diagnosis.category,
             aiome_core_contracts::trajectory::FailureCategory::SystemFailure
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_fallback_to_tool_discovery() {
+        let mut job = Job::default();
+        job.id = "unknown-job".into();
+        job.category = "unknown_category".into();
+        job.topic = "Please parse this file".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            ..Default::default()
+        });
+
+        // Create a mock ToolDiscoveryEngine
+        struct MockToolDiscovery;
+        #[async_trait]
+        impl aiome_core_contracts::traits::ToolDiscoveryEngine for MockToolDiscovery {
+            async fn discover_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError> {
+                Ok(vec![])
+            }
+            async fn suggest_tools(&self, instruction: &str) -> Result<Vec<String>, AiomeError> {
+                if instruction.contains("parse") {
+                    Ok(vec!["file_parser_tool".into()])
+                } else {
+                    Ok(vec![])
+                }
+            }
+        }
+
+        let tool_discovery = Arc::new(MockToolDiscovery);
+
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            Some(tool_discovery),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        // Register NO conductors so we fall into the else block.
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        // Wait for it to fail the job
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        let lock = job_queue.failed_jobs.lock().unwrap();
+        // Since no conductor is available, the dispatcher should fail the job,
+        // but with a message mentioning the suggested tools.
+        let failed_job = lock
+            .iter()
+            .find(|(id, _)| id == "unknown-job")
+            .expect("Job should be failed");
+        assert!(
+            failed_job.1.contains("file_parser_tool"),
+            "Message should contain tool name"
         );
     }
 }

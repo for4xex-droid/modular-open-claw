@@ -109,6 +109,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 1. **Strategic Planner & Scientist Loop**: AI 自身が改善仮説を立て、反復的な自己レビューを経て実験ジョブを投入。
 2. **Watchtower Diagnostic Loop**: 失敗したジョブから自律的に教訓を抽出し、次回の試行へ確実にフィードバック（修復ヒントによる冪等再試行）。
+3. **Intelligence Layer (DreamState)**: アイドル時にAIが自律的に仮説検証や自己反省のジョブを生み出し、未知の課題には外部シグナルを用いた解決策（ToolDiscovery）を自己探索する完全自律アーキテクチャ。
 
 ---
 

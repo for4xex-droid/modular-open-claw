@@ -109,6 +109,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 
 1. **Strategic Planner & Scientist Loop**: The AI independently hypothesizes improvements, runs iterative self-reviews, and submits experimental jobs.
 2. **Watchtower Diagnostic Loop**: Autonomously extracts lessons from failed jobs, guaranteeing feedback goes into the next attempt (idempotent retries with injected repair hints).
+3. **Intelligence Layer (DreamState)**: A fully autonomous architecture where the AI autonomously generates experimental jobs or self-reflections during idle time, and self-discovers solutions via external MCP signals (ToolDiscovery) for unknown tasks.
 
 ---
 

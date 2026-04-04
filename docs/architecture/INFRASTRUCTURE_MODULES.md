@@ -27,7 +27,7 @@
 | `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。 | **Phase C 完了** |
 | `dataset_extractor` | SoulStoreから記憶（`experiences`）を抽出し、MLX LoRA学習用JSONLデータセットに動的に蒸留・フォーマット変換を行うETL基盤。スレッドセーフかつコンテキスト維持（破滅的忘却防止）を担う。 | **Phase 1A-2 完了** |
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。 | **Phase 8.8** |
-| `dream_state` | アイドル時の自律思考（思考整理・企画立案）の状態管理。Phase 2b で Soul Pipeline と統合済。 | **機能強化** |
+| `dream_state` | アイドル時の自律思考（探求夢・反省夢）の状態管理。api-server側で `DreamService` ランタイムとしてバックグラウンド統合完了。 | **インテリジェンス層統合完了** |
 | `forecast` | Google `timesfm-2.5-200m-pytorch` と通信し、成長停滞等の時系列予測を透過的に返す `ForecastProvider` トレイトの実装。 | **Phase 3D 完了** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
@@ -58,7 +58,7 @@
 | `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクのディスパッチと進捗通知（SSE）を管理。`DockerConductor` 等の具象実行部を束ねるイベント駆動エンジン。**Phase 3C** にて `requires_review` 判定に基づく `Oracle` による非同期評価と 60秒タイムアウト隔離（Evaluating）ループを統合。 | **Phase 3C 完了** |
+| `task_orchestrator`| 非同期タスクの管理とディスパッチ。`DockerConductor` 等の実行部を束ねる。`ToolDiscoveryEngine` フェイルソフトフォールバックおよび `GenericLlmConductor` による自律学習タスク処理を統合。 | **インテリジェンス層統合完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。

@@ -40,6 +40,10 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
     - **役割**: SoulStore（長期記憶）から会話や経験を抽出し、動的に機械学習モデル専用の訓練データへと精製する。
     - **特徴**: `DatasetExtractor` が稼働し、AIの過去の記憶領域から文脈を維持した一続きの JSONL ブロックデータを抽出。並行ジョブ間で I/O 競合が発生しないスレッドセーフな基盤の上で、破滅的忘却を防ぎながら独自のパーソナリティを LoRA へ転写（Fine-Tuning）するパイプラインを形成します。
 
+9.  **Intelligence Layer (From Hierarchy to Intelligence)**:
+    - **役割**: ピラミッド型の命令ダウンフロー（Hierarchy）から、LLM自身が課題発見から解決ツールの探索まで行う自律ネットワーキング（Intelligence）への転換。
+    - **特徴**: アイドル時に稼働する `DreamService` がシステム全体の課題解決や「探索的夢（`scientific_experiment`）」を JobQueue に投下します。さらに、タスク実行に必要なスキルを持たない場合でもクラッシュせず、`ToolDiscoveryEngine` にフォールバックして必要な MCP ツールを自己推論して導入要求を出す「フェイルソフト」と「自己組織化」を獲得しました。
+
 ---
 
 ## ⚙️ 進化パラメーター (Evolution Stats)

@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-04T21:42:22.222183
+> Generated at: 2026-04-05T03:00:07.602840
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, CausalVisualizer, CharacterBillboard, CharacterPanel, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, Inlets, InxRenderer, LanguageContext, LoraTrainingView, MiniTabBar, OllamaModelSelector, OnboardingModal, OriginsManager, Outlet, PAGE_SIZE, Rat, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, StoryFlow, SystemBirth, Timeline, TreasureBox, VaultProtectionItem, VoiceStore, VrmRenderer
+- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, CausalVisualizer, CharacterBillboard, CharacterPanel, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, Inlets, InxRenderer, LanguageContext, LoraTrainingView, MiniTabBar, ModelSetupStep, OllamaModelSelector, OnboardingModal, OriginsManager, Outlet, PAGE_SIZE, Rat, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, StoryFlow, SystemBirth, Timeline, TreasureBox, VaultProtectionItem, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**
@@ -79,6 +79,8 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/lora/status/:job_id`
 - `/api/v1/lora/train`
 - `/api/v1/metrics`
+- `/api/v1/models/pull`
+- `/api/v1/models/status`
 - `/api/v1/ollama/models`
 - `/api/v1/settings`
 - `/api/v1/settings/identity`
@@ -109,7 +111,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/wiki`
 - `/wiki/:id`
 **Key Structs**
-- AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, PluginRegistry, PublishListingRequest, PurchaseRequest, PurchaseResponse, QueryReq, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
+- AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, ModelStatusResponse, PluginRegistry, PublishListingRequest, PullModelRequest, PurchaseRequest, PurchaseResponse, QueryReq, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
 
 ### `aiome-node`
 **REST / Websocket Routes**

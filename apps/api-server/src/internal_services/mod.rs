@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
+pub mod dream;
 pub mod heartbeat;
 pub mod watchtower;
 
@@ -29,6 +30,14 @@ pub async fn spawn_all(state: AppState) {
     tokio::spawn(async move {
         if let Err(e) = heartbeat::run(state_clone).await {
             tracing::error!("❌ Internal Heartbeat service failed: {:?}", e);
+        }
+    });
+
+    // 3. Dream Task (Hypothesis, Review, and Insight Generation)
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = dream::run(state_clone).await {
+            tracing::error!("❌ Internal Dream service failed: {:?}", e);
         }
     });
 }

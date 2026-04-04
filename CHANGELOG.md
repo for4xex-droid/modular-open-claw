@@ -10,6 +10,10 @@
     - **デフォルトモデル切替**: ローカル推論のデフォルトモデルを `qwen3.5:9b` から `gemma4:26b` (MoE, Apache 2.0) に変更。Google の最新オープンモデルファミリー Gemma 4 を採用し、3.8B 活性化パラメータによる高速推論と 256K コンテキスト長を活用可能に。
     - **LoRA Adapter Family Isolation**: アダプター保存パスにベースモデルファミリー名を含める構造 (`vault/lora/{family}/{job_id}`) に変更。`extract_model_family` ヘルパーと `list_adapter_families` API により、Qwen/Gemma 等のアダプターの共存・切り替えをサポート。
     - **影響範囲**: `shared/config.rs`, `napi-bridge/state.rs`, `.env.example`, `lora_training.rs`, `guardrails.rs` (ドキュメント更新)
+- **Block Intelligence Architecture Integration [完了]:**
+    - **DreamState Runtime Activation**: デッドコード化していた自律的自己更新モジュール `DreamState` を `internal_services/dream.rs` として API サーバーに統合。アイドル時に自律的に仮説生成や過去の反省（省察夢）をキューに自己発行開始。
+    - **ToolDiscovery Fallback**: `TaskDispatcher` にて適格なコンダクタ（実行者）が見つからなかった場合のフォールバックロジックを実装。単に破棄するのではなく、`ToolDiscoveryEngine` に問い合わせてMCPツールの導入を促す設計を採用しテストGREEN。
+    - **GenericLlmConductor**: 上記の `DreamState` が生成した `scientific_experiment` と `data_processing` タスクを実行するための汎用プロンプト・コンダクタを追加実装し、システムレベルでの自己改善フロー（Intelligence Layer）を完成。
 - **UI:** Home v2 Beta. Phase 1 of Aiome Management Console overhaul, featuring new 4-screen layout (Home, Shop, Status, World) with CharacterPanel and StoryFlow integration.
 - **Workflow:** Implement Perfect Planning Phase 1 Final v5, including embedded 3D Avatar viewing with OrbitControls.
 - **Cortex Knowledge Base Phase A (Ingestion) [完成]:**

@@ -663,6 +663,15 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     );
     task_dispatcher.register_conductor(csam_conductor);
 
+    // Register GenericLlmConductor for scientific_experiment and data_processing
+    let generic_conductor = Arc::new(
+        infrastructure::task_orchestrator::llm_conductor::GenericLlmConductor::new(
+            bg_provider.clone(),
+            vec!["scientific_experiment", "data_processing"],
+        ),
+    );
+    task_dispatcher.register_conductor(generic_conductor);
+
     let task_dispatcher = Arc::new(task_dispatcher);
 
     // Spawn the loop

@@ -37,6 +37,7 @@ pub mod job_queue_mock {
         pub karmas: std::sync::Mutex<Vec<Value>>,
         pub diagnosis: std::sync::Mutex<Option<aiome_core_contracts::trajectory::AgentDiagnosis>>,
         pub trajectory: std::sync::Mutex<Vec<TrajectoryStep>>,
+        pub failed_jobs: std::sync::Mutex<Vec<(String, String)>>,
     }
 
     #[async_trait]
@@ -64,12 +65,8 @@ pub mod job_queue_mock {
         ) -> Result<String, AiomeError> {
             Ok("mock-id".into())
         }
-        async fn dequeue(&self, categories: &[&str]) -> Result<Option<Job>, AiomeError> {
-            if categories.contains(&"test_cat") {
-                Ok(self.job_to_return.lock().unwrap().take())
-            } else {
-                Ok(None)
-            }
+        async fn dequeue(&self, _categories: &[&str]) -> Result<Option<Job>, AiomeError> {
+            Ok(self.job_to_return.lock().unwrap().take())
         }
         async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> {
             Ok(self.fetched_job.lock().unwrap().clone())
@@ -78,7 +75,11 @@ pub mod job_queue_mock {
             *self.completed.lock().unwrap() = true;
             Ok(())
         }
-        async fn fail_job(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+        async fn fail_job(&self, id: &str, reason: &str) -> Result<(), AiomeError> {
+            self.failed_jobs
+                .lock()
+                .unwrap()
+                .push((id.to_string(), reason.to_string()));
             Ok(())
         }
         async fn requeue_job(&self, _: &str) -> Result<(), AiomeError> {
