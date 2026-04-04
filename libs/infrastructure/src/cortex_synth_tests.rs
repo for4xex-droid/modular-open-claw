@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 use crate::cortex_synth::*;
 use crate::db::DatabasePool;
 use aiome_core_contracts::error::AiomeError;

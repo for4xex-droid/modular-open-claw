@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;

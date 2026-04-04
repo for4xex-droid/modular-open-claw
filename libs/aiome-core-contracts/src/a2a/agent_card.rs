@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 use serde::{Deserialize, Serialize};
 
 /// Agent Card - ネットワーク上のエージェントの能力とエンドポイントを宣言する自己紹介状

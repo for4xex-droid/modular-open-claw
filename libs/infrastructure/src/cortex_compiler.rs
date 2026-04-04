@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 use crate::belief_consistency_gate::BeliefConsistencyGate;
 use crate::cortex_ingester::CortexDocument;
 use crate::db::DatabasePool;

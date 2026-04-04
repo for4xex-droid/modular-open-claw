@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::new_without_default)]
@@ -16,12 +22,6 @@
 #![allow(clippy::bool_assert_comparison)]
 #![allow(clippy::unnecessary_to_owned)]
 #![allow(clippy::redundant_closure)]
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1.
- */
 #![deny(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
