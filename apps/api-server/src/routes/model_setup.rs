@@ -224,6 +224,19 @@ pub async fn pull_model(
                 }
             }
         }
+
+        // Flush any remaining data in the buffer (final partial line without trailing newline)
+        if !buffer.is_empty() {
+            if let Ok(line) = String::from_utf8(buffer) {
+                let line = line.trim();
+                if !line.is_empty() {
+                    yield Ok(Event::default().event("progress").data(line));
+                }
+            }
+        }
+
+        // Emit explicit done event so the frontend knows the stream has ended
+        yield Ok(Event::default().event("done").data("{}"));
     };
 
     Ok(Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default()))

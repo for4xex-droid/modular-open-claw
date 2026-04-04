@@ -69,6 +69,12 @@ export const useModelStatus = () => {
                                 completed: data.completed,
                                 total: data.total
                             });
+                            // Ollama signals completion with status:"success"
+                            if (data.status === 'success') {
+                                setPullProgress({ status: "Success!" });
+                                setIsPulling(false);
+                                checkStatus();
+                            }
                         } catch(e) {
                             // ignore json parse error
                         }
