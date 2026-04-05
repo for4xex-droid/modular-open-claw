@@ -674,11 +674,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_soul_transmutation() {
-        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf();
+        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf(); // allow-anti-pattern
         let _ = fs::create_dir_all(&temp_dir).await;
         fs::write(temp_dir.join("SOUL.md"), "A B C D E")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         let llm = Arc::new(MockLlm {
             mutation_response: "X Y Z".to_string(),
@@ -692,7 +692,7 @@ mod tests {
         let res = mutator.transmute(&jq).await;
         assert!(res.is_ok());
 
-        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap();
+        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap(); // allow-anti-pattern
         assert_eq!(content, "X Y Z");
     }
 }

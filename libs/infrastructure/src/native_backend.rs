@@ -135,7 +135,7 @@ mod tests {
         let results = backend
             .recall("query", 10)
             .await
-            .expect("Native recall failed");
+            .expect("Native recall failed"); // allow-anti-pattern
         assert_eq!(
             results.len(),
             0,

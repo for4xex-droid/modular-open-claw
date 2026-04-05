@@ -152,7 +152,7 @@ mod tests {
         });
 
         let dump_dir = std::env::temp_dir().join("aiome_dataset_extractor_test");
-        fs::create_dir_all(&dump_dir).await.unwrap();
+        fs::create_dir_all(&dump_dir).await.unwrap(); // allow-anti-pattern
 
         let extractor = DatasetExtractor::new(dump_dir.clone());
 
@@ -163,11 +163,11 @@ mod tests {
 
         // Assert
         assert!(result.is_ok(), "Needs to successfully write file");
-        let path = result.unwrap();
+        let path = result.unwrap(); // allow-anti-pattern
         assert!(path.exists());
 
         // ファイルの中身をパースしてJSONL形式か確認
-        let content = fs::read_to_string(&path).await.unwrap();
+        let content = fs::read_to_string(&path).await.unwrap(); // allow-anti-pattern
         let lines: Vec<&str> = content.lines().collect();
 
         // 期待値: 会話ブロック全体が1つの文脈文字列として "\n" (改行コード) 結合された1行のJSONが出力されること
@@ -177,9 +177,9 @@ mod tests {
             "Should contain exactly 1 line representing the whole conversation block"
         );
 
-        let block_line: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
+        let block_line: serde_json::Value = serde_json::from_str(lines[0]).unwrap(); // allow-anti-pattern
         let expected_text = "user: Hello\nWorld\nagent: Hi there!";
-        assert_eq!(block_line["text"].as_str().unwrap(), expected_text);
+        assert_eq!(block_line["text"].as_str().unwrap(), expected_text); // allow-anti-pattern
 
         // Cleanup
         fs::remove_dir_all(&dump_dir).await.unwrap_or(());
@@ -196,7 +196,7 @@ mod tests {
         });
 
         let dump_dir = std::env::temp_dir().join("aiome_dataset_extractor_test_empty");
-        fs::create_dir_all(&dump_dir).await.unwrap();
+        fs::create_dir_all(&dump_dir).await.unwrap(); // allow-anti-pattern
 
         let extractor = DatasetExtractor::new(dump_dir.clone());
 

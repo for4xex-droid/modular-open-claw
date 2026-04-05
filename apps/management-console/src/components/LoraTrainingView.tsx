@@ -259,7 +259,7 @@ const LoraTrainingView: React.FC = () => {
                             <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('lora.jobId')}</span>
-                                    <span style={{ fontFamily: 'monospace', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{jobId}</span>
+                                    <span className="font-mono" style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{jobId}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('lora.status')}</span>
@@ -275,7 +275,7 @@ const LoraTrainingView: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div style={{ flex: 1, background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <div className="font-mono" style={{ flex: 1, background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', overflowY: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                 <div style={{ color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>&gt; System initialized...</div>
                                 <div>&gt; Base model: {baseModel}</div>
                                 <div>&gt; Target dataset: {datasetId}</div>

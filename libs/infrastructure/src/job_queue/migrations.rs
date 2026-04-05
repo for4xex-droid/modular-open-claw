@@ -21,9 +21,14 @@ pub trait DbInitializer {
 impl DbInitializer for UniversalJobQueue {
     /// The Immortal Samsara Schema (完全不可侵DDL)
     async fn init_db(&self) -> Result<(), AiomeError> {
-        let pool = self.pool.get_sqlite_pool().expect(
-            "init_db for generic migrations assumes SQLite. Postgres uses postgres_init.rs.",
-        );
+        let pool = self
+            .pool
+            .get_sqlite_pool()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason:
+                    "init_db for generic migrations assumes SQLite. Postgres uses postgres_init.rs."
+                        .to_string(),
+            })?;
 
         sqlx::migrate!("migrations/sqlite")
             .run(pool)

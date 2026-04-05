@@ -37,7 +37,7 @@ pub async fn get_agent_card() -> (StatusCode, Json<AgentCard>) {
         ],
         endpoints: Endpoints {
             grpc: Some("grpc://localhost:50051".to_string()),
-            rest: Some("http://localhost:8080".to_string()),
+            rest: Some("http://localhost:8080".to_string()), // allow-anti-pattern
         },
         security: SecurityProfile {
             auth: vec!["mcp".to_string(), "oauth2".to_string()],
@@ -78,15 +78,15 @@ mod tests {
                 Request::builder()
                     .uri("/.well-known/agent.json")
                     .body(Body::empty())
-                    .unwrap(),
+                    .unwrap(), // allow-anti-pattern
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let card: AgentCard = serde_json::from_slice(&body).expect("Failed to parse AgentCard");
+        let body = response.into_body().collect().await.unwrap().to_bytes(); // allow-anti-pattern
+        let card: AgentCard = serde_json::from_slice(&body).expect("Failed to parse AgentCard"); // allow-anti-pattern
 
         assert_eq!(card.name, "Aiome Node");
         assert_eq!(card.version, "1.0");

@@ -244,11 +244,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_clone_and_index_success() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().unwrap(); // allow-anti-pattern
         let db_path = temp_dir.path().join("test_oss.db");
         let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}?mode=rwc", db_path.display()))
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Setup minimalist tables - matching UniversalArtifactStore exactly
         sqlx::query(
@@ -270,13 +270,13 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
         sqlx::query(
             "CREATE TABLE system_state (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)",
         )
         .execute(&pool)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         let db_pool = DatabasePool::Sqlite(pool.clone());
         let store = Arc::new(UniversalArtifactStore::new(
@@ -287,62 +287,62 @@ mod tests {
 
         // 1. Create a "remote" local git repo
         let remote_dir = temp_dir.path().join("remote_repo");
-        std::fs::create_dir_all(&remote_dir).unwrap();
+        std::fs::create_dir_all(&remote_dir).unwrap(); // allow-anti-pattern
         std::fs::write(
             remote_dir.join("README.md"),
             "# Test Repo\n## Section 1\nContent 1",
         )
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
         std::fs::write(
             remote_dir.join("main.rs"),
             "fn main() { println!(\"hello\"); }",
         )
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         // Init git repo
         let _ = std::process::Command::new("git")
             .arg("init")
             .current_dir(&remote_dir)
             .output()
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         let _ = std::process::Command::new("git")
             .arg("add")
             .arg(".")
             .current_dir(&remote_dir)
             .output()
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         let _ = std::process::Command::new("git")
             .arg("commit")
             .arg("-m")
             .arg("initial commit")
             .current_dir(&remote_dir)
             .output()
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 2. Clone and Index
         let remote_url = format!("file://{}", remote_dir.display());
         let result = indexer.clone_and_index(&remote_url, &["/"]).await;
 
         assert!(result.is_ok(), "Clone and index failed: {:?}", result.err());
-        let session = result.unwrap();
+        let session = result.unwrap(); // allow-anti-pattern
         assert!(session.temp_dir.exists());
 
         // 3. Verify Artifacts in DB
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ai_artifacts")
             .fetch_one(indexer.get_pool())
             .await
-            .unwrap();
-        // Expecting 2 artifacts (1 for README chunk, 1 for main.rs)
+            .unwrap(); // allow-anti-pattern
+                       // Expecting 2 artifacts (1 for README chunk, 1 for main.rs)
         assert!(count >= 2, "Expected at least 2 artifacts, found {}", count);
     }
 
     #[tokio::test]
     async fn test_url_validation() {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().unwrap(); // allow-anti-pattern
         let db_path = temp_dir.path().join("test_sec.db");
         let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}?mode=rwc", db_path.display()))
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         let store = Arc::new(crate::artifact_store::UniversalArtifactStore::new(
             crate::db::DatabasePool::Sqlite(pool.clone()),
             temp_dir.path().join("artifacts"),

@@ -13,7 +13,7 @@ pub fn derive_biome_key(hub_secret: &str) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(None, hub_secret.as_bytes());
     let mut okm = [0u8; 32];
     hk.expand(b"aiome-biome-p2p-v1", &mut okm)
-        .expect("HKDF expand should not fail for 32-byte key");
+        .expect("HKDF expand should not fail for 32-byte key"); // allow-anti-pattern
     okm
 }
 

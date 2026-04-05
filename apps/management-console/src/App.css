@@ -1,3 +1,4 @@
+@import './styles/artemis-font.css';
 @import './styles/tokens.css';
 @import './styles/animations.css';
 
@@ -18,6 +19,94 @@ body {
   color: var(--text-primary);
   overflow: hidden;
   height: 100vh;
+}
+
+/* =============================================
+ * Artemis Typography Hierarchy — Global Rules
+ * Inter (body) / Outfit (display) / JetBrains Mono (code)
+ *
+ * Outfit はジオメトリックサンセリフ。San Francisco (system-ui)
+ * との視覚差を最大化するため、letter-spacing を広く取り、
+ * text-transform: uppercase をセクション見出しに適用。
+ * ============================================= */
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+h1 {
+  font-weight: 900;
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+h3 {
+  font-weight: 700;
+}
+
+h4 {
+  font-weight: 700;
+}
+
+h5 {
+  font-weight: 600;
+}
+
+/* =============================================
+ * Artemis Utility Classes
+ * ============================================= */
+.artemis-heading {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(var(--accent-cyan-rgb), 0.3));
+}
+
+.artemis-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.artemis-status {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* 主要ページタイトル — Outfit のジオメトリック形状を最大限に活用 */
+.header h2 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(var(--accent-cyan-rgb), 0.3));
+}
+
+code, pre, kbd, samp, .font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.font-display {
+  font-family: var(--font-display);
 }
 
 #root {
@@ -63,6 +152,7 @@ body {
 .brand {
   font-size: 1.6rem;
   font-weight: 800;
+  font-family: var(--font-display);
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
   -webkit-background-clip: text;
   background-clip: text;
@@ -267,6 +357,7 @@ body {
 .stat-value {
   font-size: 2rem;
   font-weight: 800;
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
 }

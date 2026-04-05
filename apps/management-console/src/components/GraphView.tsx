@@ -45,7 +45,7 @@ const GraphView: React.FC = () => {
                             border: n.group === 'karma_local' ? '#fff' : '#fff',
                         }
                     },
-                    font: { color: '#fff', size: 12, face: 'Inter' },
+                    font: { color: '#fff', size: 12, face: 'Artemis Inter, Inter' },
                     shape: 'dot',
                     size: 20 + (n.label.length / 5)
                 })));

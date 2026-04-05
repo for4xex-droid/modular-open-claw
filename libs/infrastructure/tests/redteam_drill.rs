@@ -37,7 +37,7 @@ async fn test_scenario_2_ssrf_protection() {
     assert!(err.is_err(), "Should block AWS metadata service");
 
     // 2.2 Local Database / Sensitive service
-    let err2: anyhow::Result<()> = policy.validate_url("http://localhost:5432/admin").await;
+    let err2: anyhow::Result<()> = policy.validate_url("http://localhost:5432/admin").await; // allow-anti-pattern
     assert!(
         err2.is_err(),
         "Should block unauthorized local ports (only 8188, 11434 allowed)"

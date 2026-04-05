@@ -39,6 +39,7 @@
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
+| `output_filter` | RTK(Rust Token Killer)に着想を得たコマンド出力フィルタ。ボイラープレートや重複行を削減しLLMコンテキストを最適化。**Phase 3**で削減数を `ToolExecutionEvent::TokenSaved` として上層やSSE（Management Console）へ流す計測基盤を結合済。 | **Phase 3 完了** |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
@@ -64,4 +65,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-05 (Aiome MVP Phase 2A Hardening)*
+*最終更新: 2026-04-06 (Aiome Output Filter Phase 3)*

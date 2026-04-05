@@ -21,18 +21,18 @@ mod tests {
     #[tokio::test]
     async fn test_progressive_skill_mtime_invalidation() {
         use infrastructure::skills::{VerifiedSkill, WasmSkillManager};
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // allow-anti-pattern
         let skills_dir = dir.path().join("skills");
         let allowed_root = dir.path().join("root");
-        fs::create_dir_all(&skills_dir).unwrap();
-        fs::create_dir_all(&allowed_root).unwrap();
+        fs::create_dir_all(&skills_dir).unwrap(); // allow-anti-pattern
+        fs::create_dir_all(&allowed_root).unwrap(); // allow-anti-pattern
 
-        let manager = WasmSkillManager::new(&skills_dir, &allowed_root).unwrap();
+        let manager = WasmSkillManager::new(&skills_dir, &allowed_root).unwrap(); // allow-anti-pattern
 
         // 1. ダミーのWASMファイルを作成
         let skill_name = "test_skill";
         let wasm_file = skills_dir.join(format!("{}.wasm", skill_name));
-        fs::write(&wasm_file, b"wasm_v1").unwrap();
+        fs::write(&wasm_file, b"wasm_v1").unwrap(); // allow-anti-pattern
 
         let verified = VerifiedSkill::new_for_test(skill_name);
 
@@ -41,7 +41,7 @@ mod tests {
 
         // 2. ファイルを書き換える
         tokio::time::sleep(Duration::from_millis(100)).await;
-        fs::write(&wasm_file, b"wasm_v2").unwrap();
+        fs::write(&wasm_file, b"wasm_v2").unwrap(); // allow-anti-pattern
 
         // 3. 再ロード時に新しい mtime を検知してキャッシュが更新されることを期待
         // ここでは内部状態を覗けないため、エラーメッセージや挙動で判断するか、
@@ -52,18 +52,18 @@ mod tests {
     #[test]
     fn test_virtual_path_resolution() {
         use shared::sandbox::PathSandbox;
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // allow-anti-pattern
         let physical_path = dir.path().join("real_workspace");
-        fs::create_dir_all(&physical_path).unwrap();
-        fs::write(physical_path.join("test.txt"), b"hello").unwrap();
+        fs::create_dir_all(&physical_path).unwrap(); // allow-anti-pattern
+        fs::write(physical_path.join("test.txt"), b"hello").unwrap(); // allow-anti-pattern
 
         let sandbox = PathSandbox::new(dir.path())
-            .unwrap()
+            .unwrap() // allow-anti-pattern
             .with_virtual_mapping("/mnt/workspace", physical_path.clone());
 
         let resolved = sandbox
             .resolve_virtual_path("/mnt/workspace/test.txt")
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         assert!(resolved.ends_with("real_workspace/test.txt"));
         assert!(resolved.exists());
     }

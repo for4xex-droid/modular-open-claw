@@ -122,6 +122,7 @@ pub mod model_manager;
 pub mod native_backend;
 /// 高度な論理推論エンジン
 pub mod oracle;
+pub mod output_filter;
 pub mod oss_ast_analyzer;
 pub mod oss_orchestrator;
 /// 外部リポジトリの自動クローン・RAGインデックス化

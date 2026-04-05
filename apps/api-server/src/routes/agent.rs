@@ -116,29 +116,29 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap(); // allow-anti-pattern
         let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
+        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
 
         let ts = std::sync::Arc::new(
             infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
                 infrastructure::db::DatabasePool::new_sqlite(&pool_url)
                     .await
-                    .unwrap(),
+                    .unwrap(), // allow-anti-pattern
             ),
         );
-        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap()); // allow-anti-pattern
         let registry = Arc::new(RegistryManager::new(jq.get_pool().clone()));
 
         // Setup WASM Skill Manager in a tmp dir
         let skills_dir = tmp_dir.path().join("skills");
         let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
+        std::fs::create_dir_all(&skills_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&sandbox_dir).unwrap(); // allow-anti-pattern
 
         let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
+            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap()) // allow-anti-pattern
+                .unwrap(), // allow-anti-pattern
         );
 
         let state = crate::AppState {
@@ -175,7 +175,7 @@ mod tests {
                 "args": ["weather.js"]
             })),
         };
-        state.registry.register_asset(mcp_manifest).await.unwrap();
+        state.registry.register_asset(mcp_manifest).await.unwrap(); // allow-anti-pattern
 
         // 2. Build instructions
         let instructions = build_system_instructions(
@@ -215,7 +215,7 @@ mod tests {
                 "args": ["search.py"]
             })),
         };
-        state.registry.register_asset(mcp_manifest).await.unwrap();
+        state.registry.register_asset(mcp_manifest).await.unwrap(); // allow-anti-pattern
 
         // Describe it
         let description = skill_handler::describe_skill(mcp_name, &state).await;

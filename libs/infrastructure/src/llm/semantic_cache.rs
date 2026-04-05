@@ -203,11 +203,11 @@ mod tests {
                     sqlx::sqlite::SqlitePoolOptions::new()
                         .connect("sqlite::memory:")
                         .await
-                        .unwrap(),
+                        .unwrap(), // allow-anti-pattern
                 ),
             ),
         );
-        let jq = Arc::new(UniversalJobQueue::new(":memory:", None, ts).await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(":memory:", None, ts).await.unwrap()); // allow-anti-pattern
         let cache = SemanticCache::new(jq);
 
         let prompt = "hello";
@@ -220,7 +220,7 @@ mod tests {
         };
 
         // Initially empty
-        let cached = cache.get(prompt, system).await.unwrap();
+        let cached = cache.get(prompt, system).await.unwrap(); // allow-anti-pattern
         assert!(cached.is_none());
 
         // Cache it
@@ -234,12 +234,12 @@ mod tests {
                 3600,
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Retrieve it
-        let cached = cache.get(prompt, system).await.unwrap();
+        let cached = cache.get(prompt, system).await.unwrap(); // allow-anti-pattern
         assert!(cached.is_some());
-        let cached = cached.unwrap();
+        let cached = cached.unwrap(); // allow-anti-pattern
         assert_eq!(cached.content, "hi there");
     }
 }

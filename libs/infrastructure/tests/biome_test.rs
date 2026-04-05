@@ -17,18 +17,18 @@ async fn test_biome_dialogue_limit() {
                 sqlx::sqlite::SqlitePoolOptions::new()
                     .connect("sqlite::memory:")
                     .await
-                    .unwrap(),
+                    .unwrap(), // allow-anti-pattern
             ),
         ),
     );
     let queue = UniversalJobQueue::new("sqlite::memory:", None, ts)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
     let topic_id = "test_dialogue_topic";
 
     // Simulate 10 turns
     for i in 0..10 {
-        let count = queue.advance_biome_turn(topic_id, 0).await.unwrap();
+        let count = queue.advance_biome_turn(topic_id, 0).await.unwrap(); // allow-anti-pattern
         assert_eq!(count, i + 1);
 
         let msg = BiomeMessage {
@@ -42,26 +42,26 @@ async fn test_biome_dialogue_limit() {
             timestamp: chrono::Utc::now().to_rfc3339(),
             encryption: "none".to_string(),
         };
-        queue.store_biome_message(&msg).await.unwrap();
+        queue.store_biome_message(&msg).await.unwrap(); // allow-anti-pattern
     }
 
     let status = queue
         .get_biome_topic_status(topic_id)
         .await
-        .unwrap()
-        .unwrap();
+        .unwrap() // allow-anti-pattern
+        .unwrap(); // allow-anti-pattern
     assert_eq!(status.0, 10); // 10 turns reached
 
     // Archive it
-    queue.archive_biome_topic(topic_id).await.unwrap();
+    queue.archive_biome_topic(topic_id).await.unwrap(); // allow-anti-pattern
 
     // Verify it's archived
     let archived_status: String =
         sqlx::query_scalar("SELECT status FROM biome_topics WHERE topic_id = ?")
             .bind(topic_id)
-            .fetch_one(queue.get_pool().get_sqlite_pool().unwrap())
+            .fetch_one(queue.get_pool().get_sqlite_pool().unwrap()) // allow-anti-pattern
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
     assert_eq!(archived_status, "Archived");
 }

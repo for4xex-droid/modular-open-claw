@@ -171,7 +171,7 @@ mod tests {
             // Assert Gap A (Authorization header)
             let auth_header = request.metadata().get("authorization");
             assert!(auth_header.is_some(), "Authorization metadata not found!");
-            assert_eq!(auth_header.unwrap().to_str().unwrap(), "Bearer test-token");
+            assert_eq!(auth_header.unwrap().to_str().unwrap(), "Bearer test-token"); // allow-anti-pattern
 
             let req = request.into_inner();
             assert_eq!(req.job_id, "job-123");
@@ -189,7 +189,7 @@ mod tests {
                     result_hash: "".into(),
                 }))
                 .await
-                .unwrap();
+                .unwrap(); // allow-anti-pattern
 
                 tx.send(Ok(ProtoTaskProgress {
                     message: "Done".into(),
@@ -201,7 +201,7 @@ mod tests {
                     result_hash: "abcd1234hash".into(),
                 }))
                 .await
-                .unwrap();
+                .unwrap(); // allow-anti-pattern
             });
 
             Ok(Response::new(ReceiverStream::new(rx)))
@@ -211,8 +211,8 @@ mod tests {
     #[tokio::test]
     async fn test_grpc_client_execute_task_success() {
         // Start Mock Server on arbitrary port
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr: SocketAddr = listener.local_addr().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap(); // allow-anti-pattern
+        let addr: SocketAddr = listener.local_addr().unwrap(); // allow-anti-pattern
         let endpoint_url = format!("http://{}", addr);
 
         tokio::spawn(async move {
@@ -220,7 +220,7 @@ mod tests {
                 .add_service(DockerConductorServer::new(MockDockerConductor))
                 .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener))
                 .await
-                .unwrap();
+                .unwrap(); // allow-anti-pattern
         });
 
         // Test Client
@@ -244,22 +244,22 @@ mod tests {
         let result = client.execute_task(req).await;
         assert!(result.is_ok(), "execute_task failed to connect");
 
-        let mut stream = result.unwrap();
+        let mut stream = result.unwrap(); // allow-anti-pattern
 
         // Receive first message
-        let msg1_result = stream.next().await.expect("Expected stream message 1");
-        let msg1 = msg1_result.expect("Expected successful progress");
+        let msg1_result = stream.next().await.expect("Expected stream message 1"); // allow-anti-pattern
+        let msg1 = msg1_result.expect("Expected successful progress"); // allow-anti-pattern
         assert_eq!(msg1.percent, 10);
         assert_eq!(msg1.message, "Starting");
         assert!(!msg1.is_completed);
 
         // Receive second message
-        let msg2_result = stream.next().await.expect("Expected stream message 2");
-        let msg2 = msg2_result.expect("Expected successful progress");
+        let msg2_result = stream.next().await.expect("Expected stream message 2"); // allow-anti-pattern
+        let msg2 = msg2_result.expect("Expected successful progress"); // allow-anti-pattern
         assert_eq!(msg2.percent, 100);
         assert_eq!(msg2.message, "Done");
         assert!(msg2.is_completed);
-        assert_eq!(msg2.result.unwrap(), "Success");
+        assert_eq!(msg2.result.unwrap(), "Success"); // allow-anti-pattern
 
         // End of stream
         assert!(stream.next().await.is_none());

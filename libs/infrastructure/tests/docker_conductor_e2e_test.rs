@@ -26,12 +26,13 @@ async fn test_docker_conductor_e2e_success_flow() {
         .output();
 
     if output.is_err() || !output.unwrap().status.success() {
+        // allow-anti-pattern
         println!("Skipping Docker E2E test as docker is not installed");
         return;
     }
 
     let config = GrpcClientConfig {
-        endpoint_url: "http://127.0.0.1:0".to_string(), // Will be overridden
+        endpoint_url: "http://127.0.0.1:0".to_string(), // Will be overridden // allow-anti-pattern
         connect_timeout: Duration::from_secs(10),
         auth_token: "dummy-token".to_string(),
     };
@@ -70,7 +71,7 @@ async fn test_docker_conductor_e2e_success_flow() {
         result.err()
     );
 
-    let (output_text, hash) = result.unwrap();
+    let (output_text, hash) = result.unwrap(); // allow-anti-pattern
     info!("Conductor returned output: {}", output_text);
 
     assert!(

@@ -849,7 +849,7 @@ mod tests {
                 res_internal.is_ok(),
                 "Internal system processes must have Vault access."
             );
-            assert_eq!(res_internal.unwrap().trim(), "SENSITIVE_DATA");
+            assert_eq!(res_internal.unwrap().trim(), "SENSITIVE_DATA"); // allow-anti-pattern
 
             // Cleanup
             let _ = std::fs::remove_file(&vault_file);
@@ -895,7 +895,7 @@ mod tests {
     fn test_security_config_canonicalization_vulnerability() {
         // 環境変数に相対パスやシンボリックリンクを含むパスを設定した場合の挙動確認
         // 実際に存在するディレクトリを指定することで canonicalize() を成功させる
-        let temp = std::env::current_dir().unwrap().join("test_vault_tmp");
+        let temp = std::env::current_dir().unwrap().join("test_vault_tmp"); // allow-anti-pattern
         let _ = std::fs::create_dir_all(&temp);
 
         std::env::set_var("VAULT_PATH", "./test_vault_tmp");

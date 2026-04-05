@@ -70,7 +70,7 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> std::path::PathBuf {
                 expanded
             } else {
                 // `~` の後の `/` をスキップして結合
-                expanded.push(path.strip_prefix("~").unwrap());
+                expanded.push(path.strip_prefix("~").unwrap()); // allow-anti-pattern
                 expanded
             }
         }

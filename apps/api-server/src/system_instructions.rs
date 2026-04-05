@@ -193,28 +193,28 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap(); // allow-anti-pattern
         let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
+        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
 
         let ts = std::sync::Arc::new(
             infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
                 infrastructure::db::DatabasePool::new_sqlite(&pool_url)
                     .await
-                    .unwrap(),
+                    .unwrap(), // allow-anti-pattern
             ),
         );
-        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap());
+        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap()); // allow-anti-pattern
         let registry = Arc::new(RegistryManager::new(jq.get_pool().clone()));
 
         let skills_dir = tmp_dir.path().join("skills");
         let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
+        std::fs::create_dir_all(&skills_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&sandbox_dir).unwrap(); // allow-anti-pattern
 
         let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
+            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap()) // allow-anti-pattern
+                .unwrap(), // allow-anti-pattern
         );
 
         let mut config = shared::config::AiomeConfig::default();
@@ -249,7 +249,7 @@ mod tests {
             price_coins: 0,
             metadata: Some(serde_json::json!({"command": "echo"})),
         };
-        state.registry.register_asset(mcp_manifest).await.unwrap();
+        state.registry.register_asset(mcp_manifest).await.unwrap(); // allow-anti-pattern
 
         let instructions = build_system_instructions(
             &state,
@@ -271,10 +271,10 @@ mod tests {
         let (state, tmp_dir) = setup_test_state().await;
 
         let sub_dir = tmp_dir.path().join("sub");
-        std::fs::create_dir_all(&sub_dir).unwrap();
+        std::fs::create_dir_all(&sub_dir).unwrap(); // allow-anti-pattern
 
-        std::fs::write(sub_dir.join(".aiome.md"), "aiome md content").unwrap();
-        std::fs::write(sub_dir.join(".cursorrules"), "cursorrules content").unwrap();
+        std::fs::write(sub_dir.join(".aiome.md"), "aiome md content").unwrap(); // allow-anti-pattern
+        std::fs::write(sub_dir.join(".cursorrules"), "cursorrules content").unwrap(); // allow-anti-pattern
 
         let rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
         assert_eq!(rules, "[Project Rules (.aiome.md)]\naiome md content\n");
@@ -287,7 +287,7 @@ mod tests {
         );
 
         // Remove .aiome.md and verify cache still returns the same
-        std::fs::remove_file(sub_dir.join(".aiome.md")).unwrap();
+        std::fs::remove_file(sub_dir.join(".aiome.md")).unwrap(); // allow-anti-pattern
         let cached_rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
         assert_eq!(
             cached_rules,
@@ -301,7 +301,7 @@ mod tests {
 
         // Deep nested directory with NO rule files.
         let sub_dir = tmp_dir.path().join("sub1").join("sub2").join("sub3");
-        std::fs::create_dir_all(&sub_dir).unwrap();
+        std::fs::create_dir_all(&sub_dir).unwrap(); // allow-anti-pattern
 
         let rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
 

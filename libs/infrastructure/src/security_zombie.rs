@@ -228,7 +228,7 @@ mod tests {
     async fn test_successful_command() {
         let result = run_with_timeout("echo", &["hello"], Duration::from_secs(5)).await;
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.unwrap(); // allow-anti-pattern
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("hello"));
     }

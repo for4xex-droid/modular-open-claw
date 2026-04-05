@@ -137,7 +137,7 @@ impl AdaptiveImmuneSystem {
                 r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
             ]
             .iter()
-            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").unwrap()))
+            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").unwrap())) // allow-anti-pattern
             .collect()
         });
 
@@ -750,9 +750,9 @@ mod tests {
     async fn test_verify_intent_baseline() {
         let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
         let jq = MockJQ { rules: vec![] };
-        let res = system.verify_intent("rm -rf /", &jq).await.unwrap();
+        let res = system.verify_intent("rm -rf /", &jq).await.unwrap(); // allow-anti-pattern
         assert!(res.is_some());
-        assert_eq!(res.unwrap().id, "sentinel-baseline");
+        assert_eq!(res.unwrap().id, "sentinel-baseline"); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -762,12 +762,12 @@ mod tests {
 
         // 1. 低いスコアを 9 回注入 (平均 1.0)
         for _ in 0..9 {
-            let res = system.record_drift(agent_id, 1.0).await.unwrap();
+            let res = system.record_drift(agent_id, 1.0).await.unwrap(); // allow-anti-pattern
             assert!(res.is_none(), "Should not trigger with < 10 samples");
         }
 
         // 2. 10 回目、平均が 1.5 未満
-        let res = system.record_drift(agent_id, 1.4).await.unwrap();
+        let res = system.record_drift(agent_id, 1.4).await.unwrap(); // allow-anti-pattern
         assert!(
             res.is_none(),
             "Should not trigger with avg <= 1.5 (avg=1.04)"
@@ -776,11 +776,11 @@ mod tests {
         // 3. 高いスコアを連続注入して平均を 1.5 超えさせる
         // 現在の履歴: [1.0, 1.0, ..., 1.4]
         for _ in 0..10 {
-            system.record_drift(agent_id, 2.5).await.unwrap();
+            system.record_drift(agent_id, 2.5).await.unwrap(); // allow-anti-pattern
         }
 
-        let res = system.record_drift(agent_id, 2.5).await.unwrap();
+        let res = system.record_drift(agent_id, 2.5).await.unwrap(); // allow-anti-pattern
         assert!(res.is_some(), "Should trigger Purge when avg > 1.5");
-        assert_eq!(res.unwrap().action, "Purge");
+        assert_eq!(res.unwrap().action, "Purge"); // allow-anti-pattern
     }
 }

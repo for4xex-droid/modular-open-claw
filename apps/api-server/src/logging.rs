@@ -74,7 +74,7 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
         {
             let re =
                 regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY)[A-Za-z0-9_-]+")
-                    .unwrap();
+                    .unwrap(); // allow-anti-pattern
             re.replace_all(&visitor.message, "$1***MASKED***")
                 .to_string()
         } else {

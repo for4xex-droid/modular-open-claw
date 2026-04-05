@@ -17,13 +17,13 @@ use std::collections::HashSet;
 use std::sync::LazyLock;
 
 static URL_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"https?://\S+").expect("Invalid regex"));
-static HTML_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("Invalid regex"));
-static WS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").expect("Invalid regex"));
+    LazyLock::new(|| Regex::new(r"https?://\S+").expect("Invalid regex")); // allow-anti-pattern
+static HTML_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("Invalid regex")); // allow-anti-pattern
+static WS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").expect("Invalid regex")); // allow-anti-pattern
 static SCRIPT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<script\b[^>]*>.*?</script>").expect("Invalid regex"));
+    LazyLock::new(|| Regex::new(r"(?is)<script\b[^>]*>.*?</script>").expect("Invalid regex")); // allow-anti-pattern
 static STYLE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<style\b[^>]*>.*?</style>").expect("Invalid regex"));
+    LazyLock::new(|| Regex::new(r"(?is)<style\b[^>]*>.*?</style>").expect("Invalid regex")); // allow-anti-pattern
 
 /// [G-21] Unified Response Purger (Entity-Level Sanitization)
 ///

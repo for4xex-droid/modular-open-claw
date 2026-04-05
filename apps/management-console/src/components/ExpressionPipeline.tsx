@@ -192,7 +192,7 @@ const ExpressionPipeline: React.FC = () => {
             {status?.status === 'processing' ? <RefreshCw className="animate-spin" size={32} /> : <Clock size={32} />}
           </div>
           <div>
-            <div style={{ fontSize: '1.5rem', fontStyle: 'normal', fontWeight: 800, letterSpacing: '0.1em' }}>{status?.status?.toUpperCase() || "IDLE"}</div>
+            <div className="artemis-status" style={{ fontSize: '1.5rem' }}>{status?.status?.toUpperCase() || "IDLE"}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{t('expression.pipelineState')}</div>
           </div>
           <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -227,7 +227,7 @@ const ExpressionPipeline: React.FC = () => {
                     <span style={{ padding: '0.1rem 0.5rem', background: 'rgba(var(--accent-cyan-rgb), 0.1)', color: 'var(--accent-cyan)', fontSize: '0.7rem', fontWeight: 700, borderRadius: '4px', border: '1px solid rgba(var(--accent-cyan-rgb), 0.2)' }}>
                       {expr.emotion.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{expr.id.substring(0, 8)}</span>
+                    <span className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{expr.id.substring(0, 8)}</span>
                   </div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <Clock size={12} />

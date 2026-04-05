@@ -103,7 +103,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                 <h2 style={{ 
                     color: '#fff', 
                     fontSize: '1.8rem', 
-                    fontWeight: 700, 
+                    fontWeight: 800, 
                     marginBottom: '0.5rem',
                     letterSpacing: '-0.02em'
                 }}>

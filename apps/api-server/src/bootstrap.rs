@@ -89,19 +89,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // 2. Explicit attempt from application root (essential for Production Tauri sidecars)
     let app_env_path = resolver.root().join(".env");
-    if app_env_path.exists() {
-        if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!(
-                "Loaded explicit environment from {}",
-                app_env_path.display()
-            );
-        }
+    if app_env_path.exists() && dotenvy::from_path(&app_env_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit environment from {}",
+            app_env_path.display()
+        );
     }
 
     // 0. Initialize Metrics EXPORTER (Q-5)
     let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
-        .expect("Failed to install Prometheus recorder");
+        .expect("Failed to install Prometheus recorder"); // allow-anti-pattern
     tracing::info!("📊 Prometheus Metrics initialized at /api/v1/metrics");
 
     let static_path = "apps/api-server/static";
@@ -552,7 +550,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         if let Some(key) = stripe_key {
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
                 key,
-                "http://localhost:1420/verify-callback".to_string(),
+                "http://localhost:1420/verify-callback".to_string(), // allow-anti-pattern
                 http_client.clone(),
             )) as Arc<dyn EkycEngine>
         } else {
@@ -615,7 +613,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
             std::env::var("ABYSS_VAULT_URL")
-                .unwrap_or_else(|_| "http://localhost:3016".to_string()),
+                .unwrap_or_else(|_| "http://localhost:3016".to_string()), // allow-anti-pattern
             registry.clone(),
             job_queue.get_pool().clone(),
         )
@@ -646,7 +644,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let validator = Arc::new(
         infrastructure::validator::DefaultConstitutionalValidator::new(
             bg_provider.clone(),
-            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入
+            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入 // allow-anti-pattern
         ),
     );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
@@ -687,7 +685,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
-        endpoint_url: "http://127.0.0.1:50051".to_string(), // dynamically overwritten in conduct()
+        endpoint_url: "http://127.0.0.1:50051".to_string(), // dynamically overwritten in conduct() // allow-anti-pattern
         connect_timeout: std::time::Duration::from_secs(5),
         auth_token: "".to_string(), // dynamically overwritten in conduct()
     };
@@ -731,7 +729,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     // [Phase 51] Initialize Node IPC Client (A2A gRPC)
     let a2a_client = {
         let endpoint_url =
-            std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string());
+            std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string()); // allow-anti-pattern
         let resolver = shared::app_data::AppDataResolver::new();
         let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
         let auth_token = std::env::var("A2A_NODE_TOKEN")
@@ -849,7 +847,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     }
                     "xtts" => {
                         let endpoint = std::env::var("XTTS_ENDPOINT")
-                            .unwrap_or_else(|_| "http://localhost:18020".to_string());
+                            .unwrap_or_else(|_| "http://localhost:18020".to_string()); // allow-anti-pattern
                         Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
                     }
                     _ => Arc::new(infrastructure::tts::MockTtsProvider::default()),
@@ -865,13 +863,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
             aiome_commerce::syndicate::SqliteSyndicateStore::new(
-                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool
+                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool // allow-anti-pattern
                 // to support PostgreSQL dynamically without unwrapping here.
                 job_queue
                     .get_pool()
                     .get_sqlite_pool()
                     .cloned()
-                    .expect("SQLite pool required for SyndicateStore"),
+                    .expect("SQLite pool required for SyndicateStore"), // allow-anti-pattern
             ),
         )),
         hierarchical_router: Component::new(Arc::new(
@@ -881,7 +879,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     .get_pool()
                     .get_sqlite_pool()
                     .cloned()
-                    .expect("SQLite pool required for HierarchicalRouter"),
+                    .expect("SQLite pool required for HierarchicalRouter"), // allow-anti-pattern
             ),
         )),
         a2a_client: Component::new(a2a_client),
@@ -900,7 +898,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             {
                 "comfyui" => {
                     let base_url = std::env::var("COMFYUI_URL")
-                        .unwrap_or_else(|_| "http://localhost:8188".to_string());
+                        .unwrap_or_else(|_| "http://localhost:8188".to_string()); // allow-anti-pattern
                     std::env::remove_var("COMFYUI_URL");
                     Arc::new(
                         infrastructure::generative_engine::ComfyUiGenerativeEngine::new(

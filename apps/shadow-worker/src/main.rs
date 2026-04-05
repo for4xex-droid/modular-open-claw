@@ -176,7 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
 
     let auth_token =
-        env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required");
+        env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required"); // allow-anti-pattern
 
     let worker = ShadowWorkerService { auth_token };
 

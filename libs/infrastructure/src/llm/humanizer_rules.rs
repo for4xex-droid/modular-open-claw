@@ -41,7 +41,7 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
             name: "em_dash_replacement",
             // 文中のダッシュ（両側に文字がある場合）を全角読点または括弧に置換する（ここでは簡易的に読点とするか、単純な置換）
             // 実際は文脈によるが、最も安全な「、」やスペースへの置換、あるいは削除。
-            pattern: Regex::new(r"——|—|─").unwrap(),
+            pattern: Regex::new(r"——|—|─").unwrap(), // allow-anti-pattern
             action: HumanizerAction::Replace("、".to_string()),
             active_contexts: vec![
                 WritingContext::Chat,
@@ -60,7 +60,7 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
                 お気軽にお申し付けください[！!]*
             ",
             )
-            .unwrap(),
+            .unwrap(), // allow-anti-pattern
             action: HumanizerAction::Delete,
             active_contexts: vec![], // All contexts
         },
@@ -74,14 +74,14 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
                 その通りです[。]*
             ",
             )
-            .unwrap(),
+            .unwrap(), // allow-anti-pattern
             action: HumanizerAction::Delete,
             active_contexts: vec![], // All contexts
         },
         // 4. 過剰ヘッジング
         HumanizerRule {
             name: "excessive_hedging",
-            pattern: Regex::new(r"かもしれない可能性がある").unwrap(),
+            pattern: Regex::new(r"かもしれない可能性がある").unwrap(), // allow-anti-pattern
             action: HumanizerAction::Replace("だろう".to_string()),
             active_contexts: vec![
                 WritingContext::TechLog,
@@ -92,14 +92,14 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
         // 5. フィラー句
         HumanizerRule {
             name: "filler_phrases",
-            pattern: Regex::new(r"〜という事実により|であるため、結果として").unwrap(),
+            pattern: Regex::new(r"〜という事実により|であるため、結果として").unwrap(), // allow-anti-pattern
             action: HumanizerAction::LogWarning, // 機械的な置換は文を壊す恐れがあるためログのみ
             active_contexts: vec![],
         },
         // 6. 意義の過剰強調
         HumanizerRule {
             name: "inflated_significance",
-            pattern: Regex::new(r"の重要性を(さらに)?(強調|浮き彫りに)して(い|おり)ます").unwrap(),
+            pattern: Regex::new(r"の重要性を(さらに)?(強調|浮き彫りに)して(い|おり)ます").unwrap(), // allow-anti-pattern
             action: HumanizerAction::Replace("を示しています".to_string()),
             active_contexts: vec![WritingContext::TechLog, WritingContext::Default],
         },
@@ -107,7 +107,7 @@ pub fn default_rules_ja() -> Vec<HumanizerRule> {
         // ここでは単純な単語ベースルールに留める
         HumanizerRule {
             name: "ai_vocabulary",
-            pattern: Regex::new(r"^(さらに|加えて)、").unwrap(),
+            pattern: Regex::new(r"^(さらに|加えて)、").unwrap(), // allow-anti-pattern
             action: HumanizerAction::LogWarning,
             active_contexts: vec![],
         },

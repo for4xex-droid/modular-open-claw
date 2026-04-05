@@ -207,8 +207,8 @@ pub async fn update_setting(
                         .job_queue
                         .get_setting_value("ollama_host")
                         .await
-                        .unwrap_or_else(|_| Some("http://localhost:11434".to_string()))
-                        .unwrap_or_else(|| "http://localhost:11434".to_string());
+                        .unwrap_or_else(|_| Some("http://localhost:11434".to_string())) // allow-anti-pattern
+                        .unwrap_or_else(|| "http://localhost:11434".to_string()); // allow-anti-pattern
 
                     let new_model = format!("{}-lora", base.replace(':', "-"));
                     let q = state.job_queue.clone();

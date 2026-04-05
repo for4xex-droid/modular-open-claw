@@ -26,10 +26,17 @@ pub struct ContextBudget {
     pub max_project_rules_chars: usize,
     #[serde(default = "default_cortex_chars")]
     pub max_cortex_chars: usize,
+    /// ツール実行出力の最大文字数（OutputFilter適用後）
+    #[serde(default = "default_tool_output_chars")]
+    pub max_tool_output_chars: usize,
 }
 
 fn default_cortex_chars() -> usize {
     8000
+}
+
+fn default_tool_output_chars() -> usize {
+    4000
 }
 
 impl Default for ContextBudget {
@@ -42,6 +49,7 @@ impl Default for ContextBudget {
             max_somatic_chars: 500,
             max_project_rules_chars: 3000,
             max_cortex_chars: default_cortex_chars(),
+            max_tool_output_chars: default_tool_output_chars(),
         }
     }
 }
@@ -496,7 +504,7 @@ pub mod tests {
         let job_id: String = job_queue
             .enqueue("Security Test", "topic", "style", None, None, None, 0)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 悪意のあるヘッダーを含むカルマを登録
         job_queue
@@ -512,13 +520,13 @@ pub mod tests {
                 false, // is_private
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Act
         let (context, _) = engine
             .get_context_with_facts(channel_id, category, 10)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Assert
         // 行頭の ### がエスケープされているべき
@@ -547,7 +555,7 @@ pub mod tests {
         let job_id: String = job_queue
             .enqueue("DoS Test", "topic", "style", None, None, None, 0)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 巨大なカルマ（1000文字以上）を登録
         let huge_lesson = "A".repeat(2000);
@@ -564,13 +572,13 @@ pub mod tests {
                 false, // is_private
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Act
         let (context, _) = engine
             .get_context_with_facts(channel_id, category, 10)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Assert
         // デフォルトの max_karma_chars (2000) 程度に収まっているべき
@@ -601,7 +609,7 @@ pub mod tests {
         job_queue
             .store_chat_message(channel_id, "user", &huge_content)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Custom budget with 1000 char history limit
         let mut budget = ContextBudget::default();
@@ -612,7 +620,7 @@ pub mod tests {
         let (_, history) = engine
             .fetch_budgeted_context(channel_id, "Category", budget)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Assert
         assert!(

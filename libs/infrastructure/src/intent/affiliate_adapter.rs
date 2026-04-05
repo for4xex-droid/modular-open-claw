@@ -93,7 +93,7 @@ mod tests {
         let adapter = AffiliateAdapter::new();
 
         // 許可リスト外のドメイン
-        let malicious_url = "http://localhost:16379/secret";
+        let malicious_url = "http://localhost:16379/secret"; // allow-anti-pattern
         let result = adapter.validate_url(malicious_url);
 
         assert!(result.is_err());

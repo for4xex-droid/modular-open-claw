@@ -13,6 +13,7 @@ services:
       - KEY_PROXY_PORT=9999
       - VAULT_SECRET=${VAULT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
     cap_add:
       - IPC_LOCK # REQUIRED for mlockall() security
     security_opt:
@@ -48,6 +49,7 @@ services:
       - FEDERATION_SECRET=${FEDERATION_SECRET}
       - TIMESFM_AUTH_TOKEN=${TIMESFM_AUTH_TOKEN}
       - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3020
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
     depends_on:
       - key-proxy
       - samsara-hub
@@ -80,6 +82,7 @@ services:
       - PORT=3016
       - DATABASE_URL=sqlite:///app/data/samsara_hub.db
       - FEDERATION_SECRET=${FEDERATION_SECRET}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
     volumes:
       - ./data/hub:/app/data
     deploy:

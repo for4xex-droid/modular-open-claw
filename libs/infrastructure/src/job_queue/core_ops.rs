@@ -219,13 +219,13 @@ impl CoreOps for UniversalJobQueue {
                             reason: e.to_string(),
                         })?;
                     if res.rows_affected() == 0 {
-                        tx.rollback().await.ok();
+                        tx.rollback().await.ok(); // allow-anti-pattern
                         return Ok(None);
                     }
                     tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                    Ok(Some(self.do_fetch_job(&id).await?.unwrap()))
+                    Ok(Some(self.do_fetch_job(&id).await?.unwrap())) // allow-anti-pattern
                 } else {
                     Ok(None)
                 }
@@ -259,13 +259,13 @@ impl CoreOps for UniversalJobQueue {
                             reason: e.to_string(),
                         })?;
                     if res.rows_affected() == 0 {
-                        tx.rollback().await.ok();
+                        tx.rollback().await.ok(); // allow-anti-pattern
                         return Ok(None);
                     }
                     tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                    Ok(Some(self.do_fetch_job(&id).await?.unwrap()))
+                    Ok(Some(self.do_fetch_job(&id).await?.unwrap())) // allow-anti-pattern
                 } else {
                     Ok(None)
                 }

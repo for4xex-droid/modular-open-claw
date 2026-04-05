@@ -99,7 +99,7 @@ mod tests {
         manager
             .trigger_pre_execute(&request)
             .await
-            .expect("Hook should pass");
+            .expect("Hook should pass"); // allow-anti-pattern
         assert!(hook.pre_called.load(std::sync::atomic::Ordering::SeqCst));
     }
 }

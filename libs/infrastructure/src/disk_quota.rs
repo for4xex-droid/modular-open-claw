@@ -140,7 +140,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         DatabasePool::Sqlite(pool)
     }
 
@@ -149,19 +149,19 @@ mod tests {
         let pool = setup_db().await;
         // 1MB Quota
         let manager = DiskQuotaManager::new(pool, 1_000_000);
-        manager.init().await.unwrap();
+        manager.init().await.unwrap(); // allow-anti-pattern
 
         let agent_id = Uuid::new_v4();
 
         // Initial usage should be 0
-        assert_eq!(manager.get_usage(agent_id).await.unwrap(), 0);
+        assert_eq!(manager.get_usage(agent_id).await.unwrap(), 0); // allow-anti-pattern
 
         // Check quota 500k -> OK
         assert!(manager.check_quota(agent_id, 500_000).await.is_ok());
 
         // Record 500k
-        manager.record_usage(agent_id, 500_000).await.unwrap();
-        assert_eq!(manager.get_usage(agent_id).await.unwrap(), 500_000);
+        manager.record_usage(agent_id, 500_000).await.unwrap(); // allow-anti-pattern
+        assert_eq!(manager.get_usage(agent_id).await.unwrap(), 500_000); // allow-anti-pattern
 
         // Check quota 600k -> Error!
         let res = manager.check_quota(agent_id, 600_000).await;

@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_begging_memory_window_blocking() {
-        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap();
+        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap(); // allow-anti-pattern
 
         // 1. 直近（5日前）におねだりがあった場合、「おねだりワード（買って）」があれば「記憶」に基づきブロックされるべき
         let last_begging = now - Duration::days(5);
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_begging_memory_window_allowed_after_max_jitter() {
-        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap();
+        let now = Utc.with_ymd_and_hms(2026, 3, 21, 12, 0, 0).unwrap(); // allow-anti-pattern
 
         // 2. 36日以上経過していれば、おねだりワードがなければ通すべき
         let last_begging = now - Duration::days(36);

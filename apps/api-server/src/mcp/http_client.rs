@@ -172,7 +172,7 @@ mod tests {
             .mount(&_server)
             .await;
 
-        let tools = client.list_tools().await.unwrap();
+        let tools = client.list_tools().await.unwrap(); // allow-anti-pattern
         assert_eq!(tools.len(), 1);
         assert_eq!(tools[0].name, "test_tool");
     }
@@ -180,12 +180,12 @@ mod tests {
     #[test]
     fn test_mcp_http_client_ssrf_protection() {
         // Should allow localhost
-        assert!(is_safe_url("http://localhost:8080/mcp").is_ok());
-        assert!(is_safe_url("http://127.0.0.1:8080/mcp").is_ok());
+        assert!(is_safe_url("http://localhost:8080/mcp").is_ok()); // allow-anti-pattern
+        assert!(is_safe_url("http://127.0.0.1:8080/mcp").is_ok()); // allow-anti-pattern
 
         // Should block private IPs if in release mode (simulated)
-        assert!(is_private_ip("10.0.0.1".parse().unwrap()));
-        assert!(is_private_ip("192.168.1.1".parse().unwrap()));
-        assert!(!is_private_ip("8.8.8.8".parse().unwrap()));
+        assert!(is_private_ip("10.0.0.1".parse().unwrap())); // allow-anti-pattern
+        assert!(is_private_ip("192.168.1.1".parse().unwrap())); // allow-anti-pattern
+        assert!(!is_private_ip("8.8.8.8".parse().unwrap())); // allow-anti-pattern
     }
 }

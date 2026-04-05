@@ -150,7 +150,7 @@ mod tests {
         });
         let router = FallbackRouter::new(primary, fallback, 1);
 
-        let result = router.complete("hello", None).await.unwrap();
+        let result = router.complete("hello", None).await.unwrap(); // allow-anti-pattern
         assert_eq!(result.content, "fallback");
     }
 
@@ -166,7 +166,7 @@ mod tests {
         });
         let router = FallbackRouter::new(primary, fallback, 1);
 
-        let result = router.complete("hello", None).await.unwrap();
+        let result = router.complete("hello", None).await.unwrap(); // allow-anti-pattern
         assert!(result.content.contains("ごめんなさい"));
     }
 
@@ -183,13 +183,13 @@ mod tests {
         let router = FallbackRouter::new(primary, fallback, 1);
 
         // 1. 最初はPrimaryを試して失敗し、Fallbackへ。
-        router.complete("hello", None).await.unwrap();
+        router.complete("hello", None).await.unwrap(); // allow-anti-pattern
 
         // 2. 失敗閾値1なので、CircuitはOPEN。
         assert!(router.circuit_breaker.check_state().await.is_err());
 
         // 3. 次のリクエストはPrimaryをスキップして即Fallbackへ。
-        let result = router.complete("hello", None).await.unwrap();
+        let result = router.complete("hello", None).await.unwrap(); // allow-anti-pattern
         assert_eq!(result.content, "fallback");
     }
 }

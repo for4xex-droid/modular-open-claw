@@ -227,7 +227,7 @@ mod tests {
         std::env::remove_var("OPENAI_API_KEY");
         std::env::remove_var("ANTHROPIC_API_KEY");
         std::env::remove_var("API_SERVER_SECRET");
-        let tmp = TempDir::new().unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
         let result = BootstrapDetector::diagnose(tmp.path());
@@ -248,11 +248,11 @@ mod tests {
         std::env::remove_var("GEMINI_API_KEY");
         std::env::remove_var("OPENAI_API_KEY");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        std::env::set_var("OLLAMA_HOST", "http://127.0.0.1:11434");
+        std::env::set_var("OLLAMA_HOST", "http://127.0.0.1:11434"); // allow-anti-pattern
         std::env::set_var("API_SERVER_SECRET", "test_secret_123");
-        let tmp = TempDir::new().unwrap();
-        std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap();
-        std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap(); // allow-anti-pattern
 
         // Act
         let result = BootstrapDetector::diagnose(tmp.path());
@@ -278,8 +278,8 @@ mod tests {
         std::env::set_var("GEMINI_API_KEY", "test-gemini-key");
         std::env::remove_var("OPENAI_API_KEY");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        let tmp = TempDir::new().unwrap();
-        std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap(); // allow-anti-pattern
 
         // Act
         let result = BootstrapDetector::diagnose(tmp.path());
@@ -296,8 +296,8 @@ mod tests {
     #[serial]
     fn test_llm_configured_but_no_db_returns_normal() {
         // Arrange: LLM は設定済みだが DB はまだない (初回起動で DB は自動生成される)
-        std::env::set_var("OLLAMA_HOST", "http://127.0.0.1:11434");
-        let tmp = TempDir::new().unwrap();
+        std::env::set_var("OLLAMA_HOST", "http://127.0.0.1:11434"); // allow-anti-pattern
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
         let result = BootstrapDetector::diagnose(tmp.path());
@@ -318,7 +318,7 @@ mod tests {
         std::env::remove_var("OPENAI_API_KEY");
         std::env::remove_var("ANTHROPIC_API_KEY");
         std::env::remove_var("API_SERVER_SECRET");
-        let tmp = TempDir::new().unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
         let result = BootstrapDetector::diagnose(tmp.path());
@@ -340,15 +340,15 @@ mod tests {
     #[test]
     fn test_factory_reset_deletes_data_files() {
         // Arrange: データファイルを作成
-        let tmp = TempDir::new().unwrap();
-        std::fs::write(tmp.path().join("aiome.db"), "database_content").unwrap();
-        std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap();
-        std::fs::create_dir_all(tmp.path().join("artifacts")).unwrap();
-        std::fs::write(tmp.path().join("artifacts/test.txt"), "artifact").unwrap();
-        std::fs::create_dir_all(tmp.path().join("wasm_storage")).unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("aiome.db"), "database_content").unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(tmp.path().join("artifacts")).unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("artifacts/test.txt"), "artifact").unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(tmp.path().join("wasm_storage")).unwrap(); // allow-anti-pattern
 
         // Act
-        let report = FactoryReset::execute(tmp.path()).unwrap();
+        let report = FactoryReset::execute(tmp.path()).unwrap(); // allow-anti-pattern
 
         // Assert
         assert!(report.deleted_files.contains(&"aiome.db".to_string()));
@@ -366,14 +366,14 @@ mod tests {
     #[test]
     fn test_factory_reset_preserves_env_and_logs() {
         // Arrange
-        let tmp = TempDir::new().unwrap();
-        std::fs::write(tmp.path().join(".env"), "API_SERVER_SECRET=keep_this").unwrap();
-        std::fs::create_dir_all(tmp.path().join("logs")).unwrap();
-        std::fs::write(tmp.path().join("logs/audit.log"), "audit_data").unwrap();
-        std::fs::write(tmp.path().join("aiome.db"), "database").unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join(".env"), "API_SERVER_SECRET=keep_this").unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(tmp.path().join("logs")).unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("logs/audit.log"), "audit_data").unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("aiome.db"), "database").unwrap(); // allow-anti-pattern
 
         // Act
-        let report = FactoryReset::execute(tmp.path()).unwrap();
+        let report = FactoryReset::execute(tmp.path()).unwrap(); // allow-anti-pattern
 
         // Assert: .env と logs は保持されている
         assert!(tmp.path().join(".env").exists());
@@ -388,10 +388,10 @@ mod tests {
     #[test]
     fn test_factory_reset_empty_dir_is_noop() {
         // Arrange: 空のディレクトリ
-        let tmp = TempDir::new().unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
-        let report = FactoryReset::execute(tmp.path()).unwrap();
+        let report = FactoryReset::execute(tmp.path()).unwrap(); // allow-anti-pattern
 
         // Assert: 何も削除されていないが、エラーもない
         assert!(report.deleted_files.is_empty());
@@ -421,14 +421,14 @@ mod tests {
         std::env::remove_var("GEMINI_API_KEY");
         std::env::remove_var("OPENAI_API_KEY");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        let tmp = TempDir::new().unwrap();
-        std::fs::write(tmp.path().join("aiome.db"), "database").unwrap();
-        std::fs::write(tmp.path().join("SOUL.md"), "# Soul").unwrap();
+        let tmp = TempDir::new().unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("aiome.db"), "database").unwrap(); // allow-anti-pattern
+        std::fs::write(tmp.path().join("SOUL.md"), "# Soul").unwrap(); // allow-anti-pattern
 
         // LLM が設定されていない状態で DB を消すと Setup モードになるはず
 
         // Act: Factory Reset
-        let _report = FactoryReset::execute(tmp.path()).unwrap();
+        let _report = FactoryReset::execute(tmp.path()).unwrap(); // allow-anti-pattern
 
         // Assert: Reset 後は Setup モードに戻る
         let diagnosis = BootstrapDetector::diagnose(tmp.path());

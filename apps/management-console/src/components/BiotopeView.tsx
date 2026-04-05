@@ -197,7 +197,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
 
                 <div className="stat-card ani-slide-right" style={{ padding: '1.25rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('biotope.synergyHeartbeat')}</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="font-display" style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {isConnected ? t('biotope.stable') : t('biotope.weak')}
                         <motion.div
                             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}

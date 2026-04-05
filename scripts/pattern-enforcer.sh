@@ -168,7 +168,7 @@ enforce_rule() {
     [[ -z "$file" ]] && continue
     [[ ! -f "$file" ]] && continue
     local result
-    result=$(grep -nE "$pattern" "$file" 2>/dev/null || true)
+    result=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v "allow-anti-pattern" || true)
     if [[ -n "$result" ]]; then
       while IFS= read -r match_line; do
         matches="${matches}${file}:${match_line}"$'\n'

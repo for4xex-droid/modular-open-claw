@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=JetBrains+Mono&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono&display=swap"
         rel="stylesheet">
     <style>
         :root {
@@ -29,7 +29,7 @@
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Inter', 'Outfit', sans-serif;
             background-color: var(--bg-color) !important;
             color: var(--text-main);
             display: flex;
@@ -546,7 +546,7 @@
                         <div style="color: var(--text-dim); text-align: center; font-style: italic;">System: Connection to OpenClaw established. [Layer 1 Sentinel Active] [Layer 2 Bastion Active]</div>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="text" id="agent-input" placeholder="${t('agent_placeholder')}" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: #161b22; color: #fff; font-family: 'Outfit', sans-serif;" onkeypress="if(event.key === 'Enter') sendAgentMessage()">
+                        <input type="text" id="agent-input" placeholder="${t('agent_placeholder')}" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: #161b22; color: #fff; font-family: 'Inter', 'Outfit', sans-serif;" onkeypress="if(event.key === 'Enter') sendAgentMessage()">
                         <button onclick="sendAgentMessage()" id="btn-agent-send" style="padding: 10px 20px; background: var(--accent-primary); color: #000; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">${t('agent_send')}</button>
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; gap: 1rem; flex-wrap: wrap;">
@@ -755,7 +755,7 @@
                         id: n.id,
                         label: n.label,
                         group: n.group,
-                        font: { color: '#c9d1d9', size: 12, face: 'Outfit' },
+                        font: { color: '#c9d1d9', size: 12, face: 'Inter' },
                         shape: n.group === 'core' ? 'diamond' : (isGlobal ? 'dot' : 'dot'),
                         borderWidth: isGlobal ? 3 : 1,
                         size: n.group === 'core' ? 30 : 15

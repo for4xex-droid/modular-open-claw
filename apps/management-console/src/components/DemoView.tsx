@@ -302,7 +302,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                 <RefreshCw size={12} /> {t('demo.clear')}
               </button>
             </div>
-            <div style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+            <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               {debugLog.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('demo.noEvents')}</div>
               ) : (

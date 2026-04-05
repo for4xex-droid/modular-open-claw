@@ -295,7 +295,7 @@ mod tests {
         let _ = learner.learn_from_session("User likes Rust.").await;
 
         // Assert: 構造化プロファイルが更新されていることを確認
-        let profile = learner.profile.read().unwrap();
+        let profile = learner.profile.read().unwrap(); // allow-anti-pattern
         assert_eq!(profile.name, "Alice");
         assert!(profile.preferences.contains(&"rust".to_string()));
         assert_eq!(profile.aesthetic_style.as_deref(), Some("Dark"));

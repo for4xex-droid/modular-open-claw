@@ -177,7 +177,7 @@ jobs:
     name: Documentation Sync Check
     runs-on: ubuntu-latest
     # 警告のみ — CI をブロックしない
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,7 +198,7 @@ jobs:
   deep-scan:
     name: Segmented Deep Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
 
@@ -238,7 +238,7 @@ jobs:
     name: API Compatibility (semver)
     runs-on: ubuntu-latest
     # 警告のみ — 破壊的変更を検出するが CI はブロックしない
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -264,7 +264,7 @@ jobs:
   unused-deps:
     name: Unused Dependencies
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
 
@@ -312,7 +312,7 @@ jobs:
   sbom:
     name: SBOM Generation (CycloneDX)
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
 

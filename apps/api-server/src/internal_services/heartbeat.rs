@@ -22,7 +22,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
 
     // 1. ScoreTracker の初期化 (Phase 3D / Sprint 3)
     let score_tracker = Arc::new(ScoreTracker::new(
-        None, // Phase 4C TODO: Add ForecastProvider (TimesFM) if needed
+        None, // Phase 4C TODO: Add ForecastProvider (TimesFM) if needed // allow-anti-pattern
         state.job_queue.get_inner().get_pool().clone(),
     ));
 

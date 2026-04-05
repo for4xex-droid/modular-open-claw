@@ -99,7 +99,7 @@ mod tests {
         let engine = SimpleLipSyncEngine;
         // 64KB (約2秒分のダミー音声)
         let dummy_audio = vec![0u8; 64000];
-        let frames = engine.generate_frames(&dummy_audio).await.unwrap();
+        let frames = engine.generate_frames(&dummy_audio).await.unwrap(); // allow-anti-pattern
 
         assert!(!frames.is_empty(), "Frames should be generated");
         assert_eq!(

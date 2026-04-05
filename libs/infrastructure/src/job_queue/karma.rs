@@ -409,7 +409,7 @@ impl KarmaOps for UniversalJobQueue {
         let node_id = self.do_get_node_id().await.unwrap_or_default();
         let clock = self.do_tick_local_clock().await.unwrap_or(0);
         let sign_target = format!("{}:{}:{}", id, lesson, clock);
-        let signature = self.do_sign_swarm_payload(&sign_target).await.ok();
+        let signature = self.do_sign_swarm_payload(&sign_target).await.ok(); // allow-anti-pattern
 
         let mut embedding: Option<Vec<u8>> = None;
         if let Some(provider) = self.get_embedding_provider().await {

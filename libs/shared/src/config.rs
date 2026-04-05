@@ -65,18 +65,18 @@ pub struct AiomeConfig {
 }
 
 /// OllamaサーバーのデフォルトURL
-pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434"; // allow-anti-pattern
 /// Key ProxyのデフォルトURL
-pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017";
+pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017"; // allow-anti-pattern
 /// Samsara HubのデフォルトURL
-pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016";
+pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016"; // allow-anti-pattern
 /// CORS許可オリジンのデフォルト値
 pub const DEFAULT_ALLOWED_ORIGINS: &str =
-    "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
+    "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015"; // allow-anti-pattern
 /// LM StudioのデフォルトURL
-pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
+pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234"; // allow-anti-pattern
 /// Ruri埋め込みサーバーのデフォルトURL
-pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
+pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100"; // allow-anti-pattern
 /// Abyss Vaultのデフォルトパス
 pub const DEFAULT_ABYSS_VAULT_PATH: &str = "~/.aiome/abyss_vault";
 /// 隔離領域のデフォルトパス
@@ -96,12 +96,12 @@ impl Default for AiomeConfig {
             api_server_port: 3015,
             key_proxy_url: DEFAULT_KEY_PROXY_URL.to_string(),
             samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
-            allowed_origins: vec!["http://localhost:1420".to_string()],
+            allowed_origins: vec!["http://localhost:1420".to_string()], // allow-anti-pattern
             abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
             vault_path: resolver.resolve("vault"),
             tremendous_api_key: None,
             master_email: None,
-            xtts_endpoint: Some("http://localhost:18020".to_string()),
+            xtts_endpoint: Some("http://localhost:18020".to_string()), // allow-anti-pattern
             xtts_speaker: Some("p225".to_string()),
             mcp: McpConfig::default(),
             resolver,

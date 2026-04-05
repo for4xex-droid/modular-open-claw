@@ -72,7 +72,7 @@ mod tests {
     async fn test_compute_hash_success() {
         let hasher = AudioHasher::default();
         let data = b"dummy audio content".to_vec();
-        let hash = hasher.compute_hash(data).await.unwrap();
+        let hash = hasher.compute_hash(data).await.unwrap(); // allow-anti-pattern
         assert!(!hash.is_empty());
     }
 

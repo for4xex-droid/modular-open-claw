@@ -1,0 +1,278 @@
+.artemis-treasure-box {
+    background-color: var(--card-bg-light); /* Assuming fallback, wait I'll use rgba(255,255,255,0.05) to match white/5 */
+    background-color: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(24px); /* backdrop-blur-xl */
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* border-white/10 */
+    border-radius: var(--radius-lg); /* rounded-2xl matches lg? */
+    padding: 1.5rem; /* p-6 */
+    box-shadow: var(--shadow-deep); /* shadow-2xl */
+    position: relative;
+    overflow: hidden;
+}
+
+.artemis-treasure-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.artemis-treasure-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* gap-2 */
+}
+
+.artemis-treasure-icon-wrap {
+    padding: 0.5rem; /* p-2 */
+    background-color: rgba(99, 102, 241, 0.2); /* bg-indigo-500/20 */
+    border-radius: var(--radius-sm); /* rounded-lg */
+}
+
+.artemis-treasure-icon {
+    width: 1.25rem; /* w-5 */
+    height: 1.25rem; /* h-5 */
+    color: var(--accent-purple); /* text-indigo-400 */
+}
+
+.artemis-treasure-title {
+    margin: 0;
+    font-size: 1.125rem; /* text-lg */
+    color: #ffffff;
+    /* other text styles handled by .artemis-heading */
+}
+
+.artemis-treasure-subtitle {
+    margin: 0;
+    font-size: 0.75rem; /* text-xs */
+    color: rgba(165, 180, 252, 0.6); /* text-indigo-300/60 */
+    line-height: 1; /* leading-none */
+}
+
+.artemis-treasure-refresh {
+    padding: 0.5rem; /* p-2 */
+    background: transparent;
+    border: none;
+    border-radius: 9999px; /* rounded-full */
+    transition: background-color 0.2s, opacity 0.2s; /* transition-colors */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.artemis-treasure-refresh:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.1); /* hover:bg-white/10 */
+}
+
+.artemis-treasure-refresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.artemis-treasure-refresh-icon {
+    width: 1rem; /* w-4 */
+    height: 1rem; /* h-4 */
+    color: rgba(255, 255, 255, 0.5); /* text-white/50 */
+}
+
+/* Error State */
+.artemis-treasure-error {
+    padding: 1rem; /* p-4 */
+    background-color: rgba(239, 68, 68, 0.1); /* bg-red-500/10 */
+    border: 1px solid rgba(239, 68, 68, 0.2); /* border-red-500/20 */
+    border-radius: var(--radius-md); /* rounded-xl */
+    color: #f87171; /* text-red-400 */
+    font-size: 0.875rem; /* text-sm */
+    margin-bottom: 1rem; /* mb-4 */
+}
+
+/* Loading State */
+.artemis-treasure-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 0; /* py-12 */
+    gap: 0.75rem; /* gap-3 */
+}
+
+.artemis-treasure-loading-icon {
+    width: 2rem; /* w-8 */
+    height: 2rem; /* h-8 */
+    color: var(--accent-purple); /* text-indigo-400 */
+}
+
+.artemis-treasure-loading-text {
+    font-size: 0.875rem; /* text-sm */
+    color: rgba(255, 255, 255, 0.4); /* text-white/40 */
+    margin: 0;
+}
+
+/* Items Grid */
+.artemis-treasure-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
+    gap: 1rem; /* gap-4 */
+}
+
+.artemis-treasure-item {
+    background-color: rgba(255, 255, 255, 0.05); /* bg-white/5 */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* border-white/10 */
+    border-radius: var(--radius-md); /* rounded-xl */
+    padding: 1rem; /* p-4 */
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* transition-all duration-300 */
+    position: relative;
+}
+
+.artemis-treasure-item:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* hover:bg-white/10 */
+    border-color: rgba(99, 102, 241, 0.3); /* hover:border-indigo-500/30 */
+}
+
+/* Label */
+.artemis-treasure-label {
+    position: absolute;
+    top: 0.5rem; /* top-2 */
+    right: 0.75rem; /* right-3 */
+    padding: 0.125rem 0.375rem; /* px-1.5 py-0.5 */
+    background-color: rgba(99, 102, 241, 0.1); /* bg-indigo-500/10 */
+    border: 1px solid rgba(99, 102, 241, 0.2); /* border-indigo-500/20 */
+    border-radius: 0.25rem; /* rounded */
+    font-size: 0.625rem; /* text-[10px] */
+    color: rgba(165, 180, 252, 1); /* text-indigo-300 */
+    font-weight: 500; /* font-medium */
+    letter-spacing: 0.05em; /* tracking-wider */
+    text-transform: uppercase;
+}
+
+/* Item Content */
+.artemis-treasure-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem; /* gap-1 */
+}
+
+.artemis-treasure-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* gap-2 */
+    padding-right: 3rem; /* pr-12 */
+}
+
+.artemis-treasure-item-title {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* font-semibold */
+    color: #ffffff;
+    transition: color 0.15s;
+    margin: 0;
+    
+    /* line-clamp-1 */
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.artemis-treasure-item:hover .artemis-treasure-item-title {
+    color: rgba(165, 180, 252, 1); /* group-hover:text-indigo-300 */
+}
+
+.artemis-treasure-item-link-icon {
+    width: 0.75rem; /* w-3 */
+    height: 0.75rem; /* h-3 */
+    color: rgba(255, 255, 255, 0.3); /* text-white/30 */
+    flex-shrink: 0;
+}
+
+.artemis-treasure-item-desc {
+    font-size: 0.75rem; /* text-xs */
+    color: rgba(255, 255, 255, 0.5); /* text-white/50 */
+    line-height: 1.625; /* leading-relaxed */
+    height: 2rem; /* h-8 */
+    margin: 0;
+
+    /* line-clamp-2 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.artemis-treasure-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.5rem; /* mt-2 */
+}
+
+.artemis-treasure-item-category {
+    font-size: 0.625rem; /* text-[10px] */
+    padding: 0.125rem 0.5rem; /* px-2 py-0.5 */
+    background-color: rgba(255, 255, 255, 0.05); /* bg-white/5 */
+    border-radius: 9999px; /* rounded-full */
+    color: rgba(255, 255, 255, 0.4); /* text-white/40 */
+}
+
+.artemis-treasure-item-price {
+    font-size: 0.75rem; /* text-xs */
+    font-family: var(--font-mono); /* font-mono */
+    color: var(--accent-purple); /* text-indigo-400 */
+    font-weight: 700; /* font-bold */
+}
+
+.artemis-treasure-item-price-unit {
+    font-size: 0.625rem; /* text-[10px] */
+    color: rgba(255, 255, 255, 0.3); /* text-white/30 */
+}
+
+/* Empty State */
+.artemis-treasure-empty {
+    text-align: center;
+    padding: 3rem 0; /* py-12 */
+    opacity: 0.3;
+    user-select: none; /* select-none */
+}
+
+.artemis-treasure-empty-icon {
+    width: 2rem; /* w-8 */
+    height: 2rem; /* h-8 */
+    margin: 0 auto 0.5rem auto; /* mx-auto mb-2 */
+}
+
+.artemis-treasure-empty-text {
+    font-size: 0.875rem; /* text-sm */
+    margin: 0;
+}
+
+/* Resonance Overlay */
+.artemis-treasure-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.artemis-treasure-overlay-badge {
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    background-color: var(--accent-purple); /* bg-indigo-500 */
+    color: #ffffff;
+    font-weight: 700; /* font-bold */
+    border-radius: 9999px; /* rounded-full */
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.5); /* shadow-lg shadow-indigo-500/50 */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* gap-2 */
+}
+
+.artemis-treasure-overlay-icon {
+    width: 1rem; /* w-4 */
+    height: 1rem; /* h-4 */
+}

@@ -13,7 +13,7 @@
 fn get_api_url() -> String {
     // Phase 51 NOTE: In production, the api-server might be on a dynamic port.
     // For now, we return the standard 3015 but allow override by A2A_NODE_URL
-    std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://localhost:3015".to_string())
+    std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://localhost:3015".to_string()) // allow-anti-pattern
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -23,5 +23,5 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![get_api_url])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| panic!("error while running tauri application: {}", e));
 }

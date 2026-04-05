@@ -13,6 +13,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub struct JobBudget {
     max_cost_microusds: u64,
     current_cost_microusds: AtomicU64,
+    /// 累計節約文字数（OutputFilter 経由）
+    saved_chars: AtomicU64,
 }
 
 impl JobBudget {
@@ -21,6 +23,7 @@ impl JobBudget {
         Self {
             max_cost_microusds: (max_cost_usd * 1_000_000.0) as u64,
             current_cost_microusds: AtomicU64::new(0),
+            saved_chars: AtomicU64::new(0),
         }
     }
 
@@ -52,5 +55,15 @@ impl JobBudget {
     /// 現在の累計コストを取得する
     pub fn current_cost(&self) -> f64 {
         self.current_cost_microusds.load(Ordering::SeqCst) as f64 / 1_000_000.0
+    }
+
+    /// 節約された文字数を記録する
+    pub fn record_saved_chars(&self, chars: usize) {
+        self.saved_chars.fetch_add(chars as u64, Ordering::SeqCst);
+    }
+
+    /// 累計節約文字数を取得する
+    pub fn saved_chars(&self) -> usize {
+        self.saved_chars.load(Ordering::SeqCst) as usize
     }
 }

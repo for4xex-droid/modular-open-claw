@@ -149,7 +149,7 @@ mod tests {
             mock_step(3, Some(2)),
         ];
 
-        let graph = TrajectoryGraph::build_graph(steps).expect("Should build graph");
+        let graph = TrajectoryGraph::build_graph(steps).expect("Should build graph"); // allow-anti-pattern
         assert_eq!(graph.nodes.len(), 3);
         assert_eq!(graph.edges.len(), 2);
 

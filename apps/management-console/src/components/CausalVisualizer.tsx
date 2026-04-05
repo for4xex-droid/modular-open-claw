@@ -63,7 +63,7 @@ const CausalVisualizer: React.FC = () => {
                 title: `Step ${n.id}: ${n.step.action}`,
                 group: n.step.step_category.toLowerCase(),
                 color: getStepColor(n.step.step_category),
-                font: { color: '#fff', size: 14, face: 'Inter' },
+                font: { color: '#fff', size: 14, face: 'Artemis Inter, Inter' },
                 shape: 'box',
                 margin: 10,
                 borderWidth: 2,
@@ -249,7 +249,7 @@ const CausalVisualizer: React.FC = () => {
 
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.toolParams')}</h5>
-                                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.75rem', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto' }}>
+                                        <div className="font-mono" style={{ background: 'rgba(0,0,0,0.4)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto' }}>
                                             <div style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{selectedStep.tool_name || t('causal.internal')}</div>
                                             <pre style={{ color: 'var(--text-muted)' }}>{JSON.stringify(selectedStep.input, null, 2)}</pre>
                                         </div>
@@ -257,7 +257,7 @@ const CausalVisualizer: React.FC = () => {
 
                                     <div>
                                         <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.resultOutput')}</h5>
-                                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '200px' }}>
+                                        <div className="font-mono" style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '200px' }}>
                                             <pre style={{ color: 'var(--text-secondary)' }}>{JSON.stringify(selectedStep.output, null, 2)}</pre>
                                         </div>
                                     </div>

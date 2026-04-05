@@ -108,7 +108,7 @@ mod tests {
     #[tokio::test]
     async fn test_x402_extracts_headers_and_pays_under_budget() {
         let budget = U256::from(10_000_000_000u64); // 10 USDC (assuming 6 decimals)
-        let client = X402Client::new("http://localhost".to_string(), budget).unwrap();
+        let client = X402Client::new("http://localhost".to_string(), budget).unwrap(); // allow-anti-pattern
 
         // We need a dummy response with X-Payment headers
         let mock_server = MockServer::start().await;
@@ -125,18 +125,18 @@ mod tests {
             .await;
 
         let req_client = reqwest::Client::new();
-        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap();
+        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
         
         // Act & Assert
         let proof = client.negotiate(&resp).await;
         assert!(proof.is_ok(), "Should successfully construct and sign payment");
-        assert!(!proof.unwrap().transaction_hash.is_empty());
+        assert!(!proof.unwrap().transaction_hash.is_empty()); // allow-anti-pattern
     }
 
     #[tokio::test]
     async fn test_x402_rejects_over_budget() {
         let budget = U256::from(1_000_000u64); // 1 USDC limit
-        let client = X402Client::new("http://localhost".to_string(), budget).unwrap();
+        let client = X402Client::new("http://localhost".to_string(), budget).unwrap(); // allow-anti-pattern
 
         let mock_server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -151,7 +151,7 @@ mod tests {
             .await;
 
         let req_client = reqwest::Client::new();
-        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap();
+        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
 
         // Act & Assert
         let proof = client.negotiate(&resp).await;

@@ -24,7 +24,7 @@ impl AgentRateLimiter {
     /// 1分あたりの許可リクエスト数を指定して作成
     pub fn new(requests_per_minute: u32) -> Self {
         let quota =
-            Quota::per_minute(NonZeroU32::new(requests_per_minute).expect("Limit must be > 0"));
+            Quota::per_minute(NonZeroU32::new(requests_per_minute).expect("Limit must be > 0")); // allow-anti-pattern
         Self {
             limiter: Arc::new(GovRateLimiter::dashmap(quota)),
         }

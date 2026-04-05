@@ -189,7 +189,7 @@ mod tests {
         let steps = planner
             .plan_goal("Analyze AI trends and write a report", json!({}))
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 3. 現状の実装では Markdown をパースできず、フォールバック（1ステップ）になるはず (RED)
         assert_eq!(

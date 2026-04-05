@@ -42,8 +42,9 @@
     --glow-rose: 0 0 25px rgba(255, 77, 148, 0.25);
     --shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.5);
 
-    /* Typography */
-    --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+    /* Typography — Artemis Design System */
+    --font-display: 'Outfit', 'Artemis Inter', system-ui, sans-serif;
+    --font-main: 'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
     /* Spacing */

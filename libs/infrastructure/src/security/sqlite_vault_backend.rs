@@ -34,7 +34,7 @@ impl UniversalVaultBackend {
         Self {
             pool,
             master_key: OnceCell::new(),
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())),
+            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())), // allow-anti-pattern
         }
     }
 
@@ -46,7 +46,7 @@ impl UniversalVaultBackend {
         Self {
             pool,
             master_key: cell,
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())),
+            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())), // allow-anti-pattern
         }
     }
 

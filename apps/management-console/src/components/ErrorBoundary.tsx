@@ -41,7 +41,7 @@ class ErrorBoundary extends Component<Props, State> {
           alignItems: 'center',
           justifyContent: 'center',
           color: '#fff',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
+          fontFamily: "var(--font-main, 'Inter', system-ui, -apple-system, sans-serif)"
         }}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -66,7 +66,7 @@ class ErrorBoundary extends Component<Props, State> {
               </div>
             </div>
 
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: "var(--font-display, 'Outfit', sans-serif)", marginBottom: '1rem', letterSpacing: '-0.02em' }}>
               Neural Sync Interrupted
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: 1.6 }}>

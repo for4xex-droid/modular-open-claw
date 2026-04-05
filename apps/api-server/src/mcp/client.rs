@@ -355,7 +355,7 @@ mod tests {
                     HashMap::new(),
                 )
                 .await
-                .unwrap();
+                .unwrap(); // allow-anti-pattern
         }
         let clients = manager.active_client_ids().await;
         assert!(
@@ -375,7 +375,7 @@ mod tests {
                 HashMap::new(),
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // artificially age the client's last_activity
         if let McpEndpoint::Stdio(client) = &*endpoint {
@@ -403,7 +403,7 @@ mod tests {
                 HashMap::new(),
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         assert_eq!(manager.active_client_ids().await.len(), 1);
 

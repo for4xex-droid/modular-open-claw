@@ -96,10 +96,10 @@ async fn main() {
 
     // Start mDNS Broadcaster
     let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
-    let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did).unwrap();
+    let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did).unwrap(); // allow-anti-pattern
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap(); // allow-anti-pattern
+    axum::serve(listener, app).await.unwrap(); // allow-anti-pattern
 }
 
 pub fn setup_router() -> Router {

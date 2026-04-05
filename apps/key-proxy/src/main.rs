@@ -107,13 +107,11 @@ async fn main() -> anyhow::Result<()> {
 
     //    Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
-    if app_env_path.exists() {
-        if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!(
-                "Loaded explicit environment from {}",
-                app_env_path.display()
-            );
-        }
+    if app_env_path.exists() && dotenvy::from_path(&app_env_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit environment from {}",
+            app_env_path.display()
+        );
     }
     let gemini_key = env::var("GEMINI_API_KEY").unwrap_or_else(|_| {
         error!("🚨 [CRITICAL] GEMINI_API_KEY must be set in key-proxy/.env");
@@ -176,7 +174,7 @@ async fn main() -> anyhow::Result<()> {
                     info!("🔑 [KeyProxy] Loading JWT private key from environment");
                     Arc::new(
                         infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                            .expect("Invalid JWT_PRIVATE_KEY_B64"),
+                            .expect("Invalid JWT_PRIVATE_KEY_B64"), // allow-anti-pattern
                     )
                 }
                 #[cfg(debug_assertions)]

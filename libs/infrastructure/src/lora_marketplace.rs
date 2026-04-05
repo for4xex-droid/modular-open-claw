@@ -809,12 +809,12 @@ mod tests {
 
         use std::str::FromStr;
         let opts = sqlx::sqlite::SqliteConnectOptions::from_str(&db_url)
-            .unwrap()
+            .unwrap() // allow-anti-pattern
             .create_if_missing(true);
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .connect_with(opts)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // Create tables
         sqlx::query(
@@ -827,7 +827,7 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS lora_listings (
@@ -848,7 +848,7 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS lora_purchases (
@@ -862,10 +862,10 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         let vault_root = tmp.path().join("vault");
-        std::fs::create_dir_all(vault_root.join("lora/gemma4")).unwrap();
+        std::fs::create_dir_all(vault_root.join("lora/gemma4")).unwrap(); // allow-anti-pattern
 
         let commerce = Arc::new(MockCommerceEngineForMarketplace {
             escrow_should_fail: false,
@@ -879,14 +879,14 @@ mod tests {
 
     fn create_test_adapter(vault_root: &std::path::Path, filename: &str) -> (String, String, u64) {
         let adapter_dir = vault_root.join("lora/gemma4/test_job");
-        std::fs::create_dir_all(&adapter_dir).unwrap();
+        std::fs::create_dir_all(&adapter_dir).unwrap(); // allow-anti-pattern
         let adapter_path = adapter_dir.join(filename);
         let content = b"FAKE_SAFETENSOR_DATA_FOR_TESTING";
-        std::fs::write(&adapter_path, content).unwrap();
+        std::fs::write(&adapter_path, content).unwrap(); // allow-anti-pattern
 
         let relative_path = adapter_path
             .strip_prefix(vault_root)
-            .unwrap()
+            .unwrap() // allow-anti-pattern
             .to_string_lossy()
             .to_string();
 
@@ -900,7 +900,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_publish_listing() {
-        let tmp = tempdir().unwrap();
+        let tmp = tempdir().unwrap(); // allow-anti-pattern
         let (marketplace, vault_root) = setup_marketplace(&tmp).await;
         let (adapter_path, adapter_hash, size) =
             create_test_adapter(&vault_root, "adapter_model.safetensors");
@@ -931,7 +931,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_purchase_flow_happy_path() {
-        let tmp = tempdir().unwrap();
+        let tmp = tempdir().unwrap(); // allow-anti-pattern
         let (marketplace, vault_root) = setup_marketplace(&tmp).await;
         let (adapter_path, adapter_hash, size) =
             create_test_adapter(&vault_root, "adapter_model.safetensors");
@@ -956,10 +956,10 @@ mod tests {
             created_at: chrono::Utc::now(),
         };
 
-        marketplace.publish_listing(listing).await.unwrap();
+        marketplace.publish_listing(listing).await.unwrap(); // allow-anti-pattern
 
         // Purchase
-        let purchase = marketplace.purchase(listing_id, buyer_id).await.unwrap();
+        let purchase = marketplace.purchase(listing_id, buyer_id).await.unwrap(); // allow-anti-pattern
         assert_eq!(purchase.status, PurchaseStatus::Escrowed);
 
         // Complete
@@ -979,7 +979,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_self_purchase_blocked() {
-        let tmp = tempdir().unwrap();
+        let tmp = tempdir().unwrap(); // allow-anti-pattern
         let (marketplace, vault_root) = setup_marketplace(&tmp).await;
         let (adapter_path, adapter_hash, size) =
             create_test_adapter(&vault_root, "adapter_model.safetensors");
@@ -1003,7 +1003,7 @@ mod tests {
         };
 
         let listing_id = listing.id;
-        marketplace.publish_listing(listing).await.unwrap();
+        marketplace.publish_listing(listing).await.unwrap(); // allow-anti-pattern
 
         // Self-purchase should fail
         let result = marketplace.purchase(listing_id, agent_id).await;
@@ -1016,7 +1016,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delist_and_re_purchase_blocked() {
-        let tmp = tempdir().unwrap();
+        let tmp = tempdir().unwrap(); // allow-anti-pattern
         let (marketplace, vault_root) = setup_marketplace(&tmp).await;
         let (adapter_path, adapter_hash, size) =
             create_test_adapter(&vault_root, "adapter_model.safetensors");
@@ -1041,10 +1041,10 @@ mod tests {
         };
 
         let listing_id = listing.id;
-        marketplace.publish_listing(listing).await.unwrap();
+        marketplace.publish_listing(listing).await.unwrap(); // allow-anti-pattern
 
         // Delist
-        marketplace.delist(listing_id, seller_id).await.unwrap();
+        marketplace.delist(listing_id, seller_id).await.unwrap(); // allow-anti-pattern
 
         // Purchase should fail (listing is Delisted)
         let result = marketplace.purchase(listing_id, buyer_id).await;

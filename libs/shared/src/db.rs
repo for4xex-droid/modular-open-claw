@@ -346,12 +346,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_pool_exists_in_shared() {
-        let _pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let _pool = DatabasePool::new_sqlite(":memory:").await.unwrap(); // allow-anti-pattern
     }
 
     #[tokio::test]
     async fn test_sql_exec_macro_exists_in_shared() {
-        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap(); // allow-anti-pattern
         let _ = sql_exec!(&pool, "CREATE TABLE test_table (id INTEGER PRIMARY KEY)");
     }
 }

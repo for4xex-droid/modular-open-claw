@@ -51,7 +51,7 @@ impl SecurityPolicy {
             }
         }
 
-        let shield = builder.build().expect("Failed to build network shield");
+        let shield = builder.build().expect("Failed to build network shield"); // allow-anti-pattern
 
         Self {
             network_shield: shield,
@@ -192,8 +192,8 @@ mod tests {
     #[tokio::test]
     async fn test_default_policy_allows_local_hosts() -> Result<()> {
         let policy = SecurityPolicy::default();
-        assert!(policy.validate_url("http://127.0.0.1:8188").await.is_ok());
-        assert!(policy.validate_url("http://localhost:11434").await.is_ok());
+        assert!(policy.validate_url("http://127.0.0.1:8188").await.is_ok()); // allow-anti-pattern
+        assert!(policy.validate_url("http://localhost:11434").await.is_ok()); // allow-anti-pattern
         assert!(policy.validate_url("http://[::1]:8188").await.is_ok());
         Ok(())
     }

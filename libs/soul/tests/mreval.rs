@@ -124,7 +124,7 @@ async fn test_mreval_full_pipeline() {
         }
     }
 
-    guard.process(&mut ctx_a, &MockNext).await.unwrap();
+    guard.process(&mut ctx_a, &MockNext).await.unwrap(); // allow-anti-pattern
     assert!(
         ctx_a.is_rejected,
         "MREval: Bounding should reject forbidden modern technology topic"
@@ -147,7 +147,7 @@ async fn test_mreval_full_pipeline() {
     };
 
     let recaller = SemanticRecaller::<MREvalAdapter, MREvalEngine>::new(1, 0.8);
-    recaller.process(&mut ctx_b, &MockNext).await.unwrap();
+    recaller.process(&mut ctx_b, &MockNext).await.unwrap(); // allow-anti-pattern
 
     assert_eq!(
         ctx_b.recalled_experiences.len(),
@@ -181,7 +181,7 @@ async fn test_mreval_full_pipeline() {
         recalled_experiences: Vec::new(),
     };
 
-    recaller.process(&mut ctx_c, &MockNext).await.unwrap();
+    recaller.process(&mut ctx_c, &MockNext).await.unwrap(); // allow-anti-pattern
     assert_eq!(
         ctx_c.recalled_experiences.len(),
         1,

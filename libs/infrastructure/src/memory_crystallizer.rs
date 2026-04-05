@@ -214,7 +214,7 @@ mod tests {
                     sqlx::sqlite::SqlitePoolOptions::new()
                         .connect("sqlite::memory:")
                         .await
-                        .unwrap(),
+                        .unwrap(), // allow-anti-pattern
                 ),
             ),
         );

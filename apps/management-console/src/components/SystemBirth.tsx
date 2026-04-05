@@ -82,7 +82,7 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
                         animate={{ opacity: 1, y: 0 }}
                         style={{ marginBottom: '2rem' }}
                     >
-                        <h1 style={{
+                        <h1 className="font-display" style={{
                             fontSize: '4rem',
                             fontWeight: 900,
                             letterSpacing: '0.4em',

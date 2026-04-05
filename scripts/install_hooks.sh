@@ -155,36 +155,8 @@ echo ""
 echo "🚀 Aiome Pre-push Checks"
 echo "──────────────────────────"
 
-# ── Check 1: ARCHITECTURE.md auto-update ──
-echo -n "  architecture... "
-if [[ -f "scripts/generate_architecture.py" ]] && command -v python3 &> /dev/null; then
-  python3 scripts/generate_architecture.py 2>/dev/null
-  if ! git diff --quiet ARCHITECTURE.md 2>/dev/null; then
-    echo "❌ (ARCHITECTURE.md needs update. Run python3 scripts/generate_architecture.py and commit it!)"
-    exit 1
-  else
-    echo "✅"
-  fi
-else
-  echo "⏭️  (python3 or script not found)"
-fi
-
-# ── Check 2: Documentation Sync ──
-if [[ -f "scripts/docs-sync-check.sh" ]]; then
-  echo -n "  docs-sync... "
-  if bash scripts/docs-sync-check.sh 2>/dev/null | grep -q "全チェック通過"; then
-    echo "✅"
-  else
-    echo "⚠️  (documentation may be out of sync)"
-  fi
-fi
-
-# ── Check 3: Full Test Suite ──
-echo "  tests..."
-if cargo test --workspace; then
-  echo "  ✅ Tests passed."
-else
-  echo "  ❌ Tests failed! Please fix the errors before pushing."
+if ! make preflight; then
+  echo "❌ Preflight failed! Please fix the errors before pushing."
   exit 1
 fi
 

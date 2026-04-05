@@ -231,7 +231,7 @@ const DiagnosticsHistory: React.FC = () => {
           gap: 0.3rem;
           font-size: 0.7rem;
           color: var(--text-muted);
-          font-family: monospace;
+          font-family: var(--font-mono);
           background: rgba(255,255,255,0.05);
           padding: 0.2rem 0.5rem;
           border-radius: 4px;
@@ -307,6 +307,7 @@ const DiagnosticsHistory: React.FC = () => {
         }
         .ledger-op {
           font-weight: 900;
+          font-family: var(--font-display);
           font-size: 0.7rem;
           width: 60px;
         }
@@ -328,7 +329,7 @@ const DiagnosticsHistory: React.FC = () => {
         }
         .hash-sig {
           font-size: 0.6rem;
-          font-family: monospace;
+          font-family: var(--font-mono);
           color: var(--text-muted);
         }
         .loading-state {

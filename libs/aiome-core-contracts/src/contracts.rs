@@ -559,11 +559,11 @@ mod tests {
             new_level: 2,
         };
 
-        let json = serde_json::to_string(&event).expect("Failed to serialize SamsaraEvent");
+        let json = serde_json::to_string(&event).expect("Failed to serialize SamsaraEvent"); // allow-anti-pattern
         assert!(json.contains("LevelUp"));
 
         let deserialized: SamsaraEvent =
-            serde_json::from_str(&json).expect("Failed to deserialize");
+            serde_json::from_str(&json).expect("Failed to deserialize"); // allow-anti-pattern
         match deserialized {
             SamsaraEvent::LevelUp {
                 old_level,
@@ -582,10 +582,10 @@ mod tests {
             distilled_rules_count: 5,
             attachment_style: "Secure".into(),
         };
-        let json2 = serde_json::to_string(&event2).expect("Failed to serialize Rebirth");
+        let json2 = serde_json::to_string(&event2).expect("Failed to serialize Rebirth"); // allow-anti-pattern
         assert!(json2.contains("Rebirth"));
         let deserialized2: SamsaraEvent =
-            serde_json::from_str(&json2).expect("Failed to deserialize");
+            serde_json::from_str(&json2).expect("Failed to deserialize"); // allow-anti-pattern
         match deserialized2 {
             SamsaraEvent::Rebirth { new_generation, .. } => assert_eq!(new_generation, 2),
             _ => panic!("Wrong variant"),
@@ -598,11 +598,11 @@ mod tests {
             client_time: "2026-03-12T05:00:00Z".to_string(),
         };
 
-        let json = serde_json::to_string(&msg).expect("Failed to serialize HubMessage");
+        let json = serde_json::to_string(&msg).expect("Failed to serialize HubMessage"); // allow-anti-pattern
         assert!(json.contains("\"type\":\"Ping\""));
         assert!(json.contains("client_time"));
 
-        let deserialized: HubMessage = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: HubMessage = serde_json::from_str(&json).expect("Failed to deserialize"); // allow-anti-pattern
         match deserialized {
             HubMessage::Ping { client_time } => {
                 assert_eq!(client_time, "2026-03-12T05:00:00Z");

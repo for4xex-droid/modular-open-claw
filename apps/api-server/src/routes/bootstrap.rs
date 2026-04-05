@@ -79,7 +79,7 @@ pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
         .unwrap_or_default();
 
     // 候補 URL を順に試す
-    let candidates = ["http://127.0.0.1:11434", "http://localhost:11434"];
+    let candidates = ["http://127.0.0.1:11434", "http://localhost:11434"]; // allow-anti-pattern
 
     for url in &candidates {
         let version_url = format!("{}/api/version", url);
@@ -181,7 +181,7 @@ mod tests {
             soul_exists: false,
             missing_items: vec!["LLM provider".to_string()],
         };
-        let json = serde_json::to_string(&resp).unwrap();
+        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
         assert!(json.contains("\"mode\":\"setup\""));
         assert!(json.contains("\"missing_items\":[\"LLM provider\"]"));
     }
@@ -194,7 +194,7 @@ mod tests {
             models: vec![],
             error: Some("Not found".to_string()),
         };
-        let json = serde_json::to_string(&resp).unwrap();
+        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
         assert!(json.contains("\"available\":false"));
         assert!(json.contains("\"error\":\"Not found\""));
     }
@@ -208,7 +208,7 @@ mod tests {
             preserved_files: vec![".env".to_string()],
             errors: vec![],
         };
-        let json = serde_json::to_string(&resp).unwrap();
+        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
         assert!(json.contains("\"success\":true"));
     }
 }

@@ -45,7 +45,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         let api_key = "sk_test_mock_123".to_string();
         let webhook_secret = "whsec_mock".to_string();
@@ -60,7 +60,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         let engine = CommerceEngineFactory::create(None, "".to_string(), pool).await;
 

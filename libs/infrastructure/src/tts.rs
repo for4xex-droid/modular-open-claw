@@ -193,7 +193,7 @@ impl TtsProvider for XttsProvider {
             .unwrap_or_else(|_| reqwest::Client::new());
 
         let resp = health_client.get(url).send().await;
-        Ok(resp.is_ok() && resp.unwrap().status().is_success())
+        Ok(resp.is_ok() && resp.unwrap().status().is_success()) // allow-anti-pattern
     }
 }
 
@@ -223,7 +223,7 @@ mod tests {
         let res = provider.synthesize("こんにちは", "p225").await;
 
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().len(), 100);
+        assert_eq!(res.unwrap().len(), 100); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -231,7 +231,7 @@ mod tests {
         let provider = XttsProvider::new("http://invalid.local:18020".into());
         let res = provider.health_check().await;
         assert!(res.is_ok()); // Should return Ok(false) if server unreachable
-        assert_eq!(res.unwrap(), false);
+        assert_eq!(res.unwrap(), false); // allow-anti-pattern
     }
 
     #[tokio::test]

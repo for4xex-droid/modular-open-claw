@@ -132,7 +132,7 @@ impl CortexIngester {
             sample_for_llm.truncate(8000);
         }
 
-        let title_regex = regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>").unwrap();
+        let title_regex = regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>").unwrap(); // allow-anti-pattern
         let html_title = title_regex
             .captures(&clean_html)
             .and_then(|c| c.get(1))

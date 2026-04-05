@@ -68,14 +68,15 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
             }}
         >
             {/* Label */}
-            <div style={{
+            <div className="font-mono" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.4rem',
                 fontSize: '0.65rem',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase' as const,
                 marginBottom: '0.3rem',
                 paddingLeft: type === 'chat_user' ? 0 : '0.25rem',
                 paddingRight: type === 'chat_user' ? '0.25rem' : 0,

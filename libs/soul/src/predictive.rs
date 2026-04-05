@@ -71,12 +71,12 @@ mod tests {
 
         // Accurate prediction
         p.update_plasticity("test", 1.0, 1.0); // surprise = 0
-        let dm_acc = p.domains.get("test").unwrap().prediction_accuracy;
+        let dm_acc = p.domains.get("test").unwrap().prediction_accuracy; // allow-anti-pattern
         assert!(dm_acc > 0.5); // should increase from default 0.5
 
         // Inaccurate prediction
         p.update_plasticity("test", 0.0, 1.0); // surprise = 1
-        let dm2 = p.domains.get("test").unwrap();
+        let dm2 = p.domains.get("test").unwrap(); // allow-anti-pattern
         assert!(dm2.prediction_accuracy < dm_acc);
     }
 }

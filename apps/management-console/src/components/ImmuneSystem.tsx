@@ -414,7 +414,7 @@ const ImmuneSystem: React.FC = () => {
                                             </span>
                                         </div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                            Reason: <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>{asset.reason}</span> • Hash: <span style={{ fontFamily: 'monospace' }}>{asset.image_hash}</span>
+                                            Reason: <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>{asset.reason}</span> • Hash: <span className="font-mono">{asset.image_hash}</span>
                                         </div>
                                     </div>
                                 </div>

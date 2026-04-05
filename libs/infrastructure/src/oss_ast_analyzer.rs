@@ -205,7 +205,7 @@ mod tests {
     fn test_analyze_struct() {
         let source = "pub struct Test { pub field: String, private_field: i32 }";
         let analyzer = OssAstAnalyzer::new();
-        let surface = analyzer.analyze_source(source).unwrap();
+        let surface = analyzer.analyze_source(source).unwrap(); // allow-anti-pattern
 
         assert_eq!(surface.structs.len(), 1);
         assert_eq!(surface.structs[0].name, "Test");
@@ -220,7 +220,7 @@ mod tests {
     fn test_analyze_fn() {
         let source = "pub fn add(a: i32, b: i32) -> i32 { a + b }";
         let analyzer = OssAstAnalyzer::new();
-        let surface = analyzer.analyze_source(source).unwrap();
+        let surface = analyzer.analyze_source(source).unwrap(); // allow-anti-pattern
 
         assert_eq!(surface.functions.len(), 1);
         assert_eq!(surface.functions[0].name, "add");

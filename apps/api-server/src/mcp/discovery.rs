@@ -72,7 +72,7 @@ pub async fn discover_and_connect(
                     "transport": "http",
                     "command": "",
                     "args": [],
-                    "url": "http://localhost:3000/mcp",
+                    "url": "http://localhost:3000/mcp", // allow-anti-pattern
                     "headers": {
                         "Authorization": "Bearer $STRIPE_SECRET_KEY"
                     }
@@ -95,8 +95,7 @@ pub async fn discover_and_connect(
             McpTransport::Stdio => {
                 let mut resolved_env = HashMap::new();
                 for (k, v) in config.env {
-                    let resolved = if v.starts_with('$') {
-                        let var_name = &v[1..];
+                    let resolved = if let Some(var_name) = v.strip_prefix('$') {
                         std::env::var(var_name).unwrap_or_default()
                     } else {
                         v
@@ -104,7 +103,7 @@ pub async fn discover_and_connect(
                     // 🛡️ [GlassWorm Shield] Sanitize NUL, newline, and invisible characters
                     let mut safe_val =
                         shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
-                    safe_val = safe_val.replace('\0', "").replace('\n', "");
+                    safe_val = safe_val.replace(['\0', '\n'], "");
                     resolved_env.insert(k, safe_val);
                 }
 
@@ -135,8 +134,7 @@ pub async fn discover_and_connect(
 
                 let mut resolved_headers = HashMap::new();
                 for (k, v) in config.headers {
-                    let resolved = if v.starts_with('$') {
-                        let var_name = &v[1..];
+                    let resolved = if let Some(var_name) = v.strip_prefix('$') {
                         std::env::var(var_name).unwrap_or_default()
                     } else if v.contains("$") {
                         // rudimentary inline replace for "Bearer $TOKEN"
@@ -154,7 +152,7 @@ pub async fn discover_and_connect(
                     // 🛡️ [GlassWorm Shield]
                     let mut safe_val =
                         shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
-                    safe_val = safe_val.replace('\0', "").replace('\n', "");
+                    safe_val = safe_val.replace(['\0', '\n'], "");
                     resolved_headers.insert(k, safe_val);
                 }
 
@@ -217,25 +215,25 @@ mod tests {
             }
         }"#;
 
-        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap();
+        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap(); // allow-anti-pattern
 
-        let stdio = discovery.mcp_servers.get("stdio_server").unwrap();
+        let stdio = discovery.mcp_servers.get("stdio_server").unwrap(); // allow-anti-pattern
         assert!(matches!(stdio.transport, McpTransport::Stdio));
         assert_eq!(stdio.command, "node");
 
-        let http = discovery.mcp_servers.get("http_server").unwrap();
+        let http = discovery.mcp_servers.get("http_server").unwrap(); // allow-anti-pattern
         assert!(matches!(http.transport, McpTransport::Http));
-        assert_eq!(http.url.as_ref().unwrap(), "http://localhost:8080/mcp");
-        assert_eq!(http.headers.get("x-api-key").unwrap(), "secret");
+        assert_eq!(http.url.as_ref().unwrap(), "http://localhost:8080/mcp"); // allow-anti-pattern
+        assert_eq!(http.headers.get("x-api-key").unwrap(), "secret"); // allow-anti-pattern
     }
 
     #[tokio::test]
     async fn test_discover_and_connect_mock() {
         let manager = McpProcessManager::new();
         // Use in-memory sqlite for test registry
-        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap(); // allow-anti-pattern
         sqlx::query("CREATE TABLE IF NOT EXISTS registry (id TEXT PRIMARY KEY, asset_type TEXT, description TEXT, metadata TEXT, created_at DATETIME, updated_at DATETIME)")
-            .execute(&pool).await.unwrap();
+            .execute(&pool).await.unwrap(); // allow-anti-pattern
 
         let registry = infrastructure::registry::RegistryManager::new(
             infrastructure::db::DatabasePool::Sqlite(pool),

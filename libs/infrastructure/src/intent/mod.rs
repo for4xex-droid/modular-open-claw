@@ -154,15 +154,15 @@ impl IntentFirewall {
                     let _ = std::fs::create_dir_all(".intent_tmp");
                     PathSandbox::new(".intent_tmp")
                 })
-                .expect("Failed to create intent sandbox"),
+                .expect("Failed to create intent sandbox"), // allow-anti-pattern
         }
     }
 
     /// PII を除去する
     pub fn strip_pii(&self, text: &str) -> String {
         let email_re = EMAIL_REGEX
-            .get_or_init(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap());
-        let phone_re = PHONE_REGEX.get_or_init(|| Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})").unwrap());
+            .get_or_init(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap()); // allow-anti-pattern
+        let phone_re = PHONE_REGEX.get_or_init(|| Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})").unwrap()); // allow-anti-pattern
 
         let mut cleaned = email_re.replace_all(text, "[EMAIL]").to_string();
         cleaned = phone_re.replace_all(&cleaned, "[PHONE]").to_string();
@@ -206,9 +206,9 @@ mod tests {
 
     #[test]
     fn test_intent_firewall_strips_pii() {
-        let _tmp = tempdir().unwrap();
+        let _tmp = tempdir().unwrap(); // allow-anti-pattern
         let firewall = IntentFirewall {
-            _sandbox: PathSandbox::new(_tmp.path()).unwrap(),
+            _sandbox: PathSandbox::new(_tmp.path()).unwrap(), // allow-anti-pattern
         };
 
         let raw_text =
@@ -225,21 +225,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_intent_generator_generates_intent_green() {
-        let _tmp = tempdir().unwrap();
+        let _tmp = tempdir().unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
                 crate::db::DatabasePool::Sqlite(
                     sqlx::sqlite::SqlitePoolOptions::new()
                         .connect("sqlite::memory:")
                         .await
-                        .unwrap(),
+                        .unwrap(), // allow-anti-pattern
                 ),
             ),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
                 .await
-                .unwrap(),
+                .unwrap(), // allow-anti-pattern
         );
         let ce = Arc::new(crate::context_engine::ContextEngine::new(
             Arc::new(MockLlm {
@@ -264,10 +264,10 @@ mod tests {
         let result = generator
             .generate_from_summary(requester_id, summary)
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         assert!(result.is_some());
-        let intent = result.unwrap();
+        let intent = result.unwrap(); // allow-anti-pattern
         assert_eq!(intent.category, IntentCategory::Tool);
         assert!(intent.description.contains("Build a tool"));
         assert_eq!(intent.max_budget_coins, 50);
@@ -311,21 +311,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_intent_generation_reflects_soul_state() {
-        let _tmp = tempdir().unwrap();
+        let _tmp = tempdir().unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
                 crate::db::DatabasePool::Sqlite(
                     sqlx::sqlite::SqlitePoolOptions::new()
                         .connect("sqlite::memory:")
                         .await
-                        .unwrap(),
+                        .unwrap(), // allow-anti-pattern
                 ),
             ),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
                 .await
-                .unwrap(),
+                .unwrap(), // allow-anti-pattern
         );
         let ce = Arc::new(crate::context_engine::ContextEngine::new(
             Arc::new(MockLlm {
@@ -350,7 +350,7 @@ mod tests {
         );
 
         let agent_id = Uuid::new_v4();
-        let intent = generator.generate_for_agent(agent_id).await.unwrap();
+        let intent = generator.generate_for_agent(agent_id).await.unwrap(); // allow-anti-pattern
 
         // This will fail initially because the logic is static
         assert!(

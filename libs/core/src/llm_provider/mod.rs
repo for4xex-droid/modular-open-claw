@@ -711,7 +711,7 @@ impl LlmProvider for GeminiProvider {
             config["stopSequences"] = serde_json::json!(stop);
         }
 
-        if !config.as_object().unwrap().is_empty() {
+        if !config.as_object().map(|obj| obj.is_empty()).unwrap_or(true) {
             payload["generationConfig"] = config;
         }
 
@@ -1767,7 +1767,7 @@ mod tests {
         let client = crate::http::get_http_client().clone();
 
         let ollama =
-            OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string());
+            OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string()); // allow-anti-pattern
         assert_eq!(LlmProvider::name(&ollama), "Ollama");
 
         let gemini = GeminiProvider::new(client.clone(), "key".to_string(), "gemini".to_string());
@@ -1781,7 +1781,7 @@ mod tests {
 
         let lmstudio = LmStudioProvider::new(
             client.clone(),
-            "http://localhost:1234".to_string(),
+            "http://localhost:1234".to_string(), // allow-anti-pattern
             "local".to_string(),
         );
         assert_eq!(lmstudio.name(), "LMStudio");
@@ -1809,7 +1809,7 @@ mod tests {
 
         let result = provider.complete("Say hello", Some("System prompt")).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().content, "Hello from mock LM Studio");
+        assert_eq!(result.unwrap().content, "Hello from mock LM Studio"); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -1865,7 +1865,7 @@ mod tests {
             "Request should succeed if matched, but will fail (404) if logic is missing: {:?}",
             result.err()
         );
-        assert_eq!(result.unwrap().content, "{\"status\": \"ok\"}");
+        assert_eq!(result.unwrap().content, "{\"status\": \"ok\"}"); // allow-anti-pattern
     }
 
     #[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -1897,7 +1897,7 @@ mod tests {
             result.err()
         );
         assert_eq!(
-            result.unwrap(),
+            result.unwrap(), // allow-anti-pattern
             TestData {
                 name: "Alice".into(),
                 score: 100
@@ -1940,7 +1940,7 @@ mod tests {
             result.err()
         );
         assert_eq!(
-            result.unwrap(),
+            result.unwrap(), // allow-anti-pattern
             TestData {
                 name: "Bob".into(),
                 score: 200
@@ -2069,6 +2069,6 @@ mod tests {
         // which only extracts the last user message and calls complete("Who are you?", Some("...")).
         // The mock expects the full array in "contents".
         assert!(result.is_ok(), "Request failed: {:?}", result.err());
-        assert_eq!(result.unwrap().content, "I am Aiome.");
+        assert_eq!(result.unwrap().content, "I am Aiome."); // allow-anti-pattern
     }
 }

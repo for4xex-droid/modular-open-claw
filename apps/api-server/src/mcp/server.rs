@@ -418,7 +418,7 @@ mod tests {
             response.error.is_some(),
             "Expected an error due to security block"
         );
-        let err = response.error.unwrap();
+        let err = response.error.unwrap(); // allow-anti-pattern
         assert!(
             err.message.contains("GUARDRAIL")
                 || err.message.contains("SENTINEL")

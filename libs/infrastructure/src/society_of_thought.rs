@@ -377,7 +377,7 @@ mod tests {
         let result = engine.run_session(task, trigger, config, 1.0).await;
 
         assert!(result.is_ok());
-        let (session_id, outcome, _) = result.unwrap();
+        let (session_id, outcome, _) = result.unwrap(); // allow-anti-pattern
         assert_eq!(outcome, SoTOutcome::AllCriteriaPassed);
 
         let mut found_end = false;
@@ -419,8 +419,8 @@ mod tests {
         let result = engine.run_session(task, trigger, config, 1.0).await;
 
         assert!(result.is_ok());
-        let (_, outcome, _) = result.unwrap();
-        // スコア 8.0 < 9.0 かつ 1ラウンド上限なので MaxRoundsReached になる
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
+                                               // スコア 8.0 < 9.0 かつ 1ラウンド上限なので MaxRoundsReached になる
         assert_eq!(outcome, SoTOutcome::MaxRoundsReached);
     }
 
@@ -436,7 +436,7 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        let (_, outcome, _) = result.unwrap();
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
         assert_eq!(outcome, SoTOutcome::BudgetExhausted);
     }
 
@@ -453,7 +453,7 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        let (_session_id, _outcome, scores) = result.unwrap();
+        let (_session_id, _outcome, scores) = result.unwrap(); // allow-anti-pattern
 
         assert!(!scores.is_empty(), "Should return non-empty scores");
         let accuracy = scores
@@ -478,8 +478,8 @@ mod tests {
             .run_session("task", SoTTrigger::Manual, config, 1.0)
             .await;
         assert!(result.is_ok());
-        let (_, _, scores) = result.unwrap();
-        // Fallback to 5.0 for each criterion
+        let (_, _, scores) = result.unwrap(); // allow-anti-pattern
+                                              // Fallback to 5.0 for each criterion
         for (_, score) in scores {
             assert_eq!(score, 5.0);
         }
@@ -497,18 +497,18 @@ mod tests {
             .run_session("task", SoTTrigger::Manual, config, 1.0)
             .await;
         assert!(result.is_ok());
-        let (_, _, scores) = result.unwrap();
+        let (_, _, scores) = result.unwrap(); // allow-anti-pattern
 
         let acc = scores
             .iter()
             .find(|(n, _)| n == "Accuracy")
             .map(|(_, s)| *s)
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         let aln = scores
             .iter()
             .find(|(n, _)| n == "Alignment")
             .map(|(_, s)| *s)
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         assert_eq!(acc, 10.0);
         assert_eq!(aln, 0.0);

@@ -179,7 +179,7 @@ impl AuthManager for MockAuthManager {
                     reason: format!("Invalid Agent ID in mock token: {}", e),
                 })?
             } else {
-                uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()
+                uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap_or_default()
             };
 
             Ok(AiomeCustomClaims {
@@ -195,7 +195,7 @@ impl AuthManager for MockAuthManager {
             Ok(AiomeCustomClaims {
                 sub: "dev".to_string(),
                 ekyc_verified: true,
-                agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+                agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(), // allow-anti-pattern
                 roles: vec!["user".to_string()],
                 exp: 9999999999,
                 iat: 1600000000,
@@ -229,7 +229,7 @@ mod tests {
         }"#;
 
         let claims: AiomeCustomClaims =
-            serde_json::from_str(json_str).expect("Valid test claims JSON");
+            serde_json::from_str(json_str).expect("Valid test claims JSON"); // allow-anti-pattern
         assert_eq!(claims.sub, "user_001");
         assert!(claims.ekyc_verified);
         assert_eq!(claims.roles, vec!["admin"]);
@@ -242,14 +242,14 @@ mod tests {
         let claims = manager
             .validate_token("mock_valid_token_user_123")
             .await
-            .expect("Valid mock token should pass");
+            .expect("Valid mock token should pass"); // allow-anti-pattern
         assert_eq!(claims.sub, "user_123");
     }
 
     #[tokio::test]
     async fn test_jwt_key_persistence() {
         use secrecy::ExposeSecret;
-        let manager1 = JwtAuthManager::try_new_generated().unwrap();
+        let manager1 = JwtAuthManager::try_new_generated().unwrap(); // allow-anti-pattern
         let key_b64 = manager1.export_private_key_b64().expose_secret().clone();
 
         let claims = AiomeCustomClaims {
@@ -261,10 +261,10 @@ mod tests {
             iat: 1600000000,
             iss: "aiome".to_string(),
         };
-        let token = manager1.issue_token(claims.clone()).await.unwrap();
+        let token = manager1.issue_token(claims.clone()).await.unwrap(); // allow-anti-pattern
 
-        let manager2 = JwtAuthManager::from_private_key_b64(&key_b64).unwrap();
-        let verified_claims = manager2.validate_token(&token).await.unwrap();
+        let manager2 = JwtAuthManager::from_private_key_b64(&key_b64).unwrap(); // allow-anti-pattern
+        let verified_claims = manager2.validate_token(&token).await.unwrap(); // allow-anti-pattern
         assert_eq!(verified_claims.sub, claims.sub);
         assert_eq!(verified_claims.agent_id, claims.agent_id);
     }

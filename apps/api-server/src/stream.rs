@@ -339,6 +339,12 @@ pub async fn trigger_agent_chat_stream(
                                     yield Ok(Event::default().event("tool_result").data(&blocked_display));
                                     skill_results.push(err);
                                 }
+                                ToolExecutionEvent::TokenSaved(chars) => {
+                                    let data = serde_json::json!({
+                                        "saved_chars": chars,
+                                    });
+                                    yield Ok(Event::default().event("token_saved").data(data.to_string()));
+                                }
                             }
                         }
                     }

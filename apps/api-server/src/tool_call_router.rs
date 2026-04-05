@@ -10,6 +10,7 @@ use aiome_core_contracts::traits::{
 };
 use async_trait::async_trait;
 use tokio::sync::mpsc;
+use infrastructure::output_filter::{OutputFilter, FilterStrategy, FilterLevel};
 
 /// Tool Execution Result suitable for both Sync (AgentEngine) and Async (SSE) usage
 #[derive(Debug, Clone)]
@@ -18,6 +19,7 @@ pub enum ToolExecutionEvent {
     Heartbeat(String),
     Result(String),
     Error(String),
+    TokenSaved(usize),
 }
 
 /// Unified Chat Loop Kernel that handles Security, Hooks, and Execution
@@ -210,7 +212,39 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 HookVerdict::Allow => executor_output,
             };
 
-            let truncated = crate::system_instructions::safe_truncate(&final_output, 50000);
+            // Phase 2: 出力フィルタリングによるスマート圧縮
+            let mut strategy = FilterStrategy::Generic;
+            if sn == "run_command" || sn == "execute_command" {
+                if actual_input.contains("git ") {
+                    strategy = FilterStrategy::GitOutput;
+                } else if actual_input.contains("cargo ") {
+                    strategy = FilterStrategy::CargoOutput;
+                } else if actual_input.contains("npm ") || actual_input.contains("node ") {
+                    strategy = FilterStrategy::NodeOutput;
+                }
+            }
+
+            let filtered = OutputFilter::filter(
+                &final_output,
+                strategy,
+                FilterLevel::Balanced,
+            );
+
+            let chars_saved = filtered.original_chars.saturating_sub(filtered.filtered_chars);
+            if chars_saved > 0 {
+                tracing::info!(
+                    "📉 [OutputFilter] Tool `{}` output compressed: {} chars -> {} chars (saved {} chars, ratio: {:.2}%)",
+                    sn,
+                    filtered.original_chars,
+                    filtered.filtered_chars,
+                    chars_saved,
+                    filtered.compression_ratio * 100.0
+                );
+                let _ = tx_clone.send(ToolExecutionEvent::TokenSaved(chars_saved)).await;
+            }
+
+            let budget = infrastructure::context_engine::ContextBudget::default();
+            let truncated = crate::system_instructions::safe_truncate(&filtered.filtered_output, budget.max_tool_output_chars);
             let _ = tx_clone.send(ToolExecutionEvent::Result(truncated)).await;
         });
 
@@ -274,6 +308,7 @@ mod tests {
             match evt {
                 ToolExecutionEvent::Start(_) => got_start = true,
                 ToolExecutionEvent::Result(_) => got_result = true,
+                ToolExecutionEvent::TokenSaved(_) => {}
                 _ => {}
             }
         }

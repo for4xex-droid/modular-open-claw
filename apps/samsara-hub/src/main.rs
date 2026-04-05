@@ -110,19 +110,21 @@ async fn main() -> anyhow::Result<()> {
 
     // 2. Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
-    if app_env_path.exists() {
-        if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!(
-                "Loaded explicit environment from {}",
-                app_env_path.display()
-            );
-        }
+    if app_env_path.exists() && dotenvy::from_path(&app_env_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit environment from {}",
+            app_env_path.display()
+        );
     }
 
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         format!(
             "sqlite:{}?mode=rwc",
-            resolver.root().join("samsara_hub.db").to_str().unwrap()
+            resolver
+                .root()
+                .join("samsara_hub.db")
+                .to_str()
+                .unwrap_or_else(|| panic!("Invalid DB Path"))
         )
     });
     let secret_val = std::env::var("FEDERATION_SECRET").unwrap_or_else(|_| {
@@ -146,16 +148,18 @@ async fn main() -> anyhow::Result<()> {
     // Create broadcast channel for real-time rule/karma notification
     let (tx, _) = broadcast::channel(100);
     let agent_registry = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
-    let _mdns_daemon = mdns_listener::start_mdns_listener(agent_registry.clone()).unwrap();
+    let _mdns_daemon = mdns_listener::start_mdns_listener(agent_registry.clone())
+        .map_err(|e| anyhow::anyhow!("mDNS listener failed to start: {}", e))?;
 
     let state = Arc::new(HubState {
         pool: pool.clone(),
         secret,
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
-                Ok(key_b64) => {
-                    Arc::new(shared::auth::JwtAuthManager::from_private_key_b64(&key_b64).unwrap())
-                }
+                Ok(key_b64) => Arc::new(
+                    shared::auth::JwtAuthManager::from_private_key_b64(&key_b64)
+                        .map_err(|e| anyhow::anyhow!("JWT initialize failed: {}", e))?,
+                ),
                 #[cfg(debug_assertions)]
                 Err(_) => {
                     warn!("⚠️ [SamsaraHub] JWT key not set, using MockAuthManager (dev only)");
@@ -2160,11 +2164,11 @@ pub fn build_app(state: Arc<HubState>) -> Router {
 
     // Add defaults
     let defaults = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3015",
-        "http://localhost:3016",
-        "http://localhost:1420",
+        "http://localhost:3000", // allow-anti-pattern
+        "http://127.0.0.1:3000", // allow-anti-pattern
+        "http://localhost:3015", // allow-anti-pattern
+        "http://localhost:3016", // allow-anti-pattern
+        "http://localhost:1420", // allow-anti-pattern
     ];
     for d in defaults {
         if let Ok(parsed) = d.parse() {

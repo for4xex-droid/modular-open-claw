@@ -577,7 +577,7 @@ const ArtifactVault = () => {
           font-size: 0.9rem;
         }
         .signature-text {
-          font-family: monospace;
+          font-family: var(--font-mono);
           font-size: 0.65rem !important;
           word-break: break-all;
           background: rgba(0,0,0,0.3);
@@ -605,7 +605,7 @@ const ArtifactVault = () => {
         }
         .edge-target {
           color: var(--text-muted);
-          font-family: monospace;
+          font-family: var(--font-mono);
         }
       `}</style>
     </div>

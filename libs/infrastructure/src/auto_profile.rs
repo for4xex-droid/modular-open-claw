@@ -183,10 +183,10 @@ mod tests {
 
     #[test]
     fn test_scan_workspace_rust() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // allow-anti-pattern
         let cargo_toml_path = dir.path().join("Cargo.toml");
-        let mut file = File::create(cargo_toml_path).unwrap();
-        writeln!(file, "[dependencies]\ntokio = \"1.0\"\naxum = \"0.7\"").unwrap();
+        let mut file = File::create(cargo_toml_path).unwrap(); // allow-anti-pattern
+        writeln!(file, "[dependencies]\ntokio = \"1.0\"\naxum = \"0.7\"").unwrap(); // allow-anti-pattern
 
         let skills = AutoProfileEngine::scan_workspace(dir.path());
 
@@ -197,13 +197,13 @@ mod tests {
 
     #[test]
     fn test_scan_workspace_python_ml() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // allow-anti-pattern
         let req_path = dir.path().join("requirements.txt");
-        let mut file = File::create(req_path).unwrap();
-        writeln!(file, "torch==2.0.0\nfastapi==0.95.0").unwrap();
+        let mut file = File::create(req_path).unwrap(); // allow-anti-pattern
+        writeln!(file, "torch==2.0.0\nfastapi==0.95.0").unwrap(); // allow-anti-pattern
 
         let docker_path = dir.path().join("Dockerfile");
-        File::create(docker_path).unwrap();
+        File::create(docker_path).unwrap(); // allow-anti-pattern
 
         let skills = AutoProfileEngine::scan_workspace(dir.path());
 

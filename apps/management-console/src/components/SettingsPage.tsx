@@ -929,11 +929,12 @@ const McpConfigManager: React.FC = () => {
                         Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like <code>$STRIPE_SECRET_KEY</code>. Saving will restart MCP processes dynamically.
                     </div>
                     <textarea 
+                        className="font-mono"
                         value={configJson}
                         onChange={e => setConfigJson(e.target.value)}
                         style={{
                             width: '100%', height: '200px', background: 'rgba(0,0,0,0.5)', color: 'var(--accent-cyan)',
-                            fontFamily: 'monospace', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
+                            padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
                             resize: 'vertical', outline: 'none', fontSize: '0.85rem'
                         }}
                     />

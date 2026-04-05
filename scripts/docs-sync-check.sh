@@ -293,9 +293,8 @@ main() {
     echo ""
     echo "修正手順: /docs-sync ワークフローを実行してください"
     if [[ "$CI_MODE" == true ]]; then
-      # CI では警告のみ（exit 0）— ブロックしない
-      # 将来的に厳格化する場合はここを exit 1 に変更
-      exit 0
+      # CI では厳格に同期漏れをブロックする
+      exit 1
     fi
   else
     echo "🎉 全チェック通過！ドキュメントは同期されています。"

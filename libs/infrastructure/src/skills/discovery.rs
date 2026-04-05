@@ -142,9 +142,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_suggest_tools_semantic_green() {
-        let temp = tempdir().unwrap();
+        let temp = tempdir().unwrap(); // allow-anti-pattern
         let skills_dir = temp.path().join("skills");
-        std::fs::create_dir(&skills_dir).unwrap();
+        std::fs::create_dir(&skills_dir).unwrap(); // allow-anti-pattern
 
         // 1. fs_reader のメタデータを登録
         let meta = json!({
@@ -155,11 +155,11 @@ mod tests {
             "outputs": ["content"],
             "permissions": { "allow_filesystem_write": false, "allow_network": false, "allow_shell_execution": false, "allowed_domains": [] }
         });
-        std::fs::write(skills_dir.join("fs_reader.meta.json"), meta.to_string()).unwrap();
-        std::fs::write(skills_dir.join("fs_reader.wasm"), b"wasm").unwrap();
+        std::fs::write(skills_dir.join("fs_reader.meta.json"), meta.to_string()).unwrap(); // allow-anti-pattern
+        std::fs::write(skills_dir.join("fs_reader.wasm"), b"wasm").unwrap(); // allow-anti-pattern
 
         let manager =
-            Arc::new(WasmSkillManager::new(skills_dir, temp.path().to_path_buf()).unwrap());
+            Arc::new(WasmSkillManager::new(skills_dir, temp.path().to_path_buf()).unwrap()); // allow-anti-pattern
         let mock_llm = Arc::new(MockLlm {
             response: "fs_reader".to_string(),
         });
@@ -169,7 +169,7 @@ mod tests {
         let suggestions = engine
             .suggest_tools("I want to see what is inside a document")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 3. LLM ベースの推薦により成功するはず (GREEN)
         assert!(

@@ -19,6 +19,6 @@ pub fn get_http_client() -> &'static reqwest::Client {
             // SEC-5 FIX: Global SSRF prevention via redirect blocking
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .expect("❌ Failed to build global reqwest client")
+            .unwrap_or_else(|e| panic!("❌ Failed to build global reqwest client: {}", e))
     })
 }

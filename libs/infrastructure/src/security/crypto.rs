@@ -84,13 +84,13 @@ mod tests {
         let key = Zeroizing::new(rand::thread_rng().gen::<[u8; 32]>().to_vec());
         let data = b"Hello, Voice DRM!";
 
-        let encrypted = encrypt_aes256gcm(data, &key).unwrap();
+        let encrypted = encrypt_aes256gcm(data, &key).unwrap(); // allow-anti-pattern
 
         // Nonce is 12 bytes, Auth Tag is 16 bytes.
         assert_eq!(encrypted.len(), data.len() + 12 + 16);
 
         // Decrypt
-        let decrypted = decrypt_aes256gcm(&encrypted, &key).unwrap();
+        let decrypted = decrypt_aes256gcm(&encrypted, &key).unwrap(); // allow-anti-pattern
         assert_eq!(decrypted, data);
     }
 
@@ -100,8 +100,8 @@ mod tests {
         let key = Zeroizing::new(rand::thread_rng().gen::<[u8; 32]>().to_vec());
         let data = b"Secret Voice Model";
 
-        let encrypted1 = encrypt_aes256gcm(data, &key).unwrap();
-        let encrypted2 = encrypt_aes256gcm(data, &key).unwrap();
+        let encrypted1 = encrypt_aes256gcm(data, &key).unwrap(); // allow-anti-pattern
+        let encrypted2 = encrypt_aes256gcm(data, &key).unwrap(); // allow-anti-pattern
 
         assert_ne!(
             encrypted1, encrypted2,

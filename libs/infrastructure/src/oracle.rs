@@ -417,7 +417,7 @@ mod tests {
             .await;
 
         assert!(res.is_ok());
-        let verdict = res.expect("Should return verdict");
+        let verdict = res.expect("Should return verdict"); // allow-anti-pattern
         assert_eq!(verdict.alignment_score, 0.95);
         assert_eq!(verdict.growth_score, 0.8);
         assert!(verdict.should_evolve);
@@ -425,7 +425,7 @@ mod tests {
             verdict
                 .classification
                 .as_ref()
-                .expect("Should have classification")
+                .expect("Should have classification") // allow-anti-pattern
                 .domain,
             "Creative"
         );
@@ -473,7 +473,7 @@ mod tests {
         let verdict = oracle
             .evaluate_multi_judge(7, "AI Ethics", "Formal", 1000, 100, "[]")
             .await
-            .expect("Should return consensus verdict");
+            .expect("Should return consensus verdict"); // allow-anti-pattern
 
         assert!(
             verdict.should_evolve,
@@ -512,7 +512,7 @@ mod tests {
         let res = oracle.multi_review("Bad content", &context, config).await;
 
         assert!(res.is_ok(), "Multi-review failed: {:?}", res.err());
-        let result = res.expect("Should have result");
+        let result = res.expect("Should have result"); // allow-anti-pattern
         assert_eq!(result.overall_score, 8.5);
         assert_eq!(
             result.decision,
@@ -554,7 +554,7 @@ mod tests {
         let res = oracle.multi_review("Content", &context, config).await;
 
         assert!(res.is_ok());
-        let result = res.expect("Should have result");
+        let result = res.expect("Should have result"); // allow-anti-pattern
         assert_eq!(
             result.decision,
             aiome_core_contracts::contracts::ReviewDecision::Accept

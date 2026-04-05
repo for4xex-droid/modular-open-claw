@@ -263,7 +263,7 @@ mod tests {
         });
 
         let sonar = ExternalTrendSonar::new(vec![adapter1, adapter2], None);
-        let results = sonar.get_trends("tech").await.unwrap();
+        let results = sonar.get_trends("tech").await.unwrap(); // allow-anti-pattern
 
         assert_eq!(results.len(), 2);
         assert!(results.iter().any(|t| t.keyword == "rust"));

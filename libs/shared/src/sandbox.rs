@@ -168,15 +168,15 @@ mod tests {
 
     #[test]
     fn test_bastion_jail_integration() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // allow-anti-pattern
         let workspace = dir.path().join("workspace");
-        fs::create_dir(&workspace).unwrap();
+        fs::create_dir(&workspace).unwrap(); // allow-anti-pattern
 
-        let sandbox = PathSandbox::new(&workspace).unwrap();
+        let sandbox = PathSandbox::new(&workspace).unwrap(); // allow-anti-pattern
 
         // 正常系
         let safe_file = workspace.join("test.txt");
-        fs::write(&safe_file, "data").unwrap();
+        fs::write(&safe_file, "data").unwrap(); // allow-anti-pattern
         assert!(sandbox.validate_path("test.txt").is_ok());
 
         // 異常系: トラバーサル

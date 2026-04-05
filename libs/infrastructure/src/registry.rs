@@ -365,7 +365,7 @@ impl RegistryManager {
 impl RegistryManager {
     /// テスト用に Pool を取得する
     pub fn get_pool_for_test(&self) -> &sqlx::SqlitePool {
-        self.pool.get_sqlite_pool_or_err().unwrap()
+        self.pool.get_sqlite_pool_or_err().unwrap() // allow-anti-pattern
     }
 }
 
@@ -378,7 +378,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         let db_pool = DatabasePool::Sqlite(pool);
 
@@ -397,7 +397,7 @@ mod tests {
             )
             "#
         )
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         crate::sql_exec!(
             &db_pool,
@@ -410,7 +410,7 @@ mod tests {
             )
             "#
         )
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         crate::sql_exec!(
             &db_pool,
@@ -425,7 +425,7 @@ mod tests {
             )
             "#
         )
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
 
         db_pool
     }
@@ -446,8 +446,8 @@ mod tests {
             metadata: None,
         };
 
-        registry.register_asset(manifest).await.unwrap();
-        let fetched = registry.get_asset(asset_id).await.unwrap();
+        registry.register_asset(manifest).await.unwrap(); // allow-anti-pattern
+        let fetched = registry.get_asset(asset_id).await.unwrap(); // allow-anti-pattern
         assert_eq!(fetched.name, "Premium Voice");
         assert_eq!(fetched.price_coins, 500);
     }
@@ -477,10 +477,10 @@ mod tests {
         };
 
         // 1. 登録 (現時点では metadata は無視されるはず)
-        registry.register_asset(manifest).await.unwrap();
+        registry.register_asset(manifest).await.unwrap(); // allow-anti-pattern
 
         // 2. 取得
-        let fetched = registry.get_asset(asset_id).await.unwrap();
+        let fetched = registry.get_asset(asset_id).await.unwrap(); // allow-anti-pattern
 
         // 3. 検証 (RED: metadata は None のままのはず)
         assert_eq!(fetched.asset_type.as_ref(), "mcp");
@@ -499,16 +499,16 @@ mod tests {
         let asset_id = Uuid::new_v4();
 
         // 購入前
-        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
+        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap()); // allow-anti-pattern
 
         // ライセンスの付与 (正当な所有権確立)
         registry
             .grant_license(agent_id, asset_id, "evt_test_ownership".to_string())
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 購入後
-        assert!(registry.check_ownership(agent_id, asset_id).await.unwrap());
+        assert!(registry.check_ownership(agent_id, asset_id).await.unwrap()); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -519,7 +519,7 @@ mod tests {
         let asset_id = Uuid::new_v4();
 
         // ライセンスがない場合は拒否
-        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
+        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap()); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -530,16 +530,16 @@ mod tests {
         let asset_id = Uuid::new_v4();
 
         // 購入前
-        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
+        assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap()); // allow-anti-pattern
 
         // 新しいメソッド: ライセンスの付与 (まだ未実装なのでコンパイルエラーになるかパニックするはず)
         registry
             .grant_license(agent_id, asset_id, "evt_test_grant".to_string())
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         // 購入後
-        assert!(registry.check_ownership(agent_id, asset_id).await.unwrap());
+        assert!(registry.check_ownership(agent_id, asset_id).await.unwrap()); // allow-anti-pattern
     }
 
     #[tokio::test]
@@ -556,7 +556,7 @@ mod tests {
                 serde_json::json!({}),
             )
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
 
         let asset_id = Uuid::new_v4();
         let manifest = AssetManifest {
@@ -568,19 +568,19 @@ mod tests {
             price_coins: 0,
             metadata: None,
         };
-        registry.register_asset(manifest).await.unwrap();
+        registry.register_asset(manifest).await.unwrap(); // allow-anti-pattern
 
-        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 1);
+        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 1); // allow-anti-pattern
 
         // 2. クリア実行
-        registry.clear_mcp_servers().await.unwrap();
+        registry.clear_mcp_servers().await.unwrap(); // allow-anti-pattern
 
         // 3. MCPは0件、通常アセットは1件残っていることを確認
-        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 0);
+        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 0); // allow-anti-pattern
         let assets = registry
             .list_assets_by_type(AssetType::VoiceModel, None, "public")
             .await
-            .unwrap();
+            .unwrap(); // allow-anti-pattern
         assert_eq!(assets.len(), 1, "Non-MCP assets should not be cleared");
     }
 }

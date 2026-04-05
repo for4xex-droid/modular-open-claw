@@ -129,7 +129,7 @@ mod tests {
 
         let res = ProportionsChecker::extract_from_binary(&data);
         assert!(res.is_ok());
-        let dim = res.unwrap();
+        let dim = res.unwrap(); // allow-anti-pattern
         assert!(dim.is_humanoid);
         assert_eq!(dim.total_height_meters, 1.6);
     }

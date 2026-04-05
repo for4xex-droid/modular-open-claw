@@ -1,0 +1,13 @@
+/*
+ * NASA Artemis Inter Typeface
+ * Official branding font from NASA Artemis program
+ * Source: https://nasa-external-ocomm.app.box.com/s/ig7cyneubc93iz3z40qzontocg3oj2i8/folder/153995273241
+ */
+
+@font-face {
+  font-family: 'Artemis Inter';
+  src: url('../assets/fonts/Artemis_Inter_041621.otf') format('opentype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

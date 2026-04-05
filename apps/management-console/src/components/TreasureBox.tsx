@@ -10,6 +10,7 @@ import { Sparkles, ExternalLink, Info, Loader2, RefreshCw } from 'lucide-react';
 import { useTreasure } from '../hooks/useTreasure';
 import { TreasureItem } from '../types';
 import { useTranslation } from '../i18n';
+import './TreasureBox.css';
 
 export const TreasureBox: React.FC = () => {
     const { items, loading, error, refresh, recordFeedback } = useTreasure();
@@ -30,44 +31,44 @@ export const TreasureBox: React.FC = () => {
     };
 
     return (
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+        <div className="artemis-treasure-box">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-500/20 rounded-lg">
-                        <Sparkles className="w-5 h-5 text-indigo-400" />
+            <div className="artemis-treasure-header">
+                <div className="artemis-treasure-header-left">
+                    <div className="artemis-treasure-icon-wrap">
+                        <Sparkles className="artemis-treasure-icon" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight">{t('treasure.title')}</h2>
-                        <p className="text-xs text-indigo-300/60 leading-none">{t('treasure.subtitle')}</p>
+                        <h2 className="artemis-heading artemis-treasure-title">{t('treasure.title')}</h2>
+                        <p className="artemis-treasure-subtitle">{t('treasure.subtitle')}</p>
                     </div>
                 </div>
                 <button 
                     onClick={() => refresh()} 
                     disabled={loading}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+                    className="artemis-treasure-refresh"
                 >
-                    <RefreshCw className={`w-4 h-4 text-white/50 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`artemis-treasure-refresh-icon ${loading ? 'animate-spin' : ''}`} />
                 </button>
             </div>
 
             {/* Error State */}
             {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm mb-4">
+                <div className="artemis-treasure-error">
                     {error}
                 </div>
             )}
 
             {/* Loading State */}
             {loading && items.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                    <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                    <p className="text-sm text-white/40">{t('treasure.loading')}</p>
+                <div className="artemis-treasure-loading">
+                    <Loader2 className="artemis-treasure-loading-icon animate-spin" />
+                    <p className="artemis-treasure-loading-text">{t('treasure.loading')}</p>
                 </div>
             )}
 
             {/* Items Grid */}
-            <div className="grid grid-cols-1 gap-4">
+            <div className="artemis-treasure-grid">
                 <AnimatePresence mode="popLayout">
                     {items.map((item, index) => (
                         <motion.div
@@ -79,30 +80,30 @@ export const TreasureBox: React.FC = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => handleClick(item)}
-                            className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/30 rounded-xl p-4 cursor-pointer transition-all duration-300"
+                            className="group artemis-treasure-item"
                         >
                             {/* Compliance Label (AS-1.6) */}
-                            <div className="absolute top-2 right-3 px-1.5 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[10px] text-indigo-300 font-medium tracking-wider uppercase">
+                            <div className="artemis-treasure-label">
                                 {item.disclosure_label}
                             </div>
 
-                            <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2 pr-12">
-                                    <span className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors line-clamp-1">
+                            <div className="artemis-treasure-item-content">
+                                <div className="artemis-treasure-item-header">
+                                    <span className="artemis-treasure-item-title">
                                         {item.title}
                                     </span>
-                                    <ExternalLink className="w-3 h-3 text-white/30" />
+                                    <ExternalLink className="artemis-treasure-item-link-icon" />
                                 </div>
-                                <p className="text-xs text-white/50 line-clamp-2 leading-relaxed h-8">
+                                <p className="artemis-treasure-item-desc">
                                     {item.description}
                                 </p>
-                                <div className="mt-2 flex items-center justify-between">
-                                    <span className="text-[10px] px-2 py-0.5 bg-white/5 rounded-full text-white/40">
+                                <div className="artemis-treasure-item-footer">
+                                    <span className="artemis-treasure-item-category">
                                         {item.category}
                                     </span>
                                     {item.price_coins && (
-                                        <span className="text-xs font-mono text-indigo-400 font-bold">
-                                            {item.price_coins} <span className="text-[10px] text-white/30">COINS</span>
+                                        <span className="artemis-treasure-item-price">
+                                            {item.price_coins} <span className="artemis-treasure-item-price-unit">COINS</span>
                                         </span>
                                     )}
                                 </div>
@@ -114,9 +115,9 @@ export const TreasureBox: React.FC = () => {
 
             {/* Empty State */}
             {!loading && items.length === 0 && !error && (
-                <div className="text-center py-12 opacity-30 select-none">
-                    <Info className="w-8 h-8 mx-auto mb-2" />
-                    <p className="text-sm">{t('treasure.empty')}</p>
+                <div className="artemis-treasure-empty">
+                    <Info className="artemis-treasure-empty-icon" />
+                    <p className="artemis-treasure-empty-text">{t('treasure.empty')}</p>
                 </div>
             )}
 
@@ -127,10 +128,10 @@ export const TreasureBox: React.FC = () => {
                         initial={{ opacity: 0, scale: 0.5, y: 0 }}
                         animate={{ opacity: 1, scale: 1, y: -50 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+                        className="artemis-treasure-overlay"
                     >
-                        <div className="px-4 py-2 bg-indigo-500 text-white font-bold rounded-full shadow-lg shadow-indigo-500/50 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4" />
+                        <div className="artemis-treasure-overlay-badge">
+                            <Sparkles className="artemis-treasure-overlay-icon" />
                             <span>{t('treasure.resonance')}</span>
                         </div>
                     </motion.div>

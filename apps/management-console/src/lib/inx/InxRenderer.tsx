@@ -92,14 +92,13 @@ const InxRenderer: React.FC<InxRendererProps> = ({ modelUrl, avatarState }) => {
                 }}
             />
             {!isLoaded && (
-                <div style={{
+                <div className="font-mono" style={{
                     position: 'absolute',
                     top: 0, left: 0, right: 0, bottom: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--text-secondary)',
-                    fontFamily: 'var(--font-mono)'
+                    color: 'var(--text-secondary)'
                 }}>
                     [ Inochi2D Runtime Initializing... ]
                 </div>

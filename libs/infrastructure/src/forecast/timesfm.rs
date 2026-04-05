@@ -37,7 +37,7 @@ impl TimesFmProvider {
             .pool_idle_timeout(Duration::from_secs(30))
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .expect("TimesFM reqwest client build should never fail with these settings");
+            .expect("TimesFM reqwest client build should never fail with these settings"); // allow-anti-pattern
 
         Self {
             client,

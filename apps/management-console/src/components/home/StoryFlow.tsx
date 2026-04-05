@@ -166,7 +166,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 alignItems: 'center',
                 background: 'rgba(255,255,255,0.01)',
             }}>
-                <h2 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
+                <h2 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>
                     <span style={{
                         display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
                         background: connectionStatus === 'connected' ? 'var(--accent-emerald)' : 'var(--accent-amber)',
@@ -255,7 +255,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         gap: '0.75rem',
                     }}>
                         <Cpu size={40} style={{ opacity: 0.1 }} />
-                        <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.15)', fontSize: '0.95rem' }}>
+                        <div className="artemis-status" style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.95rem' }}>
                             {t('agent.ready')}
                         </div>
                         <p style={{ fontSize: '0.8rem', maxWidth: '280px', lineHeight: 1.5, opacity: 0.4 }}>
@@ -400,7 +400,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     <span>
                         <kbd style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 3px', borderRadius: '3px', fontSize: '0.55rem' }}>Shift+Enter</kbd> newline
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <span className="font-mono" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <Sparkles size={9} color="var(--accent-purple)" /> ENHANCED
                     </span>
                 </div>

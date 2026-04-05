@@ -39,7 +39,7 @@ async fn test_interactions_complete_with_cache() {
             json!({"input": "Hello!"}),
         ))
         .respond_with(ResponseTemplate::new(200).set_body_json(mock_response))
-        .expect(1)
+        .expect(1) // allow-anti-pattern
         .mount(&mock_server)
         .await;
 
@@ -63,16 +63,16 @@ async fn test_interactions_complete_with_cache() {
     let response = provider
         .complete_with_cache(request)
         .await
-        .expect("Request failed");
+        .expect("Request failed"); // allow-anti-pattern
 
     // Assert 1
     assert_eq!(response.content, "Hello, I am Gemini!");
     let id1 = response
         .metadata
         .as_ref()
-        .unwrap()
+        .unwrap() // allow-anti-pattern
         .get("interaction_id")
-        .unwrap()
+        .unwrap() // allow-anti-pattern
         .clone();
     assert_eq!(id1, interaction_id);
 
@@ -119,16 +119,16 @@ async fn test_interactions_complete_with_cache() {
     let response2 = provider
         .complete_with_cache(request2)
         .await
-        .expect("Request 2 failed");
+        .expect("Request 2 failed"); // allow-anti-pattern
 
     // Assert 2
     assert_eq!(response2.content, "Your name is Phil.");
     let id2 = response2
         .metadata
         .as_ref()
-        .unwrap()
+        .unwrap() // allow-anti-pattern
         .get("interaction_id")
-        .unwrap();
+        .unwrap(); // allow-anti-pattern
     assert_eq!(id2, interaction_id2);
 }
 
@@ -171,7 +171,7 @@ async fn test_interactions_failover() {
     let response = provider
         .complete_with_cache(request)
         .await
-        .expect("Request should succeed via fallback");
+        .expect("Request should succeed via fallback"); // allow-anti-pattern
 
     // Assert
     assert_eq!(response.content, "Fallback response");

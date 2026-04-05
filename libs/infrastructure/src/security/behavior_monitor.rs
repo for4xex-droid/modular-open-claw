@@ -97,7 +97,7 @@ mod tests {
         // Note: MockJobQueue.increment_security_request_count returns 1 always in the mock implementation above.
         // To test limit, we need a smarter mock or just verify the call.
 
-        let sandbox = Arc::new(PathSandbox::new("/tmp").unwrap());
+        let sandbox = Arc::new(PathSandbox::new("/tmp").unwrap()); // allow-anti-pattern
         let monitor = BehaviorMonitor::new(jq, sandbox, None, 0); // Limit 0 means even 1 is blocked
 
         let request = LlmRequest {
@@ -125,7 +125,7 @@ mod tests {
     async fn test_behavior_monitor_detects_trojan_patterns() {
         use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
         let jq = Arc::new(GlobalMockJobQueue::default());
-        let sandbox = Arc::new(PathSandbox::new("/tmp").unwrap());
+        let sandbox = Arc::new(PathSandbox::new("/tmp").unwrap()); // allow-anti-pattern
         let monitor = BehaviorMonitor::new(jq, sandbox, None, 100);
 
         let request = LlmRequest {

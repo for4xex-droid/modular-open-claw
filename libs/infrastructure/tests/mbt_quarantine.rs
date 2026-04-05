@@ -17,11 +17,12 @@ fn setup_test_workspace(
     meta_json: &str,
 ) -> (WasmSkillManager, PathBuf) {
     let temp_dir = env::temp_dir().join(format!("aiome_mbt_{}", uuid::Uuid::new_v4()));
-    fs::create_dir_all(&temp_dir).unwrap();
+    fs::create_dir_all(&temp_dir).unwrap(); // allow-anti-pattern
 
     // Copy wasm if it exists
     if wasm_source.exists() {
         fs::copy(wasm_source, temp_dir.join(format!("{}.wasm", skill_name))).unwrap();
+        // allow-anti-pattern
     }
 
     // Write meta JSON
@@ -29,9 +30,9 @@ fn setup_test_workspace(
         temp_dir.join(format!("{}.meta.json", skill_name)),
         meta_json,
     )
-    .unwrap();
+    .unwrap(); // allow-anti-pattern
 
-    let manager = WasmSkillManager::new(&temp_dir, &temp_dir).unwrap();
+    let manager = WasmSkillManager::new(&temp_dir, &temp_dir).unwrap(); // allow-anti-pattern
     (manager, temp_dir)
 }
 
@@ -49,9 +50,9 @@ async fn test_mbt_quarantine_happy_path() {
     ];
 
     let temp_dir = env::temp_dir().join(format!("aiome_mbt_{}", uuid::Uuid::new_v4()));
-    fs::create_dir_all(&temp_dir).unwrap();
+    fs::create_dir_all(&temp_dir).unwrap(); // allow-anti-pattern
     let wasm_path = temp_dir.join("StubSkill.wasm");
-    fs::write(&wasm_path, min_wasm).unwrap();
+    fs::write(&wasm_path, min_wasm).unwrap(); // allow-anti-pattern
 
     let safe_meta = r#"{
         "name": "StubSkill",
@@ -67,9 +68,9 @@ async fn test_mbt_quarantine_happy_path() {
             "allowed_domains": []
         }
     }"#;
-    fs::write(temp_dir.join("StubSkill.meta.json"), safe_meta).unwrap();
+    fs::write(temp_dir.join("StubSkill.meta.json"), safe_meta).unwrap(); // allow-anti-pattern
 
-    let manager = WasmSkillManager::new(&temp_dir, &temp_dir).unwrap();
+    let manager = WasmSkillManager::new(&temp_dir, &temp_dir).unwrap(); // allow-anti-pattern
 
     let unverified = UnverifiedSkill {
         name: "StubSkill".to_string(),
@@ -85,7 +86,7 @@ async fn test_mbt_quarantine_happy_path() {
         result
     );
 
-    let verified_skill = result.unwrap();
+    let verified_skill = result.unwrap(); // allow-anti-pattern
     assert_eq!(verified_skill.name(), "StubSkill");
 }
 

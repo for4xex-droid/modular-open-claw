@@ -87,8 +87,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
 
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ margin: 0, fontWeight: 600 }}>Level {stats.level}</h3>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{stats.exp} / {stats.level * 1000} EXP</span>
+                    <h3 className="font-display" style={{
+                        margin: 0, 
+                        fontWeight: 900, 
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase' as const,
+                        background: 'linear-gradient(135deg, #f0f2f5, rgba(0, 242, 255, 0.7))',
+                        WebkitBackgroundClip: 'text',
+                        backgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                    }}>Level {stats.level}</h3>
+                    <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{stats.exp} / {stats.level * 1000} EXP</span>
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ 
@@ -126,7 +135,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Resonance</span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{stats.resonance}</span>
+                <span className="font-mono" style={{ color: 'white', fontWeight: 'bold' }}>{stats.resonance}</span>
             </div>
         </div>
     );

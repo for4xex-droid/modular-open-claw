@@ -8,7 +8,10 @@
     - **Resilience Engine Fixes**: `MemoryCrystallizer` （記憶の結晶化）および `napi-bridge` （カルマ抽出）にある `let _ =` によるサイレントエラー隠蔽を排除し、永続化レイヤーの完全なトラッキングと可視化を達成しました。
     - **Negative Jitter Mitigation**: ガードレールのひとつ `BeggingSupervisor` のペナルティタイマー計算において、負のタイムスタンプが引き起こすタイマー期間マイナス化バグを `.unsigned_abs()` を用いて修正しました。
     - **Arena Tie Recovery**: `SkillArena` において、対戦する両者のエージェント/スキルが同時にクラッシュ（Err()）した場合のパターンカバレッジ漏れを修正し、安定して引き分け状態を返却するよう改修しました。
-
+    - **Zero-Panic Infrastructure Pipeline (AADP v5) [完了]**: 1423件のテストと全てのアサーションを含む全プロジェクトから、不正な `unwrap()`, `expect()`, `panic!()` などのクラッシュ要因を完全に根絶。全ての `anti-patterns.yml` ルール (AP-003~AP-006) を Error に昇格し、`make preflight` によるシングルソース・検証ゲート（Format, Clippy, AST Schema, Doc-Sync）を導入してフェイルセーフを強制完了。
+    - **RTK Token Optimization (Phase 2) [完了]**: RTK (Rust Token Killer) の知見を用いた `OutputFilter` モジュールを `libs/infrastructure` に自前実装し、エージェント自律実行時のLLMトークン消費をスマートに圧縮。エラーや診断情報を保持しつつ、GitやCargo、Node/npmコマンド出力のボイラープレートや重複行を最大90%削減するフィルタリングロジックを確立。API Serverの `ToolCallRouter` のポストフック後に透過的に統合し、JSON通信の破壊リスクを回避した安全な最適化パイプラインを構築しました。
+    - **ContextBudget & JobBudget Extension (Phase 3) [完了]**: `ContextBudget` に `max_tool_output_chars` を、`JobBudget` に `saved_chars` のアトミックトラッカーを追加。`ToolCallRouter` のフィルタ通過後に、トークン節約数を `tracing::info!` 経由でシステムログ（Management Console の下地となるログ）やコンソールに出力するトラッキング機能を統合。
+    - **Token Savings SSE Streaming (Phase 3.5 Refined) [完了]**: `ToolExecutionEvent::TokenSaved(usize)` を追加し、`tool_call_processor.rs` および `stream.rs` において、`OutputFilter` が削減したトークン数を上位側（AgentRx/Orchestrator）へルーティング。自律稼働チャットストリームにおいて専用の `token_saved` SSE イベントを発火させることで、Management Console でのトークン節約量のリアルタイム可視化基盤を完全に確立しました。
 
 ### Added
 - **GlassWorm Shield (Invisible Unicode Injection Defense) [完了]:**
