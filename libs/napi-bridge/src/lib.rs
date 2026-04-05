@@ -123,7 +123,7 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
             let lesson = resp.content.trim();
             if !lesson.is_empty() {
                 tracing::info!("🔮 [Karma] Distilled lesson: {}", lesson);
-                let _ = db
+                let store_res = db
                     .store_karma(
                         "distill-turn",
                         "subagent",
@@ -136,6 +136,9 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
                         false,
                     )
                     .await;
+                if let Err(e) = store_res {
+                    tracing::warn!("⚠️ [Karma] Failed to save distilled lesson to DB: {}", e);
+                }
             }
         }
         Err(e) => {
@@ -397,8 +400,8 @@ pub async fn watchtower_track_usage(usage: String) -> Result<()> {
 #[napi]
 /// `watchtower_init` 関数
 pub async fn watchtower_init() -> Result<()> {
-    let _ = get_db().await;
-    let _ = get_immune().await;
+    get_db().await.map_err(map_err)?;
+    get_immune().await.map_err(map_err)?;
     tracing::info!("Watchtower and Aiome subsystems initialized.");
     Ok(())
 }

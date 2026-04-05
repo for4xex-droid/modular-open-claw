@@ -457,7 +457,7 @@ impl CortexCompiler {
         }
 
         // Mark as compiled
-        for doc in processed_docs {
+        for doc in &processed_docs {
             let update_res = sqlx::query("UPDATE cortex_documents SET compiled = 1 WHERE id = ?")
                 .bind(&doc.id)
                 .execute(pool)
@@ -473,12 +473,41 @@ impl CortexCompiler {
         }
         let issues = self.lint_wiki().await.unwrap_or_default();
 
-        Ok(CompilationReport {
+        let report = CompilationReport {
             new_articles,
             updated_articles,
             concepts_discovered,
             issues,
+        };
+
+        // [Activity Log]
+        let summary = format!(
+            "Compiled {} new, {} updated articles from {} docs",
+            report.new_articles,
+            report.updated_articles,
+            processed_docs.len()
+        );
+
+        let detail_json = serde_json::json!({
+            "new_articles": report.new_articles,
+            "updated_articles": report.updated_articles,
+            "concepts_discovered": report.concepts_discovered,
+            "issues": report.issues.len(),
+            "processed_docs": processed_docs.len()
         })
+        .to_string();
+
+        let log_res = sqlx::query("INSERT INTO cortex_activity_log (event_type, summary, detail_json) VALUES ('compile', ?, ?)")
+            .bind(&summary)
+            .bind(&detail_json)
+            .execute(pool)
+            .await;
+
+        if let Err(e) = log_res {
+            tracing::warn!("Failed to log compile activity: {}", e);
+        }
+
+        Ok(report)
     }
 
     pub async fn extract_concepts(

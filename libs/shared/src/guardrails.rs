@@ -190,8 +190,8 @@ impl BeggingSupervisor {
                 let diff = now - last;
 
                 // Expert Review 指摘: 25〜35日のランダムなジッター。
-                let seed = last.timestamp_nanos_opt().unwrap_or(0);
-                let jitter_days = 25 + (seed % 11);
+                let seed = last.timestamp_nanos_opt().unwrap_or(0).unsigned_abs();
+                let jitter_days = 25 + (seed % 11) as i64;
 
                 if diff < chrono::Duration::days(jitter_days) {
                     return ValidationResult::Blocked(format!(

@@ -52,10 +52,12 @@ pub async fn create_guild(
     })?;
 
     // Sanitize input (G-21 & GlassWorm Shield)
-    let sanitized_name = aiome_core::security_impl::purge_entities(&shared::guardrails::strip_invisible_unicode(&req.name));
-    let sanitized_description = req
-        .description
-        .map(|d| aiome_core::security_impl::purge_entities(&shared::guardrails::strip_invisible_unicode(&d)));
+    let sanitized_name = aiome_core::security_impl::purge_entities(
+        &shared::guardrails::strip_invisible_unicode(&req.name),
+    );
+    let sanitized_description = req.description.map(|d| {
+        aiome_core::security_impl::purge_entities(&shared::guardrails::strip_invisible_unicode(&d))
+    });
 
     let id = store
         .create_guild(sanitized_name, sanitized_description, auth.agent_id)

@@ -165,10 +165,13 @@ pub async fn update_setting(
         "is_secret": is_secret,
         "requested_by": _auth.agent_id,
     });
-    let _ = state
+    if let Err(e) = state
         .audit_logger
         .log_event("SETTING_UPDATE", "SYSTEM_SETTINGS", &details)
-        .await;
+        .await
+    {
+        error!("Failed to append audit log for settings update: {}", e);
+    }
 
     state
         .job_queue
@@ -219,9 +222,12 @@ pub async fn update_setting(
                             tracing::error!("❌ [Ollama] Async LoRA Build Failed: {}", e);
                         } else {
                             // Automatically update the config to use the new LoRA model
-                            let _ = q
+                            if let Err(e) = q
                                 .update_setting("ollama_model", &new_model, "llm", false)
-                                .await;
+                                .await
+                            {
+                                tracing::error!("❌ Failed to automatically update built lora model setting: {}", e);
+                            }
                         }
                     });
                 }

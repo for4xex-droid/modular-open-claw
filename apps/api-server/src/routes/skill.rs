@@ -322,7 +322,12 @@ pub async fn spawn_mcp_server(
 
     state
         .mcp_manager
-        .spawn_stdio_server(payload.id.clone(), &payload.command, payload.args, std::collections::HashMap::new())
+        .spawn_stdio_server(
+            payload.id.clone(),
+            &payload.command,
+            payload.args,
+            std::collections::HashMap::new(),
+        )
         .await
         .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
             reason: format!("MCP Spawn Error: {}", e),
@@ -348,14 +353,14 @@ pub async fn update_mcp_config(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
-    
+
     if let Some(parent) = config_path.parent() {
         let _ = tokio::fs::create_dir_all(parent).await;
     }
-    
+
     let serialized = serde_json::to_string_pretty(&payload)
         .map_err(|e| AppError::internal(format!("Failed to serialize config: {}", e)))?;
-        
+
     tokio::fs::write(&config_path, serialized)
         .await
         .map_err(|e| AppError::internal(format!("Failed to write config: {}", e)))?;
@@ -386,13 +391,13 @@ pub async fn get_mcp_config(
 ) -> Result<Json<crate::mcp::discovery::McpDiscoveryFile>, AppError> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
-    
-    let content = tokio::fs::read_to_string(&config_path).await.unwrap_or_else(|_| {
-        r#"{"mcp_servers": {}}"#.to_string()
-    });
-    
+
+    let content = tokio::fs::read_to_string(&config_path)
+        .await
+        .unwrap_or_else(|_| r#"{"mcp_servers": {}}"#.to_string());
+
     let config: crate::mcp::discovery::McpDiscoveryFile = serde_json::from_str(&content)
         .map_err(|e| AppError::internal(format!("Invalid MCP configuration file: {}", e)))?;
-        
+
     Ok(Json(config))
 }

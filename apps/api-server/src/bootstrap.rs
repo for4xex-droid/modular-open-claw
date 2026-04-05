@@ -86,12 +86,15 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     dotenvy::dotenv().ok();
 
     let resolver = shared::app_data::AppDataResolver::new();
-    
+
     // 2. Explicit attempt from application root (essential for Production Tauri sidecars)
     let app_env_path = resolver.root().join(".env");
     if app_env_path.exists() {
         if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!("Loaded explicit environment from {}", app_env_path.display());
+            tracing::info!(
+                "Loaded explicit environment from {}",
+                app_env_path.display()
+            );
         }
     }
 
@@ -144,10 +147,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     s.recv().await;
                 }
                 Err(e) => {
-                    tracing::error!(
-                        "🚨 [api-server] Failed to install SIGTERM handler: {}",
-                        e
-                    );
+                    tracing::error!("🚨 [api-server] Failed to install SIGTERM handler: {}", e);
                     std::future::pending::<()>().await;
                 }
             }

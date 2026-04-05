@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- **Phase 1-2 Security & Infra Reflexion Hardening [完了]**:
+    - **Security Bypass Prevented**: `DynamicLlmProvider::stream_complete` において、ストリーミング通信時に欠落していた事前セキュリティフック（Pre-execute Hook）の強制呼び出しを実装し、保護機構の迂回を遮断しました。
+    - **CRDT Data Integrity**:分散P2Pの `UniversalJobQueue::sync_timeline` 内部において、PostgreSQL および SQLite 上での `UPSERT` 永続化を実装し、ノード再起動時のステート（CRDT Timeline Blobs）の喪失（揮発バグ）を防止。
+    - **UI Stability**: Management Console の `SkillVault.tsx` において、外部APIから `tools` 配列が未定義（`undefined`）で返却された際の React Component Crash（WSOD: 真っ白な画面）を防ぐフォールバックを実装しました。
+    - **Resilience Engine Fixes**: `MemoryCrystallizer` （記憶の結晶化）および `napi-bridge` （カルマ抽出）にある `let _ =` によるサイレントエラー隠蔽を排除し、永続化レイヤーの完全なトラッキングと可視化を達成しました。
+    - **Negative Jitter Mitigation**: ガードレールのひとつ `BeggingSupervisor` のペナルティタイマー計算において、負のタイムスタンプが引き起こすタイマー期間マイナス化バグを `.unsigned_abs()` を用いて修正しました。
+    - **Arena Tie Recovery**: `SkillArena` において、対戦する両者のエージェント/スキルが同時にクラッシュ（Err()）した場合のパターンカバレッジ漏れを修正し、安定して引き分け状態を返却するよう改修しました。
+
+
+### Added
 - **GlassWorm Shield (Invisible Unicode Injection Defense) [完了]:**
     - **Core Primitive**: `shared::guardrails::strip_invisible_unicode` を実装。ゼロ幅スペース（ZWSP）、Web Tagsブロック、BIDI制御文字などの悪意ある不可視Unicode文字を O(N) で高速に除去するサニタイズ処理を構築。
     - **Deep Object Sanitization (Gig Routes)**: `apps/api-server/src/routes/gig.rs` などのAPIエンドポイントにおいて、ネストされたJSONメタデータ構造体や `AcceptanceCriteria` (WASM CID, Rubric Prompt列) に至るまで、serde_jsonによるラウンドトリップを併用して一単位残さずディープにサニタイズ。
@@ -57,6 +67,7 @@
     - **MCP Tool Exposure**: `cortex_search` MCPツールを実装・公開し、Claude Codeなど外部エージェントも直接CortexシステムのWikiナレッジをセマンティック検索できるように設計完了。
     - **TDD Hardening (P-1/P-2/P-3)**: コンテキスト注入文字数の設定可能化 (`with_max_context_chars` builder pattern / デフォルト8000)、`suggest_questions` のDB概念ベース動的生成化（空DB時フォールバック付き）、大規模データ向けFTS5移行計画をTODOとして文書化。8テスト全GREEN。
     - **Frontend Integration**: Management Consoleの主インターフェース（StoryFlow）にCortex Query Engineを統合する動的サジェストチップ（Suggestion Chips）UIを実装、カスタムフック化ならびにPlaywrightによるE2Eテスト網も確立しGREENパス。
+    - **Karpathy "LLM Wiki" Pattern**: `QueryOptions` および `DisclosureLevel` トークン管理（L0-L3/Progressive Disclosure）を導入。信頼スコア0.7以上の回答結果を `SourceType::Query` として自己増殖させる Query File-Back アーキテクチャを確立し、`cortex_activity_log` にるアクション監視ロジックを追加した。
 - **LoRA Marketplace 基礎実装 & セキュリティ・ハードニング [完成]:**
     - **安全なアダプター取引基盤**: LoRA アダプター（`.safetensors`）の出品・購入・転送を安全に仲介するマーケットプレイスを実装。SHA-256 ハッシュ検証、エスクロー（`CommerceEngine` 連携）、PathSandbox 分離を備える。
     - **コントラクト型定義**: `LoraListing`, `LoraPurchase`, `ListingFilter`, `LoraMarketplace` トレイトを `aiome-core-contracts` に新設。

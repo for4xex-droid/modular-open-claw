@@ -354,12 +354,8 @@ impl RegistryManager {
             "DELETE FROM asset_registry WHERE asset_type = {}",
             self.pool.ph(0)
         );
-        crate::sql_exec!(
-            &self.pool,
-            &q,
-            AssetType::McpServer.as_ref()
-        )?;
-        
+        crate::sql_exec!(&self.pool, &q, AssetType::McpServer.as_ref())?;
+
         tracing::info!("🧹 [Registry] Cleared all previously registered MCP servers.");
         Ok(())
     }
@@ -552,8 +548,16 @@ mod tests {
         let registry = RegistryManager::new(pool);
 
         // 1. MCPサーバーと通常アセットを登録
-        registry.register_mcp_server(Uuid::new_v4(), "ga4", "Google Analytics", serde_json::json!({})).await.unwrap();
-        
+        registry
+            .register_mcp_server(
+                Uuid::new_v4(),
+                "ga4",
+                "Google Analytics",
+                serde_json::json!({}),
+            )
+            .await
+            .unwrap();
+
         let asset_id = Uuid::new_v4();
         let manifest = AssetManifest {
             id: asset_id,
@@ -573,7 +577,10 @@ mod tests {
 
         // 3. MCPは0件、通常アセットは1件残っていることを確認
         assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 0);
-        let assets = registry.list_assets_by_type(AssetType::VoiceModel, None, "public").await.unwrap();
+        let assets = registry
+            .list_assets_by_type(AssetType::VoiceModel, None, "public")
+            .await
+            .unwrap();
         assert_eq!(assets.len(), 1, "Non-MCP assets should not be cleared");
     }
 }

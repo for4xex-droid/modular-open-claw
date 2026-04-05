@@ -32,12 +32,12 @@
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
-| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 4** で `WatchtowerOps` による Poincare GC（バッチ処理対応）を実装。 | **強化完了** |
+| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 1-2 Reflexion** で SQLite/PostgreSQL の P2P Timeline `UPSERT` 永続化を強化。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
-| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。**Phase 13.3** で Gemini 2.0 Flash Live 用の `LiveSessionManager` を統合。Ollama の LoRA 動内ビルダも統合済。 | **第3世代進化** |
+| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断（Phase 1-2 反省強化）および Ollama の LoRA 動内ビルダ統合済。 | **第3世代進化** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
-| `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。 | 実装完了 |
+| `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |

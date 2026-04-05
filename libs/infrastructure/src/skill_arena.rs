@@ -76,6 +76,10 @@ impl SkillArena {
 
         let (out_a, out_b) = match (res_a, res_b) {
             (Ok(a), Ok(b)) => (a, b),
+            (Err(e1), Err(e2)) => {
+                warn!("❌ Both skills failed. A: {}, B: {}", e1, e2);
+                return Ok(None); // 両者消滅 (引き分け)
+            }
             (Err(e), _) => {
                 warn!("❌ Skill A ({}) failed: {}", skill_a, e);
                 return Ok(Some(skill_b.to_string())); // Aが落ちたのでBの勝利

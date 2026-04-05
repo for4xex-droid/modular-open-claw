@@ -494,19 +494,19 @@ impl ArtifactStore for UniversalArtifactStore {
             }
             let _ = std::fs::remove_dir(full_dir);
         }
-        let _ = sql_exec!(
+        sql_exec!(
             &self.pool,
             &format!("DELETE FROM ai_artifacts WHERE id = {}", self.pool.ph(0)),
             id
-        );
-        let _ = sql_exec!(
+        )?;
+        sql_exec!(
             &self.pool,
             &format!(
                 "DELETE FROM artifact_edges WHERE source_id = {0} OR target_id = {0}",
                 self.pool.ph(0)
             ),
             id
-        );
+        )?;
         Ok(())
     }
 
@@ -578,7 +578,7 @@ impl ArtifactStore for UniversalArtifactStore {
             &edge.target_id,
             &edge.source_type,
             &edge.relation,
-            serde_json::to_string(&edge.metadata).unwrap_or_default()
+            serde_json::to_string(&edge.metadata).unwrap_or_else(|_| "{}".to_string())
         )?;
         Ok(())
     }

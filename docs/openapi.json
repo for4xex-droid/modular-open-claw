@@ -4073,6 +4073,19 @@
           "question"
         ],
         "properties": {
+          "disclosure_level": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional: \"L0Brief\", \"L1Index\", \"L2Search\", or \"L3Full\""
+          },
+          "file_back": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "question": {
             "type": "string"
           }
@@ -4236,7 +4249,8 @@
           "Pdf",
           "Manual",
           "GitHub",
-          "Rss"
+          "Rss",
+          "Query"
         ]
       },
       "StartAutonomousRequest": {

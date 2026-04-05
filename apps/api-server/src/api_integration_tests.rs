@@ -44,7 +44,9 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
             || prompt.contains("JSON format")
             || prompt.contains("Oracle Judge");
 
-        let content = if is_json_req {
+        let content = if prompt.contains("Cortex Wiki articles context") {
+            "```json\n{\"answer_md\": \"This is a mock answer based on context.\", \"confidence\": 0.95}\n```".to_string()
+        } else if is_json_req {
             if sys
                 .map(|s| s.contains("category\": \"Learning"))
                 .unwrap_or(false)
@@ -2438,4 +2440,47 @@ async fn test_mcp_config_update_authorized_green() {
         .await;
 
     assert_eq!(response.status_code(), StatusCode::OK);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_cortex_query_file_back() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "question": "What is AI?",
+        "file_back": true
+    });
+
+    let response = server
+        .post("/api/v1/cortex/query")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+    let status = response.status_code();
+    println!("Response Body: {}", response.text());
+    assert_eq!(status, axum::http::StatusCode::OK);
+
+    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+
+    let log_row =
+        sqlx::query("SELECT COUNT(*) as count FROM cortex_activity_log WHERE event_type = 'query'")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    use sqlx::Row;
+    let log_count: i64 = log_row.get("count");
+    assert_eq!(log_count, 1, "Query activity log should be inserted");
+
+    let doc_row =
+        sqlx::query("SELECT COUNT(*) as count FROM cortex_documents WHERE source_type = 'query'")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    let doc_count: i64 = doc_row.get("count");
+    assert_eq!(
+        doc_count, 1,
+        "File-back document should be inserted since mock confidence is 0.95"
+    );
 }

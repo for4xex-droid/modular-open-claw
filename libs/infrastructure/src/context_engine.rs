@@ -227,10 +227,16 @@ impl ContextEngine {
                         // Mark compressed messages as distilled
                         if let Some(last_compressed) = to_compress.last() {
                             if let Some(last_id) = last_compressed["id"].as_i64() {
-                                let _ = self
+                                if let Err(e) = self
                                     .job_queue
                                     .mark_chats_as_distilled(channel_id, last_id)
-                                    .await;
+                                    .await
+                                {
+                                    warn!(
+                                        "⚠️ [ContextEngine] Failed to mark chats as distilled for {}: {:?}",
+                                        channel_id, e
+                                    );
+                                }
                             }
                         }
 

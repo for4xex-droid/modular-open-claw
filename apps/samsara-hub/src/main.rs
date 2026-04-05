@@ -107,17 +107,24 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let resolver = shared::app_data::AppDataResolver::new();
-    
+
     // 2. Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
     if app_env_path.exists() {
         if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!("Loaded explicit environment from {}", app_env_path.display());
+            tracing::info!(
+                "Loaded explicit environment from {}",
+                app_env_path.display()
+            );
         }
     }
 
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| format!("sqlite:{}?mode=rwc", resolver.root().join("samsara_hub.db").to_str().unwrap()));
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        format!(
+            "sqlite:{}?mode=rwc",
+            resolver.root().join("samsara_hub.db").to_str().unwrap()
+        )
+    });
     let secret_val = std::env::var("FEDERATION_SECRET").unwrap_or_else(|_| {
         tracing::error!("🚨 [CRITICAL] FEDERATION_SECRET must be set for Samsara Hub security!");
         std::process::exit(1);
@@ -643,7 +650,9 @@ async fn create_topic_handler(
     Json(mut req): Json<CreateTopicRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     // 🛡️ [GlassWorm Shield] Sanitize text fields
-    req.summary = req.summary.map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+    req.summary = req
+        .summary
+        .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
 
     // Auth Check
     let auth_header = headers
@@ -1127,27 +1136,43 @@ async fn push_handler(
     payload.node_id = shared::guardrails::strip_invisible_unicode(&payload.node_id).into_owned();
     for k in &mut payload.karmas {
         k.id = shared::guardrails::strip_invisible_unicode(&k.id).into_owned();
-        k.job_id = k.job_id.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        k.job_id = k
+            .job_id
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
         k.karma_type = shared::guardrails::strip_invisible_unicode(&k.karma_type).into_owned();
         k.lesson = shared::guardrails::strip_invisible_unicode(&k.lesson).into_owned();
-        k.related_skill = shared::guardrails::strip_invisible_unicode(&k.related_skill).into_owned();
+        k.related_skill =
+            shared::guardrails::strip_invisible_unicode(&k.related_skill).into_owned();
         k.node_id = shared::guardrails::strip_invisible_unicode(&k.node_id).into_owned();
-        k.signature = k.signature.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
-        k.clone_origin_id = k.clone_origin_id.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        k.signature = k
+            .signature
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        k.clone_origin_id = k
+            .clone_origin_id
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
     }
     for r in &mut payload.rules {
         r.id = shared::guardrails::strip_invisible_unicode(&r.id).into_owned();
         r.pattern = shared::guardrails::strip_invisible_unicode(&r.pattern).into_owned();
         r.action = shared::guardrails::strip_invisible_unicode(&r.action).into_owned();
         r.node_id = shared::guardrails::strip_invisible_unicode(&r.node_id).into_owned();
-        r.signature = r.signature.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        r.signature = r
+            .signature
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
     }
     for m in &mut payload.arena_matches {
         m.id = shared::guardrails::strip_invisible_unicode(&m.id).into_owned();
         m.skill_a = shared::guardrails::strip_invisible_unicode(&m.skill_a).into_owned();
         m.skill_b = shared::guardrails::strip_invisible_unicode(&m.skill_b).into_owned();
         m.topic = shared::guardrails::strip_invisible_unicode(&m.topic).into_owned();
-        m.winner = m.winner.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        m.winner = m
+            .winner
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
         m.reasoning = shared::guardrails::strip_invisible_unicode(&m.reasoning).into_owned();
     }
 

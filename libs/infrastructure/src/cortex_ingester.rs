@@ -18,6 +18,7 @@ pub enum SourceType {
     Manual,
     GitHub,
     Rss,
+    Query,
 }
 
 impl SourceType {
@@ -28,6 +29,7 @@ impl SourceType {
             SourceType::Manual => "manual",
             SourceType::GitHub => "github",
             SourceType::Rss => "rss",
+            SourceType::Query => "query",
         }
     }
 
@@ -38,6 +40,7 @@ impl SourceType {
             "manual" => Ok(SourceType::Manual),
             "github" => Ok(SourceType::GitHub),
             "rss" => Ok(SourceType::Rss),
+            "query" => Ok(SourceType::Query),
             _ => Err(format!("Unknown source type: {}", s)),
         }
     }
@@ -202,7 +205,7 @@ impl CortexIngester {
         // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
         let clean_title = shared::guardrails::strip_invisible_unicode(title).into_owned();
         let content_md = shared::guardrails::strip_invisible_unicode(content).into_owned();
-        
+
         let doc = CortexDocument {
             id: uuid::Uuid::new_v4().to_string(),
             title: clean_title,
@@ -318,6 +321,24 @@ impl CortexIngester {
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to insert cortex_document: {}", e),
         })?;
+
+        // [Activity Log]
+        let summary = format!("Ingested document: {}", doc.title);
+        let detail_json = serde_json::json!({
+            "source_type": doc.source_type.as_str(),
+            "doc_id": doc.id,
+            "url": doc.source_url
+        })
+        .to_string();
+        let log_res = sqlx::query("INSERT INTO cortex_activity_log (event_type, summary, detail_json) VALUES ('ingest', ?, ?)")
+            .bind(&summary)
+            .bind(&detail_json)
+            .execute(pool)
+            .await;
+
+        if let Err(e) = log_res {
+            tracing::warn!("Failed to log ingest activity: {}", e);
+        }
 
         Ok(())
     }

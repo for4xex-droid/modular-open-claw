@@ -104,12 +104,15 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let resolver = shared::app_data::AppDataResolver::new();
-    
+
     //    Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
     if app_env_path.exists() {
         if let Ok(_) = dotenvy::from_path(&app_env_path) {
-            tracing::info!("Loaded explicit environment from {}", app_env_path.display());
+            tracing::info!(
+                "Loaded explicit environment from {}",
+                app_env_path.display()
+            );
         }
     }
     let gemini_key = env::var("GEMINI_API_KEY").unwrap_or_else(|_| {

@@ -102,14 +102,18 @@ pub async fn discover_and_connect(
                         v
                     };
                     // 🛡️ [GlassWorm Shield] Sanitize NUL, newline, and invisible characters
-                    let mut safe_val = shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
+                    let mut safe_val =
+                        shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
                     safe_val = safe_val.replace('\0', "").replace('\n', "");
                     resolved_env.insert(k, safe_val);
                 }
 
                 // 🛡️ [GlassWorm Shield] Sanitize command and args
-                let safe_command = shared::guardrails::strip_invisible_unicode(&config.command).into_owned();
-                let safe_args: Vec<String> = config.args.iter()
+                let safe_command =
+                    shared::guardrails::strip_invisible_unicode(&config.command).into_owned();
+                let safe_args: Vec<String> = config
+                    .args
+                    .iter()
                     .map(|arg| shared::guardrails::strip_invisible_unicode(arg).into_owned())
                     .collect();
 
@@ -128,7 +132,7 @@ pub async fn discover_and_connect(
                     .clone()
                     .ok_or_else(|| anyhow!("Missing URL for HTTP transport: {}", id))?;
                 let safe_url = shared::guardrails::strip_invisible_unicode(&url).into_owned();
-                
+
                 let mut resolved_headers = HashMap::new();
                 for (k, v) in config.headers {
                     let resolved = if v.starts_with('$') {
@@ -148,7 +152,8 @@ pub async fn discover_and_connect(
                         v
                     };
                     // 🛡️ [GlassWorm Shield]
-                    let mut safe_val = shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
+                    let mut safe_val =
+                        shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
                     safe_val = safe_val.replace('\0', "").replace('\n', "");
                     resolved_headers.insert(k, safe_val);
                 }

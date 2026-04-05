@@ -286,7 +286,10 @@ pub async fn add_immune_rule_handler(
     rule.action = shared::guardrails::strip_invisible_unicode(&rule.action).into_owned();
     rule.created_at = shared::guardrails::strip_invisible_unicode(&rule.created_at).into_owned();
     rule.node_id = shared::guardrails::strip_invisible_unicode(&rule.node_id).into_owned();
-    rule.signature = rule.signature.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+    rule.signature = rule
+        .signature
+        .take()
+        .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
 
     // Phase 20 MVP: Generate ID and timestamp if empty
     if rule.id.is_empty() {

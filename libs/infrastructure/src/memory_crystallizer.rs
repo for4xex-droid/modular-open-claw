@@ -126,7 +126,11 @@ impl MemoryCrystallizer {
                                             )),
                                             ..Default::default()
                                         };
-                                        let _ = self.job_queue.store_trajectory_step(step).await;
+                                        if let Err(e) =
+                                            self.job_queue.store_trajectory_step(step).await
+                                        {
+                                            warn!("⚠️ [MemoryCrystallizer] Failed to record belief revision step for {}: {:?}", skill, e);
+                                        }
                                         continue;
                                     }
                                     Err(e) => {

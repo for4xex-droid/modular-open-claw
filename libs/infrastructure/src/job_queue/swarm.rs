@@ -154,31 +154,45 @@ impl SwarmOps for UniversalJobQueue {
             );
             match &mut tx {
                 crate::db::DatabaseTransaction::Sqlite(t) => {
-                    let _ = sqlx::query(&q2)
+                    sqlx::query(&q2)
                         .bind("node_id")
                         .bind(&pubkey_b64)
                         .execute(&mut **t)
-                        .await;
-                    let _ = sqlx::query(&q2)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    sqlx::query(&q2)
                         .bind("node_privkey")
                         .bind(&privkey_b64)
                         .execute(&mut **t)
-                        .await;
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 }
                 crate::db::DatabaseTransaction::Postgres(t) => {
-                    let _ = sqlx::query(&q2)
+                    sqlx::query(&q2)
                         .bind("node_id")
                         .bind(&pubkey_b64)
                         .execute(&mut **t)
-                        .await;
-                    let _ = sqlx::query(&q2)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                    sqlx::query(&q2)
                         .bind("node_privkey")
                         .bind(&privkey_b64)
                         .execute(&mut **t)
-                        .await;
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
                 }
             }
-            let _ = tx.commit().await;
+            tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
             Ok(pubkey_b64)
         }
     }
@@ -260,21 +274,29 @@ impl SwarmOps for UniversalJobQueue {
         );
         match &mut tx {
             crate::db::DatabaseTransaction::Sqlite(t) => {
-                let _ = sqlx::query(&q2)
+                sqlx::query(&q2)
                     .bind(next.to_string())
                     .bind("logical_clock")
                     .execute(&mut **t)
-                    .await;
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
             crate::db::DatabaseTransaction::Postgres(t) => {
-                let _ = sqlx::query(&q2)
+                sqlx::query(&q2)
                     .bind(next.to_string())
                     .bind("logical_clock")
                     .execute(&mut **t)
-                    .await;
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
         }
-        let _ = tx.commit().await;
+        tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(next as u64)
     }
 
@@ -322,21 +344,29 @@ impl SwarmOps for UniversalJobQueue {
         );
         match &mut tx {
             crate::db::DatabaseTransaction::Sqlite(t) => {
-                let _ = sqlx::query(&q2)
+                sqlx::query(&q2)
                     .bind(next.to_string())
                     .bind("logical_clock")
                     .execute(&mut **t)
-                    .await;
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
             crate::db::DatabaseTransaction::Postgres(t) => {
-                let _ = sqlx::query(&q2)
+                sqlx::query(&q2)
                     .bind(next.to_string())
                     .bind("logical_clock")
                     .execute(&mut **t)
-                    .await;
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
             }
         }
-        let _ = tx.commit().await;
+        tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
         Ok(next)
     }
 

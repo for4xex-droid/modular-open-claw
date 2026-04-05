@@ -61,12 +61,12 @@ impl CrdtOps for UniversalJobQueue {
         let finalized_blob = local_doc.save();
 
         let q = format!(
-            "SELECT last_lamport_clock FROM peers WHERE peer_id = {}",
-            self.pool.ph(0)
+            "INSERT INTO timeline_checkpoints (id, automerge_blob, updated_at) VALUES ({0}, {1}, CURRENT_TIMESTAMP)
+             ON CONFLICT(id) DO UPDATE SET automerge_blob = excluded.automerge_blob, updated_at = CURRENT_TIMESTAMP",
+            self.pool.ph(0), self.pool.ph(1)
         );
-        let _row: Option<i64> = crate::sql_fetch_optional!(&self.pool, (i64,), &q, hub_id)
-            .unwrap_or(None)
-            .map(|r| r.0);
+
+        crate::sql_exec!(&self.pool, &q, hub_id.to_string(), finalized_blob.clone())?;
 
         Ok(finalized_blob)
     }
@@ -76,9 +76,8 @@ impl CrdtOps for UniversalJobQueue {
             "SELECT automerge_blob FROM timeline_checkpoints WHERE id = {}",
             self.pool.ph(0)
         );
-        let row: Option<Vec<u8>> = crate::sql_fetch_optional!(&self.pool, (Vec<u8>,), &q, hub_id)
-            .unwrap_or(None)
-            .map(|r| r.0);
+        let row: Option<Vec<u8>> =
+            crate::sql_fetch_optional!(&self.pool, (Vec<u8>,), &q, hub_id)?.map(|r| r.0);
 
         Ok(row)
     }

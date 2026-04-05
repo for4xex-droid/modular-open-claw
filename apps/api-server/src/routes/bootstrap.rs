@@ -11,10 +11,7 @@
 //! これらのエンドポイントは **認証不要** でアクセスできる（セットアップ完了前に使用するため）。
 
 use crate::AppState;
-use axum::{
-    extract::State,
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde::Serialize;
 use shared::bootstrap_detector::{BootMode, BootstrapDetector};
 
@@ -40,9 +37,7 @@ pub struct BootstrapStatusResponse {
 /// セットアップの完了状態を返す。認証不要。
 /// フロントエンドはこのエンドポイントを最初に呼び出し、
 /// `mode == "setup"` の場合はセットアップ WebUI に遷移する。
-pub async fn bootstrap_status(
-    State(state): State<AppState>,
-) -> Json<BootstrapStatusResponse> {
+pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapStatusResponse> {
     let config = state.config.get_inner();
     let root = config.resolver.root();
     let diagnosis = BootstrapDetector::diagnose(root);
@@ -84,10 +79,7 @@ pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
         .unwrap_or_default();
 
     // 候補 URL を順に試す
-    let candidates = [
-        "http://127.0.0.1:11434",
-        "http://localhost:11434",
-    ];
+    let candidates = ["http://127.0.0.1:11434", "http://localhost:11434"];
 
     for url in &candidates {
         let version_url = format!("{}/api/version", url);

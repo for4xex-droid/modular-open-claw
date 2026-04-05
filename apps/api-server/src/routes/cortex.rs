@@ -243,6 +243,9 @@ pub async fn get_wiki_article_handler(
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct QueryReq {
     pub question: String,
+    pub file_back: Option<bool>,
+    /// Optional: "L0Brief", "L1Index", "L2Search", or "L3Full"
+    pub disclosure_level: Option<String>,
 }
 
 #[utoipa::path(
@@ -260,7 +263,23 @@ pub async fn query_handler(
     Json(req): Json<QueryReq>,
 ) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
     let engine = state.cortex_query.get_inner();
-    let ans = engine.query(&req.question).await?;
+
+    let file_back = req.file_back.unwrap_or(false);
+
+    let disclosure_level = req.disclosure_level.and_then(|dl| match dl.as_str() {
+        "L0Brief" => Some(infrastructure::cortex_query::DisclosureLevel::L0Brief),
+        "L1Index" => Some(infrastructure::cortex_query::DisclosureLevel::L1Index),
+        "L2Search" => Some(infrastructure::cortex_query::DisclosureLevel::L2Search),
+        "L3Full" => Some(infrastructure::cortex_query::DisclosureLevel::L3Full),
+        _ => None,
+    });
+
+    let options = infrastructure::cortex_query::QueryOptions {
+        file_back,
+        disclosure_level,
+    };
+
+    let ans = engine.query_with_options(&req.question, options).await?;
     Ok((StatusCode::OK, Json(ans)))
 }
 

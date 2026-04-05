@@ -191,12 +191,12 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
             <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>{t('skill.exposedTools')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {skill.tools.map(tool => (
+                    {(skill.tools || []).map(tool => (
                         <code key={tool} style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.3)', color: 'var(--accent-cyan)' }}>
                             {tool}
                         </code>
                     ))}
-                    {skill.tools.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('skill.noTools')}</span>}
+                    {(skill.tools || []).length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('skill.noTools')}</span>}
                 </div>
             </div>
 

@@ -145,6 +145,21 @@ impl LlmProvider for DynamicLlmProvider {
         let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
         cost_breaker.enforce().await?;
 
+        // --- Phase 36: Security Hooks (Streaming) ---
+        let request = LlmRequest {
+            messages: vec![aiome_core_contracts::llm::LlmMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+                cache: false,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: None,
+            metadata: None,
+        };
+        self.hook_manager.trigger_pre_execute(&request).await?;
+
         // DS-1 FIX: Apply Circuit Breaker protection to streaming results
         if self.circuit_breaker.check_state().await.is_err() {
             self.slo_engine.record_error().await;

@@ -304,11 +304,13 @@ pub async fn release_quarantined_asset(
         .into());
     }
 
-    state.quarantine_store.release_asset(&id).await.map_err(|e| {
-        aiome_core::error::AiomeError::Infrastructure {
+    state
+        .quarantine_store
+        .release_asset(&id)
+        .await
+        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
             reason: format!("Quarantine Store Error: {}", e),
-        }
-    })?;
+        })?;
 
     Ok(StatusCode::OK)
 }

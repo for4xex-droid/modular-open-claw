@@ -85,6 +85,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 62 | **Socket/Memory Exhaustion DoS** | **Unbounded queue / Semaphore starvation** | 🔴 High | **try_acquire() & Hard Queue Limits (Red Team)** |
 | 63 | **LoRA Path Traversal / BOLA** | **Malicious adapter_path or unauthorized purchase complete** | 🔴 High | **Strict 3-Layer Check (PathSandbox, CallerAuth, 64KB OOM Chunking) (LoRA Market)** |
 | 64 | **Transaction Divergence (Ghost State)** | **DB lock fails after external escrow moves funds** | 🔴 High | **Saga Compensating Tx (DB First, rollback on API failure) (LoRA Market)** |
+| 65 | **Streaming LLM Bypass** | **Missing pre-execute hooks in `stream_complete`** | 🔴 High | **Security Hook Enforcement (Phase 1-2 Reflexion)** |
+| 66 | **Guardrail Timing Bypass** | **Negative timestamp modulus in penalty timers** | 🟡 Mid | **`.unsigned_abs()` to guarantee positive jitter (Phase 1-2 Reflexion)** |
 
 ## 3. Defense Architecture
 
@@ -151,6 +153,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Database Backend Safety (Phase 31)**: Eliminated 10+ instances of direct `unwrap()` on database pools. All internal router handlers now use safe getters returning explicit Errors via `DatabasePool::get_sqlite_pool_or_err`. This prevents system-wide crashes when switching to alternative backends (e.g., PostgreSQL for high concurrency).
 - **LLM Structured Output (Phase 31)**: Formally supports `format: "json"` in `LlmRequest` to enforce structured responses from LLMs (Ollama), reducing parsing errors and potential hallucination impacts.
 - **Autonomous Memory Lifecycle (Phase 4)**: Mitigates "cognitive noise" and resource exhaustion by autonomously pruning low-importance memories. Integrates `SlmBridge` for Poincare-based importance scoring and enforces a 0.3 threshold for background archival via Watchtower.
+- **Resilient Memory Trajectories (Phase 1-2 Reflexion)**: Swallows in `MemoryCrystallizer` and `napi-bridge` (`let _ =`) were replaced with explicit error tracking to eliminate silent failures in the causal trajectory path.
+- **Fail-Safe Skill Arena (Phase 1-2 Reflexion)**: Handled edge cases in parallel AI execution where both skills crash simultaneously (`Err`, `Err`), allowing the Arena to retreat safely rather than crashing the evaluation thread.
+- **Strict CRDT Persistence (Phase 1-2 Reflexion)**: Reinforced `UniversalJobQueue` with `ON CONFLICT DO UPDATE` (UPSERT) for Timeline synchronization, permanently eliminating logical data loss upon service restarts.
 
 ## 5. Comparison with Traditional Systems
 

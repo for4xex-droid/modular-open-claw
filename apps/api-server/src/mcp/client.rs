@@ -27,7 +27,12 @@ pub struct McpClient {
 }
 
 impl McpClient {
-    pub fn spawn(id: String, cmd: &str, args: Vec<String>, envs: HashMap<String, String>) -> Result<Arc<Self>> {
+    pub fn spawn(
+        id: String,
+        cmd: &str,
+        args: Vec<String>,
+        envs: HashMap<String, String>,
+    ) -> Result<Arc<Self>> {
         info!(
             "🚀 [MCP] Spawning stdio server: {} for session: {}",
             cmd, id
@@ -38,7 +43,8 @@ impl McpClient {
         if !allowed_cmds.contains(&cmd) {
             return Err(anyhow!(
                 "🚨 [SECURITY VIOLATION] Unapproved command '{}'. Only {:?} are allowed for MCP.",
-                cmd, allowed_cmds
+                cmd,
+                allowed_cmds
             ));
         }
 
@@ -47,7 +53,12 @@ impl McpClient {
             // Search for first positional argument that isn't a flag
             let pkg = args.iter().find(|a| !a.starts_with('-'));
             if let Some(p) = pkg {
-                let allowed_prefixes = ["@modelcontextprotocol/", "@stripe/", "@appsyogi/", "@secops/"];
+                let allowed_prefixes = [
+                    "@modelcontextprotocol/",
+                    "@stripe/",
+                    "@appsyogi/",
+                    "@secops/",
+                ];
                 if !allowed_prefixes.iter().any(|prefix| p.starts_with(prefix)) {
                     return Err(anyhow!(
                         "🚨 [SECURITY VIOLATION] Unapproved package '{}'. Must start with one of {:?}",
@@ -55,7 +66,10 @@ impl McpClient {
                     ));
                 }
             } else {
-                return Err(anyhow!("🚨 [SECURITY VIOLATION] Missing package name for {}", cmd));
+                return Err(anyhow!(
+                    "🚨 [SECURITY VIOLATION] Missing package name for {}",
+                    cmd
+                ));
             }
         }
 
@@ -334,7 +348,12 @@ mod tests {
         let manager = McpProcessManager::new();
         for i in 0..(MAX_MCP_PROCESSES + 1) {
             manager
-                .spawn_stdio_server(format!("client{}", i), "node", vec!["-v".to_string()], HashMap::new())
+                .spawn_stdio_server(
+                    format!("client{}", i),
+                    "node",
+                    vec!["-v".to_string()],
+                    HashMap::new(),
+                )
                 .await
                 .unwrap();
         }
@@ -349,7 +368,12 @@ mod tests {
     async fn test_mcp_reap_idle() {
         let manager = McpProcessManager::new();
         let endpoint = manager
-            .spawn_stdio_server("idle_client".to_string(), "node", vec!["-v".to_string()], HashMap::new())
+            .spawn_stdio_server(
+                "idle_client".to_string(),
+                "node",
+                vec!["-v".to_string()],
+                HashMap::new(),
+            )
             .await
             .unwrap();
 
@@ -369,15 +393,20 @@ mod tests {
     async fn test_mcp_remove_client() {
         let manager = McpProcessManager::new();
         // Since node is allowed, we can spawn it, but echo is NOT allowed anymore!
-        // We will spawn a dummy process that passes validation. 
+        // We will spawn a dummy process that passes validation.
         // We use "node" "-e" "console.log('{}')"
         manager
-            .spawn_stdio_server("to_remove".to_string(), "node", vec!["-v".to_string()], HashMap::new())
+            .spawn_stdio_server(
+                "to_remove".to_string(),
+                "node",
+                vec!["-v".to_string()],
+                HashMap::new(),
+            )
             .await
             .unwrap();
 
         assert_eq!(manager.active_client_ids().await.len(), 1);
-        
+
         let removed = manager.remove_client("to_remove").await;
         assert!(removed, "Client should be removed successfully");
         assert_eq!(manager.active_client_ids().await.len(), 0);
@@ -386,7 +415,12 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_client_spawn_validation() {
         // Red test: Try to spawn unapproved command
-        let res = McpClient::spawn("test1".to_string(), "rm", vec!["-rf".to_string(), "/".to_string()], HashMap::new());
+        let res = McpClient::spawn(
+            "test1".to_string(),
+            "rm",
+            vec!["-rf".to_string(), "/".to_string()],
+            HashMap::new(),
+        );
         if let Err(e) = res {
             assert!(e.to_string().contains("SECURITY VIOLATION"));
         } else {
@@ -394,7 +428,12 @@ mod tests {
         }
 
         // Red test: Try to spawn npx with unapproved package
-        let res2 = McpClient::spawn("test2".to_string(), "npx", vec!["-y".to_string(), "evil-package".to_string()], HashMap::new());
+        let res2 = McpClient::spawn(
+            "test2".to_string(),
+            "npx",
+            vec!["-y".to_string(), "evil-package".to_string()],
+            HashMap::new(),
+        );
         if let Err(e) = res2 {
             assert!(e.to_string().contains("Unapproved package"));
         } else {
@@ -404,9 +443,21 @@ mod tests {
         // Red test: Try to spawn npx with approved package
         // This should not fail validation but might fail actual OS spawn if package doesn't exist.
         // We just check that error is NOT a SECURITY VIOLATION
-        let res3 = McpClient::spawn("test3".to_string(), "npx", vec!["-y".to_string(), "@modelcontextprotocol/server-postgres".to_string()], HashMap::new());
+        let res3 = McpClient::spawn(
+            "test3".to_string(),
+            "npx",
+            vec![
+                "-y".to_string(),
+                "@modelcontextprotocol/server-postgres".to_string(),
+            ],
+            HashMap::new(),
+        );
         if let Err(e) = res3 {
-            assert!(!e.to_string().contains("SECURITY VIOLATION"), "Should pass security violation: {}", e);
+            assert!(
+                !e.to_string().contains("SECURITY VIOLATION"),
+                "Should pass security violation: {}",
+                e
+            );
         }
     }
 }

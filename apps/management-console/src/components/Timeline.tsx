@@ -132,7 +132,7 @@ const Timeline: React.FC = () => {
                                                         {isKarma ? (isLocal ? "LOCAL MEMORY" : "FEDERATED MEMORY") : "EVOLUTION STEP"}
                                                     </span>
                                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                                        {isKarma ? `${e.karma_type.toUpperCase()} | JOB #${e.job_id}` : e.event_type.toUpperCase()}
+                                                        {isKarma ? `${(e.karma_type || 'UNKNOWN').toUpperCase()} | JOB #${e.job_id || '?'}` : (e.event_type || 'SYSTEM').toUpperCase()}
                                                     </span>
                                                 </div>
                                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>

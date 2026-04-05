@@ -443,8 +443,7 @@ pub fn build_app(
         )
         .route(
             "/api/skills/mcp/config",
-            axum::routing::put(routes::skill::update_mcp_config)
-                .get(routes::skill::get_mcp_config),
+            axum::routing::put(routes::skill::update_mcp_config).get(routes::skill::get_mcp_config),
         )
         .layer(TimeoutLayer::new(Duration::from_secs(30)));
 

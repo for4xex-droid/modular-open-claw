@@ -21,25 +21,63 @@ pub struct CortexAnswer {
 /// Default maximum characters for context injection into LLM prompts.
 const DEFAULT_MAX_CONTEXT_CHARS: usize = 8000;
 
+#[derive(Debug, Default, Clone)]
+pub struct QueryOptions {
+    pub file_back: bool,
+    pub disclosure_level: Option<DisclosureLevel>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DisclosureLevel {
+    L0Brief,
+    L1Index,
+    L2Search,
+    L3Full,
+}
+
+impl Default for DisclosureLevel {
+    fn default() -> Self {
+        Self::L2Search
+    }
+}
+
+impl DisclosureLevel {
+    pub fn max_chars(&self) -> usize {
+        match self {
+            Self::L0Brief => 200,
+            Self::L1Index => 1500,
+            Self::L2Search => 4000,
+            Self::L3Full => 8000,
+        }
+    }
+}
+
 pub struct CortexQueryEngine {
     llm_provider: Arc<dyn LlmProvider>,
     pool: DatabasePool,
     max_context_chars: usize,
+    disclosure_level: DisclosureLevel,
 }
 
 impl CortexQueryEngine {
     pub fn new(llm_provider: Arc<dyn LlmProvider>, pool: DatabasePool) -> Self {
+        let disclosure_level = DisclosureLevel::default();
         Self {
             llm_provider,
             pool,
-            max_context_chars: DEFAULT_MAX_CONTEXT_CHARS,
+            max_context_chars: disclosure_level.max_chars(),
+            disclosure_level,
         }
     }
 
-    /// Configure the maximum character budget for context injection.
-    /// This value controls how much Wiki article text is fed to the LLM.
     pub fn with_max_context_chars(mut self, max_chars: usize) -> Self {
         self.max_context_chars = max_chars;
+        self
+    }
+
+    pub fn with_disclosure_level(mut self, level: DisclosureLevel) -> Self {
+        self.disclosure_level = level;
+        self.max_context_chars = level.max_chars();
         self
     }
 
@@ -49,6 +87,15 @@ impl CortexQueryEngine {
     }
 
     pub async fn query(&self, question: &str) -> Result<CortexAnswer, AiomeError> {
+        self.query_with_options(question, QueryOptions::default())
+            .await
+    }
+
+    pub async fn query_with_options(
+        &self,
+        question: &str,
+        options: QueryOptions,
+    ) -> Result<CortexAnswer, AiomeError> {
         // 1. Validate Input (v5 audit requirement)
         match shared::guardrails::validate_input(question) {
             shared::guardrails::ValidationResult::Blocked(reason) => {
@@ -133,9 +180,12 @@ impl CortexQueryEngine {
             }
         }
 
+        let active_disclosure = options.disclosure_level.unwrap_or(self.disclosure_level);
+        let max_chars = active_disclosure.max_chars();
+
         // Truncate if exceeding configured budget
-        if context_text.len() > self.max_context_chars {
-            context_text.truncate(self.max_context_chars);
+        if context_text.len() > max_chars {
+            context_text.truncate(max_chars);
         }
 
         // 5. Generate Answer with Confidence
@@ -159,9 +209,60 @@ impl CortexQueryEngine {
             .to_string();
         let confidence = parsed_ans["confidence"].as_f64().unwrap_or(0.0);
 
+        let mut final_answer_md =
+            shared::guardrails::strip_invisible_unicode(&answer_md).into_owned();
+
+        // [File-Back]
+        let mut filed_back = false;
+        if options.file_back && confidence >= 0.7 && !final_answer_md.is_empty() {
+            let doc_id = uuid::Uuid::new_v4().to_string();
+            use sha2::Digest;
+            let mut hasher = sha2::Sha256::new();
+            sha2::Digest::update(&mut hasher, final_answer_md.as_bytes());
+            let hash = format!("{:x}", sha2::Digest::finalize(hasher));
+            let now = chrono::Utc::now().to_rfc3339();
+
+            let query = "INSERT INTO cortex_documents (id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at) VALUES (?, ?, NULL, ?, ?, 'query', '[]', NULL, '[]', ?)";
+            let res = sqlx::query(query)
+                .bind(&doc_id)
+                .bind(&question)
+                .bind(&final_answer_md)
+                .bind(&hash)
+                .bind(&now)
+                .execute(sqlite_pool)
+                .await;
+
+            match res {
+                Ok(_) => filed_back = true,
+                Err(e) => {
+                    println!("Failed to file-back query document: {:?}", e);
+                    tracing::warn!("Failed to file-back query document: {:?}", e);
+                }
+            }
+        }
+
+        // [Activity Log]
+        let summary = format!("Query: {}", question.chars().take(50).collect::<String>());
+        let detail_json = serde_json::json!({
+            "confidence": confidence,
+            "sources": source_articles,
+            "filed_back": filed_back
+        })
+        .to_string();
+
+        let log_res = sqlx::query("INSERT INTO cortex_activity_log (event_type, summary, detail_json) VALUES ('query', ?, ?)")
+            .bind(&summary)
+            .bind(&detail_json)
+            .execute(sqlite_pool)
+            .await;
+
+        if let Err(e) = log_res {
+            tracing::warn!("Failed to log query activity: {}", e);
+        }
+
         Ok(CortexAnswer {
             question: question.to_string(),
-            answer_md,
+            answer_md: final_answer_md,
             source_articles,
             confidence,
         })
@@ -342,7 +443,7 @@ mod tests {
             ]),
         });
         let engine = CortexQueryEngine::new(provider, pool);
-        assert_eq!(engine.max_context_chars(), 8000);
+        assert_eq!(engine.max_context_chars(), 4000);
     }
 
     // ========================================================================

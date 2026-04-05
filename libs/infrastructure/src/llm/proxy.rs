@@ -78,7 +78,10 @@ impl LlmProvider for ProxyLlmProvider {
             endpoint: self.endpoint_tag.clone(),
         };
 
-        let payload_json = serde_json::to_string(&payload).unwrap_or_default();
+        let payload_json =
+            serde_json::to_string(&payload).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize proxy request (complete): {}", e),
+            })?;
         let mut request_builder = self
             .client
             .post(&url)
@@ -145,7 +148,10 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             endpoint: "gemini-embed".to_string(),
         };
 
-        let payload_json = serde_json::to_string(&payload).unwrap_or_default();
+        let payload_json =
+            serde_json::to_string(&payload).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to serialize proxy request (embed): {}", e),
+            })?;
         let mut request_builder = self
             .client
             .post(&url)
