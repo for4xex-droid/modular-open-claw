@@ -20,3 +20,9 @@ The transition map above serves as the foundation for the MBT integration test (
 1. **Happy Path**: `Downloading` → `ManifestCheck` → `DryRunQuarantine` → `Active` (Expected: `Ok(VerifiedSkill)`)
 2. **Negative Path 1 (Bad Payload)**: `Downloading` $\rightarrow$ `ManifestCheck` $\rightarrow$ `Violated` (Expected: Rejected by DbC macro before dry-run)
 3. **Negative Path 2 (Dry-Run Failure)**: `ManifestCheck` $\rightarrow$ `DryRunQuarantine` $\rightarrow$ `Violated` (Expected: Rejected due to Deterministic Tracer timeout or violation)
+
+## Interceptor Guardrails
+
+| Mechanism | Concrete Rust Code Path | Description |
+| :--- | :--- | :--- |
+| **GlassWorm Shield** | `shared::guardrails::strip_invisible_unicode`<br>(Applied in `cortex_ingester`, `samsara-hub`, `api-server`, `mcp/discovery`) | A stateless interceptor that sanitizes incoming text structures (Web/PDF scrapes, federated karmas, API inputs) by stripping invisible Unicode elements (ZWSP, Web Tags, BIDI controls) *prior* to parsing or validation, closing stealth-injection vectors. |

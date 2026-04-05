@@ -347,6 +347,22 @@ impl RegistryManager {
         self.list_assets_by_type(AssetType::McpServer, None, "public")
             .await
     }
+
+    /// (P-8) 登録済みの MCP サーバーエントリーを全てクリアする（ゴーストエントリ防止用）
+    pub async fn clear_mcp_servers(&self) -> Result<(), AiomeError> {
+        let q = format!(
+            "DELETE FROM asset_registry WHERE asset_type = {}",
+            self.pool.ph(0)
+        );
+        crate::sql_exec!(
+            &self.pool,
+            &q,
+            AssetType::McpServer.as_ref()
+        )?;
+        
+        tracing::info!("🧹 [Registry] Cleared all previously registered MCP servers.");
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -528,5 +544,36 @@ mod tests {
 
         // 購入後
         assert!(registry.check_ownership(agent_id, asset_id).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_registry_clear_mcp_servers() {
+        let pool = setup_db_for_registry().await;
+        let registry = RegistryManager::new(pool);
+
+        // 1. MCPサーバーと通常アセットを登録
+        registry.register_mcp_server(Uuid::new_v4(), "ga4", "Google Analytics", serde_json::json!({})).await.unwrap();
+        
+        let asset_id = Uuid::new_v4();
+        let manifest = AssetManifest {
+            id: asset_id,
+            creator_id: Uuid::new_v4(),
+            asset_type: AssetType::VoiceModel,
+            name: "Other Asset".into(),
+            description: "Keep me".into(),
+            price_coins: 0,
+            metadata: None,
+        };
+        registry.register_asset(manifest).await.unwrap();
+
+        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 1);
+
+        // 2. クリア実行
+        registry.clear_mcp_servers().await.unwrap();
+
+        // 3. MCPは0件、通常アセットは1件残っていることを確認
+        assert_eq!(registry.list_mcp_servers().await.unwrap().len(), 0);
+        let assets = registry.list_assets_by_type(AssetType::VoiceModel, None, "public").await.unwrap();
+        assert_eq!(assets.len(), 1, "Non-MCP assets should not be cleared");
     }
 }

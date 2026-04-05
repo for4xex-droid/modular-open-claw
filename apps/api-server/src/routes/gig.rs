@@ -6,7 +6,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core_contracts::gig::{GigBid, GigDeliverable, GigIntent, VerificationResult};
+use aiome_core_contracts::gig::{GigBid, GigDeliverable, GigIntent, VerificationResult, AcceptanceCriteria};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -32,6 +32,42 @@ pub async fn publish_intent(
     auth: crate::auth::Authenticated,
     Json(mut intent): Json<GigIntent>,
 ) -> Result<impl IntoResponse, AppError> {
+    // 🛡️ [GlassWorm Shield] Sanitize text fields deeply including JSON values
+    intent.description = shared::guardrails::strip_invisible_unicode(&intent.description).into_owned();
+    
+    // Sanitize Criteria
+    for cri in &mut intent.criteria {
+        match cri {
+            AcceptanceCriteria::OracleJudge { rubric_prompt, .. } => {
+                *rubric_prompt = shared::guardrails::strip_invisible_unicode(rubric_prompt).into_owned();
+            }
+            AcceptanceCriteria::FileType { mime, .. } => {
+                *mime = shared::guardrails::strip_invisible_unicode(mime).into_owned();
+            }
+            AcceptanceCriteria::WasmValidator { wasm_module_cid } => {
+                *wasm_module_cid = shared::guardrails::strip_invisible_unicode(wasm_module_cid).into_owned();
+            }
+            AcceptanceCriteria::JsonSchema { schema } => {
+                if let Ok(schema_str) = serde_json::to_string(schema) {
+                    let clean = shared::guardrails::strip_invisible_unicode(&schema_str).into_owned();
+                    if let Ok(json) = serde_json::from_str(&clean) {
+                        *schema = json;
+                    }
+                }
+            }
+        }
+    }
+
+    // Sanitize Metadata Map
+    if let Some(meta) = &intent.metadata {
+        if let Ok(meta_str) = serde_json::to_string(meta) {
+            let clean = shared::guardrails::strip_invisible_unicode(&meta_str).into_owned();
+            if let Ok(json) = serde_json::from_str(&clean) {
+                intent.metadata = Some(json);
+            }
+        }
+    }
+
     // SEC-2: Authentication check
     // Ensure the requester_id is the authenticated agent
     intent.requester_id = auth.agent_id;
@@ -127,6 +163,17 @@ pub async fn deliver(
     auth: crate::auth::Authenticated,
     Json(mut deliverable): Json<GigDeliverable>,
 ) -> Result<impl IntoResponse, AppError> {
+    // 🛡️ [GlassWorm Shield] Sanitize text fields deeply
+    deliverable.artifact_path = shared::guardrails::strip_invisible_unicode(&deliverable.artifact_path).into_owned();
+    
+    // Sanitize JSON Metadata
+    if let Ok(meta_str) = serde_json::to_string(&deliverable.metadata) {
+        let clean = shared::guardrails::strip_invisible_unicode(&meta_str).into_owned();
+        if let Ok(json) = serde_json::from_str(&clean) {
+            deliverable.metadata = json;
+        }
+    }
+
     // SEC-2: Ensure deliverer_id is the authenticated agent
     deliverable.deliverer_id = auth.agent_id;
 

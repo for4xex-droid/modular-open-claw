@@ -32,7 +32,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Baseline regex + parameterized queries** |
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
 | 11 | **Cascade Error / AI Hallucination** | **Loss of Context during Self-Evolution** | 🔴 High | **Context Management System (`RIPPLE_MAP.md` + ADRs)** |
-| 12 | **CSAM / Binary Contamination** | **Malicious Binary CRDT/P2P** | 🔴 High | **Protocol Asset Filter + 3-Layer Defense (eKYC, Hash, 5.5-Head) (Phase 8.1)** |
+| 12 | **CSAM / Binary Contamination** | **Malicious Binary CRDT/P2P / CPU Starvation** | 🔴 High | **3-Layer Defense + `spawn_blocking` Offload (Phase 2A-1)** |
 | 13 | **Session Hijacking / Weak Auth** | **Bearer Token Brute Force / Static IDs** | 🔴 High | **OAuth 2.1 / JWT AuthManager + extension-based User Extractors (Phase 8.2)** |
 | 14 | **Global API DoS / OOM** | **Oversized Request Body (Global)** | 🟡 Mid | **Global 2MB Limit (RequestBodyLimitLayer) + 50MB Avatar Bypass (Phase 8.6)** |
 | 15 | **Stripe API Key Leak / Null** | **Empty key in Release build** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 14)** |
@@ -91,7 +91,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
 - Detects prompt injections and command injections.
 - Sanitizes control characters and enforces length limits.
-- **Binary/CSAM Blocking (Phase 7.1 & 8.1)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (against illegal CSAM blacklists), and 3) Skeletal Proportion Rules (5.5-head ratio to prevent child-like models). Non-compliant assets are actively quarantined and their metadata is persistently stored in the `QuarantineStore` (SQLite) to prevent bypasses and facilitate audits. **Phase 14** adds **EKYC Session Persistence** via SQLite, ensuring continuous verification state across server restarts.
+- **Binary/CSAM Blocking (Phase 7.1 & 8.1 & 2A-1 & 2A-3)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (offloaded to `tokio::task::spawn_blocking` to prevent async thread starvation), and 3) Skeletal Proportion Rules (5.5-head ratio). Non-compliant assets are actively quarantined in `QuarantineStore`. A strict **Quarantine Release API** (`POST /api/v1/audit/quarantine/{id}/release`) is exposed with RBAC (System Admin only) to manage false positives under zero-trust guidelines.
 - **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
 - **Begging Supervisor (Phase 7.2)**: Implements an output-side guardrail (`shared/guardrails/BeggingSupervisor`) that detects and blocks AI-generated dark patterns (e.g., asking for money, tokens, or gifts) to ensure legal and ethical transparency in autonomous interactions.
@@ -139,6 +139,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Karma Federation**: Synchronizes "learned lessons" across nodes using signed and authenticated payloads.
 - **Dynamic LLM Provider**: Centralized in `libs/infrastructure/src/llm/dynamic.rs` with automatic fallback chains (DB settings → env vars → defaults) and Circuit Breaker / SLO Engine integration.
 - **Panic-Free Initialization**: All startup-critical operations use `unwrap_or_else` with error logging and `std::process::exit(1)` instead of `expect()`, preventing uncontrolled crashes.
+- **Path Resolution Hardening (Phase 2-PRE-3)**: Enforces `AppDataResolver` for all environment (`.env`), database, and config file reads across `api-server`, `samsara-hub`, and `key-proxy`. This isolates path logic from variable CWD manipulation vectors (e.g., Apple sandboxing or malformed launch paths).
 - **Silent Error Elimination**: Database migration `.ok()` calls replaced with informational logging to surface potential schema issues during initialization.
 - **Federated Telemetry Encryption**: `AutonomousBiomeEngine` encrypts all node-to-node (P2P) traffic relayed through the `Samsara Hub` via ChaCha20-Poly1305 symmetric encryption. The key is securely derived from `FEDERATION_SECRET`, mitigating eavesdropping or message tampering threats at the Hub/Network level.
 - **Swarm Ops Deadlock Prevention**: The `do_sign_swarm_payload` function uses a linear flow (ensure key existence → sign) instead of recursive calls, preventing SQLite transaction nesting deadlocks caused by the single-writer constraint. All internal swarm operations (`get_node_id`, `tick_local_clock`, `sign_swarm_payload`) are called via direct `SwarmOps::do_*` methods rather than `JobQueue` trait dispatch to avoid both deadlocks and oversized async futures.
@@ -188,4 +189,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-04 (LoRA Marketplace Security Hardening)*
+*最終更新: 2026-04-05 (Aiome MVP Phase 2A Hardening)*

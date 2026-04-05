@@ -279,6 +279,40 @@ pub async fn get_quarantined_assets(
     Ok(Json(assets))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/audit/quarantine/{id}/release",
+    params(
+        ("id" = String, Path, description = "Asset ID to release")
+    ),
+    responses(
+        (status = 200, description = "Asset successfully released from quarantine"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn release_quarantined_asset(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied: System admin role required".to_string(),
+        }
+        .into());
+    }
+
+    state.quarantine_store.release_asset(&id).await.map_err(|e| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: format!("Quarantine Store Error: {}", e),
+        }
+    })?;
+
+    Ok(StatusCode::OK)
+}
+
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct TrendsResponse {
     pub trends: Vec<aiome_core::traits::TrendItem>,

@@ -24,6 +24,7 @@ interface CharacterPanelProps {
 const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode }) => {
     const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
     const [soulState, setSoulState] = React.useState<string>('Awake');
+    const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
 
     React.useEffect(() => {
         fetch('/api/v1/ekyc/status')
@@ -32,7 +33,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             .catch(e => console.error('EKYC fetch error', e));
         fetch('/api/v1/soul/status')
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
-            .then(d => setSoulState(d.state || 'Awake'))
+            .then(d => {
+                setSoulState(d.state || 'Awake');
+                if (d.level) setFetchedLevel(d.level);
+            })
             .catch(e => console.error('Soul state fetch error', e));
     }, []);
 
@@ -98,7 +102,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                    Lvl {stats.level} | {soulState}
+                    Lvl {fetchedLevel ?? stats.level} | {soulState}
                 </span>
                 {ekycStatus === true && (
                     <span style={{ background: 'rgba(0, 255, 100, 0.1)', color: 'var(--success, #00ff64)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>

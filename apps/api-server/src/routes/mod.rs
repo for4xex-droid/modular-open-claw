@@ -10,6 +10,7 @@ pub mod artifacts;
 pub mod auth;
 pub mod avatar;
 pub mod biome;
+pub mod bootstrap;
 pub mod commerce;
 pub mod commerce_webhook;
 pub mod cortex;

@@ -280,6 +280,14 @@ pub async fn add_immune_rule_handler(
     _auth: crate::auth::Authenticated,
     Json(mut rule): Json<ImmuneRule>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // 🛡️ [GlassWorm Shield] Sanitize text fields deeply
+    rule.id = shared::guardrails::strip_invisible_unicode(&rule.id).into_owned();
+    rule.pattern = shared::guardrails::strip_invisible_unicode(&rule.pattern).into_owned();
+    rule.action = shared::guardrails::strip_invisible_unicode(&rule.action).into_owned();
+    rule.created_at = shared::guardrails::strip_invisible_unicode(&rule.created_at).into_owned();
+    rule.node_id = shared::guardrails::strip_invisible_unicode(&rule.node_id).into_owned();
+    rule.signature = rule.signature.take().map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+
     // Phase 20 MVP: Generate ID and timestamp if empty
     if rule.id.is_empty() {
         rule.id = uuid::Uuid::new_v4().to_string();

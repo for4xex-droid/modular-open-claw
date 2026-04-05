@@ -55,11 +55,8 @@ test.describe('UI Wave 1 Features (TDD)', () => {
   });
 
   test('W1-3: StoryFlow should render SoT progress events', async ({ page }) => {
-    // Navigate to World/StoryFlow if needed, but World is usually default
-    const worldTab = page.locator('.nav-item').filter({ hasText: 'World' });
-    if (await worldTab.isVisible()) {
-      await worldTab.click();
-    }
+    // Ensure the main flow area is visible before injecting events
+    await page.waitForSelector('.story-flow', { state: 'visible', timeout: 5000 });
 
     // Mock SSE event injection for SoT progress
     await page.evaluate(() => {

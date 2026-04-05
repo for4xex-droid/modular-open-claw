@@ -1385,6 +1385,42 @@ async fn test_quarantine_audit_api() {
 
 #[serial]
 #[tokio::test]
+async fn test_quarantine_release_api() {
+    let (server, state, _tmp) = create_test_server().await;
+    let system_id = state.system_agent_id;
+    let system_auth = format!("Bearer mock_valid_token_sysadmin:{}", system_id);
+
+    let asset_id = uuid::Uuid::new_v4().to_string();
+
+    // 1. System Agent access: Expect 200 OK
+    let resp = server
+        .post(&format!("/api/v1/audit/quarantine/{}/release", asset_id))
+        .add_header(axum::http::header::AUTHORIZATION, &system_auth)
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::OK,
+        "System admin should be able to release quarantined assets"
+    );
+
+    // 2. Unauthorized access: Another agent_id
+    let other_id = uuid::Uuid::new_v4();
+    let other_auth = format!("Bearer mock_valid_token_testuser:{}", other_id);
+    let resp_forbidden = server
+        .post(&format!("/api/v1/audit/quarantine/{}/release", asset_id))
+        .add_header(axum::http::header::AUTHORIZATION, &other_auth)
+        .await;
+
+    assert_eq!(
+        resp_forbidden.status_code(),
+        axum::http::StatusCode::FORBIDDEN,
+        "Normal users should not be able to release quarantined assets"
+    );
+}
+
+#[serial]
+#[tokio::test]
 async fn test_oauth2_endpoints_stub() {
     let (server, _state, _tmp) = create_test_server().await;
 
@@ -2371,6 +2407,34 @@ async fn test_model_status_authorized() {
     let response = server
         .get("/api/v1/models/status")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(response.status_code(), StatusCode::OK);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_config_update_unauthorized() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let payload = serde_json::json!({
+        "mcp_servers": {}
+    });
+    let response = server.put("/api/skills/mcp/config").json(&payload).await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_config_update_authorized_green() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+    let payload = serde_json::json!({
+        "mcp_servers": {}
+    });
+    let response = server
+        .put("/api/skills/mcp/config")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
         .await;
 
     assert_eq!(response.status_code(), StatusCode::OK);

@@ -6,16 +6,27 @@
  */
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, AlertTriangle, CheckCircle, Search, Filter } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Search, Filter, Lock } from 'lucide-react';
 import { API_BASE } from "../config";
 
 import { ImmuneRule } from "../types";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 
+interface QuarantinedAsset {
+    id: string;
+    asset_name: string;
+    image_hash: string;
+    reason: string;
+    status: string;
+    uploaded_at?: string;
+}
+
 const ImmuneSystem: React.FC = () => {
     const { t } = useTranslation();
     const [rules, setRules] = useState<ImmuneRule[]>([]);
+    const [quarantinedAssets, setQuarantinedAssets] = useState<QuarantinedAsset[]>([]);
+    const [activeTab, setActiveTab] = useState<'RULES' | 'QUARANTINE'>('RULES');
     const [isAdding, setIsAdding] = useState(false);
     const [newRule, setNewRule] = useState({ pattern: '', severity: 50, action: 'BLOCK' });
 
@@ -37,8 +48,21 @@ const ImmuneSystem: React.FC = () => {
         }
     };
 
+    const fetchQuarantined = async () => {
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine`);
+            if (res.ok) {
+                const data = await res.json();
+                setQuarantinedAssets(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch quarantined assets", e);
+        }
+    };
+
     useEffect(() => {
         fetchRules();
+        fetchQuarantined();
     }, []);
 
     const handleAddRule = async () => {
@@ -109,6 +133,22 @@ const ImmuneSystem: React.FC = () => {
         }
     };
 
+    const handleReleaseQuarantine = async (id: string) => {
+        if (!confirm("Are you sure you want to release this asset from quarantine?")) return;
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine/${id}/release`, {
+                method: 'POST'
+            });
+            if (res.ok) {
+                fetchQuarantined();
+            } else {
+                alert("Failed to release asset: " + (await res.text()));
+            }
+        } catch (e) {
+            console.error("Failed to release asset", e);
+        }
+    };
+
     return (
         <div className="main-panel ani-fade">
             <div className="panel-header">
@@ -117,19 +157,43 @@ const ImmuneSystem: React.FC = () => {
                     <h3>{t('immune.title')}</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                        onClick={() => {
-                            setIsAdding(!isAdding);
-                            if (isAdding) {
-                                setEditingId(null);
-                                setNewRule({ pattern: '', severity: 50, action: 'BLOCK' });
-                            }
-                        }}
-                        className="nav-item"
-                        style={{ margin: 0, padding: '0 1rem', background: isAdding ? 'var(--accent-rose)' : 'var(--accent-cyan)', color: '#000', fontWeight: 700 }}
-                    >
-                        {isAdding ? 'CANCEL' : 'FORGE NEW RULE'}
-                    </button>
+                    <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-md)', padding: '0.25rem' }}>
+                        <button
+                            onClick={() => setActiveTab('RULES')}
+                            style={{
+                                background: activeTab === 'RULES' ? 'var(--accent-cyan)' : 'transparent',
+                                color: activeTab === 'RULES' ? '#000' : 'var(--text-muted)',
+                                border: 'none', borderRadius: '4px', padding: '0.5rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
+                            }}
+                        >
+                            RULES
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('QUARANTINE')}
+                            style={{
+                                background: activeTab === 'QUARANTINE' ? 'var(--accent-rose)' : 'transparent',
+                                color: activeTab === 'QUARANTINE' ? '#000' : 'var(--text-muted)',
+                                border: 'none', borderRadius: '4px', padding: '0.5rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
+                            }}
+                        >
+                            QUARANTINE
+                        </button>
+                    </div>
+                    {activeTab === 'RULES' && (
+                        <button
+                            onClick={() => {
+                                setIsAdding(!isAdding);
+                                if (isAdding) {
+                                    setEditingId(null);
+                                    setNewRule({ pattern: '', severity: 50, action: 'BLOCK' });
+                                }
+                            }}
+                            className="nav-item"
+                            style={{ margin: 0, padding: '0 1rem', background: isAdding ? 'var(--accent-rose)' : 'var(--accent-cyan)', color: '#000', fontWeight: 700 }}
+                        >
+                            {isAdding ? 'CANCEL' : 'FORGE NEW RULE'}
+                        </button>
+                    )}
                     <div className="status-badge">
                         <CheckCircle size={14} /> ACTIVE PROTECTIONS: {rules.length}
                     </div>
@@ -138,7 +202,7 @@ const ImmuneSystem: React.FC = () => {
 
             <div style={{ padding: '2rem' }}>
                 <AnimatePresence>
-                    {isAdding && (
+                    {isAdding && activeTab === 'RULES' && (
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
@@ -211,7 +275,7 @@ const ImmuneSystem: React.FC = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <AnimatePresence>
-                        {rules.map((rule, i) => (
+                        {activeTab === 'RULES' ? rules.map((rule, i) => (
                             <motion.div
                                 key={rule.id}
                                 initial={{ opacity: 0, y: 10 }}
@@ -300,6 +364,76 @@ const ImmuneSystem: React.FC = () => {
                                         }}
                                     >
                                         DELETE
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )) : quarantinedAssets.map((asset, i) => (
+                            <motion.div
+                                key={asset.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                style={{
+                                    background: 'var(--bg-glass-heavy)',
+                                    border: '1px solid var(--accent-rose)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    padding: '1.5rem',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    boxShadow: '0 4px 15px rgba(255, 77, 148, 0.1)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                                    <div style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'rgba(255, 77, 148, 0.1)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'var(--accent-rose)'
+                                    }}>
+                                        <Lock size={24} />
+                                    </div>
+                                    <div>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                {asset.asset_name}
+                                            </span>
+                                            <span style={{
+                                                fontSize: '0.7rem',
+                                                fontWeight: 800,
+                                                color: 'var(--accent-rose)',
+                                                border: `1px solid currentColor`,
+                                                padding: '1px 6px',
+                                                borderRadius: '4px'
+                                            }}>
+                                                QUARANTINED
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            Reason: <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>{asset.reason}</span> • Hash: <span style={{ fontFamily: 'monospace' }}>{asset.image_hash}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={() => handleReleaseQuarantine(asset.id)}
+                                        style={{
+                                            background: 'var(--accent-cyan)',
+                                            border: 'none',
+                                            color: '#000',
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '8px',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            fontWeight: 700
+                                        }}
+                                    >
+                                        RELEASE EXCEPTION
                                     </button>
                                 </div>
                             </motion.div>

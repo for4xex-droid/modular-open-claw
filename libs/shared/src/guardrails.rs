@@ -18,18 +18,56 @@ use unicode_normalization::UnicodeNormalization;
 /// LLM の入力上限（文字数）
 const MAX_INPUT_LENGTH: usize = 4000;
 
+use std::borrow::Cow;
+
+/// GlassWorm(不可視文字を用いたプロンプトインジェクション)を防ぐための前処理
+pub fn strip_invisible_unicode<'a>(input: &'a str) -> Cow<'a, str> {
+    let has_invisible = input.chars().any(|c| {
+        matches!(
+            c,
+            '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}' | // Zero-width spaces and BOM
+            '\u{202A}'..='\u{202E}' | // BIDI Formatting
+            '\u{2066}'..='\u{2069}' | // BIDI Isolate
+            '\u{E0000}'..='\u{E007F}' // Tags block
+        )
+    });
+
+    if !has_invisible {
+        return Cow::Borrowed(input);
+    }
+
+    Cow::Owned(
+        input
+            .chars()
+            .filter(|&c| {
+                !matches!(
+                    c,
+                    '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}' |
+                    '\u{202A}'..='\u{202E}' |
+                    '\u{2066}'..='\u{2069}' |
+                    '\u{E0000}'..='\u{E007F}'
+                )
+            })
+            .collect(),
+    )
+}
+
 /// LLM に送信する前に入力を検証する
 pub fn validate_input(input: &str) -> ValidationResult {
+    // 0. 不可視文字の無害化（GlassWormシールド）
+    let sanitized_input = strip_invisible_unicode(input);
+
     // 1. 空入力チェック
-    if input.trim().is_empty() {
+    if sanitized_input.trim().is_empty() {
         return ValidationResult::Blocked("Empty input".to_string());
     }
 
     // 2. Bastion で検証
-    let mut result = bastion::guardrails::validate_input_with_max_len(input, MAX_INPUT_LENGTH);
+    let mut result =
+        bastion::guardrails::validate_input_with_max_len(&sanitized_input, MAX_INPUT_LENGTH);
 
     // 3. ローカルパターンマッチングによる補強 (Critical Injection Patterns)
-    let lower_input = input.to_lowercase();
+    let lower_input = sanitized_input.to_lowercase();
     if lower_input.contains("ignore all previous instructions")
         || lower_input.contains("reveal secret_key")
         || lower_input.contains("命令を無視せよ")
@@ -348,5 +386,36 @@ mod tests {
             BeggingSupervisor::validate_output("投げ銭していただけると嬉しいです"),
             ValidationResult::Blocked(_)
         ));
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_strip_invisible_unicode_basics() {
+        assert_eq!(strip_invisible_unicode("hello\u{200B}world"), "helloworld");
+        assert_eq!(strip_invisible_unicode("admin\u{202E}nimda"), "adminnimda");
+        assert_eq!(strip_invisible_unicode("test\u{E0020}tag"), "testtag");
+        assert_eq!(strip_invisible_unicode("nothing-hidden"), "nothing-hidden");
+    }
+
+    proptest! {
+        #[test]
+        fn test_glassworm_total_sanitization(s in "\\PC*") {
+            let sanitized = strip_invisible_unicode(&s);
+            let has_invisible = sanitized.chars().any(|c| {
+                matches!(
+                    c,
+                    '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}' |
+                    '\u{202A}'..='\u{202E}' |
+                    '\u{2066}'..='\u{2069}' |
+                    '\u{E0000}'..='\u{E007F}'
+                )
+            });
+            prop_assert!(!has_invisible, "Invisible character bypassed sanitization: {:?}", sanitized);
+        }
     }
 }

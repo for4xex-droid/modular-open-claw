@@ -149,7 +149,18 @@ export const useSystemVitality = () => {
 
         connect();
 
+        const handleCustomEvent = (e: Event) => {
+            const customEvent = e as CustomEvent<VitalityEvent>;
+            if (customEvent.detail && customEvent.detail.type) {
+                const type = customEvent.detail.type;
+                const data = customEvent.detail.data || { ...customEvent.detail };
+                addEvent(type, data);
+            }
+        };
+        window.addEventListener('aiome_vitality_event', handleCustomEvent);
+
         return () => {
+            window.removeEventListener('aiome_vitality_event', handleCustomEvent);
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
                 abortControllerRef.current = null;

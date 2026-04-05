@@ -133,7 +133,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3015));
+    let addr = SocketAddr::from(([0, 0, 0, 0], state.config.get_inner().api_server_port));
     info!("🚀 [api-server] Listening on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| anyhow::anyhow!(

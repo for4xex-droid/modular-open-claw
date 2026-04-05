@@ -444,6 +444,8 @@ const SettingsPage: React.FC = () => {
                         </div>
                     </div>
                 </section>
+                
+                <McpConfigManager />
 
                 {/* 5. Security & System */}
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
@@ -865,6 +867,96 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
             </div>
             {error && <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.4rem' }}>{error}</div>}
         </div>
+    );
+};
+
+const McpConfigManager: React.FC = () => {
+    const [configJson, setConfigJson] = useState('{\n  "mcp_servers": {}\n}');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        fetchConfig();
+    }, []);
+
+    const fetchConfig = async () => {
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`);
+            if (res.ok) {
+                const data = await res.json();
+                setConfigJson(JSON.stringify(data, null, 2));
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const saveConfig = async () => {
+        try {
+            setSaving(true);
+            setMessage('');
+            JSON.parse(configJson); // validate
+            const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: configJson
+            });
+            if (res.ok) {
+                setMessage('✅ Reloaded successfully');
+                setTimeout(() => setMessage(''), 3000);
+            } else {
+                setMessage('❌ Error saving');
+            }
+        } catch (e) {
+            setMessage('❌ Invalid JSON or network error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <Database size={24} color="var(--accent-amber)" />
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>MCP Architecture (Analytics & Tools)</h3>
+            </div>
+            {loading ? <Loader2 className="ani-spin" size={24} /> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like <code>$STRIPE_SECRET_KEY</code>. Saving will restart MCP processes dynamically.
+                    </div>
+                    <textarea 
+                        value={configJson}
+                        onChange={e => setConfigJson(e.target.value)}
+                        style={{
+                            width: '100%', height: '200px', background: 'rgba(0,0,0,0.5)', color: 'var(--accent-cyan)',
+                            fontFamily: 'monospace', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
+                            resize: 'vertical', outline: 'none', fontSize: '0.85rem'
+                        }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.85rem', color: message.includes('❌') ? 'var(--accent-rose)' : 'var(--accent-green)' }}>
+                            {message}
+                        </span>
+                        <button 
+                            onClick={saveConfig} 
+                            disabled={saving}
+                            style={{ 
+                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: '#000', 
+                                border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '0.5rem'
+                            }}
+                        >
+                            {saving ? <Loader2 size={16} className="ani-spin" /> : <Database size={16} />}
+                            Save & Sync Tools
+                        </button>
+                    </div>
+                </div>
+            )}
+        </section>
     );
 };
 

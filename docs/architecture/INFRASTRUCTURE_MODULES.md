@@ -17,7 +17,7 @@
 | `commerce_mock` | 決済フローのカルシウム（テスト用途）。 | 実装完了 |
 | `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
 | `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
-| `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。**Phase 21** で `/api/v1/audit/quarantine` による監査 API を公開。 | **Phase 21 完了** |
+| `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。`GET /api/v1/audit/quarantine` および `POST /api/v1/audit/quarantine/{id}/release` (検疫強制リリースAPI)を開通し、フロントエンドUI統合完了。 | **Phase 2A-3 完了** |
 | `cognitive_sentinel`| 感情が極端な鬱状態などに陥った場合に検知し、自律的に回復イベントを発火させる防御層。**Phase 55** でジョブ失敗率（60%以上）に基づく Panic State 防御を追加。 | **Phase 55 完了** |
 | `concept_manager` | AIが獲得した概念（Concepts）をベクターDBで管理。 | 実装完了 |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。 | **Phase 55 完了** |
@@ -58,10 +58,10 @@
 | `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクの管理とディスパッチ。`DockerConductor` 等の実行部を束ねる。`ToolDiscoveryEngine` フェイルソフトフォールバックおよび `GenericLlmConductor` による自律学習タスク処理を統合。 | **インテリジェンス層統合完了** |
+| `task_orchestrator`| 非同期タスクの管理とディスパッチ。`DockerConductor` 等の実行部を束ねる。`CsamScanConductor` にて重いハッシュ計算を `spawn_blocking` 化しスレッド枯渇を防止（Phase 2A-1完了）。 | **Phase 2A 統合完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-04 (LoRA Marketplace Security Hardening)*
+*最終更新: 2026-04-05 (Aiome MVP Phase 2A Hardening)*

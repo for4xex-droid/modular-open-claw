@@ -99,6 +99,15 @@ pub fn build_app(
             "/api/v1/audit/quarantine",
             get(routes::general::get_quarantined_assets),
         )
+        .route(
+            "/api/v1/audit/quarantine/:id/release",
+            post(routes::general::release_quarantined_asset),
+        )
+        // Bootstrap: Factory Reset (Phase 2B-4) — 認証必須 (System Admin)
+        .route(
+            "/api/v1/bootstrap/factory-reset",
+            post(routes::bootstrap::factory_reset),
+        )
         .route("/api/v1/trends", get(routes::general::get_trends))
         .route(
             "/api/v1/gig/publish",
@@ -432,6 +441,11 @@ pub fn build_app(
             "/api/skills/mcp/spawn",
             axum::routing::post(routes::skill::spawn_mcp_server),
         )
+        .route(
+            "/api/skills/mcp/config",
+            axum::routing::put(routes::skill::update_mcp_config)
+                .get(routes::skill::get_mcp_config),
+        )
         .layer(TimeoutLayer::new(Duration::from_secs(30)));
 
     let streaming_router = Router::new()
@@ -470,6 +484,15 @@ pub fn build_app(
     let public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
+        // Bootstrap Mode (Phase 2B-CORE) — 認証不要
+        .route(
+            "/api/v1/bootstrap/status",
+            get(routes::bootstrap::bootstrap_status),
+        )
+        .route(
+            "/api/v1/bootstrap/detect-ollama",
+            get(routes::bootstrap::detect_ollama),
+        )
         .route(
             "/api/v1/auth/authorize",
             get(routes::auth::authorize_handler),

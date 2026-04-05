@@ -19,6 +19,8 @@ use utoipa::OpenApi;
         crate::routes::skill::list_skills,
         crate::routes::skill::import_skill,
         crate::routes::skill::spawn_mcp_server,
+        crate::routes::skill::update_mcp_config,
+        crate::routes::skill::get_mcp_config,
         crate::routes::general::get_health_status,
         // Agent
         crate::routes::agent::trigger_agent_chat,
@@ -69,6 +71,8 @@ use utoipa::OpenApi;
         // Audit & Trends (Phase 8.6)
         crate::routes::general::get_audit_ledger,
         crate::routes::general::get_diagnoses,
+        crate::routes::general::get_quarantined_assets,
+        crate::routes::general::release_quarantined_asset,
         crate::routes::general::get_trends,
         // Gig Economy
         crate::routes::gig::publish_intent,

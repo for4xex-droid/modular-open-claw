@@ -49,8 +49,11 @@ pub async fn send_gift(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
     axum::extract::Path(agent_id): axum::extract::Path<Uuid>,
-    Json(req): Json<GiftRequest>,
+    Json(mut req): Json<GiftRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // 🛡️ [GlassWorm Shield] Sanitize text fields
+    req.reason = shared::guardrails::strip_invisible_unicode(&req.reason).into_owned();
+
     // SEC: Authentication & OS Authority
     if agent_id != auth.agent_id {
         return Err(AppError::forbidden(

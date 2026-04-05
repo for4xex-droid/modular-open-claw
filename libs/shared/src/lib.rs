@@ -13,6 +13,8 @@
 pub mod app_data;
 /// 認証モジュール
 pub mod auth;
+/// Bootstrap検出 & Factory Reset (Phase 2B-CORE)
+pub mod bootstrap_detector;
 /// クリーナー機能
 pub mod cleaner;
 /// アプリケーション設定の管理

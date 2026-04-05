@@ -25,7 +25,17 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+    
+    // 1. Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
+
+    let resolver = shared::app_data::AppDataResolver::new();
+    
+    // 2. Explicit attempt from application root
+    let app_env_path = resolver.root().join(".env");
+    if app_env_path.exists() {
+        dotenvy::from_path(&app_env_path).ok();
+    }
 
     let args = Args::parse();
 

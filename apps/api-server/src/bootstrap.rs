@@ -82,7 +82,18 @@ pub struct BootContext {
 }
 
 pub async fn boot_sequence() -> anyhow::Result<BootContext> {
+    // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
+
+    let resolver = shared::app_data::AppDataResolver::new();
+    
+    // 2. Explicit attempt from application root (essential for Production Tauri sidecars)
+    let app_env_path = resolver.root().join(".env");
+    if app_env_path.exists() {
+        if let Ok(_) = dotenvy::from_path(&app_env_path) {
+            tracing::info!("Loaded explicit environment from {}", app_env_path.display());
+        }
+    }
 
     // 0. Initialize Metrics EXPORTER (Q-5)
     let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
@@ -96,7 +107,6 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let health_monitor = shared::health::HealthMonitor::new();
     let health_monitor = Arc::new(Mutex::new(health_monitor));
 
-    let resolver = shared::app_data::AppDataResolver::new();
     // === 🏗️ STAGE 1/7: Pre-flight ===
     let root = resolver.root();
     if !root.exists() {
@@ -120,10 +130,42 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let cancel_token = tokio_util::sync::CancellationToken::new();
     let cancel_token_clone = cancel_token.clone();
     tokio::spawn(async move {
-        if let Ok(_) = tokio::signal::ctrl_c().await {
-            tracing::info!("🛑 [api-server] Received Ctrl-C, triggering shutdown...");
-            cancel_token_clone.cancel();
+        let ctrl_c = async {
+            if let Err(e) = tokio::signal::ctrl_c().await {
+                tracing::error!("🚨 [api-server] Failed to install Ctrl+C handler: {}", e);
+                std::future::pending::<()>().await;
+            }
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+                Ok(mut s) => {
+                    s.recv().await;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "🚨 [api-server] Failed to install SIGTERM handler: {}",
+                        e
+                    );
+                    std::future::pending::<()>().await;
+                }
+            }
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {
+                tracing::info!("🛑 [api-server] Received Ctrl-C, triggering shutdown...");
+            },
+            _ = terminate => {
+                tracing::info!("🛑 [api-server] Received SIGTERM, triggering graceful shutdown...");
+            },
         }
+
+        cancel_token_clone.cancel();
     });
     let plugin_registry = plugin_loader::PluginRegistry::new();
 

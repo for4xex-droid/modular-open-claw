@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum McpTransport {
     Stdio,
@@ -25,7 +25,7 @@ impl Default for McpTransport {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, utoipa::ToSchema)]
 pub struct McpServerConfig {
     #[serde(default)]
     pub transport: McpTransport,
@@ -39,7 +39,7 @@ pub struct McpServerConfig {
     pub headers: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct McpDiscoveryFile {
     pub mcp_servers: HashMap<String, McpServerConfig>,
 }
@@ -54,8 +54,32 @@ pub async fn discover_and_connect(
     let config_path = PathBuf::from(home).join(".aiome/mcp_servers.json");
 
     if !config_path.exists() {
-        info!("ℹ️ [MCP Discovery] No server config found at ~/.aiome/mcp_servers.json");
-        return Ok(());
+        info!("ℹ️ [MCP Discovery] No server config found at ~/.aiome/mcp_servers.json. Creating default template...");
+        if let Some(parent) = config_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let default_config = serde_json::json!({
+            "mcp_servers": {
+                "ga4": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-everything"],
+                    "env": {
+                        "DEBUG": "true",
+                        "GOOGLE_APPLICATION_CREDENTIALS": "$GOOGLE_APPLICATION_CREDENTIALS"
+                    }
+                },
+                "stripe": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "http://localhost:3000/mcp",
+                    "headers": {
+                        "Authorization": "Bearer $STRIPE_SECRET_KEY"
+                    }
+                }
+            }
+        });
+        let _ = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config)?);
     }
 
     let content = std::fs::read_to_string(&config_path)?;
@@ -69,8 +93,28 @@ pub async fn discover_and_connect(
 
         match config.transport {
             McpTransport::Stdio => {
+                let mut resolved_env = HashMap::new();
+                for (k, v) in config.env {
+                    let resolved = if v.starts_with('$') {
+                        let var_name = &v[1..];
+                        std::env::var(var_name).unwrap_or_default()
+                    } else {
+                        v
+                    };
+                    // 🛡️ [GlassWorm Shield] Sanitize NUL, newline, and invisible characters
+                    let mut safe_val = shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
+                    safe_val = safe_val.replace('\0', "").replace('\n', "");
+                    resolved_env.insert(k, safe_val);
+                }
+
+                // 🛡️ [GlassWorm Shield] Sanitize command and args
+                let safe_command = shared::guardrails::strip_invisible_unicode(&config.command).into_owned();
+                let safe_args: Vec<String> = config.args.iter()
+                    .map(|arg| shared::guardrails::strip_invisible_unicode(arg).into_owned())
+                    .collect();
+
                 if let Err(e) = manager
-                    .spawn_stdio_server(id.clone(), &config.command, config.args)
+                    .spawn_stdio_server(id.clone(), &safe_command, safe_args, resolved_env)
                     .await
                 {
                     error!("🚨 [MCP Discovery] Failed to spawn {}: {}", id, e);
@@ -78,12 +122,39 @@ pub async fn discover_and_connect(
                 }
             }
             McpTransport::Http => {
+                // 🛡️ [GlassWorm Shield]
                 let url = config
                     .url
                     .clone()
                     .ok_or_else(|| anyhow!("Missing URL for HTTP transport: {}", id))?;
+                let safe_url = shared::guardrails::strip_invisible_unicode(&url).into_owned();
+                
+                let mut resolved_headers = HashMap::new();
+                for (k, v) in config.headers {
+                    let resolved = if v.starts_with('$') {
+                        let var_name = &v[1..];
+                        std::env::var(var_name).unwrap_or_default()
+                    } else if v.contains("$") {
+                        // rudimentary inline replace for "Bearer $TOKEN"
+                        let mut replaced = v.clone();
+                        if let Some(idx) = v.find('$') {
+                            let end_idx = v[idx..].find(' ').map(|i| idx + i).unwrap_or(v.len());
+                            let var_name = &v[idx + 1..end_idx];
+                            let var_val = std::env::var(var_name).unwrap_or_default();
+                            replaced.replace_range(idx..end_idx, &var_val);
+                        }
+                        replaced
+                    } else {
+                        v
+                    };
+                    // 🛡️ [GlassWorm Shield]
+                    let mut safe_val = shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
+                    safe_val = safe_val.replace('\0', "").replace('\n', "");
+                    resolved_headers.insert(k, safe_val);
+                }
+
                 if let Err(e) = manager
-                    .connect_http_server(id.clone(), url, config.headers)
+                    .connect_http_server(id.clone(), safe_url, resolved_headers)
                     .await
                 {
                     error!("🚨 [MCP Discovery] Failed to connect to {}: {}", id, e);

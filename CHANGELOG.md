@@ -1,6 +1,32 @@
 ## [Unreleased]
 
 ### Added
+- **GlassWorm Shield (Invisible Unicode Injection Defense) [完了]:**
+    - **Core Primitive**: `shared::guardrails::strip_invisible_unicode` を実装。ゼロ幅スペース（ZWSP）、Web Tagsブロック、BIDI制御文字などの悪意ある不可視Unicode文字を O(N) で高速に除去するサニタイズ処理を構築。
+    - **Deep Object Sanitization (Gig Routes)**: `apps/api-server/src/routes/gig.rs` などのAPIエンドポイントにおいて、ネストされたJSONメタデータ構造体や `AcceptanceCriteria` (WASM CID, Rubric Prompt列) に至るまで、serde_jsonによるラウンドトリップを併用して一単位残さずディープにサニタイズ。
+    - **Federation Array Guard (P2P)**: `apps/samsara-hub/src/main.rs` のバッチ受付において、10MBを超える大容量スナップショットの負荷を抑えるため、`KarmaEntry`、`ImmuneRule`、`ArenaMatch` 内の特定テキスト・ID・オプション型文字列フィールドだけをダイレクト指定でサニタイズする高パフォーマンスなアリーナ防御を統合。
+    - **MCP & Internal Guards**: `mcp/discovery.rs` や `cortex_ingester.rs` 等の外部データ/コマンド引数の受け口全体に展開し、不可視文字を利用したLLMコマンドインジェクションやSandbox Bypassリスクを未然に排除。
+
+- **Analytics MCP Client Hub Integration (Phase 6 MVP Inclusion) [完成]:**
+    - **MCP Process & Security Hardening**: Aiomeインフラ内に外部MCPサーバー（GA4, Stripe, Vercel等）を接続・管理するためのクライアントハブを構築。`McpClient::spawn` において `npx`, `node`, `python3`, `uvx` のMCP用実行バイナリと `@modelcontextprotocol/` などの公式パッケージプレフィックスのみを許可する厳格なホワイトリストを実装し（P-6）、Sandbox Bypass（RCE）の脆弱性を完全に塞いだ。
+    - **Configuration Sync & SSOT (P-7)**: SQLiteデータベースと設定ファイル (`mcp_servers.json`) の非同期（Desync）を防ぐため、専用の `PUT /api/skills/mcp/config` エンドポイントを新設。構成の更新と関連プロセスのホットリロードを安全・アトミックに同期実行するSingle Source of Truth（SSOT）アプローチを採用した。
+    - **Environment Variable Resolution (P-3)**: `mcp_servers.json` 内での `$` プレフィックスによる環境変数解決・サニタイズ展開（例: `$STRIPE_SECRET_KEY`）をサポートし、再起動時の自動展開機能を実装。
+    - **Registry & Process Cleanup (P-8, P-9)**: ゴーストMCPツールがシステムプロンプトに残留する問題を防ぐため `RegistryManager::clear_mcp_servers` を実装。また、個別プロセス管理のための `McpProcessManager::remove_client` を追加し、リソースリーク耐性を向上。
+    - **UI Panel (Settings)**: Management Console の `SettingsPage.tsx` 内に「MCP Architecture (Analytics & Tools)」専用のJSONコンフィグエディタを新規追加し、即時適用・再起動機能によるシームレスな管理者体験を開通。
+
+- **Phase 2B-CORE: Bootstrap Mode & Factory Reset [完了]:**
+    - **BootstrapDetector** (`libs/shared/src/bootstrap_detector.rs`): 環境変数 (LLM プロバイダ / API_SERVER_SECRET) とファイルシステム (DB/SOUL.md) の状態から、初回セットアップが必要かどうかを診断する `BootMode::Setup | Normal` 判定ロジック。10件の TDD テストでカバー。
+    - **FactoryReset**: アプリケーションデータのクリーンリセット機能。DB, artifacts, WASM, vault 等を削除し、`.env` と `logs/` を安全に保持。
+    - **Bootstrap API Routes** (`apps/api-server/src/routes/bootstrap.rs`):
+        - `GET /api/v1/bootstrap/status` (認証不要): セットアップ状態の診断結果を返す
+        - `GET /api/v1/bootstrap/detect-ollama` (認証不要): ローカル Ollama サーバーの自動検出 + モデル一覧取得
+        - `POST /api/v1/bootstrap/factory-reset` (System Admin 限定): Factory Reset の実行
+- **Aiome MVP Infrastructure Final Hardening (Phase 2-PRE & 2A) [完了]:**
+    - **Quarantine Escape Flow API & UI (2A-3)**: `GET /api/v1/audit/quarantine` に対して、検疫解放を実行するための `POST /api/v1/audit/quarantine/{id}/release` を System Admin 保護付き（RBAC）で実装し、OpenAPI に統合。さらに `Apps/Management Console` の `ImmuneSystem.tsx` に検疫タブ（QUARANTINE）と解放操作フローを完全構築し、エンドツーエンドでの例外解放フローを開通。
+    - **CSAM CPU Starvation Fix (2A-1)**: コンプライアンススキャン (`CsamScanConductor`) 内での `ImageHasher` (PhotoDNA互換) の呼び出しを `tokio::task::spawn_blocking` でラップ。重い画像処理演算（ハッシュ化・DCT）による Tokio ワーカースレッドの枯渇とシステムフリーズリスクを完全排除。RED/GREENの TDD サイクルを通じて安定稼働を証明。
+    - **Configuration Path Standardization (2-PRE-3)**: 開発時と本番配布時 (`Tauri` などのバンドル時) の環境の乖離を防ぐため、`api-server`、`samsara-hub`、`aiome-migrate`、`key-proxy` のすべてのエントリポイントにおける `.env` の読み込みを CWD トライ後、`AppDataResolver` に明示的に委譲するようリファクタリングを実施。
+    - **Watchtower Backend Cleanup**: `watchtower.rs` (WebSocketリレー) にて、使用されていないファイルIO結果（`soul_md`, `evolving_soul_md`, `forge_prompt` 等の未 await 先の変数）によるサイレントなコンパイラWarnings（未使用変数）を駆逐し、ビルドのクリーンさをさらに向上。
+
 - **Smart Model Bootstrap (Setup UI & API Phase) [完了]:**
     - **Self-Diagnosis Hardening**: `apps/api-server/src/self_diagnosis.rs` において、Dockerデーモン疎通失敗時も継続可能なように緩和し、Ollamaデーモンおよび設定モデル (`gemma4:26b` 等) の実在確認ロジックを追加。
     - **Models Status API**: `GET /api/v1/models/status` エンドポイントを実装し、Ollamaへの接続状態、インストール済みモデル、設定されたモデル名、セットアップ必要性（`setup_required`）を評価しフロントエンドへ一元提供する基盤を構築。

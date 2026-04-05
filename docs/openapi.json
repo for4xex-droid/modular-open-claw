@@ -688,6 +688,65 @@
         ]
       }
     },
+    "/api/skills/mcp/config": {
+      "get": {
+        "tags": [
+          "crate::routes::skill"
+        ],
+        "operationId": "get_mcp_config",
+        "responses": {
+          "200": {
+            "description": "Return the current MCP discovery config file content"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "crate::routes::skill"
+        ],
+        "operationId": "update_mcp_config",
+        "requestBody": {
+          "description": "The entire MCP discovery config file content",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mcp_servers"
+                ],
+                "properties": {
+                  "mcp_servers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/McpServerConfig"
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Config updated and MCP processes hot-reloaded"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/skills/mcp/spawn": {
       "post": {
         "tags": [
@@ -1014,6 +1073,75 @@
           },
           "401": {
             "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/audit/quarantine": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_quarantined_assets",
+        "responses": {
+          "200": {
+            "description": "Fetch quarantined assets store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuarantinedAsset"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/audit/quarantine/{id}/release": {
+      "post": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "release_quarantined_asset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Asset ID to release",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Asset successfully released from quarantine"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "security": [
@@ -3694,6 +3822,51 @@
           }
         }
       },
+      "McpServerConfig": {
+        "type": "object",
+        "required": [
+          "command",
+          "args"
+        ],
+        "properties": {
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "transport": {
+            "$ref": "#/components/schemas/McpTransport"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "McpSpawnRequest": {
         "type": "object",
         "required": [
@@ -3715,6 +3888,13 @@
             "type": "string"
           }
         }
+      },
+      "McpTransport": {
+        "type": "string",
+        "enum": [
+          "stdio",
+          "http"
+        ]
       },
       "ModelStatusResponse": {
         "type": "object",
@@ -3852,6 +4032,40 @@
           "Completed",
           "Refunded"
         ]
+      },
+      "QuarantinedAsset": {
+        "type": "object",
+        "description": "検疫済みアセットのレコード構造体",
+        "required": [
+          "id",
+          "asset_name",
+          "image_hash",
+          "reason",
+          "status"
+        ],
+        "properties": {
+          "asset_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "image_hash": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "QueryReq": {
         "type": "object",

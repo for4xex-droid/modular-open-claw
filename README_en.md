@@ -102,6 +102,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 2. Local guardrails for prompt injection defense.
 3. Cryptographic hash chains (Karma) stored in SQLite forcing immutable recording of "what task I failed at in the past".
 4. gVisor container isolation integration.
+5. **GlassWorm Shield**: Comprehensive deployment of an ultra-fast sanitizer to prevent stealth attacks and LLM poisoning using invisible Unicode characters.
 
 ---
 

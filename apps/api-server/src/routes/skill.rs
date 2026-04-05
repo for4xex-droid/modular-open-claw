@@ -199,11 +199,14 @@ pub async fn import_skill(
         }
     }
 
-    let content = String::from_utf8(content_bytes).map_err(|e| {
+    let raw_content = String::from_utf8(content_bytes).map_err(|e| {
         aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
             reason: format!("Content is not valid UTF-8: {}", e),
         }
     })?;
+
+    // 🛡️ [GlassWorm Shield] Strip invisible unicode before compiling imported code
+    let content = shared::guardrails::strip_invisible_unicode(&raw_content).into_owned();
 
     // 2. Parse using SkillImporter (Infrastructure)
     use infrastructure::skills::cleanroom::Cleanroom;
@@ -319,7 +322,7 @@ pub async fn spawn_mcp_server(
 
     state
         .mcp_manager
-        .spawn_stdio_server(payload.id.clone(), &payload.command, payload.args)
+        .spawn_stdio_server(payload.id.clone(), &payload.command, payload.args, std::collections::HashMap::new())
         .await
         .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
             reason: format!("MCP Spawn Error: {}", e),
@@ -328,4 +331,68 @@ pub async fn spawn_mcp_server(
     Ok(Json(
         serde_json::json!({"status": "success", "id": payload.id}),
     ))
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/skills/mcp/config",
+    request_body(content = inline(crate::mcp::discovery::McpDiscoveryFile), description = "The entire MCP discovery config file content"),
+    responses(
+        (status = 200, description = "Config updated and MCP processes hot-reloaded")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn update_mcp_config(
+    State(state): State<AppState>,
+    Json(payload): Json<crate::mcp::discovery::McpDiscoveryFile>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
+    
+    if let Some(parent) = config_path.parent() {
+        let _ = tokio::fs::create_dir_all(parent).await;
+    }
+    
+    let serialized = serde_json::to_string_pretty(&payload)
+        .map_err(|e| AppError::internal(format!("Failed to serialize config: {}", e)))?;
+        
+    tokio::fs::write(&config_path, serialized)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to write config: {}", e)))?;
+
+    state.mcp_manager.kill_all().await;
+    let _ = state.registry.clear_mcp_servers().await;
+
+    crate::mcp::discovery::discover_and_connect(&state.mcp_manager, &state.registry)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to reload Discovery: {}", e)))?;
+
+    Ok(Json(serde_json::json!({
+        "status": "success",
+        "message": "Config updated and MCP processes hot-reloaded"
+    })))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/skills/mcp/config",
+    responses(
+        (status = 200, description = "Return the current MCP discovery config file content")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_mcp_config(
+    State(_state): State<AppState>,
+) -> Result<Json<crate::mcp::discovery::McpDiscoveryFile>, AppError> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
+    
+    let content = tokio::fs::read_to_string(&config_path).await.unwrap_or_else(|_| {
+        r#"{"mcp_servers": {}}"#.to_string()
+    });
+    
+    let config: crate::mcp::discovery::McpDiscoveryFile = serde_json::from_str(&content)
+        .map_err(|e| AppError::internal(format!("Invalid MCP configuration file: {}", e)))?;
+        
+    Ok(Json(config))
 }

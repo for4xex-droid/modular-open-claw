@@ -102,6 +102,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 2. プロンプトインジェクションに対するローカル検知レイヤー（Guardrails）
 3. SQLite上の暗号学的ハッシュチェーン (Karma) を使い、「自分が過去に何のタスクに失敗したか」を改ざん不可能な形で記録
 4. gVisor コンテナ隔離
+5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
 
 ---
 

@@ -112,14 +112,17 @@ impl CortexIngester {
             reason: format!("Failed to read response body: {}", e),
         })?;
 
-        if html.trim().is_empty() {
+        // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
+        let clean_html = shared::guardrails::strip_invisible_unicode(&html).into_owned();
+
+        if clean_html.trim().is_empty() {
             return Err(AiomeError::Infrastructure {
                 reason: "Extracted content is empty. This page might require javascript to render."
                     .to_string(),
             });
         }
 
-        let raw_md = html2md::parse_html(&html);
+        let raw_md = html2md::parse_html(&clean_html);
 
         let mut sample_for_llm = raw_md.clone();
         if sample_for_llm.len() > 8000 {
@@ -128,7 +131,7 @@ impl CortexIngester {
 
         let title_regex = regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>").unwrap();
         let html_title = title_regex
-            .captures(&html)
+            .captures(&clean_html)
             .and_then(|c| c.get(1))
             .map(|m| m.as_str().trim().to_string())
             .unwrap_or_else(|| "Web Article".to_string());
@@ -196,10 +199,13 @@ impl CortexIngester {
         title: &str,
         content: &str,
     ) -> Result<CortexDocument, AiomeError> {
-        let content_md = content.to_string();
+        // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
+        let clean_title = shared::guardrails::strip_invisible_unicode(title).into_owned();
+        let content_md = shared::guardrails::strip_invisible_unicode(content).into_owned();
+        
         let doc = CortexDocument {
             id: uuid::Uuid::new_v4().to_string(),
-            title: title.to_string(),
+            title: clean_title,
             source_url: None,
             content_md: content_md.clone(),
             content_hash: Self::compute_hash(&content_md),
@@ -215,10 +221,13 @@ impl CortexIngester {
     }
 
     pub async fn ingest_pdf(&self, data: &[u8], title: &str) -> Result<CortexDocument, AiomeError> {
-        let text =
+        let raw_text =
             pdf_extract::extract_text_from_mem(data).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to extract text from PDF: {}", e),
             })?;
+
+        // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
+        let text = shared::guardrails::strip_invisible_unicode(&raw_text).into_owned();
 
         let mut sample_for_llm = text.clone();
         if sample_for_llm.len() > 8000 {

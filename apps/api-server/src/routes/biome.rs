@@ -346,10 +346,15 @@ pub async fn list_messages(
 pub async fn send_message(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
-    Json(req): Json<SendBiomeRequest>,
+    Json(mut req): Json<SendBiomeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let sender_pubkey = state.job_queue.get_node_id().await?;
     let clock = state.job_queue.tick_local_clock().await?;
+
+    // 🛡️ [GlassWorm Shield]
+    req.topic_id = shared::guardrails::strip_invisible_unicode(&req.topic_id).into_owned();
+    req.recipient_pubkey = shared::guardrails::strip_invisible_unicode(&req.recipient_pubkey).into_owned();
+    req.content = shared::guardrails::strip_invisible_unicode(&req.content).into_owned();
 
     if let shared::guardrails::ValidationResult::Blocked(reason) =
         shared::guardrails::validate_input(&req.topic_id)

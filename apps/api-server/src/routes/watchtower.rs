@@ -147,7 +147,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 }
 
 async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyhow::Result<()> {
-    use crate::agent_engine::{build_system_instructions, read_app_data_file};
+    use crate::agent_engine::build_system_instructions;
     use aiome_core::traits::*;
     use std::time::Duration;
     use tokio::time::timeout;
@@ -174,14 +174,6 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
         .await;
 
     // 3. Build Prompt (minimal version for now)
-    let soul_md = read_app_data_file(&state.config.get_inner().resolver, "SOUL.md");
-    let evolving_soul_md =
-        read_app_data_file(&state.config.get_inner().resolver, "EVOLVING_SOUL.md");
-    // This one is deeper in the workspace
-    let forge_prompt = read_app_data_file(
-        &state.config.get_inner().resolver,
-        "config/SKILL_FORGE_PROMPT.md",
-    );
     let summary = None; // simplified
     let karma_str = "Watchtower context active.";
 

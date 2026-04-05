@@ -20,6 +20,7 @@ chrono = { workspace = true }
 
 aiome-core = { path = "../../libs/core" }
 infrastructure = { path = "../../libs/infrastructure" }
+shared = { version = "0.1.0", path = "../../libs/shared" }
 
 [lints]
 workspace = true
