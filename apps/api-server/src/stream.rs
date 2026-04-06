@@ -340,8 +340,10 @@ pub async fn trigger_agent_chat_stream(
                                     skill_results.push(err);
                                 }
                                 ToolExecutionEvent::TokenSaved(chars) => {
+                                    let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
                                     let data = serde_json::json!({
                                         "saved_chars": chars,
+                                        "ts": ts,
                                     });
                                     yield Ok(Event::default().event("token_saved").data(data.to_string()));
                                 }

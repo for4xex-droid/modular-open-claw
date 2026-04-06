@@ -122,12 +122,12 @@ pub mod model_manager;
 pub mod native_backend;
 /// 高度な論理推論エンジン
 pub mod oracle;
-pub mod output_filter;
 pub mod oss_ast_analyzer;
 pub mod oss_orchestrator;
 /// 外部リポジトリの自動クローン・RAGインデックス化
 pub mod oss_repository_indexer;
 pub mod oss_type_matcher;
+pub mod output_filter;
 /// TurboQuant PolarQuant エンコーダ (Phase 39)
 pub mod polar_quant;
 /// 成果物のSNS自動投稿

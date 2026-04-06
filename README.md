@@ -103,6 +103,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 3. SQLite上の暗号学的ハッシュチェーン (Karma) を使い、「自分が過去に何のタスクに失敗したか」を改ざん不可能な形で記録
 4. gVisor コンテナ隔離
 5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
+6. **Precomputed Relational Intelligence**: エージェントによる自律コード改修時の未知のカスケードエラーやパスエイリアス乖離を完全に防ぐ、超高速な静的 AST 物理依存スキャナと影響範囲クエリエマージェンシー機構の標準搭載
 
 ---
 

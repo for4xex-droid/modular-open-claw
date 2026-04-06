@@ -147,6 +147,18 @@ export const useAgentChat = (): UseAgentChatReturn => {
                             }
                         } else if (currentEvent === 'knowledge') {
                             setActiveKnowledge(data);
+                        } else if (currentEvent === 'token_saved') {
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (typeof parsed.saved_chars === 'number' && parsed.saved_chars > 0) {
+                                    window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
+                                        detail: {
+                                            type: 'token_saved',
+                                            data: { saved_chars: parsed.saved_chars, ts: Date.now() }
+                                        }
+                                    }));
+                                }
+                            } catch { /* ignore malformed */ }
                         }
                     }
                 }

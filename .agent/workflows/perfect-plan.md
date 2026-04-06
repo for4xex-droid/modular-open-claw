@@ -41,8 +41,8 @@ python3 scripts/nurture_auditor.py
 - [ ] §7 A2C — 計画はユーザーへの報酬・ギフトに関連するか？
 - [ ] §8 P2P Hub — 計画はFederation/CRDT同期に影響するか？
 
-### Gate 3: 🔗 依存関係 & 波及分析（RIPPLE_MAP）
-`.context/RIPPLE_MAP.md` を読み込み、計画で変更するファイルの**全ての依存先**を洗い出す。
+### Gate 3: 🔗 依存関係 & 波及分析（AST & Semantic）
+`python3 scripts/impact_query.py` による物理的依存（AST）走査結果と、`.context/RIPPLE_MAP.md` の意味的依存関係から、計画で変更するファイルの**全ての依存先**を洗い出す。
 
 チェック項目：
 - [ ] 変更する構造体を `use` している全ファイルが計画に含まれているか？

@@ -12,6 +12,7 @@
 /workspace/
 /libs/infrastructure/workspace/artifacts/
 /resources/bgm/
+.context/impact_graph.json
 
 # Legacy project remnants
 .openclaw/
@@ -102,3 +103,6 @@ debug_shield.rs
 
 # Internal development context
 .context/
+
+# MLIT MCP Server clones (setup via tools/setup-mlit-mcp.sh)
+tools/mlit-mcp/

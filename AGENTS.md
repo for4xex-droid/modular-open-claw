@@ -176,8 +176,19 @@ When you receive a heartbeat poll, don't just reply `HEARTBEAT_OK` every time. U
 7. **cargo test** — 変更後にワークスペース全体のテスト (`cargo check --workspace --tests && cargo test --workspace`) がPASSしたか？
 8. **Golden Rules** — コード変更・ドキュメント操作・UI改修の前に必ず `.agent/skills/docs-ui-ux-golden-rules.md` を遵守せよ。特に B-001（ビルド即検証）、B-002（コマンド出力確認）、X-001（根本原因特定義務）は最重要。
 9. **Mission Control Principles** — 大規模なアーキテクチャ変更や計画立案の前に必ず `.agent/skills/mission-control-principles.md` の4原則（ASTディープスキャン、波及分析、事前の悪魔の弁護人検証、不要コードの完全除外）を実行せよ。記憶と推測による当てずっぽうな計画立案は厳禁とする。
+10. **DESIGN.md** — `tokens.css` や `animations.css` を変更した場合、`apps/management-console/DESIGN.md` のデザインシステム記述も同期せよ。ドリフト（乖離）はエージェントの UI 出力品質を劣化させる。
 
 ドキュメントの鮮度は、AIシステム全体の信頼性に直結する。
+
+### 🚨 Mandatory AST Impact Analysis (Cascade Error Prevention)
+
+本番コードや主要なUIコンポーネント、または基盤となる構造体を変更・削除・リファクタリングする際は、**必ず**事前に物理依存ネットワーク（ASTグラフ）を用いた被害半径（Blast Radius）の特定を自律的に行うこと。
+
+1. **グラフの最新化**: `python3 scripts/nurture_auditor.py` を実行
+2. **影響範囲のクエリ**: `python3 scripts/impact_query.py <SymbolName>` を実行
+3. **意味的依存の確認**: `.context/RIPPLE_MAP.md` を目視確認
+
+記憶や推測のみに頼った変更は、循環参照や予期せぬ画面の崩壊（例：Tailwind代替のCSS Token波及漏れ）を引き起こすため**厳禁**とする。
 
 ### 🛡️ Code Consistency & Warning Policy
 

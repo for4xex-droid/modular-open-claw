@@ -8,10 +8,20 @@ description: コード変更前に影響範囲を確認し、カスケードエ�
 
 ## 手順
 
-### 1. 影響範囲の特定
+### 1. 影響範囲の特定 (AST & Semantic)
 // turbo
-`.context/RIPPLE_MAP.md` を開き、変更対象ファイルの影響先を確認する。
+グラフ陳腐化を防ぐため、まず最新の AST 依存グラフを生成する。
+```bash
+python3 scripts/nurture_auditor.py
+```
 
+// turbo
+次に、変更予定の主力シンボル（構造体、トレイト、コンポーネント等）に対して物理的依存影響をチェックする。
+```bash
+python3 scripts/impact_query.py <SymbolName>
+```
+
+物理的依存（AST）は上記 CLI で確認し、意味的依存（API、DB、IPC）は `.context/RIPPLE_MAP.md` を開いて確認する。
 ### 2. ベースラインテストの実行
 // turbo
 影響先を含むクレートのテストを**変更前に**実行し、現在の状態が正常であることを確認する。

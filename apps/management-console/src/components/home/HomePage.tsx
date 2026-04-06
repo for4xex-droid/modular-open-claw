@@ -48,6 +48,7 @@ interface HomePageProps {
     connectionStatus?: string;
     recentEvents?: VitalityUIEvent[];
     lastEvent?: any;
+    sessionSavedChars?: number;
 }
 
 export type AvatarStateLiteral = 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
@@ -133,6 +134,7 @@ const HomePage: React.FC<HomePageProps> = ({
     connectionStatus = 'disconnected',
     recentEvents = [],
     lastEvent = null,
+    sessionSavedChars = 0,
 }) => {
     const { t } = useTranslation();
     const avatarState = useAvatarState() as AvatarStateLiteral;
@@ -173,7 +175,7 @@ const HomePage: React.FC<HomePageProps> = ({
             <AnimatePresence mode="wait">
                 <motion.div key={worldSubTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.1 }} style={{ height: 'calc(100% - 2.5rem)' }}>
                     {worldSubTab === 'p2p' && <BiomeDialogueView />}
-                    {worldSubTab === 'dashboard' && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} />}
+                    {worldSubTab === 'dashboard' && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
                     {worldSubTab === 'map' && <GraphView />}
                     {worldSubTab === 'trace' && <CausalVisualizer />}
                     {worldSubTab === 'chronicle' && <Timeline />}
@@ -296,7 +298,7 @@ const HomePage: React.FC<HomePageProps> = ({
                                     <div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{t('loading')}</div>
                                 </div>
                             }>
-                                {activeMainTab === 'home' && <StoryFlow sysEvents={vitalityEvents} connectionStatus={connectionStatus} />}
+                                {activeMainTab === 'home' && <StoryFlow sysEvents={vitalityEvents} connectionStatus={connectionStatus} sessionSavedChars={sessionSavedChars} />}
                                 {activeMainTab === 'shop' && renderShopContent()}
                                 {activeMainTab === 'world' && renderWorldContent()}
                                 {activeMainTab === 'settings' && renderSettingsContent()}

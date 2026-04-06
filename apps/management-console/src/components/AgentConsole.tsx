@@ -10,8 +10,13 @@ import { Bot, Send, Cpu, Brain, Sparkles, ThumbsUp, ThumbsDown, BookOpen } from 
 import { Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
+import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
 
-const AgentConsole: React.FC = () => {
+export interface AgentConsoleProps {
+    sessionSavedChars?: number;
+}
+
+const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const {
         history,
@@ -78,6 +83,7 @@ const AgentConsole: React.FC = () => {
                         {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
                         VOICE: {autoTts ? 'ON' : 'OFF'}
                     </button>
+                    <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)' }}>3.5B MODEL</div>
                 </div>
             </div>

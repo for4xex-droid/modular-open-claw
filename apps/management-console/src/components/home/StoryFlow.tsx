@@ -12,6 +12,7 @@ import { useAgentChat } from '../../hooks/useAgentChat';
 import { VitalityEvent } from '../../hooks/useSystemVitality';
 import { useTranslation } from '../../i18n';
 import { useCortexSuggestions } from '../../hooks/useCortexSuggestions';
+import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
 
 /** Unified timeline entry for rendering */
 interface TimelineEntry {
@@ -60,9 +61,10 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
 interface StoryFlowProps {
     sysEvents?: VitalityEvent[];
     connectionStatus?: string;
+    sessionSavedChars?: number;
 }
 
-const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus = 'disconnected' }) => {
+const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus = 'disconnected', sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const chat = useAgentChat();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -175,6 +177,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     Active Feed
                 </h2>
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                    <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     {/* TTS Toggle */}
                     <button
                         onClick={() => chat.setAutoTts(!chat.autoTts)}

@@ -103,6 +103,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 3. Cryptographic hash chains (Karma) stored in SQLite forcing immutable recording of "what task I failed at in the past".
 4. gVisor container isolation integration.
 5. **GlassWorm Shield**: Comprehensive deployment of an ultra-fast sanitizer to prevent stealth attacks and LLM poisoning using invisible Unicode characters.
+6. **Precomputed Relational Intelligence**: An ultra-fast, static AST physical dependency scanner and blast-radius query emergency protocol natively built-in, completely preventing unknown cascade errors and path alias drift during autonomous code refactoring by agents.
 
 ---
 

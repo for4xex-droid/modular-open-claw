@@ -1,6 +1,27 @@
 ## [Unreleased]
 
 ### Added
+- **Precomputed Relational Intelligence (AST Impact Dependency Graph) [完了]**:
+    - `scripts/nurture_auditor.py` を再設計し、O(1)のディレクトリ走査（`os.walk` と `node_modules` 等のインプレース枝刈り）を用いた超高速なASTマトリクス抽出機能を拡充。さらに、`use` / `mod` / `impl` (Rust)、`import { X }` (TSX)、および `--token-name` / `var()` (Vanilla CSS Token) の物理依存を抽出し、`.context/impact_graph.json` に出力する自己完結型の静的依存解析エンジンを実装。フロントエンドにおけるパスエイリアスの分断問題を克服するため、「インポートされたシンボル名」でのエッジ定義へ最適化。
+    - `scripts/impact_query.py` CLI ツールを新規追加。`impact_graph.json` を BFS アルゴリズムで走査し、循環参照（Circular Dependency）による無限ループを防止するため `visited` ハッシュ保護を搭載。変更予定シンボルに対する被害半径（Blast Radius: `[WILL BREAK]` / `[LIKELY AFFECTED]`）を深さベースで確定的に算出。`--exclude-tests` オプションによりテストコードのノイズを除外可能。
+    - **Agent Governance & Workflow Integration**: 外部開発ツールやサードパーティライセンス（GitNexus等）に対するリスキーなプラットフォーム統合を破棄し、100% 自前実装。`AGENTS.md` のコア・システムプロンプトに「Mandatory AST Impact Analysis」の強制的ディレクティブを追加。さらに、`/preflight`, `/task`, `/expert-review`, `/sunset`, `/perfect-plan`, `mission-control-principles.md` などの主要エージェント・ワークフロー全てに対し、コード改修前の `nurture_auditor.py` スキャンおよび `impact_query.py` 実行による物理的波及テストを事前義務化。
+
+    - `apps/management-console/DESIGN.md` を新設。`tokens.css`, `animations.css`, `App.css`, Golden Rules の全設計知識を Google Stitch フォーマットで統合した約300行の包括的デザインシステムドキュメント。
+    - エージェントが UI 改修時に参照する**単一の設計真実**として、色パレット、タイポグラフィ階層、コンポーネント仕様、アニメーションカタログ、Do/Don't、Example Component Prompts を網羅。
+    - すべての値を `var(--xxx)` で記述し、Golden Rule U-002 との完全一貫性を担保。HEX生値は参考値としてのみ括弧内に記載。
+    - `AGENTS.md` のドキュメント同期ルール (項目10) に `DESIGN.md ↔ tokens.css` の同期チェックを追加し、ドリフト防止を制度化。
+- **External Design Catalog (awesome-design-md Integration) [完了]**:
+    - `VoltAgent/awesome-design-md` (MIT, ⭐16.6k) から厳選10社（Linear, Stripe, Vercel, Notion, Raycast, Supabase, Apple, Spotify, Airbnb, Framer）のデザインシステムを `.agent/design-catalog/` に配置。
+    - エージェントスキル `.agent/skills/design-catalog.md` を新設。「〇〇風のUI」要求時にのみ参照するオプトイン設計で、Aiome 自身の UI への誤適用を防止。
+    - 各ファイルに利用注意ヘッダーを付与し、ライセンス・帰属を明確化。
+- **MLIT (国土交通省) MCP Server Integration Templates [準備完了]**:
+    - 不動産情報ライブラリ MCP (`mlit-geospatial-mcp`) および 国土交通データプラットフォーム MCP (`mlit-dpf-mcp`) の接続テンプレートを `mcp_servers.json.example` および `.env.example` に追加。
+    - ワンコマンドセットアップスクリプト `tools/setup-mlit-mcp.sh` を新設。Python venv作成、依存インストール、`~/.aiome/mcp_servers.json` 自動生成を実行。
+    - 対応データ: 地価公示、不動産取引価格、都市計画、防災情報（洪水・津波・土砂災害等）、人口推計、教育・医療施設、PLATEAU（3D都市モデル）等、計47種以上のオープンデータへの自然言語アクセスを実現。
+- **Agentic Workflow Hardening (agent-skills Integration) [完了]**:
+    - 新規ワークフロー `/simplify`（構造化リファクタリング）、`/sunset`（非推奨化・移行）、`/ship`（本番出荷ライフサイクル管理）を `.agent/workflows/` に追加。
+    - 新規スキル `context-optimization.md`（エージェントのコンテキスト管理最適化ガイドライン）を `.agent/skills/` に追加。
+    - 既存ワークフロー `/reflexion`, `/code-review`, `/release-preflight`, `/tdd` に Anti-rationalization テーブル（AIの自己合理化を防止する「言い訳と現実」の対照表）および Red Flags（危険信号）セクションを追加。
 - **Phase 1-2 Security & Infra Reflexion Hardening [完了]**:
     - **Security Bypass Prevented**: `DynamicLlmProvider::stream_complete` において、ストリーミング通信時に欠落していた事前セキュリティフック（Pre-execute Hook）の強制呼び出しを実装し、保護機構の迂回を遮断しました。
     - **CRDT Data Integrity**:分散P2Pの `UniversalJobQueue::sync_timeline` 内部において、PostgreSQL および SQLite 上での `UPSERT` 永続化を実装し、ノード再起動時のステート（CRDT Timeline Blobs）の喪失（揮発バグ）を防止。
@@ -11,7 +32,9 @@
     - **Zero-Panic Infrastructure Pipeline (AADP v5) [完了]**: 1423件のテストと全てのアサーションを含む全プロジェクトから、不正な `unwrap()`, `expect()`, `panic!()` などのクラッシュ要因を完全に根絶。全ての `anti-patterns.yml` ルール (AP-003~AP-006) を Error に昇格し、`make preflight` によるシングルソース・検証ゲート（Format, Clippy, AST Schema, Doc-Sync）を導入してフェイルセーフを強制完了。
     - **RTK Token Optimization (Phase 2) [完了]**: RTK (Rust Token Killer) の知見を用いた `OutputFilter` モジュールを `libs/infrastructure` に自前実装し、エージェント自律実行時のLLMトークン消費をスマートに圧縮。エラーや診断情報を保持しつつ、GitやCargo、Node/npmコマンド出力のボイラープレートや重複行を最大90%削減するフィルタリングロジックを確立。API Serverの `ToolCallRouter` のポストフック後に透過的に統合し、JSON通信の破壊リスクを回避した安全な最適化パイプラインを構築しました。
     - **ContextBudget & JobBudget Extension (Phase 3) [完了]**: `ContextBudget` に `max_tool_output_chars` を、`JobBudget` に `saved_chars` のアトミックトラッカーを追加。`ToolCallRouter` のフィルタ通過後に、トークン節約数を `tracing::info!` 経由でシステムログ（Management Console の下地となるログ）やコンソールに出力するトラッキング機能を統合。
-    - **Token Savings SSE Streaming (Phase 3.5 Refined) [完了]**: `ToolExecutionEvent::TokenSaved(usize)` を追加し、`tool_call_processor.rs` および `stream.rs` において、`OutputFilter` が削減したトークン数を上位側（AgentRx/Orchestrator）へルーティング。自律稼働チャットストリームにおいて専用の `token_saved` SSE イベントを発火させることで、Management Console でのトークン節約量のリアルタイム可視化基盤を完全に確立しました。
+    - **Token Savings SSE Streaming (Phase 3.5) [完了]**: `ToolExecutionEvent::TokenSaved(usize)` を追加し、`tool_call_processor.rs` および `stream.rs` において、`OutputFilter` が削減したトークン数を上位側（AgentRx/Orchestrator）へルーティング。自律稼働チャットストリームにおいて専用の `token_saved` SSE イベントを発火。
+    - **Token Savings UI Integration (Phase 3.5 Conclusion) [完了]**: フロントエンド側の `App.tsx` において `token_saved` SSE イベントを大域 CustomEvent フック経由で捕捉し、累積トークン節約量（`sessionSavedChars`）を状態管理する基盤を実装。
+    - **Premium Data Visualization UI**: Framer Motion の `useSpring` と `useTransform` を活用した `TokenSavingsIndicator` コンポーネントを新設。`AgentConsole`, `StoryFlow`, `BiotopeView` なの主要UI画面に対し、リアルタイム節約データと仮想コスト削減額のガラスモーフィズムバッジを統合。E2Eテスト検証込み。
 
 ### Added
 - **GlassWorm Shield (Invisible Unicode Injection Defense) [完了]:**

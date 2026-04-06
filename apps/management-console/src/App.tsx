@@ -60,6 +60,8 @@ function App() {
   const [showBirth, setShowBirth] = useState(false);
   const [recentEvents, setRecentEvents] = useState<VitalityUIEvent[]>([]);
   const [isAuth, setIsAuth] = useState(isAuthenticated());
+  const [sessionSavedChars, setSessionSavedChars] = useState(0);
+  const seenTokenEventsRef = React.useRef(new Set<number>());
 
   const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
 
@@ -128,6 +130,24 @@ function App() {
       case 'sot_progress': {
         const d = data as SoTEvent;
         addEvent(t('event.societyOfThought'), t('event.deliberationUpdate', { type: d.event.type }), 'var(--accent-purple)', <BrainCircuit size={16} />);
+        break;
+      }
+      case 'token_saved': {
+        const d = data as { saved_chars: number; ts: number };
+        if (!seenTokenEventsRef.current.has(d.ts)) {
+            seenTokenEventsRef.current.add(d.ts);
+            
+            // Prevent unbounded memory growth in 24/7 running dashboard tabs
+            if (seenTokenEventsRef.current.size > 1000) {
+               const oldestTs = seenTokenEventsRef.current.values().next().value;
+               if (oldestTs) seenTokenEventsRef.current.delete(oldestTs);
+            }
+
+            setSessionSavedChars(prev => prev + d.saved_chars);
+            addEvent('⚡ Token Optimized',
+                `${d.saved_chars} chars saved (≈${Math.round(d.saved_chars / 4)} tokens)`,
+                'var(--accent-emerald)', <Zap size={16} />);
+        }
         break;
       }
       default:
@@ -473,13 +493,13 @@ function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} />}
-              {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} />}
+              {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} sessionSavedChars={sessionSavedChars} />}
+              {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
               {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
               {activeTab === "karma" && <Timeline />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
-              {activeTab === "agent" && <AgentConsole />}
+              {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}
               {activeTab === "audit" && <DiagnosticsHistory />}

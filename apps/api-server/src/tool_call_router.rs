@@ -9,8 +9,8 @@ use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
 };
 use async_trait::async_trait;
+use infrastructure::output_filter::{FilterLevel, FilterStrategy, OutputFilter};
 use tokio::sync::mpsc;
-use infrastructure::output_filter::{OutputFilter, FilterStrategy, FilterLevel};
 
 /// Tool Execution Result suitable for both Sync (AgentEngine) and Async (SSE) usage
 #[derive(Debug, Clone)]
@@ -224,13 +224,11 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 }
             }
 
-            let filtered = OutputFilter::filter(
-                &final_output,
-                strategy,
-                FilterLevel::Balanced,
-            );
+            let filtered = OutputFilter::filter(&final_output, strategy, FilterLevel::Balanced);
 
-            let chars_saved = filtered.original_chars.saturating_sub(filtered.filtered_chars);
+            let chars_saved = filtered
+                .original_chars
+                .saturating_sub(filtered.filtered_chars);
             if chars_saved > 0 {
                 tracing::info!(
                     "📉 [OutputFilter] Tool `{}` output compressed: {} chars -> {} chars (saved {} chars, ratio: {:.2}%)",
@@ -240,11 +238,16 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     chars_saved,
                     filtered.compression_ratio * 100.0
                 );
-                let _ = tx_clone.send(ToolExecutionEvent::TokenSaved(chars_saved)).await;
+                let _ = tx_clone
+                    .send(ToolExecutionEvent::TokenSaved(chars_saved))
+                    .await;
             }
 
             let budget = infrastructure::context_engine::ContextBudget::default();
-            let truncated = crate::system_instructions::safe_truncate(&filtered.filtered_output, budget.max_tool_output_chars);
+            let truncated = crate::system_instructions::safe_truncate(
+                &filtered.filtered_output,
+                budget.max_tool_output_chars,
+            );
             let _ = tx_clone.send(ToolExecutionEvent::Result(truncated)).await;
         });
 

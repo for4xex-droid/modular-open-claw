@@ -10,14 +10,16 @@ import { Activity, Zap } from 'lucide-react';
 import { AgentStats, VitalityUIEvent } from '../types';
 import { useTranslation } from '../i18n';
 import { TreasureBox } from './TreasureBox';
+import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
 
 interface BiotopeViewProps {
     stats: AgentStats;
     isConnected: boolean;
     recentEvents: VitalityUIEvent[];
+    sessionSavedChars?: number;
 }
 
-const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEvents }) => {
+const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEvents, sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const [pulseLevel, setPulseLevel] = useState(0);
 
@@ -193,6 +195,10 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                 {/* AgentSense: TreasureBox */}
                 <div className="ani-slide-right">
                     <TreasureBox />
+                </div>
+                
+                <div className="ani-slide-right">
+                    <TokenSavingsIndicator savedChars={sessionSavedChars} variant="full" />
                 </div>
 
                 <div className="stat-card ani-slide-right" style={{ padding: '1.25rem' }}>

@@ -10,19 +10,79 @@ RUST_TRAIT_PATTERN = re.compile(r'pub\s+trait\s+([A-Z][a-zA-Z0-9_]*)')
 RUST_ROUTE_PATTERN = re.compile(r'route\s*\(\s*"([^"]+)"')
 TS_COMPONENT_PATTERN = re.compile(r'(?:export\s+default\s+function|const)\s+([A-Z][a-zA-Z0-9_]*)\s*(?::\s*React\.FC|[=(])')
 
+# New Regex Patterns for Phase A (AST Graph Generation)
+RUST_USE_PATTERN = re.compile(r'use\s+([^;]+);')
+RUST_MOD_PATTERN = re.compile(r'(?:pub\s+)?mod\s+([a-zA-Z0-9_]+)\s*;')
+RUST_IMPL_PATTERN = re.compile(r'impl\s+(.*?)\s*\{')
+TS_IMPORT_SYMBOL_PATTERN = re.compile(r'import\s+(.*?)\s+from')
+CSS_DEF_PATTERN = re.compile(r'(--[a-zA-Z0-9_-]+)\s*:')
+CSS_USE_PATTERN = re.compile(r'var\s*\(\s*(--[a-zA-Z0-9_-]+)\s*\)')
+
+def find_source_files(base_dir, extensions):
+    """Recursively yield paths, strictly skipping ignored directories at the root level using os.walk."""
+    ignored_dirs = {'node_modules', 'target', '.git', '.context', 'dist', 'build'}
+    for root, dirs, files in os.walk(base_dir):
+        # In-place modification of dirs to prevent os.walk from descending
+        dirs[:] = [d for d in dirs if d not in ignored_dirs]
+        for f in files:
+            if any(f.endswith(ext) for ext in extensions):
+                yield Path(root) / f
+
 def analyze_rust_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
         structs = RUST_STRUCT_PATTERN.findall(content)
         traits = RUST_TRAIT_PATTERN.findall(content)
         routes = RUST_ROUTE_PATTERN.findall(content)
-        return {"structs": structs, "traits": traits, "routes": routes}
+        
+        edges = []
+        name = Path(file_path).name
+        
+        for u in RUST_USE_PATTERN.findall(content):
+            edges.append({"from": name, "to": u.strip(), "kind": "use"})
+        for m in RUST_MOD_PATTERN.findall(content):
+            edges.append({"from": name, "to": m.strip(), "kind": "mod"})
+        for i in RUST_IMPL_PATTERN.findall(content):
+            edges.append({"from": name, "to": i.strip(), "kind": "impl"})
+            
+        return {"structs": structs, "traits": traits, "routes": routes, "edges": edges}
 
 def analyze_ts_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
         components = TS_COMPONENT_PATTERN.findall(content)
-        return {"components": components}
+        
+        edges = []
+        name = Path(file_path).name
+        
+        imports = TS_IMPORT_SYMBOL_PATTERN.findall(content)
+        for imp in imports:
+            # Flatten alias/imports e.g "{ Button, Modal }" or "* as utils" or "DefaultComponent"
+            cleaned = re.sub(r'[\{\}\*]', '', imp).replace(' as ', ' ')
+            # Split by comma or space
+            symbols = [s.strip() for s in re.split(r'[, ]+', cleaned) if s.strip() and s.strip() != 'type']
+            for symbol in symbols:
+                edges.append({"from": name, "to": symbol, "kind": "import"})
+                
+        # Also catch CSS usages
+        for u in CSS_USE_PATTERN.findall(content):
+            edges.append({"from": name, "to": u.strip(), "kind": "css_token"})
+            
+        return {"components": components, "edges": edges}
+
+def analyze_css_file(file_path):
+    edges = []
+    name = Path(file_path).name
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            for d in CSS_DEF_PATTERN.findall(content):
+                edges.append({"from": name, "to": d.strip(), "kind": "css_token_def"})
+            for u in CSS_USE_PATTERN.findall(content):
+                edges.append({"from": name, "to": u.strip(), "kind": "css_token"})
+    except Exception:
+        pass
+    return {"edges": edges}
 
 def generate_audit_report(root_dir, output_file):
     report = {
@@ -30,7 +90,8 @@ def generate_audit_report(root_dir, output_file):
         "crates": {},
         "apps": {}
     }
-
+    
+    impact_edges = []
     print(f"🔍 Starting AST Deep Scan from {root_dir}...")
 
     # Scan libs (Cargo Crates)
@@ -40,10 +101,11 @@ def generate_audit_report(root_dir, output_file):
             if crate_dir.is_dir() and (crate_dir / 'Cargo.toml').exists():
                 crate_name = crate_dir.name
                 crate_data = {"structs": [], "traits": []}
-                for path in crate_dir.rglob('*.rs'):
+                for path in find_source_files(crate_dir, ['.rs']):
                     res = analyze_rust_file(path)
                     crate_data["structs"].extend(res["structs"])
                     crate_data["traits"].extend(res["traits"])
+                    impact_edges.extend(res["edges"])
                 
                 # Deduplicate
                 crate_data["structs"] = sorted(list(set(crate_data["structs"])))
@@ -58,17 +120,21 @@ def generate_audit_report(root_dir, output_file):
                 app_name = app_dir.name
                 app_data = {"structs": [], "traits": [], "routes": [], "components": []}
                 
-                # Rust files
-                for path in app_dir.rglob('*.rs'):
-                    res = analyze_rust_file(path)
-                    app_data["structs"].extend(res["structs"])
-                    app_data["traits"].extend(res["traits"])
-                    app_data["routes"].extend(res["routes"])
-                
-                # TSX files
-                for path in app_dir.rglob('*.tsx'):
-                    res = analyze_ts_file(path)
-                    app_data["components"].extend(res["components"])
+                for path in find_source_files(app_dir, ['.rs', '.tsx', '.css']):
+                    ext = path.suffix
+                    if ext == '.rs':
+                        res = analyze_rust_file(path)
+                        app_data["structs"].extend(res["structs"])
+                        app_data["traits"].extend(res["traits"])
+                        app_data["routes"].extend(res["routes"])
+                        impact_edges.extend(res["edges"])
+                    elif ext == '.tsx':
+                        res = analyze_ts_file(path)
+                        app_data["components"].extend(res["components"])
+                        impact_edges.extend(res["edges"])
+                    elif ext == '.css':
+                        res = analyze_css_file(path)
+                        impact_edges.extend(res["edges"])
 
                 # Deduplicate
                 app_data["structs"] = sorted(list(set(app_data["structs"])))
@@ -108,6 +174,25 @@ def generate_audit_report(root_dir, output_file):
                 f.write("**Domain Structs**\n")
                 f.write(f"- {', '.join(data['structs'])}\n")
             f.write("\n")
+            
+    # Write Graph JSON
+    context_dir = root_dir / '.context'
+    if context_dir.exists():
+        # Deduplicate edges (convert list of dicts to list of unique tuple-dicts)
+        unique_edges = []
+        seen = set()
+        for e in impact_edges:
+            sig = (e["from"], e["to"], e.get("kind", ""))
+            if sig not in seen:
+                seen.add(sig)
+                unique_edges.append(e)
+
+        graph_path = context_dir / 'impact_graph.json'
+        with open(graph_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                "generated_at": report["timestamp"],
+                "edges": unique_edges
+            }, f, indent=2)
             
     print(f"✅ Deep Scan Complete. Report created at: {output_file}")
 

@@ -16,7 +16,7 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved';
     data: AgentStats | Karma | SoTEvent | unknown;
 };
 
@@ -98,7 +98,7 @@ export const useSystemVitality = () => {
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved'
                         ];
 
                         if (validEvents.includes(msg.event)) {

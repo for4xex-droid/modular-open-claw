@@ -1,0 +1,51 @@
+{
+  "_comment": "Aiome MCP Server Discovery Configuration",
+  "_docs": "Place this file at ~/.aiome/mcp_servers.json to auto-connect external MCP tools on Aiome startup.",
+  "mcp_servers": {
+    "ga4": {
+      "_comment": "Google Analytics 4 MCP integration",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {
+        "DEBUG": "true",
+        "GOOGLE_APPLICATION_CREDENTIALS": "$GOOGLE_APPLICATION_CREDENTIALS"
+      }
+    },
+    "stripe": {
+      "_comment": "Stripe Commerce MCP (HTTP transport)",
+      "transport": "http",
+      "command": "",
+      "args": [],
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer $STRIPE_SECRET_KEY"
+      }
+    },
+    "mlit-geospatial": {
+      "_comment": "国土交通省 不動産情報ライブラリ MCP Server (地価公示・取引価格・防災・人口・都市計画 等29種)",
+      "_apply_url": "https://www.reinfolib.mlit.go.jp/api/request/",
+      "_license": "MIT / 公共データ利用規約 第1.0版",
+      "_attribution": "出典：国土交通省 不動産情報ライブラリ",
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "env": {
+        "LIBRARY_API_KEY": "$MLIT_REINFOLIB_API_KEY",
+        "PYTHONUNBUFFERED": "1",
+        "LOG_LEVEL": "WARNING"
+      }
+    },
+    "mlit-dpf": {
+      "_comment": "国土交通省 データプラットフォーム MCP Server (構造物・交通・気象・防災・PLATEAU等 横断検索)",
+      "_apply_url": "https://data-platform.mlit.go.jp/api_docs/usage/introduction.html",
+      "_license": "MIT / 国土交通データプラットフォーム利用規約",
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "env": {
+        "MLIT_API_KEY": "$MLIT_DPF_API_KEY",
+        "MLIT_BASE_URL": "https://data-platform.mlit.go.jp/api/v1/",
+        "PYTHONUNBUFFERED": "1",
+        "LOG_LEVEL": "WARNING"
+      }
+    }
+  }
+}
