@@ -159,6 +159,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Resilient Memory Trajectories (Phase 1-2 Reflexion)**: Swallows in `MemoryCrystallizer` and `napi-bridge` (`let _ =`) were replaced with explicit error tracking to eliminate silent failures in the causal trajectory path.
 - **Fail-Safe Skill Arena (Phase 1-2 Reflexion)**: Handled edge cases in parallel AI execution where both skills crash simultaneously (`Err`, `Err`), allowing the Arena to retreat safely rather than crashing the evaluation thread.
 - **Strict CRDT Persistence (Phase 1-2 Reflexion)**: Reinforced `UniversalJobQueue` with `ON CONFLICT DO UPDATE` (UPSERT) for Timeline synchronization, permanently eliminating logical data loss upon service restarts.
+- **Zero-Panic Infrastructure Policy (AADP v5)**: Implemented strict AST and RegEx-based Anti-Pattern enforcement (`pattern-enforcer.sh`). All unauthorized `unwrap()`, `expect()`, and `panic!()` invocations are completely eradicated across production code and integration tests to ensure deterministic stability. Known safe test unwraps are rigorously annotated with `// allow-anti-pattern`.
 
 ## 5. Comparison with Traditional Systems
 
@@ -170,7 +171,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-03-23*
+*Last Mutated: 2026-04-07*
 *Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
@@ -197,4 +198,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-05 (Aiome MVP Phase 2A Hardening)*
+*最終更新: 2026-04-07 (Zero-Panic Policy Enforcement)*

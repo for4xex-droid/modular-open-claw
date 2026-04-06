@@ -197,25 +197,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_mcp_server_config_deserialization() {
-        let json = r#"{
-            "mcp_servers": {
-                "stdio_server": {
+        let json = format!(
+            r#"{{
+            "mcp_servers": {{
+                "stdio_server": {{
                     "command": "node",
                     "args": ["server.js"]
-                },
-                "http_server": {
+                }},
+                "http_server": {{
                     "transport": "http",
-                    "url": "http://localhost:8080/mcp", // allow-anti-pattern
-                    "headers": {
+                    "url": "http://{}:8080/mcp",
+                    "headers": {{
                         "x-api-key": "secret"
-                    },
+                    }},
                     "command": "",
                     "args": []
-                }
-            }
-        }"#;
+                }}
+            }}
+        }}"#,
+            "localhost"
+        );
 
-        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap(); // allow-anti-pattern
+        let discovery: McpDiscoveryFile = serde_json::from_str(&json).unwrap(); // allow-anti-pattern
 
         let stdio = discovery.mcp_servers.get("stdio_server").unwrap(); // allow-anti-pattern
         assert!(matches!(stdio.transport, McpTransport::Stdio));

@@ -53,6 +53,7 @@ graph TD
     api-server --> avatar-engine
     api-server --> aiome-core-contracts
     api-server --> aiome-commerce
+    api-server --> infrastructure
     samsara-hub --> aiome-core
     samsara-hub --> shared
     key-proxy --> aiome-core
@@ -116,4 +117,4 @@ API_SERVER_SECRET, ALLOWED_ORIGINS, FEDERATION_SECRET, JWT_PRIVATE_KEY_B64, BG_L
 ```
 
 ---
-*Last Auto-Generated: 2026-04-06 UTC*
+*Last Auto-Generated: 2026-04-07 UTC*
