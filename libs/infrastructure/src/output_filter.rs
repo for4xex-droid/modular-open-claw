@@ -84,8 +84,8 @@ impl OutputFilter {
         let mut current_line = lines[0];
         let mut count = 1;
 
-        for i in 1..lines.len() {
-            if lines[i] == current_line {
+        for &line in lines.iter().skip(1) {
+            if line == current_line {
                 count += 1;
             } else {
                 // 空行の連続はそのまま空行1つにする
@@ -96,7 +96,7 @@ impl OutputFilter {
                 } else {
                     result.push(current_line.to_string());
                 }
-                current_line = lines[i];
+                current_line = line;
                 count = 1;
             }
         }
