@@ -323,8 +323,48 @@ pub async fn synth_dataset_handler(
     let provider = state.provider.get_inner().clone();
     let pool = state.job_queue.get_pool().clone();
 
-    let synth = infrastructure::cortex_synth::CortexSynthesizer::new(provider, pool, None);
+    // Gather initial beliefs from the SoulStore
+    let soul_store = state.soul_store.get_inner();
+    let agent_id = state.system_agent_id.to_string();
+    let initial_beliefs = match soul_store.load_soul(&agent_id).await {
+        Ok(Some(soul)) => {
+            let mut beliefs = Vec::new();
+            if let Some(narrative) = soul.anamnesis.narrative_self {
+                beliefs.push(narrative);
+            }
+            beliefs.push(soul.instinct.prompt_fragment);
+            // Optionally could add attachment profile summary
+            beliefs
+        }
+        Ok(None) => {
+            tracing::warn!(
+                "System soul '{}' not found in store; Gate will operate with no initial beliefs.",
+                agent_id
+            );
+            vec![]
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to load system soul '{}' for BeliefConsistencyGate: {}",
+                agent_id,
+                e
+            );
+            vec![]
+        }
+    };
 
+    let belief_gate = infrastructure::belief_consistency_gate::BeliefConsistencyGate::new(
+        provider.clone(),
+        None,
+        initial_beliefs,
+        None,
+    );
+
+    let synth = infrastructure::cortex_synth::CortexSynthesizer::new(
+        provider,
+        pool,
+        Some(std::sync::Arc::new(belief_gate)),
+    );
     let jq = state.job_queue.get_inner().clone();
     let base_model = req.base_model;
 

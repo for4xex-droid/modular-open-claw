@@ -24,6 +24,8 @@
     "lucide-react": "^0.577.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
     "three": "^0.183.2",
     "vis-data": "^8.0.3",
     "vis-network": "^10.0.2"

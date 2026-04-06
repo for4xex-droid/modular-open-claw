@@ -1,6 +1,12 @@
 ## [Unreleased] - 2026-04-06
 
 ### Added
+- **BeliefConsistencyGate Integration (Phase D):**
+  - `CortexSynthesizer` に `BeliefConsistencyGate` を統合し、AI のコア信念に反するデータを除外する機能を追加。
+  - Synth データセット出力形式を `export_to_jsonl` にて標準的な **ShareGPT 形式**へ移行し、Axolotl や Unsloth との互換性を確立。
+  - LLM ハルシネーションによる JSON 解析エラーならびに JSONL 保存時のシリアライズのサイレント・フェイラー（エラー握り潰し）を完全排除。
+
+### Changed
 - `libs/shared/src/strings.rs`: 高効率な文字列切り詰めユーティリティ (`truncate_bytes_safely`, `truncate_chars_safely`) を新設。
   - `Cow<'a, str>` によるゼロアロケーション・パスの最適化。
   - 数学的に厳密な Unicode 境界判定 (`char_indices().nth()`) の採用。
@@ -13,6 +19,10 @@
 ### Fixed
 - マルチバイト文字（日本語、絵文字等）の境界で文字列を切り詰める際に発生していた潜在的なサーバパニック (C-6) を完全解消。
 - 文字列切り詰め時における O(N) 計算量爆発の脆弱性を修正。
+- **E2E Test Stabilization (Layer 0) [完了]:**
+  - **Context Isolation:** `SystemVitalityProvider` の導入に伴う `<TokenSavingsIndicator>` の複数箇所でのレンダリング仕様に対応するため、`token_savings.spec.ts` での取得アサーションを `.first()` からスコープ指定（`.story-flow`）へ厳格化し、テストのFlakinessを排除。
+  - **View Mode Navigation:** アプリケーションの Sidebar の出し分けロジック仕様に合わせて、E2Eテスト（`ui_fixes.spec.ts`, `demo.spec.ts`, `home_v2.spec.ts`）内のローカルストレージ `aiome_view_mode: 'advanced'` 初期化を必須化し、テスト実行時の非表示タブ要素によるハングアップを解決。
+  - **DOM Refactoring Sync:** `home_v2.spec.ts` 内での古いセレクタ `.empty-flow` を最新の実装である `.artemis-status` へ追従させ、Playwrightのフルテストスイートの **100% GREEN (All Pass)** を達成。
 
 ### Added
 - **Infrastructure (ADR-025: Agent-Native Document Discovery):**

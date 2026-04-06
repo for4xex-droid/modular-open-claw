@@ -121,7 +121,13 @@ impl CortexFileProjector {
             let mut category_slug = slugify(&concept);
             if category_slug.is_empty() {
                 // 非ASCII文字のみのカテゴリ名（例: 日本語）に対する Deterministic なスラグフォールバック
-                category_slug = format!("cat_{}", concept.bytes().map(|b| format!("{:02x}", b)).collect::<String>());
+                category_slug = format!(
+                    "cat_{}",
+                    concept
+                        .bytes()
+                        .map(|b| format!("{:02x}", b))
+                        .collect::<String>()
+                );
             }
             let category_dir = self.projection_root.join(&category_slug);
             tokio::fs::create_dir_all(&category_dir)
@@ -158,10 +164,10 @@ impl CortexFileProjector {
                         article_row.try_get("content_hash").unwrap_or_default();
                     let mut article_slug = slugify(&title);
                     if article_slug.is_empty() {
-                         article_slug = slugify(article_id); // 非ASCII文字のみのタイトルの場合
-                         if article_slug.is_empty() {
-                             article_slug = "untitled".to_string();
-                         }
+                        article_slug = slugify(article_id); // 非ASCII文字のみのタイトルの場合
+                        if article_slug.is_empty() {
+                            article_slug = "untitled".to_string();
+                        }
                     }
 
                     let article_file = category_dir.join(format!("{}.md", article_slug));
@@ -226,7 +232,10 @@ impl CortexFileProjector {
                 })?;
 
             // トップレベルインデックスにはカテゴリ情報だけを記述してトークンサイズ爆発を防止する
-            index_entries.push(format!("- **{}**: [Explore articles]({}/_concept.md)", concept, category_slug));
+            index_entries.push(format!(
+                "- **{}**: [Explore articles]({}/_concept.md)",
+                concept, category_slug
+            ));
         }
 
         // _index.md の生成
@@ -331,9 +340,11 @@ mod tests {
 
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .expect("Should create in-memory DB");
-        
-        let sqlite_pool = pool.get_sqlite_pool_or_err().expect("Should get sqlite pool");
+            .expect("Should create in-memory DB"); // allow-anti-pattern
+
+        let sqlite_pool = pool
+            .get_sqlite_pool_or_err()
+            .expect("Should get sqlite pool"); // allow-anti-pattern
 
         // Create required tables
         sqlx::query(
@@ -347,7 +358,7 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should create concept_index table");
+        .expect("Should create concept_index table"); // allow-anti-pattern
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
@@ -365,37 +376,41 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should create wiki_articles table");
+        .expect("Should create wiki_articles table"); // allow-anti-pattern
 
         // Seed test data
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
-             VALUES ('art-1', 'Rust Async', 'Rust uses async/await.', 'hash_abc')"
+             VALUES ('art-1', 'Rust Async', 'Rust uses async/await.', 'hash_abc')",
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert article");
+        .expect("Should insert article"); // allow-anti-pattern
 
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids, summary)
-             VALUES ('rust', '[\"art-1\"]', 'The Rust programming language')"
+             VALUES ('rust', '[\"art-1\"]', 'The Rust programming language')",
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert concept");
+        .expect("Should insert concept"); // allow-anti-pattern
 
         let projector = CortexFileProjector::new(pool, tmp_dir.clone());
         let report = projector
             .project_to_filesystem()
             .await
-            .expect("Projection should succeed");
+            .expect("Projection should succeed"); // allow-anti-pattern
 
         assert_eq!(report.categories_count, 1);
         assert!(report.files_created + report.files_updated > 0);
 
         // Verify file exists
         let article_path = tmp_dir.join("rust").join("rust_async.md");
-        assert!(article_path.exists(), "Article file should exist at {:?}", article_path);
+        assert!(
+            article_path.exists(),
+            "Article file should exist at {:?}",
+            article_path
+        );
 
         // Verify index exists
         let index_path = tmp_dir.join("_index.md");
@@ -411,8 +426,10 @@ mod tests {
 
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .expect("Should create in-memory DB");
-        let sqlite_pool = pool.get_sqlite_pool_or_err().expect("Should get sqlite pool");
+            .expect("Should create in-memory DB"); // allow-anti-pattern
+        let sqlite_pool = pool
+            .get_sqlite_pool_or_err()
+            .expect("Should get sqlite pool"); // allow-anti-pattern
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS cortex_concept_index (
@@ -425,7 +442,7 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should create concept_index table");
+        .expect("Should create concept_index table"); // allow-anti-pattern
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
@@ -443,23 +460,23 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should create wiki_articles table");
+        .expect("Should create wiki_articles table"); // allow-anti-pattern
 
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
-             VALUES ('art-2', 'Security Design', 'Defense in depth.', 'hash_xyz')"
+             VALUES ('art-2', 'Security Design', 'Defense in depth.', 'hash_xyz')",
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert article");
+        .expect("Should insert article"); // allow-anti-pattern
 
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids)
-             VALUES ('security', '[\"art-2\"]')"
+             VALUES ('security', '[\"art-2\"]')",
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert concept");
+        .expect("Should insert concept"); // allow-anti-pattern
 
         let projector = CortexFileProjector::new(pool, tmp_dir.clone());
 
@@ -467,15 +484,18 @@ mod tests {
         let report1 = projector
             .project_to_filesystem()
             .await
-            .expect("First projection should succeed");
+            .expect("First projection should succeed"); // allow-anti-pattern
         assert!(report1.files_created + report1.files_updated > 0);
 
         // Second projection (no changes)
         let report2 = projector
             .project_to_filesystem()
             .await
-            .expect("Second projection should succeed");
-        assert_eq!(report2.files_skipped, 1, "Unchanged article should be skipped");
+            .expect("Second projection should succeed"); // allow-anti-pattern
+        assert_eq!(
+            report2.files_skipped, 1,
+            "Unchanged article should be skipped"
+        );
 
         // Cleanup
         let _ = tokio::fs::remove_dir_all(&tmp_dir).await;

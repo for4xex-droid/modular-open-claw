@@ -14,6 +14,8 @@ test.describe('UI Endpoint Fixes (TDD)', () => {
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
       window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
+      window.localStorage.setItem('aiome_view_mode', 'advanced');
+      window.localStorage.setItem('i18nextLng', 'en-US');
     });
     await page.goto('/');
   });

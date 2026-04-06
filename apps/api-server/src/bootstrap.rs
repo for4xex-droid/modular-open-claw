@@ -682,10 +682,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         if publishers.is_empty() {
             if let Ok(wp_url) = std::env::var("WP_API_URL") {
                 let wp_token = std::env::var("WP_API_TOKEN").unwrap_or_default();
-                publishers.push(Box::new(infrastructure::publisher::wordpress::WordPressAdapter::new(
-                    wp_url,
-                    wp_token,
-                )));
+                publishers.push(Box::new(
+                    infrastructure::publisher::wordpress::WordPressAdapter::new(wp_url, wp_token),
+                ));
                 tracing::info!("✅ [PublishPipeline] WordPress publisher registered.");
             } else {
                 warn!("⚠️ [PublishPipeline] No publishers registered. SEO content will be generated but NOT published. Configure WP_API_URL for production use.");
@@ -791,6 +790,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)"
             )
         })?;
+
+    let cortex_projector_arc = Arc::new(
+        infrastructure::cortex_file_projector::CortexFileProjector::new(
+            job_queue.get_pool().clone(),
+            std::path::PathBuf::from("workspace/cortex_fs"),
+        ),
+    );
+
     let state = AppState {
         hook_chain: Default::default(),
         health_monitor: Component::new(health_monitor),
@@ -997,6 +1004,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             )
         },
         publish_pipeline: Component::new(publish_pipeline),
+        cortex_projector: Component::new(cortex_projector_arc.clone()),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===
@@ -1037,19 +1045,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let compiler_pool = state.job_queue.get_pool().clone();
     let compiler_semaphore = state.compute_semaphore.get_inner().clone();
     let compiler_gate = Some(belief_gate.clone());
+    let compiler_projector = state.cortex_projector.get_inner().clone();
     tokio::spawn(async move {
         tracing::info!("📚 [Cortex] Starting compilation loop...");
-        let projector = infrastructure::cortex_file_projector::CortexFileProjector::new(
-            compiler_pool.clone(),
-            std::path::PathBuf::from("workspace/cortex_fs"),
-        );
         let compiler = infrastructure::cortex_compiler::CortexCompiler::new(
             compiler_provider,
             compiler_pool,
             compiler_gate,
             compiler_semaphore,
         )
-        .with_file_projector(std::sync::Arc::new(projector));
+        .with_file_projector(compiler_projector);
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1800));
         loop {
             interval.tick().await;

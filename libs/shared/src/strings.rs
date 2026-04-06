@@ -12,13 +12,13 @@ use std::borrow::Cow;
 const ELLIPSIS: &str = "... (truncated)";
 
 /// バイト数に基づいて文字列を安全に切り詰めます。
-/// 
+///
 /// # 安全性
 /// マルチバイト文字の境界を考慮し、不正なUTF-8シーケンスを作成しません（パニック回避）。
-/// 
+///
 /// # パフォーマンス
 /// 切り詰めが不要な場合はアロケーションを行わず、元の文字列の参照を返します。
-pub fn truncate_bytes_safely<S: AsRef<str> + ?Sized>(s: &S, max_bytes: usize) -> Cow<str> {
+pub fn truncate_bytes_safely<S: AsRef<str> + ?Sized>(s: &S, max_bytes: usize) -> Cow<'_, str> {
     let s = s.as_ref();
     if s.len() <= max_bytes {
         return Cow::Borrowed(s);
@@ -31,16 +31,20 @@ pub fn truncate_bytes_safely<S: AsRef<str> + ?Sized>(s: &S, max_bytes: usize) ->
 }
 
 /// 文字数（Unicodeコードポイント）に基づいて文字列を安全に切り詰めます。
-/// 
+///
 /// # 特徴
 /// - `append_ellipsis` が true の場合、切り詰めが発生した時のみ末尾に追記します。
 /// - 切り詰めが不要な場合は、コピーせずに参照（Cow::Borrowed）を返し、ゼロアロケーションを実現します。
 /// - 切り詰めが発生する場合でも、`String::with_capacity` によりメモリ再確保を最小化します。
-/// 
+///
 /// # 注意
 /// 結合文字（Grapheme Clusters / 例: 👨‍👩‍👧‍👦）の中間で切断される可能性があります。
 /// メモリ安全性は保たれますが、表示上の整合性（文字化け）が必要な場合は unicode-segmentation の使用を検討してください。
-pub fn truncate_chars_safely<S: AsRef<str> + ?Sized>(s: &S, max_chars: usize, append_ellipsis: bool) -> Cow<str> {
+pub fn truncate_chars_safely<S: AsRef<str> + ?Sized>(
+    s: &S,
+    max_chars: usize,
+    append_ellipsis: bool,
+) -> Cow<'_, str> {
     let s = s.as_ref();
 
     // 0文字指定の特殊最適化
@@ -108,8 +112,11 @@ mod tests {
     fn test_truncate_chars_safely_zero_edge() {
         let s = "A";
         assert_eq!(truncate_chars_safely(s, 0, false), "");
-        assert!(matches!(truncate_chars_safely(s, 0, false), Cow::Borrowed(_)));
-        
+        assert!(matches!(
+            truncate_chars_safely(s, 0, false),
+            Cow::Borrowed(_)
+        ));
+
         assert_eq!(truncate_chars_safely(s, 0, true), "... (truncated)");
         assert!(matches!(truncate_chars_safely(s, 0, true), Cow::Owned(_)));
     }
@@ -118,6 +125,9 @@ mod tests {
     fn test_empty_input() {
         let s = "";
         assert_eq!(truncate_chars_safely(s, 10, true), "");
-        assert!(matches!(truncate_chars_safely(s, 10, true), Cow::Borrowed(_)));
+        assert!(matches!(
+            truncate_chars_safely(s, 10, true),
+            Cow::Borrowed(_)
+        ));
     }
 }

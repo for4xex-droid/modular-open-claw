@@ -219,6 +219,7 @@ const HomePage: React.FC<HomePageProps> = ({
                         modelUrl={modelUrl}
                         avatarState={avatarState}
                         mode={mode as any}
+                        sessionSavedChars={sessionSavedChars}
                     />
                     <Suspense fallback={null}>
                         <TreasureBox />

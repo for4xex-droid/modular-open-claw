@@ -6,11 +6,13 @@
  */
 import React from 'react';
 import { AgentStats } from '../../types';
-import { Shield, Sparkles } from 'lucide-react';
 import VrmRenderer from '../../lib/vrm/VrmRenderer';
 import InxRenderer from '../../lib/inx/InxRenderer';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
+import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
+import { EkycStatusBadge } from '../character/EkycStatusBadge';
+import { SoulStatusBadge } from '../character/SoulStatusBadge';
 
 interface CharacterPanelProps {
     stats: AgentStats;
@@ -19,9 +21,10 @@ interface CharacterPanelProps {
     modelUrl: string;
     avatarState: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
     mode: 'vrm' | 'inx' | 'glb' | 'off' | 'lite';
+    sessionSavedChars?: number;
 }
 
-const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode }) => {
+const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode, sessionSavedChars }) => {
     const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
     const [soulState, setSoulState] = React.useState<string>('Awake');
     const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
@@ -110,25 +113,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                    Lvl {fetchedLevel ?? stats.level} | {soulState}
-                </span>
-                {ekycStatus === true && (
-                    <span style={{ background: 'rgba(0, 255, 100, 0.1)', color: 'var(--success, #00ff64)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                        ✓ Verified
-                    </span>
-                )}
-                {ekycStatus === false && (
-                    <span style={{ background: 'rgba(255, 100, 100, 0.1)', color: 'var(--danger, #ff6464)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                        ⚠ Unverified
-                    </span>
-                )}
-                <span style={{ background: 'rgba(0, 242, 255, 0.1)', color: 'var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Shield size={12} /> Secure
-                </span>
-                <span style={{ background: 'rgba(188, 140, 255, 0.1)', color: 'var(--accent-purple)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Sparkles size={12} /> Curious
-                </span>
+                <SoulStatusBadge level={fetchedLevel ?? stats.level} state={soulState} />
+                <EkycStatusBadge status={ekycStatus} />
             </div>
             
             <div style={{ flex: 1 }}></div>
@@ -137,6 +123,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                 <span style={{ color: 'var(--text-secondary)' }}>Resonance</span>
                 <span className="font-mono" style={{ color: 'white', fontWeight: 'bold' }}>{stats.resonance}</span>
             </div>
+
+            {sessionSavedChars !== undefined && (
+                <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
+            )}
         </div>
     );
 };

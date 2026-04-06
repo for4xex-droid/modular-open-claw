@@ -121,7 +121,11 @@ impl ForecastProvider for TimesFmProvider {
             return Err(AiomeError::Infrastructure {
                 // RT-6 FIX: Truncate error body to prevent information leakage
                 // RT3-1 FIX: Use char boundary to avoid panic on multi-byte UTF-8 truncation
-                reason: format!("TimesFM error [{}]: {}", status, shared::strings::truncate_bytes_safely(&body, 256)),
+                reason: format!(
+                    "TimesFM error [{}]: {}",
+                    status,
+                    shared::strings::truncate_bytes_safely(&body, 256)
+                ),
             });
         }
 
@@ -230,4 +234,3 @@ impl ForecastProvider for TimesFmProvider {
         "TimesFM"
     }
 }
-

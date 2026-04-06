@@ -324,6 +324,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/skills/mcp/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_mcp_config"];
+        put: operations["update_mcp_config"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/skills/mcp/spawn": {
         parameters: {
             query?: never;
@@ -494,6 +510,38 @@ export interface paths {
         get: operations["get_audit_ledger"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_quarantined_assets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/quarantine/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["release_quarantined_asset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1521,11 +1569,25 @@ export interface components {
             /** @description ステータス */
             status: components["schemas"]["PurchaseStatus"];
         };
+        McpServerConfig: {
+            args: string[];
+            command: string;
+            env?: {
+                [key: string]: string;
+            };
+            headers?: {
+                [key: string]: string;
+            };
+            transport?: components["schemas"]["McpTransport"];
+            url?: string | null;
+        };
         McpSpawnRequest: {
             args: string[];
             command: string;
             id: string;
         };
+        /** @enum {string} */
+        McpTransport: "stdio" | "http";
         ModelStatusResponse: {
             configured_model: string;
             configured_model_available: boolean;
@@ -1575,7 +1637,19 @@ export interface components {
          * @enum {string}
          */
         PurchaseStatus: "Escrowed" | "Completed" | "Refunded";
+        /** @description 検疫済みアセットのレコード構造体 */
+        QuarantinedAsset: {
+            asset_name: string;
+            id: string;
+            image_hash: string;
+            reason: string;
+            status: string;
+            uploaded_at?: string | null;
+        };
         QueryReq: {
+            /** @description Optional: "L0Brief", "L1Index", "L2Search", or "L3Full" */
+            disclosure_level?: string | null;
+            file_back?: boolean | null;
             question: string;
         };
         /** @description リソースの使用状況 */
@@ -1660,7 +1734,7 @@ export interface components {
             tools: string[];
         };
         /** @enum {string} */
-        SourceType: "Web" | "Pdf" | "Manual" | "GitHub" | "Rss";
+        SourceType: "Web" | "Pdf" | "Manual" | "GitHub" | "Rss" | "Query";
         StartAutonomousRequest: {
             /** Format: int64 */
             interval_secs?: number | null;
@@ -2364,6 +2438,51 @@ export interface operations {
             };
         };
     };
+    get_mcp_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Return the current MCP discovery config file content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_mcp_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The entire MCP discovery config file content */
+        requestBody: {
+            content: {
+                "application/json": {
+                    mcp_servers: {
+                        [key: string]: components["schemas"]["McpServerConfig"];
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Config updated and MCP processes hot-reloaded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     spawn_mcp_server: {
         parameters: {
             query?: never;
@@ -2629,6 +2748,75 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_quarantined_assets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fetch quarantined assets store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantinedAsset"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    release_quarantined_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Asset ID to release */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Asset successfully released from quarantine */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

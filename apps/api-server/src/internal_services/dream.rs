@@ -16,10 +16,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     // ADR-025: CortexFileProjector の初期化 — Agent-Native Discovery
     let cortex_fs_root = std::path::PathBuf::from("workspace/cortex_fs");
     let job_queue_inner = state.job_queue.get_inner().clone();
-    let projector = CortexFileProjector::new(
-        job_queue_inner.get_pool().clone(),
-        cortex_fs_root.clone(),
-    );
+    let projector = state.cortex_projector.get_inner().clone();
 
     // 起動時に初回投影を実行
     match projector.project_to_filesystem().await {
@@ -30,22 +27,26 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
             );
         }
         Err(e) => {
-            warn!("⚠️ [DreamService] Initial Cortex FS projection failed (non-fatal): {}", e);
+            warn!(
+                "⚠️ [DreamService] Initial Cortex FS projection failed (non-fatal): {}",
+                e
+            );
         }
     }
 
     // 1. DreamState の初期化 (ADR-025: Agent-Native Discovery 有効化)
-    let dream_state = DreamState::new(state.provider.get_inner().clone())
-        .with_cortex_fs(cortex_fs_root);
+    let dream_state = DreamState::new(state.provider.get_inner().clone());
 
     // 2. TrendSonar の準備（探索夢向け）
     // Phase β: Inject SerpAnalysisAdapter for trend-based SEO gap identification
     let mut adapters: Vec<Arc<dyn infrastructure::trend_sonar::TrendAdapter>> = vec![];
-    
+
     // WebSearchAdapter + SerpAnalysisAdapter using SEARCH_API_KEY
     if let Ok(api_key) = std::env::var("SEARCH_API_KEY") {
         if !api_key.is_empty() {
-            adapters.push(Arc::new(infrastructure::trend_sonar::WebSearchAdapter::new(api_key.clone())));
+            adapters.push(Arc::new(
+                infrastructure::trend_sonar::WebSearchAdapter::new(api_key.clone()),
+            ));
             adapters.push(Arc::new(SerpAnalysisAdapter::new(api_key)));
             info!("✅ [DreamService] WebSearch + SerpAnalysis adapters registered.");
         }

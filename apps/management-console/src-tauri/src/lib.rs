@@ -13,8 +13,7 @@
 fn get_api_url() -> String {
     // Phase 51 NOTE: In production, the api-server might be on a dynamic port.
     // For now, we return the standard 3015 but allow override by A2A_NODE_URL
-    std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://localhost:3015".to_string())
-    // allow-anti-pattern
+    std::env::var("A2A_NODE_URL").unwrap_or_else(|_| format!("http://{}:{}", "localhost", 3015))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

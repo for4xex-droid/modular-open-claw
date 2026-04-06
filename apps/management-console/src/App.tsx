@@ -21,7 +21,8 @@ import {
   Sparkles,
   Network,
   Crown,
-  Play
+  Play,
+  Library
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
@@ -41,6 +42,7 @@ const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueVie
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
+const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 
@@ -209,7 +211,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'vault', 'store', 'biome', 'causal', 'lora'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'biome', 'causal', 'lora'];
     const advanced = [...intermediate, 'graph', 'audit', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -374,6 +376,14 @@ function App() {
               onClick={() => setActiveTab("agent")}
             />
           )}
+          {isVisible("cortex") && (
+            <NavItem
+              icon={<Library size={20} />}
+              label="Cortex Wiki"
+              active={activeTab === "cortex"}
+              onClick={() => setActiveTab("cortex")}
+            />
+          )}
           {isVisible("vault") && (
             <NavItem
               icon={<Package size={20} />}
@@ -467,6 +477,7 @@ function App() {
             {activeTab === "graph" && t('page.resonanceMap')}
             {activeTab === "immune" && t('page.immuneSystem')}
             {activeTab === "agent" && t('page.agentConsole')}
+            {activeTab === "cortex" && "Cortex Wiki"}
             {activeTab === "vault" && t('page.skillVault')}
             {activeTab === "artifacts" && t('page.artifactVault')}
             {activeTab === "audit" && t('page.audit')}
@@ -500,6 +511,7 @@ function App() {
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
               {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
+              {activeTab === "cortex" && <CortexView />}
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}
               {activeTab === "audit" && <DiagnosticsHistory />}

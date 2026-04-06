@@ -21,8 +21,8 @@ fn setup_test_workspace(
 
     // Copy wasm if it exists
     if wasm_source.exists() {
-        fs::copy(wasm_source, temp_dir.join(format!("{}.wasm", skill_name))).unwrap();
-        // allow-anti-pattern
+        let target = temp_dir.join(format!("{}.wasm", skill_name));
+        fs::copy(wasm_source, target).unwrap(); // allow-anti-pattern
     }
 
     // Write meta JSON

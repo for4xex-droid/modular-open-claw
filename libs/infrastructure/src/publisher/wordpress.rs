@@ -29,7 +29,10 @@ impl Publisher for WordPressAdapter {
         let trimmed_content = content.trim();
         if trimmed_content.is_empty() || trimmed_content.len() > 10_000_000 {
             return Err(AiomeError::Infrastructure {
-                reason: format!("WordPress content length {} out of bounds", trimmed_content.len()),
+                reason: format!(
+                    "WordPress content length {} out of bounds",
+                    trimmed_content.len()
+                ),
             });
         }
 
@@ -37,11 +40,13 @@ impl Publisher for WordPressAdapter {
         let client = reqwest::Client::new();
         let endpoint = format!("{}/wp-json/wp/v2/posts", self.api_url);
 
-        let title = metadata.get("title")
+        let title = metadata
+            .get("title")
             .and_then(|v| v.as_str())
             .unwrap_or("Untitled Aiome Post");
-            
-        let status = metadata.get("status")
+
+        let status = metadata
+            .get("status")
             .and_then(|v| v.as_str())
             .unwrap_or("draft");
 
@@ -57,7 +62,8 @@ impl Publisher for WordPressAdapter {
             return Ok(format!("{}/?p=1", self.api_url));
         }
 
-        let res = client.post(&endpoint)
+        let res = client
+            .post(&endpoint)
             .bearer_auth(&self.token)
             .json(&body)
             .send()
@@ -74,14 +80,16 @@ impl Publisher for WordPressAdapter {
             });
         }
 
-        let wp_res: serde_json::Value = res.json().await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to parse WP response: {}", e),
-        })?;
-        
-        let post_link = wp_res.get("link")
+        let wp_res: serde_json::Value =
+            res.json().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to parse WP response: {}", e),
+            })?;
+
+        let post_link = wp_res
+            .get("link")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown_link");
-        
+
         tracing::info!("📤 [WordPress] Published: {}", post_link);
         Ok(post_link.to_string())
     }
@@ -107,9 +115,15 @@ mod tests {
         let result = adapter.publish(content, &[], &metadata).await;
 
         // Assert (in RED phase this will panic because result is Err)
-        let post_url = result.expect("Should return published post URL");
-        assert!(post_url.contains("wp.local"), "URL should contain base domain");
-        assert!(post_url.contains("test-title") || post_url.contains("?p="), "URL should be a post link");
+        let post_url = result.expect("Should return published post URL"); // allow-anti-pattern
+        assert!(
+            post_url.contains("wp.local"),
+            "URL should contain base domain"
+        );
+        assert!(
+            post_url.contains("test-title") || post_url.contains("?p="),
+            "URL should be a post link"
+        );
     }
     #[tokio::test]
     async fn test_wp_missing_title_uses_default() {
@@ -120,7 +134,7 @@ mod tests {
         let result = adapter.publish(content, &[], &metadata).await;
         // In the GREEN phase with test intercept, it just passes.
         // We mainly verify it doesn't panic on missing fields.
-        let url = result.expect("Should return published post URL");
+        let url = result.expect("Should return published post URL"); // allow-anti-pattern
         assert!(url.contains("wp.local"));
     }
 
@@ -131,8 +145,10 @@ mod tests {
             let token = std::env::var("WP_API_TOKEN").unwrap_or_default();
             let adapter = WordPressAdapter::new(url, token);
             let metadata = json!({"title": "Aiome TDD Test", "status": "draft"});
-            let result = adapter.publish("Real WP API integration test.", &[], &metadata).await;
-            
+            let result = adapter
+                .publish("Real WP API integration test.", &[], &metadata)
+                .await;
+
             assert!(result.is_ok(), "Real API call failed: {:?}", result.err());
         }
     }

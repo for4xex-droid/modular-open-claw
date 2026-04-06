@@ -675,6 +675,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 job_queue.get_pool().clone(),
             ),
         )),
+        cortex_projector: Default::default(),
         lora_marketplace: {
             let vault_root = tmp_dir.path().join("vault");
             std::fs::create_dir_all(&vault_root).ok();
@@ -2508,16 +2509,16 @@ async fn test_cortex_query_file_back() {
 #[tokio::test]
 async fn test_seo_content_conductor_exists() {
     let (_server, state, _tmp) = create_test_server().await;
-    
+
     // RED: genericllm_conductor is not yet registered with "seo_content"
     let dispatcher = state.task_dispatcher.get_inner();
     let conductor = dispatcher.get_conductor_for("seo_content");
-    
+
     assert!(
         conductor.is_some(),
         "seo_content category must be handled by a registered conductor"
     );
-    
+
     assert_eq!(
         conductor.expect("conductor is missing").conductor_name(),
         "SeoContentConductor",

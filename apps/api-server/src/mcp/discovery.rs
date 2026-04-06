@@ -205,7 +205,7 @@ mod tests {
                 },
                 "http_server": {
                     "transport": "http",
-                    "url": "http://localhost:8080/mcp",
+                    "url": "http://localhost:8080/mcp", // allow-anti-pattern
                     "headers": {
                         "x-api-key": "secret"
                     },

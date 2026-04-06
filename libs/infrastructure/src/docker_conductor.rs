@@ -266,7 +266,9 @@ impl TaskConductor for DockerConductor {
         }
 
         if mapped_port.is_empty() {
-            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+            if let Err(e) = self.cancel(&job.id).await {
+                tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
+            }
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
                 reason: "Failed to resolve worker mapped port".to_string(),
@@ -301,7 +303,9 @@ impl TaskConductor for DockerConductor {
         }
 
         if !health_ok {
-            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+            if let Err(e) = self.cancel(&job.id).await {
+                tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
+            }
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
                 reason: "Shadow Worker gRPC health check failed after startup".to_string(),
@@ -338,7 +342,13 @@ impl TaskConductor for DockerConductor {
                             }
 
                             if p.is_failed {
-                                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+                                if let Err(e) = self.cancel(&job.id).await {
+                                    tracing::warn!(
+                                        "Best-effort container cleanup failed for {}: {}",
+                                        job.id,
+                                        e
+                                    );
+                                }
                                 let _ = std::fs::remove_dir_all(&temp_dir);
                                 return Err(AiomeError::Infrastructure {
                                     reason: format!(
@@ -354,7 +364,13 @@ impl TaskConductor for DockerConductor {
                             }
                         }
                         Err(e) => {
-                            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+                            if let Err(e) = self.cancel(&job.id).await {
+                                tracing::warn!(
+                                    "Best-effort container cleanup failed for {}: {}",
+                                    job.id,
+                                    e
+                                );
+                            }
                             let _ = std::fs::remove_dir_all(&temp_dir);
                             return Err(e);
                         }
@@ -362,7 +378,13 @@ impl TaskConductor for DockerConductor {
                 }
 
                 if !is_completed {
-                    if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+                    if let Err(e) = self.cancel(&job.id).await {
+                        tracing::warn!(
+                            "Best-effort container cleanup failed for {}: {}",
+                            job.id,
+                            e
+                        );
+                    }
                     let _ = std::fs::remove_dir_all(&temp_dir);
                     return Err(AiomeError::Infrastructure {
                         reason:
@@ -372,12 +394,16 @@ impl TaskConductor for DockerConductor {
                 }
             }
             Ok(Err(e)) => {
-                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+                if let Err(e) = self.cancel(&job.id).await {
+                    tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
+                }
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(e);
             }
             Err(_) => {
-                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+                if let Err(e) = self.cancel(&job.id).await {
+                    tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
+                }
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(AiomeError::Infrastructure {
                     reason: "gRPC Stream Execution timed out after 300s".to_string(),
@@ -389,7 +415,9 @@ impl TaskConductor for DockerConductor {
         let _ = std::fs::remove_dir_all(&temp_dir);
 
         // Gap K: Clean up container after success
-        if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
+        if let Err(e) = self.cancel(&job.id).await {
+            tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
+        }
 
         if let Err(e) = progress_tx
             .send(TaskEvent::Progress {

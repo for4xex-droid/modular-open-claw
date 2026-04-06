@@ -342,7 +342,10 @@ impl ContextEngine {
             .join("\n");
 
         let final_history = if history_text.len() > 4000 {
-            format!("{}... (truncated)", shared::strings::truncate_bytes_safely(&history_text, 4000))
+            format!(
+                "{}... (truncated)",
+                shared::strings::truncate_bytes_safely(&history_text, 4000)
+            )
         } else {
             history_text
         };
@@ -377,7 +380,9 @@ impl ContextEngine {
             .unwrap_or_else(|| ("なし".to_string(), None));
 
         let safe_summary = if summary.len() > budget.max_summary_chars {
-            sanitize_for_prompt(shared::strings::truncate_bytes_safely(&summary, budget.max_summary_chars).as_ref()) + "... (truncated)"
+            sanitize_for_prompt(
+                shared::strings::truncate_bytes_safely(&summary, budget.max_summary_chars).as_ref(),
+            ) + "... (truncated)"
         } else {
             sanitize_for_prompt(&summary)
         };

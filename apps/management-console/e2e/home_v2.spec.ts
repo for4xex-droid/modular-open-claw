@@ -11,6 +11,8 @@ test('Home V2 (Beta) Layout Loads Correctly', async ({ page }) => {
     window.localStorage.setItem('aiome_onboarding_done', 'true');
     window.localStorage.setItem('aiome_birth_shown', 'true');
     window.sessionStorage.setItem('aiome_secret', 'mock_token');
+    window.localStorage.setItem('i18nextLng', 'en-US');
+    window.localStorage.setItem('aiome_view_mode', 'advanced');
   });
 
   await page.goto('/');
@@ -39,7 +41,7 @@ test('Home V2 (Beta) Layout Loads Correctly', async ({ page }) => {
   await expect(storyFlow).toBeVisible();
 
   // Should have at least one FlowCard or the placeholder
-  await expect(storyFlow.locator('.flow-card').first().or(storyFlow.locator('.empty-flow'))).toBeVisible();
+  await expect(storyFlow.locator('.flow-card').first().or(storyFlow.locator('.artemis-status'))).toBeVisible();
 });
 
 test('Interactive Avatar Viewer Modal opens and closes', async ({ page }) => {
@@ -47,6 +49,8 @@ test('Interactive Avatar Viewer Modal opens and closes', async ({ page }) => {
     window.localStorage.setItem('aiome_onboarding_done', 'true');
     window.localStorage.setItem('aiome_birth_shown', 'true');
     window.sessionStorage.setItem('aiome_secret', 'mock_token');
+    window.localStorage.setItem('i18nextLng', 'en-US');
+    window.localStorage.setItem('aiome_view_mode', 'advanced');
   });
 
   await page.goto('/');

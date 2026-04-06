@@ -7,8 +7,9 @@
 | モジュール | 役割 | 状態 |
 |---|---|---|
 | `aiome_log` | システム全体の標準化されたロギング（JSON/Text）を提供。 | 実装完了 |
-| `belief_consistency_gate`| コア信念（SOUL.md）との整合性検証ゲート。2段階検証（SLM/LLM）により Opinion Drift を防止。 | **Phase 49 完了** |
+| `belief_consistency_gate`| コア信念（SOUL.md）との整合性検証ゲート。CortexSynthパイプラインと統合され、生成データから矛盾を破棄する堅牢なフィルターとして稼働。 | **実装完了** |
 | `boundary_verifier` | LLM を介さない O(1) のシェルコマンド境界検証（不変条件強制）を提供。 | **Phase 47 完了** |
+| `cortex_synth` | ドキュメント群からタスクに応じた高品質なJSONLデータセット（ShareGPT形式）を自律生成する教師データ蒸留エンジン。 | **実装完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **Phase 21 継続中** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |

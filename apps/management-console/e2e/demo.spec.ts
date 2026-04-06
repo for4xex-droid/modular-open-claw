@@ -7,22 +7,26 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Autonomous AI Economy Demo', () => {
-  test('should navigate to the demo page, render the UI, and start the demo', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    // Setup Auth and skip onboarding/birth
     await page.addInitScript(() => {
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
       window.sessionStorage.setItem('aiome_secret', 'mock_token');
+      window.localStorage.setItem('i18nextLng', 'en-US');
+      window.localStorage.setItem('aiome_view_mode', 'advanced');
     });
 
     await page.goto('/');
 
-    // Click on "Synergy Demo" in the sidebar (assuming it gets added)
     const demoTab = page.locator('.nav-item').filter({ hasText: 'Synergy Demo' });
     
     // We expect this to fail (RED) since it doesn't exist yet
     await expect(demoTab).toBeVisible();
     await demoTab.click();
+  });
 
+  test('should navigate to the demo page, render the UI, and start the demo', async ({ page }) => {
     // Verify DemoView title
     await expect(page.getByRole('heading', { name: 'Autonomous AI Economy Demo' })).toBeVisible();
 

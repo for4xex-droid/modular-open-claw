@@ -1,9 +1,3 @@
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1.
- */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -12,6 +6,7 @@ import { AvatarCharacterProvider } from "./hooks/AvatarContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { LanguageProvider } from "./i18n";
 import { initApiBase } from "./config";
+import { SystemVitalityProvider } from "./hooks/useSystemVitality";
 
 /**
  * [Milestone 3] UI Dynamic Discovery
@@ -32,7 +27,9 @@ async function boot() {
         <ErrorBoundary>
           <LanguageProvider>
             <AvatarCharacterProvider>
-              <App />
+              <SystemVitalityProvider>
+                <App />
+              </SystemVitalityProvider>
             </AvatarCharacterProvider>
           </LanguageProvider>
         </ErrorBoundary>

@@ -531,7 +531,10 @@ impl CortexCompiler {
                     );
                 }
                 Err(e) => {
-                    tracing::warn!("⚠️ [CortexCompiler] FS Projection failed (non-fatal): {}", e);
+                    tracing::warn!(
+                        "⚠️ [CortexCompiler] FS Projection failed (non-fatal): {}",
+                        e
+                    );
                 }
             }
         }

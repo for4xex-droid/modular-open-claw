@@ -66,9 +66,9 @@ mod cortex_ingester_tests;
 pub mod cortex_compiler;
 #[cfg(test)]
 mod cortex_compiler_tests;
-pub mod cortex_query;
 /// Agent-Native Document Discovery via File System Projection (ADR-025)
 pub mod cortex_file_projector;
+pub mod cortex_query;
 pub mod cortex_synth;
 #[cfg(test)]
 mod cortex_synth_tests;

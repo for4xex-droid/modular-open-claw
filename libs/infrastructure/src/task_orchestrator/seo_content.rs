@@ -41,24 +41,33 @@ impl TaskConductor for SeoContentConductor {
         info!("📈 [SEO] Executing content generation job: {}", job.topic);
 
         if job.topic.trim().is_empty() {
-            return Err(AiomeError::Infrastructure { reason: "SEO topic cannot be empty".to_string() });
+            return Err(AiomeError::Infrastructure {
+                reason: "SEO topic cannot be empty".to_string(),
+            });
         }
 
         if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
-                message: format!("Analyzing SEO intent and crafting content for topic: {}", job.topic),
+                message: format!(
+                    "Analyzing SEO intent and crafting content for topic: {}",
+                    job.topic
+                ),
                 percent: Some(20),
             })
             .await
         {
-            tracing::warn!("Failed to send progress event for SEO job {}: {}", job.id, e);
+            tracing::warn!(
+                "Failed to send progress event for SEO job {}: {}",
+                job.id,
+                e
+            );
         }
 
         // Domain-specific specialized prompt for SEO logic
         let system_prompt = "You are an expert SEO Content Strategist. Your goal is to produce highly optimized, user-centric, and search-engine friendly content. Follow SEO best practices (H1, meta descriptions, semantic HTML/Markdown, keyword density).";
-        
+
         let prompt = format!(
             "Generate an SEO optimized article for the following topic: {}\nEnsure the output is ready for direct publishing.",
             job.topic
@@ -75,7 +84,11 @@ impl TaskConductor for SeoContentConductor {
             })
             .await
         {
-            tracing::warn!("Failed to send completion event for SEO job {}: {}", job.id, e);
+            tracing::warn!(
+                "Failed to send completion event for SEO job {}: {}",
+                job.id,
+                e
+            );
         }
 
         Ok((response.content, None))
@@ -113,8 +126,9 @@ mod tests {
             prompt: &str,
             sys: Option<&str>,
         ) -> Result<LlmResponse, AiomeError> {
-            *self.last_user_prompt.lock().expect("lock poisoned") = Some(prompt.to_string());
-            *self.last_sys_prompt.lock().expect("lock poisoned") = Some(sys.unwrap_or("").to_string());
+            *self.last_user_prompt.lock().expect("lock poisoned") = Some(prompt.to_string()); // allow-anti-pattern
+            *self.last_sys_prompt.lock().expect("lock poisoned") = // allow-anti-pattern
+                Some(sys.unwrap_or("").to_string());
             Ok(LlmResponse {
                 content: "SEO content...".to_string(),
                 metadata: None,
@@ -134,7 +148,10 @@ mod tests {
     async fn test_seo_content_conductor_categories() {
         let provider = Arc::new(CapturingProvider::new());
         let conductor = SeoContentConductor::new(provider);
-        assert_eq!(conductor.capable_categories(), vec!["seo_content".to_string()]);
+        assert_eq!(
+            conductor.capable_categories(),
+            vec!["seo_content".to_string()]
+        );
         assert_eq!(conductor.conductor_name(), "SeoContentConductor");
     }
 
@@ -142,7 +159,7 @@ mod tests {
     async fn test_seo_content_conductor_conduct() {
         let provider = Arc::new(CapturingProvider::new());
         let conductor = SeoContentConductor::new(provider);
-        
+
         let (tx, mut rx) = mpsc::channel(10);
         let mut job = Job::default();
         job.id = "test-job-1".to_string();
@@ -151,7 +168,7 @@ mod tests {
 
         let result = conductor.conduct(job, tx).await;
         assert!(result.is_ok());
-        let (content, karma) = result.expect("conduct should succeed");
+        let (content, karma) = result.expect("conduct should succeed"); // allow-anti-pattern
         assert_eq!(content, "SEO content...");
         assert!(karma.is_none());
 
@@ -160,7 +177,11 @@ mod tests {
         while let Ok(evt) = rx.try_recv() {
             events.push(evt);
         }
-        assert_eq!(events.len(), 2, "Should have sending and completion progress events");
+        assert_eq!(
+            events.len(),
+            2,
+            "Should have sending and completion progress events"
+        );
     }
 
     /// Core architectural contract: SeoContentConductor MUST pass a domain-specific
@@ -176,18 +197,25 @@ mod tests {
         job.id = "test-prompt-1".to_string();
         job.topic = "Rust Web Development".to_string();
 
-        conductor.conduct(job, tx).await.expect("conduct should succeed before asserting prompt content");
+        conductor
+            .conduct(job, tx)
+            .await
+            .expect("conduct should succeed before asserting prompt content"); // allow-anti-pattern
 
-        let captured_sys = provider.last_sys_prompt.lock().expect("lock poisoned");
-        let sys = captured_sys.as_deref().expect("system prompt must be passed");
+        let captured_sys = provider.last_sys_prompt.lock().expect("lock poisoned"); // allow-anti-pattern
+        let sys = captured_sys
+            .as_deref()
+            .expect("system prompt must be passed"); // allow-anti-pattern
         assert!(
             sys.contains("SEO") && sys.contains("Content Strategist"),
             "System prompt must contain SEO domain expertise. Got: {}",
             sys
         );
 
-        let captured_user = provider.last_user_prompt.lock().expect("lock poisoned");
-        let user = captured_user.as_deref().expect("user prompt must be passed");
+        let captured_user = provider.last_user_prompt.lock().expect("lock poisoned"); // allow-anti-pattern
+        let user = captured_user
+            .as_deref()
+            .expect("user prompt must be passed"); // allow-anti-pattern
         assert!(
             user.contains("Rust Web Development"),
             "User prompt must include the job topic. Got: {}",
@@ -226,10 +254,14 @@ mod tests {
             _prompt: &str,
             _sys: Option<&str>,
         ) -> Result<LlmResponse, AiomeError> {
-            Err(AiomeError::Infrastructure { reason: "LLM unavailable".to_string() })
+            Err(AiomeError::Infrastructure {
+                reason: "LLM unavailable".to_string(),
+            })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {
-            Err(AiomeError::Infrastructure { reason: "down".to_string() })
+            Err(AiomeError::Infrastructure {
+                reason: "down".to_string(),
+            })
         }
         fn name(&self) -> &str {
             "FailingProvider"

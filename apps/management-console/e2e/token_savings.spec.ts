@@ -33,7 +33,7 @@ test.describe('RTK Token Savings UI', () => {
     });
 
     // 3. The UI should update to show 400 chars saved
-    await expect(page.getByTestId('token-saved-chars-exact')).toHaveText('400', { timeout: 5000 });
+    await expect(page.locator('.story-flow').getByTestId('token-saved-chars-exact')).toHaveText('400', { timeout: 5000 });
 
     // 4. Dispatch another event to check cumulative sum
     await page.evaluate(() => {
@@ -46,6 +46,6 @@ test.describe('RTK Token Savings UI', () => {
     });
 
     // 5. The UI should now show 1200 chars saved
-    await expect(page.getByTestId('token-saved-chars-exact')).toHaveText('1200', { timeout: 5000 });
+    await expect(page.locator('.story-flow').getByTestId('token-saved-chars-exact')).toHaveText('1200', { timeout: 5000 });
   });
 });

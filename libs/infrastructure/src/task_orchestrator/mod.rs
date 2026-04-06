@@ -196,7 +196,7 @@ impl TaskDispatcher {
     }
 
     /// Exposes a conductor by category for testing and diagnostic routing.
-    /// Note: O(N * C) where N is number of conductors and C is number of categories. 
+    /// Note: O(N * C) where N is number of conductors and C is number of categories.
     /// Not intended for hot-path use.
     pub fn get_conductor_for(&self, category: &str) -> Option<Arc<dyn TaskConductor>> {
         self.conductors
@@ -241,7 +241,10 @@ impl TaskDispatcher {
                                     arts["description"].as_str().unwrap_or("Autonomous GIG");
                                 let sanitized = guardrails::sanitize_input(raw_description);
                                 let description = if sanitized.len() > 1000 {
-                                    format!("{}...", shared::strings::truncate_bytes_safely(&sanitized, 997))
+                                    format!(
+                                        "{}...",
+                                        shared::strings::truncate_bytes_safely(&sanitized, 997)
+                                    )
                                 } else {
                                     sanitized
                                 };
@@ -333,7 +336,11 @@ impl TaskDispatcher {
             // For now, we notify ALL conductors to cancel it if they have it.
             for conductor in &self.conductors {
                 if let Err(e) = conductor.cancel(job_id).await {
-                    tracing::warn!("Failed to cancel conductor {}: {}", conductor.conductor_name(), e);
+                    tracing::warn!(
+                        "Failed to cancel conductor {}: {}",
+                        conductor.conductor_name(),
+                        e
+                    );
                 }
             }
             Ok(())
@@ -396,8 +403,13 @@ impl TaskDispatcher {
                             );
                             if let Err(e) = self.process_goal_job(job.clone()).await {
                                 error!("❌ Planning failed for job {}: {:?}", job.id, e);
-                                if let Err(db_err) = self.job_queue.fail_job(&job.id, &e.to_string()).await {
-                                    error!("Failed to mark job {} as failed in DB: {}", job.id, db_err);
+                                if let Err(db_err) =
+                                    self.job_queue.fail_job(&job.id, &e.to_string()).await
+                                {
+                                    error!(
+                                        "Failed to mark job {} as failed in DB: {}",
+                                        job.id, db_err
+                                    );
                                 }
                             }
                             continue; // Skip normal conduction for Goal
@@ -405,8 +417,7 @@ impl TaskDispatcher {
                     }
 
                     // Find a suitable conductor
-                    if let Some(conductor) = self.get_conductor_for(&job.category)
-                    {
+                    if let Some(conductor) = self.get_conductor_for(&job.category) {
                         let job_id = job.id.clone();
                         let conductor_id = conductor.conductor_name().to_string();
 
@@ -480,7 +491,10 @@ impl TaskDispatcher {
                                                         })
                                                         .await
                                                     {
-                                                        tracing::warn!("Failed to send failed event: {}", e);
+                                                        tracing::warn!(
+                                                            "Failed to send failed event: {}",
+                                                            e
+                                                        );
                                                     }
                                                     return;
                                                 }
@@ -1217,7 +1231,10 @@ mod tests {
                 is_critical_failure: true,
                 ..Default::default()
             };
-            job_queue.store_trajectory_step(step).await.expect("store_trajectory_step should succeed in test");
+            job_queue
+                .store_trajectory_step(step)
+                .await
+                .expect("store_trajectory_step should succeed in test"); // allow-anti-pattern
         }
 
         let diag_engine = Arc::new(crate::diagnostics::AgentRxDiagnostics::new(Arc::new(

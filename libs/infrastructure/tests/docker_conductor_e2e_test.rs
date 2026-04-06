@@ -25,8 +25,12 @@ async fn test_docker_conductor_e2e_success_flow() {
         .arg("--version")
         .output();
 
-    if output.is_err() || !output.unwrap().status.success() {
-        // allow-anti-pattern
+    if output.is_err() {
+        println!("Skipping Docker E2E test as docker is not installed");
+        return;
+    }
+    let out = output.unwrap(); // allow-anti-pattern
+    if !out.status.success() {
         println!("Skipping Docker E2E test as docker is not installed");
         return;
     }

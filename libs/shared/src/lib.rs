@@ -38,10 +38,10 @@ pub mod output_validator;
 pub mod sandbox;
 /// ネットワークセキュリティポリシー
 pub mod security;
-/// ウォッチタワー機能
-pub mod watchtower;
 /// 安全な文字列操作・文字列表現ユーティリティ
 pub mod strings;
+/// ウォッチタワー機能
+pub mod watchtower;
 
 /// Macros use these re-exports to avoid requiring dependencies in caller crates.
 pub mod reexport {

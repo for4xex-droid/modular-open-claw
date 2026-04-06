@@ -146,4 +146,6 @@ pub struct AppState {
     pub lora_marketplace:
         Component<Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>>,
     pub publish_pipeline: Component<Arc<infrastructure::publisher::PublishPipeline>>,
+    pub cortex_projector:
+        Component<Arc<infrastructure::cortex_file_projector::CortexFileProjector>>,
 }
