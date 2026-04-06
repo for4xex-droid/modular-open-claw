@@ -60,6 +60,8 @@ pub struct CortexCompiler {
     pool: DatabasePool,
     belief_gate: Option<Arc<BeliefConsistencyGate>>,
     compute_semaphore: Arc<Semaphore>,
+    /// ADR-025: Agent-Native Discovery のためのファイルシステム投影モジュール
+    file_projector: Option<Arc<crate::cortex_file_projector::CortexFileProjector>>,
 }
 
 impl CortexCompiler {
@@ -74,7 +76,17 @@ impl CortexCompiler {
             pool,
             belief_gate,
             compute_semaphore,
+            file_projector: None,
         }
+    }
+
+    /// ADR-025: Agent-Native Discovery 用のファイル投影を有効化
+    pub fn with_file_projector(
+        mut self,
+        projector: Arc<crate::cortex_file_projector::CortexFileProjector>,
+    ) -> Self {
+        self.file_projector = Some(projector);
+        self
     }
 
     pub async fn run_compilation_cycle(&self) -> Result<CompilationReport, AiomeError> {
@@ -505,6 +517,23 @@ impl CortexCompiler {
 
         if let Err(e) = log_res {
             tracing::warn!("Failed to log compile activity: {}", e);
+        }
+
+        // ADR-025: コンパイル後にファイルシステムに自動投影
+        if let Some(ref projector) = self.file_projector {
+            match projector.project_to_filesystem().await {
+                Ok(proj_report) => {
+                    tracing::info!(
+                        "📂 [CortexCompiler] FS Projection: {} created, {} updated, {} skipped",
+                        proj_report.files_created,
+                        proj_report.files_updated,
+                        proj_report.files_skipped
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("⚠️ [CortexCompiler] FS Projection failed (non-fatal): {}", e);
+                }
+            }
         }
 
         Ok(report)

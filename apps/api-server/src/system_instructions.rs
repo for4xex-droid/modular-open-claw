@@ -160,13 +160,7 @@ pub(crate) async fn resolve_project_rules_from_path(
 }
 
 pub(crate) fn safe_truncate(s: &str, max_chars: usize) -> String {
-    if s.chars().count() > max_chars {
-        let mut truncated: String = s.chars().take(max_chars).collect();
-        truncated.push_str("... (truncated)");
-        truncated
-    } else {
-        s.to_string()
-    }
+    shared::strings::truncate_chars_safely(s, max_chars, true).into_owned()
 }
 
 pub(crate) async fn read_app_data_file(

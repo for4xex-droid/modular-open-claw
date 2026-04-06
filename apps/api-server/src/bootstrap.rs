@@ -1039,12 +1039,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let compiler_gate = Some(belief_gate.clone());
     tokio::spawn(async move {
         tracing::info!("📚 [Cortex] Starting compilation loop...");
+        let projector = infrastructure::cortex_file_projector::CortexFileProjector::new(
+            compiler_pool.clone(),
+            std::path::PathBuf::from("workspace/cortex_fs"),
+        );
         let compiler = infrastructure::cortex_compiler::CortexCompiler::new(
             compiler_provider,
             compiler_pool,
             compiler_gate,
             compiler_semaphore,
-        );
+        )
+        .with_file_projector(std::sync::Arc::new(projector));
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1800));
         loop {
             interval.tick().await;

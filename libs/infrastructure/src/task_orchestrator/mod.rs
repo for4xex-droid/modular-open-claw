@@ -241,7 +241,7 @@ impl TaskDispatcher {
                                     arts["description"].as_str().unwrap_or("Autonomous GIG");
                                 let sanitized = guardrails::sanitize_input(raw_description);
                                 let description = if sanitized.len() > 1000 {
-                                    format!("{}...", &sanitized[..997])
+                                    format!("{}...", shared::strings::truncate_bytes_safely(&sanitized, 997))
                                 } else {
                                     sanitized
                                 };

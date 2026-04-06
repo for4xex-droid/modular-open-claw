@@ -32,6 +32,7 @@
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
+| `cortex_file_projector` | ADR-025: Duke大学研究に基づき、Cortex Wiki記事をファイルシステム階層（カテゴリ/記事.md）として物理投影。`content_hash` 差分更新により冪等性を保証し、DreamState の Agent-Native Discovery モードで自律探索精度を向上。 | **ADR-025 実装完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済み（Box::pin + リニアフロー）。**Phase 1-2 Reflexion** で SQLite/PostgreSQL の P2P Timeline `UPSERT` 永続化を強化。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断（Phase 1-2 反省強化）および Ollama の LoRA 動内ビルダ統合済。 | **第3世代進化** |
@@ -65,4 +66,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-06 (Precomputed Relational Intelligence)*
+*最終更新: 2026-04-06 (Asia/Tokyo) - Shared String Safety Hardening v1.0*

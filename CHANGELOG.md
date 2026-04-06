@@ -1,6 +1,25 @@
-## [Unreleased]
+## [Unreleased] - 2026-04-06
 
 ### Added
+- `libs/shared/src/strings.rs`: 高効率な文字列切り詰めユーティリティ (`truncate_bytes_safely`, `truncate_chars_safely`) を新設。
+  - `Cow<'a, str>` によるゼロアロケーション・パスの最適化。
+  - 数学的に厳密な Unicode 境界判定 (`char_indices().nth()`) の採用。
+
+### Changed
+- システム全体の文字列スライス操作 (`&str[..N]`) を `shared::strings` の安全な関数に全置換（UTF-8パニック耐性を極大化）。
+  - 対象: `context_engine`, `task_orchestrator`, `expression/engine`, `timesfm`, `api-server`。
+- `api-server` の `safe_truncate` を `shared::strings` へ委譲し、内部冗長性を排除。
+
+### Fixed
+- マルチバイト文字（日本語、絵文字等）の境界で文字列を切り詰める際に発生していた潜在的なサーバパニック (C-6) を完全解消。
+- 文字列切り詰め時における O(N) 計算量爆発の脆弱性を修正。
+
+### Added
+- **Infrastructure (ADR-025: Agent-Native Document Discovery):**
+  - Duke大学研究 (2026) に基づき、Cortex Wiki記事をファイルシステム階層として物理投影する `CortexFileProjector` を新設。`content_hash` ベースの差分投影により冪等性を保証。
+  - `DreamState` に `DiscoveryMode` enum（`SemanticSearch` / `AgentNative`）を追加。Scientific Experiment タスクにおいて投影された `_index.md` をプロンプトに注入し、自律探索精度を向上。
+  - `CortexCompiler` のコンパイルサイクル後に自動投影トリガーを追加（`with_file_projector` Builder パターン）。
+  - `DreamService` 起動時に初回 Cortex FS 投影を実行し、Agent-Native Discovery を有効化。
 - **Infrastructure (SEO Intelligence):** 
   - Implemented concrete `SerpAnalysisAdapter` with `reqwest` HTTP capabilities, `sanitize_snippet` HTML stripping, and a process-global `DashMap`-based in-memory rate limiting to strictly prevent external API quota depletion by continuous autonomous Agent loops. Added severe boundary constraints (query length and empty string filters).
   - Implemented concrete `WordPressAdapter` relying on WP REST API v2 supporting draft/publish routing and standard auth workflows. Added future `AbyssVault` migration tracking and strict payload bounds checking (10MB limits, empty content shielding).

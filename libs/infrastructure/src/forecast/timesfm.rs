@@ -121,7 +121,7 @@ impl ForecastProvider for TimesFmProvider {
             return Err(AiomeError::Infrastructure {
                 // RT-6 FIX: Truncate error body to prevent information leakage
                 // RT3-1 FIX: Use char boundary to avoid panic on multi-byte UTF-8 truncation
-                reason: format!("TimesFM error [{}]: {}", status, truncate_utf8(&body, 256)),
+                reason: format!("TimesFM error [{}]: {}", status, shared::strings::truncate_bytes_safely(&body, 256)),
             });
         }
 
@@ -231,16 +231,3 @@ impl ForecastProvider for TimesFmProvider {
     }
 }
 
-/// Safely truncate a UTF-8 string to at most `max_bytes` bytes
-/// without splitting a multi-byte character.
-fn truncate_utf8(s: &str, max_bytes: usize) -> &str {
-    if s.len() <= max_bytes {
-        return s;
-    }
-    // Find the last char boundary at or before max_bytes
-    let mut end = max_bytes;
-    while end > 0 && !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    &s[..end]
-}

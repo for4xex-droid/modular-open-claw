@@ -1,26 +1,42 @@
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1.
- */
-
 use crate::AppState;
 use aiome_core_contracts::traits::AgentEvolver;
+use infrastructure::cortex_file_projector::CortexFileProjector;
 use infrastructure::dream_state::DreamState;
 use infrastructure::trend_sonar::{ExternalTrendSonar, SerpAnalysisAdapter};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Dream サービスを起動する。
 /// 自発的な仮説生成・実験・省察（Dream State）を定期的に実行する。
 pub async fn run(state: AppState) -> anyhow::Result<()> {
     info!("💤 [DreamService] Initializing Dream State Loop...");
 
-    // 1. DreamState の初期化
-    let dream_state = DreamState::new(state.provider.get_inner().clone());
+    // ADR-025: CortexFileProjector の初期化 — Agent-Native Discovery
+    let cortex_fs_root = std::path::PathBuf::from("workspace/cortex_fs");
+    let job_queue_inner = state.job_queue.get_inner().clone();
+    let projector = CortexFileProjector::new(
+        job_queue_inner.get_pool().clone(),
+        cortex_fs_root.clone(),
+    );
+
+    // 起動時に初回投影を実行
+    match projector.project_to_filesystem().await {
+        Ok(report) => {
+            info!(
+                "📂 [DreamService] Initial Cortex FS projection: {} created, {} updated across {} categories",
+                report.files_created, report.files_updated, report.categories_count
+            );
+        }
+        Err(e) => {
+            warn!("⚠️ [DreamService] Initial Cortex FS projection failed (non-fatal): {}", e);
+        }
+    }
+
+    // 1. DreamState の初期化 (ADR-025: Agent-Native Discovery 有効化)
+    let dream_state = DreamState::new(state.provider.get_inner().clone())
+        .with_cortex_fs(cortex_fs_root);
 
     // 2. TrendSonar の準備（探索夢向け）
     // Phase β: Inject SerpAnalysisAdapter for trend-based SEO gap identification
@@ -40,7 +56,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     let trend_sonar = ExternalTrendSonar::new(adapters, None);
 
     // 3. Queue / AgentLevel 情報へのアクセス
-    let job_queue = state.job_queue.get_inner().clone();
+    let job_queue = job_queue_inner;
 
     // 4. 定期実行ループ (心拍の裏で長時間走る)
     let mut timer = interval(Duration::from_secs(600)); // 10分おき
