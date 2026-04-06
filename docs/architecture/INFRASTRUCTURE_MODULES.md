@@ -40,7 +40,7 @@
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `output_filter` | RTK(Rust Token Killer)に着想を得たコマンド出力フィルタ。ボイラープレートや重複行を削減しLLMコンテキストを最適化。**Phase 3**で削減数を `ToolExecutionEvent::TokenSaved` として上層やSSE（Management Console）へ流す計測基盤を結合済。 | **Phase 3 完了** |
-| `publisher` | 成果物の SNS 等への自動投稿を管理。 | 実装完了 |
+| `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。防衛的境界テスト込み。 | **強化完了** |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
@@ -54,7 +54,7 @@
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。**ADR-024 Phase 2** で `job_id` および `tool_name` による詳細な追跡に対応。 | **機能拡張完了** |
-| `trend_sonar` | 外部トレンドの収集（Web/RSS）と LLM による評価・選別。マルチソース集約とインテリジェントな選別を実現。**Phase 24** で `purge_entities` による統合サニタイズへ移行。 | **強化完了** |
+| `trend_sonar` | 外部トレンドの収集（Web/RSS）と LLM による評価・選別。マルチソース集約対応。**Phase B/C** にて `DashMap` によるグローバルレートリミットを搭載した `SerpAnalysisAdapter` を新設し SEO トピック・ギャップ分析機構を結合済。 | **強化完了** |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |

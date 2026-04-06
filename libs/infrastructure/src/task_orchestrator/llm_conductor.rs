@@ -44,14 +44,17 @@ impl TaskConductor for GenericLlmConductor {
     ) -> Result<(String, Option<String>), AiomeError> {
         info!("🧠 [GenericLlm] Executing job: {}", job.topic);
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: format!("Starting generic LLM task for topic: {}", job.topic),
                 percent: Some(10),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send progress event: {}", e);
+        }
 
         let prompt = format!(
             "Please perform the following {} task:\nTopic: {}",
@@ -60,14 +63,17 @@ impl TaskConductor for GenericLlmConductor {
 
         let response = self.llm.complete(&prompt, None).await?;
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Task complete.".to_string(),
                 percent: Some(100),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send completion event: {}", e);
+        }
 
         // Return (Content, ExtractedKarma/Directives)
         Ok((response.content, None))

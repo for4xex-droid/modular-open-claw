@@ -352,7 +352,7 @@ pub async fn trigger_agent_chat_stream(
                     }
 
                     current_history.push(format!("AI: {}", full_reply));
-                    current_history.push(format!("SYSTEM: [Results: {}]", skill_results.join("\n")));
+                    current_history.push(format!("SYSTEM: [Results: {}]", shared::guardrails::sanitize_for_prompt(&skill_results.join("\n"))));
                     turn += 1;
                 }
             } else {

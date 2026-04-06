@@ -39,6 +39,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
     3. **5.5頭身 (NURTURE Compliance) チェッカー**: アバターのボーン構造を解析し、児童を模したプロポーション（5.5頭身未満）を持つモデルを自動的に「制限(Restricted)」ステータスとして隔離（Quarantine）し、`QuarantineStore` (SQLite DB) に永続的に記録して再発と迂回を防止します。
 *   **CRDT 同期のサイズ制限**: タイムライン同期に使用される Automerge BLOB には 1MB のハードリミットが設定されており、大規模なバイナリデータの埋め込みや改ざんによる隠蔽を構造的に不可能にしています。
 *   **GlassWorm Shield (不可視Unicodeインジェクション防御)**: ゼロ幅スペース、BOM、BIDI制御文字、Unicode Tagなどの不可視文字を用いた悪意あるプロンプト・コードインジェクション（GlassWorm）をエッジレベルで遮断します。外部 API（Karma, ギグエコノミー, ギフト）、メタデータ、スクレイピング抽出情報など、システム外部から流入する全てのテキストデータは、解釈前に `strip_invisible_unicode` プリミティブにより不可視文字が物理的に剥離されます。
+*   **MCP Tool Output Sanitization (Markdown Structure Injection Defense)**: ツール（MCP）の実行結果として外部から返される文字列（スクレイピング結果やAPIレスポンス等）をLLMのコンテキスト履歴に再投入する際、`sanitize_for_prompt` により Markdown の構造制御文字（`#`, `---`, `＃`, `－－－`）がエスケープされます。これにより、外部データに埋め込まれたMarkdownヘッダーやセパレーターがLLMのコンテキストウィンドウ内でシステムプロンプトの区画境界を偽装し、命令の優先順位を操作する「Markdown Structure Injection」攻撃を防止します。**注意**: 本関数は自然言語によるプロンプトインジェクション（例: "Ignore all previous instructions"）は検出しません。そのような攻撃は `validate_input` のパターンマッチングおよび `ConstitutionalValidator` の3段階 Adversarial Validation で対処されます。
 
 ## 4. 不変の監査ログ (Immutable Audit Trails)
 ログは「誰が何をしたか」を証明する唯一の手がかりです。Aiome では、このログ自体の改ざんを不可能にします。

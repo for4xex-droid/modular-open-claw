@@ -87,6 +87,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 64 | **Transaction Divergence (Ghost State)** | **DB lock fails after external escrow moves funds** | 🔴 High | **Saga Compensating Tx (DB First, rollback on API failure) (LoRA Market)** |
 | 65 | **Streaming LLM Bypass** | **Missing pre-execute hooks in `stream_complete`** | 🔴 High | **Security Hook Enforcement (Phase 1-2 Reflexion)** |
 | 66 | **Guardrail Timing Bypass** | **Negative timestamp modulus in penalty timers** | 🟡 Mid | **`.unsigned_abs()` to guarantee positive jitter (Phase 1-2 Reflexion)** |
+| 67 | **API Quota Exhaustion** | **Infinite loop spawning HTTP clients** | 🔴 High | **Process-Global Rate Limiting (`DashMap`) (Phase B/C)** |
+| 68 | **Massive Payload / 0-byte Outbound DoS** | **Agent hallucinates 10MB or empty content** | 🔴 High | **Strict Pre-flight Infrastructure Boundary Validators (Phase B/C)** |
 
 ## 3. Defense Architecture
 
@@ -105,6 +107,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Constraint Enforcement (Phase 55)**: Implements `ConstraintChecker` in the core execution loop. It structurally blocks agents from generating outputs exceeding 100KB (`OutputSizeExceeded`) and detects `SuspiciousEchoDetected` (50+ char exact input repetition), preventing CPU/Memory DoS and repetitive hallucination loops.
 - **Path Traversal Shield (Red Team)**: Enforces strict input validation on parameters like `dataset_id` in `LoraTrainingService`, actively rejecting strings containing `..`, `/`, or `\` to prevent unauthorized access to local file systems.
 - **Resource Exhaustion Blockers (Red Team)**: Introduces hard upper bounds on background job queues (e.g., max 100 `active_jobs`) and employs non-blocking `try_acquire()` for file upload semaphores (`inochi2d`, `voice`). This combination structurally prevents slowloris-style socket starvation and unbounded memory (OOM) attacks from malicious or out-of-control agents.
+- **Outbound Payload Strict Bounds (Phase B/C)**: Prevents an autonomous conductor from successfully executing an HTTP request with 0-byte or 10MB+ parameters. Evaluated upstream within infrastructure adapters (e.g. `WordPressAdapter`, `SerpAnalysisAdapter`) natively prior to creating network traces to mitigate WAF bans and network bandwidth exhaustion.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.

@@ -471,6 +471,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let state = AppState {
         hook_chain: Default::default(),
+        publish_pipeline: Default::default(),
         a2a_client: Component::new(Arc::new(
             infrastructure::grpc::mock_a2a_client::MockA2aClient::new(),
         )),
@@ -590,7 +591,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                     None,
                 ),
             );
-            let dispatcher = Arc::new(infrastructure::task_orchestrator::TaskDispatcher::new(
+            let mut dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
                 job_queue.clone(),
                 std::time::Duration::from_millis(10),
                 None, // core_event_tx
@@ -601,7 +602,25 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 None, // oracle
                 None, // gig_engine
                 None, // diagnostics
-            ));
+            );
+
+            // Register conductors for integration tests
+            let generic_conductor = Arc::new(
+                infrastructure::task_orchestrator::llm_conductor::GenericLlmConductor::new(
+                    provider.clone(),
+                    vec!["scientific_experiment", "data_processing"],
+                ),
+            );
+            dispatcher.register_conductor(generic_conductor);
+
+            let seo_conductor = Arc::new(
+                infrastructure::task_orchestrator::seo_content::SeoContentConductor::new(
+                    provider.clone(),
+                ),
+            );
+            dispatcher.register_conductor(seo_conductor);
+
+            let dispatcher = Arc::new(dispatcher);
 
             // G-22 Fix: Spawn dispatcher loop in background for integration tests
             let dispatcher_clone = dispatcher.clone();
@@ -2482,5 +2501,26 @@ async fn test_cortex_query_file_back() {
     assert_eq!(
         doc_count, 1,
         "File-back document should be inserted since mock confidence is 0.95"
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_seo_content_conductor_exists() {
+    let (_server, state, _tmp) = create_test_server().await;
+    
+    // RED: genericllm_conductor is not yet registered with "seo_content"
+    let dispatcher = state.task_dispatcher.get_inner();
+    let conductor = dispatcher.get_conductor_for("seo_content");
+    
+    assert!(
+        conductor.is_some(),
+        "seo_content category must be handled by a registered conductor"
+    );
+    
+    assert_eq!(
+        conductor.expect("conductor is missing").conductor_name(),
+        "SeoContentConductor",
+        "seo_content should be handled by dedicated SeoContentConductor"
     );
 }

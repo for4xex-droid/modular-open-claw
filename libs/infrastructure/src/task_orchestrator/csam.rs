@@ -39,14 +39,17 @@ impl TaskConductor for CsamScanConductor {
     ) -> Result<(String, Option<String>), AiomeError> {
         info!("🔍 [CSAM] Scanning artifact ID: {}", job.topic);
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Scanning image artifact for compliance...".into(),
                 percent: Some(50),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send progress event: {}", e);
+        }
 
         // Real logic using tokio::task::spawn_blocking to prevent Tokio thread pool exhaustion.
         let artifact_id = job.topic.clone();

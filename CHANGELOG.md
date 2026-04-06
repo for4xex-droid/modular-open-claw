@@ -1,6 +1,23 @@
 ## [Unreleased]
 
 ### Added
+- **Infrastructure (SEO Intelligence):** 
+  - Implemented concrete `SerpAnalysisAdapter` with `reqwest` HTTP capabilities, `sanitize_snippet` HTML stripping, and a process-global `DashMap`-based in-memory rate limiting to strictly prevent external API quota depletion by continuous autonomous Agent loops. Added severe boundary constraints (query length and empty string filters).
+  - Implemented concrete `WordPressAdapter` relying on WP REST API v2 supporting draft/publish routing and standard auth workflows. Added future `AbyssVault` migration tracking and strict payload bounds checking (10MB limits, empty content shielding).
+  - Eradicated all `unwrap()` calls across production and tests, and established a stable `test-utils` cross-crate mocking architecture enforcing strict separation of concerns from integration tests interacting with `api-server`.
+- **API Server (DreamService):** 
+  - Subscribed `DreamService` to dynamically injected real-world Search sources by coupling `WebSearchAdapter` and `SerpAnalysisAdapter` to `ExternalTrendSonar` based on environment configurations, fulfilling Phase β implementation goals.
+- **API Server (PublishPipeline):** 
+  - Upgraded CLI bootstrap sequence to dynamically load `WordPressAdapter` if `WP_API_URL` exists, bridging the final gap of Phase γ SEO capability integrations.
+- **SEO Intelligence Component (Phase 1-3) [完了]**:
+    - `api-server/src/stream.rs`: MCP ツールチェイン結果に対し `shared::guardrails::sanitize_for_prompt()` を適用し、外部からの Prompt Injection を遮断。
+    - `libs/infrastructure/src/task_orchestrator/seo_content.rs`: `SeoContentConductor` を新規実装し、TaskDispatcher からの `seo_content` ジョブを専用にハンドリング。`GenericLlmConductor` との結合を排除し、SEO特化の高品質プロンプト・ライフサイクルを提供するアーキテクチャ的疎結合（Decoupling）を実現。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs`: `TaskDispatcher` にテストおよび機能診断用ヘルパー `get_conductor_for` を実装。
+    - `apps/api-server/src/bootstrap.rs`, `app_state.rs`: `PublishPipeline` を `AppState` に統合し、SEOコンテンツ生成後のCMS/SNS配信基盤をブートストラップ化。本番環境ではパブリッシャー未登録時に警告ログを出力。
+    - `apps/api-server/src/api_integration_tests.rs`: テスト用 `TaskDispatcher` に `GenericLlmConductor` と `SeoContentConductor` を正しく登録。結合テスト `test_seo_content_conductor_exists` が実環境でも正常にパスするよう修正。
+- **Silent Error Suppression Purge (Observability Hardening) [完了]**:
+    - `task_orchestrator/mod.rs` (17箇所), `llm_conductor.rs` (2箇所), `csam.rs` (1箇所), `docker_conductor.rs` (13箇所): async 操作の `let _ = *.await` によるサイレントエラー握り潰しパターンを完全駆逐。すべて `if let Err(e) = ... { tracing::warn!/error! }` に置換し、本番環境でのエラー可観測性を回復。
+    - `task_orchestrator/mod.rs`: `dispatch_job` の conductor 検索ロジックの重複を排除し、`get_conductor_for()` に一元化。
 - **Precomputed Relational Intelligence (AST Impact Dependency Graph) [完了]**:
     - `scripts/nurture_auditor.py` を再設計し、O(1)のディレクトリ走査（`os.walk` と `node_modules` 等のインプレース枝刈り）を用いた超高速なASTマトリクス抽出機能を拡充。さらに、`use` / `mod` / `impl` (Rust)、`import { X }` (TSX)、および `--token-name` / `var()` (Vanilla CSS Token) の物理依存を抽出し、`.context/impact_graph.json` に出力する自己完結型の静的依存解析エンジンを実装。フロントエンドにおけるパスエイリアスの分断問題を克服するため、「インポートされたシンボル名」でのエッジ定義へ最適化。
     - `scripts/impact_query.py` CLI ツールを新規追加。`impact_graph.json` を BFS アルゴリズムで走査し、循環参照（Circular Dependency）による無限ループを防止するため `visited` ハッシュ保護を搭載。変更予定シンボルに対する被害半径（Blast Radius: `[WILL BREAK]` / `[LIKELY AFFECTED]`）を深さベースで確定的に算出。`--exclude-tests` オプションによりテストコードのノイズを除外可能。

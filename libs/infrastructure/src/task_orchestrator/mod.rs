@@ -29,6 +29,7 @@ const MAX_GIG_BUDGET: u64 = 5000;
 pub mod csam;
 pub mod llm_conductor;
 pub mod planner;
+pub mod seo_content;
 
 /// Task orchestration event. Provides observability (like cmux read-screen).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -194,6 +195,16 @@ impl TaskDispatcher {
         self.conductors.push(conductor);
     }
 
+    /// Exposes a conductor by category for testing and diagnostic routing.
+    /// Note: O(N * C) where N is number of conductors and C is number of categories. 
+    /// Not intended for hot-path use.
+    pub fn get_conductor_for(&self, category: &str) -> Option<Arc<dyn TaskConductor>> {
+        self.conductors
+            .iter()
+            .find(|c| c.capable_categories().iter().any(|cat| cat == category))
+            .cloned()
+    }
+
     async fn maybe_publish_gig_intent(
         q: Arc<dyn JobQueue>,
         g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
@@ -321,7 +332,9 @@ impl TaskDispatcher {
             // We need to find which conductor was running it.
             // For now, we notify ALL conductors to cancel it if they have it.
             for conductor in &self.conductors {
-                let _ = conductor.cancel(job_id).await;
+                if let Err(e) = conductor.cancel(job_id).await {
+                    tracing::warn!("Failed to cancel conductor {}: {}", conductor.conductor_name(), e);
+                }
             }
             Ok(())
         } else {
@@ -383,17 +396,16 @@ impl TaskDispatcher {
                             );
                             if let Err(e) = self.process_goal_job(job.clone()).await {
                                 error!("❌ Planning failed for job {}: {:?}", job.id, e);
-                                let _ = self.job_queue.fail_job(&job.id, &e.to_string()).await;
+                                if let Err(db_err) = self.job_queue.fail_job(&job.id, &e.to_string()).await {
+                                    error!("Failed to mark job {} as failed in DB: {}", job.id, db_err);
+                                }
                             }
                             continue; // Skip normal conduction for Goal
                         }
                     }
 
                     // Find a suitable conductor
-                    if let Some(conductor) = self
-                        .conductors
-                        .iter()
-                        .find(|c| c.capable_categories().contains(&job.category))
+                    if let Some(conductor) = self.get_conductor_for(&job.category)
                     {
                         let job_id = job.id.clone();
                         let conductor_id = conductor.conductor_name().to_string();
@@ -458,7 +470,7 @@ impl TaskDispatcher {
                                                             ),
                                                         )
                                                         .await;
-                                                    let _ = progress_tx
+                                                    if let Err(e) = progress_tx
                                                         .send(TaskEvent::Failed {
                                                             job_id: job_id.clone(),
                                                             error: format!(
@@ -466,7 +478,10 @@ impl TaskDispatcher {
                                                                 e
                                                             ),
                                                         })
-                                                        .await;
+                                                        .await
+                                                    {
+                                                        tracing::warn!("Failed to send failed event: {}", e);
+                                                    }
                                                     return;
                                                 }
                                                 info!("🛡️ [InvariantDag] Causal trajectory verified for job {}.", parent_id);
@@ -481,22 +496,29 @@ impl TaskDispatcher {
                             tokio::select! {
                                 _ = job_token.cancelled() => {
                                     info!("⏹️ Job {} was cancelled.", job_id);
-                                    let _ = progress_tx.send(TaskEvent::Failed {
+                                    if let Err(e) = progress_tx.send(TaskEvent::Failed {
                                         job_id: job_id.clone(),
                                         error: "Cancelled by user".to_string(),
-                                    }).await;
+                                    }).await {
+                                        tracing::warn!("Failed to send cancelled event: {}", e);
+                                    }
                                 }
                                 result = conductor_clone.conduct(job.clone(), progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
                                             let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>| async move {
-                                                let _ = q.complete_job(&j_id, Some(&res_out)).await;
-                                                let _ = p_tx
+                                                if let Err(e) = q.complete_job(&j_id, Some(&res_out)).await {
+                                                    error!("Failed to mark job {} as completed in DB: {}", j_id, e);
+                                                }
+                                                if let Err(e) = p_tx
                                                     .send(TaskEvent::Completed {
                                                         job_id: j_id.clone(),
                                                         result: res_out,
                                                     })
-                                                    .await;
+                                                    .await
+                                                {
+                                                    tracing::warn!("Failed to send completed event for {}: {}", j_id, e);
+                                                }
 
                                                 if let Some(result_hash) = r_hash_opt {
                                                     let mut parent_id_opt = None;
@@ -526,7 +548,9 @@ impl TaskDispatcher {
                                                         vec![format!("result_hash:{}", result_hash)]
                                                     );
 
-                                                    let _ = q.store_system_state(&dag_key, &dag.to_json()).await;
+                                                    if let Err(e) = q.store_system_state(&dag_key, &dag.to_json()).await {
+                                                        error!("Failed to store InvariantDag for job {}: {}", j_id, e);
+                                                    }
                                                     info!("🛡️ [InvariantDag] Appended result_hash for job {} to DAG.", j_id);
                                                 }
 
@@ -542,8 +566,12 @@ impl TaskDispatcher {
                                                 let r_hash = result_hash_opt.clone();
                                                 let out_clone = out.clone();
 
-                                                let _ = q.update_job_status(&j_id, aiome_core_contracts::traits::JobStatus::Evaluating).await;
-                                                let _ = p_tx.send(TaskEvent::Evaluating { job_id: j_id.clone() }).await;
+                                                if let Err(e) = q.update_job_status(&j_id, aiome_core_contracts::traits::JobStatus::Evaluating).await {
+                                                    error!("Failed to update job {} status to Evaluating: {}", j_id, e);
+                                                }
+                                                if let Err(e) = p_tx.send(TaskEvent::Evaluating { job_id: j_id.clone() }).await {
+                                                    tracing::warn!("Failed to send evaluating event for {}: {}", j_id, e);
+                                                }
 
                                                 tokio::spawn(async move {
                                                     match tokio::time::timeout(
@@ -557,21 +585,33 @@ impl TaskDispatcher {
                                                             } else {
                                                                 let reason = verdict.reasoning.clone();
                                                                 warn!("❌ Job {} failed Oracle review: {}", j_id, reason);
-                                                                let _ = q.fail_job(&j_id, &reason).await;
-                                                                let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await;
+                                                                if let Err(db_err) = q.fail_job(&j_id, &reason).await {
+                                                                    error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
+                                                                }
+                                                                if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await {
+                                                                    tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                                }
                                                             }
                                                         }
                                                         Ok(Err(e)) => {
                                                             let err_msg = format!("Oracle error: {}", e);
                                                             error!("🔥 {}", err_msg);
-                                                            let _ = q.fail_job(&j_id, &err_msg).await;
-                                                            let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await;
+                                                            if let Err(db_err) = q.fail_job(&j_id, &err_msg).await {
+                                                                error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
+                                                            }
+                                                            if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await {
+                                                                tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                            }
                                                         }
                                                         Err(_) => {
                                                             let err_msg = "Oracle evaluation timeout (60s)".to_string();
                                                             error!("⏰ {}", err_msg);
-                                                            let _ = q.fail_job(&j_id, &err_msg).await;
-                                                            let _ = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await;
+                                                            if let Err(db_err) = q.fail_job(&j_id, &err_msg).await {
+                                                                error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
+                                                            }
+                                                            if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: err_msg }).await {
+                                                                tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                            }
                                                         }
                                                     }
                                                 });
@@ -610,24 +650,35 @@ impl TaskDispatcher {
                                                                 self_repair_hint: "The system diagnosis process failed. Proceed with manual inspection or retry with increased developer logs.".into(),
                                                                 diagnosed_at: chrono::Utc::now().to_rfc3339(),
                                                             };
-                                                            let _ = d_jq.store_diagnosis(&d_id, fallback).await;
+                                                            if let Err(db_err) = d_jq.store_diagnosis(&d_id, fallback).await {
+                                                                tracing::error!("🔥 [Watchtower] Failed to store fallback diagnosis for {}: {:?}", d_id, db_err);
+                                                            }
                                                         }
                                                     }
                                                 });
                                             }
 
                                             if is_poisoned {
-                                                let _ = job_queue_clone.fail_job(&job_id, &e.to_string()).await;
-                                                let _ = progress_tx
+                                                if let Err(db_err) = job_queue_clone.fail_job(&job_id, &e.to_string()).await {
+                                                    error!("Failed to mark job {} as failed in DB: {}", job_id, db_err);
+                                                }
+                                                if let Err(send_err) = progress_tx
                                                     .send(TaskEvent::Failed {
                                                         job_id: job_id.clone(),
                                                         error: e.to_string(),
                                                     })
-                                                    .await;
+                                                    .await
+                                                {
+                                                    tracing::warn!("Failed to send failed event: {}", send_err);
+                                                }
                                             } else {
                                                 warn!("Task {} failed but will be retried. Clearing partial trajectory...", job_id);
-                                                let _ = job_queue_clone.clear_trajectory_steps(&job_id).await;
-                                                let _ = job_queue_clone.requeue_job(&job_id).await;
+                                                if let Err(e) = job_queue_clone.clear_trajectory_steps(&job_id).await {
+                                                    error!("Failed to clear trajectory steps for {}: {}", job_id, e);
+                                                }
+                                                if let Err(e) = job_queue_clone.requeue_job(&job_id).await {
+                                                    error!("Failed to requeue job {}: {}", job_id, e);
+                                                }
                                             }
                                         }
                                     }
@@ -660,7 +711,9 @@ impl TaskDispatcher {
                             "No capable conductor found.".to_string()
                         };
 
-                        let _ = self.job_queue.fail_job(&job.id, &fallback_msg).await;
+                        if let Err(db_err) = self.job_queue.fail_job(&job.id, &fallback_msg).await {
+                            error!("Failed to mark job {} as failed in DB: {}", job.id, db_err);
+                        }
                     }
                 }
                 Ok(None) => {
@@ -860,14 +913,17 @@ mod tests {
             job: Job,
             progress_tx: mpsc::Sender<TaskEvent>,
         ) -> Result<(String, Option<String>), AiomeError> {
-            let _ = progress_tx
+            if let Err(e) = progress_tx
                 .send(TaskEvent::Progress {
                     job_id: job.id,
                     conductor_id: self.conductor_name().to_string(),
                     message: "testing".into(),
                     percent: Some(50),
                 })
-                .await;
+                .await
+            {
+                tracing::warn!("Failed to send dummy progress event: {}", e);
+            }
             Ok(("done".into(), None))
         }
     }
@@ -1161,7 +1217,7 @@ mod tests {
                 is_critical_failure: true,
                 ..Default::default()
             };
-            let _ = job_queue.store_trajectory_step(step).await;
+            job_queue.store_trajectory_step(step).await.expect("store_trajectory_step should succeed in test");
         }
 
         let diag_engine = Arc::new(crate::diagnostics::AgentRxDiagnostics::new(Arc::new(

@@ -58,14 +58,17 @@ impl TaskConductor for DockerConductor {
         job: Job,
         progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
     ) -> Result<(String, Option<String>), AiomeError> {
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Acquiring capacity (Concurrency Limit)...".to_string(),
                 percent: Some(5),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send progress event: {}", e);
+        }
 
         // Layer 1: Fork Bomb Protection
         // Wait for a permit. If we exceed 3, we wait here.
@@ -77,14 +80,17 @@ impl TaskConductor for DockerConductor {
                     reason: format!("Semaphore closed: {}", e),
                 })?;
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Capacity acquired. Validating authorization...".to_string(),
                 percent: Some(10),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send progress event: {}", e);
+        }
 
         // Extract payload from `topic` string
         let payload: serde_json::Value =
@@ -150,14 +156,17 @@ impl TaskConductor for DockerConductor {
         // One-time Token generation for gRPC Authorization
         let auth_token = Uuid::new_v4().to_string();
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Executing worker container via BastionGuard...".to_string(),
                 percent: Some(30),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send progress event: {}", e);
+        }
 
         let task_prompt_b64 = base64::engine::general_purpose::STANDARD.encode(task_prompt);
 
@@ -257,7 +266,7 @@ impl TaskConductor for DockerConductor {
         }
 
         if mapped_port.is_empty() {
-            let _ = self.cancel(&job.id).await;
+            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
                 reason: "Failed to resolve worker mapped port".to_string(),
@@ -292,7 +301,7 @@ impl TaskConductor for DockerConductor {
         }
 
         if !health_ok {
-            let _ = self.cancel(&job.id).await;
+            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
                 reason: "Shadow Worker gRPC health check failed after startup".to_string(),
@@ -316,17 +325,20 @@ impl TaskConductor for DockerConductor {
                 while let Some(progress_item) = tokio_stream::StreamExt::next(&mut stream).await {
                     match progress_item {
                         Ok(p) => {
-                            let _ = progress_tx
+                            if let Err(e) = progress_tx
                                 .send(TaskEvent::Progress {
                                     job_id: job.id.clone(),
                                     conductor_id: self.conductor_name().to_string(),
                                     message: p.message.clone(),
                                     percent: Some(p.percent.min(100) as u8),
                                 })
-                                .await;
+                                .await
+                            {
+                                tracing::warn!("Failed to send stream progress event: {}", e);
+                            }
 
                             if p.is_failed {
-                                let _ = self.cancel(&job.id).await;
+                                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
                                 let _ = std::fs::remove_dir_all(&temp_dir);
                                 return Err(AiomeError::Infrastructure {
                                     reason: format!(
@@ -342,7 +354,7 @@ impl TaskConductor for DockerConductor {
                             }
                         }
                         Err(e) => {
-                            let _ = self.cancel(&job.id).await;
+                            if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
                             let _ = std::fs::remove_dir_all(&temp_dir);
                             return Err(e);
                         }
@@ -350,7 +362,7 @@ impl TaskConductor for DockerConductor {
                 }
 
                 if !is_completed {
-                    let _ = self.cancel(&job.id).await;
+                    if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
                     let _ = std::fs::remove_dir_all(&temp_dir);
                     return Err(AiomeError::Infrastructure {
                         reason:
@@ -360,12 +372,12 @@ impl TaskConductor for DockerConductor {
                 }
             }
             Ok(Err(e)) => {
-                let _ = self.cancel(&job.id).await;
+                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(e);
             }
             Err(_) => {
-                let _ = self.cancel(&job.id).await;
+                if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(AiomeError::Infrastructure {
                     reason: "gRPC Stream Execution timed out after 300s".to_string(),
@@ -377,16 +389,19 @@ impl TaskConductor for DockerConductor {
         let _ = std::fs::remove_dir_all(&temp_dir);
 
         // Gap K: Clean up container after success
-        let _ = self.cancel(&job.id).await;
+        if let Err(e) = self.cancel(&job.id).await { tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e); }
 
-        let _ = progress_tx
+        if let Err(e) = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "Execution completed. Sterilizing output...".to_string(),
                 percent: Some(90),
             })
-            .await;
+            .await
+        {
+            tracing::warn!("Failed to send sterilization progress event: {}", e);
+        }
 
         // Layer 5: Sterilization
         // Validate against XSS/malicious prompts via Unified Response Purger

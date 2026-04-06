@@ -671,6 +671,29 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         bg_provider.clone(),
     ));
 
+    // [Step 1.7.5] Bootstrap PublishPipeline for SEO / CMS integration
+    let publish_pipeline = Arc::new(infrastructure::publisher::PublishPipeline::new({
+        #[allow(unused_mut)]
+        let mut publishers: Vec<Box<dyn aiome_core_contracts::traits::Publisher>> = Vec::new();
+        #[cfg(any(test, debug_assertions))]
+        {
+            publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
+        }
+        if publishers.is_empty() {
+            if let Ok(wp_url) = std::env::var("WP_API_URL") {
+                let wp_token = std::env::var("WP_API_TOKEN").unwrap_or_default();
+                publishers.push(Box::new(infrastructure::publisher::wordpress::WordPressAdapter::new(
+                    wp_url,
+                    wp_token,
+                )));
+                tracing::info!("✅ [PublishPipeline] WordPress publisher registered.");
+            } else {
+                warn!("⚠️ [PublishPipeline] No publishers registered. SEO content will be generated but NOT published. Configure WP_API_URL for production use.");
+            }
+        }
+        publishers
+    }));
+
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
         std::time::Duration::from_millis(100),
@@ -711,6 +734,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         ),
     );
     task_dispatcher.register_conductor(generic_conductor);
+
+    // Register dedicated SeoContentConductor for autonomous SEO lifecycle
+    let seo_conductor = Arc::new(
+        infrastructure::task_orchestrator::seo_content::SeoContentConductor::new(
+            bg_provider.clone(),
+        ),
+    );
+    task_dispatcher.register_conductor(seo_conductor);
 
     let task_dispatcher = Arc::new(task_dispatcher);
 
@@ -965,6 +996,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 marketplace as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>,
             )
         },
+        publish_pipeline: Component::new(publish_pipeline),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

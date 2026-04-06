@@ -145,4 +145,5 @@ pub struct AppState {
     pub cortex_query: Component<Arc<infrastructure::cortex_query::CortexQueryEngine>>,
     pub lora_marketplace:
         Component<Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>>,
+    pub publish_pipeline: Component<Arc<infrastructure::publisher::PublishPipeline>>,
 }

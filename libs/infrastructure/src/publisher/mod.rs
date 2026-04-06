@@ -16,6 +16,8 @@ use tracing::info;
 #[cfg(any(test, debug_assertions))]
 pub mod mock_x;
 
+pub mod wordpress;
+
 /// [B-2] Publish Pipeline Orchestrator
 /// 各種パブリッシャーを管理し、ジョブステータスに基づいて配信を実行する。
 pub struct PublishPipeline {
