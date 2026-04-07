@@ -15,10 +15,11 @@ use async_trait::async_trait;
 //  ChaosMode: 注入可能な障害モードの型安全な列挙
 // ─────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 #[allow(dead_code)]
 pub enum ChaosMode {
     /// 正常動作（フォルトなし）
+    #[default]
     Normal,
     /// LLM が空文字列を返す
     EmptyResponse,
@@ -30,12 +31,6 @@ pub enum ChaosMode {
     GiantOutput(usize),
     /// 全操作で Err を返す
     AlwaysFail,
-}
-
-impl Default for ChaosMode {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 // ─────────────────────────────────────────────────

@@ -182,9 +182,7 @@ async fn chaos_circuit_breaker_forced_open() {
         "Circuit breaker in Open state MUST block requests"
     );
     assert_eq!(
-        result
-            .err()
-            .expect("Chaos: Expected check_state to return Err"),
+        result.expect_err("Chaos: Expected check_state to return Err"),
         "CircuitBreaker is OPEN. Failing fast."
     );
 
