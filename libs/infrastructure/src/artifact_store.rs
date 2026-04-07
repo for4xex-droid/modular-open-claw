@@ -160,10 +160,16 @@ impl ArtifactStore for UniversalArtifactStore {
             self.vault_path
                 .as_ref()
                 .cloned()
-                .unwrap_or_else(|| jail.root().to_path_buf())
+                .unwrap_or_else(|| self.base_dir.clone())
         } else {
-            jail.root().to_path_buf()
+            self.base_dir.clone()
         };
+
+        if !current_base_dir.exists() {
+            std::fs::create_dir_all(&current_base_dir).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create base dir: {}", e),
+            })?;
+        }
 
         // サンドボックスを現在のベースディレクトリ（workspace または vault）で初期化
         let sandbox =

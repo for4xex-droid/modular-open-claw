@@ -281,7 +281,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let http_client = aiome_core::http::get_http_client().clone();
 
     let sandbox = Arc::new(
-        shared::sandbox::PathSandbox::new("workspace")
+        shared::sandbox::PathSandbox::new(resolver.root())
             .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize PathSandbox: {}", e))?,
     );
 

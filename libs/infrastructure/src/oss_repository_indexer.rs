@@ -146,7 +146,7 @@ impl OssRepositoryIndexer {
         );
 
         let jail =
-            bastion::fs_guard::Jail::new("workspace").map_err(|e| AiomeError::Infrastructure {
+            bastion::fs_guard::Jail::new(&temp_dir).map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
 
