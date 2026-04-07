@@ -378,17 +378,8 @@ impl SoTEngine {
             accumulated_outputs.push((role_name, content));
         }
 
-        // 最終統合: 全 Thinker の出力を合成
-        if accumulated_outputs.is_empty() {
-            // 全員辞退した場合は前のコンテンツを維持
-            return Ok(previous_content.to_string());
-        }
-
-        if accumulated_outputs.len() == 1 {
-            return Ok(accumulated_outputs[0].1.clone());
-        }
-
         // 最終 Thinker の出力を最良の統合結果とする（Sequential の特性上、最後が最も包括的）
+        // 全員辞退した場合は None となり前のコンテンツを維持する
         match accumulated_outputs.last() {
             Some((_, content)) => Ok(content.clone()),
             None => Ok(previous_content.to_string()), // 到達不能（上の is_empty チェックで保護）
@@ -527,7 +518,11 @@ impl SoTEngine {
 
         let json_str = if let (Some(s), Some(e)) = (resp.content.find('{'), resp.content.rfind('}'))
         {
-            &resp.content[s..=e]
+            if s <= e {
+                &resp.content[s..=e]
+            } else {
+                "{}"
+            }
         } else {
             "{}"
         };
