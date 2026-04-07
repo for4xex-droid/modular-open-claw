@@ -55,6 +55,7 @@ graph TB
             VISION["VisionProvider (計画)"]
             SKILL["SkillForge (WASM)"]
             MCP_REG["RegistryManager (MCP)"]
+            TREND["TrendSonar (X/Serp)"]
         end
 
         subgraph "L3: Social Infrastructure"

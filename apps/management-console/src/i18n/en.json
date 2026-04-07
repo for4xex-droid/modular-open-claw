@@ -172,6 +172,8 @@
     "loraBaseModel": "LoRA Base Model",
     "tts": "Text-to-Speech (TTS)",
     "voiceNameId": "Voice Name / ID",
+    "xBearerToken": "X API Bearer Token",
+    "xBearerTokenNotice": "⚠️ Changing this token requires an application restart to apply to the DreamService.",
     "securitySystem": "Security & System",
     "enforceGuardrails": "Enforce Guardrails",
     "logLevel": "Log Level",

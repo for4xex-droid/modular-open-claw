@@ -25,6 +25,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<string>('intermediate');
 
     const handleFinalize = async () => {
         setIsSaving(true);
@@ -36,8 +37,6 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                 body: JSON.stringify({ key: 'ai_name', value: aiName, category: 'identity' })
             });
             // Save View Mode
-            // @ts-ignore
-            const viewMode = window.__viewMode || 'intermediate';
             await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
                 method: 'PUT',
                 body: JSON.stringify({ key: 'view_mode', value: viewMode, category: 'ui' })
@@ -82,7 +81,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                             border: '1px solid var(--border-glass-bright)',
                             borderRadius: '12px',
                             padding: '1rem',
-                            color: '#fff',
+                            color: 'var(--text-primary)',
                             fontSize: '1.2rem',
                             textAlign: 'center',
                             outline: 'none'
@@ -176,8 +175,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                         <button
                             key={lvl.id}
                             onClick={() => {
-                                // @ts-ignore
-                                window.__viewMode = lvl.id;
+                                setViewMode(lvl.id);
                                 setStep(steps.length - 1); // Skip to last or trigger handleFinalize
                             }}
                             style={{
@@ -262,7 +260,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                         style={{
                                             padding: '0.8rem 2.5rem',
                                             background: 'var(--accent-cyan)',
-                                            color: '#000',
+                                            color: 'var(--text-inverse)',
                                             border: 'none',
                                             borderRadius: 'var(--radius-md)',
                                             fontWeight: 700,
@@ -278,7 +276,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                         style={{
                                             padding: '0.8rem 2.5rem',
                                             background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
-                                            color: '#fff',
+                                            color: 'var(--text-inverse)',
                                             border: 'none',
                                             borderRadius: 'var(--radius-md)',
                                             fontWeight: 700,

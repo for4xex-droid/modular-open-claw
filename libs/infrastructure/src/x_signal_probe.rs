@@ -41,10 +41,10 @@ impl TrendAdapter for XSignalProbe {
 
         tracing::info!("📡 [XSignalProbe] Fetching signals from X API: {}", query);
 
-        let client = reqwest::Client::new();
+        let client = aiome_core::http::get_http_client();
         // searchPostsRecent functionality
         let response = client
-            .get("https://api.twitter.com/2/tweets/search/recent")
+            .get("https://api.x.com/2/tweets/search/recent")
             .query(&[("query", query)])
             .header("Authorization", format!("Bearer {}", self.bearer_token))
             .send()

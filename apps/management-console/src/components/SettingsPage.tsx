@@ -127,7 +127,7 @@ const SettingsPage: React.FC = () => {
                                     border: '1px solid var(--border-glass)',
                                     borderRadius: '8px',
                                     padding: '0.8rem',
-                                    color: '#fff',
+                                    color: 'var(--text-primary)',
                                     outline: 'none',
                                     fontSize: '0.9rem'
                                 }}
@@ -345,7 +345,7 @@ const SettingsPage: React.FC = () => {
                 {/* 3. Channel Integration Section */}
                 <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <MessageSquare size={24} color="#5865F2" />
+                        <MessageSquare size={24} color="var(--accent-purple)" />
                         <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.channelBridges')}</h3>
                     </div>
 
@@ -457,6 +457,23 @@ const SettingsPage: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <VaultProtectionItem label="API Server Secret" />
                         <SecretUpdater />
+
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.xBearerToken')}</label>
+                                {saving === 'x_bearer_token' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
+                            </div>
+                            <input
+                                type="password"
+                                defaultValue={getSetting('x_bearer_token')}
+                                placeholder={t('settings.xBearerToken')}
+                                onBlur={(e) => update_setting_handler(e.target.value, 'x_bearer_token', 'security')}
+                                style={inputStyle}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-warning)', marginTop: '0.4rem', fontStyle: 'italic' }}>
+                                {t('settings.xBearerTokenNotice')}
+                            </div>
+                        </div>
 
                         {/* Allowed Origins (Dynamic CORS) */}
                         <OriginsManager
@@ -753,7 +770,7 @@ const modeBtnStyle = (active: boolean): React.CSSProperties => ({
     padding: '10px',
     border: 'none',
     background: active ? 'var(--accent-cyan)' : 'transparent',
-    color: active ? '#000' : 'var(--text-muted)',
+    color: active ? 'var(--text-inverse)' : 'var(--text-muted)',
     borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '0.8rem',
@@ -804,7 +821,7 @@ const toggleCircleStyle = (active: boolean): React.CSSProperties => ({
     width: '16px',
     height: '16px',
     borderRadius: '50%',
-    background: active ? '#000' : 'var(--text-muted)',
+    background: active ? 'var(--text-inverse)' : 'var(--text-muted)',
     position: 'absolute',
     top: '3px',
     left: active ? '21px' : '3px',
@@ -946,7 +963,7 @@ const McpConfigManager: React.FC = () => {
                             onClick={saveConfig} 
                             disabled={saving}
                             style={{ 
-                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: '#000', 
+                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: 'var(--text-inverse)', 
                                 border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', gap: '0.5rem'
                             }}

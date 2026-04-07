@@ -1,6 +1,19 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **Phase 2B-2 Reflexion Hotfix (Limit Break Patch) [完了]:**
+  - **Settings API `view_mode` White-listing**: `OnboardingModal` から送信される `view_mode` が `allowed_keys` の制約により `SecurityViolation` を誘発していた致命的バグを修正。同時に `ui` カテゴリを認可済みリストに追加し、`SettingsPage` の初回起動および設定保存フローを正常化。
+  - **DreamService DB/Env Fallback Sync**: UI 上から設定された `SEARCH_API_KEY` および `X_BEARER_TOKEN` が `DreamService` の起動ループに反映されず、常に `.env` からのみ読み取られていた論理ギャップ (`get_setting_value` なしの環境変数直読み) を修正。再起動時に必ずユーザーが UI 上で保存したトークンを優先取得し、存在しない場合のみ環境変数にフォールバックする一貫稼働を確保。
+  - **XSignalProbe SSRF 防御強化**: `X_BEARER_TOKEN` を使用したトレンド取得で `reqwest::Client::new()` を回避し、セキュアな単一共有プールである `get_http_client()`（SSRF リダイレクト拒絶およびタイムアウト適用済み）へとリファクタリング。合わせて API ドメインを旧 `api.twitter.com` から `api.x.com` に移行。
+  - **OpenAPI Schema Sync**: `soul.rs` の `InitSoul` 関連構造体に `#[derive(utoipa::ToSchema)]` が不足していた仕様を修正し、`api.rs` の Swagger ドキュメントルーターにエンドポイントを正式登録。
+  - **フロントエンド i18n & UI パッチ**: `SettingsPage.tsx` の Security カテゴリに `X API Bearer Token` 入力 UI を追加し、多言語対応 (`ja.json`, `en.json`) のキー設定と再起動警告のハードコード撤廃を完了。
+
+- **Phase 2B-2 Reflexion Hotfix Part 3 (TDD Zero-Dependency & UI Tokens) [完了]:**
+  - **WASM Mock Testing (TDD 100%)**: `tests.rs` の Extism WebAssembly スキルのバリデーションテストにおける `#ignore` を除去。隔離された `wasm_test_temp` ワークスペース下で Rust による本物の Extism-PDK モック (`hello_skill.wasm`) を動的ビルドし、`include_bytes!` にて静的埋め込みを実施。実行マシンに `wasm32-unknown-unknown` が不在でも OOM や Timeout といったレイヤー3サンドボックス防御が作動することを完璧に自動証明する TDD パイプラインを完遂。
+  - **Vanilla CSS Token Synchronization**: ゴールデンルールに基づき、`SettingsPage.tsx` および `OnboardingModal.tsx` に数十件の規模で散在していた `HEX Color (#fff, #000, #5865F2)` を全撤廃。`index.css`（tokens.css）へ `--text-inverse`, `--bg-primary`, `--bg-inverse` を新設し、UI層全体を完全なるトークン駆動アーキテクチャへと適応・是正。
+  - **React State Refactoring (`@ts-ignore` 撲滅)**: `OnboardingModal.tsx` において、`window.__viewMode` に対するアドホックな型抑圧（`@ts-ignore`）による状態管理を廃止。正規の `useState` フローへの変換を施し、`npm run lint` の GREEN を確保。
+  - **OpenAPI Schema Synchronization**: `docs/openapi.json` およびフロントエンドの TypeScript 型定義を最新の バックエンドスキーマ（`Settings`, `InitSoul` 等）へと再同期させ、型システムの乖離を修復。
+
 - **Phase 2B-2 Foundation (Perfect Plan Rev.6 / Limit Break) [完了]:**
   - **パス標準化の限界突破 (Phase 2-PRE 完遂)**: `bootstrap.rs` 内に残存していた `std::fs::read_to_string("SOUL.md")` という相対ハードコードパスを全消去し、`AppDataResolver` 経由の絶対パス照会へと是正。ゴーストバグの発生を未然に防止。
   - **SOUL 初期生成 API**: `POST /api/v1/soul/init` エンドポイントを新設。初回起動時の `OnboardingModal` からの初期システム人格生成フローをアクティブ化し、フロントエンドとバックエンドの同期を実現。

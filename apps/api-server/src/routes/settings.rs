@@ -63,6 +63,55 @@ pub async fn get_settings(
     Ok(Json(masked))
 }
 
+pub const ALLOWED_KEYS: &[&str] = &[
+    "ollama_host",
+    "ollama_model",
+    "llm_provider",
+    "llm_api_key",
+    "llm_model",
+    "lm_studio_host",
+    "bg_llm_provider",
+    "bg_llm_model",
+    "bg_llm_api_key",
+    "discord_chat_channel_id",
+    "discord_command_channel_id",
+    "discord_log_channel_id",
+    "telegram_chat_id",
+    "watchtower_enabled",
+    "enforce_guardrail",
+    "log_level",
+    "node_id",
+    "samsara_hub_url",
+    "allowed_origins",
+    "ai_name",
+    "ai_motto",
+    "ai_vrm_url",
+    "lora_adapter_path",
+    "lora_base_model",
+    "tts_provider",
+    "tts_voice",
+    "view_mode",
+    "x_bearer_token",
+];
+
+pub const ALLOWED_CATEGORIES: &[&str] = &[
+    "llm", "channel", "system", "security", "cors", "identity", "voice", "ui",
+];
+
+pub const SECRETS: &[&str] = &[
+    "ollama_host",
+    "discord_token",
+    "telegram_token",
+    "api_server_secret",
+    "llm_api_key",
+    "bg_llm_api_key",
+    "stripe_api_key",
+    "openai_api_key",
+    "anthropic_api_key",
+    "gemini_api_key",
+    "x_bearer_token",
+];
+
 #[utoipa::path(
     put,
     path = "/api/v1/settings",
@@ -80,36 +129,7 @@ pub async fn update_setting(
     Json(payload): Json<UpdateSettingsRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // 1. Key whitelist check
-    let allowed_keys = [
-        "ollama_host",
-        "ollama_model",
-        "llm_provider",
-        "llm_api_key",
-        "llm_model",
-        "lm_studio_host",
-        "bg_llm_provider",
-        "bg_llm_model",
-        "bg_llm_api_key",
-        "discord_chat_channel_id",
-        "discord_command_channel_id",
-        "discord_log_channel_id",
-        "telegram_chat_id",
-        "watchtower_enabled",
-        "enforce_guardrail",
-        "log_level",
-        "node_id",
-        "samsara_hub_url",
-        "allowed_origins",
-        "ai_name",
-        "ai_motto",
-        "ai_vrm_url",
-        "lora_adapter_path",
-        "lora_base_model",
-        "tts_provider",
-        "tts_voice",
-    ];
-
-    if !allowed_keys.contains(&payload.key.as_str()) {
+    if !ALLOWED_KEYS.contains(&payload.key.as_str()) {
         warn!(
             "🚨 [Security] Unauthorized settings key attempt: {}",
             payload.key
@@ -121,10 +141,7 @@ pub async fn update_setting(
     }
 
     // 2. Category validation
-    let allowed_categories = [
-        "llm", "channel", "system", "security", "cors", "identity", "voice",
-    ];
-    if !allowed_categories.contains(&payload.category.as_str()) {
+    if !ALLOWED_CATEGORIES.contains(&payload.category.as_str()) {
         return Err(
             aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
                 reason: "Invalid category".to_string(),
@@ -144,19 +161,7 @@ pub async fn update_setting(
     }
 
     // 4. Server-side is_secret determination
-    let secrets = [
-        "ollama_host",
-        "discord_token",
-        "telegram_token",
-        "api_server_secret",
-        "llm_api_key",
-        "bg_llm_api_key",
-        "stripe_api_key",
-        "openai_api_key",
-        "anthropic_api_key",
-        "gemini_api_key",
-    ];
-    let is_secret = secrets.contains(&payload.key.as_str());
+    let is_secret = SECRETS.contains(&payload.key.as_str());
 
     // 5. Audit Logging (Global Ledger)
     let details = serde_json::json!({
@@ -545,4 +550,33 @@ pub async fn get_identity(
         ai_motto,
         ai_vrm_url,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_view_mode_is_allowed() {
+        assert!(
+            ALLOWED_KEYS.contains(&"view_mode"),
+            "view_mode should be in allowed_keys"
+        );
+        assert!(
+            ALLOWED_CATEGORIES.contains(&"ui"),
+            "ui should be in allowed_categories"
+        );
+    }
+
+    #[test]
+    fn test_x_bearer_token_is_allowed_and_secret() {
+        assert!(
+            ALLOWED_KEYS.contains(&"x_bearer_token"),
+            "x_bearer_token should be in allowed_keys"
+        );
+        assert!(
+            SECRETS.contains(&"x_bearer_token"),
+            "x_bearer_token should be in secrets"
+        );
+    }
 }

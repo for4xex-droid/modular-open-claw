@@ -21,6 +21,22 @@
 - **波及効果**:
     - 全体的なインフラストラクチャにおける DoS / OOM レジリエンスが向上。不正な長文や倫理違反キーワードによるエラーを事前にストリーム防壁としてブロックすることで、Agent 側の余計な演算を軽減する。
 
+### 3. Phase 2B-2 Reflexion Part 3 (TDD Zero-Dependency & UI Tokens)
+- **変更内容**:
+    - `libs/infrastructure/src/skills/tests.rs` [MODIFY]: WASM サンドボックス環境 (Extism) の TDD 実証テストを復活（`#ignore` 解除）。
+    - `libs/infrastructure/src/skills/test_data/hello_skill.wasm` [ADD]: Extism 用テストモックバイナリファイル。完全なオフライン検証（無依存 TDD）を実現するため `tests.rs` 内で `include_bytes!` として注入。
+    - `apps/management-console/src/components/SettingsPage.tsx` & `OnboardingModal.tsx` [MODIFY]: ハードコードされていた HEX 色指定を全て `var(--text-inverse)` や `var(--accent-purple)` 等の CSS トークンへ置き換え。`OnboardingModal` 内の `@ts-ignore` による `window` グローバル変数の無骨な拡張を廃止し、React Hook `useState` へとリファクタリング。
+    - `apps/management-console/src/styles/tokens.css` [MODIFY]: `--text-inverse`, `--bg-primary`, `--bg-inverse` トークンを追加。
+
+### 4. Phase 2B-2 Reflexion Limit Break (Settings E2E Efficacy)
+- **変更内容**:
+    - `apps/api-server/src/routes/settings.rs` [MODIFY]: `view_mode` などの UI 制御値を `ALLOWED_KEYS` のホワイトリストに追加し、`SecurityViolation` 誤検知による保存失敗をホットフィックス。
+    - `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `DreamService` (TrendSonar) の初期化時、強制的に `.env` からしか環境変数を読み込んでいなかった仕様を改修し、優先的に `state.job_queue` (DB) から設定値を取得する E2E デリバリーを確立。
+    - `apps/api-server/src/routes/soul.rs` & `api.rs` [MODIFY]: OpenAPI (`utoipa::ToSchema`) 定義の不足を修復。
+- **波及効果**:
+    - 設定変更 (SettingsPage) の結果が再起動後に確実に `DreamService` に波及し、環境変数に依存しないユーザー主導のトークンオーバーライドが正常稼働するようになった。
+    - API ドキュメント生成プロセスが GREEN に復旧。
+
 ## Aiome Social Signal Integration (Layer A-C)
 ### 1. X Signal Probe (Reqwest Direct)
 - **変更内容**:

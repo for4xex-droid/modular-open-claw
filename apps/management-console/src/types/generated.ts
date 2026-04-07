@@ -1084,6 +1084,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/soul/init": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["init_soul"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/soul/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_soul_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/syndicate/guilds": {
         parameters: {
             query?: never;
@@ -1487,6 +1519,13 @@ export interface components {
         IngestUrlReq: {
             url: string;
         };
+        InitSoulRequest: {
+            ai_name: string;
+        };
+        InitSoulResponse: {
+            message: string;
+            success: boolean;
+        };
         /**
          * @description インテントカテゴリ（AgentSense 用）
          * @enum {string}
@@ -1732,6 +1771,20 @@ export interface components {
             source: string;
             status: string;
             tools: string[];
+        };
+        SoulStatusResponse: {
+            active: boolean;
+            active_defenses_count: number;
+            attachment_style: string;
+            /** Format: int32 */
+            generation: number;
+            /** Format: int32 */
+            karma_resonance: number;
+            lora_adapter_path?: string | null;
+            lora_base_model?: string | null;
+            somatic_markers_count: number;
+            /** Format: double */
+            soul_resonance_avg: number;
         };
         /** @enum {string} */
         SourceType: "Web" | "Pdf" | "Manual" | "GitHub" | "Rss" | "Query";
@@ -3724,6 +3777,57 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    init_soul: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InitSoulRequest"];
+            };
+        };
+        responses: {
+            /** @description Soul generated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InitSoulResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_soul_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current soul status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SoulStatusResponse"];
+                };
             };
         };
     };

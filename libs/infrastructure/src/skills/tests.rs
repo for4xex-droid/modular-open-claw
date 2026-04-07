@@ -12,11 +12,15 @@ mod tests {
     use std::path::PathBuf;
 
     #[tokio::test]
-    #[ignore]
     async fn test_wasm_skill_timeout() {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
+
+        // Write the pre-compiled Extism PDK plugin to the temp directory
+        let wasm_bytes = include_bytes!("test_data/hello_skill.wasm");
+        std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
+
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
             .expect("Failed to create manager")
             .with_limits(1024 * 1024, std::time::Duration::from_millis(500));
@@ -30,11 +34,15 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_wasm_skill_config_injection() {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
+
+        // Write the pre-compiled Extism PDK plugin to the temp directory
+        let wasm_bytes = include_bytes!("test_data/hello_skill.wasm");
+        std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
+
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
             .expect("Failed to create manager");
 
@@ -54,16 +62,20 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
-        // create a dummy file so dry run has something
-        std::fs::write(skills_dir.join("hello_skill.wasm"), b"\0asm").unwrap();
+        // Write the pre-compiled Extism PDK plugin to the temp directory
+        let wasm_bytes = include_bytes!("test_data/hello_skill.wasm");
+        std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
             .expect("Failed to create manager");
 
-        // Dry-run should at least execute without system-level error.
-        // Whether it returns true or false depends on the skill's specific behavior
-        // when running without its actual configuration (config injection is disabled in dry-run).
+        // Dry-run should execute without system-level error and validate the execution.
         let result = manager.dry_run_skill("hello_skill", "{}").await;
         assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            true,
+            "Valid WASM must pass dry-run successfully"
+        );
     }
 
     #[tokio::test]

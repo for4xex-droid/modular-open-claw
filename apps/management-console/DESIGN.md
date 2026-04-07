@@ -20,11 +20,13 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 ## Color Palette
 
 ### Background Surfaces
+- **Primary Background** — `var(--bg-primary)` (#05070a): Root background color for dynamic panels.
 - **Dark Obsidian** — `var(--bg-dark-obsidian)` (#05070a): The deepest canvas. Near-black with a cool blue undertone. Used for the root background.
 - **Sidebar** — `var(--bg-dark-sidebar)` (rgba(10, 12, 18, 0.95)): Translucent dark panel for the navigation sidebar. The 0.95 opacity allows subtle bleed-through.
 - **Glass Heavy** — `var(--bg-glass-heavy)` (rgba(16, 20, 28, 0.8)): Primary glass surface for cards, panels, and containers. Heavy enough to read over, transparent enough to feel layered.
 - **Glass Light** — `var(--bg-glass-light)` (rgba(255, 255, 255, 0.03)): Ultra-subtle hover state background. A whisper of white on dark surfaces.
 - **Deep Glass** — `var(--bg-deep-glass)` (rgba(10, 10, 15, 0.9)): Deep, nearly opaque glass for modals and overlays.
+- **Inverse Background** — `var(--bg-inverse)` (#fff): Pure white for contrast elements.
 
 ### Brand Accents
 - **Cyan** — `var(--accent-cyan)` (#00f2ff): Primary interactive accent. CTAs, active navigation, status indicators. The signature Aiome color.
@@ -40,6 +42,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Primary Text** — `var(--text-primary)` (#f0f2f5): Near-white with a cool cast. Default text color on dark backgrounds.
 - **Secondary Text** — `var(--text-secondary)` (#94a3b8): Cool silver-gray for body text, descriptions, metadata.
 - **Muted Text** — `var(--text-muted)` (#64748b): Dimmed gray for labels, placeholders, de-emphasized content.
+- **Inverse Text** — `var(--text-inverse)` (#000): Pure black text used for extreme high-contrast overlays on cyan, amber, or light elements.
 
 ### Borders & Glass
 - **Border Glass** — `var(--border-glass)` (rgba(255, 255, 255, 0.08)): Default border on all glass surfaces. Semi-transparent white.
@@ -87,7 +90,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 **Primary Button**
 - Background: `var(--accent-cyan)` (#00f2ff)
-- Text: `#0b0b0f` (dark on bright) — ⚠️ Not yet tokenized in tokens.css; matches App.css literal
+- Text: `var(--text-inverse)` (#000) — dark on bright for maximum contrast and readability
 - Padding: 0.6rem 1.2rem
 - Radius: `var(--radius-sm)` (8px)
 - Font-weight: 700

@@ -54,6 +54,7 @@ TTS_PROVIDER=openai
 TTS_OPENAI_API_KEY=your_openai_key
 TTS_OPENAI_MODEL=tts-1
 SEARCH_API_KEY=your_brave_search_or_tavily_api_key
+X_BEARER_TOKEN=your_x_twitter_bearer_token
 WP_API_URL=https://your-wordpress-site.com
 WP_API_TOKEN=your_jwt_or_app_password
 

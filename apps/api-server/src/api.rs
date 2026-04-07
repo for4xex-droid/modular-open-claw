@@ -103,7 +103,10 @@ use utoipa::OpenApi;
         crate::routes::lora_market::purchase_listing,
         crate::routes::lora_market::complete_purchase,
         crate::routes::lora_market::delist_listing,
-        crate::routes::lora_market::my_listings
+        crate::routes::lora_market::my_listings,
+        // Soul
+        crate::routes::soul::init_soul,
+        crate::routes::soul::get_soul_status
     ),
     components(
         schemas(
@@ -173,7 +176,11 @@ use utoipa::OpenApi;
             aiome_core_contracts::lora_marketplace::LoraPurchase,
             crate::routes::lora_market::PublishListingRequest,
             crate::routes::lora_market::PurchaseRequest,
-            crate::routes::lora_market::PurchaseResponse
+            crate::routes::lora_market::PurchaseResponse,
+            // Soul
+            crate::routes::soul::SoulStatusResponse,
+            crate::routes::soul::InitSoulResponse,
+            crate::routes::soul::InitSoulRequest
         )
     ),
     info(

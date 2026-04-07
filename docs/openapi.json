@@ -2325,6 +2325,69 @@
         ]
       }
     },
+    "/api/v1/soul/init": {
+      "post": {
+        "tags": [
+          "crate::routes::soul"
+        ],
+        "operationId": "init_soul",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitSoulRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Soul generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitSoulResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/soul/status": {
+      "get": {
+        "tags": [
+          "crate::routes::soul"
+        ],
+        "operationId": "get_soul_status",
+        "responses": {
+          "200": {
+            "description": "Current soul status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SoulStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/syndicate/guilds": {
       "get": {
         "tags": [
@@ -3603,6 +3666,32 @@
           }
         }
       },
+      "InitSoulRequest": {
+        "type": "object",
+        "required": [
+          "ai_name"
+        ],
+        "properties": {
+          "ai_name": {
+            "type": "string"
+          }
+        }
+      },
+      "InitSoulResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "IntentCategory": {
         "type": "string",
         "description": "インテントカテゴリ（AgentSense 用）",
@@ -4239,6 +4328,59 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "SoulStatusResponse": {
+        "type": "object",
+        "required": [
+          "active",
+          "generation",
+          "attachment_style",
+          "active_defenses_count",
+          "somatic_markers_count",
+          "soul_resonance_avg",
+          "karma_resonance"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "active_defenses_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "attachment_style": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "karma_resonance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lora_adapter_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lora_base_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "somatic_markers_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "soul_resonance_avg": {
+            "type": "number",
+            "format": "double"
           }
         }
       },

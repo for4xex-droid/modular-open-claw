@@ -172,6 +172,8 @@
     "loraBaseModel": "LoRA ベースモデル",
     "tts": "テキスト読み上げ (TTS)",
     "voiceNameId": "ボイス名 / ID",
+    "xBearerToken": "X API ベアラートークン",
+    "xBearerTokenNotice": "⚠️ このトークンを変更した場合、DreamService に反映させるにはアプリケーションの再起動が必要です。",
     "securitySystem": "セキュリティ & システム",
     "enforceGuardrails": "ガードレールを強制",
     "logLevel": "ログレベル",

@@ -31,6 +31,9 @@
     --text-primary: #f0f2f5;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
+    --text-inverse: #000;
+    --bg-primary: #05070a;
+    --bg-inverse: #fff;
 
     /* Borders & Glass */
     --border-glass: rgba(255, 255, 255, 0.08);

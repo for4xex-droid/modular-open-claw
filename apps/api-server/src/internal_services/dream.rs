@@ -42,8 +42,16 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     // Phase β: Inject SerpAnalysisAdapter for trend-based SEO gap identification
     let mut adapters: Vec<Arc<dyn infrastructure::trend_sonar::TrendAdapter>> = vec![];
 
+    // Read SEARCH_API_KEY from DB or Env
+    let search_api_key = state
+        .job_queue
+        .get_setting_value("search_api_key")
+        .await
+        .unwrap_or_default()
+        .or_else(|| std::env::var("SEARCH_API_KEY").ok());
+
     // WebSearchAdapter + SerpAnalysisAdapter using SEARCH_API_KEY
-    if let Ok(api_key) = std::env::var("SEARCH_API_KEY") {
+    if let Some(api_key) = search_api_key {
         if !api_key.is_empty() {
             adapters.push(Arc::new(
                 infrastructure::trend_sonar::WebSearchAdapter::new(api_key.clone()),
@@ -53,8 +61,16 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         }
     }
 
+    // Read X_BEARER_TOKEN from DB or Env
+    let x_token = state
+        .job_queue
+        .get_setting_value("x_bearer_token")
+        .await
+        .unwrap_or_default()
+        .or_else(|| std::env::var("X_BEARER_TOKEN").ok());
+
     // XSignalProbe using X_BEARER_TOKEN
-    if let Ok(x_token) = std::env::var("X_BEARER_TOKEN") {
+    if let Some(x_token) = x_token {
         if !x_token.is_empty() {
             adapters.push(Arc::new(infrastructure::x_signal_probe::XSignalProbe::new(
                 x_token,

@@ -15,7 +15,7 @@ use tracing::error;
 
 use crate::{auth::Authenticated, AppState};
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct SoulStatusResponse {
     pub active: bool,
     pub generation: u32,
@@ -28,17 +28,27 @@ pub struct SoulStatusResponse {
     pub lora_base_model: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct InitSoulResponse {
     pub success: bool,
     pub message: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct InitSoulRequest {
     pub ai_name: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/soul/init",
+    request_body = InitSoulRequest,
+    responses(
+        (status = 200, description = "Soul generated successfully", body = InitSoulResponse),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("api_key" = []))
+)]
 pub async fn init_soul(
     State(state): State<AppState>,
     _auth: Authenticated,
@@ -70,6 +80,14 @@ pub async fn init_soul(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/soul/status",
+    responses(
+        (status = 200, description = "Current soul status", body = SoulStatusResponse)
+    ),
+    security(("api_key" = []))
+)]
 pub async fn get_soul_status(
     State(state): State<AppState>,
     _auth: Authenticated,
