@@ -101,41 +101,84 @@ export const SoTProgressBar: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-96 bg-gray-900/80 backdrop-blur border border-indigo-500/30 rounded-xl p-4 shadow-xl z-50 animate-in slide-in-from-bottom">
-            <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+        <div style={{
+            position: 'fixed',
+            bottom: 'var(--space-xl)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '400px',
+            background: 'var(--bg-glass-heavy)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid var(--border-glass-bright)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-sm)',
+            boxShadow: 'var(--shadow-deep)',
+            zIndex: 50,
+            animation: 'fadeIn 0.3s ease-out',
+            fontFamily: 'var(--font-main)',
+            color: 'var(--text-primary)'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ position: 'relative', display: 'flex', height: '12px', width: '12px' }}>
+                      <span className="ani-pulse" style={{ position: 'absolute', height: '100%', width: '100%', borderRadius: '50%', background: 'var(--accent-purple)', opacity: 0.7 }}></span>
+                      <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '12px', width: '12px', background: 'var(--accent-purple)' }}></span>
                     </span>
                     Society of Thought Active
                 </h3>
-                <div className="flex items-center gap-1.5">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                     {currentSession.protocol && (
-                        <span className="text-[10px] text-cyan-400 px-1.5 py-0.5 bg-cyan-900/40 border border-cyan-700/30 rounded">
+                        <span style={{
+                            fontSize: '0.65rem',
+                            color: 'var(--accent-cyan)',
+                            padding: '2px 6px',
+                            background: 'var(--accent-cyan-glass)',
+                            border: '1px solid rgba(0,242,255,0.3)',
+                            borderRadius: '4px'
+                        }}>
                             {currentSession.protocol}
                         </span>
                     )}
                     {currentSession.abstentionCount > 0 && (
-                        <span className="text-[10px] text-amber-400 px-1.5 py-0.5 bg-amber-900/30 border border-amber-700/30 rounded" title="Voluntary Self-Abstentions">
+                        <span style={{
+                            fontSize: '0.65rem',
+                            color: 'var(--accent-amber)',
+                            padding: '2px 6px',
+                            background: 'rgba(245,158,11,0.15)',
+                            border: '1px solid rgba(245,158,11,0.3)',
+                            borderRadius: '4px'
+                        }} title="Voluntary Self-Abstentions">
                             🤚 {currentSession.abstentionCount}
                         </span>
                     )}
-                    <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-800 rounded">
+                    <span style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        padding: '2px 8px',
+                        background: 'var(--bg-dark-obsidian)',
+                        borderRadius: '4px'
+                    }}>
                         Round {currentSession.currentRound}
                     </span>
                 </div>
             </div>
             
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                 {currentSession.roles.map((role: string, idx: number) => {
                     const isFocus = idx === currentSession.roles.length - 1;
                     return (
-                        <div key={role} className={`text-xs p-2 rounded border ${isFocus ? 'border-indigo-400 bg-indigo-500/10 text-indigo-200' : 'border-gray-700 bg-gray-800 text-gray-400'}`}>
+                        <div key={role} style={{
+                            fontSize: '0.75rem',
+                            padding: 'var(--space-xs)',
+                            borderRadius: 'var(--radius-sm)',
+                            border: `1px solid ${isFocus ? 'rgba(188,140,255,0.4)' : 'var(--border-glass)'}`,
+                            background: isFocus ? 'var(--accent-purple-glass)' : 'var(--bg-dark-obsidian)',
+                            color: isFocus ? 'var(--accent-purple)' : 'var(--text-secondary)'
+                        }}>
                             {isFocus ? (
-                                <div className="flex justify-between">
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span>{role} is thinking...</span>
-                                    <span className="animate-pulse">..</span>
+                                    <span className="ani-pulse">..</span>
                                 </div>
                             ) : (
                                 <span>{role} completed</span>
@@ -146,14 +189,23 @@ export const SoTProgressBar: React.FC = () => {
             </div>
             
             {currentSession.scores.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-gray-700/50">
-                    <div className="text-[10px] text-gray-500 mb-1 uppercase font-semibold">Latest Scores</div>
-                    <div className="flex gap-2">
-                        {currentSession.scores.map(([metric, score]: [string, number]) => (
-                            <div key={metric} className={`text-xs px-1.5 py-0.5 rounded ${score >= 4 ? 'bg-green-500/20 text-green-300' : score >= 3 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-                                {metric}: {score}/5
-                            </div>
-                        ))}
+                <div style={{ marginTop: 'var(--space-sm)', paddingTop: 'var(--space-xs)', borderTop: '1px solid var(--border-glass)' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Latest Scores</div>
+                    <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                        {currentSession.scores.map(([metric, score]: [string, number]) => {
+                            const color = score >= 4 ? 'var(--accent-emerald)' : score >= 3 ? 'var(--accent-amber)' : 'var(--accent-rose)';
+                            return (
+                                <div key={metric} style={{
+                                    fontSize: '0.75rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: `rgba(${score >= 4 ? '16,185,129' : score >= 3 ? '245,158,11' : '255,77,148'}, 0.15)`,
+                                    color: color
+                                }}>
+                                    {metric}: {score}/5
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
