@@ -7,7 +7,9 @@
 
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core_contracts::contracts::{SoTConfig, SoTEvent, SoTOutcome, SoTTrigger};
+use aiome_core_contracts::contracts::{
+    CoordinationProtocol, SoTConfig, SoTEvent, SoTOutcome, SoTTrigger,
+};
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -15,7 +17,12 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 /// Society of Thought (SoT) Engine
-/// Evans et al. (2026) の提唱する「思考の社会」を実装する熟議エンジン。
+/// Evans et al. (2026) + Dochkina (2026) の知見を統合した熟議エンジン。
+///
+/// # Dochkina (2026) arXiv:2603.28990 統合
+/// - **Sequential Protocol**: 各 Thinker が前任者の完成済み出力を見て自律的にロールを発明
+/// - **Voluntary Self-Abstention**: 貢献できないと判断した Thinker は `[ABSTAIN]` を返して辞退
+/// - **Capability-Aware Fallback**: モデル能力閾値に基づき Sequential/Coordinator を自動切替
 pub struct SoTEngine {
     fast_provider: Arc<dyn LlmProvider>,
     primary_provider: Arc<dyn LlmProvider>,
@@ -36,6 +43,9 @@ pub struct CriterionScore {
     pub feedback: String,
 }
 
+/// Abstention マーカー: LLM がこの接頭辞で応答を返した場合、自発的辞退と見なす
+const ABSTAIN_MARKER: &str = "[ABSTAIN]";
+
 impl SoTEngine {
     pub fn new(
         fast_provider: Arc<dyn LlmProvider>,
@@ -54,6 +64,26 @@ impl SoTEngine {
         self.event_tx.subscribe()
     }
 
+    /// Dochkina (2026): モデル能力閾値に基づくプロトコル自動選択
+    fn select_protocol(&self, config: &SoTConfig) -> CoordinationProtocol {
+        if !config.auto_protocol {
+            return config.coordination_protocol.clone();
+        }
+
+        let provider_name = self.primary_provider.name().to_lowercase();
+
+        // 高能力モデル: Sequential (自律性が品質を向上させる)
+        let strong_models = [
+            "claude", "gpt-5", "gpt-4o", "deepseek", "gemini-2", "gemini-3",
+        ];
+        if strong_models.iter().any(|m| provider_name.contains(m)) {
+            CoordinationProtocol::Sequential
+        } else {
+            // 低能力モデル: Coordinator (固定構造が品質を安定させる)
+            CoordinationProtocol::Coordinator
+        }
+    }
+
     /// 熟議セッションを実行する
     pub async fn run_session(
         &self,
@@ -68,6 +98,25 @@ impl SoTEngine {
             session_id, task
         );
 
+        // Dochkina (2026): プロトコル選択
+        let protocol = self.select_protocol(&config);
+        info!(
+            "🧠 [SoT] Protocol selected: {:?} (auto={})",
+            protocol, config.auto_protocol
+        );
+        let _ = self.event_tx.send(SoTEvent::ProtocolSelected {
+            session_id: session_id.clone(),
+            protocol: protocol.clone(),
+            reason: if config.auto_protocol {
+                format!(
+                    "Auto-selected based on provider capability: {}",
+                    self.primary_provider.name()
+                )
+            } else {
+                "Explicitly configured".to_string()
+            },
+        });
+
         // 1. Session Start Event
         let _ = self.event_tx.send(SoTEvent::SessionStart {
             session_id: session_id.clone(),
@@ -75,6 +124,7 @@ impl SoTEngine {
             trigger,
         });
 
+        let num_thinkers = config.num_thinkers.clamp(1, 8);
         let mut current_content = String::new();
         let mut round = 1;
         let mut last_scores = Vec::new();
@@ -91,37 +141,6 @@ impl SoTEngine {
                 final_outcome = SoTOutcome::BudgetExhausted;
                 break;
             }
-
-            // P-9: Context Pruning (履歴圧縮)
-            let context_prefix = if round > 3 {
-                format!(
-                    "(Round {} summary: Previous rounds consolidated...)\n",
-                    round - 1
-                )
-            } else {
-                String::new()
-            };
-
-            // Step A: Explorer / Synthesizer (P-12)
-            let role = if round == 1 {
-                "Explorer"
-            } else {
-                "Synthesizer"
-            };
-            let explorer_prompt = if current_content.is_empty() {
-                format!("Task: {}\nGenerate a comprehensive solution.", task)
-            } else {
-                format!(
-                    "{}Task: {}\nCurrent draft: {}\nImprove it based on the feedback.",
-                    context_prefix, task, current_content
-                )
-            };
-
-            let _ = self.event_tx.send(SoTEvent::RoleStart {
-                session_id: session_id.clone(),
-                role: role.to_string(),
-                round,
-            });
 
             // P-10: Semantic Looping 脱出 (Temperature Boost)
             if round > 1 {
@@ -142,45 +161,47 @@ impl SoTEngine {
                 }
             }
 
-            let explorer_req = aiome_core_contracts::llm::LlmRequest {
-                messages: vec![
-                    aiome_core_contracts::llm::LlmMessage {
-                        role: "system".to_string(),
-                        content: format!("You are the {}.", role),
-                        cache: true,
-                    },
-                    aiome_core_contracts::llm::LlmMessage {
-                        role: "user".to_string(),
-                        content: explorer_prompt.clone(),
-                        cache: false,
-                    },
-                ],
-                temperature: Some(current_temp as f32),
-                ..Default::default()
-            };
+            // ──────────────────────────────────────────────────────
+            //  Dochkina (2026): プロトコル分岐
+            // ──────────────────────────────────────────────────────
+            match protocol {
+                CoordinationProtocol::Sequential => {
+                    current_content = self
+                        .run_sequential_pass(
+                            &session_id,
+                            task,
+                            &current_content,
+                            &config,
+                            num_thinkers,
+                            round,
+                            current_temp,
+                        )
+                        .await?;
+                }
+                CoordinationProtocol::Coordinator | CoordinationProtocol::Broadcast => {
+                    // Coordinator / Broadcast: 既存の Explorer/Synthesizer ロジックを使用
+                    current_content = self
+                        .run_coordinator_pass(
+                            &session_id,
+                            task,
+                            &current_content,
+                            round,
+                            current_temp,
+                        )
+                        .await?;
+                }
+            }
 
-            let explorer_res = self
-                .primary_provider
-                .complete_with_cache(explorer_req)
-                .await?;
-            current_content = explorer_res.content.clone();
-
-            let _ = self.event_tx.send(SoTEvent::RoleOutput {
-                session_id: session_id.clone(),
-                role: role.to_string(),
-                round,
-                content: current_content.clone(),
-                token_count: 0,
-            });
-
-            // Step B: Critic (スコアリング - P-2, P-11)
+            // ──────────────────────────────────────────────────────
+            //  Critic スコアリング (P-2, P-11) — プロトコル共通
+            //  論文の知見: Critic は「ロール」ではなく「構造化された品質ゲート」
+            // ──────────────────────────────────────────────────────
             let _ = self.event_tx.send(SoTEvent::RoleStart {
                 session_id: session_id.clone(),
                 role: "Critic".to_string(),
                 round,
             });
 
-            // P-2: 別のプロバイダ (fast_provider) を使用
             let scores = self
                 .evaluate_scores(&current_content, &config.scoring_criteria)
                 .await?;
@@ -226,6 +247,225 @@ impl SoTEngine {
         });
 
         Ok((session_id, final_outcome, last_scores))
+    }
+
+    /// Dochkina (2026) Sequential Protocol 実装。
+    /// 各 Thinker は前任者の完成済み出力を全て見た上で自律的にロールを発明する。
+    async fn run_sequential_pass(
+        &self,
+        session_id: &str,
+        task: &str,
+        previous_content: &str,
+        config: &SoTConfig,
+        num_thinkers: u8,
+        round: u8,
+        temperature: f64,
+    ) -> Result<String, AiomeError> {
+        let mut accumulated_outputs: Vec<(String, String)> = Vec::new(); // (role, content)
+
+        // P-9: Context Pruning (履歴圧縮)
+        let context_prefix = if round > 3 {
+            format!(
+                "(Round {} summary: Previous rounds consolidated...)\n",
+                round - 1
+            )
+        } else {
+            String::new()
+        };
+
+        // ロールヒントの構築
+        let role_hints = if !config.adversarial_personas.is_empty() {
+            format!(
+                "\nAvailable role hints (you may use one or invent your own): {}",
+                config.adversarial_personas.join(", ")
+            )
+        } else {
+            String::new()
+        };
+
+        for thinker_idx in 0..num_thinkers {
+            // 前任者の出力を文脈として構築
+            let predecessors_context = if accumulated_outputs.is_empty() {
+                String::new()
+            } else {
+                let ctx: Vec<String> = accumulated_outputs
+                    .iter()
+                    .map(|(role, content)| format!("--- {} ---\n{}", role, content))
+                    .collect();
+                format!(
+                    "\n\nPrevious thinkers' completed outputs:\n{}",
+                    ctx.join("\n\n")
+                )
+            };
+
+            let system_prompt = format!(
+                "You are Thinker {} in a sequential deliberation. \
+                 You can see all previous thinkers' completed outputs below.\n\
+                 Your task: Autonomously decide what role would be most valuable given what has \
+                 already been contributed, then provide your contribution under that role.\n\
+                 Start your response with 'Role: [YourChosenRole]' on the first line.\n\
+                 If you believe you cannot meaningfully contribute beyond what exists, \
+                 respond with only '[ABSTAIN]'.{}\n{}",
+                thinker_idx + 1,
+                role_hints,
+                predecessors_context
+            );
+
+            let user_prompt = if previous_content.is_empty() {
+                format!(
+                    "{}Task: {}\nGenerate a comprehensive solution.",
+                    context_prefix, task
+                )
+            } else {
+                format!(
+                    "{}Task: {}\nCurrent draft from previous round: {}\nImprove based on the feedback and fill gaps.",
+                    context_prefix, task, previous_content
+                )
+            };
+
+            let thinker_req = aiome_core_contracts::llm::LlmRequest {
+                messages: vec![
+                    aiome_core_contracts::llm::LlmMessage {
+                        role: "system".to_string(),
+                        content: system_prompt,
+                        cache: true,
+                    },
+                    aiome_core_contracts::llm::LlmMessage {
+                        role: "user".to_string(),
+                        content: user_prompt,
+                        cache: false,
+                    },
+                ],
+                temperature: Some(temperature as f32),
+                ..Default::default()
+            };
+
+            let resp = self
+                .primary_provider
+                .complete_with_cache(thinker_req)
+                .await?;
+
+            // Voluntary Self-Abstention 検知
+            if config.allow_abstention && resp.content.trim().starts_with(ABSTAIN_MARKER) {
+                info!(
+                    "🤚 [SoT] Thinker {} voluntarily abstained (Dochkina Self-Abstention)",
+                    thinker_idx + 1
+                );
+                let _ = self.event_tx.send(SoTEvent::ThinkerAbstained {
+                    session_id: session_id.to_string(),
+                    thinker_index: thinker_idx,
+                    round,
+                });
+                continue;
+            }
+
+            // ロール名の抽出
+            let (role_name, content) = extract_role_and_content(&resp.content, thinker_idx);
+
+            let _ = self.event_tx.send(SoTEvent::RoleStart {
+                session_id: session_id.to_string(),
+                role: role_name.clone(),
+                round,
+            });
+            let _ = self.event_tx.send(SoTEvent::RoleOutput {
+                session_id: session_id.to_string(),
+                role: role_name.clone(),
+                round,
+                content: content.clone(),
+                token_count: 0,
+            });
+
+            accumulated_outputs.push((role_name, content));
+        }
+
+        // 最終統合: 全 Thinker の出力を合成
+        if accumulated_outputs.is_empty() {
+            // 全員辞退した場合は前のコンテンツを維持
+            return Ok(previous_content.to_string());
+        }
+
+        if accumulated_outputs.len() == 1 {
+            return Ok(accumulated_outputs[0].1.clone());
+        }
+
+        // 最終 Thinker の出力を最良の統合結果とする（Sequential の特性上、最後が最も包括的）
+        match accumulated_outputs.last() {
+            Some((_, content)) => Ok(content.clone()),
+            None => Ok(previous_content.to_string()), // 到達不能（上の is_empty チェックで保護）
+        }
+    }
+
+    /// Coordinator Protocol: 既存の Explorer/Synthesizer ロジック (レガシー互換)
+    async fn run_coordinator_pass(
+        &self,
+        session_id: &str,
+        task: &str,
+        current_content: &str,
+        round: u8,
+        temperature: f64,
+    ) -> Result<String, AiomeError> {
+        // P-9: Context Pruning (履歴圧縮)
+        let context_prefix = if round > 3 {
+            format!(
+                "(Round {} summary: Previous rounds consolidated...)\n",
+                round - 1
+            )
+        } else {
+            String::new()
+        };
+
+        let role = if round == 1 {
+            "Explorer"
+        } else {
+            "Synthesizer"
+        };
+        let explorer_prompt = if current_content.is_empty() {
+            format!("Task: {}\nGenerate a comprehensive solution.", task)
+        } else {
+            format!(
+                "{}Task: {}\nCurrent draft: {}\nImprove it based on the feedback.",
+                context_prefix, task, current_content
+            )
+        };
+
+        let _ = self.event_tx.send(SoTEvent::RoleStart {
+            session_id: session_id.to_string(),
+            role: role.to_string(),
+            round,
+        });
+
+        let explorer_req = aiome_core_contracts::llm::LlmRequest {
+            messages: vec![
+                aiome_core_contracts::llm::LlmMessage {
+                    role: "system".to_string(),
+                    content: format!("You are the {}.", role),
+                    cache: true,
+                },
+                aiome_core_contracts::llm::LlmMessage {
+                    role: "user".to_string(),
+                    content: explorer_prompt,
+                    cache: false,
+                },
+            ],
+            temperature: Some(temperature as f32),
+            ..Default::default()
+        };
+
+        let explorer_res = self
+            .primary_provider
+            .complete_with_cache(explorer_req)
+            .await?;
+        let output = explorer_res.content.clone();
+
+        let _ = self.event_tx.send(SoTEvent::RoleOutput {
+            session_id: session_id.to_string(),
+            role: role.to_string(),
+            round,
+            content: output.clone(),
+            token_count: 0,
+        });
+
+        Ok(output)
     }
 
     /// ヘルパー: スコア評価ロジック (LLM 構造化出力適用済)
@@ -303,6 +543,30 @@ impl SoTEngine {
 
         Ok(results)
     }
+}
+
+/// LLM 応答からロール名とコンテンツを分離する。
+/// "Role: [SomeName]\n..." の形式を期待するが、ない場合は汎用名にフォールバック。
+fn extract_role_and_content(raw: &str, thinker_idx: u8) -> (String, String) {
+    let trimmed = raw.trim();
+    if let Some(first_line_end) = trimmed.find('\n') {
+        let first_line = &trimmed[..first_line_end];
+        if let Some(role_start) = first_line.find("Role:") {
+            let role_raw = first_line[role_start + 5..].trim();
+            // 角括弧を除去
+            let role_name = role_raw
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .trim()
+                .to_string();
+            let content = trimmed[first_line_end + 1..].trim().to_string();
+            if !role_name.is_empty() {
+                return (role_name, content);
+            }
+        }
+    }
+    // フォールバック: ロール名が見つからない場合
+    (format!("Thinker-{}", thinker_idx + 1), trimmed.to_string())
 }
 
 #[cfg(test)]
@@ -512,5 +776,130 @@ mod tests {
 
         assert_eq!(acc, 10.0);
         assert_eq!(aln, 0.0);
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  Dochkina (2026) 統合テスト
+    // ──────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_sot_sequential_protocol_green() {
+        let mock = Arc::new(MockLlm::new(
+            "Role: Critical Analyst\nThis solution has been passed after analysis.",
+        ));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+
+        let config = SoTConfig {
+            enabled: true,
+            coordination_protocol: CoordinationProtocol::Sequential,
+            num_thinkers: 3,
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("Design a secure API", SoTTrigger::Manual, config, 1.0)
+            .await;
+
+        assert!(result.is_ok());
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
+        assert_eq!(outcome, SoTOutcome::AllCriteriaPassed);
+    }
+
+    #[tokio::test]
+    async fn test_sot_voluntary_abstention_green() {
+        let mock = Arc::new(MockLlm::new("[ABSTAIN] Nothing to add."));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let mut rx = engine.subscribe();
+
+        let config = SoTConfig {
+            enabled: true,
+            coordination_protocol: CoordinationProtocol::Sequential,
+            num_thinkers: 2,
+            allow_abstention: true,
+            max_rounds: 1,
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("task", SoTTrigger::Manual, config, 1.0)
+            .await;
+
+        assert!(result.is_ok());
+
+        // ThinkerAbstained イベントが発火していることを確認
+        let mut abstention_count = 0;
+        while let Ok(event) = rx.try_recv() {
+            if matches!(event, SoTEvent::ThinkerAbstained { .. }) {
+                abstention_count += 1;
+            }
+        }
+        assert!(
+            abstention_count > 0,
+            "Should have at least one abstention event"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sot_coordinator_fallback_green() {
+        let mock = Arc::new(MockLlm::new("passed"));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+
+        let config = SoTConfig {
+            enabled: true,
+            coordination_protocol: CoordinationProtocol::Coordinator,
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("task", SoTTrigger::Manual, config, 1.0)
+            .await;
+
+        assert!(result.is_ok());
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
+        assert_eq!(outcome, SoTOutcome::AllCriteriaPassed);
+    }
+
+    #[test]
+    fn test_extract_role_and_content() {
+        let (role, content) =
+            extract_role_and_content("Role: Security Auditor\nThis is a review.", 0);
+        assert_eq!(role, "Security Auditor");
+        assert_eq!(content, "This is a review.");
+
+        let (role, content) = extract_role_and_content("Role: [Domain Expert]\nDeep analysis.", 2);
+        assert_eq!(role, "Domain Expert");
+        assert_eq!(content, "Deep analysis.");
+
+        // フォールバック
+        let (role, content) = extract_role_and_content("No role header here", 5);
+        assert_eq!(role, "Thinker-6");
+        assert_eq!(content, "No role header here");
+    }
+
+    #[test]
+    fn test_capability_aware_protocol_selection() {
+        let mock = Arc::new(MockLlm::new("test"));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+
+        // auto_protocol=false の場合、設定値がそのまま返る
+        let config = SoTConfig {
+            auto_protocol: false,
+            coordination_protocol: CoordinationProtocol::Coordinator,
+            ..Default::default()
+        };
+        assert_eq!(
+            engine.select_protocol(&config),
+            CoordinationProtocol::Coordinator
+        );
+
+        // auto_protocol=true で mock プロバイダの場合、弱モデルと判定される
+        let config_auto = SoTConfig {
+            auto_protocol: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            engine.select_protocol(&config_auto),
+            CoordinationProtocol::Coordinator
+        );
     }
 }

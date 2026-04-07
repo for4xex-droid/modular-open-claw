@@ -1,6 +1,13 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **Self-Organizing SoT Engine (ADR-032) — Dochkina (2026) arXiv:2603.28990 統合 [完了]:**
+  - **`CoordinationProtocol` enum** (`contracts.rs`): Sequential / Coordinator / Broadcast の3つの協調プロトコルを型安全に定義。Endogeneity Paradox の知見に基づき Sequential をデフォルトとして採用。
+  - **Sequential マルチパス熟議**: 各 Thinker が前任者の完成済み出力を全て見た上で**自律的にロールを発明**する熟議パイプライン。固定ロール割当（アンチパターン）を排除し、タスク文脈に応じた動的ロール創発を実現。
+  - **Voluntary Self-Abstention**: LLM が `[ABSTAIN]` マーカーを返すことで自発的に辞退できる機構。トークンコストを自然最適化。`SoTEvent::ThinkerAbstained` で管理コンソールから可視化可能。
+  - **Capability-Aware Protocol Fallback**: `auto_protocol=true` 設定時、プロバイダ名に基づきモデル能力閾値を判定。高能力モデルには Sequential（自律性で品質向上）、低能力モデルには Coordinator（固定構造で安定化）を自動選択。
+  - **既存 Critic 品質ゲート保持**: Sequential マルチパスの後に P-2 Critic スコアリングが構造化検証として機能。論文の知見と Aiome の品質保証を両立。
+  - **ADR-032** (`docs/decisions/032-self-organizing-sot.md`): 設計判断の正式記録。
 - **Chaos Engineering Infrastructure (Layer A-C) [完了]:**
   - **フォルトインジェクション基盤** (`tests/common/chaos.rs`): `ChaosMode` enum と `ChaosLlmProvider` ラッパーを `tests/` ディレクトリに完全隔離して新設。本番バイナリへの漏洩可能性はRustコンパイラの保証により数学的にゼロ。
   - **カオス実験スイート** (`tests/chaos_experiments.rs`): 6つの定常状態仮説テストを実装（SoT空レスポンス、SoT不正JSON、SoTタイムアウト、SamsaraEngine LLM障害、CircuitBreaker強制Open、ConstraintChecker巨大出力）。全テスト0.10秒で完了、既存85テストへの干渉ゼロ。

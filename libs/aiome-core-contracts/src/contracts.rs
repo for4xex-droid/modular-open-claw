@@ -657,6 +657,21 @@ pub struct ScoringCriterion {
     pub weight: f64,
 }
 
+/// Dochkina (2026) arXiv:2603.28990 に基づく協調プロトコル。
+/// Endogeneity Paradox: 固定順序 + 自律ロール選択の Sequential が
+/// 中央集権的 Coordinator (+14%) とフル自律 Shared (+44%) の両方を凌駕する。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, utoipa::ToSchema)]
+pub enum CoordinationProtocol {
+    /// 固定順序 + 自律ロール選択 (Endogeneity Paradox の最適解)
+    /// 各 Thinker は前任者の完成済み出力を全て見た上で自律的にロールを発明する
+    #[default]
+    Sequential,
+    /// 中央集権的ロール割当 (低能力モデルのフォールバック)
+    Coordinator,
+    /// 意図ブロードキャスト→2ラウンド型
+    Broadcast,
+}
+
 /// SoT エンジンの詳細設定
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 pub struct SoTConfig {
@@ -665,7 +680,27 @@ pub struct SoTConfig {
     pub max_rounds: u8,
     pub scoring_criteria: Vec<ScoringCriterion>,
     pub use_fast_model_for_debate: bool,
+    /// ロールのヒント（参考。LLM が自律的に発明するロールの種として提示されるが強制ではない）
     pub adversarial_personas: Vec<String>,
+    /// 協調プロトコル (default: Sequential) — Dochkina (2026)
+    #[serde(default)]
+    pub coordination_protocol: CoordinationProtocol,
+    /// Sequential 時の思考パス数 (default: 3, max: 8)
+    #[serde(default = "default_num_thinkers")]
+    pub num_thinkers: u8,
+    /// 自発的辞退を許可するか (default: true) — Voluntary Self-Abstention
+    #[serde(default = "default_true")]
+    pub allow_abstention: bool,
+    /// 能力閾値に基づくプロトコル自動切替 (default: false)
+    #[serde(default)]
+    pub auto_protocol: bool,
+}
+
+fn default_num_thinkers() -> u8 {
+    3
+}
+fn default_true() -> bool {
+    true
 }
 
 impl Default for SoTConfig {
@@ -688,6 +723,10 @@ impl Default for SoTConfig {
             ],
             use_fast_model_for_debate: true,
             adversarial_personas: vec!["Skeptical Auditor".to_string()],
+            coordination_protocol: CoordinationProtocol::Sequential,
+            num_thinkers: 3,
+            allow_abstention: true,
+            auto_protocol: false,
         }
     }
 }
@@ -728,6 +767,18 @@ pub enum SoTEvent {
         round: u8,
         scores: Vec<(String, f64)>,
         all_passed: bool,
+    },
+    /// Dochkina (2026): Thinker が自発的に辞退した
+    ThinkerAbstained {
+        session_id: String,
+        thinker_index: u8,
+        round: u8,
+    },
+    /// Dochkina (2026): 使用されるプロトコルが選択された
+    ProtocolSelected {
+        session_id: String,
+        protocol: CoordinationProtocol,
+        reason: String,
     },
     SessionEnd {
         session_id: String,
