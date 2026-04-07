@@ -84,12 +84,11 @@ serde_json = "1.0"
             );
         }
 
-        // Phase 13-C: File-Based Saga — Use stable workspace for build caching
+        // Phase 13-C: File-Based Saga — Use stable directory for build caching
         let forge_root = self
             .skills_output_dir
             .parent()
-            .and_then(|p| p.parent())
-            .unwrap_or(Path::new("workspace"))
+            .unwrap_or(&self.skills_output_dir)
             .join("forge_workspaces");
         let workspace_dir = forge_root.join(skill_name);
         if !workspace_dir.exists() {

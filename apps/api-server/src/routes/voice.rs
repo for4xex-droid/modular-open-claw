@@ -115,14 +115,13 @@ pub async fn upload_voice_handler(
     // 2 & 3. 暗号化: [nonce(12B) || ciphertext || tag(16B)] (§SEC-1, §4-B)
     let encrypted = encrypt_aes256gcm(&body, &key)?;
 
-    // 4. workspace外の安全な領域に保存 (ここでは ~/.aiome/abyss_vault/ をシミュレートするか、適当な一時ディレクトリ)
-    let workspace_root = state.config.abyss_vault_path.clone();
-    let workspace_root = if workspace_root.is_empty() {
-        "workspace".to_string()
+    // 4. AppDataResolver 配下の安全な領域に保存 (.abyss_vault/)
+    let vault_base = if state.config.abyss_vault_path.is_empty() {
+        state.config.resolver.root().to_path_buf()
     } else {
-        workspace_root
+        PathBuf::from(&state.config.abyss_vault_path)
     };
-    let vault_dir = PathBuf::from(workspace_root).join(".abyss_vault");
+    let vault_dir = vault_base.join(".abyss_vault");
 
     fs::create_dir_all(&vault_dir)
         .await

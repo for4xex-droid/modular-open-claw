@@ -62,7 +62,9 @@ impl Default for SecurityConfig {
                 "docker".to_string(),
                 "slm".to_string(),
             ],
-            workspace_root: std::path::PathBuf::from("workspace"),
+            workspace_root: shared::app_data::AppDataResolver::new()
+                .root()
+                .to_path_buf(),
             vault_path: None,
             use_runsc_sandbox: true,
         }
@@ -72,7 +74,15 @@ impl Default for SecurityConfig {
 impl SecurityConfig {
     /// `load_or_default` を実行する
     pub fn load_or_default() -> Self {
-        let workspace = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| "workspace".to_string());
+        let workspace = std::env::var("WORKSPACE_DIR")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| {
+                shared::app_data::AppDataResolver::new()
+                    .root()
+                    .to_string_lossy()
+                    .to_string()
+            });
         let workspace_root = std::path::PathBuf::from(&workspace);
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let path = std::path::PathBuf::from(home).join(".aiome/config/security.json");

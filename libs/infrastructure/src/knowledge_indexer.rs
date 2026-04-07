@@ -85,7 +85,7 @@ impl ProjectKnowledgeIndexer {
             }
         }
 
-        let jail = Jail::new("workspace").map_err(|e| AiomeError::Infrastructure {
+        let jail = Jail::new(&self.workspace_root).map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),
         })?;
 

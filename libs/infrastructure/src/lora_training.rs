@@ -747,11 +747,12 @@ mod tests {
         ));
         let jq = Arc::new(GlobalMockJobQueue::default());
 
+        let datasets_dir = tmp.path().join("datasets");
+        let _ = std::fs::create_dir_all(&datasets_dir);
         let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None)
-            .with_datasets_dir(std::path::PathBuf::from("workspace/datasets"));
+            .with_datasets_dir(datasets_dir.clone());
 
-        let dataset_dir = std::path::Path::new("workspace/datasets");
-        let _ = std::fs::create_dir_all(&dataset_dir);
+        let dataset_dir = &datasets_dir;
         let dataset_path = dataset_dir.join("test_dataset");
         std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap(); // allow-anti-pattern
 

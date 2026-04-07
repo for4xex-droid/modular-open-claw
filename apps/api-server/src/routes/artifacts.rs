@@ -115,7 +115,7 @@ pub async fn download_artifact_file_handler(
     }
 
     // 1. Create a transient Jail for serving the file (read-only intent)
-    let jail = match Jail::new("workspace") {
+    let jail = match Jail::new(state.config.resolver.root()) {
         Ok(j) => j,
         Err(e) => {
             return (
@@ -184,7 +184,7 @@ pub async fn delete_artifact_handler(
     _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let jail = Jail::new("workspace")
+    let jail = Jail::new(state.config.resolver.root())
         .map_err(|e| aiome_core::error::AiomeError::OsError { source: e.into() })?;
 
     state.artifact_store.delete_artifact(&id, &jail).await?;
