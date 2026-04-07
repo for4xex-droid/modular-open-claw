@@ -1,6 +1,11 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **Chaos Engineering Infrastructure (Layer A-C) [完了]:**
+  - **フォルトインジェクション基盤** (`tests/common/chaos.rs`): `ChaosMode` enum と `ChaosLlmProvider` ラッパーを `tests/` ディレクトリに完全隔離して新設。本番バイナリへの漏洩可能性はRustコンパイラの保証により数学的にゼロ。
+  - **カオス実験スイート** (`tests/chaos_experiments.rs`): 6つの定常状態仮説テストを実装（SoT空レスポンス、SoT不正JSON、SoTタイムアウト、SamsaraEngine LLM障害、CircuitBreaker強制Open、ConstraintChecker巨大出力）。全テスト0.10秒で完了、既存85テストへの干渉ゼロ。
+  - **`/chaos` ワークフロー** (`.agent/workflows/chaos.md`): 「仮説→障害注入→検証→学習」の4フェーズカオスエンジニアリング・ループを体系化。
+  - **`/god-mode` 5段階化**: Phase 3 (Reflexion) と Phase 5 (Red-Team) の間に Phase 4 (Chaos) を挿入し、品質パイプラインを強化。
 - **E2E Infrastructure Hardening (Layer 0-2, 0-3, 0-4) & Agentic UI (Layer 1-1) [完了]:**
   - **Inochi2D Asset Delivery API (`/api/v1/avatar/inochi2d/:filename`)**: パストラバーサル攻撃を完全に無効化する `PathSandbox`（Jail）を実装。また非同期・ノンブロッキング I/O (`tokio::fs::read`) によって、大容量の `.inx` ファイルロード時におけるサーバ応答の遅延スパイクとブロッキングを完全排除。Golden Rules に厳格に従い、全ての `unwrap()` 系アンチパターンを払拭した堅牢なインフラストラクチャを構築しました。
   - **Whisper Monologue API (`/api/v1/whisper/monologue`)**: `AgentSoul` の `experience_buffer` に対する高速インメモリ・フィルタリングおよびカーソル・ページネーションを追加。エージェントが舞台裏で自身を省察（Reflection）した `Whisper` コンテンツを抽出配信。

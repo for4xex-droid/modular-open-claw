@@ -1,5 +1,5 @@
 ---
-description: Brainstorm, TDD, Reflexion, Red-Team を連鎖させ、最高品質の成果物を生み出す究極のコンボワークフロー
+description: Brainstorm, TDD, Reflexion, Chaos, Red-Team を連鎖させ、最高品質の成果物を生み出す究極のコンボワークフロー
 ---
 
 # /god-mode - 神の一手
@@ -21,9 +21,13 @@ description: Brainstorm, TDD, Reflexion, Red-Team を連鎖させ、最高品質
 ワークフロー `/reflexion` を実行し、自己批判ループを回してコード品質を95点以上に引き上げてください。
 Golden Ruleへの準拠を徹底させます。
 
-### Phase 4: 試練 (Red-Team) 🛡️
+### Phase 4: 混沌 (Chaos) 🔥
+ワークフロー `/chaos` を実行し、障害注入テストを回してレジリエンスを検証してください。
+LLM 空レスポンス、LLM タイムアウト、Circuit Breaker 強制 Open の3つは最低限実行すること。
+
+### Phase 5: 試練 (Red-Team) 🛡️
 ワークフロー `/red-team` を実行し、`sentinel` スキャンと攻撃シミュレーションを行ってください。
 いかなる脆弱性も許してはいけません。
 
 ## 完了条件
-Phase 4まで全てのチェックをクリアし、Sentinelがオールグリーンであること。
+Phase 5まで全てのチェックをクリアし、Sentinelがオールグリーンであること。
