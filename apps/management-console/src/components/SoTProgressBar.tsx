@@ -21,6 +21,8 @@ export const SoTProgressBar: React.FC = () => {
             status: 'active' | 'ended';
             scores: [string, number][];
             events: SoTEvent[];
+            abstentionCount: number;
+            protocol: string | null;
         } | null = null;
         
         // Find all SoT events and sort oldest first to reconstruct chronological state
@@ -40,8 +42,15 @@ export const SoTProgressBar: React.FC = () => {
                             currentRound: 0,
                             status: 'active',
                             scores: [],
-                            events: [se]
+                            events: [se],
+                            abstentionCount: 0,
+                            protocol: null,
                         };
+                    }
+                    break;
+                case 'ProtocolSelected':
+                    if (activeSession && activeSession.id === data.session_id) {
+                        activeSession.protocol = data.protocol;
                     }
                     break;
                 case 'RoleStart':
@@ -54,7 +63,9 @@ export const SoTProgressBar: React.FC = () => {
                             currentRound: data.round,
                             status: 'active',
                             scores: [],
-                            events: []
+                            events: [],
+                            abstentionCount: 0,
+                            protocol: null,
                         };
                     }
                     if (activeSession.id === data.session_id) {
@@ -62,6 +73,11 @@ export const SoTProgressBar: React.FC = () => {
                         if (type === 'RoleStart' && !activeSession.roles.includes(data.role)) {
                             activeSession.roles.push(data.role);
                         }
+                    }
+                    break;
+                case 'ThinkerAbstained':
+                    if (activeSession && activeSession.id === data.session_id) {
+                        activeSession.abstentionCount += 1;
                     }
                     break;
                 case 'Score':
@@ -94,9 +110,21 @@ export const SoTProgressBar: React.FC = () => {
                     </span>
                     Society of Thought Active
                 </h3>
-                <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-800 rounded">
-                    Round {currentSession.currentRound}
-                </span>
+                <div className="flex items-center gap-1.5">
+                    {currentSession.protocol && (
+                        <span className="text-[10px] text-cyan-400 px-1.5 py-0.5 bg-cyan-900/40 border border-cyan-700/30 rounded">
+                            {currentSession.protocol}
+                        </span>
+                    )}
+                    {currentSession.abstentionCount > 0 && (
+                        <span className="text-[10px] text-amber-400 px-1.5 py-0.5 bg-amber-900/30 border border-amber-700/30 rounded" title="Voluntary Self-Abstentions">
+                            🤚 {currentSession.abstentionCount}
+                        </span>
+                    )}
+                    <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-800 rounded">
+                        Round {currentSession.currentRound}
+                    </span>
+                </div>
             </div>
             
             <div className="space-y-2">

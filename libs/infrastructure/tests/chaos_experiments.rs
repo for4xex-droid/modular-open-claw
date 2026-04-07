@@ -278,3 +278,80 @@ async fn chaos_sot_llm_timeout() {
         "LLM timeout MUST propagate as Error, not silently succeed"
     );
 }
+
+// ============================================================
+//  Experiment 7: Sequential Protocol + 空レスポンス LLM
+//  (Dochkina 2026 ADR-032)
+// ============================================================
+/// 仮説: Sequential プロトコルで LLM が空レスポンスを返した場合、
+///       全 Thinker が空でもセッションは panic せず Graceful Degradation する
+#[tokio::test]
+async fn chaos_sequential_empty_response_graceful_degradation() {
+    use aiome_core_contracts::contracts::CoordinationProtocol;
+
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::EmptyResponse,
+    });
+    let engine = SoTEngine::new(chaos_llm.clone(), chaos_llm);
+
+    let config = SoTConfig {
+        max_rounds: 1,
+        coordination_protocol: CoordinationProtocol::Sequential,
+        num_thinkers: 3,
+        ..Default::default()
+    };
+
+    // ── Verification: 3 Thinker が全て空でも panic しない ──
+    let result = engine
+        .run_session("test task", SoTTrigger::Manual, config, 1.0)
+        .await;
+    assert!(
+        result.is_ok(),
+        "Sequential with empty LLM must NOT panic. Got: {:?}",
+        result.err()
+    );
+
+    // ── Learning: 空レスポンスではスコアが低く AllCriteriaPassed にはならない ──
+    let (_, outcome, _) = result.expect("Chaos: Sequential empty should return Ok"); // allow-anti-pattern
+    assert_ne!(
+        outcome,
+        aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed,
+        "Empty Sequential should NOT pass all criteria"
+    );
+}
+
+// ============================================================
+//  Experiment 8: Sequential + 全 Thinker が [ABSTAIN]
+//  (Dochkina 2026 ADR-032 Voluntary Self-Abstention)
+// ============================================================
+/// 仮説: 全 Thinker が自発的辞退しても、セッションは panic せず
+///       前ラウンドのコンテンツ（または空文字列）を保持して完了する
+#[tokio::test]
+async fn chaos_sequential_full_abstention() {
+    use aiome_core_contracts::contracts::CoordinationProtocol;
+
+    // 全 Thinker が [ABSTAIN] を返すモック
+    let mock = Arc::new(MockLlm::ok("[ABSTAIN] Nothing to contribute."));
+    let engine = SoTEngine::new(mock.clone(), mock);
+
+    let config = SoTConfig {
+        max_rounds: 1,
+        coordination_protocol: CoordinationProtocol::Sequential,
+        num_thinkers: 4,
+        allow_abstention: true,
+        ..Default::default()
+    };
+
+    let result = engine
+        .run_session("test task", SoTTrigger::Manual, config, 1.0)
+        .await;
+
+    // ── Verification: 全辞退でも panic しない ──
+    assert!(
+        result.is_ok(),
+        "Full abstention must NOT panic. Got: {:?}",
+        result.err()
+    );
+}

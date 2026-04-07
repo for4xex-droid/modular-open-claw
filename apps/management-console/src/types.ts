@@ -120,6 +120,8 @@ export type SoTEventPayload =
     | { type: "RoleStart"; data: { session_id: string; role: string; round: number } }
     | { type: "RoleOutput"; data: { session_id: string; role: string; round: number; content: string; token_count: number } }
     | { type: "Score"; data: { session_id: string; round: number; scores: [string, number][]; all_passed: boolean } }
+    | { type: "ThinkerAbstained"; data: { session_id: string; thinker_index: number; round: number } }
+    | { type: "ProtocolSelected"; data: { session_id: string; protocol: string; reason: string } }
     | { type: "SessionEnd"; data: { session_id: string; outcome: SoTOutcome; total_tokens: number } };
 
 export interface SoTEvent {

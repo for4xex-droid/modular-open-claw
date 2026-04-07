@@ -395,7 +395,7 @@ impl SoTEngine {
         }
     }
 
-    /// Coordinator Protocol: 既存の Explorer/Synthesizer ロジック (レガシー互換)
+    /// Coordinator Protocol: 固定ロール割当ロジック (レガシー互換 / 低能力モデル向け)
     async fn run_coordinator_pass(
         &self,
         session_id: &str,
@@ -419,7 +419,7 @@ impl SoTEngine {
         } else {
             "Synthesizer"
         };
-        let explorer_prompt = if current_content.is_empty() {
+        let thinker_prompt = if current_content.is_empty() {
             format!("Task: {}\nGenerate a comprehensive solution.", task)
         } else {
             format!(
@@ -434,7 +434,7 @@ impl SoTEngine {
             round,
         });
 
-        let explorer_req = aiome_core_contracts::llm::LlmRequest {
+        let thinker_req = aiome_core_contracts::llm::LlmRequest {
             messages: vec![
                 aiome_core_contracts::llm::LlmMessage {
                     role: "system".to_string(),
@@ -443,7 +443,7 @@ impl SoTEngine {
                 },
                 aiome_core_contracts::llm::LlmMessage {
                     role: "user".to_string(),
-                    content: explorer_prompt,
+                    content: thinker_prompt,
                     cache: false,
                 },
             ],
@@ -451,11 +451,11 @@ impl SoTEngine {
             ..Default::default()
         };
 
-        let explorer_res = self
+        let thinker_res = self
             .primary_provider
-            .complete_with_cache(explorer_req)
+            .complete_with_cache(thinker_req)
             .await?;
-        let output = explorer_res.content.clone();
+        let output = thinker_res.content.clone();
 
         let _ = self.event_tx.send(SoTEvent::RoleOutput {
             session_id: session_id.to_string(),
