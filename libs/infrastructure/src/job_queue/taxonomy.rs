@@ -41,7 +41,11 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
         // VULN-62: Sanitize input to prevent prompt injection
         let max_len = 5000;
         let sanitized_lesson = if lesson.len() > max_len {
-            &lesson[..max_len]
+            let mut safe_idx = max_len;
+            while safe_idx > 0 && !lesson.is_char_boundary(safe_idx) {
+                safe_idx -= 1;
+            }
+            &lesson[..safe_idx]
         } else {
             lesson
         };
