@@ -173,6 +173,7 @@ pub mod validator;
 pub mod vector_ops;
 pub mod whisper_transcription;
 pub mod workspace_manager;
+pub mod x_signal_probe;
 
 mod artifact_store_tests;
 

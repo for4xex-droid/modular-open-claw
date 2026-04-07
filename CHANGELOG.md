@@ -1,6 +1,11 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **X Signal Probe (Reqwest Direct API Integration) [完了]:**
+  - **`XSignalProbe`**: `reqwest` と `X_BEARER_TOKEN` を用いた超軽量な X API トレンド収集アダプタを実装（`TrendAdapter` トレイト準拠）。
+  - **Rate Limiting**: 24時間に1回の厳格なインメモリ・レートリミッター（DashMap）をアダプタ深部に内包させ、X API クレジット枯渇を防ぐ。
+  - **DreamService Integration**: `ExternalTrendSonar` に `XSignalProbe` を登録し、アイドル時の自律思考（DreamState）へ X のリアルタイム信号を統合。
+  - 第一原理分析に基づき、複雑な xmcp サイドカーをバイパスし、Rust ネイティブなセキュア軽量実装とした。
 - **Self-Organizing SoT Engine (ADR-032) — Dochkina (2026) arXiv:2603.28990 統合 [完了]:**
   - **`CoordinationProtocol` enum** (`contracts.rs`): Sequential / Coordinator / Broadcast の3つの協調プロトコルを型安全に定義。Endogeneity Paradox の知見に基づき Sequential をデフォルトとして採用。
   - **Sequential マルチパス熟議**: 各 Thinker が前任者の完成済み出力を全て見た上で**自律的にロールを発明**する熟議パイプライン。固定ロール割当（アンチパターン）を排除し、タスク文脈に応じた動的ロール創発を実現。

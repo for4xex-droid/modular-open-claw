@@ -14,7 +14,8 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     info!("💤 [DreamService] Initializing Dream State Loop...");
 
     // ADR-025: CortexFileProjector の初期化 — Agent-Native Discovery
-    let cortex_fs_root = std::path::PathBuf::from("workspace/cortex_fs");
+    let resolver = shared::app_data::AppDataResolver::new();
+    let cortex_fs_root = resolver.resolve("cortex_fs");
     let job_queue_inner = state.job_queue.get_inner().clone();
     let projector = state.cortex_projector.get_inner().clone();
 
@@ -51,8 +52,19 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
             info!("✅ [DreamService] WebSearch + SerpAnalysis adapters registered.");
         }
     }
+
+    // XSignalProbe using X_BEARER_TOKEN
+    if let Ok(x_token) = std::env::var("X_BEARER_TOKEN") {
+        if !x_token.is_empty() {
+            adapters.push(Arc::new(infrastructure::x_signal_probe::XSignalProbe::new(
+                x_token,
+            )));
+            info!("✅ [DreamService] XSignalProbe adapter registered.");
+        }
+    }
+
     if adapters.is_empty() {
-        info!("ℹ️ [DreamService] No SEARCH_API_KEY found. TrendSonar running in passive mode.");
+        info!("ℹ️ [DreamService] No SEARCH_API_KEY or X_BEARER_TOKEN found. TrendSonar running in passive mode.");
     }
     let trend_sonar = ExternalTrendSonar::new(adapters, None);
 

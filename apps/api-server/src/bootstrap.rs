@@ -794,7 +794,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let cortex_projector_arc = Arc::new(
         infrastructure::cortex_file_projector::CortexFileProjector::new(
             job_queue.get_pool().clone(),
-            std::path::PathBuf::from("workspace/cortex_fs"),
+            resolver.resolve("cortex_fs"),
         ),
     );
 

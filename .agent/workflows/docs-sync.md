@@ -26,6 +26,7 @@ description: 開発内容を分析し、関連ドキュメントを自動同期�
      - **進化システム変更**: `EVOLUTION_STRATEGY.md`
      - **LLM関連**: `LLM_PROVIDER_ARCHITECTURE.md`
      - **スキル/WASM関連**: `SKILL_FORGE_SPEC.md`, `SKILLS_MANUAL.md`
+     - **トレイト/クレート/MCPツール変更**: `docs/architecture/AIOME_NURTURE_SYNERGY.md` (クラス図・シーケンス図・依存マップ)
 
 3. **ドキュメント更新**
    - 抽出された変更内容（例：新しい環境変数の役割）を、各ドキュメントの適切なセクションに追記または修正します。

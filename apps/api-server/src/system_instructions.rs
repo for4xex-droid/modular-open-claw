@@ -96,12 +96,13 @@ pub(crate) async fn build_system_instructions(
 
     format!(
         "# IDENTITY: \n{}{}{}{}{}\n\
-        [利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}",
+        [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}",
         name_prompt,
         soul_md,
         evolving_soul_md,
         soul_dynamic,
         repair_prompt,
+        user_md,
         skill_list,
         project_rules,
         karma_str,
@@ -258,6 +259,35 @@ mod tests {
         .await;
 
         assert!(instructions.contains("mcp-test"));
+    }
+
+    #[tokio::test]
+    async fn test_build_system_instructions_user_md_inclusion() {
+        let (state, _tmp) = setup_test_state().await;
+
+        let resolver = &state.config.get_inner().resolver;
+        let user_md_path = resolver.resolve("USER.md");
+        if let Some(parent) = user_md_path.parent() {
+            std::fs::create_dir_all(parent).unwrap(); // allow-anti-pattern
+        }
+        std::fs::write(&user_md_path, "Special User Instruction 123").unwrap(); // allow-anti-pattern
+
+        let instructions = build_system_instructions(
+            &state,
+            "karma",
+            None,
+            Some("Aiome".to_string()),
+            None,
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        assert!(
+            instructions.contains("Special User Instruction 123"),
+            "System instructions should contain USER.md contents"
+        );
     }
 
     #[tokio::test]

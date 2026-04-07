@@ -32,7 +32,7 @@ use crate::vector_ops::{StandardVectorOps, VectorOps};
 /// Artifacts 永続化ストア (Universal: SQLite/PostgreSQL 対応)
 pub struct UniversalArtifactStore {
     pool: DatabasePool,
-    base_dir: PathBuf,           // workspace/artifacts
+    base_dir: PathBuf,           // Controlled via AppDataResolver (e.g. artifacts)
     vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     embed_provider: Option<Arc<dyn EmbeddingProvider>>,
     audit_logger: Option<Arc<dyn aiome_core_contracts::audit::AuditLogger>>,

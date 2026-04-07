@@ -1,5 +1,16 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome Social Signal Integration (Layer A-C)
+### 1. X Signal Probe (Reqwest Direct)
+- **変更内容**:
+    - `libs/infrastructure/src/x_signal_probe.rs` [NEW]: `TrendAdapter` トレイトを実装した X API 情報収集モジュール。インメモリレートリミッター（DashMap）を内包。
+    - `libs/infrastructure/src/lib.rs` [MODIFY]: `x_signal_probe` モジュールを登録。
+    - `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `ExternalTrendSonar` のアレイに `XSignalProbe` を依存注入（`X_BEARER_TOKEN` 存在時のみ）。
+    - `.env.example` [MODIFY]: `X_BEARER_TOKEN` の環境変数テンプレートを追加。
+- **波及効果**:
+    - **`x_signal_probe → trend_sonar → dream_state`**
+    - 外部の複雑な MCP アーキテクチャを排し、依存関係（Impact Radius）を `trend_sonar.rs` 単体に抑え込むことに成功。DreamState 側の既存テスト（モック）に一切影響を与えずに、実環境でのみ X API が自律駆動するセキュアな設計。
+
 ## Chaos Engineering Infrastructure (Layer A-C)
 ### 1. フォルトインジェクション基盤 & カオステストスイート
 - **変更内容**:
