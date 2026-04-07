@@ -231,7 +231,9 @@ pub fn build_app(
         .route(
             "/api/v1/trajectory/:id/diagnosis",
             get(routes::jobs::get_diagnosis_handler),
-        );
+        )
+        .route("/api/v1/soul/status", get(routes::soul::get_soul_status))
+        .route("/api/v1/soul/init", post(routes::soul::init_soul));
 
     #[cfg(debug_assertions)]
     let internal_router = internal_router
@@ -367,7 +369,6 @@ pub fn build_app(
         )
         .route("/api/v1/demo/start", post(routes::demo::start_demo));
 
-    #[cfg(debug_assertions)]
     let internal_router = internal_router.route(
         "/api/v1/settings/test",
         post(routes::settings::test_connection),

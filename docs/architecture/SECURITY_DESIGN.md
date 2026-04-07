@@ -91,6 +91,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 68 | **Async Runtime Blocking DoS** | **`std::fs` usages inside `async` fn blocking Tokio worker threads** | 🔴 High | **Enforced `tokio::fs` Async I/O Policy (Phase 0-2 Reflexion)** |
 | 69 | **SSE State Thrashing (UI OOM)** | **Double rendering 50+ event accumulations on every ping via `useEffect`** | 🟡 Mid | **Single-Pass Derived State (`useMemo`) Architecture (Phase 1-1 Reflexion)** |
 | 70 | **Massive Payload / 0-byte Outbound DoS** | **Agent hallucinates 10MB or empty content** | 🔴 High | **Strict Pre-flight Infrastructure Boundary Validators (Phase B/C)** |
+| 71 | **Prompt Injection (Constitutional Bypass)** | **Payload injection exploiting template fallback behavior** | 🔴 High | **Strict 64-char length limit & static fallback templates (Phase 2B-2 Reflexion)** |
+| 72 | **RAM Allocation DoS (OOM)** | **Giant `.to_lowercase()` string clones during validation** | 🔴 High | **O(1) Streaming Regex (`LazyLock`) matching (Phase 2B-2 Reflexion)** |
+| 73 | **Setup UI Soft Brick** | **Initialization API failure leaving user deadlocked** | 🟡 Mid | **Strict UI `try/catch` and visual error state rendering (Phase 2B-2 Reflexion)** |
 
 ## 3. Defense Architecture
 
@@ -110,6 +113,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Path Traversal Shield (Red Team)**: Enforces strict input validation on parameters like `dataset_id` in `LoraTrainingService`, actively rejecting strings containing `..`, `/`, or `\` to prevent unauthorized access to local file systems.
 - **Resource Exhaustion Blockers (Red Team)**: Introduces hard upper bounds on background job queues (e.g., max 100 `active_jobs`) and employs non-blocking `try_acquire()` for file upload semaphores (`inochi2d`, `voice`). This combination structurally prevents slowloris-style socket starvation and unbounded memory (OOM) attacks from malicious or out-of-control agents.
 - **Outbound Payload Strict Bounds (Phase B/C)**: Prevents an autonomous conductor from successfully executing an HTTP request with 0-byte or 10MB+ parameters. Evaluated upstream within infrastructure adapters (e.g. `WordPressAdapter`, `SerpAnalysisAdapter`) natively prior to creating network traces to mitigate WAF bans and network bandwidth exhaustion.
+- **Constitutional Core Defense (Phase 2B-2 Reflexion)**: Employs an ultra-fast O(1) `LazyLock` regex implementation inside `ConstitutionalValidator` for real-time text analysis. Blocks prompt injections targeting foundational principles. Eliminates fallback-vector bypasses by strictly decoupling user inputs (e.g. `ai_name`) from immutable static fallback templates.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.
@@ -173,7 +177,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-04-07*
+*Last Mutated: 2026-04-08*
 *Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
@@ -200,4 +204,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
 ---
-*最終更新: 2026-04-07 (Zero-Panic Policy Enforcement)*
+*最終更新: 2026-04-08 (Zero-Panic Policy Enforcement)*

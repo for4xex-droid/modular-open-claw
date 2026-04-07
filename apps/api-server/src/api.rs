@@ -15,6 +15,7 @@ use utoipa::OpenApi;
         crate::routes::general::get_wiki_content,
         crate::routes::settings::get_settings,
         crate::routes::settings::update_setting,
+        crate::routes::settings::test_connection,
         crate::routes::settings::get_ollama_models,
         crate::routes::skill::list_skills,
         crate::routes::skill::import_skill,
@@ -191,7 +192,6 @@ pub struct ApiDoc;
     crate::routes::karma::trigger_failure_demo,
     crate::routes::karma::trigger_security_demo,
     crate::routes::karma::trigger_federation_demo,
-    crate::routes::settings::test_connection,
 ))]
 pub struct DemoApiDoc;
 

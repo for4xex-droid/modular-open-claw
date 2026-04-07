@@ -24,9 +24,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
     const [aiName, setAiName] = useState("Watchtower");
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
     const [isSaving, setIsSaving] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const handleFinalize = async () => {
         setIsSaving(true);
+        setErrorMsg(null);
         try {
             // Save AI Name to DB
             await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
@@ -40,10 +42,18 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                 method: 'PUT',
                 body: JSON.stringify({ key: 'view_mode', value: viewMode, category: 'ui' })
             });
+            // Initialize SOUL.md with LLM
+            await authenticatedFetch(`${API_BASE}/api/v1/soul/init`, {
+                method: 'POST',
+                body: JSON.stringify({ ai_name: aiName })
+            });
+
             onClose();
-        } catch (error) {
+            // Force reload to apply BootMode::Normal changes and trigger system load
+            window.location.reload();
+        } catch (error: any) {
             console.error("Failed to save onboarding settings", error);
-            onClose();
+            setErrorMsg(error.message || "Failed to initialize AI startup. Is your LLM running?");
         } finally {
             setIsSaving(false);
         }
@@ -284,6 +294,19 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                     </button>
                                 )}
                             </div>
+
+                            <AnimatePresence>
+                                {errorMsg && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        style={{ marginTop: '1rem', color: 'var(--accent-rose)', fontSize: '0.9rem', fontWeight: 600 }}
+                                    >
+                                        {errorMsg}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
                                 {steps.map((_, i) => (

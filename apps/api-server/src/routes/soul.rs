@@ -10,7 +10,7 @@ use axum::{
     extract::State,
     response::{IntoResponse, Json},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{auth::Authenticated, AppState};
@@ -26,6 +26,48 @@ pub struct SoulStatusResponse {
     pub karma_resonance: i32,
     pub lora_adapter_path: Option<String>,
     pub lora_base_model: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct InitSoulResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[derive(Deserialize)]
+pub struct InitSoulRequest {
+    pub ai_name: String,
+}
+
+pub async fn init_soul(
+    State(state): State<AppState>,
+    _auth: Authenticated,
+    Json(payload): Json<InitSoulRequest>,
+) -> Result<Json<InitSoulResponse>, crate::error::AppError> {
+    let mut safe_name = payload
+        .ai_name
+        .replace('\n', " ")
+        .trim()
+        .chars()
+        .take(64)
+        .collect::<String>();
+    if safe_name.is_empty() {
+        safe_name = "Genesis".to_string();
+    }
+
+    state
+        .soul_mutator
+        .generate_initial_soul(&safe_name)
+        .await
+        .map_err(|e| {
+            error!("Failed to initialize SOUL.md: {:?}", e);
+            crate::error::AppError::internal("Failed to generate initial soul")
+        })?;
+
+    Ok(Json(InitSoulResponse {
+        success: true,
+        message: "Soul initialized successfully.".to_string(),
+    }))
 }
 
 pub async fn get_soul_status(

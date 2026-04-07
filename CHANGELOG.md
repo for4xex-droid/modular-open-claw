@@ -1,6 +1,16 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **Phase 2B-2 Foundation (Perfect Plan Rev.6 / Limit Break) [完了]:**
+  - **パス標準化の限界突破 (Phase 2-PRE 完遂)**: `bootstrap.rs` 内に残存していた `std::fs::read_to_string("SOUL.md")` という相対ハードコードパスを全消去し、`AppDataResolver` 経由の絶対パス照会へと是正。ゴーストバグの発生を未然に防止。
+  - **SOUL 初期生成 API**: `POST /api/v1/soul/init` エンドポイントを新設。初回起動時の `OnboardingModal` からの初期システム人格生成フローをアクティブ化し、フロントエンドとバックエンドの同期を実現。
+  - **フェイルセーフ防御網 (Safety Net)**: `SoulMutator` 内の `transmute()` に SOUL.md 不在時のフォールバックおよび自己修復ロジックを追加。さらに `ConstitutionalValidator` を `SoulMutator` パイプラインに統合し、生成人格テキストに対する破壊的キーワードの公理的ブロックを保証。
+  - **Release ビルドゲートの消去**: 接続テスト用の `#[cfg(debug_assertions)]` 防壁を `settings.rs` および `router.rs` などの関連階層から撤去。本番ビルドでも OnboardingModal の LLM 接続テストが機能するよう解放。
+- **Phase 2B-2 Reflexion (Security / UX Audit) [完了]:**
+  - **Prompt Injection DoS Block**: 初期人格生成APIで `ai_name` を64文字・改行排除するサニタイズを実装し、コンテキスト枯渇（OOM）やインジェクションを強固に防御。名前が空になるケースは "Genesis" として自己修復。
+  - **O(1) Streaming Validation**: `ConstitutionalValidator` のテキスト検査を O(N) の `to_lowercase()` メモリコピーから、`LazyLock` キャッシュによる O(1) 正規表現ストリーミング検査へと劇的にパフォーマンス改善。
+  - **Fallback UX Hardening**: 起動用モーダル（`OnboardingModal`）にて通信障害時にソフトブリック（暗黙クローズと永遠の待機）を引き起こしていた問題を撤廃。`try/catch` および React State を用いた堅牢なエラーメッセージ描画フローへリファクタリング。
+
 - **X Signal Probe (Reqwest Direct API Integration) [完了]:**
   - **`XSignalProbe`**: `reqwest` と `X_BEARER_TOKEN` を用いた超軽量な X API トレンド収集アダプタを実装（`TrendAdapter` トレイト準拠）。
   - **Rate Limiting**: 24時間に1回の厳格なインメモリ・レートリミッター（DashMap）をアダプタ深部に内包させ、X API クレジット枯渇を防ぐ。

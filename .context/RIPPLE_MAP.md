@@ -1,5 +1,26 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 2B-2 Foundation (Perfect Plan Rev.6 / Limit Break)
+### 1. ゴーストバグ防止機構と SOUL 初期化API
+- **変更内容**:
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `std::fs::read_to_string("SOUL.md")` という相対ハードコードパスを `resolver.resolve("SOUL.md")` へ完全置換。
+    - `apps/api-server/src/routes/soul.rs` [MODIFY]: `POST /api/v1/soul/init` API エンドポイントを追加。
+    - `apps/api-server/src/router.rs` & `settings.rs` [MODIFY]: `#[cfg(debug_assertions)]` 防壁を撤去し、Release ビルドでの接続テストおよびオンボーディングフローを解放。
+    - `libs/infrastructure/src/soul_mutator.rs` [MODIFY]: `generate_initial_soul(name)` メソッド実装、および `transmute()` 内に不測の SOUL.md 喪失時の自己修復フォールバックを追加。さらに `ConstitutionalValidator` を用いた LLM 出力の禁止キーワード検証機構を統合。
+    - `apps/management-console/src/components/OnboardingModal.tsx` [MODIFY]: 「Awaken System」時に `/api/v1/soul/init` をポーリング呼び出しし、リロード遷移によるメインシステムへの引き渡しを実装。
+- **波及効果**:
+    - **`OnboardingModal → /api/v1/soul/init → SoulMutator::generate_initial_soul → app_data_root/SOUL.md`**
+    - 初回起動時における「人格（SOUL.md）不在」に起因するパニックを完全に排除。
+    - 本番環境（Tauri パッケージング済）においても、設定画面での「Ollama/Gemini 接続テスト」が確実に機能し、セットアップ体験の断絶（404消滅）を防ぐ。
+
+### 2. Phase 2B-2 Reflexion (Security / UX Audit)
+- **変更内容**:
+    - `apps/api-server/src/routes/soul.rs` [MODIFY]: `ai_name` に対する `64文字・改行排除` サニタイズと、空文字時の `Genesis` デフォルト切り替え（OOM/Injection 防御）。
+    - `libs/core/src/security.rs` [MODIFY]: `ConstitutionalValidator::validate_text` にて、巨大文字列コピー `to_lowercase()` を廃止し、`once_cell` 相当の `std::sync::LazyLock` を用いた O(1) コンパイル済み Regex エンジン処理へと抜本的最適化。
+    - `apps/management-console/src/components/OnboardingModal.tsx` [MODIFY]: 初期起動API障害時に発生するソフトブリック（暗黙クローズによる UX ロック）を `try/catch` + `errorMsg` ステート描画への変更により解消。
+- **波及効果**:
+    - 全体的なインフラストラクチャにおける DoS / OOM レジリエンスが向上。不正な長文や倫理違反キーワードによるエラーを事前にストリーム防壁としてブロックすることで、Agent 側の余計な演算を軽減する。
+
 ## Aiome Social Signal Integration (Layer A-C)
 ### 1. X Signal Probe (Reqwest Direct)
 - **変更内容**:

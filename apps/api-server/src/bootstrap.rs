@@ -447,7 +447,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         None
     };
 
-    let soul_beliefs = match std::fs::read_to_string("SOUL.md") {
+    let soul_beliefs = match std::fs::read_to_string(resolver.resolve("SOUL.md")) {
         Ok(content) => {
             let beliefs: Vec<String> = content
                 .lines()

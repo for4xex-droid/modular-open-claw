@@ -44,6 +44,59 @@ impl SoulMutator {
             belief_gate,
         }
     }
+
+    /// Initializes a new SOUL.md if it doesn't exist, using LLM for lightweight generation based on a template.
+    pub async fn generate_initial_soul(&self, name: &str) -> Result<(), AiomeError> {
+        let soul_path = self.base_dir.join("SOUL.md");
+
+        // Safety: Do not overwrite existing SOUL
+        if soul_path.exists() {
+            return Ok(());
+        }
+
+        info!("🌟 [SoulMutator] Generating initial soul for '{}'", name);
+
+        let template = format!(
+            "# Initial Soul: {}\n\n- Name: {}\n- Persona: Default setup\n- Core Directive: Be helpful, resourceful, and learn from experience.\n",
+            name, name
+        );
+
+        let prompt = format!(
+            "You are forming your new identity. Here is your initial template:\n\n{}\n\nFlesh out 3-5 core beliefs based on this name. Keep it extremely concise and in bullet points.",
+            template
+        );
+
+        // Minimal LLM completion or fallback if LLM is down
+        let mut final_content = template.clone();
+        match self.llm.complete(&prompt, None).await {
+            Ok(res) => {
+                final_content.push_str("\n## Core Beliefs\n");
+                final_content.push_str(&res.content);
+            }
+            Err(e) => {
+                warn!(
+                    "LLM initial generation failed, falling back to static template: {:?}",
+                    e
+                );
+            }
+        }
+
+        // Constitutional Validation
+        let validator = aiome_core::security::ConstitutionalValidator::new();
+        if let Err(e) = validator.validate_text(&final_content).await {
+            warn!("🛡️ [SoulMutator] Constitutional validation failed during initial generation! Using minimal safe fallback. Error: {}", e);
+            final_content = "# Initial Soul: System AI\n\n- Name: System AI\n- Persona: Default setup\n- Core Directive: Be helpful, resourceful, and learn from experience.\n".to_string();
+        }
+
+        fs::write(&soul_path, final_content)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to write initial SOUL.md: {}", e),
+            })?;
+
+        info!("✅ [SoulMutator] Initial SOUL.md created.");
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -103,12 +156,17 @@ impl AgentEvolver for SoulMutator {
             }
         }
         let soul_path = self.base_dir.join("SOUL.md");
-        let soul_content =
-            fs::read_to_string(&soul_path)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to read SOUL.md: {}", e),
-                })?;
+
+        let soul_content = match fs::read_to_string(&soul_path).await {
+            Ok(content) => content,
+            Err(_) => {
+                info!("⚠️ [SoulMutator] SOUL.md not found during transmute. Falling back to initial generation.");
+                self.generate_initial_soul("Genesis").await?;
+                fs::read_to_string(&soul_path)
+                    .await
+                    .unwrap_or_else(|_| "Be helpful.".to_string())
+            }
+        };
 
         let prompt = format!(
             "Current Soul:\n{}\n\nMetadata: {}\n\nMutate this soul to reflect recent development and lessons learned.",
@@ -117,6 +175,16 @@ impl AgentEvolver for SoulMutator {
 
         let response = self.llm.complete(&prompt, None).await?;
         let mutated_soul = response.content;
+
+        // Constitutional Validation
+        let validator = aiome_core::security::ConstitutionalValidator::new();
+        if let Err(e) = validator.validate_text(&mutated_soul).await {
+            warn!(
+                "🛡️ [SoulMutator] Constitutional validation failed during transmute: {}",
+                e
+            );
+            return Ok(false);
+        }
 
         // Verify drift
         if mutated_soul.len() > soul_content.len() * 2 {
@@ -694,5 +762,26 @@ mod tests {
 
         let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap(); // allow-anti-pattern
         assert_eq!(content, "X Y Z");
+    }
+
+    #[tokio::test]
+    async fn test_generate_initial_soul() {
+        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf(); // allow-anti-pattern
+        let _ = fs::create_dir_all(&temp_dir).await;
+
+        let llm = Arc::new(MockLlm {
+            mutation_response: "Generated Soul Content".to_string(),
+        });
+        let mutator = SoulMutator::new(llm, temp_dir.clone(), None);
+
+        // Ensure SOUL.md doesn't exist
+        assert!(!temp_dir.join("SOUL.md").exists());
+
+        let res = mutator.generate_initial_soul("Genesis").await;
+        assert!(res.is_ok());
+
+        // SOUL.md should now exist and contain the LLM output (or template + LLM)
+        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap(); // allow-anti-pattern
+        assert!(content.contains("Genesis"));
     }
 }
