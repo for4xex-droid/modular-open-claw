@@ -104,6 +104,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 4. gVisor コンテナ隔離
 5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
 6. **Precomputed Relational Intelligence**: エージェントによる自律コード改修時の未知のカスケードエラーやパスエイリアス乖離を完全に防ぐ、超高速な静的 AST 物理依存スキャナと影響範囲クエリエマージェンシー機構の標準搭載
+7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
 
 ---
 

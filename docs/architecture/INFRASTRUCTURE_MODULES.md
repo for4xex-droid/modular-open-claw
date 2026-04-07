@@ -14,6 +14,7 @@
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
+| `tests/common/chaos` | **ADR chaos**: `ChaosMode` と `ChaosLlmProvider` を提供するテスト専用のフォルトインジェクション基盤。本番環境に影響を与えずLLM障害（空応答、不正JSON、巨大サイズ、タイムアウト）を注入可能。 | **実装完了** |
 | `commerce` | 外部決済・ギフトAPI（Tremendous等）及び Stripe との自律的な商用連携基盤。**Phase 37a** で実機環境連携（create/cancel_subscription）と webhook 冪等性を実装。 | **Phase 37a 完了** |
 | `commerce_mock` | 決済フローのカルシウム（テスト用途）。 | 実装完了 |
 | `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
@@ -67,4 +68,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-06 (Asia/Tokyo) - Shared String Safety Hardening v1.0*
+*最終更新: 2026-04-07 (Asia/Tokyo) - Chaos Engineering Integration*
