@@ -34,6 +34,9 @@
 - `api-server` の `safe_truncate` を `shared::strings` へ委譲し、内部冗長性を排除。
 
 ### Fixed
+- **Reflexion Loop 1 (SoT Engine):** `society_of_thought.rs` での JSON エンティティ抽出時における潜在的な文字列スライスのパニック（Index Out Of Bounds）脆弱性を除去し、不要なループ処理の冗長コードを排除。
+- **Reflexion Loop 2 (UI):** `SoTProgressBar.tsx` において Golden Rule U-001/U-002 違反であった Tailwind ユーティリティクラスを完全排除。Artemis Design System (`tokens.css`) 基準のインラインスタイリングによる堅牢な UI に改修し、未描画問題（Tailwind非搭載環境下のCSS崩壊）を解決。
+- **Reflexion Loop 3 (Taxonomy):** `libs/infrastructure/src/job_queue/taxonomy.rs` において、長文の `lesson` 処理時に発生し得た UTF-8 バイト境界判定での致命的パニック脆弱性 (VULN-62) をゼロアロケーション文字スライスで完全修復。
 - マルチバイト文字（日本語、絵文字等）の境界で文字列を切り詰める際に発生していた潜在的なサーバパニック (C-6) を完全解消。
 - 文字列切り詰め時における O(N) 計算量爆発の脆弱性を修正。
 - **E2E Test Stabilization (Layer 0) [完了]:**
