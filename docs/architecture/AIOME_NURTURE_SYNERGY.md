@@ -65,8 +65,8 @@ graph TB
         end
 
         subgraph "Apps"
-            API["api-server (97 endpoints)"]
-            MGMT["Management Console (15 screens)"]
+            API["api-server (108 endpoints)"]
+            MGMT["Management Console (57 screens)"]
             TAURI["Tauri Desktop (計画)"]
         end
     end

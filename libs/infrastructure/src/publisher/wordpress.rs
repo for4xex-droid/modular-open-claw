@@ -37,7 +37,7 @@ impl Publisher for WordPressAdapter {
         }
 
         // [SECURITY] TODO: Phase 4 - Read WP token from AbyssVault instead of struct token field
-        let client = reqwest::Client::new();
+        let client = aiome_core::http::get_http_client().clone();
         let endpoint = format!("{}/wp-json/wp/v2/posts", self.api_url);
 
         let title = metadata

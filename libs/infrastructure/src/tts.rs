@@ -23,7 +23,7 @@ pub struct OpenAiTtsProvider {
 impl OpenAiTtsProvider {
     pub fn new(api_key: String, model: String) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: aiome_core::http::get_http_client().clone(),
             api_key,
             model,
         }
@@ -126,10 +126,7 @@ impl XttsProvider {
             reset_timeout: Duration::from_secs(30),
         };
         Self {
-            client: reqwest::Client::builder()
-                .timeout(Duration::from_secs(10)) // 10s timeout for synthesis
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
+            client: aiome_core::http::get_http_client().clone(),
             endpoint,
             circuit_breaker: Arc::new(CircuitBreaker::new("xtts_provider", cb_config)),
         }
@@ -153,7 +150,14 @@ impl TtsProvider for XttsProvider {
 
         let url = format!("{}/tts_to_audio", self.endpoint.trim_end_matches('/'));
 
-        let resp = match self.client.post(&url).json(&payload).send().await {
+        let resp = match self
+            .client
+            .post(&url)
+            .timeout(Duration::from_secs(10))
+            .json(&payload)
+            .send()
+            .await
+        {
             Ok(resp) => resp,
             Err(e) => {
                 self.circuit_breaker.record_failure().await;
@@ -187,12 +191,12 @@ impl TtsProvider for XttsProvider {
     async fn health_check(&self) -> Result<bool, AiomeError> {
         let url = format!("{}/health", self.endpoint.trim_end_matches('/'));
         // Use a short timeout for health checks
-        let health_client = reqwest::Client::builder()
+        let resp = self
+            .client
+            .get(url)
             .timeout(Duration::from_secs(3))
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
-
-        let resp = health_client.get(url).send().await;
+            .send()
+            .await;
         Ok(resp.is_ok() && resp.unwrap().status().is_success()) // allow-anti-pattern
     }
 }

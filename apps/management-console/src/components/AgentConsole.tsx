@@ -110,13 +110,13 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 : 'rgba(0, 243, 255, 0.03)',
                             border: `1px solid ${relevantKarma.includes('見つかりませんでした') ? 'rgba(255, 82, 82, 0.2)' : 'rgba(0, 243, 255, 0.1)'}`,
                             borderLeftWidth: '4px',
-                            borderLeftColor: relevantKarma.includes('見つかりませんでした') ? '#ff5252' : '#00f3ff',
+                            borderLeftColor: relevantKarma.includes('見つかりませんでした') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
                             fontSize: '0.8rem',
                             marginBottom: '1rem',
                         }}
                     >
                         <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
-                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') ? '#ff5252' : '#00f3ff'} />
+                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
                             {relevantKarma.includes('見つかりませんでした') ? 'OUT-OF-DOMAIN DETECTED' : 'SYNAPTIC MEMORY RETRIEVED'}
                         </div>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'rgba(255,255,255,0.8)' }}>
@@ -133,7 +133,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             padding: '1rem',
                             background: 'rgba(255, 171, 0, 0.1)',
                             border: '1px solid rgba(255, 171, 0, 0.2)',
-                            borderLeft: '4px solid #ffab00',
+                            borderLeft: '4px solid var(--accent-amber)',
                             borderRadius: '4px 12px 12px 4px',
                             marginBottom: '1rem',
                         }}
@@ -250,7 +250,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             border: '1px solid var(--border-glass)',
                             borderRadius: '16px',
                             padding: '1.2rem 4rem 1.2rem 1.5rem',
-                            color: '#fff',
+                            color: 'var(--text-primary)',
                             outline: 'none',
                             fontSize: '1rem',
                             resize: 'none',
@@ -270,7 +270,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             height: '44px',
                             borderRadius: '12px',
                             background: input.trim() && !isTyping ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                            color: input.trim() && !isTyping ? '#000' : 'rgba(255,255,255,0.2)',
+                            color: input.trim() && !isTyping ? 'var(--bg-primary)' : 'rgba(255,255,255,0.2)',
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',

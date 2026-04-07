@@ -53,11 +53,7 @@ impl ProxyLlmProvider {
             endpoint_tag,
             caller_id,
             proxy_secret,
-            client: reqwest::Client::builder()
-                .redirect(reqwest::redirect::Policy::none())
-                .timeout(std::time::Duration::from_secs(120))
-                .build()
-                .unwrap_or_else(|_| aiome_core::http::get_http_client().clone()),
+            client: aiome_core::http::get_http_client().clone(),
         }
     }
 }
@@ -85,6 +81,7 @@ impl LlmProvider for ProxyLlmProvider {
         let mut request_builder = self
             .client
             .post(&url)
+            .timeout(std::time::Duration::from_secs(120))
             .header("Content-Type", "application/json");
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
@@ -155,6 +152,7 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
         let mut request_builder = self
             .client
             .post(&url)
+            .timeout(std::time::Duration::from_secs(120))
             .header("Content-Type", "application/json");
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering

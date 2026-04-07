@@ -15,6 +15,15 @@ import ErrorBoundary from '../common/ErrorBoundary';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
 import InxRenderer from '../../lib/inx/InxRenderer';
 
+const _cssVarCache: Record<string, string> = {};
+const cssVar = (name: string, fallback: string) => {
+    if (typeof document === 'undefined') return fallback;
+    if (_cssVarCache[name]) return _cssVarCache[name];
+    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (val) _cssVarCache[name] = val;
+    return val || fallback;
+};
+
 interface AvatarViewerModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -58,7 +67,7 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                color: '#fff',
+                                color: 'var(--text-primary)',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s'
                             }}
@@ -79,13 +88,13 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                                             gl.toneMappingExposure = 1.4;
                                         }}
                                     >
-                                        <fog attach="fog" args={['#06080c', 3, 10]} />
+                                        <fog attach="fog" args={[cssVar('--bg-dark-sidebar', '#06080c'), 3, 10]} />
                                         
-                                        <ambientLight intensity={0.5} color="#1a1a2e" />
-                                        <spotLight position={[3, 6, 4]} angle={0.2} penumbra={0.8} intensity={200} color="#00f2ff" />
-                                        <spotLight position={[-4, 3, 2]} angle={0.3} penumbra={1} intensity={80} color="#bc8cff" />
-                                        <pointLight position={[0, 3, -3]} intensity={40} color="#00f2ff" />
-                                        <pointLight position={[0, -1, 1]} intensity={15} color="#00f2ff" />
+                                        <ambientLight intensity={0.5} color="var(--bg-dark)" />
+                                        <spotLight position={[3, 6, 4]} angle={0.2} penumbra={0.8} intensity={200} color="var(--accent-cyan)" />
+                                        <spotLight position={[-4, 3, 2]} angle={0.3} penumbra={1} intensity={80} color="var(--accent-purple)" />
+                                        <pointLight position={[0, 3, -3]} intensity={40} color="var(--accent-cyan)" />
+                                        <pointLight position={[0, -1, 1]} intensity={15} color="var(--accent-cyan)" />
 
                                         <Float speed={1.5} rotationIntensity={0.02} floatIntensity={0.1}>
                                             <Suspense fallback={null}>
@@ -104,14 +113,14 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                                                 depthScale={1.5}
                                                 minDepthThreshold={0.3}
                                                 maxDepthThreshold={1.5}
-                                                color="#080808"
+                                                color={cssVar('--bg-dark', '#080808')}
                                                 metalness={0.6}
                                                 mirror={0.15}
                                             />
                                         </mesh>
 
-                                        <Sparkles count={80} scale={[6, 4, 6]} size={2} speed={0.3} color="#00f2ff" opacity={0.5} />
-                                        <Sparkles count={40} scale={[4, 3, 4]} size={1} speed={0.15} color="#ffffff" opacity={0.15} />
+                                        <Sparkles count={80} scale={[6, 4, 6]} size={2} speed={0.3} color="var(--accent-cyan)" opacity={0.5} />
+                                        <Sparkles count={40} scale={[4, 3, 4]} size={1} speed={0.15} color="var(--text-primary)" opacity={0.15} />
 
                                         <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 2} minDistance={2} maxDistance={8} />
                                     </Canvas>

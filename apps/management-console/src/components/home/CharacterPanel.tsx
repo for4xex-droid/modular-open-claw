@@ -95,7 +95,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                         fontWeight: 900, 
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase' as const,
-                        background: 'linear-gradient(135deg, #f0f2f5, rgba(0, 242, 255, 0.7))',
+                        background: 'linear-gradient(135deg, var(--bg-secondary), rgba(0, 242, 255, 0.7))',
                         WebkitBackgroundClip: 'text',
                         backgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',

@@ -447,7 +447,7 @@ const ArtifactVault = () => {
           right: 1.2rem;
           background: rgba(255, 71, 87, 0.1);
           border: 1px solid rgba(255, 71, 87, 0.2);
-          color: #ff4757;
+          color: var(--accent-rose);
           border-radius: 8px;
           padding: 0.4rem;
           cursor: pointer;
@@ -461,7 +461,7 @@ const ArtifactVault = () => {
           opacity: 1;
         }
         .delete-btn:hover {
-          background: #ff4757;
+          background: var(--accent-rose);
           color: white;
         }
 
@@ -477,7 +477,7 @@ const ArtifactVault = () => {
           left: 15%;
           right: 15%;
           bottom: 10%;
-          background: #0a0c10;
+          background: var(--bg-dark-sidebar);
           border: 1px solid rgba(255,255,255,0.1);
           border-radius: 24px;
           z-index: 101;

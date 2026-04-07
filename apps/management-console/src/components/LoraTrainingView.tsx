@@ -220,7 +220,7 @@ const LoraTrainingView: React.FC = () => {
                             width: '100%', 
                             padding: '1rem', 
                             background: isTraining ? 'rgba(255,255,255,0.1)' : 'var(--accent-purple)', 
-                            color: isTraining ? 'var(--text-muted)' : '#fff',
+                            color: isTraining ? 'var(--text-muted)' : 'var(--text-primary)',
                             border: 'none', 
                             borderRadius: '8px', 
                             fontSize: '1rem', 
@@ -275,7 +275,7 @@ const LoraTrainingView: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="font-mono" style={{ flex: 1, background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', overflowY: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <div className="font-mono" style={{ flex: 1, background: 'var(--bg-dark-sidebar)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', overflowY: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                 <div style={{ color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>&gt; System initialized...</div>
                                 <div>&gt; Base model: {baseModel}</div>
                                 <div>&gt; Target dataset: {datasetId}</div>

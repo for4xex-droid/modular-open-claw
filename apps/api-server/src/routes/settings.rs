@@ -92,6 +92,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "tts_voice",
     "view_mode",
     "x_bearer_token",
+    "search_api_key",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -110,6 +111,7 @@ pub const SECRETS: &[&str] = &[
     "anthropic_api_key",
     "gemini_api_key",
     "x_bearer_token",
+    "search_api_key",
 ];
 
 #[utoipa::path(
@@ -577,6 +579,17 @@ mod tests {
         assert!(
             SECRETS.contains(&"x_bearer_token"),
             "x_bearer_token should be in secrets"
+        );
+    }
+    #[test]
+    fn test_search_api_key_is_allowed_and_secret() {
+        assert!(
+            ALLOWED_KEYS.contains(&"search_api_key"),
+            "search_api_key should be in allowed_keys"
+        );
+        assert!(
+            SECRETS.contains(&"search_api_key"),
+            "search_api_key should be in secrets"
         );
     }
 }

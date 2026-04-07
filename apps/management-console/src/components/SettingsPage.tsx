@@ -475,6 +475,23 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
 
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', marginTop: '1.5rem' }}>
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.searchApiKey')}</label>
+                                {saving === 'search_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
+                            </div>
+                            <input
+                                type="password"
+                                defaultValue={getSetting('search_api_key')}
+                                placeholder={t('settings.searchApiKey')}
+                                onBlur={(e) => update_setting_handler(e.target.value, 'search_api_key', 'security')}
+                                style={inputStyle}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-warning)', marginTop: '0.4rem', fontStyle: 'italic' }}>
+                                {t('settings.searchApiKeyNotice')}
+                            </div>
+                        </div>
+
                         {/* Allowed Origins (Dynamic CORS) */}
                         <OriginsManager
                             origins={getSetting('allowed_origins')}

@@ -13,6 +13,16 @@ import { GraphNode, GraphEdge } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
 
+
+const _cssVarCache: Record<string, string> = {};
+const cssVar = (name: string, fallback: string) => {
+    if (typeof document === 'undefined') return fallback;
+    if (_cssVarCache[name]) return _cssVarCache[name];
+    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (val) _cssVarCache[name] = val;
+    return val || fallback;
+};
+
 const GraphView: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
@@ -38,21 +48,21 @@ const GraphView: React.FC = () => {
                 const nodes = new DataSet<any>(karmaData.nodes.map((n: GraphNode) => ({
                     ...n,
                     color: {
-                        background: n.group === 'karma_local' ? '#00f2ff22' : '#bc8cff22',
-                        border: n.group === 'karma_local' ? 'var(--accent-cyan)' : 'var(--accent-purple)',
+                        background: n.group === 'karma_local' ? 'rgba(0, 242, 255, 0.13)' : 'rgba(188, 140, 255, 0.13)',
+                        border: n.group === 'karma_local' ? cssVar('--accent-cyan', '#00f2ff') : cssVar('--accent-purple', '#bc8cff'),
                         highlight: {
-                            background: n.group === 'karma_local' ? '#00f2ff44' : '#bc8cff44',
-                            border: n.group === 'karma_local' ? '#fff' : '#fff',
+                            background: n.group === 'karma_local' ? 'rgba(0, 242, 255, 0.26)' : 'rgba(188, 140, 255, 0.26)',
+                            border: cssVar('--text-primary', '#fff'),
                         }
                     },
-                    font: { color: '#fff', size: 12, face: 'Artemis Inter, Inter' },
+                    font: { color: cssVar('--text-primary', '#fff'), size: 12, face: 'Artemis Inter, Inter' },
                     shape: 'dot',
                     size: 20 + (n.label.length / 5)
                 })));
 
                 const edges = new DataSet<any>(karmaData.edges.map((e: GraphEdge) => ({
                     ...e,
-                    color: { color: 'rgba(255,255,255,0.1)', highlight: 'var(--accent-cyan)' },
+                    color: { color: 'rgba(255,255,255,0.1)', highlight: cssVar('--accent-cyan', '#00f2ff') },
                     width: 1,
                     smooth: { type: 'continuous' }
                 })));
@@ -66,10 +76,10 @@ const GraphView: React.FC = () => {
                         group: 'artifact',
                         color: {
                             background: 'rgba(235, 7, 235, 0.15)',
-                            border: 'var(--accent-rose)',
-                            highlight: { background: 'rgba(235, 7, 235, 0.3)', border: '#fff' }
+                            border: cssVar('--accent-rose', '#ff4d6d'),
+                            highlight: { background: 'rgba(235, 7, 235, 0.3)', border: cssVar('--text-primary', '#fff') }
                         },
-                        font: { color: 'var(--accent-rose)', size: 13, bold: true },
+                        font: { color: cssVar('--accent-rose', '#ff4d6d'), size: 13, bold: true },
                         shape: 'diamond',
                         size: 25,
                         title: `Category: ${art.category}`
@@ -157,18 +167,18 @@ const GraphView: React.FC = () => {
             <div style={{ position: 'absolute', right: '1.5rem', bottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
                 <button
                     onClick={zoomIn}
-                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: cssVar('--text-primary', 'var(--text-primary)'), cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                     <ZoomIn size={18} />
                 </button>
                 <button
                     onClick={zoomOut}
-                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: cssVar('--text-primary', 'var(--text-primary)'), cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                     <ZoomOut size={18} />
                 </button>
                 <button
-                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: cssVar('--text-primary', 'var(--text-primary)'), cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                     <Layers size={18} />
                 </button>

@@ -169,7 +169,7 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {skill.status === 'Active' ? (
-                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(0,255,100,0.1)', color: '#00ff66', border: '1px solid rgba(0,255,100,0.2)' }}>
+                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(0,255,100,0.1)', color: 'var(--accent-emerald)', border: '1px solid rgba(0,255,100,0.2)' }}>
                             STABLE
                         </span>
                     ) : (

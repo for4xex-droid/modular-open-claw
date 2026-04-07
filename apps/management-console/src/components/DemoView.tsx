@@ -127,7 +127,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
             display: 'flex', alignItems: 'center', gap: '8px', 
             padding: '0.75rem 1.5rem', fontSize: '1rem',
             background: isRunning ? 'var(--bg-panel)' : 'var(--accent-cyan)',
-            color: isRunning ? 'var(--text-muted)' : '#000',
+            color: isRunning ? 'var(--text-muted)' : 'var(--bg-primary)',
             fontWeight: 'bold'
           }}
         >
@@ -165,14 +165,14 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
             style={{ 
               display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '1rem 1.5rem',
               background: 'rgba(255, 77, 109, 0.08)', border: '1px solid rgba(255, 77, 109, 0.3)',
-              borderRadius: '12px', color: '#ff4d6d', fontSize: '0.9rem'
+              borderRadius: '12px', color: 'var(--accent-rose)', fontSize: '0.9rem'
             }}
           >
             <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
             <div style={{ flex: 1 }}>
               <strong>Error</strong>: {error}
             </div>
-            <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#ff4d6d', cursor: 'pointer', padding: '4px' }}>✕</button>
+            <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: '4px' }}>✕</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -308,7 +308,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
               ) : (
                 debugLog.map((log, i) => (
                   <div key={i} style={{ 
-                    color: log.includes('ERROR') ? '#ff4d6d' : log.includes('WARNING') ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                    color: log.includes('ERROR') ? 'var(--accent-rose)' : log.includes('WARNING') ? 'var(--accent-amber)' : 'var(--text-secondary)',
                     borderBottom: '1px solid rgba(255,255,255,0.03)', padding: '2px 0'
                   }}>
                     {log}

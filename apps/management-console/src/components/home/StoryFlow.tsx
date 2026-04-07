@@ -220,7 +220,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             style={{
                                 fontSize: '0.6rem',
                                 fontWeight: 800,
-                                color: '#000',
+                                color: 'var(--bg-primary)',
                                 background: 'var(--accent-amber)',
                                 padding: '2px 8px',
                                 borderRadius: '6px',
@@ -378,7 +378,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             height: '40px',
                             borderRadius: '12px',
                             background: chat.input.trim() && !chat.isTyping ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                            color: chat.input.trim() && !chat.isTyping ? '#000' : 'rgba(255,255,255,0.15)',
+                            color: chat.input.trim() && !chat.isTyping ? 'var(--bg-primary)' : 'rgba(255,255,255,0.15)',
                             border: 'none',
                             cursor: chat.input.trim() && !chat.isTyping ? 'pointer' : 'default',
                             display: 'flex',

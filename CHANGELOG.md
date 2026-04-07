@@ -1,6 +1,11 @@
-## [Unreleased] - 2026-04-07
+## [Unreleased] - 2026-04-08
 
 ### Added
+- **Phase 3-A: Deep Scan Remediation & Debt Clearance [完了]:**
+  - **E2E Pipeline Restoration**: `search_api_key` が UI および DB 設定で永続化されない論理ギャップを解消し、TrendSonar への設定注入を正常化 (TDD/RED-GREEN)。
+  - **SSRF 脆弱性の排除**: `cortex_ingester.rs`, `tts.rs` などインフラストラクチャ全域の `reqwest::Client::new()` (計8箇所) をリダイレクト防御済みプール `aiome_core::http::get_http_client()` に置換。
+  - **Golden Rule (U-002) 強制適用**: React フロントエンド 17 コンポーネントに散在していた 80 箇所以上の HEX ハードコード色指定 (`#fff`, `#ff4757` 等) を全掃討し、すべて CSS 変数（Vanilla Tokens）へ移行完了。
+  - **Canvas CSS Bridge 実装**: vis-network エンジンを利用する `CausalVisualizer.tsx` 等で、DOM 非依存の Canvas に向けて動的に CSS 変数を注入する `cssVar()` ヘルパーを開発・適応。
 - **Phase 2B-2 Reflexion Hotfix (Limit Break Patch) [完了]:**
   - **Settings API `view_mode` White-listing**: `OnboardingModal` から送信される `view_mode` が `allowed_keys` の制約により `SecurityViolation` を誘発していた致命的バグを修正。同時に `ui` カテゴリを認可済みリストに追加し、`SettingsPage` の初回起動および設定保存フローを正常化。
   - **DreamService DB/Env Fallback Sync**: UI 上から設定された `SEARCH_API_KEY` および `X_BEARER_TOKEN` が `DreamService` の起動ループに反映されず、常に `.env` からのみ読み取られていた論理ギャップ (`get_setting_value` なしの環境変数直読み) を修正。再起動時に必ずユーザーが UI 上で保存したトークンを優先取得し、存在しない場合のみ環境変数にフォールバックする一貫稼働を確保。
@@ -332,7 +337,7 @@
     - **TtsWorker Loop**: `api-server` 襍ｷ蜍墓凾縺ｫ `TtsWorker` 縺ｮ繝舌ャ繧ｯ繧ｰ繝ｩ繧ｦ繝ｳ繝峨Ν繝ｼ繝励ｒ髢句ｧ九☆繧九ｈ縺�↓螳溯｣�よ悴蜷域�縺ｮ髻ｳ螢ｰ繧ｸ繝ｧ繝悶ｒ閾ｪ蠕狗噪縺ｫ蜃ｦ逅�庄閭ｽ縺ｫ縲�
     - **Mock Testing Suite**: `MockTtsProvider` 縺翫ｈ縺ｳ `MockLiveSessionManager` 繧貞ｮ溯｣�＠縲∫ｵｱ蜷医ユ繧ｹ繝亥�菴薙�螳牙ｮ壽ｧ繧堤｢ｺ菫昴�I/CD 縺ｫ縺翫￠繧倶ｸ咲｢ｺ螳夊ｦ∫ｴ�繧呈賜髯､縲�
 
-## [Unreleased] - 2026-03-31
+### 2026-03-31
 
 ### Added
 - **Phase 54: Agentic Evolution Engine (LoRA & Personality) [螳御ｺ�**
@@ -352,7 +357,7 @@
     - **Resource Exhaustion Defense**: `ContextEngine` 縺ｧ縺ｮ 10,000 譁�ｭ怜宛髯舌√♀繧医� TTS API 繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ 2048 繝舌う繝亥宛髯舌ｒ螳溯｣�よが諢上≠繧句ｷｨ螟ｧ繝��繧ｿ縺ｫ繧医ｋ繝｡繝｢繝ｪ譫ｯ貂�ｒ髦ｲ豁｢縲�
     - **Supply Chain Hardening**: 繧ｻ繧ｭ繝･繝ｪ繝�ぅ繧ｳ繧｢縺ｧ縺ゅｋ `bastion` 繝ｩ繧､繝悶Λ繝ｪ繧偵∫峡閾ｪ縺ｮ Git 萓晏ｭ倥°繧� **Crates.io 蜈ｬ蠑冗沿 (`bastion-core` v1.0.0)** 縺ｸ蛻�ｊ譖ｿ縺医Ａcargo audit` 縺ｫ繧医ｋ騾城℃逧�↑閼�ｼｱ諤ｧ邂｡逅�ｒ螳溽樟縲�
 
-## [Unreleased] - 2026-03-30
+### 2026-03-30
 
 ### Added
 - **Phase 2B: ContextEngine Expansion & Emotional Injection [螳御ｺ�**
@@ -379,7 +384,7 @@
     - **API Extension**: `POST /api/v1/jobs/:id/review` 繧ｵ繝悶Α繝�ヨ繧ｨ繝ｳ繝峨�繧､繝ｳ繝医ｒ譁ｰ險ｭ縲�
     - **Code Quality Refactoring**: `aiome-commerce` 繝代ャ繧ｱ繝ｼ繧ｸ繧偵う繝ｳ繝輔Λ繧ｹ繝医Λ繧ｯ繝√Ε繝ｼ螻､縺九ｉ迢ｬ遶九＠縺溘け繝ｬ繝ｼ繝医→縺励※螳悟�蛻�屬縺励∽ｾ晏ｭ倬未菫ゅ�蠕ｪ迺ｰ繧定ｧ｣豎ｺ (`infrastructure/src/commerce` 繧貞炎髯､)縲Ａnapi-bridge`縲～api-server` 遲峨�蟇ｾ蠢懊ｒ螳御ｺ�＠縲√ン繝ｫ繝芽ｭｦ蜻翫ぞ繝ｭ繧帝＃謌舌�
 
-## [Unreleased] - 2026-03-28
+### 2026-03-28
 
 ### Added
 - **Phase 52: Infrastructure Hardening & ZTAS Preparation [騾ｲ陦御ｸｭ]**
@@ -517,7 +522,7 @@
 
 - **Phase 31: 菫｡鬆ｼ諤ｧ蜷台ｸ� & LLM TDD 螳溯｣� [螳御ｺ�**
 
-## [Unreleased] - 2026-03-23
+### 2026-03-23
 
 ### Added
 - **Phase 28: 蝓ｺ逶､蠑ｷ蛹� (ADR-019 Phase B / L1 蠑ｷ蛹�) [螳御ｺ�**
@@ -548,7 +553,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased] - 2026-03-22
+### 2026-03-22
 
 ### Added
 - **Phase 26: AI Writing Enhancement**:

@@ -14,6 +14,16 @@ import { authenticatedFetch } from '../lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
 
+
+const _cssVarCache: Record<string, string> = {};
+const cssVar = (name: string, fallback: string) => {
+    if (typeof document === 'undefined') return fallback;
+    if (_cssVarCache[name]) return _cssVarCache[name];
+    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (val) _cssVarCache[name] = val;
+    return val || fallback;
+};
+
 const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
@@ -63,7 +73,7 @@ const CausalVisualizer: React.FC = () => {
                 title: `Step ${n.id}: ${n.step.action}`,
                 group: n.step.step_category.toLowerCase(),
                 color: getStepColor(n.step.step_category),
-                font: { color: '#fff', size: 14, face: 'Artemis Inter, Inter' },
+                font: { color: cssVar('--text-primary', '#ffffff'), size: 14, face: 'Artemis Inter, Inter' },
                 shape: 'box',
                 margin: 10,
                 borderWidth: 2,
@@ -74,7 +84,7 @@ const CausalVisualizer: React.FC = () => {
         const edges = new DataSet<any>(graph.edges.map(e => ({
             ...e,
             arrows: 'to',
-            color: { color: 'rgba(255,255,255,0.2)', highlight: 'var(--accent-cyan)' },
+            color: { color: 'rgba(255,255,255,0.2)', highlight: cssVar('--accent-cyan', '#00f2ff') },
             width: 2,
             smooth: { type: 'cubicBezier', forceDirection: 'vertical' }
         })));
@@ -114,12 +124,12 @@ const CausalVisualizer: React.FC = () => {
 
     const getStepColor = (category: string) => {
         switch (category) {
-            case 'Planning': return { background: '#2d3436', border: 'var(--accent-purple)' };
-            case 'WasmTool': return { background: '#1e3799', border: 'var(--accent-cyan)' };
-            case 'DockerTool': return { background: '#0a3d62', border: '#3c6382' };
-            case 'Verification': return { background: '#079992', border: 'var(--accent-emerald)' };
-            case 'Correction': return { background: '#b71540', border: 'var(--accent-rose)' };
-            default: return { background: '#2c3e50', border: '#7f8c8d' };
+            case 'Planning': return { background: cssVar('--bg-dark', '#1a1a2e'), border: cssVar('--accent-purple', '#bc8cff') };
+            case 'WasmTool': return { background: cssVar('--accent-blue', '#1e3799'), border: cssVar('--accent-cyan', '#00f2ff') };
+            case 'DockerTool': return { background: cssVar('--bg-glass', '#0a3d62'), border: cssVar('--text-muted', '#7f8c8d') };
+            case 'Verification': return { background: cssVar('--accent-emerald', '#00ff66'), border: cssVar('--accent-emerald', '#00ff66') };
+            case 'Correction': return { background: cssVar('--accent-rose', '#ff4d6d'), border: cssVar('--accent-rose', '#ff4d6d') };
+            default: return { background: cssVar('--bg-dark-sidebar', '#2c3e50'), border: cssVar('--text-muted', '#7f8c8d') };
         }
     };
 
@@ -162,7 +172,7 @@ const CausalVisualizer: React.FC = () => {
 
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 {/* Graph Area */}
-                <div style={{ flex: 1, position: 'relative', background: '#050505' }}>
+                <div style={{ flex: 1, position: 'relative', background: 'var(--bg-primary)' }}>
                     <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
                     
                     {loading && (

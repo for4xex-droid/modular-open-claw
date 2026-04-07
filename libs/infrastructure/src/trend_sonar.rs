@@ -139,7 +139,7 @@ impl SerpAnalysisAdapter {
     pub fn new(api_key: String) -> Self {
         Self {
             api_key,
-            client: reqwest::Client::new(),
+            client: aiome_core::http::get_http_client().clone(),
         }
     }
 }

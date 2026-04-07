@@ -39,7 +39,7 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
         <div style={{
             position: 'fixed',
             inset: 0,
-            background: '#000',
+            background: 'var(--bg-primary)',
             zIndex: 2000,
             display: 'flex',
             alignItems: 'center',
@@ -86,7 +86,7 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
                             fontSize: '4rem',
                             fontWeight: 900,
                             letterSpacing: '0.4em',
-                            background: 'linear-gradient(135deg, #fff 30%, var(--accent-cyan) 100%)',
+                            background: 'linear-gradient(135deg, var(--text-primary) 30%, var(--accent-cyan) 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                             textShadow: '0 0 30px rgba(0, 242, 255, 0.3)'

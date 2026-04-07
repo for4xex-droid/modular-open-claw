@@ -29,15 +29,9 @@ pub struct TimesFmProvider {
 
 impl TimesFmProvider {
     pub fn new(endpoint: String, auth_token: String) -> Self {
-        // RT-1 FIX: Build a dedicated client with a short timeout for the sidecar,
-        // rather than sharing the global 60s client.
-        let client = reqwest::Client::builder()
-            .timeout(SIDECAR_REQUEST_TIMEOUT)
-            .connect_timeout(Duration::from_secs(3))
-            .pool_idle_timeout(Duration::from_secs(30))
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .expect("TimesFM reqwest client build should never fail with these settings"); // allow-anti-pattern
+        // RT-1 FIX (Optimized): Share the global connection pool to save TCP handshakes,
+        // but enforce the 10s sidecar timeout securely on the RequestBuilder later.
+        let client = aiome_core::http::get_http_client().clone();
 
         Self {
             client,
@@ -103,6 +97,7 @@ impl ForecastProvider for TimesFmProvider {
         let res = self
             .client
             .post(&url)
+            .timeout(SIDECAR_REQUEST_TIMEOUT)
             .header("Authorization", format!("Bearer {}", self.auth_token))
             .json(&payload)
             .send()

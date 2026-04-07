@@ -198,18 +198,6 @@ pub async fn run_with_timeout(
     }
 }
 
-/// HTTP リクエスト用のタイムアウト付きクライアントを生成
-///
-/// 外部API等への通信に使用する。
-pub fn http_client_with_timeout(timeout: Duration) -> Result<reqwest::Client, reqwest::Error> {
-    reqwest::Client::builder()
-        .timeout(timeout)
-        .connect_timeout(Duration::from_secs(5))
-        // SEC-5 FIX: SSRF prevention via redirect blocking
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-}
-
 /// Vec<String> 版のタイムアウト付き実行
 pub async fn run_with_timeout_vec(
     program: &str,

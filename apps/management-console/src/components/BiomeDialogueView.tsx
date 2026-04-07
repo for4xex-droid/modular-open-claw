@@ -235,7 +235,7 @@ const BiomeDialogueView: React.FC = () => {
                <button 
                 onClick={stopAutonomous}
                 className="card-hover"
-                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 100, 100, 0.1)', color: '#ff6464', border: '1px solid #ff6464', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 100, 100, 0.1)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose)', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                >
                  <Square size={16} fill="currentColor" /> Stop Autonomous Loop
                </button>

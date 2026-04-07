@@ -162,7 +162,7 @@ const ImmuneSystem: React.FC = () => {
                             onClick={() => setActiveTab('RULES')}
                             style={{
                                 background: activeTab === 'RULES' ? 'var(--accent-cyan)' : 'transparent',
-                                color: activeTab === 'RULES' ? '#000' : 'var(--text-muted)',
+                                color: activeTab === 'RULES' ? 'var(--bg-primary)' : 'var(--text-muted)',
                                 border: 'none', borderRadius: '4px', padding: '0.5rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
                             }}
                         >
@@ -172,7 +172,7 @@ const ImmuneSystem: React.FC = () => {
                             onClick={() => setActiveTab('QUARANTINE')}
                             style={{
                                 background: activeTab === 'QUARANTINE' ? 'var(--accent-rose)' : 'transparent',
-                                color: activeTab === 'QUARANTINE' ? '#000' : 'var(--text-muted)',
+                                color: activeTab === 'QUARANTINE' ? 'var(--bg-primary)' : 'var(--text-muted)',
                                 border: 'none', borderRadius: '4px', padding: '0.5rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
                             }}
                         >
@@ -189,7 +189,7 @@ const ImmuneSystem: React.FC = () => {
                                 }
                             }}
                             className="nav-item"
-                            style={{ margin: 0, padding: '0 1rem', background: isAdding ? 'var(--accent-rose)' : 'var(--accent-cyan)', color: '#000', fontWeight: 700 }}
+                            style={{ margin: 0, padding: '0 1rem', background: isAdding ? 'var(--accent-rose)' : 'var(--accent-cyan)', color: 'var(--bg-primary)', fontWeight: 700 }}
                         >
                             {isAdding ? 'CANCEL' : 'FORGE NEW RULE'}
                         </button>
@@ -216,7 +216,7 @@ const ImmuneSystem: React.FC = () => {
                                         value={newRule.pattern}
                                         onChange={e => setNewRule({ ...newRule, pattern: e.target.value })}
                                         placeholder="e.g. /etc/passwd"
-                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: '#fff', width: '100%', outline: 'none' }}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: 'var(--text-primary)', width: '100%', outline: 'none' }}
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
@@ -225,7 +225,7 @@ const ImmuneSystem: React.FC = () => {
                                         type="number"
                                         value={newRule.severity}
                                         onChange={e => setNewRule({ ...newRule, severity: parseInt(e.target.value) })}
-                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: '#fff', width: '100%', outline: 'none' }}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: 'var(--text-primary)', width: '100%', outline: 'none' }}
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
@@ -233,7 +233,7 @@ const ImmuneSystem: React.FC = () => {
                                     <select
                                         value={newRule.action}
                                         onChange={e => setNewRule({ ...newRule, action: e.target.value })}
-                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: '#fff', width: '100%', outline: 'none' }}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.75rem', color: 'var(--text-primary)', width: '100%', outline: 'none' }}
                                     >
                                         <option value="BLOCK">BLOCK</option>
                                         <option value="QUARANTINE">QUARANTINE</option>
@@ -242,7 +242,7 @@ const ImmuneSystem: React.FC = () => {
                                 </div>
                                 <button
                                     onClick={editingId ? handleUpdateRule : handleAddRule}
-                                    style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: '#000', border: 'none', borderRadius: 'var(--radius-md)', padding: '0.75rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-primary)', border: 'none', borderRadius: 'var(--radius-md)', padding: '0.75rem 1.5rem', fontWeight: 700, cursor: 'pointer' }}
                                 >
                                     {editingId ? 'UPDATE RULE' : 'ACTIVATE RULE'}
                                 </button>
@@ -265,7 +265,7 @@ const ImmuneSystem: React.FC = () => {
                         <Search size={18} color="var(--text-muted)" />
                         <input
                             placeholder="Search active patterns..."
-                            style={{ background: 'none', border: 'none', color: '#fff', outline: 'none', width: '100%', fontSize: '0.9rem' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.9rem' }}
                         />
                     </div>
                     <button className="nav-item" style={{ margin: 0, padding: '0 1rem' }}>
@@ -340,7 +340,7 @@ const ImmuneSystem: React.FC = () => {
                                         style={{
                                             background: 'rgba(255,255,255,0.05)',
                                             border: '1px solid var(--border-glass)',
-                                            color: '#fff',
+                                            color: 'var(--text-primary)',
                                             padding: '0.5rem 1rem',
                                             borderRadius: '8px',
                                             fontSize: '0.8rem',
@@ -425,7 +425,7 @@ const ImmuneSystem: React.FC = () => {
                                         style={{
                                             background: 'var(--accent-cyan)',
                                             border: 'none',
-                                            color: '#000',
+                                            color: 'var(--bg-primary)',
                                             padding: '0.5rem 1rem',
                                             borderRadius: '8px',
                                             fontSize: '0.8rem',

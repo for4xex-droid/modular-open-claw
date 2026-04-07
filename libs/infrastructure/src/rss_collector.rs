@@ -27,7 +27,7 @@ impl RssCollector {
     /// RssCollector の新規インスタンスを生成する
     pub fn new(jq: Arc<UniversalJobQueue>) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: aiome_core::http::get_http_client().clone(),
             jq,
         }
     }

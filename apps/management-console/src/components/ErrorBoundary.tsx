@@ -36,11 +36,11 @@ class ErrorBoundary extends Component<Props, State> {
         <div style={{
           height: '100vh',
           width: '100vw',
-          background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)',
+          background: 'linear-gradient(135deg, var(--bg-dark-sidebar) 0%, var(--bg-dark) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#fff',
+          color: 'var(--text-primary)',
           fontFamily: "var(--font-main, 'Inter', system-ui, -apple-system, sans-serif)"
         }}>
           <motion.div
@@ -62,7 +62,7 @@ class ErrorBoundary extends Component<Props, State> {
                 width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255, 77, 109, 0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255, 77, 109, 0.3)'
               }}>
-                <ShieldAlert color="#ff4d6d" size={32} />
+                <ShieldAlert color="var(--accent-rose)" size={32} />
               </div>
             </div>
 
@@ -77,8 +77,8 @@ class ErrorBoundary extends Component<Props, State> {
               <button
                 onClick={() => window.location.reload()}
                 style={{
-                  padding: '0.8rem 1.5rem', borderRadius: '12px', background: 'var(--accent-cyan, #00f2ff)',
-                  border: 'none', color: '#000', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.8rem 1.5rem', borderRadius: '12px', background: 'var(--accent-cyan, var(--accent-cyan))',
+                  border: 'none', color: 'var(--bg-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem',
                   cursor: 'pointer'
                 }}
               >
@@ -89,7 +89,7 @@ class ErrorBoundary extends Component<Props, State> {
                 onClick={() => window.location.href = '/'}
                 style={{
                   padding: '0.8rem 1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem',
                   cursor: 'pointer'
                 }}
               >

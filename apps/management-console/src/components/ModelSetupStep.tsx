@@ -71,7 +71,7 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
                     onClick={onNext}
                     style={{
                         marginTop: '1rem', padding: '1rem', borderRadius: '12px', textAlign: 'center',
-                        border: 'none', background: 'var(--accent-cyan)', color: '#000',
+                        border: 'none', background: 'var(--accent-cyan)', color: 'var(--bg-primary)',
                         cursor: 'pointer', fontWeight: 700
                     }}
                 >

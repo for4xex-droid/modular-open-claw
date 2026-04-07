@@ -96,12 +96,12 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                         justifyContent: 'center',
                         border: '1px solid rgba(0, 242, 255, 0.2)'
                     }}>
-                        <Lock color="#00f2ff" size={40} />
+                        <Lock color="var(--accent-cyan)" size={40} />
                     </div>
                 </div>
 
                 <h2 style={{ 
-                    color: '#fff', 
+                    color: 'var(--text-primary)', 
                     fontSize: '1.8rem', 
                     fontWeight: 800, 
                     marginBottom: '0.5rem',
@@ -141,7 +141,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 borderRadius: '12px',
                                 padding: '1rem',
-                                color: '#fff',
+                                color: 'var(--text-primary)',
                                 outline: 'none',
                                 fontSize: '1rem',
                                 transition: 'all 0.2s'
@@ -160,7 +160,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: '0.75rem', 
-                                    color: '#ff4d6d',
+                                    color: 'var(--accent-rose)',
                                     fontSize: '0.85rem',
                                     marginBottom: '1.5rem',
                                     padding: '0.75rem',
@@ -182,9 +182,9 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                             width: '100%',
                             padding: '1rem',
                             borderRadius: '12px',
-                            background: isLoading ? 'transparent' : 'linear-gradient(90deg, #00f2ff, #bc8cff)',
+                            background: isLoading ? 'transparent' : 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))',
                             border: 'none',
-                            color: '#000',
+                            color: 'var(--bg-primary)',
                             fontWeight: 700,
                             fontSize: '1rem',
                             cursor: (isLoading || !token) ? 'not-allowed' : 'pointer',
@@ -197,7 +197,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                         }}
                     >
                         {isLoading ? (
-                            <Loader2 className="animate-spin" size={20} color="#00f2ff" />
+                            <Loader2 className="animate-spin" size={20} color="var(--accent-cyan)" />
                         ) : (
                             <>
                                 <Zap size={20} />

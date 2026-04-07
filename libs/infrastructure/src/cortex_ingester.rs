@@ -72,10 +72,7 @@ impl CortexIngester {
         Self {
             llm_provider,
             pool,
-            http_client: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(30))
-                .build()
-                .unwrap_or_default(),
+            http_client: aiome_core::http::get_http_client().clone(),
         }
     }
 
@@ -93,14 +90,15 @@ impl CortexIngester {
             });
         }
 
-        let resp =
-            self.http_client
-                .get(url)
-                .send()
-                .await
-                .map_err(|e| AiomeError::NetworkError {
-                    reason: format!("Failed to fetch URL: {}", e),
-                })?;
+        let resp = self
+            .http_client
+            .get(url)
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .await
+            .map_err(|e| AiomeError::NetworkError {
+                reason: format!("Failed to fetch URL: {}", e),
+            })?;
 
         if let Some(len) = resp.content_length() {
             if len > 1_048_576 * 2 {
