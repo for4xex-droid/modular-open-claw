@@ -1228,3 +1228,12 @@ graph TD
     H[mcp/server.rs] -->|cortex_search| C
 ```
 
+
+# 2026-04-08
+
+## AppDataResolver Phase 2-PRE
+*   **Resolved files**:
+    *   `apps/api-server/src/bootstrap.rs`
+    *   `apps/api-server/src/internal_services/dream.rs`
+    *   `libs/infrastructure/src/artifact_store.rs`
+*   **Ripple effect**: Local dev uses `workspace/` mapped automatically via config. Release mode uses `~/Library/Application Support/com.aiome.nexus`. Removed legacy hardcoded paths which clears the final blocker for Phase 2C Tauri Packaging.
