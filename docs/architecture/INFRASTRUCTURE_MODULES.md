@@ -62,6 +62,7 @@
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。**Phase 4** で `ConstitutionalValidator` に `SlmBridge` を統合し、矛盾検知を強化。 | 実装完了 |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
+| `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。インメモリのレートリミット（DashMap）を内包する。 | **実装完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 | `task_orchestrator`| 非同期タスクの管理とディスパッチ。`DockerConductor` 等の実行部を束ねる。`CsamScanConductor` にて重いハッシュ計算を `spawn_blocking` 化しスレッド枯渇を防止（Phase 2A-1完了）。 | **Phase 2A 統合完了** |
 
@@ -69,4 +70,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-07 (Asia/Tokyo) - ADR-032 Self-Organizing SoT Integration*
+*最終更新: 2026-04-08 (Asia/Tokyo) - Phase 2B-2 Reflexion & X Signal Probe*
