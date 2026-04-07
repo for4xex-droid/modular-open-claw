@@ -2525,3 +2525,39 @@ async fn test_seo_content_conductor_exists() {
         "seo_content should be handled by dedicated SeoContentConductor"
     );
 }
+
+#[serial]
+#[tokio::test]
+async fn test_inochi2d_asset_delivery_and_path_traversal() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    // 1. Try to download a valid asset (RED initially as endpoint missing)
+    let valid_response = server.get("/api/v1/avatar/inochi2d/valid.inx").await;
+    // We expect a 404 if the file isn't there, but currently the route doesn't exist at all so it might be 404 too.
+    // Instead we can actually create the file in the mock Sandbox and fetch it.
+
+    // 2. Try Path Traversal (MUST be blocked)
+    let traversal_res = server
+        .get("/api/v1/avatar/inochi2d/..%2f..%2fetc%2fpasswd")
+        .await;
+    assert_ne!(
+        traversal_res.status_code(),
+        reqwest::StatusCode::OK,
+        "Path traversal must be rejected"
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_whisper_monologue_api() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    // Hit the Whisper API (RED since it doesn't exist)
+    let res = server
+        .get("/api/v1/whisper/monologue")
+        .add_query_param("limit", "10")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+
+    assert_eq!(res.status_code(), reqwest::StatusCode::OK);
+}

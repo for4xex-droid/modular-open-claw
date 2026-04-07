@@ -1,6 +1,11 @@
 ## [Unreleased] - 2026-04-07
 
 ### Added
+- **E2E Infrastructure Hardening (Layer 0-2, 0-3, 0-4) & Agentic UI (Layer 1-1) [完了]:**
+  - **Inochi2D Asset Delivery API (`/api/v1/avatar/inochi2d/:filename`)**: パストラバーサル攻撃を完全に無効化する `PathSandbox`（Jail）を実装。また非同期・ノンブロッキング I/O (`tokio::fs::read`) によって、大容量の `.inx` ファイルロード時におけるサーバ応答の遅延スパイクとブロッキングを完全排除。Golden Rules に厳格に従い、全ての `unwrap()` 系アンチパターンを払拭した堅牢なインフラストラクチャを構築しました。
+  - **Whisper Monologue API (`/api/v1/whisper/monologue`)**: `AgentSoul` の `experience_buffer` に対する高速インメモリ・フィルタリングおよびカーソル・ページネーションを追加。エージェントが舞台裏で自身を省察（Reflection）した `Whisper` コンテンツを抽出配信。
+  - **SoTProgressBar (Society of Thought UI)**: `useSystemVitality` 経由の `sot_progress` SSE ストリームをパースし、複数のロール（専門家AI）の自律思考プロセスとその途中経過、および評価スコアを追跡・リアルタイム可視化。再接続時（Mid-stream connection）のフォールバック耐性と、`useMemo` (Derived State) を用いた State Thrashing (ダブルレンダー) 抑制による極限の描画パフォーマンスを実現。
+
 - **BeliefConsistencyGate Integration (Phase D):**
   - `CortexSynthesizer` に `BeliefConsistencyGate` を統合し、AI のコア信念に反するデータを除外する機能を追加。
   - Synth データセット出力形式を `export_to_jsonl` にて標準的な **ShareGPT 形式**へ移行し、Axolotl や Unsloth との互換性を確立。

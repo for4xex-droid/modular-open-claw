@@ -178,3 +178,73 @@ pub async fn get_ekyc_status_handler(
         })),
     ))
 }
+
+/// Inochi2D アセットの安全な配信（パス・トラバーサル防御・CORS対応）
+#[utoipa::path(
+    get,
+    path = "/api/v1/avatar/inochi2d/{filename}",
+    params(
+        ("filename" = String, Path, description = "アセットのファイル名")
+    ),
+    responses(
+        (status = 200, description = "アセットバイナリ", content_type = "application/octet-stream"),
+        (status = 400, description = "不正なパスリクエスト"),
+        (status = 404, description = "ファイルが見つからない")
+    )
+)]
+pub async fn serve_inochi2d_asset(
+    axum::extract::Path(filename): axum::extract::Path<String>,
+) -> Result<axum::response::Response, AppError> {
+    info!("GET Inochi2D asset: {}", filename);
+
+    // 1. セキュリティ制約: .inx 拡張子のみ許可
+    if !filename.ends_with(".inx") {
+        warn!("🚨 [Avatar] Rejected non-inx file request: {}", filename);
+        return Err(AppError::bad_request("Only .inx files are allowed"));
+    }
+
+    // 2. パストラバーサル防止のためのサンドボックス（Jail）
+    // NOTE: 実際のパスは環境変数や設定から取得すべきだが、ここでは実行ディレクトリ下の .inochi2d_assets とする
+    let asset_dir = std::path::Path::new(".inochi2d_assets");
+    if !asset_dir.exists() {
+        tokio::fs::create_dir_all(asset_dir).await.map_err(|e| {
+            error!("🚨 [Avatar] Failed to create asset directory: {}", e);
+            AppError::internal("Asset directory initialization failed")
+        })?;
+    }
+
+    let sandbox = shared::sandbox::PathSandbox::new(asset_dir)
+        .map_err(|e| AppError::internal(format!("Sandbox initialization failed: {}", e)))?;
+
+    // validate_pathは トラバーサル(..) や絶対パスを弾く
+    let safe_path = match sandbox.validate_path(&filename) {
+        Ok(p) => p,
+        Err(e) => {
+            error!("🚨 [Avatar] Path Sandbox violation: {}", e);
+            return Err(AppError::bad_request("Path traversal detected"));
+        }
+    };
+
+    if !safe_path.exists() || !safe_path.is_file() {
+        return Err(AppError::not_found("Asset not found"));
+    }
+
+    // 3. ファイルの読み込みとレスポンス構築
+    let body = tokio::fs::read(&safe_path)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to read asset: {}", e)))?;
+
+    // CORS & MIME Headers
+    let response = axum::response::Response::builder()
+        .status(StatusCode::OK)
+        .header(axum::http::header::CONTENT_TYPE, "application/octet-stream")
+        .header(
+            axum::http::header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        )
+        .header(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*") // Management console needs access
+        .body(axum::body::Body::from(body))
+        .map_err(|e| AppError::internal(format!("Response build failed: {}", e)))?;
+
+    Ok(response)
+}

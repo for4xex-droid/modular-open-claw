@@ -88,7 +88,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 65 | **Streaming LLM Bypass** | **Missing pre-execute hooks in `stream_complete`** | 🔴 High | **Security Hook Enforcement (Phase 1-2 Reflexion)** |
 | 66 | **Guardrail Timing Bypass** | **Negative timestamp modulus in penalty timers** | 🟡 Mid | **`.unsigned_abs()` to guarantee positive jitter (Phase 1-2 Reflexion)** |
 | 67 | **API Quota Exhaustion** | **Infinite loop spawning HTTP clients** | 🔴 High | **Process-Global Rate Limiting (`DashMap`) (Phase B/C)** |
-| 68 | **Massive Payload / 0-byte Outbound DoS** | **Agent hallucinates 10MB or empty content** | 🔴 High | **Strict Pre-flight Infrastructure Boundary Validators (Phase B/C)** |
+| 68 | **Async Runtime Blocking DoS** | **`std::fs` usages inside `async` fn blocking Tokio worker threads** | 🔴 High | **Enforced `tokio::fs` Async I/O Policy (Phase 0-2 Reflexion)** |
+| 69 | **SSE State Thrashing (UI OOM)** | **Double rendering 50+ event accumulations on every ping via `useEffect`** | 🟡 Mid | **Single-Pass Derived State (`useMemo`) Architecture (Phase 1-1 Reflexion)** |
+| 70 | **Massive Payload / 0-byte Outbound DoS** | **Agent hallucinates 10MB or empty content** | 🔴 High | **Strict Pre-flight Infrastructure Boundary Validators (Phase B/C)** |
 
 ## 3. Defense Architecture
 

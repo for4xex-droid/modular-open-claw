@@ -33,3 +33,4 @@ pub mod syndicate;
 pub mod treasure;
 pub mod voice;
 pub mod watchtower;
+pub mod whisper;

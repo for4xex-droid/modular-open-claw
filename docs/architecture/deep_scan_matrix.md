@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-07T03:23:15.987124
+> Generated at: 2026-04-07T12:54:59.849111
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, McpConfigManager, MiniTabBar, ModelSetupStep, OllamaModelSelector, OnboardingModal, OriginsManager, PAGE_SIZE, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoulStatusBadge, StoryFlow, SystemBirth, Timeline, TokenSavingsIndicator, TreasureBox, VaultProtectionItem, VoiceStore, VrmRenderer
+- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, OllamaModelSelector, OnboardingModal, OriginsManager, PAGE_SIZE, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, Timeline, TokenSavingsIndicator, TreasureBox, VaultProtectionItem, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**

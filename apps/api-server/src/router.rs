@@ -41,6 +41,10 @@ pub fn build_app(
         )
         .route("/", get(routes::general::get_health_status))
         .route(
+            "/api/v1/whisper/monologue",
+            get(routes::whisper::get_monologue_history),
+        )
+        .route(
             "/api/v1/ollama/models",
             get(routes::settings::get_ollama_models),
         )
@@ -483,6 +487,10 @@ pub fn build_app(
     let public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
+        .route(
+            "/api/v1/avatar/inochi2d/:filename",
+            get(routes::avatar::serve_inochi2d_asset),
+        )
         // Bootstrap Mode (Phase 2B-CORE) — 認証不要
         .route(
             "/api/v1/bootstrap/status",

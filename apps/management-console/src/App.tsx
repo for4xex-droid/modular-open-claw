@@ -45,6 +45,7 @@ const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
+import { SoTProgressBar } from "./components/SoTProgressBar";
 
 import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
@@ -231,6 +232,9 @@ function App() {
 
       {/* Digital Diorama — Resident Avatar */}
       <DioramaView status={avatarState} mode={mode} activeTab={activeTab} />
+      
+      {/* Society of Thought Visualization */}
+      <SoTProgressBar />
 
       {/* Ambient Background Particles */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
