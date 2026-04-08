@@ -73,22 +73,29 @@ pub struct OllamaDetectionResponse {
 /// ローカルの Ollama サーバーを自動検出する。認証不要。
 /// Phase 2B-3: Ollama 自動検出
 pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
-        .build()
-        .unwrap_or_default();
+    let client = aiome_core::http::get_http_client().clone();
 
     // 候補 URL を順に試す
     let candidates = ["http://127.0.0.1:11434", "http://localhost:11434"]; // allow-anti-pattern
 
     for url in &candidates {
         let version_url = format!("{}/api/version", url);
-        if let Ok(resp) = client.get(&version_url).send().await {
+        if let Ok(resp) = client
+            .get(&version_url)
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+        {
             if resp.status().is_success() {
                 // Ollama が見つかった。モデル一覧を取得
                 let mut models = Vec::new();
                 let tags_url = format!("{}/api/tags", url);
-                if let Ok(tags_resp) = client.get(&tags_url).send().await {
+                if let Ok(tags_resp) = client
+                    .get(&tags_url)
+                    .timeout(std::time::Duration::from_secs(3))
+                    .send()
+                    .await
+                {
                     if let Ok(json) = tags_resp.json::<serde_json::Value>().await {
                         if let Some(arr) = json.get("models").and_then(|m| m.as_array()) {
                             for m in arr {

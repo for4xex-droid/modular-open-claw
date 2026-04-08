@@ -77,7 +77,7 @@ pub async fn run_startup_diagnosis(config: &shared::config::AiomeConfig) -> Resu
     }
 
     // 4. Ollama Availability Check (Best Effort)
-    let client = reqwest::Client::new();
+    let client = aiome_core::http::get_http_client().clone();
     let ollama_host = config.ollama_host.trim_end_matches('/');
     let ollama_url = format!("{}/api/version", ollama_host);
     match client

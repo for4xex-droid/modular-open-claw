@@ -142,7 +142,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
           initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           style={{ 
             display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem 1.5rem',
-            background: 'rgba(255, 170, 50, 0.08)', border: '1px solid rgba(255, 170, 50, 0.3)',
+            background: 'var(--accent-amber-10)', border: '1px solid var(--accent-amber-30)',
             borderRadius: '12px', color: 'var(--accent-amber)', fontSize: '0.9rem'
           }}
         >
@@ -164,7 +164,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
             style={{ 
               display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '1rem 1.5rem',
-              background: 'rgba(255, 77, 109, 0.08)', border: '1px solid rgba(255, 77, 109, 0.3)',
+              background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)',
               borderRadius: '12px', color: 'var(--accent-rose)', fontSize: '0.9rem'
             }}
           >
@@ -180,7 +180,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 400px', gap: '2rem', flex: 1 }}>
         
         {/* Left: Timeline */}
-        <div className="glass-panel timeline" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.3)' }}>
+        <div className="glass-panel timeline" style={{ padding: '1.5rem', background: 'var(--black-30)' }}>
           <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>{t('demo.executionTimeline')}</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -198,12 +198,12 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                 <div key={num} style={{ display: 'flex', gap: '1rem', opacity: currentStep === 0 || isActive || isPast ? 1 : 0.4, transition: 'all 0.3s' }}>
                   <div style={{ 
                     width: '32px', height: '32px', borderRadius: '50%', 
-                    background: isActive ? 'rgba(0,242,255,0.2)' : isPast ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)',
+                    background: isActive ? 'var(--accent-cyan-20)' : isPast ? 'var(--accent-emerald-20)' : 'var(--white-05)',
                     border: `1px solid ${color}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: color,
                     flexShrink: 0,
-                    boxShadow: isActive ? '0 0 10px rgba(0,242,255,0.5)' : 'none'
+                    boxShadow: isActive ? '0 0 10px var(--accent-cyan-70)' : 'none'
                   }}>
                     {isPast ? <Check size={16} /> : meta.icon}
                   </div>
@@ -230,7 +230,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
             <h4 style={{ marginBottom: '1rem', color: 'var(--accent-purple)' }}>{t('demo.agentStatusArray')}</h4>
             
             <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-              <div style={{ padding: '1rem', border: '1px solid rgba(0,242,255,0.3)', borderRadius: '8px', background: currentStep > 0 && currentStep <= 4 ? 'rgba(0,242,255,0.05)' : 'transparent', transition: 'all 0.5s' }}>
+              <div style={{ padding: '1rem', border: '1px solid var(--accent-cyan-30)', borderRadius: '8px', background: currentStep > 0 && currentStep <= 4 ? 'var(--accent-cyan-05)' : 'transparent', transition: 'all 0.5s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <span style={{ fontWeight: 'bold' }}>{t('demo.agentA')}</span>
                   <span style={{ color: 'var(--accent-cyan)' }}>Lvl {stats.level}</span>
@@ -244,7 +244,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                 {currentStep >= 4 && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} 
-                    style={{ padding: '1rem', border: '1px solid rgba(188,140,255,0.3)', borderRadius: '8px', background: currentStep >= 4 && currentStep < 7 ? 'rgba(188,140,255,0.05)' : 'transparent', transition: 'all 0.5s' }}
+                    style={{ padding: '1rem', border: '1px solid var(--accent-purple-30)', borderRadius: '8px', background: currentStep >= 4 && currentStep < 7 ? 'var(--accent-purple-05)' : 'transparent', transition: 'all 0.5s' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span style={{ fontWeight: 'bold' }}>{t('demo.agentB')}</span>
@@ -273,7 +273,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                     transition={{ duration: 1 }}
                     style={{ 
                       flex: 1, 
-                      background: i >= 10 && currentStep >= 7 ? 'var(--accent-emerald)' : 'rgba(255,255,255,0.1)',
+                      background: i >= 10 && currentStep >= 7 ? 'var(--accent-emerald)' : 'var(--white-10)',
                       borderRadius: '4px' 
                     }}
                   />
@@ -309,7 +309,7 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
                 debugLog.map((log, i) => (
                   <div key={i} style={{ 
                     color: log.includes('ERROR') ? 'var(--accent-rose)' : log.includes('WARNING') ? 'var(--accent-amber)' : 'var(--text-secondary)',
-                    borderBottom: '1px solid rgba(255,255,255,0.03)', padding: '2px 0'
+                    borderBottom: '1px solid var(--white-03)', padding: '2px 0'
                   }}>
                     {log}
                   </div>

@@ -124,9 +124,9 @@ const ExpressionPipeline: React.FC = () => {
             className="card-hover"
             style={{ 
               display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', 
-              background: status?.auto_expression ? 'rgba(var(--accent-cyan-rgb), 0.1)' : 'transparent',
+              background: status?.auto_expression ? 'var(--accent-cyan-10)' : 'transparent',
               color: status?.auto_expression ? 'var(--accent-cyan)' : 'var(--text-muted)',
-              border: '1px solid currentColor', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, fontSize: '0.85rem'
+              border: '1px solid currentColor', cursor: 'pointer', transition: 'all var(--speed-normal)', fontWeight: 600, fontSize: '0.85rem'
             }}
           >
             {status?.auto_expression ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
@@ -188,14 +188,14 @@ const ExpressionPipeline: React.FC = () => {
           className="stat-card ani-fade"
           style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: '1rem' }}
         >
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: status?.status === 'processing' ? 'rgba(var(--accent-cyan-rgb), 0.1)' : 'rgba(255,255,255,0.05)', color: status?.status === 'processing' ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+          <div style={{ width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: status?.status === 'processing' ? 'var(--accent-cyan-10)' : 'var(--white-05)', color: status?.status === 'processing' ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
             {status?.status === 'processing' ? <RefreshCw className="animate-spin" size={32} /> : <Clock size={32} />}
           </div>
           <div>
             <div className="artemis-status" style={{ fontSize: '1.5rem' }}>{status?.status?.toUpperCase() || "IDLE"}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{t('expression.pipelineState')}</div>
           </div>
-          <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '4px', background: 'var(--white-05)', borderRadius: '2px', overflow: 'hidden' }}>
             <motion.div 
               animate={{ width: status?.status === 'processing' ? '70%' : '100%' }}
               style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))' }}
@@ -224,7 +224,7 @@ const ExpressionPipeline: React.FC = () => {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ padding: '0.1rem 0.5rem', background: 'rgba(var(--accent-cyan-rgb), 0.1)', color: 'var(--accent-cyan)', fontSize: '0.7rem', fontWeight: 700, borderRadius: '4px', border: '1px solid rgba(var(--accent-cyan-rgb), 0.2)' }}>
+                    <span style={{ padding: '0.1rem 0.5rem', background: 'var(--accent-cyan-10)', color: 'var(--accent-cyan)', fontSize: '0.7rem', fontWeight: 700, borderRadius: '4px', border: '1px solid var(--accent-cyan-20)' }}>
                       {expr.emotion.toUpperCase()}
                     </span>
                     <span className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{expr.id.substring(0, 8)}</span>
@@ -242,7 +242,7 @@ const ExpressionPipeline: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', gap: '0.15rem' }}>
                     {expr.karma_refs.map((ref, i) => (
-                      <div key={i} title={ref} style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(var(--accent-purple-rgb), 0.2)', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>
+                      <div key={i} title={ref} style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--accent-purple-20)', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>
                         κ
                       </div>
                     ))}

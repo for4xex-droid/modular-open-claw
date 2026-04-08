@@ -14,15 +14,7 @@ import { authenticatedFetch } from '../lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
 
-
-const _cssVarCache: Record<string, string> = {};
-const cssVar = (name: string, fallback: string) => {
-    if (typeof document === 'undefined') return fallback;
-    if (_cssVarCache[name]) return _cssVarCache[name];
-    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    if (val) _cssVarCache[name] = val;
-    return val || fallback;
-};
+import { cssVar } from '../utils/cssVar';
 
 const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -73,18 +65,18 @@ const CausalVisualizer: React.FC = () => {
                 title: `Step ${n.id}: ${n.step.action}`,
                 group: n.step.step_category.toLowerCase(),
                 color: getStepColor(n.step.step_category),
-                font: { color: cssVar('--text-primary', '#ffffff'), size: 14, face: 'Artemis Inter, Inter' },
+                font: { color: cssVar('--text-primary'), size: 14, face: 'Artemis Inter, Inter' },
                 shape: 'box',
                 margin: 10,
                 borderWidth: 2,
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.3)', size: 5, x: 2, y: 2 }
+                shadow: { enabled: true, color: cssVar('--black-30'), size: 5, x: 2, y: 2 }
             };
         }));
 
         const edges = new DataSet<any>(graph.edges.map(e => ({
             ...e,
             arrows: 'to',
-            color: { color: 'rgba(255,255,255,0.2)', highlight: cssVar('--accent-cyan', '#00f2ff') },
+            color: { color: cssVar('--white-20'), highlight: cssVar('--accent-cyan') },
             width: 2,
             smooth: { type: 'cubicBezier', forceDirection: 'vertical' }
         })));
@@ -124,12 +116,12 @@ const CausalVisualizer: React.FC = () => {
 
     const getStepColor = (category: string) => {
         switch (category) {
-            case 'Planning': return { background: cssVar('--bg-dark', '#1a1a2e'), border: cssVar('--accent-purple', '#bc8cff') };
-            case 'WasmTool': return { background: cssVar('--accent-blue', '#1e3799'), border: cssVar('--accent-cyan', '#00f2ff') };
-            case 'DockerTool': return { background: cssVar('--bg-glass', '#0a3d62'), border: cssVar('--text-muted', '#7f8c8d') };
-            case 'Verification': return { background: cssVar('--accent-emerald', '#00ff66'), border: cssVar('--accent-emerald', '#00ff66') };
-            case 'Correction': return { background: cssVar('--accent-rose', '#ff4d6d'), border: cssVar('--accent-rose', '#ff4d6d') };
-            default: return { background: cssVar('--bg-dark-sidebar', '#2c3e50'), border: cssVar('--text-muted', '#7f8c8d') };
+            case 'Planning': return { background: cssVar('--bg-dark'), border: cssVar('--accent-purple') };
+            case 'WasmTool': return { background: cssVar('--accent-blue'), border: cssVar('--accent-cyan') };
+            case 'DockerTool': return { background: cssVar('--bg-glass'), border: cssVar('--text-muted') };
+            case 'Verification': return { background: cssVar('--accent-emerald'), border: cssVar('--accent-emerald') };
+            case 'Correction': return { background: cssVar('--accent-rose'), border: cssVar('--accent-rose') };
+            default: return { background: cssVar('--bg-dark-sidebar'), border: cssVar('--text-muted') };
         }
     };
 
@@ -162,6 +154,7 @@ const CausalVisualizer: React.FC = () => {
                         />
                         <button
                             onClick={() => validateAndFetch(jobId)}
+                            aria-label={t('causal.fetchData')}
                             style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer' }}
                         >
                             <ChevronRight size={20} />
@@ -176,13 +169,13 @@ const CausalVisualizer: React.FC = () => {
                     <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
                     
                     {loading && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', zIndex: 20 }}>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--black-50)', zIndex: 20 }}>
                             <div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{t('causal.fetchingPaths')}</div>
                         </div>
                     )}
                     
                     {error && (
-                        <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--accent-rose)', color: 'var(--accent-rose)', zIndex: 20 }}>
+                        <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--accent-rose-20)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--accent-rose)', color: 'var(--accent-rose)', zIndex: 20 }}>
                             <AlertCircle size={16} style={{ marginBottom: '-3px', marginRight: '8px' }} />
                             {error}
                         </div>
@@ -208,7 +201,7 @@ const CausalVisualizer: React.FC = () => {
                             style={{ width: '350px', background: 'var(--bg-dark-sidebar)', borderLeft: '1px solid var(--border-glass)', padding: '1.5rem', overflowY: 'auto', zIndex: 30 }}
                         >
                             {diagnosis && (
-                                <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(255, 77, 148, 0.1)', border: '1px solid rgba(255, 77, 148, 0.3)', borderRadius: '12px' }}>
+                                <div style={{ marginBottom: '2rem', padding: '1rem', background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)', borderRadius: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-rose)', marginBottom: '0.75rem' }}>
                                         <AlertCircle size={18} />
                                         <h4 style={{ margin: 0 }}>{t('causal.failureDiagnosis')}</h4>
@@ -219,7 +212,8 @@ const CausalVisualizer: React.FC = () => {
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                                         {diagnosis.root_cause}
                                     </div>
-                                    <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+
+                                    <div style={{ padding: '0.75rem', background: 'var(--black-30)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
                                         <Info size={14} style={{ marginRight: '6px' }} />
                                         Repair: {diagnosis.self_repair_hint}
                                     </div>
@@ -229,7 +223,7 @@ const CausalVisualizer: React.FC = () => {
                             {selectedStep ? (
                                 <div className="step-details">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', background: 'rgba(0,242,255,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-10)', padding: '2px 8px', borderRadius: '4px' }}>
                                             STEP #{selectedStep.step_id}
                                         </div>
                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
@@ -247,7 +241,7 @@ const CausalVisualizer: React.FC = () => {
                                     </div>
 
                                     {selectedStep.completion_criteria && (
-                                        <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(0,242,255,0.05)', border: '1px solid rgba(0,242,255,0.2)', borderRadius: '8px' }}>
+                                        <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: 'var(--accent-cyan-05)', border: '1px solid var(--accent-cyan-20)', borderRadius: '8px' }}>
                                             <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 <Info size={12} /> Completion Criteria
                                             </h5>
@@ -259,7 +253,7 @@ const CausalVisualizer: React.FC = () => {
 
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.toolParams')}</h5>
-                                        <div className="font-mono" style={{ background: 'rgba(0,0,0,0.4)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto' }}>
+                                        <div className="font-mono" style={{ background: 'var(--black-40)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto' }}>
                                             <div style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{selectedStep.tool_name || t('causal.internal')}</div>
                                             <pre style={{ color: 'var(--text-muted)' }}>{JSON.stringify(selectedStep.input, null, 2)}</pre>
                                         </div>
@@ -267,7 +261,7 @@ const CausalVisualizer: React.FC = () => {
 
                                     <div>
                                         <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('causal.resultOutput')}</h5>
-                                        <div className="font-mono" style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '200px' }}>
+                                        <div className="font-mono" style={{ background: 'var(--white-03)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '200px' }}>
                                             <pre style={{ color: 'var(--text-secondary)' }}>{JSON.stringify(selectedStep.output, null, 2)}</pre>
                                         </div>
                                     </div>
@@ -283,7 +277,7 @@ const CausalVisualizer: React.FC = () => {
             {/* Controls Overlay */}
             <div style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
                 <button className="nav-item" style={{ margin: 0, padding: '0.4rem 0.75rem', background: 'var(--bg-glass-heavy)' }} onClick={() => networkRef.current?.fit()}>
-                    <Maximize size={14} style={{ marginRight: '6px' }} /> FIT MAP
+                    <Maximize size={14} style={{ marginRight: '6px' }} /> {t('causal.fitMap')}
                 </button>
                 <button 
                     className="nav-item" 

@@ -14,7 +14,7 @@
 
 body {
   font-family: var(--font-main);
-  background-color: #0b0b0f;
+  background-color: var(--bg-primary);
   /* 濃い紺色でアバターを浮き立たせる */
   color: var(--text-primary);
   overflow: hidden;
@@ -116,7 +116,7 @@ code, pre, kbd, samp, .font-mono {
 .app-container {
   display: flex;
   height: 100vh;
-  background: radial-gradient(circle at 50% 50%, #161625 0%, #0b0b0f 100%);
+  background: radial-gradient(circle at 50% 50%, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -146,7 +146,7 @@ code, pre, kbd, samp, .font-mono {
   flex-direction: column;
   gap: var(--space-xl);
   z-index: 10;
-  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 10px 0 30px var(--black-40);
 }
 
 .brand {
@@ -209,14 +209,14 @@ code, pre, kbd, samp, .font-mono {
   color: var(--text-primary);
   border-color: var(--border-glass);
   transform: translateX(6px);
-  box-shadow: -4px 0 15px rgba(0, 242, 255, 0.1);
+  box-shadow: -4px 0 15px var(--accent-cyan-10);
 }
 
 .nav-item.active {
-  background: rgba(var(--accent-cyan-rgb), 0.08);
+  background: var(--accent-cyan-10);
   color: var(--accent-cyan);
-  border-color: rgba(var(--accent-cyan-rgb), 0.2);
-  box-shadow: 0 0 20px rgba(var(--accent-cyan-rgb), 0.05);
+  border-color: var(--accent-cyan-20);
+  box-shadow: 0 0 20px var(--accent-cyan-05);
 }
 
 .nav-active-bar {
@@ -249,8 +249,8 @@ code, pre, kbd, samp, .font-mono {
 
 .status-badge {
   padding: 0.6rem 1.2rem;
-  background: rgba(16, 185, 129, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: var(--accent-emerald-05);
+  border: 1px solid var(--accent-emerald-15, rgba(16, 185, 129, 0.15));
   color: var(--accent-emerald);
   border-radius: 20px;
   font-size: 0.8rem;
@@ -262,14 +262,14 @@ code, pre, kbd, samp, .font-mono {
 }
 
 .status-badge.disconnected {
-  background: rgba(255, 77, 148, 0.05);
-  border-color: rgba(255, 77, 148, 0.15);
+  background: var(--accent-rose-05);
+  border-color: var(--accent-rose-15, rgba(255, 77, 148, 0.15));
   color: var(--accent-rose);
 }
 
 .status-badge.paused {
-  background: rgba(255, 174, 0, 0.05);
-  border-color: rgba(255, 174, 0, 0.15);
+  background: var(--accent-amber-05);
+  border-color: var(--accent-amber-15, rgba(255, 174, 0, 0.15));
   color: var(--accent-amber);
 }
 
@@ -320,7 +320,7 @@ code, pre, kbd, samp, .font-mono {
 }
 
 .ani-neural {
-  background: linear-gradient(-45deg, rgba(0, 242, 255, 0.05), rgba(188, 140, 255, 0.05), rgba(255, 77, 148, 0.05));
+  background: linear-gradient(-45deg, var(--accent-cyan-05), var(--accent-purple-05), var(--accent-rose-05));
   background-size: 400% 400%;
   animation: neural-flow 15s ease infinite;
 }
@@ -388,7 +388,7 @@ code, pre, kbd, samp, .font-mono {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--white-02);
 }
 
 /* Scrollbar */
@@ -422,7 +422,7 @@ code, pre, kbd, samp, .font-mono {
 
 .primary-button {
   background: var(--accent-cyan);
-  color: #0b0b0f;
+  color: var(--bg-primary);
   border: none;
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
@@ -445,7 +445,7 @@ code, pre, kbd, samp, .font-mono {
 }
 
 .neural-input {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--white-02);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   color: var(--text-primary);

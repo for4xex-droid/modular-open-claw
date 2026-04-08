@@ -26,8 +26,8 @@ export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ sa
     }
     return (
       <div style={{
-        background: 'rgba(0,0,0,0.3)',
-        border: '1px solid rgba(255,255,255,0.05)',
+        background: 'var(--black-30)',
+        border: '1px solid var(--white-05)',
         backdropFilter: 'blur(10px)',
         padding: '1rem',
         borderRadius: '12px',
@@ -102,12 +102,12 @@ export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ sa
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-        <div style={{ display: 'inline-flex', padding: '0.25rem 0.6rem', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'inline-flex', padding: '0.25rem 0.6rem', background: 'var(--black-40)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           <strong style={{ color: 'var(--accent-emerald)', marginRight: '4px' }}>≈</strong>
           <motion.span>{displayTokens}</motion.span>
           <span style={{ marginLeft: '4px' }}>tokens</span>
         </div>
-        <div style={{ display: 'inline-flex', padding: '0.25rem 0.6rem', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'inline-flex', padding: '0.25rem 0.6rem', background: 'var(--black-40)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           <strong style={{ color: 'var(--accent-emerald)', marginRight: '4px' }}>≈</strong>
           $<motion.span>{costEstimate}</motion.span>
         </div>

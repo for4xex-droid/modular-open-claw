@@ -160,10 +160,10 @@ const DiagnosticsHistory: React.FC = () => {
         </div>
         <div className="tab-switcher">
           <button className={activeTab === 'diagnostics' ? 'active' : ''} onClick={() => setActiveTab('diagnostics')}>
-            <AlertTriangle size={14} /> DIAGNOSTICS
+            <AlertTriangle size={14} /> {t('diagnostics.tabDiagnostics')}
           </button>
           <button className={activeTab === 'ledger' ? 'active' : ''} onClick={() => setActiveTab('ledger')}>
-            <History size={14} /> GLOBAL LEDGER
+            <History size={14} /> {t('diagnostics.tabLedger')}
           </button>
         </div>
       </div>
@@ -182,7 +182,7 @@ const DiagnosticsHistory: React.FC = () => {
       <style>{`
         .tab-switcher {
           display: flex;
-          background: rgba(255,255,255,0.05);
+          background: var(--white-05);
           border-radius: 12px;
           padding: 0.2rem;
           gap: 0.2rem;
@@ -204,7 +204,7 @@ const DiagnosticsHistory: React.FC = () => {
         .tab-switcher button.active {
           background: var(--bg-glass-heavy);
           color: white;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          box-shadow: 0 4px 10px var(--black-20);
         }
         .audit-list {
           display: flex;
@@ -214,16 +214,16 @@ const DiagnosticsHistory: React.FC = () => {
           margin: 0 auto;
         }
         .audit-card {
-          background: rgba(255,255,255,0.02);
-          border: 1px solid rgba(255,255,255,0.05);
+          background: var(--white-02);
+          border: 1px solid var(--white-05);
           border-radius: 16px;
           padding: 1.2rem;
           position: relative;
           overflow: hidden;
         }
         .audit-card:hover {
-          background: rgba(255,255,255,0.04);
-          border-color: rgba(255,255,255,0.1);
+          background: var(--white-04);
+          border-color: var(--white-10);
         }
         .id-badge {
           display: flex;
@@ -232,7 +232,7 @@ const DiagnosticsHistory: React.FC = () => {
           font-size: 0.7rem;
           color: var(--text-muted);
           font-family: var(--font-mono);
-          background: rgba(255,255,255,0.05);
+          background: var(--white-05);
           padding: 0.2rem 0.5rem;
           border-radius: 4px;
         }
@@ -270,7 +270,7 @@ const DiagnosticsHistory: React.FC = () => {
         }
         .repair-hint {
           margin-top: 1rem;
-          background: rgba(0,242,255,0.05);
+          background: var(--accent-cyan-05);
           border-radius: 8px;
           padding: 0.6rem 0.8rem;
           display: flex;
@@ -281,7 +281,7 @@ const DiagnosticsHistory: React.FC = () => {
         }
         .load-more {
           background: transparent;
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid var(--white-10);
           color: var(--text-muted);
           padding: 0.8rem;
           border-radius: 12px;
@@ -296,8 +296,8 @@ const DiagnosticsHistory: React.FC = () => {
         }
         .load-more:hover {
           color: white;
-          border-color: rgba(255,255,255,0.3);
-          background: rgba(255,255,255,0.02);
+          border-color: var(--white-30);
+          background: var(--white-02);
         }
         .ledger-item {
           display: flex;

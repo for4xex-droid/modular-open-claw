@@ -46,7 +46,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
         <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
             {/* Header */}
             <div className="panel-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-glass)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                     <div style={{ position: 'relative' }}>
                         <Bot size={24} color="var(--accent-cyan)" />
                         {isTyping && (
@@ -58,7 +58,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         )}
                     </div>
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{t('agent.title')}</h3>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>{t('agent.title')}</h3>
                         <div style={{ fontSize: '0.7rem', color: isTyping ? 'var(--accent-cyan)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <span style={{ width: 6, height: 6, borderRadius: '50%', background: isTyping ? 'var(--accent-cyan)' : 'var(--accent-emerald)' }} />
                             {status}
@@ -71,30 +71,31 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         className="stat-badge" 
                         style={{ 
                             fontSize: '0.7rem', 
-                            background: autoTts ? 'rgba(0, 243, 255, 0.1)' : 'rgba(255,255,255,0.03)',
+                            background: autoTts ? 'var(--accent-cyan-10)' : 'var(--white-03)',
                             border: `1px solid ${autoTts ? 'var(--accent-cyan)' : 'transparent'}`,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
-                            color: autoTts ? 'var(--accent-cyan)' : 'var(--text-muted)'
+                            color: autoTts ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                            transition: 'all var(--speed-normal)'
                         }}
                     >
                         {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                        VOICE: {autoTts ? 'ON' : 'OFF'}
+                        {t('agent.voice')}: {autoTts ? 'ON' : 'OFF'}
                     </button>
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
-                    <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)' }}>3.5B MODEL</div>
+                    <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>3.5B MODEL</div>
                 </div>
             </div>
 
             {/* Chat Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(0,0,0,0.2)' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', background: 'var(--black-20)' }}>
                 {history.length === 0 && !streamingText && (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center' }}>
                         <Cpu size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
-                        <h4 style={{ fontWeight: 600, color: 'rgba(255,255,255,0.2)' }}>{t('agent.ready')}</h4>
-                        <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginTop: '0.5rem' }}>Issue natural language commands to synthesize skills or explore the biome.</p>
+                        <h4 style={{ fontWeight: 600, color: 'var(--white-20)' }}>{t('agent.ready')}</h4>
+                        <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginTop: '0.5rem' }}>{t('agent.issueCommands')}</p>
                     </div>
                 )}
 
@@ -105,21 +106,21 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         className="glass-panel"
                         style={{
                             padding: '1.2rem',
-                            background: relevantKarma.includes('見つかりませんでした')
-                                ? 'rgba(255, 82, 82, 0.08)'
-                                : 'rgba(0, 243, 255, 0.03)',
-                            border: `1px solid ${relevantKarma.includes('見つかりませんでした') ? 'rgba(255, 82, 82, 0.2)' : 'rgba(0, 243, 255, 0.1)'}`,
+                            background: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found')
+                                ? 'var(--accent-rose-10)'
+                                : 'var(--accent-cyan-05)',
+                            border: `1px solid ${relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose-20)' : 'var(--accent-cyan-10)'}`,
                             borderLeftWidth: '4px',
-                            borderLeftColor: relevantKarma.includes('見つかりませんでした') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
+                            borderLeftColor: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
                             fontSize: '0.8rem',
                             marginBottom: '1rem',
                         }}
                     >
-                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
-                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
-                            {relevantKarma.includes('見つかりませんでした') ? 'OUT-OF-DOMAIN DETECTED' : 'SYNAPTIC MEMORY RETRIEVED'}
+                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--white-50)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
+                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
+                            {relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? t('agent.outOfDomain') : t('agent.synapticMemory')}
                         </div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'rgba(255,255,255,0.8)' }}>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--white-80)' }}>
                             {relevantKarma}
                         </div>
                     </motion.div>
@@ -131,18 +132,18 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         animate={{ opacity: 1, y: 0 }}
                         style={{
                             padding: '1rem',
-                            background: 'rgba(255, 171, 0, 0.1)',
-                            border: '1px solid rgba(255, 171, 0, 0.2)',
+                            background: 'var(--accent-amber-10)',
+                            border: '1px solid var(--accent-amber-20)',
                             borderLeft: '4px solid var(--accent-amber)',
-                            borderRadius: '4px 12px 12px 4px',
+                            borderRadius: 'var(--radius-sm) var(--radius-md) var(--radius-md) var(--radius-sm)',
                             marginBottom: '1rem',
                         }}
                     >
-                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'rgba(255,171,0,0.8)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--accent-amber-80)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
                             <BookOpen size={14} />
-                            PROJECT KNOWLEDGE ACCESSED
+                            {t('agent.knowledgeAccessed')}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--white-90)', fontWeight: 500 }}>
                             {activeKnowledge}
                         </div>
                     </motion.div>
@@ -162,18 +163,18 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             gap: '0.5rem'
                         }}
                     >
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                            {m.role === 'user' ? 'OPERATOR' : 'AIOME'}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                            {m.role === 'user' ? t('agent.roleUser') : t('agent.roleAiome')}
                         </div>
                         <div style={{
                             padding: '1.25rem',
-                            borderRadius: m.role === 'user' ? '20px 20px 4px 20px' : '4px 20px 20px 20px',
+                            borderRadius: m.role === 'user' ? 'var(--radius-lg) var(--radius-lg) 4px var(--radius-lg)' : '4px var(--radius-lg) var(--radius-lg) var(--radius-lg)',
                             background: m.role === 'user' ? 'var(--accent-cyan-glass)' : 'var(--bg-glass-heavy)',
-                            border: m.role === 'user' ? '1px solid rgba(0, 242, 255, 0.3)' : '1px solid var(--border-glass)',
+                            border: m.role === 'user' ? '1px solid var(--accent-cyan-30)' : '1px solid var(--border-glass)',
                             color: m.isError ? 'var(--accent-rose)' : 'var(--text-primary)',
                             fontSize: '0.95rem',
                             lineHeight: 1.6,
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                            boxShadow: 'var(--shadow-shallow)',
                             whiteSpace: 'pre-wrap'
                         }}>
                             {m.content}
@@ -184,14 +185,14 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 <button
                                     onClick={() => handleFeedback(i, 'positive')}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                                    title="Helpful Lesson"
+                                    title={t('agent.helpfulLesson')}
                                 >
                                     <ThumbsUp size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleFeedback(i, 'negative')}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                                    title="Not Helpful Lesson"
+                                    title={t('agent.notHelpfulLesson')}
                                 >
                                     <ThumbsDown size={14} />
                                 </button>
@@ -206,15 +207,16 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         animate={{ opacity: 1 }}
                         style={{ alignSelf: 'flex-start', maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
                     >
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>AIOME (STREAMING)</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>AIOME ({t('agent.streaming')})</div>
                         <div style={{
                             padding: '1.25rem',
-                            borderRadius: '4px 20px 20px 20px',
+                            borderRadius: '4px var(--radius-lg) var(--radius-lg) var(--radius-lg)',
                             background: 'var(--bg-glass-heavy)',
                             border: '1px solid var(--accent-cyan-glass)',
                             fontSize: '0.95rem',
                             lineHeight: 1.6,
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
+                            boxShadow: 'var(--shadow-shallow)'
                         }}>
                             {streamingText}
                             <motion.span
@@ -230,7 +232,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
             </div>
 
             {/* Input Area */}
-            <div style={{ padding: '1.5rem 2rem', background: 'rgba(0,0,0,0.4)', borderTop: '1px solid var(--border-glass)' }}>
+            <div style={{ padding: '1.5rem 2rem', background: 'var(--black-40)', borderTop: '1px solid var(--border-glass)' }}>
                 <div style={{ position: 'relative' }}>
                     <textarea
                         value={input}
@@ -242,20 +244,20 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 sendMessage();
                             }
                         }}
-                        placeholder="Type a command or ask a question..."
+                        placeholder={t('agent.chatPlaceholder')}
                         rows={1}
                         style={{
                             width: '100%',
-                            background: 'rgba(255,255,255,0.03)',
+                            background: 'var(--white-03)',
                             border: '1px solid var(--border-glass)',
-                            borderRadius: '16px',
-                            padding: '1.2rem 4rem 1.2rem 1.5rem',
+                            borderRadius: 'var(--radius-lg)',
+                            padding: '1.2rem 4.5rem 1.2rem 1.5rem',
                             color: 'var(--text-primary)',
                             outline: 'none',
                             fontSize: '1rem',
                             resize: 'none',
-                            transition: 'all 0.3s ease',
-                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                            transition: 'all var(--speed-normal)',
+                            boxShadow: 'var(--shadow-inset)'
                         }}
                     />
                     <button
@@ -263,33 +265,33 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         disabled={!input.trim() || isTyping}
                         style={{
                             position: 'absolute',
-                            right: '8px',
+                            right: '0.75rem',
                             top: '50%',
                             transform: 'translateY(-50%)',
                             width: '44px',
                             height: '44px',
-                            borderRadius: '12px',
-                            background: input.trim() && !isTyping ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                            color: input.trim() && !isTyping ? 'var(--bg-primary)' : 'rgba(255,255,255,0.2)',
+                            borderRadius: 'var(--radius-md)',
+                            background: input.trim() && !isTyping ? 'var(--accent-cyan)' : 'var(--white-05)',
+                            color: input.trim() && !isTyping ? 'var(--bg-primary)' : 'var(--white-20)',
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.2s ease'
+                            transition: 'all var(--speed-fast)'
                         }}
                     >
                         <Send size={20} />
                     </button>
                 </div>
                 <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            <kbd style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px' }}>Shift+Enter</kbd> to newline
+                            <kbd style={{ background: 'var(--white-10)', padding: '2px 4px', borderRadius: '4px' }}>Shift+Enter</kbd> {t('agent.toNewline')}
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        <Sparkles size={12} color="var(--accent-purple)" /> PROMPT ENHANCEMENT ACTIVE
+                        <Sparkles size={12} color="var(--accent-purple)" /> {t('agent.promptEnhancement')}
                     </div>
                 </div>
             </div>

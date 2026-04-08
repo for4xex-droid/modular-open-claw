@@ -124,7 +124,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let req_client = reqwest::Client::new();
+        let req_client = aiome_core::http::get_http_client();
         let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
         
         // Act & Assert
@@ -150,7 +150,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let req_client = reqwest::Client::new();
+        let req_client = aiome_core::http::get_http_client();
         let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
 
         // Act & Assert

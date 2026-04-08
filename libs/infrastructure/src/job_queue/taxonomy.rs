@@ -95,8 +95,8 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
     /// フォールバック値を生成する（LLMエラー時）
     pub fn fallback() -> KarmaClassification {
         KarmaClassification {
-            domain: "general".to_string(),
-            subtopic: "uncategorized".to_string(),
+            domain: "General".to_string(),
+            subtopic: "Uncategorized".to_string(),
             reasoning: "LLM classification failed, using fallback.".to_string(),
         }
     }

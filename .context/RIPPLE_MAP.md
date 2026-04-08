@@ -37,6 +37,17 @@
     - 設定変更 (SettingsPage) の結果が再起動後に確実に `DreamService` に波及し、環境変数に依存しないユーザー主導のトークンオーバーライドが正常稼働するようになった。
     - API ドキュメント生成プロセスが GREEN に復旧。
 
+### 5. Phase 3-C: Management Console Hardening (U-002 Mastery)
+- **変更内容**:
+    - `Timeline.tsx`, `SoTProgressBar.tsx`, `DiagnosticsHistory.tsx`, `ImmuneSystem.tsx`, `LoraTrainingView.tsx`, `BiomeDialogueView.tsx`, `ExpressionPipeline.tsx`, `VoiceStore.tsx` における HEX/RGBA およびアニメーションタイミングのハードコードを全廃し、`tokens.css` へ統合。
+    - `Timeline` や `DiagnosticsHistory` 等で動的描画されるシステムステータス文字列を `i18n` キーへ抽出し、日英完全同期。
+    - `VoiceStore` における `alert()` を排し、Framer Motion トースト通知によるプレミアム UX を実装。
+    - `Lora` / `Biome` / `Immune` 各ビューにメディアクエリを導入し、レスポンシブ対応を完遂。
+- **波及効果**:
+    - **`tokens.css → All UI Components`**
+    - デザインシステムと UI 実装が 100% 同期され、将来的なテーマ拡張や多言語対応の保守性が抜本的に向上。
+    - `test_ui_hex_violations.py` による自動ガードが管理コンソールの主要 8 ファイル全域で機能し、今後のハードコード回帰を完全に防止。
+
 ## Aiome Social Signal Integration (Layer A-C)
 ### 1. X Signal Probe (Reqwest Direct)
 - **変更内容**:
@@ -1274,3 +1285,22 @@ graph TD
     *   `apps/api-server/src/internal_services/dream.rs`
     *   `libs/infrastructure/src/artifact_store.rs`
 *   **Ripple effect**: Local dev uses `workspace/` mapped automatically via config. Release mode uses `~/Library/Application Support/com.aiome.nexus`. Removed legacy hardcoded paths which clears the final blocker for Phase 2C Tauri Packaging.
+
+## Phase 3-A: SSRF 全掃討 & TCP プーリング最適化 & UI トークン駆動化
+*   **Changed files (infrastructure SSRF → global pool)**:
+    *   `libs/infrastructure/src/cortex_ingester.rs` — `reqwest::Client::new()` → `get_http_client().clone()` + `RequestBuilder::timeout()`
+    *   `libs/infrastructure/src/tts.rs` — 同上
+    *   `libs/infrastructure/src/llm/proxy.rs` — 同上
+    *   `libs/infrastructure/src/forecast/timesfm.rs` — 同上
+    *   `libs/infrastructure/src/publisher/wordpress.rs` — 同上
+    *   `libs/infrastructure/src/rss_collector.rs` — 同上
+    *   `libs/infrastructure/src/trend_sonar.rs` — 同上
+*   **Deleted**: `libs/infrastructure/src/security_zombie.rs::http_client_with_timeout()` — Dead code. 呼び出し元ゼロ確認済み。
+*   **Added**: `apps/management-console/src/components/CausalVisualizer.tsx`, `GraphView.tsx`, `home/AvatarViewerModal.tsx` — `cssVar()` O(1) メモ化ブリッジ (3ファイル重複。Phase 3-B P2 で `utils/cssVar.ts` に共通化予定)。
+*   **Added**: `scripts/test_ui_hex_violations.py` — HEX ハードコード検出テスト。Phase 3-B P0 で rgba/rgb 検出を追加。
+*   **Added**: `scripts/fix_hex_violations.py` — HEX → CSS トークン自動変換スクリプト。
+*   **Ripple effect**:
+    *   `get_http_client().clone()` は `reqwest::Client` 型を返す → 呼び出し元の型シグネチャ変更ゼロ（後方互換 100%）。
+    *   TCP プーリング最適化により、同一ホストへの並行リクエストでハンドシェイクが再利用される。
+    *   `cssVar()` は Canvas (vis-network) への色注入専用。React コンポーネントのプロパティ型に影響ゼロ。
+    *   UI テーマ変更時、HEX/rgba ハードコードが残存する 33 ファイルは追従しない（Phase 3-B P3 で対処予定）。

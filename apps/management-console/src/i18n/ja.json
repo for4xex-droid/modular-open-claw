@@ -200,8 +200,11 @@
     "urlRequired": "URL は必須です"
   },
   "onboarding": {
-    "welcome": "Aiome へようこそ",
-    "welcomeDesc": "あなたの自律 AI パートナーの旅がここから始まります。",
+    "welcome": "Aiomeへようこそ",
+    "setupTitle": "AIのアイデンティティを設定",
+    "namePlaceholder": "AIの名前を入力...",
+    "nameDesc": "システムの権身を何と呼ぶべきですか？",
+    "welcomeDesc": "自律型AIコンパニオンの旅がここから始まります。",
     "chooseAvatar": "アバターを選択",
     "chooseAvatarDesc": "AI パートナーのビジュアルアイデンティティを選択してください。",
     "chooseView": "表示モードを選択",
@@ -215,6 +218,9 @@
     "next": "次へ",
     "begin": "旅を始める",
     "skip": "スキップ",
+    "finalizing": "最終調整中...",
+    "awaken": "システムを覚醒させる",
+    "manifestInit": "システムの権身が初期化されました",
     "llmSetup": {
       "title": "LLMエンジンセットアップ",
       "desc": "パートナーの頭脳となるAIモデルを選択してください。",
@@ -240,15 +246,23 @@
           "desc": "軽量型。CPUや低スペックGPUでも動作します。"
         }
       }
-    }
+    },
+    "chooseManifestation": "アバターの権身を選択",
+    "manifestationDesc": "AIが存在するための視覚的形態を選択してください。",
+    "abyssSecurity": "アビス・ヴォールトの安全性",
+    "abyssSecurityDesc": "APIキーはOSレベルで物理的に隔離されており、自律モード下でも安全が確保されます。",
+    "chooseExperience": "操作レベルを選択",
+    "chooseExperienceDesc": "システムとの対話スタイルを選択してください。後でいつでも変更可能です。",
+    "cuteChibi": "かわいいSD体型",
+    "modernTaller": "モダントール体型"
   },
   "timeline": {
-    "title": "永遠のクロニクル - カルマタイムライン",
-    "noEntries": "クロニクルエントリはまだありません。",
-    "loadMore": "もっと読み込む",
-    "loading": "クロニクルを読み込み中...",
-    "syncing": "クロニクルを同期中...",
-    "noRecords": "この時代の記録は見つかりませんでした。"
+    "title": "ニューラル・クロニクル (経歴)",
+    "syncing": "クロノスと同期中...",
+    "noRecords": "記録が見つかりません。",
+    "evolutionStep": "進化ステップ",
+    "localMemory": "ローカル・メモリ",
+    "federatedMemory": "連合（フェデレーテッド）メモリ"
   },
   "agent": {
     "title": "ジェネシス ニューラルコンソール",
@@ -285,7 +299,8 @@
     "exposedTools": "公開ツール",
     "noTools": "直接ツールなし",
     "install": "インストール",
-    "remove": "削除"
+    "remove": "削除",
+    "settings": "スキル設定"
   },
   "artifact": {
     "search": "アーティファクトやタグを検索...",
@@ -331,10 +346,18 @@
     "peer": "ピア",
     "targetPeer": "ターゲットピア公開鍵",
     "topicIdentity": "トピックアイデンティティ",
-    "startDialogue": "AI 対話を開始",
+    "startDialogue": "対話を開始",
     "initializing": "初期化中...",
     "messagesSent": "送信メッセージ数",
     "protocolVersion": "プロトコルバージョン"
+  },
+  "sot": {
+    "active": "思考の結社 (SoT) 稼働中",
+    "abstentions": "自主的棄権数",
+    "round": "ラウンド",
+    "thinking": "が思考中...",
+    "completed": "完了",
+    "latestScores": "最新のスコア"
   },
   "voice": {
     "walletBalance": "ウォレット残高",
@@ -354,10 +377,16 @@
     "internal": "内部",
     "resultOutput": "結果出力",
     "clickNode": "ノードをクリックして詳細を表示",
-    "invalidJobId": "無効なジョブ ID 形式です。英数字、_、- のみ使用できます。"
+    "invalidJobId": "無効なジョブ ID 形式です。英数字、_、- のみ使用できます。",
+    "fetchData": "ニューラルデータを取得",
+    "fitMap": "全体表示"
   },
   "graph": {
-    "title": "シナプス & 創造系譜マップ"
+    "title": "ニューラル・シナジー・マップ",
+    "reCenter": "再配置",
+    "hint": "ドラッグで移動 • スクロールで拡大・縮小 • 菱形はアーティファクト",
+    "karma": "カルマ",
+    "artifacts": "アーティファクト"
   },
   "treasure": {
     "title": "エージェントの感覚 (Sense)",
@@ -366,10 +395,21 @@
     "loading": "Senseを調律中...",
     "empty": "まだ何も見つかりませんでした",
     "resonance": "共鳴度 +5!",
-    "coins": "COINS"
+    "coins": "コイン"
+  },
+  "system": {
+    "calibrating": "ニューラル・クロニクルを較正中...",
+    "genesisProtocol": "ジェネシス・プロトコル起動中 [0.98.4]"
   },
   "error": {
     "title": "問題が発生しました",
     "retry": "再試行"
+  },
+  "avatar": {
+    "status": {
+      "thinking": "Aiome がデータを処理中...",
+      "awakened": "Aiome が完全稼働中",
+      "idle": "Aiome は待機中です"
+    }
   }
 }

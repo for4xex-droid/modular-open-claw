@@ -125,9 +125,9 @@ const BiomeDialogueView: React.FC = () => {
   }, [messages]);
 
   return (
-    <div className="biome-dialogue-view" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 'var(--space-lg)', height: 'calc(85vh - 100px)' }}>
+    <div className="biome-dialogue-view">
       {/* Main Chat Area */}
-      <div className="main-panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+      <div className="main-panel biome-chat-panel">
         <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <Network color="var(--accent-cyan)" size={20} />
@@ -153,7 +153,7 @@ const BiomeDialogueView: React.FC = () => {
             display: 'flex', 
             flexDirection: 'column', 
             gap: 'var(--space-md)',
-            background: 'rgba(0,0,0,0.2)'
+            background: 'var(--black-20)'
           }}
         >
           {messages.length === 0 && (
@@ -165,7 +165,9 @@ const BiomeDialogueView: React.FC = () => {
 
           <AnimatePresence>
             {messages.map((msg) => {
-              const isSelf = msg.sender_pubkey === "self" || msg.sender_pubkey.length > 20; // heuristic for demonstration
+              // heuristic: assume 'self' is the local node. 
+              // In a real system, we'd compare with the authenticated public key.
+              const isSelf = msg.sender_pubkey === "self" || msg.sender_pubkey.startsWith("SYSTEM_");
               return (
                 <motion.div
                   key={msg.id}
@@ -189,8 +191,8 @@ const BiomeDialogueView: React.FC = () => {
                     borderRadius: 'var(--radius-md)', 
                     borderTopRightRadius: isSelf ? 0 : 'var(--radius-md)',
                     borderTopLeftRadius: isSelf ? 'var(--radius-md)' : 0,
-                    background: isSelf ? 'rgba(var(--accent-cyan-rgb), 0.15)' : 'var(--bg-glass-heavy)',
-                    border: isSelf ? '1px solid rgba(var(--accent-cyan-rgb), 0.3)' : '1px solid var(--border-glass)',
+                    background: isSelf ? 'var(--accent-cyan-15)' : 'var(--bg-glass-heavy)',
+                    border: isSelf ? '1px solid var(--accent-cyan-30)' : '1px solid var(--border-glass)',
                     color: 'var(--text-primary)',
                     lineHeight: 1.5,
                     fontSize: '0.95rem'
@@ -205,7 +207,7 @@ const BiomeDialogueView: React.FC = () => {
       </div>
 
       {/* Control Sidebar */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <div className="biome-control-sidebar">
         <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Play size={14} /> AUTONOMOUS ENGINE
@@ -235,7 +237,21 @@ const BiomeDialogueView: React.FC = () => {
                <button 
                 onClick={stopAutonomous}
                 className="card-hover"
-                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 100, 100, 0.1)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose)', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    background: 'var(--accent-rose-10)', 
+                    color: 'var(--accent-rose)', 
+                    border: '1px solid var(--accent-rose)', 
+                    cursor: 'pointer', 
+                    fontWeight: 700, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '0.5rem',
+                    transition: 'all var(--speed-normal)'
+                }}
                >
                  <Square size={16} fill="currentColor" /> Stop Autonomous Loop
                </button>
@@ -252,7 +268,7 @@ const BiomeDialogueView: React.FC = () => {
           </div>
         </div>
 
-        <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left', background: 'rgba(var(--accent-purple-rgb), 0.05)' }}>
+        <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left', background: 'var(--accent-purple-05)' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <History size={14} /> PROTOCOL STATS
           </h4>
@@ -265,22 +281,44 @@ const BiomeDialogueView: React.FC = () => {
               <span style={{ color: 'var(--text-muted)' }}>{t('biome.protocolVersion')}:</span>
               <span style={{ fontWeight: 700 }}>v20-BIOME</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Wait Time:</span>
-              <span style={{ fontWeight: 700 }}>15s</span>
-            </div>
           </div>
         </div>
 
-        <div style={{ padding: '1rem', background: 'var(--bg-glass-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          <p><strong>Note:</strong> In Sandbox Mode, AI will fallback to local storage if Hub is offline. Topic constraints (turns/cooldown) are enforced by DialogueManager.</p>
+        <div className="info-box-glass">
+          <p><strong>Note:</strong> In Sandbox Mode, AI will fallback to local storage if Hub is offline. Topic constraints are enforced by DialogueManager.</p>
         </div>
       </div>
       
       <style>{`
+        .biome-dialogue-view {
+          display: grid;
+          grid-template-columns: 1fr 300px;
+          gap: var(--space-lg);
+          height: calc(85vh - 100px);
+        }
+        .biome-chat-panel {
+          display: flex;
+          flex-direction: column;
+          padding: 0;
+          overflow: hidden;
+        }
+        .biome-control-sidebar {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-md);
+        }
+        .info-box-glass {
+          padding: 1rem;
+          background: var(--bg-glass-light);
+          borderRadius: var(--radius-md);
+          border: 1px solid var(--border-glass);
+          fontSize: 0.7rem;
+          color: var(--text-muted);
+          lineHeight: 1.4;
+        }
         .custom-input {
           width: 100%;
-          background: rgba(255,255,255,0.05);
+          background: var(--white-05);
           border: 1px solid var(--border-glass);
           border-radius: 4px;
           padding: 0.5rem;
@@ -293,9 +331,15 @@ const BiomeDialogueView: React.FC = () => {
           outline: none;
           border-color: var(--accent-cyan);
         }
-        .custom-input:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+
+        @media (max-width: 900px) {
+          .biome-dialogue-view {
+            grid-template-columns: 1fr;
+            height: auto;
+          }
+          .biome-chat-panel {
+            height: 60vh;
+          }
         }
       `}</style>
     </div>

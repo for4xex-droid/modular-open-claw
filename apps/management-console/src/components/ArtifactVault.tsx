@@ -22,7 +22,8 @@ import {
   Tag,
   Hash,
   Shield,
-  Dna
+  Dna,
+  X
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
@@ -123,11 +124,9 @@ const ArtifactVault = () => {
     }
   };
 
-  const filteredArtifacts = artifacts; // Filtered by API now (semantic support)
-
   return (
     <div className="vault-container">
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', alignItems: 'center' }}>
         <div className="search-box">
           <Search size={18} />
           <input
@@ -152,13 +151,13 @@ const ArtifactVault = () => {
       </div>
 
       {loading ? (
-        <div style={{ padding: '4rem', textAlign: 'center' }}>
+        <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
           <Box className="ani-pulse" size={48} color="var(--accent-cyan)" style={{ margin: '0 auto 1.5rem' }} />
           <p style={{ color: 'var(--text-secondary)' }}>{t('artifact.decrypting')}</p>
         </div>
       ) : (
         <div className="artifact-grid">
-          {filteredArtifacts.map((artifact) => (
+          {artifacts.map((artifact) => (
             <motion.div
               key={artifact.id}
               layoutId={artifact.id}
@@ -232,14 +231,20 @@ const ArtifactVault = () => {
                     {getCategoryIcon(selectedArtifact.category)}
                     <span>{selectedArtifact.category.toUpperCase()}</span>
                   </div>
-                  <h2>{selectedArtifact.title}</h2>
+                  <h2 style={{ margin: '0.4rem 0 0', fontSize: '1.5rem' }}>{selectedArtifact.title}</h2>
                 </div>
-                <button onClick={() => setSelectedArtifact(null)}>✕</button>
+                <button 
+                    onClick={() => setSelectedArtifact(null)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', transition: 'color var(--speed-fast)' }}
+                    className="card-hover"
+                >
+                    <X size={24} />
+                </button>
               </div>
 
               <div className="modal-content">
                 <div className="file-section">
-                  <h3>Files <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({selectedArtifact.files.length})</span></h3>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Files <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({selectedArtifact.files.length})</span></h3>
                   <div className="file-list">
                     {selectedArtifact.files.map(file => (
                       <div key={file.name} className="file-item">
@@ -256,6 +261,7 @@ const ArtifactVault = () => {
                             target="_blank"
                             rel="noreferrer"
                             className="icon-btn"
+                            style={{ color: 'var(--text-muted)', transition: 'color var(--speed-normal)' }}
                           >
                             <Download size={16} />
                           </a>
@@ -321,9 +327,9 @@ const ArtifactVault = () => {
           display: flex;
           align-items: center;
           gap: 0.8rem;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
+          background: var(--white-05);
+          border: 1px solid var(--white-10);
+          border-radius: var(--radius-md);
           padding: 0 1rem;
           height: 48px;
           flex: 1;
@@ -340,43 +346,43 @@ const ArtifactVault = () => {
           gap: 0.5rem;
         }
         .chip {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.05);
+          background: var(--white-03);
+          border: 1px solid var(--white-05);
           color: var(--text-secondary);
           padding: 0.5rem 1rem;
-          border-radius: 20px;
+          border-radius: var(--radius-xl);
           font-size: 0.85rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all var(--speed-normal);
         }
         .chip:hover {
-          background: rgba(255,255,255,0.08);
+          background: var(--white-08);
         }
         .chip.active {
           background: var(--accent-cyan);
-          color: black;
-          font-weight: 600;
+          color: var(--bg-primary);
+          font-weight: 700;
         }
         .artifact-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1.5rem;
+          gap: var(--space-md);
         }
         .artifact-card {
-          background: rgba(255,255,255,0.03);
+          background: var(--bg-glass-light);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 16px;
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-lg);
           padding: 1.2rem;
           cursor: pointer;
-          transition: transform 0.2s, background 0.2s;
+          transition: transform var(--speed-normal), background var(--speed-normal);
           position: relative;
           overflow: hidden;
         }
         .artifact-card:hover {
           transform: translateY(-4px);
-          background: rgba(255,255,255,0.06);
-          border-color: rgba(0,242,255,0.3);
+          background: var(--bg-glass-heavy);
+          border-color: var(--accent-cyan-30);
         }
         .card-header {
           display: flex;
@@ -399,7 +405,7 @@ const ArtifactVault = () => {
         }
         .card-title {
           font-size: 1.1rem;
-          margin-bottom: 1rem;
+          margin: 0 0 1rem;
           color: white;
           line-height: 1.4;
         }
@@ -423,7 +429,7 @@ const ArtifactVault = () => {
         .tag {
           font-size: 0.7rem;
           color: var(--accent-purple);
-          background: rgba(188,140,255,0.1);
+          background: var(--accent-purple-15);
           padding: 0.1rem 0.4rem;
           border-radius: 4px;
         }
@@ -445,14 +451,14 @@ const ArtifactVault = () => {
           position: absolute;
           top: 1.2rem;
           right: 1.2rem;
-          background: rgba(255, 71, 87, 0.1);
-          border: 1px solid rgba(255, 71, 87, 0.2);
+          background: var(--accent-rose-10);
+          border: 1px solid var(--accent-rose-20);
           color: var(--accent-rose);
-          border-radius: 8px;
+          border-radius: var(--radius-sm);
           padding: 0.4rem;
           cursor: pointer;
           opacity: 0;
-          transition: all 0.2s;
+          transition: all var(--speed-normal);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -462,14 +468,15 @@ const ArtifactVault = () => {
         }
         .delete-btn:hover {
           background: var(--accent-rose);
-          color: white;
+          color: var(--bg-primary);
         }
 
         .modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.8);
+          background: var(--black-80);
           z-index: 100;
+          backdrop-filter: blur(4px);
         }
         .artifact-modal {
           position: fixed;
@@ -477,28 +484,20 @@ const ArtifactVault = () => {
           left: 15%;
           right: 15%;
           bottom: 10%;
-          background: var(--bg-dark-sidebar);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 24px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-xl);
           z-index: 101;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+          box-shadow: var(--shadow-deep);
         }
         .modal-header {
           padding: 1.5rem 2rem;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          border-bottom: 1px solid var(--border-glass);
           display: flex;
           justify-content: space-between;
           align-items: center;
-        }
-        .modal-header h2 { margin-top: 0.4rem; }
-        .modal-header button {
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          font-size: 1.5rem;
-          cursor: pointer;
         }
         .modal-content {
           flex: 1;
@@ -509,7 +508,7 @@ const ArtifactVault = () => {
         .file-section {
           padding: 2rem;
           overflow-y: auto;
-          border-right: 1px solid rgba(255,255,255,0.05);
+          border-right: 1px solid var(--border-glass);
         }
         .file-list {
           display: flex;
@@ -522,14 +521,14 @@ const ArtifactVault = () => {
           justify-content: space-between;
           align-items: center;
           padding: 1rem;
-          background: rgba(255,255,255,0.02);
-          border-radius: 12px;
+          background: var(--white-03);
+          border-radius: var(--radius-md);
           border: 1px solid transparent;
-          transition: all 0.2s;
+          transition: all var(--speed-normal);
         }
         .file-item:hover {
-          background: rgba(255,255,255,0.04);
-          border-color: rgba(255,255,255,0.1);
+          background: var(--white-05);
+          border-color: var(--border-glass);
         }
         .file-info {
           display: flex;
@@ -548,19 +547,13 @@ const ArtifactVault = () => {
           font-size: 0.75rem;
           color: var(--text-muted);
         }
-        .icon-btn {
-          color: var(--text-muted);
-          transition: color 0.2s;
-        }
-        .icon-btn:hover {
-          color: var(--accent-cyan);
-        }
         .detail-sidebar {
           padding: 2rem;
-          background: rgba(255,255,255,0.01);
+          background: var(--black-20);
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+          overflow-y: auto;
         }
         .detail-group label {
           display: flex;
@@ -575,14 +568,17 @@ const ArtifactVault = () => {
         .detail-group p {
           color: var(--text-secondary);
           font-size: 0.9rem;
+          margin: 0;
         }
         .signature-text {
           font-family: var(--font-mono);
           font-size: 0.65rem !important;
           word-break: break-all;
-          background: rgba(0,0,0,0.3);
-          padding: 0.5rem;
-          border-radius: 6px;
+          background: var(--black-40);
+          padding: 0.75rem;
+          border-radius: 8px;
+          border: 1px solid var(--border-glass);
+          line-height: 1.4;
         }
         .edge-list {
           display: flex;
@@ -592,20 +588,37 @@ const ArtifactVault = () => {
         .edge-item {
           font-size: 0.75rem;
           color: var(--text-secondary);
-          background: rgba(255,255,255,0.03);
-          padding: 0.4rem;
-          border-radius: 4px;
-          border-left: 2px solid var(--accent-cyan);
+          background: var(--white-03);
+          padding: 0.6rem;
+          border-radius: var(--radius-sm);
+          border-left: 3px solid var(--accent-cyan);
           display: flex;
           justify-content: space-between;
+          align-items: center;
         }
         .edge-relation {
           color: var(--accent-cyan);
-          font-weight: 600;
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 0.65rem;
         }
         .edge-target {
           color: var(--text-muted);
           font-family: var(--font-mono);
+          font-size: 0.7rem;
+        }
+
+        @media (max-width: 1024px) {
+          .modal-content {
+            grid-template-columns: 1fr;
+          }
+          .artifact-modal {
+            left: 5%;
+            right: 5%;
+          }
+          .detail-sidebar {
+            border-top: 1px solid var(--border-glass);
+          }
         }
       `}</style>
     </div>

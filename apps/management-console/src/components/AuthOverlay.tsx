@@ -63,7 +63,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                 position: 'fixed',
                 inset: 0,
                 zIndex: 9999,
-                background: 'rgba(0, 0, 0, 0.85)',
+                background: 'var(--black-85)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
                 alignItems: 'center',
@@ -77,12 +77,12 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                 style={{
                     width: '100%',
                     maxWidth: '450px',
-                    background: 'linear-gradient(135deg, rgba(20, 20, 25, 0.8) 0%, rgba(10, 10, 15, 0.9) 100%)',
-                    border: '1px solid rgba(0, 242, 255, 0.1)',
+                    background: 'linear-gradient(135deg, var(--black-80) 0%, var(--black-90) 100%)',
+                    border: '1px solid var(--accent-cyan-10)',
                     borderRadius: '24px',
                     padding: '3rem',
                     textAlign: 'center',
-                    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 242, 255, 0.05)'
+                    boxShadow: '0 20px 50px var(--black-50), 0 0 30px var(--accent-cyan-05)'
                 }}
             >
                 <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}>
@@ -90,11 +90,11 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                         width: '80px', 
                         height: '80px', 
                         borderRadius: '50%', 
-                        background: 'rgba(0, 242, 255, 0.05)',
+                        background: 'var(--accent-cyan-05)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px solid rgba(0, 242, 255, 0.2)'
+                        border: '1px solid var(--accent-cyan-20)'
                     }}>
                         <Lock color="var(--accent-cyan)" size={40} />
                     </div>
@@ -110,7 +110,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                     {t('auth.title')}
                 </h2>
                 <p style={{ 
-                    color: 'rgba(255, 255, 255, 0.5)', 
+                    color: 'var(--white-50)', 
                     fontSize: '0.9rem', 
                     marginBottom: '2rem' 
                 }}>
@@ -121,7 +121,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ 
                             display: 'block', 
-                            color: 'rgba(0, 242, 255, 0.7)', 
+                            color: 'var(--accent-cyan-70)', 
                             fontSize: '0.75rem', 
                             textTransform: 'uppercase',
                             letterSpacing: '0.1em',
@@ -137,8 +137,8 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                             placeholder="••••••••••••••••"
                             style={{
                                 width: '100%',
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                background: 'var(--white-03)',
+                                border: '1px solid var(--white-10)',
                                 borderRadius: '12px',
                                 padding: '1rem',
                                 color: 'var(--text-primary)',
@@ -164,9 +164,9 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                                     fontSize: '0.85rem',
                                     marginBottom: '1.5rem',
                                     padding: '0.75rem',
-                                    background: 'rgba(255, 77, 109, 0.05)',
+                                    background: 'var(--accent-rose-05)',
                                     borderRadius: '10px',
-                                    border: '1px solid rgba(255, 77, 109, 0.1)'
+                                    border: '1px solid var(--accent-rose-10)'
                                 }}
                             >
                                 <ShieldAlert size={16} />
@@ -207,7 +207,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
                     </button>
                 </form>
 
-                <div style={{ marginTop: '2rem', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)' }}>
+                <div style={{ marginTop: '2rem', fontSize: '0.75rem', color: 'var(--white-30)' }}>
                     {t('auth.gateway')}
                 </div>
             </motion.div>

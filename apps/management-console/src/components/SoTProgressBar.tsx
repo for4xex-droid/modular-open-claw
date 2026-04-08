@@ -7,12 +7,12 @@
 import React, { useMemo } from 'react';
 import { useSystemVitality } from '../hooks/useSystemVitality';
 import { SoTEvent } from '../types';
+import { useTranslation } from '../i18n';
 
 export const SoTProgressBar: React.FC = () => {
+    const { t } = useTranslation();
     const { events } = useSystemVitality();
     
-    // We only care about the latest active Session or recently ended one.
-    // Instead of using effect and state which causes double-renders, we use derived state.
     const currentSession = useMemo(() => {
         let activeSession: {
             id: string;
@@ -25,7 +25,6 @@ export const SoTProgressBar: React.FC = () => {
             protocol: string | null;
         } | null = null;
         
-        // Find all SoT events and sort oldest first to reconstruct chronological state
         const sotEvents = events
             .filter(e => e.type === 'sot_progress')
             .map(e => e.data as SoTEvent)
@@ -56,7 +55,6 @@ export const SoTProgressBar: React.FC = () => {
                 case 'RoleStart':
                 case 'RoleOutput':
                     if (!activeSession) {
-                        // Resiliency: Fallback if we connected mid-session
                         activeSession = {
                             id: data.session_id,
                             roles: [],
@@ -114,7 +112,7 @@ export const SoTProgressBar: React.FC = () => {
             padding: 'var(--space-sm)',
             boxShadow: 'var(--shadow-deep)',
             zIndex: 50,
-            animation: 'fadeIn 0.3s ease-out',
+            animation: `fadeIn var(--speed-normal) ease-out`,
             fontFamily: 'var(--font-main)',
             color: 'var(--text-primary)'
         }}>
@@ -124,7 +122,7 @@ export const SoTProgressBar: React.FC = () => {
                       <span className="ani-pulse" style={{ position: 'absolute', height: '100%', width: '100%', borderRadius: '50%', background: 'var(--accent-purple)', opacity: 0.7 }}></span>
                       <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '12px', width: '12px', background: 'var(--accent-purple)' }}></span>
                     </span>
-                    Society of Thought Active
+                    {t('sot.active')}
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                     {currentSession.protocol && (
@@ -132,8 +130,8 @@ export const SoTProgressBar: React.FC = () => {
                             fontSize: '0.65rem',
                             color: 'var(--accent-cyan)',
                             padding: '2px 6px',
-                            background: 'var(--accent-cyan-glass)',
-                            border: '1px solid rgba(0,242,255,0.3)',
+                            background: 'var(--accent-cyan-10)',
+                            border: '1px solid var(--accent-cyan-30)',
                             borderRadius: '4px'
                         }}>
                             {currentSession.protocol}
@@ -144,10 +142,10 @@ export const SoTProgressBar: React.FC = () => {
                             fontSize: '0.65rem',
                             color: 'var(--accent-amber)',
                             padding: '2px 6px',
-                            background: 'rgba(245,158,11,0.15)',
-                            border: '1px solid rgba(245,158,11,0.3)',
+                            background: 'var(--accent-amber-10)',
+                            border: '1px solid var(--accent-amber-30)',
                             borderRadius: '4px'
-                        }} title="Voluntary Self-Abstentions">
+                        }} title={t('sot.abstentions')}>
                             🤚 {currentSession.abstentionCount}
                         </span>
                     )}
@@ -155,10 +153,10 @@ export const SoTProgressBar: React.FC = () => {
                         fontSize: '0.75rem',
                         color: 'var(--text-muted)',
                         padding: '2px 8px',
-                        background: 'var(--bg-dark-obsidian)',
+                        background: 'var(--bg-primary)',
                         borderRadius: '4px'
                     }}>
-                        Round {currentSession.currentRound}
+                        {t('sot.round')} {currentSession.currentRound}
                     </span>
                 </div>
             </div>
@@ -171,17 +169,17 @@ export const SoTProgressBar: React.FC = () => {
                             fontSize: '0.75rem',
                             padding: 'var(--space-xs)',
                             borderRadius: 'var(--radius-sm)',
-                            border: `1px solid ${isFocus ? 'rgba(188,140,255,0.4)' : 'var(--border-glass)'}`,
-                            background: isFocus ? 'var(--accent-purple-glass)' : 'var(--bg-dark-obsidian)',
+                            border: `1px solid ${isFocus ? 'var(--accent-purple-20)' : 'var(--white-05)'}`,
+                            background: isFocus ? 'var(--accent-purple-10)' : 'var(--bg-primary)',
                             color: isFocus ? 'var(--accent-purple)' : 'var(--text-secondary)'
                         }}>
                             {isFocus ? (
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>{role} is thinking...</span>
+                                    <span>{role} {t('sot.thinking')}</span>
                                     <span className="ani-pulse">..</span>
                                 </div>
                             ) : (
-                                <span>{role} completed</span>
+                                <span>{role} {t('sot.completed')}</span>
                             )}
                         </div>
                     );
@@ -190,7 +188,7 @@ export const SoTProgressBar: React.FC = () => {
             
             {currentSession.scores.length > 0 && (
                 <div style={{ marginTop: 'var(--space-sm)', paddingTop: 'var(--space-xs)', borderTop: '1px solid var(--border-glass)' }}>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Latest Scores</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>{t('sot.latestScores')}</div>
                     <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
                         {currentSession.scores.map(([metric, score]: [string, number]) => {
                             const color = score >= 4 ? 'var(--accent-emerald)' : score >= 3 ? 'var(--accent-amber)' : 'var(--accent-rose)';
@@ -199,7 +197,7 @@ export const SoTProgressBar: React.FC = () => {
                                     fontSize: '0.75rem',
                                     padding: '2px 6px',
                                     borderRadius: '4px',
-                                    background: `rgba(${score >= 4 ? '16,185,129' : score >= 3 ? '245,158,11' : '255,77,148'}, 0.15)`,
+                                    background: score >= 4 ? 'var(--accent-emerald-10)' : score >= 3 ? 'var(--accent-amber-10)' : 'var(--accent-rose-10)',
                                     color: color
                                 }}>
                                     {metric}: {score}/5

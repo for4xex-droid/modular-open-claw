@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../i18n';
 
 interface SystemBirthProps {
     onComplete: () => void;
@@ -21,6 +22,7 @@ const SYNAPSES = [...Array(20)].map((_, i) => ({
 }));
 
 const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
+    const { t } = useTranslation();
     const [phase, setPhase] = useState(0);
 
     useEffect(() => {
@@ -50,10 +52,10 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px)',
+                background: 'linear-gradient(var(--accent-cyan-05) 1px, transparent 1px), linear-gradient(90deg, var(--accent-cyan-05) 1px, transparent 1px)',
                 backgroundSize: '40px 40px',
                 opacity: phase >= 1 ? 1 : 0,
-                transition: 'opacity 2s ease'
+                transition: 'opacity var(--speed-genesis) ease'
             }} />
 
             <AnimatePresence>
@@ -89,7 +91,7 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
                             background: 'linear-gradient(135deg, var(--text-primary) 30%, var(--accent-cyan) 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
-                            textShadow: '0 0 30px rgba(0, 242, 255, 0.3)'
+                            textShadow: '0 0 30px var(--accent-cyan-30)'
                         }}>
                             AIOME
                         </h1>
@@ -103,9 +105,9 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
                         style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}
                     >
                         <div style={{ fontSize: '0.9rem', color: 'var(--accent-purple)', letterSpacing: '0.2em' }}>
-                            CALIBRATING NEURAL CHRONICLE...
+                            {t('system.calibrating')}
                         </div>
-                        <div style={{ width: '300px', height: '2px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden', borderRadius: '1px' }}>
+                        <div style={{ width: '300px', height: '2px', background: 'var(--white-10)', overflow: 'hidden', borderRadius: '1px' }}>
                             <motion.div
                                 initial={{ x: '-100%' }}
                                 animate={{ x: '100%' }}
@@ -114,7 +116,7 @@ const SystemBirth: React.FC<SystemBirthProps> = ({ onComplete }) => {
                             />
                         </div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                            GENESIS PROTOCOL ACTIVE [0.98.4]
+                            {t('system.genesisProtocol')}
                         </div>
                     </motion.div>
                 )}

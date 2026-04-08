@@ -7,6 +7,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
+import { cssVar } from '../../utils/cssVar';
 
 interface CharacterBillboardProps {
     url: string;
@@ -25,10 +26,10 @@ const CharacterBillboard: React.FC<CharacterBillboardProps> = ({ url, avatarStat
 
     // Dynamic accent color for the hologram
     const accentColor = useMemo(() => {
-        if (isAwakened) return new THREE.Color("#ffae00");
-        if (isThinking) return new THREE.Color("#bc8cff");
-        if (isLearning) return new THREE.Color("#00ff88");
-        return new THREE.Color("#00f2ff");
+        if (isAwakened) return new THREE.Color(cssVar('--accent-amber'));
+        if (isThinking) return new THREE.Color(cssVar('--accent-purple'));
+        if (isLearning) return new THREE.Color(cssVar('--accent-emerald'));
+        return new THREE.Color(cssVar('--accent-cyan'));
     }, [isAwakened, isThinking, isLearning]);
 
     useFrame((state) => {

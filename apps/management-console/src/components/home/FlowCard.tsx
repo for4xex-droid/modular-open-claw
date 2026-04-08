@@ -41,14 +41,14 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
 
     const getBorderColor = () => {
         switch (type) {
-            case 'chat_user': return 'rgba(0, 242, 255, 0.3)';
-            case 'chat_assistant': return isError ? 'rgba(255, 77, 148, 0.3)' : 'rgba(188, 140, 255, 0.2)';
-            case 'chat_streaming': return 'rgba(0, 242, 255, 0.4)';
-            case 'karma': return isOod ? 'rgba(255, 82, 82, 0.3)' : 'rgba(0, 243, 255, 0.2)';
-            case 'knowledge': return 'rgba(255, 171, 0, 0.3)';
-            case 'tool_exec': return 'rgba(245, 158, 11, 0.3)';
+            case 'chat_user': return 'var(--accent-cyan-30)';
+            case 'chat_assistant': return isError ? 'var(--accent-rose-30)' : 'var(--accent-purple-20)';
+            case 'chat_streaming': return 'var(--accent-cyan-40)';
+            case 'karma': return isOod ? 'var(--accent-rose-30)' : 'var(--accent-cyan-20)';
+            case 'knowledge': return 'var(--accent-amber-30)';
+            case 'tool_exec': return 'var(--accent-amber-30)';
             case 'system':
-            default: return 'rgba(52, 211, 153, 0.2)';
+            default: return 'var(--accent-emerald-20)';
         }
     };
 
@@ -98,10 +98,10 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
                         ? '4px 16px 16px 16px'
                         : '10px',
                 background: type === 'chat_user'
-                    ? 'rgba(0, 242, 255, 0.08)'
+                    ? 'var(--accent-cyan-05)'
                     : (type === 'karma' || type === 'knowledge' || type === 'tool_exec')
-                        ? 'rgba(255,255,255,0.015)'
-                        : 'rgba(255,255,255,0.025)',
+                        ? 'var(--white-01)'
+                        : 'var(--white-02)',
                 border: `1px solid ${getBorderColor()}`,
                 borderLeftWidth: !isChat ? '3px' : undefined,
                 borderLeftColor: !isChat ? getBorderColor() : undefined,

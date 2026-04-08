@@ -166,7 +166,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(255,255,255,0.01)',
+                background: 'var(--white-01)',
             }}>
                 <h2 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>
                     <span style={{
@@ -182,8 +182,8 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     <button
                         onClick={() => chat.setAutoTts(!chat.autoTts)}
                         style={{
-                            background: chat.autoTts ? 'rgba(0, 243, 255, 0.1)' : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${chat.autoTts ? 'rgba(0,243,255,0.3)' : 'transparent'}`,
+                            background: chat.autoTts ? 'var(--accent-cyan-10)' : 'var(--white-03)',
+                            border: `1px solid ${chat.autoTts ? 'var(--accent-cyan-30)' : 'transparent'}`,
                             borderRadius: '8px',
                             padding: '4px 10px',
                             cursor: 'pointer',
@@ -243,7 +243,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.75rem',
-                    background: 'rgba(0,0,0,0.15)',
+                    background: 'var(--black-10)',
                 }}
             >
                 {timeline.length === 0 && (
@@ -258,7 +258,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         gap: '0.75rem',
                     }}>
                         <Cpu size={40} style={{ opacity: 0.1 }} />
-                        <div className="artemis-status" style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.95rem' }}>
+                        <div className="artemis-status" style={{ color: 'var(--white-15)', fontSize: '0.95rem' }}>
                             {t('agent.ready')}
                         </div>
                         <p style={{ fontSize: '0.8rem', maxWidth: '280px', lineHeight: 1.5, opacity: 0.4 }}>
@@ -309,8 +309,8 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                                     chat.setInput(sug);
                                 }}
                                 style={{
-                                    background: 'rgba(0, 243, 255, 0.08)',
-                                    border: '1px solid rgba(0, 243, 255, 0.25)',
+                                    background: 'var(--accent-cyan-05)',
+                                    border: '1px solid var(--accent-cyan-20)',
                                     color: 'var(--accent-cyan)',
                                     borderRadius: '16px',
                                     padding: '0.35rem 0.75rem',
@@ -320,8 +320,8 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                                     whiteSpace: 'nowrap',
                                     transition: 'all 0.2s',
                                 }}
-                                onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = 'rgba(0, 243, 255, 0.15)'; }}
-                                onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = 'rgba(0, 243, 255, 0.08)'; }}
+                                onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = 'var(--accent-cyan-15)'; }}
+                                onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = 'var(--accent-cyan-05)'; }}
                             >
                                 <Sparkles size={10} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle', marginTop: '-2px' }} />
                                 {sug}
@@ -333,7 +333,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             <div style={{
                 padding: '0.75rem 1rem',
                 borderTop: '1px solid var(--border-glass)',
-                background: 'rgba(0,0,0,0.3)',
+                background: 'var(--black-30)',
             }}>
                 <div style={{ position: 'relative', display: 'flex', gap: '0.5rem' }}>
                     <textarea
@@ -350,8 +350,8 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         rows={1}
                         style={{
                             flex: 1,
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            background: 'var(--white-04)',
+                            border: '1px solid var(--white-08)',
                             padding: '0.7rem 1rem',
                             borderRadius: '20px',
                             color: 'white',
@@ -362,12 +362,12 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         }}
                         onFocus={e => { 
                             setIsInputFocused(true);
-                            (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0, 242, 255, 0.3)'; 
+                            (e.target as HTMLTextAreaElement).style.borderColor = 'var(--accent-cyan-30)'; 
                         }}
                         onBlur={e => { 
                             // Delay hiding to allow chip click to register
                             setTimeout(() => setIsInputFocused(false), 200);
-                            (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; 
+                            (e.target as HTMLTextAreaElement).style.borderColor = 'var(--white-08)'; 
                         }}
                     />
                     <button
@@ -377,8 +377,8 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             width: '40px',
                             height: '40px',
                             borderRadius: '12px',
-                            background: chat.input.trim() && !chat.isTyping ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                            color: chat.input.trim() && !chat.isTyping ? 'var(--bg-primary)' : 'rgba(255,255,255,0.15)',
+                            background: chat.input.trim() && !chat.isTyping ? 'var(--accent-cyan)' : 'var(--white-05)',
+                            color: chat.input.trim() && !chat.isTyping ? 'var(--bg-primary)' : 'var(--white-15)',
                             border: 'none',
                             cursor: chat.input.trim() && !chat.isTyping ? 'pointer' : 'default',
                             display: 'flex',
@@ -401,7 +401,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     opacity: 0.5,
                 }}>
                     <span>
-                        <kbd style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 3px', borderRadius: '3px', fontSize: '0.55rem' }}>Shift+Enter</kbd> newline
+                        <kbd style={{ background: 'var(--white-10)', padding: '1px 3px', borderRadius: '3px', fontSize: '0.55rem' }}>Shift+Enter</kbd> newline
                     </span>
                     <span className="font-mono" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <Sparkles size={9} color="var(--accent-purple)" /> ENHANCED

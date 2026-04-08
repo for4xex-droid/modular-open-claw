@@ -1,6 +1,25 @@
+## [Unreleased] - 2026-04-09
+
+### Added
+- **Phase 3-D: Onboarding & Global Alignment [完了]:**
+  - **Onboarding Modal Hardening**: `OnboardingModal.tsx` and `ModelSetupStep.tsx` を完全にトークン化し、Golden Rule U-002 (HEX/RGBA排除) をシステムの起点から強制。
+  - **Onboarding i18n Expansion**: 「Manifestation (権身)」「Abyss Vault Security」「Experience Level」といった高度な設定項目を `en.json` / `ja.json` へ追加し、初期導線の多言語化を完遂。
+  - **Infrastructure Stabilization**: `shadow-worker` における HTTP クライアントの所有権エラーを修復し、`KarmaTaxonomy` のフォールバック値を大文字ホワイトリスト（General, Uncategorized）へ正規化。
+  - **Premium UI Polish**: `VoiceStore` のカスタムトーストシステム導入および `SettingsPage` の未使用インポート削除によるコード衛生の徹底。
+
 ## [Unreleased] - 2026-04-08
 
 ### Added
+- **Phase 3-C: Management Console Mastery [完了]:**
+  - **Full UI Hardening (U-002)**: Eliminated 100% of hardcoded HEX/RGBA/RGB color values and animation timings across all major Management Console components (`Timeline`, `DiagnosticsHistory`, `SoTProgressBar`, `VoiceStore`, `LoraTrainingView`, `BiomeDialogueView`, `ImmuneSystem`, `ExpressionPipeline`). 全ファイルにおいて `scripts/test_ui_hex_violations.py` にて 0 違反を達成。
+  - **Dynamic localization**: `Timeline`, `DiagnosticsHistory`, `SoTProgressBar` 等の動的ステータス文字列を i18n 化し、日英の完全同期を完遂。
+  - **Premium Feedback System**: `VoiceStore` における `alert()` を排し、Framer Motion を活用したトースト通知システムを導入。
+  - **Responsive Layouts**: 複雑な設定項目を持つ `Lora` および `Biome` ビューにメディアクエリを導入し、レスポンシブ対応を強化。
+- **Phase 3-B: UI Tokenization & Security Hardening (Current):**
+  - **CSS Token Validation Strictness**: `test_ui_hex_violations.py` スクリプトを拡張し、`rgba()` および `rgb()` ハードコードの検出を自動化。テストスコープを `src/` 全域に拡大。
+  - **Canvas CSS Bridge (`cssVar.ts`)**: Canvas や WebGL 等の DOM 外コンテキストでも CSS 変数を適用するための O(1) キャッシュ付きカラー解決ユーティリティ `cssVar.ts` を開発。`CausalVisualizer`, `GraphView`, `AvatarViewerModal` の DRY 違反とハードコードを一掃。
+  - **SSRF Shielding (Global HTTP Pool)**: `self_diagnosis.rs` および `bootstrap.rs` (Ollama 検出) で独自生成されていた孤立した `reqwest::Client` を撤廃し、厳格なタイムアウトとリダイレクト制御を備えた `aiome_core::http::get_http_client()` プールへ統合完了。これによりインフラ全域の SSRF 対策が完遂。
+  - **Test Target Isolation**: Deep Scan AST マトリクスで検出された開発用モック構造体（`MockSoulStore`, `MockTtsProvider`）の `cfg` 隔離漏れを修正し、`#[cfg(any(test, debug_assertions))]` にてプロダクションビルドからの完全遮断を保証。
 - **Phase 3-A: Deep Scan Remediation & Debt Clearance [完了]:**
   - **E2E Pipeline Restoration**: `search_api_key` が UI および DB 設定で永続化されない論理ギャップを解消し、TrendSonar への設定注入を正常化 (TDD/RED-GREEN)。
   - **SSRF 脆弱性の排除**: `cortex_ingester.rs`, `tts.rs` などインフラストラクチャ全域の `reqwest::Client::new()` (計8箇所) をリダイレクト防御済みプール `aiome_core::http::get_http_client()` に置換。

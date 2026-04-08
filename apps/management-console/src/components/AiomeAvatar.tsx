@@ -6,6 +6,7 @@
  */
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from '../i18n';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 
 interface AiomeAvatarProps {
@@ -13,7 +14,8 @@ interface AiomeAvatarProps {
     size?: number;
 }
 
-const AiomeAvatar: React.FC<AiomeAvatarProps> = ({ status, size = 120 }) => {
+const AiomeAvatar: React.FC<AiomeAvatarProps> = ({ status = 'idle', size = 80 }) => {
+    const { t } = useTranslation();
     const { getAssetPath } = useAvatarCharacter();
     const imagePath = getAssetPath('lite');
 
@@ -54,8 +56,8 @@ const AiomeAvatar: React.FC<AiomeAvatarProps> = ({ status, size = 120 }) => {
                 animate={{
                     y: status === 'thinking' ? [-5, 5, -5] : [0, 0],
                     filter: status === 'thinking'
-                        ? ['drop-shadow(0 0 10px rgba(0, 242, 255, 0.6))', 'drop-shadow(0 0 30px rgba(0, 242, 255, 1))', 'drop-shadow(0 0 10px rgba(0, 242, 255, 0.6))']
-                        : ['drop-shadow(0 0 10px rgba(0, 242, 255, 0.3))', 'drop-shadow(0 0 20px rgba(0, 242, 255, 0.3))']
+                        ? ['drop-shadow(0 0 10px var(--accent-cyan-70))', 'drop-shadow(0 0 30px var(--accent-cyan))', 'drop-shadow(0 0 10px var(--accent-cyan-70))']
+                        : ['drop-shadow(0 0 10px var(--accent-cyan-30))', 'drop-shadow(0 0 20px var(--accent-cyan-30))']
                 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 style={{
@@ -69,14 +71,14 @@ const AiomeAvatar: React.FC<AiomeAvatarProps> = ({ status, size = 120 }) => {
             >
                 <img
                     src={imagePath}
-                    alt="Aiome Chibi"
+                    alt={t(`avatar.status.${status}`)}
                     style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'contain',
-                        filter: 'contrast(1.2) brightness(1.1) drop-shadow(0 0 15px rgba(0, 242, 255, 0.4))',
-                        maskImage: 'radial-gradient(circle, black 50%, transparent 85%)', // Sharper mask to hide edges
-                        WebkitMaskImage: 'radial-gradient(circle, black 50%, transparent 85%)',
+                        filter: 'contrast(1.2) brightness(1.1) drop-shadow(0 0 15px var(--accent-cyan-30))',
+                        maskImage: 'radial-gradient(circle, var(--black-100) 50%, transparent 85%)', // Sharper mask to hide edges
+                        WebkitMaskImage: 'radial-gradient(circle, var(--black-100) 50%, transparent 85%)',
                     }}
                 />
             </motion.div>

@@ -103,7 +103,7 @@ const Timeline: React.FC = () => {
                                             height: '24px',
                                             borderRadius: '50%',
                                             background: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-cyan)' : 'var(--accent-purple)'),
-                                            border: '4px solid var(--bg-dark-obsidian)',
+                                            border: '4px solid var(--bg-primary)',
                                             zIndex: 2,
                                             marginTop: '4px',
                                             boxShadow: !isKarma ? 'var(--glow-amber)' : (isLocal ? 'var(--glow-cyan)' : 'var(--glow-purple)')
@@ -113,7 +113,7 @@ const Timeline: React.FC = () => {
                                             flex: 1,
                                             padding: '1.25rem',
                                             borderRadius: 'var(--radius-lg)',
-                                            background: !isKarma ? 'rgba(245, 158, 11, 0.05)' : (isLocal ? 'rgba(255,255,255,0.03)' : 'rgba(188, 140, 255, 0.05)'),
+                                            background: !isKarma ? 'var(--accent-amber-05)' : (isLocal ? 'var(--white-03)' : 'var(--accent-purple-05)'),
                                             border: '1px solid var(--border-glass)',
                                             position: 'relative',
                                             overflow: 'hidden'
@@ -125,11 +125,11 @@ const Timeline: React.FC = () => {
                                                         fontWeight: 800,
                                                         padding: '0.2rem 0.5rem',
                                                         borderRadius: '4px',
-                                                        background: !isKarma ? 'rgba(245, 158, 11, 0.1)' : (isLocal ? 'rgba(0, 242, 255, 0.1)' : 'rgba(188, 140, 255, 0.1)'),
+                                                        background: !isKarma ? 'var(--accent-amber-10)' : (isLocal ? 'var(--accent-cyan-10)' : 'var(--accent-purple-10)'),
                                                         color: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-cyan)' : 'var(--accent-purple)'),
                                                         letterSpacing: '0.1em'
                                                     }}>
-                                                        {isKarma ? (isLocal ? "LOCAL MEMORY" : "FEDERATED MEMORY") : "EVOLUTION STEP"}
+                                                        {isKarma ? (isLocal ? t('timeline.localMemory') : t('timeline.federatedMemory')) : t('timeline.evolutionStep')}
                                                     </span>
                                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                                         {isKarma ? `${(e.karma_type || 'UNKNOWN').toUpperCase()} | JOB #${e.job_id || '?'}` : (e.event_type || 'SYSTEM').toUpperCase()}
@@ -145,7 +145,7 @@ const Timeline: React.FC = () => {
                                             </div>
 
                                             {e.inspiration && (
-                                                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--accent-cyan)', borderLeft: '2px solid var(--accent-cyan)' }}>
+                                                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--white-05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--accent-cyan)', borderLeft: '2px solid var(--accent-cyan)' }}>
                                                     <Sparkles size={12} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
                                                     {e.inspiration}
                                                 </div>

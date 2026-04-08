@@ -60,33 +60,43 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
 
     const steps = [
         {
-            title: "Welcome to Aiome",
-            description: "The autonomous AI Operating System designed for the next era of agency.",
+            title: t('onboarding.welcome'),
+            description: t('onboarding.welcomeDesc'),
             icon: <BrainCircuit size={48} color="var(--accent-cyan)" />,
+            content: (
+                <div className="onboarding-step active">
+                    <Sparkles size={24} color="var(--accent-cyan)" />
+                    <div style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.1em' }}>
+                        {t('onboarding.manifestInit')}
+                    </div>
+                </div>
+            )
         },
         {
-            title: "Name Your AI",
-            description: "What should your system manifestation call itself?",
+            title: t('onboarding.setupTitle'),
+            description: t('onboarding.nameDesc'),
             icon: <User size={48} color="var(--accent-cyan)" />,
             content: (
-                <div style={{ marginTop: '1rem', width: '100%' }}>
-                    <input
-                        type="text"
-                        value={aiName}
-                        onChange={(e) => setAiName(e.target.value)}
-                        placeholder="e.g. Watchtower, Genesis, Luna..."
-                        style={{
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid var(--border-glass-bright)',
-                            borderRadius: '12px',
-                            padding: '1rem',
-                            color: 'var(--text-primary)',
-                            fontSize: '1.2rem',
-                            textAlign: 'center',
-                            outline: 'none'
-                        }}
-                    />
+                <div style={{ background: 'var(--white-03)', borderRadius: 'var(--radius-lg)', padding: '2rem', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 700 }}>AI AGENT NAME</label>
+                        <input
+                            type="text"
+                            value={aiName}
+                            onChange={(e) => setAiName(e.target.value)}
+                            placeholder={t('onboarding.namePlaceholder')}
+                            style={{
+                                width: '100%',
+                                background: 'var(--black-30)',
+                                border: '1px solid var(--border-glass)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '1rem',
+                                color: 'var(--text-primary)',
+                                fontSize: '1.1rem',
+                                outline: 'none'
+                            }}
+                        />
+                    </div>
                 </div>
             )
         },
@@ -98,8 +108,8 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             hideNext: true // We hide the global "next" button for this step
         },
         {
-            title: "Choose Manifestation",
-            description: "Select the visual form of your AI presence.",
+            title: t('onboarding.chooseManifestation'),
+            description: t('onboarding.manifestationDesc'),
             icon: <UserCheck size={48} color="var(--accent-purple)" />,
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem' }}>
@@ -107,10 +117,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                          <button 
                             onClick={() => setCharacter('female')}
                             style={{ 
-                                flex: 1, padding: '1rem', borderRadius: '12px', 
+                                flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', 
                                 border: `2px solid ${character === 'female' ? 'var(--accent-purple)' : 'transparent'}`,
-                                background: character === 'female' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255,255,255,0.03)',
-                                cursor: 'pointer', transition: 'all 0.2s ease'
+                                background: character === 'female' ? 'var(--accent-purple-10)' : 'var(--white-03)',
+                                cursor: 'pointer', transition: 'all var(--speed-normal) ease'
                             }}
                          >
                              <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♀</div>
@@ -119,10 +129,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                          <button 
                             onClick={() => setCharacter('male')}
                             style={{ 
-                                flex: 1, padding: '1rem', borderRadius: '12px', 
+                                flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', 
                                 border: `2px solid ${character === 'male' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: character === 'male' ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255,255,255,0.03)',
-                                cursor: 'pointer', transition: 'all 0.2s ease'
+                                background: character === 'male' ? 'var(--accent-cyan-10)' : 'var(--white-03)',
+                                cursor: 'pointer', transition: 'all var(--speed-normal) ease'
                             }}
                          >
                              <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♂</div>
@@ -133,37 +143,37 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                          <button 
                             onClick={() => setProportion('chibi')}
                             style={{ 
-                                flex: 1, padding: '0.8rem', borderRadius: '10px', 
+                                flex: 1, padding: '0.8rem', borderRadius: 'var(--radius-md)', 
                                 border: `2px solid ${proportion === 'chibi' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: proportion === 'chibi' ? 'rgba(34, 211, 238, 0.05)' : 'rgba(255,255,255,0.03)',
+                                background: proportion === 'chibi' ? 'var(--accent-cyan-05)' : 'var(--white-03)',
                                 fontSize: '0.8rem', cursor: 'pointer'
                             }}
                          >
-                             Cute Chibi
+                             {t('onboarding.cuteChibi')}
                          </button>
                          <button 
                             onClick={() => setProportion('taller')}
                             style={{ 
-                                flex: 1, padding: '0.8rem', borderRadius: '10px', 
+                                flex: 1, padding: '0.8rem', borderRadius: 'var(--radius-md)', 
                                 border: `2px solid ${proportion === 'taller' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: proportion === 'taller' ? 'rgba(34, 211, 238, 0.05)' : 'rgba(255,255,255,0.03)',
+                                background: proportion === 'taller' ? 'var(--accent-cyan-05)' : 'var(--white-03)',
                                 fontSize: '0.8rem', cursor: 'pointer'
                             }}
                          >
-                             Modern Taller
+                             {t('onboarding.modernTaller')}
                          </button>
                     </div>
                 </div>
             )
         },
         {
-            title: "Abyss Vault Security",
-            description: "Your API keys are physically isolated at the OS level, ensuring safety even in autonomous mode.",
+            title: t('onboarding.abyssSecurity'),
+            description: t('onboarding.abyssSecurityDesc'),
             icon: <Shield size={48} color="var(--accent-rose)" />,
         },
         {
-            title: "Choose Experience Level",
-            description: "Select how you want to interact with the system. You can change this anytime.",
+            title: t('onboarding.chooseExperience'),
+            description: t('onboarding.chooseExperienceDesc'),
             icon: <Sparkles size={48} color="var(--accent-cyan)" />,
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
@@ -179,10 +189,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                 setStep(steps.length - 1); // Skip to last or trigger handleFinalize
                             }}
                             style={{
-                                padding: '1rem', borderRadius: '12px', textAlign: 'left',
+                                padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
                                 border: '1px solid var(--border-glass-bright)',
-                                background: 'rgba(255,255,255,0.03)',
-                                cursor: 'pointer', transition: 'all 0.2s ease'
+                                background: 'var(--white-03)',
+                                cursor: 'pointer', transition: 'all var(--speed-normal) ease'
                             }}
                         >
                             <div style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{lvl.label}</div>
@@ -205,7 +215,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                     style={{
                         position: 'fixed',
                         inset: 0,
-                        background: 'rgba(0, 0, 0, 0.85)',
+                        background: 'var(--black-85)',
                         backdropFilter: 'blur(20px)',
                         display: 'flex',
                         alignItems: 'center',
@@ -240,7 +250,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                     exit={{ x: -20, opacity: 0 }}
                                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}
                                 >
-                                    <div style={{ padding: '2rem', background: 'rgba(255,255,255,0.03)', borderRadius: '50%', marginBottom: '0.5rem' }}>
+                                    <div style={{ padding: '2rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '0.5rem' }}>
                                         {steps[step].icon}
                                     </div>
                                     <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{steps[step].title}</h2>
@@ -267,7 +277,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                             cursor: 'pointer',
                                         }}
                                     >
-                                        Continue
+                                        {t('onboarding.next')}
                                     </button>
                                 ) : (
                                     <button
@@ -288,7 +298,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                         }}
                                     >
                                         <Sparkles size={20} />
-                                        {isSaving ? "Finalizing..." : "Awaken System"}
+                                        {isSaving ? t('onboarding.finalizing') : t('onboarding.awaken')}
                                     </button>
                                 )}
                             </div>
@@ -315,7 +325,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                             height: '8px',
                                             borderRadius: '50%',
                                             background: i === step ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                                            transition: 'all 0.3s ease'
+                                            transition: 'all var(--speed-normal) ease'
                                         }}
                                     />
                                 ))}

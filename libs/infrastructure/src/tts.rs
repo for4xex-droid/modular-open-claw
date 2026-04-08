@@ -202,9 +202,11 @@ impl TtsProvider for XttsProvider {
 }
 
 /// [Phase 13.3] Mock TTS Provider for Testing
+#[cfg(any(test, debug_assertions))]
 #[derive(Debug, Default)]
 pub struct MockTtsProvider;
 
+#[cfg(any(test, debug_assertions))]
 #[async_trait]
 impl TtsProvider for MockTtsProvider {
     async fn synthesize(&self, _text: &str, _voice_id: &str) -> Result<Vec<u8>, AiomeError> {

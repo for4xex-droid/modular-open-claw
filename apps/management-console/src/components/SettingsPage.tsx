@@ -10,7 +10,7 @@ import { useTranslation } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
 import {
     Monitor, Lock, Database,
-    MessageSquare, Globe, Shield, Check, X, Loader2, Cpu, Plus, Mic, Brain
+    Shield, Check, X, Loader2, Plus
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch } from '../lib/auth';
@@ -102,12 +102,14 @@ const SettingsPage: React.FC = () => {
         );
     }
 
+    const update_setting_handler = (val: string, k: string, cat: string) => updateSetting(k, val, cat);
+
     return (
         <div className="settings-page" style={{ paddingBottom: '8rem' }}>
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', alignItems: 'start' }}>
 
                 {/* 1. Appearance Section */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Monitor size={24} color="var(--accent-cyan)" />
                         <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.appearance')}</h3>
@@ -121,16 +123,7 @@ const SettingsPage: React.FC = () => {
                                 value={getSetting('ai_name')}
                                 placeholder="Watchtower"
                                 onChange={(e) => updateSetting('ai_name', e.target.value, 'identity')}
-                                style={{
-                                    width: '100%',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid var(--border-glass)',
-                                    borderRadius: '8px',
-                                    padding: '0.8rem',
-                                    color: 'var(--text-primary)',
-                                    outline: 'none',
-                                    fontSize: '0.9rem'
-                                }}
+                                style={inputStyle}
                             />
                         </div>
 
@@ -139,11 +132,11 @@ const SettingsPage: React.FC = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div onClick={() => setCharacter('female')} style={charCardStyle(character === 'female', 'purple')}>
                                     <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♀</div>
-                                    <div style={{ fontSize: '0.9rem' }}>{t('settings.female')}</div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.female')}</div>
                                 </div>
                                 <div onClick={() => setCharacter('male')} style={charCardStyle(character === 'male', 'cyan')}>
                                     <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♂</div>
-                                    <div style={{ fontSize: '0.9rem' }}>{t('settings.male')}</div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.male')}</div>
                                 </div>
                             </div>
                         </div>
@@ -162,7 +155,7 @@ const SettingsPage: React.FC = () => {
 
                         <div>
                             <label style={labelStyle}>{t('settings.displayMode')}</label>
-                            <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '10px' }}>
+                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
                                 {['vrm', 'lite', 'off'].map((m) => (
                                     <button
                                         key={m}
@@ -178,7 +171,7 @@ const SettingsPage: React.FC = () => {
                 </section>
 
                 {/* 2. LLM Configuration Section */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Database size={24} color="var(--accent-purple)" />
                         <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.llmEngine')}</h3>
@@ -192,409 +185,101 @@ const SettingsPage: React.FC = () => {
                                 onChange={(e) => update_setting_handler(e.target.value, 'llm_provider', 'llm')}
                                 style={selectStyle}
                             >
-                                <option value="ollama">Ollama (Local)</option>
-                                <option value="lmstudio">LM Studio (Local)</option>
-                                <option value="gemini">Google Gemini (Cloud)</option>
-                                <option value="openai">OpenAI (Cloud)</option>
-                                <option value="claude">Anthropic Claude (Cloud)</option>
+                                <option value="ollama" style={{ background: 'var(--bg-primary)' }}>Ollama (Local)</option>
+                                <option value="lmstudio" style={{ background: 'var(--bg-primary)' }}>LM Studio (Local)</option>
+                                <option value="gemini" style={{ background: 'var(--bg-primary)' }}>Google Gemini (Cloud)</option>
+                                <option value="openai" style={{ background: 'var(--bg-primary)' }}>OpenAI (Cloud)</option>
+                                <option value="claude" style={{ background: 'var(--bg-primary)' }}>Anthropic Claude (Cloud)</option>
                             </select>
                         </div>
 
-                        {(getSetting('llm_provider') === 'ollama' || !getSetting('llm_provider')) && (
-                            <>
-                                <SettingInput
-                                    label="Ollama API Host"
-                                    value={getSetting('ollama_host')}
-                                    placeholder="http://127.0.0.1:11434"
-                                    onBlur={(v) => update_setting_handler(v, 'ollama_host', 'llm')}
-                                    saving={saving === 'ollama_host'}
-                                />
-                                <OllamaModelSelector
-                                    value={getSetting('ollama_model')}
-                                    onSelect={(v) => update_setting_handler(v, 'ollama_model', 'llm')}
-                                    saving={saving === 'ollama_model'}
-                                />
-                            </>
+                        {getSetting('llm_provider') === 'ollama' && (
+                            <OllamaModelSelector 
+                                value={getSetting('ollama_model')} 
+                                onSelect={(v) => updateSetting('ollama_model', v, 'llm')}
+                                saving={saving === 'ollama_model'}
+                            />
                         )}
 
-                        {getSetting('llm_provider') === 'lmstudio' && (
-                            <>
-                                <SettingInput
-                                    label="LM Studio Host"
-                                    value={getSetting('lm_studio_host')}
-                                    placeholder="http://127.0.0.1:1234"
-                                    onBlur={(v) => update_setting_handler(v, 'lm_studio_host', 'llm')}
-                                    saving={saving === 'lm_studio_host'}
-                                />
-                                <SettingInput
-                                    label="Model Name"
-                                    value={getSetting('llm_model')}
-                                    placeholder="loaded model in LM Studio"
-                                    onBlur={(v) => update_setting_handler(v, 'llm_model', 'llm')}
-                                    saving={saving === 'llm_model'}
-                                />
-                            </>
-                        )}
+                        <SettingInput 
+                            label={t('settings.apiUrl')} 
+                            value={getSetting('llm_api_url')}
+                            placeholder="e.g. http://localhost:11434"
+                            onBlur={(v) => updateSetting('llm_api_url', v, 'llm')}
+                            saving={saving === 'llm_api_url'}
+                        />
 
-                        {getSetting('llm_provider') && getSetting('llm_provider') !== 'ollama' && getSetting('llm_provider') !== 'lmstudio' && (
-                            <>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                        <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.apiKey')}</label>
-                                        {saving === 'llm_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-                                    </div>
-                                    <input
-                                        type="password"
-                                        defaultValue={getSetting('llm_api_key')}
-                                        placeholder={t('settings.enterApiKey')}
-                                        onBlur={(e) => update_setting_handler(e.target.value, 'llm_api_key', 'llm')}
-                                        style={inputStyle}
-                                    />
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                        {t('settings.maskedSecurity')}
-                                    </div>
-                                </div>
-                                <SettingInput
-                                    label="Model Name"
-                                    value={getSetting('llm_model')}
-                                    placeholder={getSetting('llm_provider') === 'gemini' ? 'gemini-2.0-flash' : getSetting('llm_provider') === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet-20240620'}
-                                    onBlur={(v) => update_setting_handler(v, 'llm_model', 'llm')}
-                                    saving={saving === 'llm_model'}
-                                />
-                            </>
-                        )}
+                        <SettingInput 
+                            label={t('settings.apiKey')} 
+                            value={getSetting('llm_api_key')}
+                            placeholder="Optional API Key"
+                            onBlur={(v) => updateSetting('llm_api_key', v, 'llm')}
+                            saving={saving === 'llm_api_key'}
+                            isPassword
+                        />
 
-                        <div style={{ marginTop: '0.5rem' }}>
-                            <button
-                                onClick={() => {
-                                    const provider = getSetting('llm_provider') || 'ollama';
-                                    if (provider === 'ollama') {
-                                        testConnection('ollama', getSetting('ollama_host') || 'http://localhost:11434', getSetting('ollama_model') || 'qwen2.5-coder:7b');
-                                    } else {
-                                        testConnection(provider, 'cloud', getSetting('llm_api_key'));
-                                    }
-                                }}
-                                style={testBtnStyle}
-                                disabled={testResults['ollama']?.loading}
-                            >
-                                {testResults['ollama']?.loading ? <Loader2 className="ani-spin" size={14} /> : <Cpu size={14} />}
-                                Test {(getSetting('llm_provider') || 'ollama').toUpperCase()} {t('settings.testConnection', { provider: '' }).replace('  ', ' ')}
-                            </button>
-                            {testResults['ollama'] && (
-                                <div style={testResultStyle(testResults['ollama'].success)}>
-                                    {testResults['ollama'].success ? <Check size={12} /> : <X size={12} />}
-                                    {testResults['ollama'].message}
-                                </div>
-                            )}
-                        </div>
+                        <button 
+                            onClick={() => testConnection('llm', getSetting('llm_api_url'), getSetting('ollama_model'))}
+                            disabled={testResults['llm']?.loading}
+                            style={testBtnStyle}
+                        >
+                            {testResults['llm']?.loading ? <Loader2 size={16} className="ani-spin" /> : <Shield size={16} />}
+                            {t('settings.testLlmConnection')}
+                        </button>
+                        {testResults['llm'] && (
+                            <div style={testResultStyle(testResults['llm'].success)}>
+                                {testResults['llm'].success ? <Check size={14} /> : <X size={14} />}
+                                {testResults['llm'].message}
+                            </div>
+                        )}
                     </div>
                 </section>
 
-                {/* 2.5 Background LLM (Autonomous) Section */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+                {/* 3. Security & Infrastructure */}
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Cpu size={24} color="var(--accent-fuchsia)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.bgLlm')}</h3>
+                        <Lock size={24} color="var(--accent-amber)" />
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.securityInfrastructure')}</h3>
                     </div>
-
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div>
-                            <label style={labelStyle}>{t('settings.provider')}</label>
-                            <select
-                                value={getSetting('bg_llm_provider') || 'gemini'}
-                                onChange={(e) => update_setting_handler(e.target.value, 'bg_llm_provider', 'llm')}
-                                style={selectStyle}
-                            >
-                                <option value="gemini">Google Gemini (Cloud)</option>
-                                <option value="openai">OpenAI (Cloud)</option>
-                                <option value="claude">Anthropic Claude (Cloud)</option>
-                                <option value="lmstudio">LM Studio (Local)</option>
-                                <option value="ollama">Ollama (Not Recommended)</option>
-                            </select>
-                        </div>
-
-                        {(getSetting('bg_llm_provider') === 'gemini' || getSetting('bg_llm_provider') === 'openai' || getSetting('bg_llm_provider') === 'claude') && (
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                    <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.apiKey')}</label>
-                                    {saving === 'bg_llm_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-                                </div>
-                                <input
-                                    type="password"
-                                    defaultValue={getSetting('bg_llm_api_key')}
-                                    placeholder={t('settings.bgApiKeyPlaceholder')}
-                                    onBlur={(e) => update_setting_handler(e.target.value, 'bg_llm_api_key', 'llm')}
-                                    style={inputStyle}
-                                />
-                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                    {t('settings.bgApiKeyHint')}
-                                </div>
-                            </div>
-                        )}
-
-                        <SettingInput
-                            label="Model Name"
-                            value={getSetting('bg_llm_model')}
-                            placeholder={getSetting('bg_llm_provider') === 'gemini' ? 'gemini-2.5-flash' : 'Model name'}
-                            onBlur={(v) => update_setting_handler(v, 'bg_llm_model', 'llm')}
-                            saving={saving === 'bg_llm_model'}
-                        />
-                    </div>
-                </section>
-
-                {/* 3. Channel Integration Section */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <MessageSquare size={24} color="var(--accent-purple)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.channelBridges')}</h3>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <VaultProtectionItem label="Discord Token" />
-                        <SettingInput
-                            label="Discord Chat Channel ID"
-                            value={getSetting('discord_chat_channel_id')}
-                            placeholder="1234567890..."
-                            onBlur={(v) => update_setting_handler(v, 'discord_chat_channel_id', 'channel')}
-                            saving={saving === 'discord_chat_channel_id'}
-                            isPassword={true}
-                        />
-                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.5rem 0' }} />
-                        <VaultProtectionItem label="Telegram Token" />
-                        <SettingInput
-                            label="Telegram Chat ID"
-                            value={getSetting('telegram_chat_id')}
-                            placeholder="-1001234567..."
-                            onBlur={(v) => update_setting_handler(v, 'telegram_chat_id', 'channel')}
-                            saving={saving === 'telegram_chat_id'}
-                            isPassword={true}
-                        />
-
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <Globe size={18} color="var(--accent-cyan)" />
-                                <div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.enableWatchtower')}</div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('settings.bgBridgeService')}</div>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => update_setting_handler(getSetting('watchtower_enabled') === 'true' ? 'false' : 'true', 'watchtower_enabled', 'system')}
-                                style={toggleBtnStyle(getSetting('watchtower_enabled') === 'true')}
-                            >
-                                <div style={toggleCircleStyle(getSetting('watchtower_enabled') === 'true')} />
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-
-                {/* 4. AI Training & Voice (NG-12) */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Brain size={24} color="var(--accent-cyan)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>AI Training & Voice</h3>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <SettingInput
-                            label="LoRA Adapter Path"
-                            value={getSetting('lora_adapter_path')}
-                            placeholder="/path/to/adapter"
-                            onBlur={(v) => update_setting_handler(v, 'lora_adapter_path', 'llm')}
-                            saving={saving === 'lora_adapter_path'}
-                        />
-                        <SettingInput
-                            label="LoRA Base Model"
-                            value={getSetting('lora_base_model')}
-                            placeholder="/path/to/base_model"
-                            onBlur={(v) => update_setting_handler(v, 'lora_base_model', 'llm')}
-                            saving={saving === 'lora_base_model'}
-                        />
-                        
-                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '0.5rem 0' }} />
-                        
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                                <Mic size={18} color="var(--accent-cyan)" />
-                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.tts')}</label>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ ...labelStyle, fontSize: '0.7rem', opacity: 0.6 }}>Provider</label>
-                                    <select
-                                        value={getSetting('tts_provider')}
-                                        onChange={(e) => update_setting_handler(e.target.value, 'tts_provider', 'voice')}
-                                        style={selectStyle}
-                                    >
-                                        <option value="edge_tts">Edge TTS (Cloud)</option>
-                                        <option value="voicevox">Voicevox (Local)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <SettingInput
-                                        label="Voice Name / ID"
-                                        value={getSetting('tts_voice')}
-                                        placeholder="en-US-AriaNeural"
-                                        onBlur={(v) => update_setting_handler(v, 'tts_voice', 'voice')}
-                                        saving={saving === 'tts_voice'}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                
-                <McpConfigManager />
-
-                {/* 5. Security & System */}
-                <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Shield size={24} color="var(--accent-rose)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Security & System</h3>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <VaultProtectionItem label="API Server Secret" />
                         <SecretUpdater />
-
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.xBearerToken')}</label>
-                                {saving === 'x_bearer_token' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-                            </div>
-                            <input
-                                type="password"
-                                defaultValue={getSetting('x_bearer_token')}
-                                placeholder={t('settings.xBearerToken')}
-                                onBlur={(e) => update_setting_handler(e.target.value, 'x_bearer_token', 'security')}
-                                style={inputStyle}
-                            />
-                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-warning)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                {t('settings.xBearerTokenNotice')}
-                            </div>
-                        </div>
-
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', marginTop: '1.5rem' }}>
-                                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.searchApiKey')}</label>
-                                {saving === 'search_api_key' && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-                            </div>
-                            <input
-                                type="password"
-                                defaultValue={getSetting('search_api_key')}
-                                placeholder={t('settings.searchApiKey')}
-                                onBlur={(e) => update_setting_handler(e.target.value, 'search_api_key', 'security')}
-                                style={inputStyle}
-                            />
-                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-warning)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                                {t('settings.searchApiKeyNotice')}
-                            </div>
-                        </div>
-
-                        {/* Allowed Origins (Dynamic CORS) */}
-                        <OriginsManager
-                            origins={getSetting('allowed_origins')}
-                            onSave={(val: string) => update_setting_handler(val, 'allowed_origins', 'cors')}
+                        <OriginManager 
+                            value={getSetting('allowed_origins')} 
+                            onUpdate={(v) => updateSetting('allowed_origins', v, 'security')}
                             saving={saving === 'allowed_origins'}
                         />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.9rem' }}>{t('settings.enforceGuardrails')}</div>
-                            <button
-                                onClick={() => update_setting_handler(getSetting('enforce_guardrail') === 'true' ? 'false' : 'true', 'enforce_guardrail', 'security')}
-                                style={toggleBtnStyle(getSetting('enforce_guardrail') === 'true')}
-                            >
-                                <div style={toggleCircleStyle(getSetting('enforce_guardrail') === 'true')} />
-                            </button>
-                        </div>
-
-                        <div>
-                            <label style={labelStyle}>{t('settings.logLevel')}</label>
-                            <select
-                                value={getSetting('log_level')}
-                                onChange={(e) => update_setting_handler(e.target.value, 'log_level', 'system')}
-                                style={selectStyle}
-                            >
-                                {['trace', 'debug', 'info', 'warn', 'error'].map(l => (
-                                    <option key={l} value={l}>{l.toUpperCase()}</option>
-                                ))}
-                            </select>
-                        </div>
                     </div>
                 </section>
+
+                <McpConfigManager />
 
             </div>
         </div>
     );
-
-    function update_setting_handler(val: string, key: string, cat: string) {
-        if (getSetting(key) !== val) {
-            updateSetting(key, val, cat);
-        }
-    }
 };
 
-// --- Subcomponents ---
+// --- Sub-Components ---
 
-const VaultProtectionItem: React.FC<{ label: string }> = ({ label }) => (
-    <div>
-        <label style={labelStyle}>{label}</label>
-        <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.8rem',
-            background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-glass)'
-        }}>
-            <Lock size={14} color="var(--text-muted)" />
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', flex: 1 }}>••••••••••••••••</div>
-            <div style={{
-                fontSize: '0.6rem', background: 'var(--accent-cyan-glass)',
-                color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px',
-                border: '1px solid rgba(0,242,255,0.2)', fontWeight: 700, letterSpacing: '0.5px'
-            }}>
-                VAULT PROTECTED
-            </div>
-        </div>
-        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-            Managed via .env / Abyss Vault for maximum security.
-        </div>
-    </div>
-);
-
-const OriginsManager: React.FC<{ origins: string, onSave: (val: string) => void, saving?: boolean }> = ({ origins, onSave, saving }) => {
-    const [items, setItems] = useState<string[]>([]);
+const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
     const [draft, setDraft] = useState('');
     const [error, setError] = useState('');
-
-    useEffect(() => {
-        setItems(origins ? origins.split(',').map(s => s.trim()).filter(Boolean) : []);
-    }, [origins]);
-
-    const isValidOrigin = (v: string) => {
-        try {
-            const url = new URL(v);
-            return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch (_) {
-            return false;
-        }
-    };
+    const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     const addOrigin = () => {
-        const val = draft.trim();
-        if (!val) return;
-        if (!isValidOrigin(val)) { setError('Invalid URL format (must start with http:// or https://)'); return; }
-        if (items.includes(val)) { setError('Origin already exists'); return; }
-        const next = [...items, val];
-        setItems(next);
+        if (!draft.trim()) return;
+        if (items.includes(draft.trim())) {
+            setError('Origin already exists');
+            return;
+        }
+        const updated = [...items, draft.trim()].join(',');
+        onUpdate(updated);
         setDraft('');
         setError('');
-        onSave(next.join(','));
     };
 
     const removeOrigin = (idx: number) => {
-        const next = items.filter((_, i) => i !== idx);
-        setItems(next);
-        onSave(next.join(','));
+        const updated = items.filter((_, i) => i !== idx).join(',');
+        onUpdate(updated);
     };
 
     return (
@@ -603,11 +288,11 @@ const OriginsManager: React.FC<{ origins: string, onSave: (val: string) => void,
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Allowed Origins (CORS)</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
                 {items.map((item, i) => (
                     <div key={i} style={{
                         display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        background: 'rgba(0,242,255,0.08)', border: '1px solid rgba(0,242,255,0.2)',
+                        background: 'var(--accent-cyan-glass)', border: '1px solid var(--accent-cyan-20)',
                         borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem',
                         color: 'var(--accent-cyan)'
                     }}>
@@ -644,8 +329,6 @@ const SecretUpdater: React.FC = () => {
     const handleUpdate = async () => {
         if (!newSecret.trim()) return;
         setTesting(true);
-        
-        // RT-FIX: Backup old token to rollback if verification fails
         const oldSecret = sessionStorage.getItem('aiome_secret');
         setAuthToken(newSecret.trim());
         
@@ -673,8 +356,8 @@ const SecretUpdater: React.FC = () => {
         <div>
             {isExpired && (
                 <div style={{
-                    background: 'rgba(255,77,148,0.08)', border: '1px solid rgba(255,77,148,0.3)',
-                    borderRadius: '8px', padding: '0.8rem', marginBottom: '0.8rem',
+                    background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)',
+                    borderRadius: 'var(--radius-sm)', padding: '0.8rem', marginBottom: '0.8rem',
                     fontSize: '0.8rem', color: 'var(--accent-rose)',
                     display: 'flex', alignItems: 'center', gap: '0.5rem'
                 }}>
@@ -726,125 +409,6 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
     );
 };
 
-// --- Styles ---
-
-const labelStyle: React.CSSProperties = {
-    display: 'block',
-    color: 'var(--text-secondary)',
-    fontSize: '0.8rem',
-    marginBottom: '0.8rem',
-    fontWeight: 500
-};
-
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid var(--border-glass)',
-    borderRadius: 'var(--radius-sm)',
-    padding: '0.8rem',
-    color: 'var(--text-primary)',
-    fontSize: '0.85rem',
-    outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box'
-};
-
-const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    cursor: 'pointer',
-    appearance: 'none',
-    backgroundImage: 'linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%)',
-    backgroundPosition: 'calc(100% - 20px) calc(1em + 2px), calc(100% - 15px) calc(1em + 2px)',
-    backgroundSize: '5px 5px, 5px 5px',
-    backgroundRepeat: 'no-repeat'
-};
-
-const charCardStyle = (active: boolean, tint: 'purple' | 'cyan'): React.CSSProperties => ({
-    padding: '1.2rem',
-    borderRadius: 'var(--radius-md)',
-    background: active ? `var(--accent-${tint}-glass)` : 'rgba(255,255,255,0.02)',
-    border: `1px solid ${active ? `var(--accent-${tint})` : 'var(--border-glass)'}`,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    textAlign: 'center',
-    boxShadow: active ? `0 0 15px var(--accent-${tint}-glass)` : 'none'
-});
-
-const styleCardStyle = (active: boolean, character: string): React.CSSProperties => ({
-    padding: '0.8rem',
-    borderRadius: 'var(--radius-md)',
-    background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-    border: `1px solid ${active ? (character === 'male' ? 'var(--accent-cyan)' : 'var(--accent-purple)') : 'var(--border-glass)'}`,
-    cursor: 'pointer',
-    textAlign: 'center',
-    fontSize: '0.8rem',
-    transition: 'all 0.2s',
-    color: active ? 'var(--text-bright)' : 'var(--text-muted)'
-});
-
-const modeBtnStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1,
-    padding: '10px',
-    border: 'none',
-    background: active ? 'var(--accent-cyan)' : 'transparent',
-    color: active ? 'var(--text-inverse)' : 'var(--text-muted)',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: active ? 700 : 400,
-    textTransform: 'capitalize',
-    transition: 'all 0.2s'
-});
-
-const testBtnStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.6rem 1rem',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid var(--border-glass)',
-    borderRadius: 'var(--radius-sm)',
-    color: 'var(--text-primary)',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-};
-
-const testResultStyle = (success: boolean): React.CSSProperties => ({
-    marginTop: '0.6rem',
-    fontSize: '0.7rem',
-    color: success ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    background: success ? 'rgba(16,185,129,0.05)' : 'rgba(255,77,148,0.05)',
-    padding: '0.5rem',
-    borderRadius: '4px'
-});
-
-const toggleBtnStyle = (active: boolean): React.CSSProperties => ({
-    width: '40px',
-    height: '22px',
-    borderRadius: '11px',
-    background: active ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)',
-    border: 'none',
-    cursor: 'pointer',
-    position: 'relative',
-    transition: 'all 0.3s ease',
-    padding: 0
-});
-
-const toggleCircleStyle = (active: boolean): React.CSSProperties => ({
-    width: '16px',
-    height: '16px',
-    borderRadius: '50%',
-    background: active ? 'var(--text-inverse)' : 'var(--text-muted)',
-    position: 'absolute',
-    top: '3px',
-    left: active ? '21px' : '3px',
-    transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-});
-
 const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => void, saving?: boolean }> = ({ value, onSelect, saving }) => {
     const [models, setModels] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -881,18 +445,18 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Ollama Model</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
                 <select
                     value={value}
                     onChange={(e) => onSelect(e.target.value)}
                     style={{ ...inputStyle, flex: 1, padding: '0.67rem', outline: 'none' }}
                 >
-                    <option value="">(Enter manually or select...)</option>
+                    <option value="" style={{ background: 'var(--bg-primary)' }}>(Enter manually or select...)</option>
                     {models.map(m => (
-                        <option key={m} value={m}>{m}</option>
+                        <option key={m} value={m} style={{ background: 'var(--bg-primary)' }}>{m}</option>
                     ))}
                     {!models.includes(value) && value && (
-                        <option value={value}>{value} (Current)</option>
+                        <option value={value} style={{ background: 'var(--bg-primary)' }}>{value} (Current)</option>
                     )}
                 </select>
                 <button onClick={fetchModels} disabled={loading} title="Refresh Models" style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
@@ -932,7 +496,7 @@ const McpConfigManager: React.FC = () => {
         try {
             setSaving(true);
             setMessage('');
-            JSON.parse(configJson); // validate
+            JSON.parse(configJson); 
             const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -952,12 +516,12 @@ const McpConfigManager: React.FC = () => {
     };
 
     return (
-        <section className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+        <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <Database size={24} color="var(--accent-amber)" />
                 <h3 style={{ margin: 0, fontSize: '1.2rem' }}>MCP Architecture (Analytics & Tools)</h3>
             </div>
-            {loading ? <Loader2 className="ani-spin" size={24} /> : (
+            {loading ? <div style={{ padding: '2rem', textAlign: 'center' }}><Loader2 className="ani-spin" size={24} color="var(--accent-amber)" /></div> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like <code>$STRIPE_SECRET_KEY</code>. Saving will restart MCP processes dynamically.
@@ -967,21 +531,22 @@ const McpConfigManager: React.FC = () => {
                         value={configJson}
                         onChange={e => setConfigJson(e.target.value)}
                         style={{
-                            width: '100%', height: '200px', background: 'rgba(0,0,0,0.5)', color: 'var(--accent-cyan)',
-                            padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
+                            width: '100%', height: '200px', background: 'var(--black-50)', color: 'var(--accent-cyan)',
+                            padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)',
                             resize: 'vertical', outline: 'none', fontSize: '0.85rem'
                         }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', color: message.includes('❌') ? 'var(--accent-rose)' : 'var(--accent-green)' }}>
+                        <span style={{ fontSize: '0.85rem', color: message.includes('❌') ? 'var(--accent-rose)' : 'var(--accent-emerald)', fontWeight: 600 }}>
                             {message}
                         </span>
                         <button 
                             onClick={saveConfig} 
                             disabled={saving}
+                            className="primary-button"
                             style={{ 
-                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: 'var(--text-inverse)', 
-                                border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer',
+                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: 'var(--bg-primary)', 
+                                border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', gap: '0.5rem'
                             }}
                         >
@@ -994,5 +559,101 @@ const McpConfigManager: React.FC = () => {
         </section>
     );
 };
+
+// --- Styles ---
+
+const labelStyle: React.CSSProperties = {
+    display: 'block',
+    color: 'var(--text-secondary)',
+    fontSize: '0.8rem',
+    marginBottom: '0.8rem',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
+};
+
+const inputStyle: React.CSSProperties = {
+    width: '100%',
+    background: 'var(--white-03)',
+    border: '1px solid var(--border-glass)',
+    borderRadius: 'var(--radius-sm)',
+    padding: '0.8rem',
+    color: 'var(--text-primary)',
+    fontSize: '0.85rem',
+    outline: 'none',
+    transition: 'all var(--speed-normal)',
+    boxSizing: 'border-box'
+};
+
+const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+    cursor: 'pointer'
+};
+
+const charCardStyle = (active: boolean, tint: 'purple' | 'cyan'): React.CSSProperties => ({
+    padding: '1.2rem',
+    borderRadius: 'var(--radius-md)',
+    background: active ? `var(--accent-${tint}-glass)` : 'var(--bg-glass-light)',
+    border: `1px solid ${active ? `var(--accent-${tint})` : 'var(--border-glass)'}`,
+    cursor: 'pointer',
+    transition: 'all var(--speed-normal)',
+    textAlign: 'center',
+    boxShadow: active ? `var(--glow-${tint})` : 'var(--shadow-shallow)'
+});
+
+const styleCardStyle = (active: boolean, character: string): React.CSSProperties => ({
+    padding: '0.8rem',
+    borderRadius: 'var(--radius-md)',
+    background: active ? 'var(--white-06)' : 'transparent',
+    border: `1px solid ${active ? (character === 'male' ? 'var(--accent-cyan)' : 'var(--accent-purple)') : 'var(--border-glass)'}`,
+    cursor: 'pointer',
+    textAlign: 'center',
+    fontSize: '0.8rem',
+    transition: 'all var(--speed-normal)',
+    color: active ? 'var(--text-primary)' : 'var(--text-muted)'
+});
+
+const modeBtnStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '10px',
+    border: 'none',
+    background: active ? 'var(--accent-cyan)' : 'transparent',
+    color: active ? 'var(--bg-primary)' : 'var(--text-muted)',
+    borderRadius: 'var(--radius-sm)',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontWeight: active ? 800 : 400,
+    textTransform: 'capitalize',
+    transition: 'all var(--speed-normal)'
+});
+
+const testBtnStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.6rem 1rem',
+    background: 'var(--bg-glass-light)',
+    border: '1px solid var(--border-glass)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-primary)',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all var(--speed-normal)',
+    fontWeight: 600
+};
+
+const testResultStyle = (success: boolean): React.CSSProperties => ({
+    marginTop: '0.6rem',
+    fontSize: '0.7rem',
+    color: success ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    background: success ? 'var(--accent-emerald-10)' : 'var(--accent-rose-10)',
+    padding: '0.5rem',
+    borderRadius: 'var(--radius-sm)',
+    border: `1px solid ${success ? 'var(--accent-emerald-20)' : 'var(--accent-rose-20)'}`,
+    fontWeight: 700
+});
 
 export default SettingsPage;

@@ -9,6 +9,7 @@ import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MeshReflectorMaterial, Sparkles, Float } from '@react-three/drei';
 import CharacterBillboard from './CharacterBillboard';
+import { cssVar } from '../../utils/cssVar';
 
 interface VrmRendererProps {
     modelUrl: string;
@@ -20,7 +21,7 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
     const isAwakened = avatarState === 'awakened';
 
     // Dynamic accent color
-    const accentColor = isAwakened ? "#ffae00" : isThinking ? "#bc8cff" : "#00f2ff";
+    const accentColor = isAwakened ? cssVar('--accent-amber') : isThinking ? cssVar('--accent-purple') : cssVar('--accent-cyan');
 
     return (
         <Canvas
@@ -28,15 +29,15 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
             gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
             style={{ background: 'transparent', pointerEvents: 'none' }}
             onCreated={({ gl }) => {
-                gl.setClearColor(0x06080c, 1);
+                gl.setClearColor(new THREE.Color(cssVar('--bg-primary')), 1);
                 gl.toneMapping = THREE.ACESFilmicToneMapping;
                 gl.toneMappingExposure = 1.4;
             }}
         >
-            <fog attach="fog" args={['#06080c', 3, 10]} />
+            <fog attach="fog" args={[cssVar('--bg-primary'), 3, 10]} />
 
             {/* === Lighting Setup === */}
-            <ambientLight intensity={0.3} color="#1a1a2e" />
+            <ambientLight intensity={0.3} color={cssVar('--bg-dark-obsidian')} />
 
             {/* Main key light — dramatic top-right */}
             <spotLight
@@ -53,11 +54,11 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
                 angle={0.3}
                 penumbra={1}
                 intensity={80}
-                color="#bc8cff"
+                color={cssVar('--accent-purple')}
             />
 
             {/* Rim light — back, creates edge glow */}
-            <pointLight position={[0, 3, -3]} intensity={40} color="#00f2ff" />
+            <pointLight position={[0, 3, -3]} intensity={40} color={cssVar('--accent-cyan')} />
 
             {/* Under-glow for dramatic effect */}
             <pointLight position={[0, -1, 1]} intensity={15} color={accentColor} />
@@ -83,7 +84,7 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
                         depthScale={1.5}
                         minDepthThreshold={0.3}
                         maxDepthThreshold={1.5}
-                        color="#080808"
+                        color={cssVar('--bg-primary')}
                         metalness={0.6}
                         mirror={0.15}
                     />
@@ -103,7 +104,7 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
                     scale={[4, 3, 4]}
                     size={1}
                     speed={0.15}
-                    color="#ffffff"
+                    color={cssVar('--text-primary')}
                     opacity={0.15}
                 />
             </group>

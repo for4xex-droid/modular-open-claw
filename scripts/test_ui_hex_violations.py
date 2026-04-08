@@ -3,42 +3,78 @@ import re
 import sys
 
 def run_test():
-    target_dir = "apps/management-console/src/components"
+    # Phase 3-B v3: スコープを管理コンソール全体に拡大 (App.tsx, lib/, components/ 全域)
+    target_dirs = [
+        "apps/management-console/src/components",
+        "apps/management-console/src/lib",
+    ]
+    # App.tsx は単独ファイルとして追加
+    extra_files = [
+        "apps/management-console/src/App.tsx",
+    ]
+
     hex_pattern = re.compile(r'#[0-9a-fA-F]{3,8}')
-    
-    # Exclude files that legitimately require HEX (like the CSS bridge files once we build them, 
-    # but for now we expect no HEX anywhere except possibly tokens.css, which is not in this dir)
-    exceptions = []
+    # rgba(r, g, b, a) / rgb(r, g, b) および hsl(h, s, l) / hsla(h, s, l, a) ハードコードも U-002 違反として検出
+    rgba_pattern = re.compile(r'(?:rgba?|hsla?)\(\s*\d+')
 
     failed = False
     violations = 0
     file_count = 0
 
-    for root, _, files in os.walk(target_dir):
-        for file in files:
-            if file.endswith(('.tsx', '.ts')) and file not in exceptions:
-                filepath = os.path.join(root, file)
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Ignore hex codes that are properly wrapped in our cssVar bridge fallback
-                content = re.sub(r"cssVar\([^,]+,\s*['\"]#[0-9a-fA-F]{3,8}['\"]\)", "", content)
-                
-                matches = hex_pattern.findall(content)
-                if matches:
-                    failed = True
-                    violations += len(matches)
-                    file_count += 1
-                    print(f"❌ {file} contains {len(matches)} HEX violations: {set(matches)}")
+    def scan_file(filepath, filename):
+        nonlocal failed, violations, file_count
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Strip cssVar() bridge calls — these are the sanctioned pattern with HEX fallbacks
+        content = re.sub(r"cssVar\([^)]+\)", "", content)
+
+        # Strip comment lines (// ...)
+        content = re.sub(r'//.*$', '', content, flags=re.MULTILINE)
+
+        # Strip // allow-anti-pattern tagged lines entirely
+        content = re.sub(r'.*allow-anti-pattern.*\n?', '', content)
+
+        hex_matches = hex_pattern.findall(content)
+        rgba_matches = rgba_pattern.findall(content)
+
+        total = len(hex_matches) + len(rgba_matches)
+        if total > 0:
+            failed = True
+            violations += total
+            file_count += 1
+            details = []
+            if hex_matches:
+                details.append(f"HEX: {set(hex_matches)}")
+            if rgba_matches:
+                details.append(f"rgba/rgb: {len(rgba_matches)} occurrences")
+            print(f"❌ {filename} — {total} violations ({', '.join(details)})")
+
+    # Scan directories recursively
+    for target_dir in target_dirs:
+        if not os.path.isdir(target_dir):
+            continue
+        for root, _, files in os.walk(target_dir):
+            for file in files:
+                if file.endswith(('.tsx', '.ts')):
+                    filepath = os.path.join(root, file)
+                    scan_file(filepath, file)
+
+    # Scan extra individual files
+    for filepath in extra_files:
+        if os.path.isfile(filepath):
+            scan_file(filepath, os.path.basename(filepath))
 
     if failed:
-        print(f"\n[RED] Test Failed! Found {violations} HEX violations across {file_count} files.")
-        print("Golden Rule U-002 Violation. Please replace with CSS tokens.")
+        print(f"\n[RED] Test Failed! Found {violations} violations across {file_count} files.")
+        print("Golden Rule U-002: Replace hardcoded colors with CSS tokens (var(--token)).")
         sys.exit(1)
     else:
-        print("\n[GREEN] Test Passed! Zero HEX violations in UI components.")
+        print("\n[GREEN] Test Passed! Zero color violations in UI components.")
         sys.exit(0)
 
 if __name__ == "__main__":
-    print("Running UI Theme Enforcement Test...")
+    print("Running UI Theme Enforcement Test (U-002)...")
+    print("Scope: components/ + lib/ + App.tsx | Patterns: HEX + rgba/rgb")
+    print("=" * 60)
     run_test()

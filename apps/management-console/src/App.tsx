@@ -194,7 +194,7 @@ function App() {
         className={badgeClass}
         onClick={toggleConnection}
         style={{
-          cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.4)',
+          cursor: 'pointer', border: '1px solid var(--white-05)', background: 'var(--black-40)',
           outline: 'none', transition: 'all 0.2s', padding: '0.5rem 1rem'
         }}
         title="Click to toggle connection sync"
@@ -255,7 +255,7 @@ function App() {
               position: 'absolute',
               width: 300 + Math.random() * 200,
               height: 300 + Math.random() * 200,
-              background: i % 2 === 0 ? 'radial-gradient(circle, rgba(0,242,255,0.05) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(188,140,255,0.05) 0%, transparent 70%)',
+              background: i % 2 === 0 ? 'radial-gradient(circle, var(--accent-cyan-05) 0%, transparent 70%)' : 'radial-gradient(circle, var(--accent-purple-glass) 0%, transparent 70%)',
               borderRadius: '50%',
               filter: 'blur(50px)'
             }}
@@ -266,7 +266,7 @@ function App() {
       {/* Sidebar — advanced mode only */}
       {viewMode === 'advanced' && <aside className="sidebar">
         <div className="brand">
-          <BrainCircuit size={28} color="#00f2ff" />
+          <BrainCircuit size={28} color="var(--accent-cyan)" />
           <span>Aiome</span>
         </div>
 
@@ -414,12 +414,12 @@ function App() {
           )}
         </nav>
 
-        <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontSize: '0.8rem' }}>
+        <div style={{ marginTop: 'auto', padding: '1rem', background: 'var(--white-03)', borderRadius: '12px', fontSize: '0.8rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ color: 'var(--text-secondary)' }}>{t('sidebar.samsaraTier')}</span>
             <span style={{ color: 'var(--accent-purple)' }}>{t('sidebar.level')} {stats.level}</span>
           </div>
-          <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ height: '4px', background: 'var(--white-10)', borderRadius: '2px', overflow: 'hidden' }}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(stats.exp % 1000) / 10}%` }}
@@ -435,8 +435,8 @@ function App() {
               style={{
                 padding: '0.3rem 0.6rem',
                 borderRadius: '6px',
-                border: lang === 'en' ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
-                background: lang === 'en' ? 'rgba(0, 242, 255, 0.1)' : 'transparent',
+                border: lang === 'en' ? '1px solid var(--accent-cyan)' : '1px solid var(--white-10)',
+                background: lang === 'en' ? 'var(--accent-cyan-10)' : 'transparent',
                 color: lang === 'en' ? 'var(--accent-cyan)' : 'var(--text-muted)',
                 cursor: 'pointer',
                 fontSize: '0.7rem',
@@ -451,8 +451,8 @@ function App() {
               style={{
                 padding: '0.3rem 0.6rem',
                 borderRadius: '6px',
-                border: lang === 'ja' ? '1px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
-                background: lang === 'ja' ? 'rgba(0, 242, 255, 0.1)' : 'transparent',
+                border: lang === 'ja' ? '1px solid var(--accent-cyan)' : '1px solid var(--white-10)',
+                background: lang === 'ja' ? 'var(--accent-cyan-10)' : 'transparent',
                 color: lang === 'ja' ? 'var(--accent-cyan)' : 'var(--text-muted)',
                 cursor: 'pointer',
                 fontSize: '0.7rem',

@@ -34,7 +34,7 @@ const LoraTrainingView: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        let interval: number;
+        let interval: ReturnType<typeof setInterval> | null = null;
 
         const checkStatus = async () => {
             if (!jobId) return;
@@ -111,10 +111,20 @@ const LoraTrainingView: React.FC = () => {
         }
     };
 
+    const inputStyle = {
+        padding: '0.75rem',
+        background: 'var(--black-30)',
+        border: '1px solid var(--white-10)',
+        borderRadius: 'var(--radius-md)',
+        color: 'var(--text-primary)',
+        marginTop: '0.5rem',
+        width: '100%'
+    };
+
     return (
-        <div className="ani-fade" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1fr', gap: 'var(--space-md)', height: 'calc(100vh - 180px)' }}>
+        <div className="lora-view-container ani-fade">
             {/* Left Panel: Configuration */}
-            <div className="main-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <div className="main-panel lora-config-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', color: 'var(--accent-purple)' }}>
                     <BrainCircuit size={28} />
                     <h2 style={{ margin: 0, fontWeight: 700 }}>{t('lora.title')}</h2>
@@ -125,7 +135,7 @@ const LoraTrainingView: React.FC = () => {
                 </p>
 
                 {error && (
-                    <div style={{ padding: '1rem', background: 'rgba(255,50,50,0.1)', color: 'var(--accent-rose)', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                    <div style={{ padding: '1rem', background: 'var(--accent-rose-10)', color: 'var(--accent-rose)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
                         {error}
                     </div>
                 )}
@@ -139,11 +149,11 @@ const LoraTrainingView: React.FC = () => {
                             value={baseModel} 
                             onChange={(e) => setBaseModel(e.target.value)}
                             disabled={isTraining}
-                            style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                            style={inputStyle}
                         >
-                            <option value="mistral-7b">Mistral 7B (Instruct)</option>
-                            <option value="llama-3-8b">Llama 3 8B</option>
-                            <option value="qwen-1.5-7b">Qwen 1.5 7B</option>
+                            <option value="mistral-7b" style={{ background: 'var(--bg-primary)' }}>Mistral 7B (Instruct)</option>
+                            <option value="llama-3-8b" style={{ background: 'var(--bg-primary)' }}>Llama 3 8B</option>
+                            <option value="qwen-1.5-7b" style={{ background: 'var(--bg-primary)' }}>Qwen 1.5 7B</option>
                         </select>
                     </div>
 
@@ -157,7 +167,7 @@ const LoraTrainingView: React.FC = () => {
                             value={datasetId}
                             onChange={(e) => setDatasetId(e.target.value)}
                             disabled={isTraining}
-                            style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                            style={inputStyle}
                         />
                     </div>
 
@@ -170,7 +180,7 @@ const LoraTrainingView: React.FC = () => {
                                 value={epochs}
                                 onChange={(e) => setEpochs(Number(e.target.value))}
                                 disabled={isTraining}
-                                style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                                style={inputStyle}
                             />
                         </div>
                         <div className="form-group">
@@ -181,7 +191,7 @@ const LoraTrainingView: React.FC = () => {
                                 value={lr}
                                 onChange={(e) => setLr(Number(e.target.value))}
                                 disabled={isTraining}
-                                style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                                style={inputStyle}
                             />
                         </div>
                     </div>
@@ -195,7 +205,7 @@ const LoraTrainingView: React.FC = () => {
                                 value={loraRank}
                                 onChange={(e) => setLoraRank(Number(e.target.value))}
                                 disabled={isTraining}
-                                style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                                style={inputStyle}
                             />
                         </div>
                         <div className="form-group">
@@ -206,7 +216,7 @@ const LoraTrainingView: React.FC = () => {
                                 value={batchSize}
                                 onChange={(e) => setBatchSize(Number(e.target.value))}
                                 disabled={isTraining}
-                                style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', marginTop: '0.5rem', width: '100%' }}
+                                style={inputStyle}
                             />
                         </div>
                     </div>
@@ -219,10 +229,10 @@ const LoraTrainingView: React.FC = () => {
                         style={{ 
                             width: '100%', 
                             padding: '1rem', 
-                            background: isTraining ? 'rgba(255,255,255,0.1)' : 'var(--accent-purple)', 
+                            background: isTraining ? 'var(--white-10)' : 'var(--accent-purple)', 
                             color: isTraining ? 'var(--text-muted)' : 'var(--text-primary)',
                             border: 'none', 
-                            borderRadius: '8px', 
+                            borderRadius: 'var(--radius-md)', 
                             fontSize: '1rem', 
                             fontWeight: 700,
                             cursor: isTraining || !datasetId ? 'not-allowed' : 'pointer',
@@ -230,7 +240,7 @@ const LoraTrainingView: React.FC = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '0.5rem',
-                            transition: 'all 0.2s'
+                            transition: 'all var(--speed-normal)'
                         }}
                     >
                         {isTraining ? <><RefreshCw className="ani-spin" size={18} /> Optimizing...</> : <><Play size={18} /> Initialize Training</>}
@@ -239,7 +249,7 @@ const LoraTrainingView: React.FC = () => {
             </div>
 
             {/* Right Panel: Job Status & Analytics */}
-            <div className="main-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+            <div className="main-panel lora-telemetry-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
                     <Activity size={18} color="var(--accent-cyan)" /> Telemetry & Status
                 </h3>
@@ -256,7 +266,7 @@ const LoraTrainingView: React.FC = () => {
                             animate={{ opacity: 1, scale: 1 }}
                             style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
                         >
-                            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                            <div style={{ background: 'var(--black-30)', border: '1px solid var(--white-05)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t('lora.jobId')}</span>
                                     <span className="font-mono" style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>{jobId}</span>
@@ -275,7 +285,7 @@ const LoraTrainingView: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="font-mono" style={{ flex: 1, background: 'var(--bg-dark-sidebar)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1rem', overflowY: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <div className="font-mono" style={{ flex: 1, background: 'var(--bg-secondary)', border: '1px solid var(--white-05)', borderRadius: 'var(--radius-lg)', padding: '1rem', overflowY: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                 <div style={{ color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>&gt; System initialized...</div>
                                 <div>&gt; Base model: {baseModel}</div>
                                 <div>&gt; Target dataset: {datasetId}</div>
@@ -297,6 +307,26 @@ const LoraTrainingView: React.FC = () => {
                     </AnimatePresence>
                 )}
             </div>
+
+            <style>{`
+                .lora-view-container {
+                    display: grid;
+                    grid-template-columns: minmax(300px, 1fr) 1fr;
+                    gap: var(--space-md);
+                    height: calc(100vh - 180px);
+                }
+                @media (max-width: 1024px) {
+                    .lora-view-container {
+                        grid-template-columns: 1fr;
+                        height: auto;
+                        overflow-y: visible;
+                    }
+                    .lora-config-card, .lora-telemetry-card {
+                        height: auto;
+                        max-height: none;
+                    }
+                }
+            `}</style>
         </div>
     );
 };

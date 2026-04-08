@@ -40,9 +40,9 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
             <div className="main-panel ani-fade" style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: '3rem', position: 'relative', minHeight: '500px',
-                background: 'rgba(255,255,255,0.01)', // Almost fully transparent
+                background: 'var(--white-01)', // Almost fully transparent
                 backdropFilter: 'none', // Remove blur to see VRM clearly
-                border: '1px solid rgba(255,255,255,0.05)',
+                border: '1px solid var(--white-05)',
                 overflow: 'hidden'
             }}>
                 <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', zIndex: 10 }}>
@@ -59,8 +59,8 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                         style={{
                             position: 'absolute', top: -200, left: -200, width: 400, height: 400,
                             borderRadius: '50%',
-                            background: 'conic-gradient(from 0deg, transparent 0%, rgba(0, 242, 255, 0.5) 25%, transparent 50%, rgba(188, 140, 255, 0.5) 75%, transparent 100%)',
-                            WebkitMaskImage: 'radial-gradient(circle, transparent 60%, black 61%)'
+                            background: 'conic-gradient(from 0deg, transparent 0%, var(--accent-cyan-50) 25%, transparent 50%, var(--accent-purple-50) 75%, transparent 100%)',
+                            WebkitMaskImage: 'radial-gradient(circle, transparent 60%, var(--black-90) 61%)'
                         }}
                     />
                     {/* Inner Rosa/Cyan Ring */}
@@ -69,9 +69,9 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                         transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
                         style={{
                             position: 'absolute', top: -160, left: -160, width: 320, height: 320,
-                            borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.05)',
-                            background: 'conic-gradient(from 90deg, transparent 0%, rgba(255, 77, 148, 0.4) 30%, transparent 60%, rgba(0, 242, 255, 0.4) 90%, transparent 100%)',
-                            WebkitMaskImage: 'radial-gradient(circle, transparent 65%, black 66%)'
+                            borderRadius: '50%', border: '1px solid var(--white-05)',
+                            background: 'conic-gradient(from 90deg, transparent 0%, var(--accent-rose-40) 30%, transparent 60%, var(--accent-cyan-40) 90%, transparent 100%)',
+                            WebkitMaskImage: 'radial-gradient(circle, transparent 65%, var(--black-90) 66%)'
                         }}
                     />
                     {/* Dynamic Vitality Pulse */}
@@ -81,7 +81,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                         style={{
                             position: 'absolute', top: -140, left: -140, width: 280, height: 280,
                             borderRadius: '50%',
-                            background: 'radial-gradient(circle, rgba(0, 242, 255, 0.15) 0%, transparent 70%)',
+                            background: 'radial-gradient(circle, var(--accent-cyan-15) 0%, transparent 70%)',
                             filter: 'blur(15px)'
                         }}
                     />
@@ -91,8 +91,8 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                     {/* Space for the Avatar to sit */}
                     <div style={{ height: '320px' }} />
 
-                    <div style={{ textAlign: 'center', background: 'rgba(5, 7, 10, 0.7)', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-glass-bright)', width: '320px' }}>
-                        <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '1.25rem', textShadow: '0 0 15px rgba(255,255,255,0.3)', letterSpacing: '-0.02em' }}>
+                    <div style={{ textAlign: 'center', background: 'var(--bg-glass-heavy)', padding: '1.5rem 2rem', borderRadius: 'var(--radius-lg)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-glass-bright)', width: '320px' }}>
+                        <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '1.25rem', textShadow: '0 0 15px var(--white-30)', letterSpacing: '-0.02em' }}>
                             {t('sidebar.level')} {stats.level} <span style={{ color: 'var(--accent-purple)', fontSize: '0.9rem', fontWeight: 600, textShadow: 'var(--glow-purple)', verticalAlign: 'middle', marginLeft: '0.5rem' }}>{t('biotope.ascension', { n: Math.floor(stats.level / 10) })}</span>
                         </h2>
 
@@ -103,7 +103,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                                     <span>{t('biotope.resonance')}</span>
                                     <span>{stats.resonance}%</span>
                                 </div>
-                                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ height: '6px', background: 'var(--white-05)', borderRadius: '3px', overflow: 'hidden' }}>
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${stats.resonance}%` }}
@@ -118,7 +118,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                                     <span>{t('biotope.creativity')}</span>
                                     <span>{stats.creativity}%</span>
                                 </div>
-                                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ height: '6px', background: 'var(--white-05)', borderRadius: '3px', overflow: 'hidden' }}>
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${stats.creativity}%` }}
@@ -133,7 +133,7 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                                     <span>{t('biotope.neuralFatigue')}</span>
                                     <span>{stats.fatigue}%</span>
                                 </div>
-                                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ height: '6px', background: 'var(--white-05)', borderRadius: '3px', overflow: 'hidden' }}>
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${stats.fatigue}%` }}
@@ -172,10 +172,10 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                                         style={{
                                             padding: '1rem',
                                             borderRadius: 'var(--radius-md)',
-                                            background: 'rgba(255,255,255,0.02)',
+                                            background: 'var(--white-02)',
                                             borderLeft: `3px solid ${event.color}`,
                                             marginBottom: '0.75rem',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                            boxShadow: '0 4px 12px var(--black-10)',
                                             fontSize: '0.85rem'
                                         }}
                                     >

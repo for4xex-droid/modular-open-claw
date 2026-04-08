@@ -201,6 +201,9 @@
   },
   "onboarding": {
     "welcome": "Welcome to Aiome",
+    "setupTitle": "Set Up Your AI Identity",
+    "namePlaceholder": "Enter AI Name...",
+    "nameDesc": "What should your system manifestation call itself?",
     "welcomeDesc": "Your autonomous AI companion begins its journey here.",
     "chooseAvatar": "Choose Your Avatar",
     "chooseAvatarDesc": "Select the visual identity for your AI partner.",
@@ -215,6 +218,9 @@
     "next": "Next",
     "begin": "Begin Journey",
     "skip": "Skip",
+    "finalizing": "Finalizing...",
+    "awaken": "Awaken System",
+    "manifestInit": "SYSTEM MANIFESTATION INITIALIZED",
     "llmSetup": {
       "title": "LLM Engine Setup",
       "desc": "Select the AI engine that will power your companion.",
@@ -240,7 +246,15 @@
           "desc": "Lightweight, runs on CPU or low-end GPUs."
         }
       }
-    }
+    },
+    "chooseManifestation": "Choose Manifestation",
+    "manifestationDesc": "Select the visual form of your AI presence.",
+    "abyssSecurity": "Abyss Vault Security",
+    "abyssSecurityDesc": "Your API keys are physically isolated at the OS level, ensuring safety even in autonomous mode.",
+    "chooseExperience": "Choose Experience Level",
+    "chooseExperienceDesc": "Select how you want to interact with the system. You can change this anytime.",
+    "cuteChibi": "Cute Chibi",
+    "modernTaller": "Modern Taller"
   },
   "timeline": {
     "title": "Eternal Chronicle - Karma Timeline",
@@ -285,15 +299,15 @@
     "exposedTools": "EXPOSED TOOLS",
     "noTools": "No direct tools",
     "install": "Install",
-    "remove": "Remove"
+    "remove": "Remove",
+    "settings": "Skill Settings"
   },
   "artifact": {
     "search": "Search artifacts or tags...",
     "decrypting": "Decrypting Artifact Vault...",
     "verified": "VERIFIED",
     "purge": "Purge Artifact",
-    "confirmDelete": "Are you sure you want to delete this artifact? This action is permanent and will purge physical files.",
-    "noArtifacts": "No artifacts found."
+    "confirmDelete": "Are you sure you want to delete this artifact? This action is permanent and will purge physical files."
   },
   "diagnostics": {
     "title": "Audit & Immunity Ledger",
@@ -332,9 +346,17 @@
     "targetPeer": "Target Peer Pubkey",
     "topicIdentity": "Topic Identity",
     "startDialogue": "Start AI Dialogue",
-    "initializing": "Initializing...",
+    "initializing": "INITIALIZING...",
     "messagesSent": "Messages Sent",
     "protocolVersion": "Protocol Version"
+  },
+  "sot": {
+    "active": "Society of Thought Active",
+    "abstentions": "Voluntary Self-Abstentions",
+    "round": "Round",
+    "thinking": "is thinking...",
+    "completed": "completed",
+    "latestScores": "Latest Scores"
   },
   "voice": {
     "walletBalance": "Wallet Balance",
@@ -354,10 +376,16 @@
     "internal": "Internal",
     "resultOutput": "Result Output",
     "clickNode": "Click a node to view details",
-    "invalidJobId": "Invalid Job ID format. Only alphanumeric, _, and - allowed."
+    "invalidJobId": "Invalid Job ID format. Only alphanumeric, _, and - allowed.",
+    "fetchData": "Fetch neural data",
+    "fitMap": "FIT MAP"
   },
   "graph": {
-    "title": "Synapse & Creative Lineage Map"
+    "title": "NEURAL SYNERGY MAP",
+    "reCenter": "RE-CENTER",
+    "hint": "Drag to pan • Scroll to zoom • Diamonds are Artifacts",
+    "karma": "KARMA",
+    "artifacts": "ARTIFACTS"
   },
   "treasure": {
     "title": "Agent Sense",
@@ -368,8 +396,19 @@
     "resonance": "Resonance +5!",
     "coins": "COINS"
   },
+  "system": {
+    "calibrating": "CALIBRATING NEURAL CHRONICLE...",
+    "genesisProtocol": "GENESIS PROTOCOL ACTIVE [0.98.4]"
+  },
   "error": {
     "title": "Something went wrong",
     "retry": "Retry"
+  },
+  "avatar": {
+    "status": {
+      "thinking": "Aiome is processing data",
+      "awakened": "Aiome is fully operational",
+      "idle": "Aiome is idle"
+    }
   }
 }

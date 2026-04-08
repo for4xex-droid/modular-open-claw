@@ -79,7 +79,7 @@ const SkillVault: React.FC = () => {
                     </div>
                 </div>
 
-                <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(0,242,255,0.05)', borderRadius: '12px', border: '1px border var(--accent-cyan)' }}>
+                <div style={{ marginTop: 'auto', padding: '1rem', background: 'var(--accent-cyan-05)', borderRadius: '12px', border: '1px border var(--accent-cyan)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>
                         <ShieldCheck size={16} />
                         <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t('skill.verified')}</span>
@@ -136,7 +136,7 @@ const FilterButton: React.FC<{ active: boolean, onClick: () => void, icon: React
         onClick={onClick}
         style={{
             display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px',
-            background: active ? 'rgba(0,242,255,0.1)' : 'transparent',
+            background: active ? 'var(--accent-cyan-10)' : 'transparent',
             color: active ? 'var(--accent-cyan)' : 'var(--text-secondary)',
             border: 'none', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left', width: '100%',
             fontWeight: active ? 700 : 500
@@ -160,7 +160,7 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div style={{
-                    width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)',
+                    width: '40px', height: '40px', borderRadius: '10px', background: 'var(--white-05)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                     {skill.source === 'wasm' && <Terminal size={20} color="var(--accent-cyan)" />}
@@ -169,15 +169,15 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {skill.status === 'Active' ? (
-                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(0,255,100,0.1)', color: 'var(--accent-emerald)', border: '1px solid rgba(0,255,100,0.2)' }}>
+                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--accent-emerald-10)', color: 'var(--accent-emerald)', border: '1px solid var(--accent-emerald-20)' }}>
                             STABLE
                         </span>
                     ) : (
-                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>
+                        <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--white-05)', color: 'var(--text-muted)' }}>
                             IDLE
                         </span>
                     )}
-                    <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--white-05)', color: 'var(--text-muted)' }}>
                         L{skill.layer}
                     </span>
                 </div>
@@ -192,7 +192,7 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>{t('skill.exposedTools')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     {(skill.tools || []).map(tool => (
-                        <code key={tool} style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.3)', color: 'var(--accent-cyan)' }}>
+                        <code key={tool} style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--black-30)', color: 'var(--accent-cyan)' }}>
                             {tool}
                         </code>
                     ))}
@@ -210,8 +210,10 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
                         <button className="primary-button" style={{ flex: 1, padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--accent-cyan-glass)', color: 'var(--accent-cyan)' }}>
                             <Play size={14} /> Run Test
                         </button>
-                        <button style={{
-                            padding: '0.6rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer'
+                        <button 
+                            aria-label={t('skill.settings')}
+                            style={{
+                            padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--white-10)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer'
                         }}>
                             <Settings size={14} />
                         </button>

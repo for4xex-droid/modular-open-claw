@@ -5,8 +5,8 @@
  * Licensed under the Business Source License 1.1.
  */
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingCart, Volume2, ShieldCheck, Crown, AlertCircle, CheckCircle } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
@@ -52,11 +52,19 @@ export default function VoiceStore() {
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   useEffect(() => {
     fetchBalance();
     fetchVoiceAssets();
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const fetchBalance = async () => {
     try {
@@ -109,20 +117,61 @@ export default function VoiceStore() {
 
       if (res.ok) {
         setBalance(prev => prev - asset.price_coins);
-        alert(`Success! Purchased ${asset.name}. DRM key has been securely deposited to your Abyss Vault.`);
+        setNotification({
+          type: 'success',
+          message: `${asset.name} purchased successfully. DRM key deposited in Abyss Vault.`
+        });
       } else {
         const data = await res.json();
-        alert(`Purchase failed: ${data.message || 'Insufficient funds'}`);
+        setNotification({
+          type: 'error',
+          message: data.message || 'Insufficient funds'
+        });
       }
     } catch (e) {
-      alert("Purchase request failed.");
+      setNotification({
+        type: 'error',
+        message: 'Network error occurred during purchase.'
+      });
     } finally {
       setPurchasing(null);
     }
   };
 
   return (
-    <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto" }}>
+    <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto", position: 'relative' }}>
+      
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            style={{ 
+              position: 'fixed', 
+              top: '2rem', 
+              right: '2rem', 
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '1rem 1.5rem',
+              background: 'var(--bg-glass-heavy)',
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${notification.type === 'success' ? 'var(--accent-emerald-50)' : 'var(--accent-rose-50)'}`,
+              borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-deep)',
+              color: notification.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+              pointerEvents: 'none'
+            }}
+          >
+            {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+            <span style={{ fontWeight: 600 }}>{notification.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -134,10 +183,10 @@ export default function VoiceStore() {
           </p>
         </div>
         <div style={{ 
-          background: "rgba(0,0,0,0.3)", 
+          background: "var(--black-30)", 
           padding: "0.75rem 1.5rem", 
           borderRadius: "8px",
-          border: "1px solid rgba(255,255,255,0.05)",
+          border: "1px solid var(--white-05)",
           display: "flex",
           alignItems: "center",
           gap: "1rem"
@@ -172,7 +221,7 @@ export default function VoiceStore() {
                 <h4 style={{ margin: "0 0 0.25rem", color: "var(--text-primary)" }}>{asset.name}</h4>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>by {asset.author}</div>
               </div>
-              <div style={{ background: "rgba(0, 242, 255, 0.1)", color: "var(--accent-cyan)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
+              <div style={{ background: "var(--accent-cyan-10)", color: "var(--accent-cyan)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
                 <span>{asset.price_coins}</span> KC
               </div>
             </div>
@@ -187,7 +236,7 @@ export default function VoiceStore() {
                   fontSize: "0.7rem", 
                   padding: "2px 8px", 
                   borderRadius: "12px", 
-                  background: "rgba(255,255,255,0.05)",
+                  background: "var(--white-05)",
                   color: "var(--text-muted)"
                 }}>
                   #{t}

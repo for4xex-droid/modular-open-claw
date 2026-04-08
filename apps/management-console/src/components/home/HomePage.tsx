@@ -66,9 +66,9 @@ const MiniTabBar: React.FC<{
         gap: '2px',
         marginBottom: '0.6rem',
         padding: '3px',
-        background: 'rgba(255,255,255,0.025)',
+        background: 'var(--white-03)',
         borderRadius: '8px',
-        border: '1px solid rgba(255,255,255,0.04)',
+        border: '1px solid var(--border-glass)',
     }}>
         {tabs.map(tab => (
             <button
@@ -234,8 +234,8 @@ const HomePage: React.FC<HomePageProps> = ({
                     display: 'flex',
                     gap: '0.25rem',
                     marginBottom: '0.75rem',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--white-02)',
+                    border: '1px solid var(--border-glass)',
                     borderRadius: '12px',
                     padding: '4px',
                 }}>

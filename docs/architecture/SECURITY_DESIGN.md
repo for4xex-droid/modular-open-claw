@@ -94,6 +94,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 71 | **Prompt Injection (Constitutional Bypass)** | **Payload injection exploiting template fallback behavior** | 🔴 High | **Strict 64-char length limit & static fallback templates (Phase 2B-2 Reflexion)** |
 | 72 | **RAM Allocation DoS (OOM)** | **Giant `.to_lowercase()` string clones during validation** | 🔴 High | **O(1) Streaming Regex (`LazyLock`) matching (Phase 2B-2 Reflexion)** |
 | 73 | **Setup UI Soft Brick** | **Initialization API failure leaving user deadlocked** | 🟡 Mid | **Strict UI `try/catch` and visual error state rendering (Phase 2B-2 Reflexion)** |
+| 74 | **SSRF Policy Bypass** | **Isolated `reqwest::Client` bypassing global timeout/redirect rules** | 🔴 High | **Global Connection Pool (`get_http_client()`) Enforcement (Phase 3-B)** |
 
 ## 3. Defense Architecture
 

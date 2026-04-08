@@ -60,16 +60,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                     onClick={onOpenViewer}
                     style={{ 
                         height: '30vh', 
-                        background: 'rgba(0,0,0,0.3)', 
+                        background: 'var(--black-30)', 
                         borderRadius: '12px', 
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid var(--white-10)',
                         cursor: 'pointer',
                         position: 'relative',
                         overflow: 'hidden',
                         transition: 'border-color 0.2s',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(0, 242, 255, 0.5)'}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan-50)'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--white-10)'}
                 >
                     {!isViewerOpen && mode !== 'off' && (
                         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -81,7 +81,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                         </div>
                     )}
                     {isViewerOpen && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--white-30)', fontSize: '0.8rem' }}>
                             Viewing in full screen...
                         </div>
                     )}
@@ -95,14 +95,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                         fontWeight: 900, 
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase' as const,
-                        background: 'linear-gradient(135deg, var(--bg-secondary), rgba(0, 242, 255, 0.7))',
+                        background: 'linear-gradient(135deg, var(--bg-secondary), var(--accent-cyan-70))',
                         WebkitBackgroundClip: 'text',
                         backgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                     }}>Level {stats.level}</h3>
                     <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>{stats.exp} / {stats.level * 1000} EXP</span>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--white-10)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ 
                         background: 'var(--accent-cyan)', 
                         height: '100%', 

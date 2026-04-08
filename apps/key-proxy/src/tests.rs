@@ -20,7 +20,7 @@ fn create_test_state() -> AppState {
     AppState {
         gemini_key: Arc::new(SecretString::from("test_key".to_string())),
         vault_secret: Arc::new(SecretString::from("test_vault_secret".to_string())),
-        client: reqwest::Client::new(),
+        client: aiome_core::http::get_http_client().clone(),
         state: Arc::new(RwLock::new(QuotaState::default())),
         auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
         persistence_path: std::path::PathBuf::from("/tmp/key_proxy_test.json"),

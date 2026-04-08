@@ -567,6 +567,7 @@ pub mod job_queue_mock {
     }
 }
 
+#[cfg(any(test, debug_assertions))]
 pub mod mock_soul_store {
     use aiome_core_contracts::error::AiomeError;
     use aiome_core_contracts::traits::SoulStore;

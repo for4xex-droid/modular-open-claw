@@ -14,15 +14,7 @@ import * as THREE from 'three';
 import ErrorBoundary from '../common/ErrorBoundary';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
 import InxRenderer from '../../lib/inx/InxRenderer';
-
-const _cssVarCache: Record<string, string> = {};
-const cssVar = (name: string, fallback: string) => {
-    if (typeof document === 'undefined') return fallback;
-    if (_cssVarCache[name]) return _cssVarCache[name];
-    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    if (val) _cssVarCache[name] = val;
-    return val || fallback;
-};
+import { cssVar } from '../../utils/cssVar';
 
 interface AvatarViewerModalProps {
     isOpen: boolean;
@@ -44,7 +36,7 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                     style={{
                         position: 'fixed',
                         inset: 0,
-                        backgroundColor: 'rgba(6, 8, 12, 0.95)',
+                        backgroundColor: 'var(--bg-dark-sidebar)',
                         backdropFilter: 'blur(10px)',
                         zIndex: 9999,
                         display: 'flex',
@@ -59,8 +51,8 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                                 onClose();
                             }}
                             style={{
-                                background: 'rgba(255,255,255,0.1)',
-                                border: '1px solid rgba(255,255,255,0.2)',
+                                background: 'var(--white-10)',
+                                border: '1px solid var(--white-20)',
                                 borderRadius: '50%',
                                 width: '40px',
                                 height: '40px',
@@ -78,7 +70,7 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
 
                     <div style={{ flex: 1, position: 'relative' }}>
                             {mode === 'vrm' && (
-                                <ErrorBoundary fallback={<div style={{color:'red', padding:'2rem', textAlign:'center'}}>Avatar 3D rendering failed.</div>}>
+                                <ErrorBoundary fallback={<div style={{color:'var(--accent-rose)', padding:'2rem', textAlign:'center'}}>Avatar 3D rendering failed.</div>}>
                                     <Canvas
                                         camera={{ position: [0, 0.45, 5.5], fov: 35 }}
                                         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: false }}
@@ -128,13 +120,13 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                             )}
                             
                             {mode === 'glb' && (
-                                <ErrorBoundary fallback={<div style={{color:'red', padding:'2rem', textAlign:'center'}}>GLB Model failed to load.</div>}>
+                                <ErrorBoundary fallback={<div style={{color:'var(--accent-rose)', padding:'2rem', textAlign:'center'}}>GLB Model failed to load.</div>}>
                                     <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />
                                 </ErrorBoundary>
                             )}
 
                             {mode === 'inx' && (
-                                <ErrorBoundary fallback={<div style={{color:'red', padding:'2rem', textAlign:'center'}}>Inochi2D failed to load.</div>}>
+                                <ErrorBoundary fallback={<div style={{color:'var(--accent-rose)', padding:'2rem', textAlign:'center'}}>Inochi2D failed to load.</div>}>
                                     <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />
                                 </ErrorBoundary>
                             )}

@@ -34,7 +34,7 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
     if (!status?.ollama_connected) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px' }}>
+                <div style={{ padding: '1rem', background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)', borderRadius: '12px' }}>
                     <div style={{ fontWeight: 800, color: 'var(--accent-rose)', marginBottom: '0.5rem' }}>{t('onboarding.llmSetup.notConnected')}</div>
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         {t('onboarding.llmSetup.installGuide')}
@@ -43,10 +43,10 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
                 <button 
                     onClick={onSkip}
                     style={{
-                        padding: '1rem', borderRadius: '12px', textAlign: 'center',
+                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'center',
                         border: '1px solid var(--border-glass-bright)',
-                        background: 'rgba(255,255,255,0.03)',
-                        cursor: 'pointer', transition: 'all 0.2s ease',
+                        background: 'var(--white-03)',
+                        cursor: 'pointer', transition: 'all var(--speed-normal) ease',
                         color: 'var(--text-secondary)', fontWeight: 600
                     }}
                 >
@@ -70,7 +70,7 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
                 <button 
                     onClick={onNext}
                     style={{
-                        marginTop: '1rem', padding: '1rem', borderRadius: '12px', textAlign: 'center',
+                        marginTop: '1rem', padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'center',
                         border: 'none', background: 'var(--accent-cyan)', color: 'var(--bg-primary)',
                         cursor: 'pointer', fontWeight: 700
                     }}
@@ -88,8 +88,8 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
                 <div style={{ fontWeight: 800, color: 'var(--accent-cyan)' }}>{t('onboarding.llmSetup.downloading')}</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{pullProgress.status}</div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${percent}%`, height: '100%', background: 'var(--accent-cyan)', transition: 'width 0.3s ease' }} />
+                <div style={{ width: '100%', height: '8px', background: 'var(--white-10)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                    <div style={{ width: `${percent}%`, height: '100%', background: 'var(--accent-cyan)', transition: 'width var(--speed-normal) ease' }} />
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
                     {percent.toFixed(1)}%
@@ -107,7 +107,7 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', marginTop: '0.5rem' }}>
-            {error && <div style={{ padding: '0.8rem', background: 'rgba(239,68,68,0.1)', color: 'var(--accent-rose)', borderRadius: '8px', fontSize: '0.8rem' }}>{error}</div>}
+            {error && <div style={{ padding: '0.8rem', background: 'var(--accent-rose-10)', color: 'var(--accent-rose)', borderRadius: '8px', fontSize: '0.8rem' }}>{error}</div>}
             
             {options.map(opt => (
                 <button
@@ -115,10 +115,10 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
                     onClick={() => pullModel(opt.id)}
                     style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '1rem', borderRadius: '12px', textAlign: 'left',
+                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
                         border: '1px solid var(--border-glass-bright)',
-                        background: 'rgba(255,255,255,0.03)',
-                        cursor: 'pointer', transition: 'all 0.2s ease'
+                        background: 'var(--white-03)',
+                        cursor: 'pointer', transition: 'all var(--speed-normal) ease'
                     }}
                 >
                     <div>

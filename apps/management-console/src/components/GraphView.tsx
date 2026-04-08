@@ -12,16 +12,9 @@ import { API_BASE } from "../config";
 import { GraphNode, GraphEdge } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { useGraphTheme } from '../hooks/useGraphTheme';
 
-
-const _cssVarCache: Record<string, string> = {};
-const cssVar = (name: string, fallback: string) => {
-    if (typeof document === 'undefined') return fallback;
-    if (_cssVarCache[name]) return _cssVarCache[name];
-    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    if (val) _cssVarCache[name] = val;
-    return val || fallback;
-};
+import { cssVar } from '../utils/cssVar';
 
 const GraphView: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -29,6 +22,7 @@ const GraphView: React.FC = () => {
     const [nodeCount, setNodeCount] = useState(0);
     const [artifactCount, setArtifactCount] = useState(0);
     const { t } = useTranslation();
+    const theme = useGraphTheme();
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -48,21 +42,21 @@ const GraphView: React.FC = () => {
                 const nodes = new DataSet<any>(karmaData.nodes.map((n: GraphNode) => ({
                     ...n,
                     color: {
-                        background: n.group === 'karma_local' ? 'rgba(0, 242, 255, 0.13)' : 'rgba(188, 140, 255, 0.13)',
-                        border: n.group === 'karma_local' ? cssVar('--accent-cyan', '#00f2ff') : cssVar('--accent-purple', '#bc8cff'),
+                        background: n.group === 'karma_local' ? theme.nodes.karmaLocal.background : theme.nodes.karmaForeign.background,
+                        border: n.group === 'karma_local' ? theme.nodes.karmaLocal.border : theme.nodes.karmaForeign.border,
                         highlight: {
-                            background: n.group === 'karma_local' ? 'rgba(0, 242, 255, 0.26)' : 'rgba(188, 140, 255, 0.26)',
-                            border: cssVar('--text-primary', '#fff'),
+                            background: n.group === 'karma_local' ? theme.nodes.karmaLocal.highlight.background : theme.nodes.karmaForeign.highlight.background,
+                            border: theme.nodes.karmaLocal.highlight.border,
                         }
                     },
-                    font: { color: cssVar('--text-primary', '#fff'), size: 12, face: 'Artemis Inter, Inter' },
+                    font: { color: theme.text, size: 12, face: 'Artemis Inter, Inter' },
                     shape: 'dot',
                     size: 20 + (n.label.length / 5)
                 })));
 
                 const edges = new DataSet<any>(karmaData.edges.map((e: GraphEdge) => ({
                     ...e,
-                    color: { color: 'rgba(255,255,255,0.1)', highlight: cssVar('--accent-cyan', '#00f2ff') },
+                    color: { color: theme.edges.default.color, highlight: theme.edges.default.highlight },
                     width: 1,
                     smooth: { type: 'continuous' }
                 })));
@@ -75,11 +69,11 @@ const GraphView: React.FC = () => {
                         label: `📦 ${art.title}`,
                         group: 'artifact',
                         color: {
-                            background: 'rgba(235, 7, 235, 0.15)',
-                            border: cssVar('--accent-rose', '#ff4d6d'),
-                            highlight: { background: 'rgba(235, 7, 235, 0.3)', border: cssVar('--text-primary', '#fff') }
+                            background: theme.nodes.artifact.background,
+                            border: theme.nodes.artifact.border,
+                            highlight: { background: theme.nodes.artifact.highlight.background, border: theme.nodes.artifact.highlight.border }
                         },
-                        font: { color: cssVar('--accent-rose', '#ff4d6d'), size: 13, bold: true },
+                        font: { color: theme.nodes.artifact.font, size: 13, bold: true },
                         shape: 'diamond',
                         size: 25,
                         title: `Category: ${art.category}`
@@ -92,7 +86,7 @@ const GraphView: React.FC = () => {
                                 from: karmaId,
                                 to: art.id,
                                 label: 'materialized',
-                                color: { color: 'rgba(255, 71, 87, 0.2)' },
+                                color: { color: theme.edges.materialized.color },
                                 dashes: true,
                                 width: 1
                             });
@@ -105,7 +99,7 @@ const GraphView: React.FC = () => {
                 const options = {
                     nodes: {
                         borderWidth: 2,
-                        shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 10, x: 5, y: 5 }
+                        shadow: { enabled: true, color: theme.shadow, size: 10, x: 5, y: 5 }
                     },
                     edges: { arrows: 'to' },
                     physics: {
@@ -152,16 +146,16 @@ const GraphView: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{nodeCount - artifactCount} KARMA</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-rose)' }}>{artifactCount} ARTIFACTS</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{nodeCount - artifactCount} {t('graph.karma')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-rose)' }}>{artifactCount} {t('graph.artifacts')}</div>
                     </div>
                     <button className="nav-item" style={{ margin: 0, padding: '0.4rem 0.75rem' }} onClick={fit}>
-                        <RefreshCw size={14} /> RE-CENTER
+                        <RefreshCw size={14} /> {t('graph.reCenter')}
                     </button>
                 </div>
             </div>
 
-            <div ref={containerRef} style={{ flex: 1, background: 'radial-gradient(circle at center, var(--bg-glass-heavy) 0%, var(--bg-dark-obsidian) 100%)' }} />
+            <div ref={containerRef} style={{ flex: 1, background: `radial-gradient(circle at center, ${theme.background.gradientInner} 0%, ${theme.background.gradientOuter} 100%)` }} />
 
             {/* Overlay Controls */}
             <div style={{ position: 'absolute', right: '1.5rem', bottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
@@ -185,8 +179,8 @@ const GraphView: React.FC = () => {
             </div>
 
             {/* Hint */}
-            <div style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', background: 'rgba(0,0,0,0.5)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '0.75rem', color: 'var(--text-muted)', zIndex: 10 }}>
-                Drag to pan • Scroll to zoom • Diamonds are Artifacts
+            <div style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', background: theme.shadow, padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '0.75rem', color: 'var(--text-muted)', zIndex: 10 }}>
+                {t('graph.hint')}
             </div>
         </div>
     );

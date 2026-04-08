@@ -112,7 +112,7 @@ impl DockerConductor for ShadowWorkerService {
             let llm_res = match env::var("GEMINI_API_KEY") {
                 Ok(key) if !key.is_empty() => {
                     let provider = GeminiProvider::new(
-                        reqwest::Client::new(),
+                        aiome_core::http::get_http_client().clone(),
                         key,
                         "gemini-2.5-flash".to_string(),
                     );
