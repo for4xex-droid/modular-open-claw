@@ -856,7 +856,7 @@ async fn test_karma_taxonomy_fallback() {
     assert!(result.is_err());
 
     let fb = super::taxonomy::KarmaTaxonomy::fallback();
-    assert_eq!(fb.domain, "general");
+    assert_eq!(fb.domain, "General");
 }
 
 #[tokio::test]
@@ -1162,7 +1162,7 @@ async fn test_federation_export_privacy_filter() {
         "Public Lesson",
         "Synthesized",
         "hash1",
-        Some("general"),
+        Some("General"),
         Some("test"),
         None,
         false, // false = is_private
@@ -1177,7 +1177,7 @@ async fn test_federation_export_privacy_filter() {
         "Private Lesson",
         "Synthesized",
         "hash1",
-        Some("general"),
+        Some("General"),
         Some("test"),
         None,
         true, // true = is_private
