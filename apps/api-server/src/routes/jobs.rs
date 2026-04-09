@@ -14,7 +14,7 @@ use aiome_core::traits::*;
 use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
 use axum::{
     extract::{Path, State},
-    response::Json,
+    response::{IntoResponse, Json},
 };
 use serde_json::{json, Value};
 
@@ -190,7 +190,7 @@ pub struct JobReviewPayload {
     )
 )]
 pub async fn submit_job_review(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
     Path(job_id): Path<String>,
     axum::Json(payload): axum::Json<JobReviewPayload>,
@@ -202,10 +202,91 @@ pub async fn submit_job_review(
         payload.comments
     );
 
-    // In a real implementation this would trigger state changes or be recorded.
-    // For Phase 3C Oracle testing, we just return ACCEPTED to verify wiring.
+    // 1. Fetch the job to ensure it still exists and is in AwaitingInput state.
+    let job_opt = state
+        .job_queue
+        .fetch_job(&job_id)
+        .await
+        .map_err(|e| AppError::internal(&format!("Failed to fetch job for review: {}", e)))?;
+
+    let job = match job_opt {
+        Some(j) => j,
+        None => return Err(AppError::not_found("Job not found")),
+    };
+
+    if job.status != aiome_core::traits::JobStatus::AwaitingInput {
+        // Gap 11: Race condition prevention
+        return Ok((
+            axum::http::StatusCode::CONFLICT,
+            Json(serde_json::json!({"error": format!("Job is not in AwaitingInput state. Current state: {:?}", job.status)})),
+        ).into_response());
+    }
+
+    if payload.status.to_lowercase() == "approved" {
+        // Gap 8: Persist bypass marker in execution_log so the immune system knows it was overridden
+        state
+            .job_queue
+            .store_execution_log(&job_id, "IMMUNE_BYPASS_APPROVED")
+            .await
+            .map_err(|e| {
+                AppError::internal(&format!("Failed to persist immune bypass flag: {}", e))
+            })?;
+
+        // Re-enqueue the job to resume processing
+        state
+            .job_queue
+            .requeue_job(&job_id)
+            .await
+            .map_err(|e| AppError::internal(&format!("Failed to requeue approved job: {}", e)))?;
+
+        tracing::info!("✅ Job {} approved and requeued.", job_id);
+    } else {
+        // Rejected
+        let reason = payload
+            .comments
+            .unwrap_or_else(|| "Rejected by user".to_string());
+        state
+            .job_queue
+            .fail_job(&job_id, &reason)
+            .await
+            .map_err(|e| AppError::internal(&format!("Failed to mark job as failed: {}", e)))?;
+
+        tracing::warn!("❌ Job {} rejected. Reason: {}", job_id, reason);
+    }
+
     Ok((
-        axum::http::StatusCode::ACCEPTED,
-        Json(json!({"success": true, "job_id": job_id})),
-    ))
+        axum::http::StatusCode::OK,
+        Json(serde_json::json!({"success": true, "job_id": job_id})),
+    )
+        .into_response())
+}
+
+/// GET /api/v1/jobs/awaiting-input
+#[utoipa::path(
+    get,
+    path = "/api/v1/jobs/awaiting-input",
+    responses(
+        (status = 200, description = "Returns jobs requiring user input", body = Value)
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn get_awaiting_input_jobs(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    // Gap 4 & 6: Fetch recent jobs and filter for AwaitingInput
+    let jobs = state
+        .job_queue
+        .fetch_recent_jobs(100)
+        .await
+        .map_err(|e| AppError::internal(&format!("Failed to fetch jobs: {}", e)))?;
+
+    let awaiting_jobs: Vec<_> = jobs
+        .into_iter()
+        .filter(|j| j.status == aiome_core::traits::JobStatus::AwaitingInput)
+        .collect();
+
+    Ok(Json(awaiting_jobs))
 }

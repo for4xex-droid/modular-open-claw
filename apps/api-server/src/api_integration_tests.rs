@@ -2169,26 +2169,135 @@ async fn test_syndicate_guild_sanitization() {
 
 #[serial]
 #[tokio::test]
-async fn test_oracle_job_review_api() {
-    let (server, _state, _tmp) = create_test_server().await;
+async fn test_awaiting_input_job_lifecycle() {
+    let (server, state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
-    let payload = serde_json::json!({
-        "status": "approved",
-        "comments": "Looking good"
-    });
+    // 1. Insert a mock AwaitingInput job directly into DB
+    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let test_job_id = "test-awaiting-input-job";
 
-    let resp = server
-        .post("/api/v1/jobs/test-job-id/review")
+    // NOTE: This will fail until the SQLite CHECK constraint migration (Gap 10) is applied, or it might pass if AwaitingInput is already in the old check constraint.
+    // The previous analysis showed AwaitingInput was IN the constraint, but Cancelled wasn't.
+    sqlx::query(
+        "INSERT INTO jobs (id, category, topic, style_name, karma_directives, status, priority) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(test_job_id)
+    .bind("Goal")
+    .bind("Dangerous action")
+    .bind("default")
+    .bind("[]")
+    .bind("AwaitingInput")
+    .bind(100)
+    .execute(pool)
+    .await.expect("Failed to insert mock AwaitingInput job");
+
+    // 2. Test GET /api/v1/jobs/awaiting-input (RED: 404 expected initially)
+    let get_resp = server
+        .get("/api/v1/jobs/awaiting-input")
         .add_header("Authorization", &bearer)
-        .json(&payload) // we can send an empty body or review payload
         .await;
 
-    // We expect this to fail initially since the endpoint is not implemented (RED phase)
     assert_eq!(
-        resp.status_code(),
-        axum::http::StatusCode::ACCEPTED,
-        "Expected ACCEPTED or OK from new review endpoint"
+        get_resp.status_code(),
+        axum::http::StatusCode::OK,
+        "Expected OK from /api/v1/jobs/awaiting-input"
+    );
+
+    let jobs: Vec<aiome_core_contracts::Job> = get_resp.json();
+    assert!(
+        jobs.iter().any(|j| j.id == test_job_id),
+        "Expected the test job to be in the awaiting-input list"
+    );
+
+    // 3. Test POST /api/v1/jobs/{id}/review - Approve (RED: expected 200 OK after wiring, currently 202)
+    let payload = serde_json::json!({
+        "status": "approved",
+        "comments": "Safe to proceed"
+    });
+
+    let review_resp = server
+        .post(&format!("/api/v1/jobs/{}/review", test_job_id))
+        .add_header("Authorization", &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(
+        review_resp.status_code(),
+        axum::http::StatusCode::OK,
+        "Expected OK when approving an AwaitingInput job"
+    );
+
+    // Verify it was requeued (status = Pending) and execution_log has bypass marker
+    let updated_job = state
+        .job_queue
+        .fetch_job(test_job_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(updated_job.status, aiome_core_contracts::JobStatus::Pending);
+    assert_eq!(
+        updated_job.execution_log.as_deref(),
+        Some("IMMUNE_BYPASS_APPROVED")
+    );
+
+    // 4. Test POST /api/v1/jobs/{id}/review - Race condition block (RED: expected 409 Conflict)
+    let duplicate_resp = server
+        .post(&format!("/api/v1/jobs/{}/review", test_job_id))
+        .add_header("Authorization", &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(
+        duplicate_resp.status_code(),
+        axum::http::StatusCode::CONFLICT,
+        "Expected CONFLICT when approving a job that is no longer AwaitingInput"
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_cancel_awaiting_input_job() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let test_job_id = "test-cancel-awaiting-input-job";
+
+    sqlx::query(
+        "INSERT INTO jobs (id, category, topic, style_name, karma_directives, status, priority) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(test_job_id)
+    .bind("Goal")
+    .bind("Another action")
+    .bind("default")
+    .bind("[]")
+    .bind("AwaitingInput")
+    .bind(100)
+    .execute(pool)
+    .await.expect("Failed to insert mock AwaitingInput job for cancel test");
+
+    // Test POST /api/v1/jobs/{id}/cancel (RED: currently fails to cancel AwaitingInput)
+    let cancel_resp = server
+        .post(&format!("/api/v1/jobs/{}/cancel", test_job_id))
+        .add_header("Authorization", &bearer)
+        .await;
+
+    assert_eq!(
+        cancel_resp.status_code(),
+        axum::http::StatusCode::OK,
+        "Expected OK when cancelling an AwaitingInput job"
+    );
+
+    let updated_job = state
+        .job_queue
+        .fetch_job(test_job_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        updated_job.status,
+        aiome_core_contracts::JobStatus::Cancelled
     );
 }
 

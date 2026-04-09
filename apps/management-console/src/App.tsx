@@ -45,6 +45,7 @@ const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
+const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
 import { SoTProgressBar } from "./components/SoTProgressBar";
 
 import { isAuthenticated } from "./lib/auth";
@@ -545,6 +546,10 @@ function App() {
           localStorage.setItem("aiome_birth_shown", "true");
         }} />
       )}
+
+      <React.Suspense fallback={null}>
+        <TaskApprovalOverlay />
+      </React.Suspense>
     </div>
   );
 }

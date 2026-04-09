@@ -556,6 +556,13 @@ pub async fn trigger_system_vitality_stream(
                                 yield Ok(Event::default().event("sot_progress").data(json));
                             }
                         },
+                        shared::watchtower::CoreEvent::TaskAwaitingInput { job_id, reason } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "reason": reason,
+                            });
+                            yield Ok(Event::default().event("task_awaiting_input").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

@@ -11,10 +11,12 @@
         - `Goal` カテゴリのジョブがデキューされないバグを修正。
         - 統合テスト `test_dispatcher_elicitation_on_high_severity_violation` を追加。
     - `libs/infrastructure/src/task_orchestrator/planner.rs` [MODIFY]: ツール名の抽出ロジック (`tool_name`) を改善し、免疫システムとの照合精度を向上。
+    - `apps/api-server/src/routes/jobs.rs` [MODIFY]: `submit_job_review` (承認/拒否ロジックと免疫一回限りバイパス) と `get_awaiting_input_jobs` を実装。
+    - `apps/management-console/src/components/TaskApprovalOverlay.tsx` [ADD]: 承認待ち要求に介入するための専用オーバーレイ UI を追加。`App.tsx` のルート層にマウント。
 - **波及効果**:
-    - **`TaskDispatcher → AdaptiveImmuneSystem → CoreEvent::TaskAwaitingInput → Management Console`**
+    - **`TaskDispatcher → AdaptiveImmuneSystem → CoreEvent::TaskAwaitingInput → Management Console → TaskApprovalOverlay`**
     - 実行レイヤー全体で「一部成功・一部失敗」という部分実行リスクが排除され、トランザクション的なセキュリティ性が担保された。
-    - 管理コンソール側での「ユーザー介入要求」の視覚化が可能になり、セキュリティ体験が向上。
+    - 管理コンソール側での「ユーザー介入要求」の視覚化が可能になり、セキュリティ体験が飛躍的に向上。バックエンドへの即時フィードバックにより、自己防衛と自律進行を安全に両立できるようになった。
 
 ## Phase 2B-2 Foundation (Perfect Plan Rev.6 / Limit Break)
 ### 1. ゴーストバグ防止機構と SOUL 初期化API

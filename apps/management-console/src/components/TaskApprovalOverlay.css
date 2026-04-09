@@ -1,0 +1,193 @@
+.approval-overlay-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-sm);
+    background-color: var(--black-60);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.approval-overlay-modal {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    background: var(--bg-glass-heavy);
+    border: 1px solid var(--accent-amber-20);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-deep);
+    overflow: hidden;
+}
+
+.approval-overlay-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--accent-amber);
+    box-shadow: 0 0 10px var(--accent-amber);
+}
+
+.approval-overlay-content {
+    padding: var(--space-md);
+}
+
+.approval-overlay-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: var(--space-md);
+    color: var(--accent-amber);
+}
+
+.approval-header-texts h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    font-family: var(--font-display);
+    color: var(--text-primary);
+}
+
+.approval-header-texts p {
+    font-size: 0.875rem;
+    opacity: 0.8;
+    margin: 0.25rem 0 0 0;
+    color: var(--text-secondary);
+}
+
+.approval-overlay-job-box {
+    background: var(--bg-deep-glass);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--white-05);
+    margin-bottom: var(--space-md);
+}
+
+.approval-job-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.approval-job-id {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    word-break: break-all;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.approval-reason-header {
+    font-size: 0.875rem;
+    color: var(--accent-amber);
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.approval-reason-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    background: var(--black-40);
+    padding: var(--space-xs);
+    border-radius: 4px;
+    border: 1px solid var(--white-05);
+}
+
+.approval-overlay-textarea-wrapper {
+    margin-bottom: var(--space-md);
+}
+
+.approval-overlay-textarea {
+    width: 100%;
+    background: var(--bg-deep-glass);
+    border: 1px solid var(--white-05);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    box-sizing: border-box;
+    resize: none;
+    transition: all var(--speed-fast) ease;
+    font-family: var(--font-main);
+}
+
+.approval-overlay-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.approval-overlay-textarea:focus {
+    outline: none;
+    border-color: var(--accent-amber-50);
+    box-shadow: 0 0 0 1px var(--accent-amber-20);
+}
+
+.approval-overlay-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.approval-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: 0.75rem var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    transition: all var(--speed-fast) ease;
+    cursor: pointer;
+    font-family: var(--font-main);
+}
+
+.approval-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.approval-btn-reject {
+    border: 1px solid var(--accent-rose-50);
+    background: var(--accent-rose-10);
+    color: var(--accent-rose);
+}
+
+.approval-btn-reject:not(:disabled):hover {
+    background: var(--accent-rose-20);
+    box-shadow: 0 0 10px var(--accent-rose-20);
+}
+
+.approval-btn-approve {
+    border: 1px solid var(--accent-amber-50);
+    background: var(--accent-amber-10);
+    color: var(--accent-amber);
+}
+
+.approval-btn-approve:not(:disabled):hover {
+    background: var(--accent-amber-20);
+    box-shadow: 0 0 10px var(--accent-amber-20);
+}
+
+.approval-overlay-footer {
+    background: var(--black-40);
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    border-top: 1px solid var(--accent-amber-10);
+}
+
+.approval-btn-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -853,37 +853,54 @@ impl TaskDispatcher {
 
         // --- Phase 2: [Governable Execution] Atomic Immune System Verification ---
         // We verify ALL steps BEFORE storing or enqueueing anything to prevent partial execution of an unsafe plan.
+        let mut bypass_immune_check = false;
+        if let Some(log) = &job.execution_log {
+            if log.contains("IMMUNE_BYPASS_APPROVED") {
+                info!("⚠️ [AdaptiveImmuneSystem] Immune check BYPASSED for job {} due to user approval.", job.id);
+                bypass_immune_check = true;
+                // Clear the bypass marker for a one-time use
+                let _ = self.job_queue.store_execution_log(&job.id, "").await;
+            }
+        }
+
         if let Some(immune) = &self.immune_system {
-            for step in &steps {
-                if let Some(tool_name) = &step.tool_name {
-                    if let Ok(Some(rule)) = immune
-                        .verify_tool_call(tool_name, &step.input, self.job_queue.as_ref())
-                        .await
-                    {
-                        warn!("🚨 [AdaptiveImmuneSystem] Plan for goal {} blocked by rule {}: tool={}", job.id, rule.id, tool_name);
+            if !bypass_immune_check {
+                for step in &steps {
+                    if let Some(tool_name) = &step.tool_name {
+                        if let Ok(Some(rule)) = immune
+                            .verify_tool_call(tool_name, &step.input, self.job_queue.as_ref())
+                            .await
+                        {
+                            warn!("🚨 [AdaptiveImmuneSystem] Plan for goal {} blocked by rule {}: tool={}", job.id, rule.id, tool_name);
 
-                        // Use 70 as the threshold for "High" severity elicitation triggers
-                        const ELICITATION_THRESHOLD: u8 = 70;
-                        if rule.severity >= ELICITATION_THRESHOLD {
-                            info!("✋ [Elicitation] High severity violation detected. Transitioning job {} to AwaitingInput.", job.id);
-                            self.job_queue
-                                .update_job_status(
-                                    &job.id,
-                                    aiome_core_contracts::traits::JobStatus::AwaitingInput,
-                                )
-                                .await?;
-
-                            // Notify elicitation event
-                            let _ = self.event_tx.send(TaskEvent::AwaitingInput {
-                                job_id: job.id.clone(),
-                                reason: format!(
+                            // Use 70 as the threshold for "High" severity elicitation triggers
+                            const ELICITATION_THRESHOLD: u8 = 70;
+                            if rule.severity >= ELICITATION_THRESHOLD {
+                                info!("✋ [Elicitation] High severity violation detected. Transitioning job {} to AwaitingInput.", job.id);
+                                let reason = format!(
                                     "Governable Execution Blocked: {}. User input required.",
                                     rule.id
-                                ),
-                            });
-                            return Ok(()); // Stop planning/dispatching for this goal completely
-                        } else {
-                            info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
+                                );
+
+                                // Gap 3: Persist the reason to the DB before setting status to AwaitingInput
+                                let _ = self.job_queue.fail_job(&job.id, &reason).await;
+
+                                self.job_queue
+                                    .update_job_status(
+                                        &job.id,
+                                        aiome_core_contracts::traits::JobStatus::AwaitingInput,
+                                    )
+                                    .await?;
+
+                                // Notify elicitation event
+                                let _ = self.event_tx.send(TaskEvent::AwaitingInput {
+                                    job_id: job.id.clone(),
+                                    reason,
+                                });
+                                return Ok(()); // Stop planning/dispatching for this goal completely
+                            } else {
+                                info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
+                            }
                         }
                     }
                 }

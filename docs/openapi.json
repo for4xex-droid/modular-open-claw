@@ -1835,6 +1835,30 @@
         ]
       }
     },
+    "/api/v1/jobs/awaiting-input": {
+      "get": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "GET /api/v1/jobs/awaiting-input",
+        "operationId": "get_awaiting_input_jobs",
+        "responses": {
+          "200": {
+            "description": "Returns jobs requiring user input",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/jobs/{id}/cancel": {
       "post": {
         "tags": [
@@ -1905,6 +1929,49 @@
           },
           "404": {
             "description": "Job not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/review": {
+      "post": {
+        "tags": [
+          "crate::routes::jobs"
+        ],
+        "summary": "POST /api/v1/jobs/:id/review",
+        "operationId": "submit_job_review",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobReviewPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Review submitted"
           },
           "500": {
             "description": "Internal server error"
@@ -3705,6 +3772,23 @@
           "Content",
           "Other"
         ]
+      },
+      "JobReviewPayload": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "comments": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
       },
       "KarmaFeedbackRequest": {
         "type": "object",

@@ -410,5 +410,20 @@
       "awakened": "Aiome is fully operational",
       "idle": "Aiome is idle"
     }
+  },
+  "approval": {
+    "title": "Action Blocked",
+    "required": "User Approval Required",
+    "job_id": "Job ID:",
+    "reason": "Reason:",
+    "approve": "Approve (Proceed)",
+    "reject": "Reject & Cancel",
+    "comments": "Optional review comments...",
+    "submitting": "Submitting...",
+    "noJobs": "No pending approvals.",
+    "default_reason": "Requires Manual Approval",
+    "error_submit": "Failed to confirm action. Status: {{status}}",
+    "error_network": "Connection error while submitting the review.",
+    "more_requests": "{{count}} more pending requests"
   }
 }

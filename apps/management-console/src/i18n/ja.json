@@ -411,5 +411,20 @@
       "awakened": "Aiome が完全稼働中",
       "idle": "Aiome は待機中です"
     }
+  },
+  "approval": {
+    "title": "実行ブロック検出",
+    "required": "ユーザー承認が必要です",
+    "job_id": "ジョブ ID:",
+    "reason": "ブロック理由:",
+    "approve": "承認（処理を続行）",
+    "reject": "拒否 & キャンセル",
+    "comments": "レビューコメント (任意)...",
+    "submitting": "送信中...",
+    "noJobs": "保留中の承認リクエストはありません。",
+    "default_reason": "手動による承認が必要です",
+    "error_submit": "アクションの確定に失敗しました。ステータス: {{status}}",
+    "error_network": "レビューの送信中に通信エラーが発生しました。",
+    "more_requests": "他 {{count}} 件の保留中のリクエスト"
   }
 }

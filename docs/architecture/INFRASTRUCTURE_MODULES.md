@@ -64,7 +64,7 @@
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。インメモリのレートリミット（DashMap）を内包する。 | **実装完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクの管理とディスパッチ。AdaptiveImmuneSystem と連携した原子的なセキュリティ検証と、ユーザー介入（Elicitation）ワークフローの中核。 | **Phase 2.1 完了** |
+| `task_orchestrator`| 非同期タスクの管理とディスパッチ。AdaptiveImmuneSystem と連携した原子的なセキュリティ検証と、ユーザー介入（Elicitation）ワークフローの中核。 | **Phase 2.1: Interactive Security Approval Loop 完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。

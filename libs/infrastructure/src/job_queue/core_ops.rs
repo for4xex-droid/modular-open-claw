@@ -318,7 +318,7 @@ impl CoreOps for UniversalJobQueue {
     async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError> {
         let now = Utc::now().to_rfc3339();
         let q = format!(
-            "UPDATE jobs SET status = {0}, updated_at = {1} WHERE id = {2} AND status IN ('Pending', 'Processing')",
+            "UPDATE jobs SET status = {0}, updated_at = {1} WHERE id = {2} AND status IN ('Pending', 'Processing', 'AwaitingInput')",
             self.pool.ph(0),
             self.pool.ph(1),
             self.pool.ph(2)

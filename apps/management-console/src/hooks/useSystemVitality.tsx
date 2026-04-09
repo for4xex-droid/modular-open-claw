@@ -16,7 +16,7 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input';
     data: AgentStats | Karma | SoTEvent | unknown;
 };
 
@@ -103,7 +103,7 @@ export const SystemVitalityProvider: React.FC<{ children: ReactNode }> = ({ chil
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input'
                         ];
 
                         if (validEvents.includes(msg.event)) {

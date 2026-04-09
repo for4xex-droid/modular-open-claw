@@ -213,6 +213,10 @@ pub fn build_app(
             get(routes::karma::synergy_graph_handler),
         )
         .route(
+            "/api/v1/jobs/awaiting-input",
+            get(routes::jobs::get_awaiting_input_jobs),
+        )
+        .route(
             "/api/v1/jobs/:id/cancel",
             post(routes::jobs::cancel_job_handler),
         )
