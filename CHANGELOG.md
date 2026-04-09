@@ -2,6 +2,9 @@
   - **Atomic Security Gating**: プラン（Goal分解）に含まれるすべてのステップを、キュー投入前に一括検証する「Plan-First Verification」を実装。一部のステップが実行されてから違反を検知する「部分実行リスク」を完全に排除。
   - **Semantic UX Refinement**: ユーザー介入通知に専用の `TaskEvent::AwaitingInput` を新設。UI上で「エラー」と「承認待ち」を明確に区別可能にし、インタラクティブなセキュリティ体験を提供。
   - **Execution Robustness**: `Goal` カテゴリのジョブデキューバグを修正。ConstitutionalValidator と AdaptiveImmuneSystem の多層防御を TaskDispatcher に完全統合し、全インフラテストを 100% GREEN 化。
+  - **Test Infrastructure Stability**: `mcp::client` などの結合テストにおいて、テスト環境依存の `node` 呼出を `python3` に置換し `os error 2` (`unwrap` パニック) を完全に解消。
+  - **Strict Anti-Pattern Enforcement**: カスタム Linter に検知された `[AP-005] unwrap/expect` および `clippy::collapsible_match` に対して、テストコード内の適切な権限委譲 (`allow-anti-pattern`) とリファクタリングを施し、完全準拠状態へ是正。
+  - **Asset Security Context**: 全てのアセット（Voice, Inochi2d等）がマニフェスト登録時にセキュリティ制約（`ToolSafetyLevel::Safe` 等）を必須で定義するようAPIサーバーの境界防御を強化。
 
 ## [Unreleased] - 2026-04-09 (Previous)
 

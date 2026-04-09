@@ -70,4 +70,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-09 (Asia/Tokyo) - Phase 2.1 Execution Layer Hardening*
+*最終更新: 2026-04-10 (Asia/Tokyo) - Phase 2B-2 Execution Robustness*
