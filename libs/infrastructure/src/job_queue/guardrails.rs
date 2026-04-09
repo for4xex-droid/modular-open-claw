@@ -117,6 +117,7 @@ impl GuardrailOps for UniversalJobQueue {
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
+                        input_constraints: None,
                     });
                 }
             }
@@ -147,6 +148,7 @@ impl GuardrailOps for UniversalJobQueue {
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
+                        input_constraints: None,
                     });
                 }
             }
@@ -185,6 +187,7 @@ impl GuardrailOps for UniversalJobQueue {
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
+                        input_constraints: None,
                     });
                 }
             }
@@ -215,6 +218,7 @@ impl GuardrailOps for UniversalJobQueue {
                         lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
                         node_id: r.get("node_id"),
                         signature: r.try_get("signature").ok(),
+                        input_constraints: None,
                     });
                 }
             }

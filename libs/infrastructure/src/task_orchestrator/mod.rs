@@ -55,6 +55,10 @@ pub enum TaskEvent {
         job_id: String,
         error: String,
     },
+    AwaitingInput {
+        job_id: String,
+        reason: String,
+    },
     GigPublished {
         job_id: String,
         intent_id: String,
@@ -102,6 +106,7 @@ pub struct TaskDispatcher {
     pub oracle: Option<Arc<crate::oracle::Oracle>>,
     gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
     diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
+    immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
 }
 
 impl TaskDispatcher {
@@ -117,6 +122,7 @@ impl TaskDispatcher {
         oracle: Option<Arc<crate::oracle::Oracle>>,
         gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
         diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
+        immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -151,6 +157,12 @@ impl TaskDispatcher {
                         TaskEvent::Failed { job_id, error } => {
                             aiome_core_contracts::events::CoreEvent::TaskFailed { job_id, error }
                         }
+                        TaskEvent::AwaitingInput { job_id, reason } => {
+                            aiome_core_contracts::events::CoreEvent::TaskAwaitingInput {
+                                job_id,
+                                reason,
+                            }
+                        }
                         TaskEvent::GigPublished {
                             job_id,
                             intent_id,
@@ -183,6 +195,7 @@ impl TaskDispatcher {
             oracle,
             gig_engine,
             diagnostics,
+            immune_system,
         }
     }
 
@@ -362,7 +375,11 @@ impl TaskDispatcher {
                 .flat_map(|c| c.capable_categories())
                 .collect();
 
-            let categories_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
+            let mut categories_refs: Vec<&str> = categories.iter().map(|s| s.as_str()).collect();
+            // Always include "Goal" if we have a planner
+            if self.planner.is_some() && !categories_refs.contains(&"Goal") {
+                categories_refs.push("Goal");
+            }
 
             match self.job_queue.dequeue(&categories_refs).await {
                 Ok(Some(mut job)) => {
@@ -643,7 +660,6 @@ impl TaskDispatcher {
                                             let err_msg = e.to_string();
 
                                             if let Some(diag) = diagnostics_clone.clone() {
-                                                info!("🔍 [Watchtower] Triggering post-mortem diagnosis for job {}", job_id);
                                                 let d_id = job_id.clone();
                                                 let d_jq = job_queue_clone.clone();
                                                 let d_job = job.clone();
@@ -829,9 +845,52 @@ impl TaskDispatcher {
             job.id
         );
 
-        info!("📋 Goal {} decomposed into {} steps.", job.id, steps.len());
+        info!(
+            "📋 Goal {} decomposed into {} steps. Verifying all steps for security...",
+            job.id,
+            steps.len()
+        );
 
-        // 2. Store steps and Enqueue sub-jobs
+        // --- Phase 2: [Governable Execution] Atomic Immune System Verification ---
+        // We verify ALL steps BEFORE storing or enqueueing anything to prevent partial execution of an unsafe plan.
+        if let Some(immune) = &self.immune_system {
+            for step in &steps {
+                if let Some(tool_name) = &step.tool_name {
+                    if let Ok(Some(rule)) = immune
+                        .verify_tool_call(tool_name, &step.input, self.job_queue.as_ref())
+                        .await
+                    {
+                        warn!("🚨 [AdaptiveImmuneSystem] Plan for goal {} blocked by rule {}: tool={}", job.id, rule.id, tool_name);
+
+                        // Use 70 as the threshold for "High" severity elicitation triggers
+                        const ELICITATION_THRESHOLD: u8 = 70;
+                        if rule.severity >= ELICITATION_THRESHOLD {
+                            info!("✋ [Elicitation] High severity violation detected. Transitioning job {} to AwaitingInput.", job.id);
+                            self.job_queue
+                                .update_job_status(
+                                    &job.id,
+                                    aiome_core_contracts::traits::JobStatus::AwaitingInput,
+                                )
+                                .await?;
+
+                            // Notify elicitation event
+                            let _ = self.event_tx.send(TaskEvent::AwaitingInput {
+                                job_id: job.id.clone(),
+                                reason: format!(
+                                    "Governable Execution Blocked: {}. User input required.",
+                                    rule.id
+                                ),
+                            });
+                            return Ok(()); // Stop planning/dispatching for this goal completely
+                        } else {
+                            info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Store steps and Enqueue sub-jobs (Only if all steps passed verification)
         let mut dag = InvariantDag::new();
 
         for mut step in steps {
@@ -908,8 +967,9 @@ impl TaskDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::job_queue_mock::GlobalMockJobQueue;
-    use aiome_core::error::AiomeError;
+    use crate::task_orchestrator::planner::DefaultStrategicPlanner;
+    use crate::task_orchestrator::TaskDispatcher;
+    use crate::test_utils::job_queue_mock::{GlobalMockJobQueue, GlobalMockLlm};
     use aiome_core_contracts::traits::*;
     use tokio::time::timeout;
 
@@ -965,6 +1025,7 @@ mod tests {
             None,
             None, // gig_engine
             None, // diagnostics
+            None, // immune_system
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1083,7 +1144,6 @@ mod tests {
             published_intent: Arc::new(tokio::sync::Mutex::new(None)),
         });
 
-        // RED: TaskDispatcher::new does not yet take gig_engine
         let mut dispatcher = TaskDispatcher::new(
             job_queue.clone(),
             Duration::from_millis(10),
@@ -1093,7 +1153,8 @@ mod tests {
             None,
             None,
             None,
-            Some(mock_gig.clone()), // This argument causes compilation failure
+            Some(mock_gig.clone()),
+            None,
             None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
@@ -1140,6 +1201,7 @@ mod tests {
             None,
             None,
             Some(mock_gig.clone()),
+            None,
             None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
@@ -1251,9 +1313,9 @@ mod tests {
             None,
             None,
             Some(diag_engine),
+            None,
         );
         dispatcher.register_conductor(Arc::new(FailingConductor));
-
         let _handle = tokio::spawn(async move {
             dispatcher.run_dispatch_loop().await;
         });
@@ -1312,12 +1374,12 @@ mod tests {
         }
 
         let tool_discovery = Arc::new(MockToolDiscovery);
-
         let mut dispatcher = TaskDispatcher::new(
             job_queue.clone(),
             Duration::from_millis(10),
             None,
             Some(tool_discovery),
+            None,
             None,
             None,
             None,
@@ -1344,6 +1406,145 @@ mod tests {
         assert!(
             failed_job.1.contains("file_parser_tool"),
             "Message should contain tool name"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_elicitation_on_high_severity_violation() {
+        use aiome_core::llm_provider::{LlmProvider, LlmResponse, StopReason};
+        use aiome_core_contracts::contracts::{ApprovalState, ImmuneRule};
+        use aiome_core_contracts::llm::LlmRequest;
+        use chrono::Utc;
+
+        #[derive(Debug)]
+        struct MockLlmForPlanning;
+
+        #[async_trait]
+        impl LlmProvider for MockLlmForPlanning {
+            async fn complete(
+                &self,
+                content: &str,
+                system: Option<&str>,
+            ) -> Result<LlmResponse, AiomeError> {
+                let sys = system.unwrap_or("");
+                if sys.contains("Constitutional Finder") {
+                    return Ok(LlmResponse {
+                        content: "NONE".into(),
+                        stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                        reasoning: None,
+                        metadata: None,
+                    });
+                }
+                if sys.contains("Supreme Constitutional Referee") {
+                    return Ok(LlmResponse {
+                        content: "PASS".into(),
+                        stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                        reasoning: None,
+                        metadata: None,
+                    });
+                }
+
+                // Default: Goal Decomposition
+                let steps = serde_json::json!([
+                    {
+                        "description": "Send sensitive data",
+                        "step_category": "Execution",
+                        "reasoning": "Test elicitation",
+                        "tool_name": "network_sender",
+                        "input": { "data": "secret" }
+                    }
+                ]);
+                Ok(LlmResponse {
+                    content: format!("```json\n{}\n```", steps),
+                    stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+            fn name(&self) -> &str {
+                "Mock"
+            }
+            async fn complete_with_cache(&self, _: LlmRequest) -> Result<LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+        }
+
+        let mut job = Job::default();
+        job.id = "elicit-job".into();
+        job.category = "Goal".into();
+        job.topic = "Simulate threat".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            active_rules: std::sync::Mutex::new(vec![ImmuneRule {
+                id: "block-sender".into(),
+                pattern: "network_sender".into(),
+                severity: 85, // High severity -> Elicit
+                action: "Block".into(),
+                created_at: Utc::now().to_rfc3339(),
+                approval_status: ApprovalState::Approved,
+                lamport_clock: 0,
+                node_id: "test".into(),
+                signature: None,
+                input_constraints: None,
+            }]),
+            ..Default::default()
+        });
+
+        let mock_llm = Arc::new(MockLlmForPlanning);
+        let planner = Arc::new(DefaultStrategicPlanner::new(mock_llm.clone()));
+        let immune_system = Arc::new(crate::immune_system::AdaptiveImmuneSystem::new(
+            mock_llm.clone(),
+        ));
+
+        let validator = Arc::new(crate::validator::DefaultConstitutionalValidator::new(
+            mock_llm.clone(),
+            None,
+        ));
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            Some(planner),
+            Some(validator),
+            None,
+            None,
+            None,
+            None,
+            Some(immune_system),
+        );
+        let mut rx = dispatcher.subscribe_events();
+        dispatcher.register_conductor(Arc::new(TestConductor));
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        // The job should fail/stop and transition to AwaitingInput
+        let mut elicit_event_received = false;
+        for _ in 0..20 {
+            if let Ok(TaskEvent::AwaitingInput { job_id, reason }) = rx.try_recv() {
+                if job_id == "elicit-job" && reason.contains("Blocked") {
+                    elicit_event_received = true;
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        assert!(
+            elicit_event_received,
+            "Dispatcher should have emitted an AwaitingInput event for elicitation"
+        );
+        let status = job_queue.updated_status.lock().unwrap().clone(); // allow-anti-pattern
+        assert_eq!(
+            status,
+            Some(aiome_core_contracts::traits::JobStatus::AwaitingInput)
         );
     }
 }

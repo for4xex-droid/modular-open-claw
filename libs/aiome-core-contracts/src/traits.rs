@@ -181,6 +181,8 @@ pub enum JobStatus {
     Cancelled,
     Quarantined,
     Archived,
+    /// ユーザー入力を待機中 (Execution Layer)
+    AwaitingInput,
 }
 
 impl JobStatus {
@@ -194,6 +196,7 @@ impl JobStatus {
             JobStatus::Cancelled => "Cancelled",
             JobStatus::Quarantined => "Quarantined",
             JobStatus::Archived => "Archived",
+            JobStatus::AwaitingInput => "AwaitingInput",
         }
     }
 
@@ -206,6 +209,7 @@ impl JobStatus {
             "Cancelled" => JobStatus::Cancelled,
             "Quarantined" => JobStatus::Quarantined,
             "Archived" => JobStatus::Archived,
+            "AwaitingInput" => JobStatus::AwaitingInput,
             _ => JobStatus::Pending,
         }
     }

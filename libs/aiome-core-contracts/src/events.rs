@@ -59,6 +59,11 @@ pub enum CoreEvent {
         job_id: String,
         error: String,
     },
+    /// Phase 1-2: セキュリティ違反によるユーザー介入待機
+    TaskAwaitingInput {
+        job_id: String,
+        reason: String,
+    },
     /// Phase 51: Autonomous GIG Publishing
     GigPublished {
         job_id: String,

@@ -242,6 +242,7 @@ mod tests {
             name: "mcp-test".to_string(),
             description: "Test description".to_string(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(serde_json::json!({"command": "echo"})),
         };
         state.registry.register_asset(mcp_manifest).await.unwrap(); // allow-anti-pattern

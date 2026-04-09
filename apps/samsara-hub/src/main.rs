@@ -1105,6 +1105,7 @@ async fn sync_handler(
                 action: r.action,
                 created_at: r.created_at,
                 approval_status: ApprovalState::Approved,
+                input_constraints: None,
                 lamport_clock: r.lamport_clock as u64,
                 node_id: r.node_id,
                 signature: r.signature,

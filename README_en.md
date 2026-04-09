@@ -63,7 +63,8 @@ This is not merely an experiment. It is the result of agents proactively designi
 
 All of the following capabilities are built directly into the OS, not left as plugins:
 
-- 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Mathematical safety is guaranteed via Model-Based Testing.
+- 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Includes a "Governed Execution" layer that mandates user intervention for high-risk tool calls.
+- ⚖️ **Governed Execution Layer**: Atomic security gating for multi-step plans and a semantic elicitation workflow for human-in-the-loop safety.
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
 - 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. Featuring Progressive Disclosure and Query File-Back, the LLM extracts concepts from multiple documents, self-reconstructs its knowledge as an interconnected web, and compounds knowledge through self-querying.
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail.

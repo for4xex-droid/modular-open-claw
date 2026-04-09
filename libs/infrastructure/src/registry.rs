@@ -51,6 +51,9 @@ pub struct AssetManifest {
     pub description: String,
     /// 価格（コイン換算）
     pub price_coins: u64,
+    /// ツール実行の安全層ティア (MCP/Plugin 用)
+    #[serde(default)]
+    pub safety_level: aiome_core_contracts::contracts::ToolSafetyLevel,
     /// 追加のメタデータ (JSON) — MCP 構成等
     pub metadata: Option<serde_json::Value>,
 }
@@ -126,6 +129,7 @@ impl RegistryManager {
             name: row.3,
             description: row.4,
             price_coins: row.5 as u64,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe, // TODO: Load from DB
             metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
         })
     }
@@ -189,6 +193,7 @@ impl RegistryManager {
                 name: row.3,
                 description: row.4,
                 price_coins: row.5 as u64,
+                safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                 metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
             })
             .collect();
@@ -335,6 +340,7 @@ impl RegistryManager {
             name: name.to_string(),
             description: description.to_string(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(config),
         };
 
@@ -443,6 +449,7 @@ mod tests {
             name: "Premium Voice".into(),
             description: "High quality voice model".into(),
             price_coins: 500,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: None,
         };
 
@@ -473,6 +480,7 @@ mod tests {
             name: "Everything Server".into(),
             description: "A test MCP server".into(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(metadata.clone()),
         };
 
@@ -566,6 +574,7 @@ mod tests {
             name: "Other Asset".into(),
             description: "Keep me".into(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: None,
         };
         registry.register_asset(manifest).await.unwrap(); // allow-anti-pattern

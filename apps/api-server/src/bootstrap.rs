@@ -704,6 +704,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         Some(oracle),
         Some(gig_engine.clone()),
         Some(diagnostics_engine),
+        Some(Arc::new(
+            infrastructure::immune_system::AdaptiveImmuneSystem::new(bg_provider.clone()),
+        )),
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {

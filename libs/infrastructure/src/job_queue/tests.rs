@@ -1228,3 +1228,31 @@ async fn test_job_enqueue_constitutional_violation() {
         panic!("Expected SecurityViolation error, got {:?}", res);
     }
 }
+
+#[tokio::test]
+async fn test_elicitation_status_transition_red() {
+    let (jq, _tmp) = create_test_queue().await;
+    let job_id = jq
+        .enqueue("test", "topic", "style", None, None, None, 100)
+        .await
+        .unwrap();
+
+    // 1. Pending -> Processing (Dequeue)
+    let _job = jq.dequeue(&["test"]).await.unwrap().unwrap();
+
+    // 2. Processing -> AwaitingInput
+    jq.update_job_status(
+        &job_id,
+        aiome_core_contracts::traits::JobStatus::AwaitingInput,
+    )
+    .await
+    .unwrap();
+
+    // 3. Verify status
+    let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
+    assert!(matches!(
+        job.status,
+        aiome_core_contracts::traits::JobStatus::AwaitingInput
+    ));
+    assert_eq!(job.status.as_str(), "AwaitingInput");
+}

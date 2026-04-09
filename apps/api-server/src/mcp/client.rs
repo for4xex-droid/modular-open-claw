@@ -350,8 +350,8 @@ mod tests {
             manager
                 .spawn_stdio_server(
                     format!("client{}", i),
-                    "node",
-                    vec!["-v".to_string()],
+                    "python3",
+                    vec!["-c".to_string(), "print('{}')".to_string()],
                     HashMap::new(),
                 )
                 .await
@@ -370,8 +370,8 @@ mod tests {
         let endpoint = manager
             .spawn_stdio_server(
                 "idle_client".to_string(),
-                "node",
-                vec!["-v".to_string()],
+                "python3",
+                vec!["-c".to_string(), "print('{}')".to_string()],
                 HashMap::new(),
             )
             .await
@@ -398,8 +398,8 @@ mod tests {
         manager
             .spawn_stdio_server(
                 "to_remove".to_string(),
-                "node",
-                vec!["-v".to_string()],
+                "python3",
+                vec!["-c".to_string(), "print('{}')".to_string()],
                 HashMap::new(),
             )
             .await

@@ -362,6 +362,7 @@ impl DreamState {
                     false_positive_count: 0,
                     created_at: chrono::Utc::now().to_rfc3339(),
                     last_fired_at: None,
+                    safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                 };
 
                 if let Err(e) = job_queue.store_harness_record(&record).await {

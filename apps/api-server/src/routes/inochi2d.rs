@@ -125,6 +125,7 @@ pub async fn upload_inochi2d_handler(
         name: filename.clone(),
         description: "Uploaded Inochi2D Model".to_string(),
         price_coins: 0,
+        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
         metadata: None,
     };
 

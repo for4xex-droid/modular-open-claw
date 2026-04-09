@@ -76,7 +76,7 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                         _ => aiome_core_contracts::trajectory::StepCategory::Execution,
                     },
                     action: v["description"].as_str().unwrap_or("").to_string(),
-                    tool_name: None,
+                    tool_name: v["tool_name"].as_str().map(|s| s.to_string()),
                     input: v["input"].clone(),
                     output: serde_json::Value::Null,
                     timestamp: Utc::now().to_rfc3339(),

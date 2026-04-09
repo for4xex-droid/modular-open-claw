@@ -95,6 +95,10 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 72 | **RAM Allocation DoS (OOM)** | **Giant `.to_lowercase()` string clones during validation** | 🔴 High | **O(1) Streaming Regex (`LazyLock`) matching (Phase 2B-2 Reflexion)** |
 | 73 | **Setup UI Soft Brick** | **Initialization API failure leaving user deadlocked** | 🟡 Mid | **Strict UI `try/catch` and visual error state rendering (Phase 2B-2 Reflexion)** |
 | 74 | **SSRF Policy Bypass** | **Isolated `reqwest::Client` bypassing global timeout/redirect rules** | 🔴 High | **Global Connection Pool (`get_http_client()`) Enforcement (Phase 3-B)** |
+| 75 | **Partial Execution Risk** | **Executing initial safe steps of a plan containing later unsafe steps** | 🔴 High | **Atomic Security Gating (Plan-First Verification) (Phase 2.1)** |
+| 76 | **Elicitation UX Hijacking**| **Security suspenion misreported as crash, confusing operators** | 🟡 Mid | **Semantic `TaskAwaitingInput` events for clear UI distinction (Phase 2.1)** |
+| 77 | **Plan Hijacking (DAG Injection)** | **Malicious sub-task insertion into active plan** | 🔴 High | **Invariant-DAG Hash Chain Validation (Phase 48)** |
+| 78 | **Social Elicitation (Persona Drift)** | **Agent tricked into revealing system prompt** | 🔴 High | **Constitutional Core Defense (Phase 2B-2)** |
 
 ## 3. Defense Architecture
 
@@ -115,6 +119,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Resource Exhaustion Blockers (Red Team)**: Introduces hard upper bounds on background job queues (e.g., max 100 `active_jobs`) and employs non-blocking `try_acquire()` for file upload semaphores (`inochi2d`, `voice`). This combination structurally prevents slowloris-style socket starvation and unbounded memory (OOM) attacks from malicious or out-of-control agents.
 - **Outbound Payload Strict Bounds (Phase B/C)**: Prevents an autonomous conductor from successfully executing an HTTP request with 0-byte or 10MB+ parameters. Evaluated upstream within infrastructure adapters (e.g. `WordPressAdapter`, `SerpAnalysisAdapter`) natively prior to creating network traces to mitigate WAF bans and network bandwidth exhaustion.
 - **Constitutional Core Defense (Phase 2B-2 Reflexion)**: Employs an ultra-fast O(1) `LazyLock` regex implementation inside `ConstitutionalValidator` for real-time text analysis. Blocks prompt injections targeting foundational principles. Eliminates fallback-vector bypasses by strictly decoupling user inputs (e.g. `ai_name`) from immutable static fallback templates.
+- **Governed Execution Layer (Phase 2.1)**: Implements "Atomic Security Gating" within the `TaskDispatcher`. Before any sub-job of a decomposed plan is enqueued, the system verifies all planned steps against the `AdaptiveImmuneSystem`. If any high-severity violation is detected, the entire job is suspended into an `AwaitingInput` state, preventing partial execution of unsafe plans. A semantic `TaskAwaitingInput` event is issued to allow management consoles to distinguish security suspensions from system failures.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.

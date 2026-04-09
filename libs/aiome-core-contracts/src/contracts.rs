@@ -354,6 +354,36 @@ pub enum ApprovalState {
     Rejected,
 }
 
+/// ツール実行の安全層ティア
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, utoipa::ToSchema, PartialEq, Eq, Default)]
+pub enum ToolSafetyLevel {
+    /// 完全に副作用がなく安全な読み取り操作
+    #[default]
+    Safe,
+    /// 副作用はあるが、同一パラメータであれば何度実行しても結果が変わらない（冪等性）
+    Idempotent,
+    /// 非可逆な変更、削除、または外部送信を伴う（要承認）
+    Destructive,
+}
+
+/// ユーザーへの聞き出し（Elicitation）要求
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ElicitationRequest {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub form_fields: Vec<ElicitationField>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct ElicitationField {
+    pub name: String,
+    pub label: String,
+    pub field_type: String, // "text" | "number" | "boolean" | "select"
+    pub options: Option<Vec<String>>,
+    pub required: bool,
+}
+
 /// 自己防衛のための免疫ルール
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ImmuneRule {
@@ -369,6 +399,10 @@ pub struct ImmuneRule {
     /// 承認状態 (Phase 22: M-3)
     #[serde(default)]
     pub approval_status: ApprovalState,
+
+    /// 引数レベルの制約 (JSONPath または 正規表現)
+    #[serde(default)]
+    pub input_constraints: Option<serde_json::Value>,
 
     // --- Phase 10-B: Swarm Sync & CRDT ---
     #[serde(default)]
@@ -875,6 +909,9 @@ pub struct HarnessRecord {
     pub description: String,
     pub code_payload: String,
     pub status: HarnessStatus,
+    /// ツール実行の安全層ティア
+    #[serde(default)]
+    pub safety_level: ToolSafetyLevel,
     pub version: i32,
     pub agent_id: Option<uuid::Uuid>,
     pub fire_count: u64,

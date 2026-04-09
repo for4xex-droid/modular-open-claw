@@ -21,6 +21,7 @@ use aiome_core_contracts::traits::{
 use aiome_core_contracts::types::AgentStats;
 use async_trait::async_trait;
 use chrono::Utc;
+use regex::Regex;
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -84,6 +85,7 @@ impl AdaptiveImmuneSystem {
             lamport_clock: 0,
             node_id: "".to_string(),
             signature: None,
+            input_constraints: None,
         };
 
         // 重複チェック
@@ -106,15 +108,84 @@ impl AdaptiveImmuneSystem {
             rule.action, rule.pattern
         );
         jq.store_immune_rule(&rule).await?;
-
         Ok(1)
+    }
+
+    /// 入力内容とツール引数が免疫ルールに抵触するか検証する (Phase 2)
+    pub async fn verify_tool_call(
+        &self,
+        tool_name: &str,
+        input: &serde_json::Value,
+        jq: &(impl JobQueue + ?Sized),
+    ) -> Result<Option<ImmuneRule>, AiomeError> {
+        let rules = jq.fetch_active_immune_rules().await?;
+
+        for rule in rules {
+            // ツール名のパターンマッチング (単純な一致またはワイルドカード)
+            if rule.pattern != "*" && rule.pattern != tool_name {
+                continue;
+            }
+
+            // 制約がない場合はツール自体を拒否
+            let Some(constraints) = &rule.input_constraints else {
+                if rule.pattern == tool_name {
+                    warn!("🚨 [AdaptiveImmuneSystem] Tool blocked by exact match rule (no constraints): tool={}", tool_name);
+                    return Ok(Some(rule));
+                }
+                continue;
+            };
+
+            // 1. forbidden_keys のチェック
+            if let Some(forbidden) = constraints.get("forbidden_keys").and_then(|v| v.as_array()) {
+                if let Some(obj) = input.as_object() {
+                    for key in forbidden {
+                        if let Some(key_str) = key.as_str() {
+                            if obj.contains_key(key_str) {
+                                warn!("🚨 [AdaptiveImmuneSystem] Forbidden key detected: tool={}, key={}", tool_name, key_str);
+                                return Ok(Some(rule));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. regex_patterns のチェック
+            if let Some(patterns) = constraints
+                .get("regex_patterns")
+                .and_then(|v| v.as_object())
+            {
+                if let Some(obj) = input.as_object() {
+                    for (key, pattern_val) in patterns {
+                        if let Some(val) = obj.get(key) {
+                            if let Some(pattern_str) = pattern_val.as_str() {
+                                if let Ok(re) = Regex::new(pattern_str) {
+                                    let val_str = match val {
+                                        serde_json::Value::String(s) => s.clone(),
+                                        _ => val.to_string(),
+                                    };
+                                    if re.is_match(&val_str) {
+                                        warn!(
+                                            "🚨 [AdaptiveImmuneSystem] Regex constraint violation: tool={}, key={}, pattern={}",
+                                            tool_name, key, pattern_str
+                                        );
+                                        return Ok(Some(rule));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     /// 入力内容が既存の免疫ルールに抵触するか検証する
     pub async fn verify_intent(
         &self,
         input: &str,
-        jq: &impl JobQueue,
+        jq: &(impl JobQueue + ?Sized),
     ) -> Result<Option<ImmuneRule>, AiomeError> {
         use once_cell::sync::Lazy;
         use regex::Regex;
@@ -157,6 +228,7 @@ impl AdaptiveImmuneSystem {
                     lamport_clock: 0,
                     node_id: "local-sentinel".to_string(),
                     signature: None,
+                    input_constraints: None,
                 }));
             }
         }
@@ -219,6 +291,7 @@ impl AdaptiveImmuneSystem {
                 lamport_clock: 0,
                 node_id: "local-immune".to_string(),
                 signature: None,
+                input_constraints: None,
             }));
         }
 
@@ -782,5 +855,67 @@ mod tests {
         let res = system.record_drift(agent_id, 2.5).await.unwrap(); // allow-anti-pattern
         assert!(res.is_some(), "Should trigger Purge when avg > 1.5");
         assert_eq!(res.unwrap().action, "Purge"); // allow-anti-pattern
+    }
+
+    #[tokio::test]
+    async fn test_verify_tool_call_input_violation() {
+        let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
+
+        let constraint = serde_json::json!({
+            "forbidden_keys": ["password", "secret"],
+            "regex_patterns": {
+                "url": "^http://.*"
+            }
+        });
+
+        let rule = ImmuneRule {
+            id: "leak-prevention".to_string(),
+            pattern: "google_search".to_string(), // Tool name pattern
+            severity: 100,
+            action: "Block".to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            approval_status: aiome_core_contracts::contracts::ApprovalState::Approved,
+            lamport_clock: 0,
+            node_id: "local".to_string(),
+            signature: None,
+            input_constraints: Some(constraint),
+        };
+
+        let jq = MockJQ { rules: vec![rule] };
+
+        // Test 1: Violate forbidden_keys
+        let input = serde_json::json!({
+            "query": "find my secret",
+            "password": "123"
+        });
+        let res = system
+            .verify_tool_call("google_search", &input, &jq)
+            .await
+            .unwrap(); // allow-anti-pattern
+        assert!(
+            res.is_some(),
+            "Should block call with forbidden key 'password'"
+        );
+
+        // Test 2: Violate regex_patterns
+        let input2 = serde_json::json!({
+            "url": "http://malicious.com"
+        });
+        let res2 = system
+            .verify_tool_call("google_search", &input2, &jq)
+            .await
+            .unwrap(); // allow-anti-pattern
+        assert!(res2.is_some(), "Should block non-https URL");
+
+        // Test 3: Safe call
+        let input3 = serde_json::json!({
+            "query": "climate change",
+            "url": "https://nasa.gov"
+        });
+        let res3 = system
+            .verify_tool_call("google_search", &input3, &jq)
+            .await
+            .unwrap(); // allow-anti-pattern
+        assert!(res3.is_none(), "Should allow safe input");
     }
 }

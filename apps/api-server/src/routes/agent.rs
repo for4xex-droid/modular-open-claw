@@ -170,6 +170,7 @@ mod tests {
             name: "mcp-weather-server".to_string(),
             description: "A server that provides weather info via MCP".to_string(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(serde_json::json!({
                 "command": "node",
                 "args": ["weather.js"]
@@ -210,6 +211,7 @@ mod tests {
             name: mcp_name.to_string(),
             description: "Search the web via MCP".to_string(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(serde_json::json!({
                 "command": "python",
                 "args": ["search.py"]

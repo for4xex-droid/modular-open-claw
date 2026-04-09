@@ -144,6 +144,7 @@ pub async fn upload_voice_handler(
             name: format!("{}.aivoice", asset_id),
             description: "Encrypted Voice Asset".to_string(),
             price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: None,
         })
         .await?;

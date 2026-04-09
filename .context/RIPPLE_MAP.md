@@ -1,5 +1,21 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 2.1: Execution Layer Hardening (Governed Execution)
+### 1. Atomic Security Gating & Semantic Elicitation
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/events.rs` [MODIFY]: `CoreEvent::TaskAwaitingInput` を追加。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]:
+        - `TaskEvent::AwaitingInput` を追加し、リレーロジックで `CoreEvent::TaskAwaitingInput` へ変換。
+        - `process_goal_job` 内で、サブジョブの投入前に分解された全ステップを `AdaptiveImmuneSystem` で一括検証する「Plan-First Verification」を実装。
+        - セキュリティ違反検知時にジョブを `Failed` ではなく `AwaitingInput` 状態へ遷移させ、専用イベントを発行するように変更。
+        - `Goal` カテゴリのジョブがデキューされないバグを修正。
+        - 統合テスト `test_dispatcher_elicitation_on_high_severity_violation` を追加。
+    - `libs/infrastructure/src/task_orchestrator/planner.rs` [MODIFY]: ツール名の抽出ロジック (`tool_name`) を改善し、免疫システムとの照合精度を向上。
+- **波及効果**:
+    - **`TaskDispatcher → AdaptiveImmuneSystem → CoreEvent::TaskAwaitingInput → Management Console`**
+    - 実行レイヤー全体で「一部成功・一部失敗」という部分実行リスクが排除され、トランザクション的なセキュリティ性が担保された。
+    - 管理コンソール側での「ユーザー介入要求」の視覚化が可能になり、セキュリティ体験が向上。
+
 ## Phase 2B-2 Foundation (Perfect Plan Rev.6 / Limit Break)
 ### 1. ゴーストバグ防止機構と SOUL 初期化API
 - **変更内容**:

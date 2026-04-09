@@ -225,6 +225,7 @@ mod tests {
             lamport_clock: 0,
             node_id: "node_test".into(),
             signature: None,
+            input_constraints: None,
         }];
 
         // mock basic permissions that allow all

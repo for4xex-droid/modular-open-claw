@@ -1,4 +1,9 @@
 ## [Unreleased] - 2026-04-09
+  - **Atomic Security Gating**: プラン（Goal分解）に含まれるすべてのステップを、キュー投入前に一括検証する「Plan-First Verification」を実装。一部のステップが実行されてから違反を検知する「部分実行リスク」を完全に排除。
+  - **Semantic UX Refinement**: ユーザー介入通知に専用の `TaskEvent::AwaitingInput` を新設。UI上で「エラー」と「承認待ち」を明確に区別可能にし、インタラクティブなセキュリティ体験を提供。
+  - **Execution Robustness**: `Goal` カテゴリのジョブデキューバグを修正。ConstitutionalValidator と AdaptiveImmuneSystem の多層防御を TaskDispatcher に完全統合し、全インフラテストを 100% GREEN 化。
+
+## [Unreleased] - 2026-04-09 (Previous)
 
 ### Added
 - **Phase 3-D: Onboarding & Global Alignment [完了]:**

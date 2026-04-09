@@ -3588,6 +3588,9 @@
           "id": {
             "type": "string"
           },
+          "input_constraints": {
+            "description": "引数レベルの制約 (JSONPath または 正規表現)"
+          },
           "lamport_clock": {
             "type": "integer",
             "format": "int64",

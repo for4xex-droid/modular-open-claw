@@ -602,6 +602,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 None, // oracle
                 None, // gig_engine
                 None, // diagnostics
+                Some(Arc::new(
+                    infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone()),
+                )), // immune_system
             );
 
             // Register conductors for integration tests
@@ -1209,6 +1212,7 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
             name: "Test Asset".to_string(),
             description: "Test".to_string(),
             price_coins: 1000,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: None,
         })
         .await

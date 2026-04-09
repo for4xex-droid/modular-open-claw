@@ -38,6 +38,8 @@ pub mod job_queue_mock {
         pub diagnosis: std::sync::Mutex<Option<aiome_core_contracts::trajectory::AgentDiagnosis>>,
         pub trajectory: std::sync::Mutex<Vec<TrajectoryStep>>,
         pub failed_jobs: std::sync::Mutex<Vec<(String, String)>>,
+        pub updated_status: std::sync::Mutex<Option<JobStatus>>,
+        pub active_rules: std::sync::Mutex<Vec<ImmuneRule>>,
     }
 
     #[async_trait]
@@ -91,8 +93,9 @@ pub mod job_queue_mock {
         async fn update_job_status(
             &self,
             _: &str,
-            _: aiome_core_contracts::traits::JobStatus,
+            status: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
+            *self.updated_status.lock().unwrap() = Some(status);
             Ok(())
         }
         async fn reclaim_zombie_jobs(&self, _: i64) -> Result<u64, AiomeError> {
@@ -392,7 +395,7 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
-            Ok(vec![])
+            Ok(self.active_rules.lock().unwrap().clone())
         }
         async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> {
             Ok(())

@@ -90,6 +90,7 @@ impl HarnessRegistryOps for UniversalJobQueue {
                         fire_count: row.get::<i64, _>("fire_count") as u64,
                         false_positive_count: row.get::<i64, _>("false_positive_count") as u64,
                         severity: severity_i32 as u8,
+                        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                         created_at: row.try_get("created_at").unwrap_or_else(|_| String::new()),
                         last_fired_at: row.get("last_fired_at"),
                     });
@@ -117,6 +118,7 @@ impl HarnessRegistryOps for UniversalJobQueue {
                         fire_count: row.get::<i64, _>("fire_count") as u64,
                         false_positive_count: row.get::<i64, _>("false_positive_count") as u64,
                         severity: severity_i32 as u8,
+                        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                         created_at: row.try_get("created_at").unwrap_or_else(|_| String::new()),
                         last_fired_at: row.get("last_fired_at"),
                     });
@@ -175,6 +177,7 @@ impl HarnessRegistryOps for UniversalJobQueue {
                         fire_count: row.get::<i64, _>("fire_count") as u64,
                         false_positive_count: row.get::<i64, _>("false_positive_count") as u64,
                         severity: severity_i32 as u8,
+                        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                         created_at: row.try_get("created_at").unwrap_or_else(|_| String::new()),
                         last_fired_at: row.get("last_fired_at"),
                     }))
@@ -204,6 +207,7 @@ impl HarnessRegistryOps for UniversalJobQueue {
                         fire_count: row.get::<i64, _>("fire_count") as u64,
                         false_positive_count: row.get::<i64, _>("false_positive_count") as u64,
                         severity: severity_i32 as u8,
+                        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
                         created_at: row.try_get("created_at").unwrap_or_else(|_| String::new()),
                         last_fired_at: row.get("last_fired_at"),
                     }))
@@ -266,6 +270,7 @@ mod tests {
             fire_count: 0,
             false_positive_count: 0,
             severity: 90,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             created_at: "2026-03-31T00:00:00Z".to_string(),
             last_fired_at: None,
         };

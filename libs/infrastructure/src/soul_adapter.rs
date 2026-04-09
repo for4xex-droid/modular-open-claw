@@ -101,6 +101,7 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                         lamport_clock: 0,
                         node_id: "local-soul-engine".to_string(),
                         signature: None,
+                        input_constraints: None,
                     };
                     let _ = self.job_queue.store_immune_rule(&rule).await;
                 }
