@@ -168,7 +168,12 @@ enforce_rule() {
     [[ -z "$file" ]] && continue
     [[ ! -f "$file" ]] && continue
     local result
-    result=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v "allow-anti-pattern" || true)
+    if [[ "$file" == *.rs ]]; then
+      # Skip #[cfg(test)] blocks to prevent false positive pattern matches in test code
+      result=$(awk '/^#\[cfg\(test\)\]/{skip=1} !skip {print NR":"$0}' "$file" 2>/dev/null | grep -E "$pattern" | grep -v "allow-anti-pattern" || true)
+    else
+      result=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v "allow-anti-pattern" || true)
+    fi
     if [[ -n "$result" ]]; then
       while IFS= read -r match_line; do
         matches="${matches}${file}:${match_line}"$'\n'

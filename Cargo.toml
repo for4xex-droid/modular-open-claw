@@ -74,7 +74,7 @@ tonic-build = "0.12"
 unwrap_used = "warn"
 
 [workspace.dependencies.wasmtime]
-version = "41.0.4"
+version = "43.0.1"
 
 [workspace.dependencies.wasmtime-wasi]
-version = "41.0.4"
+version = "43.0.1"

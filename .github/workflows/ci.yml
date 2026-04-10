@@ -31,6 +31,9 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Protobuf Compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
@@ -251,7 +254,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-semver-checks
-        run: cargo install cargo-semver-checks --locked
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler && cargo install cargo-semver-checks --locked
 
       - name: Check API compatibility
         run: |
@@ -273,6 +276,9 @@ jobs:
 
       - name: Install Rust (nightly required for udeps)
         uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install Protobuf Compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
