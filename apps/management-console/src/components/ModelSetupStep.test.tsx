@@ -1,7 +1,10 @@
-
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ModelSetupStep } from './ModelSetupStep';
 import { useModelStatus } from '../hooks/useModelStatus';
+
+jest.mock('../config', () => ({
+  API_BASE: 'http://localhost'
+}));
 
 // Mock the hook and i18n
 jest.mock('../hooks/useModelStatus');

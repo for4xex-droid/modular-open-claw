@@ -10,7 +10,7 @@ import { useTranslation } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
 import {
     Monitor, Lock, Database,
-    Shield, Check, X, Loader2, Plus
+    Shield, Check, X, Loader2, Plus, Share2, AlertTriangle
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
@@ -31,6 +31,7 @@ const SettingsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
     const [testResults, setTestResults] = useState<Record<string, { success: boolean, message: string, loading: boolean }>>({});
+    const [globalError, setGlobalError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSettings();
@@ -53,6 +54,7 @@ const SettingsPage: React.FC = () => {
     const updateSetting = async (key: string, value: string, category: string) => {
         setSaving(key);
         try {
+            setGlobalError(null);
             const res = await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
                 method: 'PUT',
                 body: JSON.stringify({ key, value, category })
@@ -65,9 +67,13 @@ const SettingsPage: React.FC = () => {
                         return [...prev, { key, value, category, is_secret: false, updated_at: new Date().toISOString() }];
                     }
                 });
+            } else {
+                const text = await res.text();
+                setGlobalError(`Failed to save setting: ${text}`);
             }
         } catch (error) {
             console.error("Failed to update setting", error);
+            setGlobalError(String(error));
         } finally {
             setTimeout(() => setSaving(null), 500);
         }
@@ -105,6 +111,12 @@ const SettingsPage: React.FC = () => {
 
     return (
         <div className="settings-page" style={{ paddingBottom: '8rem' }}>
+            {globalError && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'var(--accent-rose-10)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose-30)', borderRadius: 'var(--radius-md)' }}>
+                    <AlertTriangle size={20} />
+                    {globalError}
+                </div>
+            )}
             <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', alignItems: 'start' }}>
 
                 {/* 1. Appearance Section */}
@@ -234,6 +246,28 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Channel Bridges Section */}
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <Share2 size={24} color="var(--accent-cyan)" />
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.channelBridges')}</h3>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <SettingInput 
+                            label={t('settings.xBearerToken')} 
+                            value={getSetting('x_bearer_token')}
+                            placeholder={t('settings.enterApiKey')}
+                            onBlur={(v) => updateSetting('x_bearer_token', v, 'integrations')}
+                            saving={saving === 'x_bearer_token'}
+                            isPassword
+                        />
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {t('settings.xBearerTokenNotice')}
+                        </div>
+                    </div>
+                </section>
+
                 {/* 3. Security & Infrastructure */}
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
@@ -260,6 +294,7 @@ const SettingsPage: React.FC = () => {
 // --- Sub-Components ---
 
 const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
+    const { t } = useTranslation();
     const [draft, setDraft] = useState('');
     const [error, setError] = useState('');
     const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -267,7 +302,7 @@ const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, sa
     const addOrigin = () => {
         if (!draft.trim()) return;
         if (items.includes(draft.trim())) {
-            setError('Origin already exists');
+            setError(t('settings.originExists'));
             return;
         }
         const updated = [...items, draft.trim()].join(',');
@@ -284,7 +319,7 @@ const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, sa
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Allowed Origins (CORS)</label>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.allowedOrigins')}</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
@@ -308,18 +343,19 @@ const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, sa
                     style={{ ...inputStyle, flex: 1 }}
                 />
                 <button onClick={addOrigin} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    <Plus size={14} /> Add
+                    <Plus size={14} /> {t('settings.add')}
                 </button>
             </div>
             {error && <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.4rem' }}>{error}</div>}
             <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                ⚠️ Server restart required after changes.
+                {t('settings.serverRestartRequired')}
             </div>
         </div>
     );
 };
 
 const SecretUpdater: React.FC = () => {
+    const { t } = useTranslation();
     const [newSecret, setNewSecret] = useState('');
     const [result, setResult] = useState<{ success: boolean, message: string } | null>(null);
     const [testing, setTesting] = useState(false);
@@ -353,17 +389,17 @@ const SecretUpdater: React.FC = () => {
 
     return (
         <div>
-            <label style={labelStyle}>Update API Secret</label>
+            <label style={labelStyle}>{t('settings.updateApiSecret')}</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
-                    type="password" value={newSecret} placeholder="Enter new API secret"
+                    type="password" value={newSecret} placeholder={t('settings.enterNewSecret')}
                     onChange={(e) => { setNewSecret(e.target.value); setResult(null); }}
                     onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') handleUpdate(); }}
                     style={{ ...inputStyle, flex: 1 }}
                 />
                 <button onClick={handleUpdate} disabled={testing} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
                     {testing ? <Loader2 size={14} className="ani-spin" /> : <Check size={14} />}
-                    Verify
+                    {t('settings.verify')}
                 </button>
             </div>
             {result && (
@@ -399,6 +435,7 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
 };
 
 const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => void, saving?: boolean }> = ({ value, onSelect, saving }) => {
+    const { t } = useTranslation();
     const [models, setModels] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -431,7 +468,7 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Ollama Model</label>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.ollamaModel')}</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
@@ -440,16 +477,16 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
                     onChange={(e) => onSelect(e.target.value)}
                     style={{ ...inputStyle, flex: 1, padding: '0.67rem', outline: 'none' }}
                 >
-                    <option value="" style={{ background: 'var(--bg-primary)' }}>(Enter manually or select...)</option>
+                    <option value="" style={{ background: 'var(--bg-primary)' }}>{t('settings.ollamaPlaceholder')}</option>
                     {models.map(m => (
                         <option key={m} value={m} style={{ background: 'var(--bg-primary)' }}>{m}</option>
                     ))}
                     {!models.includes(value) && value && (
-                        <option value={value} style={{ background: 'var(--bg-primary)' }}>{value} (Current)</option>
+                        <option value={value} style={{ background: 'var(--bg-primary)' }}>{value} {t('settings.current')}</option>
                     )}
                 </select>
                 <button onClick={fetchModels} disabled={loading} title="Refresh Models" style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    {loading ? <Loader2 size={14} className="ani-spin" /> : 'Refresh'}
+                    {loading ? <Loader2 size={14} className="ani-spin" /> : t('settings.refresh')}
                 </button>
             </div>
             {error && <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.4rem' }}>{error}</div>}

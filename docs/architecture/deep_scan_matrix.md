@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-10T20:22:08.763937
+> Generated at: 2026-04-11T01:05:03.544246
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, VoiceStore, VrmRenderer
+- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, React, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, Tag, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**

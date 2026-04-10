@@ -868,6 +868,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/awaiting-input": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/jobs/awaiting-input */
+        get: operations["get_awaiting_input_jobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/cancel": {
         parameters: {
             query?: never;
@@ -896,6 +913,23 @@ export interface paths {
         get: operations["get_job_logs_handler"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/jobs/:id/review */
+        post: operations["submit_job_review"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1493,6 +1527,8 @@ export interface components {
             approval_status?: components["schemas"]["ApprovalState"];
             created_at: string;
             id: string;
+            /** @description 引数レベルの制約 (JSONPath または 正規表現) */
+            input_constraints?: unknown;
             /** Format: int64 */
             lamport_clock?: number;
             node_id?: string;
@@ -1531,6 +1567,10 @@ export interface components {
          * @enum {string}
          */
         IntentCategory: "Learning" | "Tool" | "Service" | "Content" | "Other";
+        JobReviewPayload: {
+            comments?: string | null;
+            status: string;
+        };
         KarmaFeedbackRequest: {
             is_positive: boolean;
             karma_id: string;
@@ -1874,6 +1914,7 @@ export interface components {
         };
         TrendsResponse: {
             trends: components["schemas"]["TrendItem"][];
+            warnings?: string[] | null;
         };
         UpdateSettingsRequest: {
             category: string;
@@ -3407,6 +3448,26 @@ export interface operations {
             };
         };
     };
+    get_awaiting_input_jobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns jobs requiring user input */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     cancel_job_handler: {
         parameters: {
             query?: never;
@@ -3467,6 +3528,38 @@ export interface operations {
             };
             /** @description Job not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    submit_job_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobReviewPayload"];
+            };
+        };
+        responses: {
+            /** @description Review submitted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4083,7 +4176,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Fetch current AI trends (Skeleton) */
+            /** @description Fetch current trends from configured adapters (X, WebSearch, SERP) */
             200: {
                 headers: {
                     [name: string]: unknown;

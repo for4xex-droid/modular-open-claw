@@ -96,7 +96,15 @@ pub const ALLOWED_KEYS: &[&str] = &[
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
-    "llm", "channel", "system", "security", "cors", "identity", "voice", "ui",
+    "llm",
+    "channel",
+    "system",
+    "security",
+    "cors",
+    "identity",
+    "voice",
+    "ui",
+    "integrations",
 ];
 
 pub const SECRETS: &[&str] = &[
@@ -601,6 +609,14 @@ mod tests {
         assert!(
             !SECRETS.contains(&"ollama_host"),
             "ollama_host should NOT be in secrets, it is just a URL"
+        );
+    }
+
+    #[test]
+    fn test_integrations_is_allowed_category() {
+        assert!(
+            ALLOWED_CATEGORIES.contains(&"integrations"),
+            "integrations should be in allowed_categories"
         );
     }
 }

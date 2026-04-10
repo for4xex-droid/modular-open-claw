@@ -10,6 +10,18 @@
     - `CortexQueryEngine` を呼び出す全ての API, Background Worker, AI 自律ループにおいて、知識抽出（RAG）のレイテンシが O(N) から O(1) に飛躍的な向上を遂げた。
     - 外部モジュールに依存させずに独自のフォールバックを持つため、本番環境 (Tauri / Docker) を選ばない移植性が担保された。
 
+## Phase E-3: Front-end UI Standardization & Hardening
+### 1. Unified i18n & Integrations Settings
+- **変更内容**:
+    - `apps/management-console/src/components/cortex/CortexView.tsx` [MODIFY]: 英語でハードコードされていた全テキストを `useTranslation` を用いて i18n (`cortexView`) 名前空間へ移行。
+    - `apps/management-console/src/components/SettingsPage.tsx` [MODIFY]: `Channel Bridges` セクションを新設し、`X API Bearer Token` の入力フォームUIを実装。
+    - `apps/management-console/src/i18n/{en,ja}.json` [MODIFY]: 追加されたUIの翻訳キーを統合。
+    - `apps/management-console/src/components/cortex/CortexView.test.tsx` [ADD]: TDD による i18n テストを追加し、UIレンダリングの健全性を検証。
+    - `apps/management-console/src/components/SettingsPage.test.tsx` [ADD]: TDD によるインテグレーション設定UIのテストを追加。
+- **波及効果**:
+    - NURTURE UI/UX ガイドラインにおける国際化（i18n）の要件を完全に満たした。
+    - X API トークンをフロントエンドから動的に管理できるようになり、TrendSonar 機能の実働テストが可能となった。
+
 ## Phase E-2: Zero-Trust LLM Infrastructure Hardening
 ### 1. Key Proxy Integration & Sunset Dead Code
 - **変更内容**:
@@ -1386,3 +1398,21 @@ graph TD
 - **波及効果**:
     - PostgreSQL と SQLite 環境のどちらでも一貫した動作が可能となり、Enterprise デプロイメント時のスケーラビリティが確保された。
     - コンパイルテスト（315/315）を全通貨確認（GREEN化）。
+
+# 2026-04-10
+
+## Phase 8.6: TrendSonar X API Integration Hardening
+*   **Changed files**:
+    *   `apps/api-server/src/routes/settings.rs` — Fixed category limit bug allowing `integrations` to be saved.
+    *   `libs/infrastructure/src/x_signal_probe.rs` — Extracted parsing logic for JSON safety tests (TDD).
+    *   `libs/infrastructure/src/trend_sonar.rs` — Introduced `build_active_trend_sonar` Factory pattern to prevent state staleness.
+    *   `apps/api-server/src/internal_services/dream.rs` — Refactored to dynamically construct `TrendSonar` instance every loop, picking up fresh API keys without restart.
+    *   `apps/api-server/src/routes/general.rs` — Implemented `/api/v1/trends` using the new Factory.
+    *   `apps/api-server/src/api_integration_tests.rs` — Added comprehensive tests for `trends_api`.
+    *   `apps/management-console/src/components/SettingsPage.tsx` — Added global error state for UX failure feedback.
+*   **Added files**:
+    *   `apps/management-console/src/components/cortex/TrendView.tsx` — Built interactive trending dashboard.
+    *   `apps/management-console/src/components/cortex/CortexView.tsx` — Linked TrendView module to Cortex layout seamlessly.
+*   **Ripple effect**: 
+    *   Tokens/keys like `X_BEARER_TOKEN` added via the UI are now instantly available globally without server restart.
+    *   `ExternalTrendSonar` is now explicitly bounded to `LlmProvider + Send + Sync`.

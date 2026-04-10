@@ -318,13 +318,15 @@ pub async fn release_quarantined_asset(
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct TrendsResponse {
     pub trends: Vec<aiome_core::traits::TrendItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warnings: Option<Vec<String>>,
 }
 
 #[utoipa::path(
     get,
     path = "/api/v1/trends",
     responses(
-        (status = 200, description = "Fetch current AI trends (Skeleton)", body = TrendsResponse),
+        (status = 200, description = "Fetch current trends from configured adapters (X, WebSearch, SERP)", body = TrendsResponse),
         (status = 401, description = "Unauthorized")
     ),
     security(("api_key" = []))
@@ -333,6 +335,29 @@ pub async fn get_trends(
     _state: State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Json<TrendsResponse>, AppError> {
-    // Phase 8.6: Skeleton only. Real implementation in Phase 10.
-    Ok(Json(TrendsResponse { trends: vec![] }))
+    let mut warnings = Vec::new();
+    let trend_sonar = infrastructure::trend_sonar::build_active_trend_sonar(
+        &_state.job_queue,
+        _state.provider.0.clone(),
+    )
+    .await;
+
+    // Use a default broader category for now
+    let trends = match trend_sonar.get_trends("general").await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::warn!("Failed to fetch trends: {}", e);
+            warnings.push(format!("Failed to fetch trends: {}", e));
+            vec![]
+        }
+    };
+
+    Ok(Json(TrendsResponse {
+        trends,
+        warnings: if warnings.is_empty() {
+            None
+        } else {
+            Some(warnings)
+        },
+    }))
 }

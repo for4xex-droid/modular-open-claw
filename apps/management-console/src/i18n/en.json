@@ -429,5 +429,21 @@
     "error_submit": "Failed to confirm action. Status: {{status}}",
     "error_network": "Connection error while submitting the review.",
     "more_requests": "{{count}} more pending requests"
+  },
+  "cortexView": {
+    "knowledgeIndex": "Knowledge Index",
+    "scanningIndex": "Scanning index...",
+    "noArticles": "No articles discovered yet.",
+    "retrievalFailed": "Concept retrieval failed.",
+    "synchronizingThoughts": "Synchronizing thoughts...",
+    "linkedConcepts": "Linked Concepts",
+    "selectArticlePrompt": "Select an article to begin reading.",
+    "loadIndexFailed": "Failed to load knowledge index.",
+    "activeTrends": "Active Trends",
+    "scanningTrends": "Scanning trend signals...",
+    "noActiveTrends": "No active trends discovered.",
+    "configurationWarnings": "Configuration Warnings",
+    "refreshTrends": "Refresh Trends",
+    "loadTrendsFailed": "Failed to fetch trends."
   }
 }

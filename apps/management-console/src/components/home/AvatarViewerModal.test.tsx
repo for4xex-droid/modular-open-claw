@@ -11,7 +11,20 @@ jest.mock('framer-motion', () => ({
 }));
 
 jest.mock('@react-three/fiber', () => ({
-  Canvas: ({ children }: any) => <div data-testid="mock-canvas">{children}</div>
+  Canvas: () => <div data-testid="mock-canvas"></div>
+}));
+
+jest.mock('../../lib/vrm/CharacterBillboard', () => ({
+  __esModule: true,
+  default: () => <div data-testid="mock-character"></div>
+}));
+jest.mock('../../lib/glb/GlbRenderer', () => ({
+  __esModule: true,
+  default: () => <div data-testid="mock-glb"></div>
+}));
+jest.mock('../../lib/inx/InxRenderer', () => ({
+  __esModule: true,
+  default: () => <div data-testid="mock-inx"></div>
 }));
 
 jest.mock('@react-three/drei', () => ({
@@ -19,6 +32,10 @@ jest.mock('@react-three/drei', () => ({
   Float: ({ children }: any) => <>{children}</>,
   MeshReflectorMaterial: () => null,
   Sparkles: () => null
+}));
+
+jest.mock('../../utils/cssVar', () => ({
+  cssVar: () => '#000000'
 }));
 
 describe('AvatarViewerModal', () => {

@@ -1,4 +1,18 @@
-## [Unreleased] - 2026-04-10
+## [Unreleased] - 2026-04-11
+  - **Phase 8.7: TrendSonar Resilience & Concurrency Hardening**:
+    - X API 連携における `429 Too Many Requests` エラーの自律ハンドリング機構を実装。レスポンスヘッダから `Retry-After` 時間を動的に取得し、API クオータ枯渇時の無駄な再試行を完全に遮断。
+    - レート制限管理の `DashMap` 状態演算パニック（TOCTOU問題）を解消するため、`Instant` に `Duration` の差分を計算するハックを廃止。`(Instant, Duration)` 型による絶対安全・アンダーフロー無縁の `saturating_sub` 設計へリファクタリング。`SerpAnalysisAdapter` の実装対称性（Symmetry）も担保。
+    - `TrendSonar` のアダプタ群のループ並行フェッチを `FuturesUnordered` + `tokio::time::timeout` 構成へ完全置換。通信の遅い1つの外部APIによる全体のスレッドストールを回避。
+    - Rust の `cargo test` 並列実行環境下での環境変数（`std::env::set_var`）の汚染や `DashMap::clear()` 競合による Flaky（不安定）テストの温床を根本排除。DI（依存性の注入）パラダイムを用いたテスト専用エンドポイント構築と、テナントキーによるアイソレーションを実施。
+    - `TrendView.tsx` の TypeScript 型定義を、`npm run generate-types` を用いた OpenAPI スキーマ連動定義へ移行（Golden Rule U-004 完全準拠）。UI 進捗バーのスコア・スケーラビリティの欠陥（10% 上限バグ）と残存ハードコード `gap` トークン修正を解決。
+  - **Phase 8.6: TrendSonar X API Integration Hardening**:
+    - `settings.rs` のカテゴリ制限バグを解消し、`integrations` カテゴリでの `x_bearer_token` の保存を許可。`SettingsPage.tsx` の通信 UX においてエラー起因を明確化するグローバルエラー表示（`globalError`）を実装。
+    - `infrastructure::trend_sonar` に `build_active_trend_sonar` Factory パターンを新設し、依存性注入による `State Staleness` 問題を根本回避。さらに `/reflexion` ループでの洞察により、`DreamService` 内の生成タイミングを心拍（10分間隔のループ）内部へ移行し、管理画面からの X API キー変更が再起動なしに即座に反映される動的再構成アーキテクチャを達成。
+    - `get_trends` (`/api/v1/trends`) ハンドラと並列テスト（TDD `test_trends_api`, `parse_x_api_response`）を統合し安全性を証明。
+    - `management-console` 側に新たな `TrendView` ダッシュボードコンポーネントを構築し、外部からの API 設定遅延なしで Cortex コンソールへの直接マージを完了。同時に UI の不正ハードコード（`--radius-full`, 未定義の Tailwind 色変数等）を正規トークンへ置換し、Golden Rule U-002 完全準拠を保証。
+  - **Front-end UI Standardization (Phase E-3)**:
+    - `CortexView.tsx` のハードコードされた英語文字列を全て抽出し、`i18n` (en/ja.json) へ移行完了。これによりアプリ全体の国際化対応漏れを解消。
+    - `SettingsPage.tsx` に新たに `Channel Bridges` セクションを実装し、X API の `xBearerToken` を管理する入力フォームを追加。TDD（Jest）に基づくコンポーネントテストにより UI 回帰を防止。
   - **Phase D: Cortex FTS5 Knowledge Migration (High-Performance Edge AI)**:
     - `CortexQueryEngine` の内部レイテンシを改善するため、O(N) であった `LIKE` 探索を廃止し、大規模なWikiデータ（記事数1万件以上）に対しても常時 O(1) のレイテンシを担保する SQLite FTS5 (Full-Text Search) 機構へ移行完了。
     - **Zero-Downtime Fallback**: FTS テーブルの未作成状態や、FTS5 モジュールが非搭載の特殊な SQLite バージョンで実行された場合に発生する `no such module: fts5` や `syntax error` を即座に検知し、安全に既存の `LIKE` 検索へ縮退運転（フォールバック）するフェイルセーフを構築し、システム全体のクラッシュを防御。
@@ -39,6 +53,10 @@
   - **Interactive Security Approval Loop**:
     - `AwaitingInput` ジョブステータスに対応した `GET /awaiting-input` API および `POST /review` API を完全実装し、ブロック理由のDB永続化および `execution_log` による一回限りの免疫バイパス機構 (`IMMUNE_BYPASS_APPROVED`) を確立。
     - ユーザーが介入するフロントエンド UI として `TaskApprovalOverlay.tsx` を新規実装。Golden Rule トークン (`var(--accent-amber)` 等) を利用した堅牢なデザインシステムと日/英 i18n へ即座に対応（フロント・バックエンド全体で 100% TDD GREEN）。
+  - **Management Console Test Hygiene (Phase E-3 Hotfix)**:
+    - コンポーネントテスト（`App.test.tsx`, `DemoView.test.tsx`, `SettingsPage.test.tsx`）における非同期 `act(...)` 警告を `await waitFor` および完全な隔離モック構成によって払拭し、サイレントで確実な GREEN を達成。
+    - JSDOM 環境に依存する `framer-motion` の `window.scrollTo` 未実装警告を `setupTests.ts` のモックでミュートし、テストログを完全に無菌化。
+    - テストファイル内の TypeScript (ESNext) モックにおける未定義 `require` や `global` 参照エラーを修正し、`npm run lint` における静的解析適合を確保。
 
 
 

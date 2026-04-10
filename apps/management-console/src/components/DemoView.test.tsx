@@ -1,6 +1,10 @@
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import DemoView from './DemoView';
+
+jest.mock('../config', () => ({
+  API_BASE: 'http://localhost'
+}));
 
 // Mock i18n and auth
 jest.mock('../i18n', () => ({
@@ -15,11 +19,20 @@ jest.mock('../lib/auth', () => ({
 
 describe('DemoView', () => {
   const mockStats = {
-    level: 5,
-    resonance: 100,
-    experience: 50,
-    nextLevelExp: 100
+    level: 1, 
+    resonance: 50, 
+    experience: 0, 
+    nextLevelExp: 100,
+    exp: 0,
+    creativity: 50,
+    fatigue: 0
   };
+
+  const originalFetch = window.fetch;
+
+  afterEach(() => {
+    window.fetch = originalFetch;
+  });
 
   it('renders title and description', () => {
     render(<DemoView stats={mockStats} lastEvent={null} isConnected={true} />);
@@ -34,16 +47,25 @@ describe('DemoView', () => {
 
   it('starts demo on button click', async () => {
     // Mock fetch
-    global.fetch = jest.fn().mockResolvedValue({
+    window.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true })
     });
 
     render(<DemoView stats={mockStats} lastEvent={null} isConnected={true} />);
     const startBtn = screen.getByText('demo.startDemo');
-    fireEvent.click(startBtn);
+    
+    // Wrap in act for async state updates
+    await act(async () => {
+        fireEvent.click(startBtn);
+    });
 
-    expect(global.fetch).toHaveBeenCalled();
+    expect(window.fetch).toHaveBeenCalled();
+    
+    // Wait for all async microtasks in the fetch chain to finish to clear act warnings
+    await waitFor(() => {
+        expect(screen.queryByText(/Response OK/)).toBeInTheDocument();
+    });
   });
 
   it('updates step when event arrives', () => {

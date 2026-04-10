@@ -58,11 +58,11 @@
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
 | `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。**ADR-024 Phase 2** で `job_id` および `tool_name` による詳細な追跡に対応。 | **機能拡張完了** |
-| `trend_sonar` | 外部トレンドの収集（Web/RSS）と LLM による評価・選別。マルチソース集約対応。**Phase B/C** にて `DashMap` によるグローバルレートリミットを搭載した `SerpAnalysisAdapter` を新設し SEO トピック・ギャップ分析機構を結合済。 | **強化完了** |
+| `trend_sonar` | 外部トレンドの収集（Web/RSS/X）と LLM による評価・選別。マルチソース集約対応。**Phase 8.7** にて全体ストールを防ぐ `FuturesUnordered` + Timeout の並行アーキテクチャと依存性注入（DI）によるテスト分離パラダイムを確立。 | **Phase 8.7 完了** |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。`ConstitutionalValidator` で `SlmBridge` の矛盾検知を強化。CLI依存を排除した `LocalMockSlm` によるフェイルセーフなTDD環境を構築済。 | **強化完了** |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
-| `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。インメモリのレートリミット（DashMap）を内包する。 | **実装完了** |
+| `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。**Phase 8.7** にて、429 Retry-After 自律解析と、DashMap によるアンダーフロー無縁 (`saturating_sub`) な絶対安全レート制限機構へ到達。 | **Phase 8.7 完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 | `task_orchestrator`| 非同期タスクの管理とディスパッチ。AdaptiveImmuneSystem との統合検証、ユーザー介入（Elicitation）ワークフローの中核。レビューRejectによる即時エスクローキャンセルと返金のライフサイクルが完全連携済み。 | **Phase 2B-2 Refund & Approval 完了** |
 
@@ -70,4 +70,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-10 (Asia/Tokyo) - Phase D Cortex FTS5 Migration*
+*最終更新: 2026-04-11 (Asia/Tokyo) - Phase 8.7 TrendSonar Hardening*

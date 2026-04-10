@@ -1,9 +1,6 @@
 use crate::AppState;
 use aiome_core_contracts::traits::AgentEvolver;
-use infrastructure::cortex_file_projector::CortexFileProjector;
 use infrastructure::dream_state::DreamState;
-use infrastructure::trend_sonar::{ExternalTrendSonar, SerpAnalysisAdapter};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
 use tracing::{error, info, warn};
@@ -38,60 +35,21 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     // 1. DreamState の初期化 (ADR-025: Agent-Native Discovery 有効化)
     let dream_state = DreamState::new(state.provider.get_inner().clone());
 
-    // 2. TrendSonar の準備（探索夢向け）
-    // Phase β: Inject SerpAnalysisAdapter for trend-based SEO gap identification
-    let mut adapters: Vec<Arc<dyn infrastructure::trend_sonar::TrendAdapter>> = vec![];
-
-    // Read SEARCH_API_KEY from DB or Env
-    let search_api_key = state
-        .job_queue
-        .get_setting_value("search_api_key")
-        .await
-        .unwrap_or_default()
-        .or_else(|| std::env::var("SEARCH_API_KEY").ok());
-
-    // WebSearchAdapter + SerpAnalysisAdapter using SEARCH_API_KEY
-    if let Some(api_key) = search_api_key {
-        if !api_key.is_empty() {
-            adapters.push(Arc::new(
-                infrastructure::trend_sonar::WebSearchAdapter::new(api_key.clone()),
-            ));
-            adapters.push(Arc::new(SerpAnalysisAdapter::new(api_key)));
-            info!("✅ [DreamService] WebSearch + SerpAnalysis adapters registered.");
-        }
-    }
-
-    // Read X_BEARER_TOKEN from DB or Env
-    let x_token = state
-        .job_queue
-        .get_setting_value("x_bearer_token")
-        .await
-        .unwrap_or_default()
-        .or_else(|| std::env::var("X_BEARER_TOKEN").ok());
-
-    // XSignalProbe using X_BEARER_TOKEN
-    if let Some(x_token) = x_token {
-        if !x_token.is_empty() {
-            adapters.push(Arc::new(infrastructure::x_signal_probe::XSignalProbe::new(
-                x_token,
-            )));
-            info!("✅ [DreamService] XSignalProbe adapter registered.");
-        }
-    }
-
-    if adapters.is_empty() {
-        info!("ℹ️ [DreamService] No SEARCH_API_KEY or X_BEARER_TOKEN found. TrendSonar running in passive mode.");
-    }
-    let trend_sonar = ExternalTrendSonar::new(adapters, None);
-
-    // 3. Queue / AgentLevel 情報へのアクセス
+    // 2. Queue / AgentLevel 情報へのアクセス
     let job_queue = job_queue_inner;
+    let llm_provider = state.provider.0.clone();
 
-    // 4. 定期実行ループ (心拍の裏で長時間走る)
+    // 3. 定期実行ループ (心拍の裏で長時間走る)
     let mut timer = interval(Duration::from_secs(600)); // 10分おき
 
     loop {
         timer.tick().await;
+
+        // TrendSonar をループ毎に再構築し、最新の DB 設定を反映する
+        // (State Staleness 防止: API キーの動的変更に追従)
+        let trend_sonar =
+            infrastructure::trend_sonar::build_active_trend_sonar(&job_queue, llm_provider.clone())
+                .await;
 
         let level = job_queue
             .get_agent_stats()

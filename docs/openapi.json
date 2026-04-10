@@ -2748,7 +2748,7 @@
         "operationId": "get_trends",
         "responses": {
           "200": {
-            "description": "Fetch current AI trends (Skeleton)",
+            "description": "Fetch current trends from configured adapters (X, WebSearch, SERP)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4765,6 +4765,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TrendItem"
+            }
+          },
+          "warnings": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
             }
           }
         }

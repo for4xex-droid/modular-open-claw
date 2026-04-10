@@ -4945,6 +4945,7 @@ dependencies = [
  "wasi 0.14.7+wasi-0.2.4",
  "wasmtime",
  "wasmtime-wasi",
+ "wiremock",
  "zeroize",
 ]
 

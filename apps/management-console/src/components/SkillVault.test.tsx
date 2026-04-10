@@ -1,7 +1,10 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import SkillVault from './SkillVault';
 import { authenticatedFetch } from '../lib/auth';
+
+jest.mock('../config', () => ({
+  API_BASE: 'http://localhost'
+}));
 
 // Mock Auth
 jest.mock('../lib/auth', () => ({
@@ -19,7 +22,7 @@ describe('SkillVault Component', () => {
     window.alert = jest.fn();
   });
 
-  it('RED: "Install Skill" button should show a coming soon alert when clicked', async () => {
+  it('RED: "Install Skill" button should be disabled and show coming soon title', async () => {
     // Arrange: Mock the API to return a marketplace skill
     (authenticatedFetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -41,10 +44,10 @@ describe('SkillVault Component', () => {
     });
 
     // Act
-    const installBtn = screen.getByText(/Install Skill/i);
-    fireEvent.click(installBtn);
+    const installBtn = screen.getByText(/Install Skill/i).closest('button');
 
-    // Assert: The button should be wired to an onClick that alerts "Coming soon in Phase 3"
-    expect(window.alert).toHaveBeenCalledWith('Coming soon in Phase 3');
+    // Assert: The button should be disabled and have title
+    expect(installBtn).toBeDisabled();
+    expect(installBtn).toHaveAttribute('title', 'Coming soon in Phase 3');
   });
 });

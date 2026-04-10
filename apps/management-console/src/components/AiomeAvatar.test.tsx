@@ -12,7 +12,7 @@ jest.mock('../hooks/AvatarContext', () => ({
 describe('AiomeAvatar', () => {
   it('renders avatar image with correct src', () => {
     render(<AiomeAvatar status="idle" />);
-    const img = screen.getByAltText('Aiome Chibi');
+    const img = screen.getByAltText('avatar.status.idle');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', 'test-path-lite.png');
   });

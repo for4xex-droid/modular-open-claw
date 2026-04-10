@@ -8,8 +8,11 @@ import { API_BASE } from '../../config';
 
 type WikiArticleSummary = components['schemas']['WikiArticleSummary'];
 type WikiArticleDetail = components['schemas']['WikiArticle'];
+import { useTranslation } from '../../i18n';
+import TrendView from './TrendView';
 
 export default function CortexView() {
+  const { t } = useTranslation();
   const [articles, setArticles] = useState<WikiArticleSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<WikiArticleDetail | null>(null);
@@ -33,7 +36,7 @@ export default function CortexView() {
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
         console.error('Failed to fetch wiki articles', e);
-        setError('Failed to load knowledge index.');
+        setError(t('cortexView.loadIndexFailed'));
       } finally {
         setLoading(false);
       }
@@ -62,7 +65,7 @@ export default function CortexView() {
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
         console.error('Failed to fetch detail', e);
-        setError('Concept retrieval failed.');
+        setError(t('cortexView.retrievalFailed'));
       } finally {
         setLoading(false);
       }
@@ -72,18 +75,23 @@ export default function CortexView() {
   }, [selectedId]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--layout-panel-gap)', height: 'calc(100vh - 100px)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) minmax(250px, 1fr) minmax(400px, 2fr)', gap: 'var(--layout-panel-gap)', height: 'calc(100vh - 100px)' }}>
+      {/* Trend View Panel */}
+      <div className="main-panel ani-fade" style={{ padding: 'var(--space-md)' }}>
+        <TrendView />
+      </div>
+
       {/* Wiki List Panel */}
       <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', overflowY: 'auto', padding: 'var(--space-md)' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>Knowledge Index</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('cortexView.knowledgeIndex')}</h3>
 
         {loading && !articles.length && (
-          <div className="ani-pulse" style={{ color: 'var(--accent-cyan)' }}>Scanning index...</div>
+          <div className="ani-pulse" style={{ color: 'var(--accent-cyan)' }}>{t('cortexView.scanningIndex')}</div>
         )}
 
         {!loading && !articles.length && !error && (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: 'var(--space-sm)' }}>
-            No articles discovered yet.
+            {t('cortexView.noArticles')}
           </div>
         )}
 
@@ -129,7 +137,7 @@ export default function CortexView() {
         )}
 
         {loading && selectedId && !detail && (
-          <div className="ani-pulse" style={{ color: 'var(--accent-cyan)' }}>Synchronizing thoughts...</div>
+          <div className="ani-pulse" style={{ color: 'var(--accent-cyan)' }}>{t('cortexView.synchronizingThoughts')}</div>
         )}
 
         {detail ? (
@@ -180,7 +188,7 @@ export default function CortexView() {
                 background: 'var(--bg-glass-light)',
                 borderRadius: 'var(--radius-sm)',
               }}>
-                <h4 style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', fontSize: '0.8rem' }}>Linked Concepts</h4>
+                <h4 style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', fontSize: '0.8rem' }}>{t('cortexView.linkedConcepts')}</h4>
                 <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
                   {detail.backlinks.map(c => (
                     <span key={c} style={{
@@ -199,7 +207,7 @@ export default function CortexView() {
         ) : (
           !error && !loading && (
             <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              Select an article to begin reading.
+              {t('cortexView.selectArticlePrompt')}
             </div>
           )
         )}

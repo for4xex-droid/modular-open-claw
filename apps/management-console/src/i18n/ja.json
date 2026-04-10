@@ -428,5 +428,21 @@
     "error_submit": "アクションの確定に失敗しました。ステータス: {{status}}",
     "error_network": "レビューの送信中に通信エラーが発生しました。",
     "more_requests": "他 {{count}} 件の保留中のリクエスト"
+  },
+  "cortexView": {
+    "knowledgeIndex": "ナレッジ・インデックス",
+    "scanningIndex": "インデックスをスキャン中...",
+    "noArticles": "まだ記事が確認されていません。",
+    "retrievalFailed": "コンセプトの取得に失敗しました。",
+    "synchronizingThoughts": "思考を同期中...",
+    "linkedConcepts": "リンクされたコンセプト",
+    "selectArticlePrompt": "記事を選択して閲覧を開始します。",
+    "loadIndexFailed": "ナレッジ・インデックスの取得に失敗しました。",
+    "activeTrends": "アクティブ・トレンド",
+    "scanningTrends": "トレンド・シグナルをスキャン中...",
+    "noActiveTrends": "現在、アクティブなトレンドは検出されていません。",
+    "configurationWarnings": "設定に関する警告",
+    "refreshTrends": "トレンドを更新",
+    "loadTrendsFailed": "トレンドの取得に失敗しました。"
   }
 }

@@ -11,7 +11,7 @@
     "generate-types": "openapi-typescript ../../docs/openapi.json -o src/types/generated.ts",
     "audit": "npm audit",
     "lint": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns=e2e/",
     "rebuild": "npm rebuild"
   },
   "dependencies": {

@@ -51,14 +51,18 @@ pub trait TrendAdapter: Send + Sync {
 pub struct WebSearchAdapter {
     api_key: String,
     client: reqwest::Client,
+    endpoint: String,
 }
 
 impl WebSearchAdapter {
     /// WebSearchAdapter の新規インスタンスを生成する
     pub fn new(api_key: String) -> Self {
+        let endpoint = std::env::var("SEARCH_API_ENDPOINT")
+            .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".to_string());
         Self {
             api_key,
             client: aiome_core::http::get_http_client().clone(),
+            endpoint,
         }
     }
 }
@@ -75,12 +79,9 @@ impl TrendAdapter for WebSearchAdapter {
             category
         );
 
-        let endpoint = std::env::var("SEARCH_API_ENDPOINT")
-            .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".to_string());
-
         let res = self
             .client
-            .get(&endpoint)
+            .get(&self.endpoint)
             .query(&[("q", category), ("freshness", "pd"), ("count", "3")])
             .header("X-Subscription-Token", &self.api_key)
             .header("Accept", "application/json")
@@ -123,23 +124,70 @@ impl TrendAdapter for WebSearchAdapter {
         Ok(trends)
     }
 }
+
+pub async fn build_active_trend_sonar(
+    jq: &crate::job_queue::UniversalJobQueue,
+    eval_llm: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>>,
+) -> ExternalTrendSonar {
+    let mut adapters: Vec<std::sync::Arc<dyn TrendAdapter>> = vec![];
+
+    // Read SEARCH_API_KEY from DB or Env
+    let search_api_key = jq
+        .get_setting_value("search_api_key")
+        .await
+        .unwrap_or_default()
+        .or_else(|| std::env::var("SEARCH_API_KEY").ok());
+
+    if let Some(api_key) = search_api_key {
+        if !api_key.is_empty() {
+            adapters.push(std::sync::Arc::new(WebSearchAdapter::new(api_key.clone())));
+            adapters.push(std::sync::Arc::new(SerpAnalysisAdapter::new(api_key)));
+        }
+    }
+
+    // Read X_BEARER_TOKEN from DB or Env
+    let x_token = jq
+        .get_setting_value("x_bearer_token")
+        .await
+        .unwrap_or_default()
+        .or_else(|| std::env::var("X_BEARER_TOKEN").ok());
+
+    if let Some(x_token) = x_token {
+        if !x_token.is_empty() {
+            adapters.push(std::sync::Arc::new(
+                crate::x_signal_probe::XSignalProbe::new(x_token),
+            ));
+        }
+    }
+
+    if adapters.is_empty() {
+        tracing::info!("ℹ️ [TrendSonar Factory] Running in passive mode (No API keys found).");
+    }
+
+    ExternalTrendSonar::new(adapters, eval_llm)
+}
+
 use dashmap::DashMap;
 use std::time::{Duration, Instant};
 
-static SERP_API_RATE_LIMITER: once_cell::sync::Lazy<DashMap<String, Instant>> =
+static SERP_API_RATE_LIMITER: once_cell::sync::Lazy<DashMap<String, (Instant, Duration)>> =
     once_cell::sync::Lazy::new(|| DashMap::new());
 
 /// SerpAnalysisAdapter: SEO Topic Gab and Competitor SERP Analysis
 pub struct SerpAnalysisAdapter {
     api_key: String,
     client: reqwest::Client,
+    endpoint: String,
 }
 
 impl SerpAnalysisAdapter {
     pub fn new(api_key: String) -> Self {
+        let endpoint = std::env::var("SEARCH_API_ENDPOINT")
+            .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".to_string());
         Self {
             api_key,
             client: aiome_core::http::get_http_client().clone(),
+            endpoint,
         }
     }
 }
@@ -155,13 +203,17 @@ impl TrendAdapter for SerpAnalysisAdapter {
         }
 
         if let Some(mut time) = SERP_API_RATE_LIMITER.get_mut(&self.api_key) {
-            if time.elapsed() < Duration::from_secs(600) {
-                tracing::info!("🚦 [SerpAnalysisAdapter] Rate limited to protect API quota.");
+            let elapsed = time.0.elapsed();
+            if elapsed < time.1 {
+                tracing::info!("🚦 [SerpAnalysisAdapter] Rate limited to protect API quota. (Cooldown remaining: {}s)", time.1.saturating_sub(elapsed).as_secs());
                 return Ok(vec![]);
             }
-            *time = Instant::now();
+            *time = (Instant::now(), Duration::from_secs(600));
         } else {
-            SERP_API_RATE_LIMITER.insert(self.api_key.clone(), Instant::now());
+            SERP_API_RATE_LIMITER.insert(
+                self.api_key.clone(),
+                (Instant::now(), Duration::from_secs(600)),
+            );
         }
 
         #[cfg(any(test, feature = "test-utils"))]
@@ -173,14 +225,11 @@ impl TrendAdapter for SerpAnalysisAdapter {
             }]);
         }
 
-        let endpoint = std::env::var("SEARCH_API_ENDPOINT")
-            .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".into());
-
         let seo_query = format!("{} best practices tips", query);
 
         let res = self
             .client
-            .get(&endpoint)
+            .get(&self.endpoint)
             .query(&[
                 ("q", seo_query.as_str()),
                 ("freshness", "pm"),
@@ -234,14 +283,14 @@ impl TrendAdapter for SerpAnalysisAdapter {
 /// `ExternalTrendSonar` 構造体
 pub struct ExternalTrendSonar {
     adapters: Vec<std::sync::Arc<dyn TrendAdapter>>,
-    provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>>,
+    provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>>,
 }
 
 impl ExternalTrendSonar {
     /// ExternalTrendSonar の新規インスタンスを生成する
     pub fn new(
         adapters: Vec<std::sync::Arc<dyn TrendAdapter>>,
-        provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>>,
+        provider: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>>,
     ) -> Self {
         Self { adapters, provider }
     }
@@ -250,12 +299,41 @@ impl ExternalTrendSonar {
 #[async_trait]
 impl TrendSource for ExternalTrendSonar {
     async fn get_trends(&self, category: &str) -> Result<Vec<TrendItem>, AiomeError> {
+        use futures::stream::{FuturesUnordered, StreamExt};
+        use tokio::time::timeout;
+
         let mut all_trends = Vec::new();
+        let mut futures = FuturesUnordered::new();
+        let adapter_timeout = Duration::from_secs(10);
+
         for adapter in &self.adapters {
-            match adapter.fetch(category).await {
+            let cat = category.to_string();
+            let a = adapter.clone();
+
+            futures.push(async move {
+                let name = a.name().to_string();
+                match timeout(adapter_timeout, a.fetch(&cat)).await {
+                    Ok(Ok(trends)) => (name, Ok(trends)),
+                    Ok(Err(e)) => (name, Err(e)),
+                    Err(_) => (
+                        name.clone(),
+                        Err(AiomeError::Infrastructure {
+                            reason: format!(
+                                "Adapter {} timed out after {}s",
+                                name,
+                                adapter_timeout.as_secs()
+                            ),
+                        }),
+                    ),
+                }
+            });
+        }
+
+        while let Some((name, result)) = futures.next().await {
+            match result {
                 Ok(mut trends) => all_trends.append(&mut trends),
                 Err(e) => {
-                    tracing::warn!("⚠️ [TrendSonar] Adapter {} failed: {}", adapter.name(), e)
+                    tracing::warn!("⚠️ [TrendSonar] Adapter {} failed: {}", name, e)
                 }
             }
         }
@@ -275,7 +353,7 @@ impl TrendSource for ExternalTrendSonar {
 impl ExternalTrendSonar {
     async fn evaluate_trends_with_llm(
         &self,
-        provider: &std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider>,
+        provider: &std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
         category: &str,
         trends: Vec<TrendItem>,
     ) -> Result<Vec<TrendItem>, AiomeError> {
@@ -351,7 +429,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_trend_sonar_aggregation() {
-        let adapter1: Arc<dyn TrendAdapter> = Arc::new(MockAdapter {
+        let adapter1: Arc<dyn TrendAdapter> = std::sync::Arc::new(MockAdapter {
             name: "source1".into(),
             trends: vec![TrendItem {
                 keyword: "rust".into(),
@@ -359,7 +437,7 @@ mod tests {
                 score: 1.0,
             }],
         });
-        let adapter2: Arc<dyn TrendAdapter> = Arc::new(MockAdapter {
+        let adapter2: Arc<dyn TrendAdapter> = std::sync::Arc::new(MockAdapter {
             name: "source2".into(),
             trends: vec![TrendItem {
                 keyword: "aiome".into(),
