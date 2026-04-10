@@ -246,7 +246,9 @@ async fn main() -> anyhow::Result<()> {
                 .into_inner(),
         )
         // --- Defense Layer 1: Payload & Timeout Protection ---
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB max (covers WP payload limits)
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(
+            10 * 1024 * 1024,
+        )) // 10MB max (covers WP payload limits)
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_secs(120),
         )); // 120s for LLM calls
@@ -685,18 +687,29 @@ pub(crate) async fn handle_wp_publish(
 
     let url = match &state.wp_api_url {
         Some(u) => format!("{}/wp-json/wp/v2/posts", u.trim_end_matches('/')),
-        None => return (StatusCode::SERVICE_UNAVAILABLE, "WP Integration not configured").into_response(),
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "WP Integration not configured",
+            )
+                .into_response();
+        }
     };
 
     let token = match &state.wp_api_token {
         Some(t) => t.expose_secret(),
-        None => return (StatusCode::SERVICE_UNAVAILABLE, "WP Token not configured").into_response(),
+        None => {
+            return (StatusCode::SERVICE_UNAVAILABLE, "WP Token not configured").into_response();
+        }
     };
 
     // §SEC: Validate WP status to prevent unauthorized state transitions (e.g. "trash")
     const ALLOWED_WP_STATUSES: &[&str] = &["draft", "publish", "pending", "private", "future"];
     if !ALLOWED_WP_STATUSES.contains(&payload.status.as_str()) {
-        tracing::warn!("🚫 [KeyProxy] Rejected invalid WP status: {}", payload.status);
+        tracing::warn!(
+            "🚫 [KeyProxy] Rejected invalid WP status: {}",
+            payload.status
+        );
         return (StatusCode::BAD_REQUEST, "Invalid WordPress post status").into_response();
     }
 
@@ -718,7 +731,11 @@ pub(crate) async fn handle_wp_publish(
         Ok(resp) => {
             if resp.status().is_success() {
                 if let Ok(wp_res) = resp.json::<serde_json::Value>().await {
-                    let link = wp_res.get("link").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let link = wp_res
+                        .get("link")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
                     return Json(WpProxyResponse { link }).into_response();
                 }
             } else {

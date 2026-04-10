@@ -78,12 +78,19 @@ impl Publisher for WordPressAdapter {
         // TDD GREEN: Intercept mock testing environments dynamically (isolated from production)
         #[cfg(any(test, feature = "test-utils"))]
         {
-            let is_mock = self.token.as_deref() == Some("fake-token") 
+            let is_mock = self.token.as_deref() == Some("fake-token")
                 || self.vault_secret.as_deref() == Some("fake-token")
                 || self.api_url.as_deref().unwrap_or("").contains("wp.local")
-                || self.proxy_url.as_deref().unwrap_or("").contains("proxy.local");
+                || self
+                    .proxy_url
+                    .as_deref()
+                    .unwrap_or("")
+                    .contains("proxy.local");
             if is_mock {
-                return Ok(format!("{}/?p=1", self.api_url.as_deref().unwrap_or("http://wp.local")));
+                return Ok(format!(
+                    "{}/?p=1",
+                    self.api_url.as_deref().unwrap_or("http://wp.local")
+                ));
             }
         }
 
@@ -100,11 +107,9 @@ impl Publisher for WordPressAdapter {
             if let Some(vs) = &self.vault_secret {
                 req = req.bearer_auth(vs);
             }
-            req.send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("VaultProxy WP request failed: {}", e),
-                })?
+            req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("VaultProxy WP request failed: {}", e),
+            })?
         } else if let (Some(api_url), Some(token)) = (&self.api_url, &self.token) {
             // Legacy direct request
             let endpoint = format!("{}/wp-json/wp/v2/posts", api_url.trim_end_matches('/'));
@@ -124,7 +129,8 @@ impl Publisher for WordPressAdapter {
                 })?
         } else {
             return Err(AiomeError::Infrastructure {
-                reason: "WordPressAdapter is misconfigured (neither proxy nor direct mode)".to_string(),
+                reason: "WordPressAdapter is misconfigured (neither proxy nor direct mode)"
+                    .to_string(),
             });
         };
 
@@ -184,7 +190,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_wordpress_adapter_publishes_content_via_vault() {
-        let adapter = WordPressAdapter::new_vault("http://proxy.local".into(), "test-caller".into(), "fake-token".into());
+        let adapter = WordPressAdapter::new_vault(
+            "http://proxy.local".into(),
+            "test-caller".into(),
+            "fake-token".into(),
+        );
         let content = "<h1>Vault Test Content</h1>";
         let metadata = json!({
             "title": "Vault Vault",

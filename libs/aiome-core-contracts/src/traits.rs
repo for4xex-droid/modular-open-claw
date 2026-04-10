@@ -989,6 +989,6 @@ pub trait AffiliateAdapter: Send + Sync {
         &self,
         intent: &crate::gig::GigIntent,
     ) -> Result<Vec<crate::gig::GigBid>, crate::error::AiomeError>;
-    
+
     fn validate_url(&self, url: &str) -> Result<(), crate::error::AiomeError>;
 }

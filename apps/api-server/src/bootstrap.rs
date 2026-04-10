@@ -708,20 +708,29 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     // [Step 1.7.5] Bootstrap PublishPipeline for SEO / CMS integration
     let publish_pipeline = Arc::new(infrastructure::publisher::PublishPipeline::new({
         let mut publishers: Vec<Box<dyn aiome_core_contracts::traits::Publisher>> = Vec::new();
-        
-        let wp_enabled = std::env::var("WP_SDK_ENABLED").is_ok() || std::env::var("WP_API_URL").is_ok();
-        
+
+        let wp_enabled =
+            std::env::var("WP_SDK_ENABLED").is_ok() || std::env::var("WP_API_URL").is_ok();
+
         if wp_enabled {
             if let Ok(proxy_url) = std::env::var("KEY_PROXY_URL") {
                 let vault_secret = std::env::var("VAULT_SECRET").unwrap_or_default();
                 publishers.push(Box::new(
-                    infrastructure::publisher::wordpress::WordPressAdapter::new_vault(proxy_url, "api-server".to_string(), vault_secret),
+                    infrastructure::publisher::wordpress::WordPressAdapter::new_vault(
+                        proxy_url,
+                        "api-server".to_string(),
+                        vault_secret,
+                    ),
                 ));
-                tracing::info!("✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy.");
+                tracing::info!(
+                    "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
+                );
             } else if let Ok(wp_url) = std::env::var("WP_API_URL") {
                 let wp_token = std::env::var("WP_API_TOKEN").unwrap_or_default();
                 publishers.push(Box::new(
-                    infrastructure::publisher::wordpress::WordPressAdapter::new_direct(wp_url, wp_token),
+                    infrastructure::publisher::wordpress::WordPressAdapter::new_direct(
+                        wp_url, wp_token,
+                    ),
                 ));
                 tracing::info!("✅ [PublishPipeline] WordPress publisher registered via direct token (Legacy).");
             }
@@ -737,7 +746,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             }
         }
 
-        if cfg!(debug_assertions) && std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok() && publishers.is_empty() {
+        if cfg!(debug_assertions)
+            && std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok()
+            && publishers.is_empty()
+        {
             tracing::info!("🧪 [PublishPipeline] Forcing MockXPublisher due to AIOME_FORCE_MOCK_PUBLISHER env var.");
             publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
         }
@@ -745,7 +757,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         if publishers.is_empty() {
             tracing::warn!("⚠️ [PublishPipeline] No publishers registered. SEO content will be generated but NOT published.");
         }
-        
+
         publishers
     }));
 
@@ -910,7 +922,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         audit_logger: Component::new(audit_logger),
         affiliate_adapter: Component::new(Arc::new(
             infrastructure::intent::MockAffiliateAdapter::new(),
-        ) as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>),
+        )
+            as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>),
         soul_pipeline: Component::new(soul_pipeline),
         transcription_engine: Component::new(transcription_engine),
         task_dispatcher: Component::new(task_dispatcher),
