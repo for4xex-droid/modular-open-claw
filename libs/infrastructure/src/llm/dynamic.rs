@@ -54,12 +54,22 @@ impl LlmProvider for DynamicLlmProvider {
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(aiome_core_contracts::llm::LlmMessage {
+                role: "system".to_string(),
+                content: sys.to_string(),
+                cache: true, // Enable context caching for system preamble
+            });
+        }
+        messages.push(aiome_core_contracts::llm::LlmMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+            cache: false,
+        });
+
         let request = LlmRequest {
-            messages: vec![aiome_core_contracts::llm::LlmMessage {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-                cache: false,
-            }],
+            messages,
             temperature: None,
             max_tokens: None,
             stop_sequences: None,
@@ -146,12 +156,22 @@ impl LlmProvider for DynamicLlmProvider {
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks (Streaming) ---
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(aiome_core_contracts::llm::LlmMessage {
+                role: "system".to_string(),
+                content: sys.to_string(),
+                cache: true,
+            });
+        }
+        messages.push(aiome_core_contracts::llm::LlmMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+            cache: false,
+        });
+
         let request = LlmRequest {
-            messages: vec![aiome_core_contracts::llm::LlmMessage {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-                cache: false,
-            }],
+            messages,
             temperature: None,
             max_tokens: None,
             stop_sequences: None,
@@ -341,7 +361,7 @@ impl DynamicLlmProvider {
                 if is_bg {
                     std::env::var("BG_LLM_PROVIDER").ok()
                 } else {
-                    None
+                    std::env::var("LLM_PROVIDER").ok()
                 }
             })
             .unwrap_or_else(|| "ollama".to_string());
@@ -356,7 +376,7 @@ impl DynamicLlmProvider {
                 if is_bg {
                     std::env::var("BG_LLM_MODEL").ok()
                 } else {
-                    None
+                    std::env::var("LLM_MODEL").ok()
                 }
             })
             .unwrap_or_else(|| self.fallback_model.clone());
@@ -446,12 +466,22 @@ impl LlmProvider for BackgroundLlmProvider {
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
+        let mut messages = Vec::new();
+        if let Some(sys) = system {
+            messages.push(aiome_core_contracts::llm::LlmMessage {
+                role: "system".to_string(),
+                content: sys.to_string(),
+                cache: true,
+            });
+        }
+        messages.push(aiome_core_contracts::llm::LlmMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+            cache: false,
+        });
+
         let request = LlmRequest {
-            messages: vec![aiome_core_contracts::llm::LlmMessage {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-                cache: false,
-            }],
+            messages,
             temperature: None,
             max_tokens: None,
             stop_sequences: None,

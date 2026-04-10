@@ -12,6 +12,9 @@
 #![allow(missing_docs)]
 #![deny(clippy::all)]
 
+use std::sync::OnceLock;
+use regex::Regex;
+
 use napi::Result;
 use napi_derive::napi;
 mod state;
@@ -249,25 +252,26 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
     );
 
     // 1. Baseline RegExp Check (Sentinel Layer 1.5 - No DB needed)
-    // catch obvious dangerous patterns quickly
-    let dangerous_patterns = [
-        r"(?i)rm\s+-rf",
-        r"(?i)chmod\s+777",
-        r"(?i)cat\s+/etc/shadow",
-        r"(?i)shutdown",
-        r"(?i)reboot",
-        r#"(?i)":\s*".*";"#, // Simplified injection sniff
-    ];
+    // catch obvious dangerous patterns quickly using cached RegExp instances
+    static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
+        vec![
+            Regex::new(r"(?i)rm\s+-rf").unwrap(),
+            Regex::new(r"(?i)chmod\s+777").unwrap(),
+            Regex::new(r"(?i)cat\s+/etc/shadow").unwrap(),
+            Regex::new(r"(?i)shutdown").unwrap(),
+            Regex::new(r"(?i)reboot").unwrap(),
+            Regex::new(r#"(?i)":\s*".*";"#).unwrap(), // Simplified injection sniff
+        ]
+    });
 
-    for pattern in &dangerous_patterns {
-        if let Ok(re) = regex::Regex::new(pattern) {
-            if re.is_match(&params) {
-                return Ok(ToolCheckResponse {
-                    blocked: true,
-                    reason: Some(format!("[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}", pattern)),
-                    new_params: None,
-                });
-            }
+    for re in patterns {
+        if re.is_match(&params) {
+            return Ok(ToolCheckResponse {
+                blocked: true,
+                reason: Some(format!("[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}", re.as_str())),
+                new_params: None,
+            });
         }
     }
 

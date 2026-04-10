@@ -11,12 +11,12 @@ use aiome_core_contracts::traits::TrendItem;
 use async_trait::async_trait;
 use tracing::info;
 
-/// AffiliateAdapter: アフィリエイトAPI (Amazon/Rakuten) から商品情報を取得し TrendItem に変換する
-pub struct AffiliateAdapter {
+/// MockAffiliateAdapter: アフィリエイトAPI (Amazon/Rakuten) から商品情報を取得し TrendItem に変換する
+pub struct MockAffiliateAdapter {
     allowlist: Vec<String>,
 }
 
-impl AffiliateAdapter {
+impl MockAffiliateAdapter {
     /// アフィリエイトアダプターの新規インスタンスを生成する
     pub fn new() -> Self {
         Self {
@@ -71,7 +71,7 @@ impl AffiliateAdapter {
 }
 
 #[async_trait]
-impl TrendAdapter for AffiliateAdapter {
+impl TrendAdapter for MockAffiliateAdapter {
     fn name(&self) -> &str {
         "Affiliate"
     }
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_affiliate_adapter_ssrf_blocking_red() {
-        let adapter = AffiliateAdapter::new();
+        let adapter = MockAffiliateAdapter::new();
 
         // 許可リスト外のドメイン
         let malicious_url = "http://localhost:16379/secret"; // allow-anti-pattern

@@ -7,7 +7,7 @@
 
 /// アフィリエイトアダプターモジュール
 pub mod affiliate_adapter;
-pub use affiliate_adapter::AffiliateAdapter;
+pub use affiliate_adapter::MockAffiliateAdapter;
 
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::security_impl::sanitize_llm_output;

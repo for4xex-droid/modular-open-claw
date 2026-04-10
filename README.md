@@ -70,7 +70,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 - 🏥 **Self-Healing (Watchtower)**: エラーが起きた際、原因を推論し、自己修復ヒントを抽出して再試行する自律診断ループ。
 - 🎨 **Creative Studio**: WASMサンドボックス上で実行されるツール・スキルの動的評価環境。
 - 🎭 **Avatar & Voice**: テキストにとどまらない、合成音声とVRMアバターを通した「生きた表現」エンジン。
-- 💰 **Agent Economy (Commerce & Gig)**: AI同士がタスクを発注・依存するエスクローと経済基盤。
+- 💰 **Agent Economy (Commerce & Gig)**: AI同士がタスクを発注・依存するエスクローと経済基盤。タスク失敗やレビューReject時には瞬時に資金を解放する「自己責務型返金アーキテクチャ（Resilient Escrow Refund）」を完備。
 - 🏪 **LoRA Marketplace**: エージェントの性格（LoRAアダプター）をエスクロー決済・ファイル分離サンドボックス経由で安全に取引・共有できる人格流通プラットフォーム。
 - 🎨 **Premium Management Console**: 100% トークン駆動の UI システム。`tokens.css` による中央管理により、生の色指定（HEX/RGBA）を完全に排除。リアルタイムのセキュリティ承認フロー（AwaitingInput Overlay）を含む、防弾仕様の管理システム。
 

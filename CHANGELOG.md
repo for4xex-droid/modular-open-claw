@@ -1,4 +1,19 @@
-## [Unreleased] - 2026-04-09
+## [Unreleased] - 2026-04-10
+  - **Task Cancellation & Responsibility-Based Refund (Phase 2B-2)**:
+    - ユーザーによるジョブキャンセルやインフラ的エラーの際に、支払われたトークンが自動で安全に返金されるアーキテクチャへの完全移行を達成。
+    - `DockerConductor` の課金ロジックを自己責務型（`escrow_create` / `escrow_refund` / `escrow_release`）に移行し、タスクオーケストレーターと密結合しないスケール可能な課金モデルを確立。
+    - `TaskEvent::Cancelled` および `CoreEvent::TaskCancelled` の新規追加。SSEストリームに即座にマッピングされ、フロントエンドのUIにリアルタイムキャンセルの伝播を実現。
+  - **Infrastructure Safety Hardening (Phase δ-0 & δ-1 Final)**:
+    - Fixed a critical OOM validation bug in `Oracle::evaluate_multi_judge` by introducing a pre-check payload size guardrail.
+    - Updated `validator.rs` (SLM Bridge) to use graceful degradation instead of failing-fast when evaluating anomalies.
+    - Refined SLM Validation Tests: Replaced volatile CLI dependencies with `LocalMockSlm` to establish a deterministic TDD environment for `ConstitutionalValidator`.
+    - Resolved `USER.md` relative path vulnerability via `shared::app_data::AppDataResolver`.
+    - Fixed `samsara-hub` 3-to-4 field signature sync mismatch and `docker-compose.production.yml` isolation port bindings.
+    - Fixed `key-proxy` JSON serialization to accurately omit `system_instruction` when null to support external model integrations.
+    - Fixed `ArtifactVault.tsx` unencoded filename edge-case that breaks file fetching.
+    - Fixed `AiomeError` swallowing domain logic errors inside its `IntoResponse` definition (Phase δ-1).
+  - **Review-Driven Refund Lifecycle**: Completed integration between UI reject actions in `TaskApprovalOverlay` and `task_orchestrator.cancel_job`, ensuring immediate escrow refund when users reject an orchestrated job execution.
+  - **Proxy LLM & Edge Stability**: Fixed missing model parameters and payload formatting issues in dynamic LLM proxies (`DynamicLlmProvider` / `ProxyLlmProvider`). Refactored Baseline RegExp Check in `napi-bridge` utilizing `OnceLock` to prevent repeated memory allocations.
   - **Atomic Security Gating**: プラン（Goal分解）に含まれるすべてのステップを、キュー投入前に一括検証する「Plan-First Verification」を実装。一部のステップが実行されてから違反を検知する「部分実行リスク」を完全に排除。
   - **Semantic UX Refinement**: ユーザー介入通知に専用の `TaskEvent::AwaitingInput` を新設。UI上で「エラー」と「承認待ち」を明確に区別可能にし、インタラクティブなセキュリティ体験を提供。
   - **Execution Robustness**: `Goal` カテゴリのジョブデキューバグを修正。ConstitutionalValidator と AdaptiveImmuneSystem の多層防御を TaskDispatcher に完全統合し、全インフラテストを 100% GREEN 化。
@@ -9,7 +24,7 @@
     - `AwaitingInput` ジョブステータスに対応した `GET /awaiting-input` API および `POST /review` API を完全実装し、ブロック理由のDB永続化および `execution_log` による一回限りの免疫バイパス機構 (`IMMUNE_BYPASS_APPROVED`) を確立。
     - ユーザーが介入するフロントエンド UI として `TaskApprovalOverlay.tsx` を新規実装。Golden Rule トークン (`var(--accent-amber)` 等) を利用した堅牢なデザインシステムと日/英 i18n へ即座に対応（フロント・バックエンド全体で 100% TDD GREEN）。
 
-## [Unreleased] - 2026-04-09 (Previous)
+
 
 ### Added
 - **Phase 3-D: Onboarding & Global Alignment [完了]:**
@@ -18,7 +33,7 @@
   - **Infrastructure Stabilization**: `shadow-worker` における HTTP クライアントの所有権エラーを修復し、`KarmaTaxonomy` のフォールバック値を大文字ホワイトリスト（General, Uncategorized）へ正規化。
   - **Premium UI Polish**: `VoiceStore` のカスタムトーストシステム導入および `SettingsPage` の未使用インポート削除によるコード衛生の徹底。
 
-## [Unreleased] - 2026-04-08
+
 
 ### Added
 - **Phase 3-C: Management Console Mastery [完了]:**

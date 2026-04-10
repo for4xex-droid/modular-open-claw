@@ -75,10 +75,15 @@ impl RegistryManager {
     /// アセットのメタデータを登録する
     pub async fn register_asset(&self, manifest: AssetManifest) -> Result<(), AiomeError> {
         let type_str = manifest.asset_type.as_ref();
+        let safety_str = match manifest.safety_level {
+            aiome_core_contracts::contracts::ToolSafetyLevel::Safe => "safe",
+            aiome_core_contracts::contracts::ToolSafetyLevel::Idempotent => "idempotent",
+            aiome_core_contracts::contracts::ToolSafetyLevel::Destructive => "destructive",
+        };
 
         let q = format!(
-            "INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, metadata) VALUES ({}, {}, {}, {}, {}, {}, {})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6)
+            "INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, safety_level, metadata) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7)
         );
 
         crate::sql_exec!(
@@ -90,6 +95,7 @@ impl RegistryManager {
             &manifest.name,
             &manifest.description,
             manifest.price_coins as i64,
+            safety_str,
             manifest.metadata.map(|m| m.to_string())
         )?;
 
@@ -103,13 +109,13 @@ impl RegistryManager {
     /// アセットのメタデータを取得する
     pub async fn get_asset(&self, asset_id: Uuid) -> Result<AssetManifest, AiomeError> {
         let q = format!(
-            "SELECT id, creator_id, asset_type, name, description, price_coins, metadata FROM asset_registry WHERE id = {}",
+            "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE id = {}",
             self.pool.ph(0)
         );
 
-        let row: (String, String, String, String, String, i64, Option<String>) = crate::sql_fetch_one!(
+        let row: (String, String, String, String, String, i64, String, Option<String>) = crate::sql_fetch_one!(
             &self.pool,
-            (String, String, String, String, String, i64, Option<String>),
+            (String, String, String, String, String, i64, String, Option<String>),
             &q,
             asset_id.to_string()
         )?;
@@ -122,6 +128,12 @@ impl RegistryManager {
             _ => AssetType::Plugin,
         };
 
+        let safety_level = match row.6.as_str() {
+            "idempotent" => aiome_core_contracts::contracts::ToolSafetyLevel::Idempotent,
+            "destructive" => aiome_core_contracts::contracts::ToolSafetyLevel::Destructive,
+            _ => aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
+        };
+
         Ok(AssetManifest {
             id: Uuid::parse_str(&row.0).unwrap_or(asset_id),
             creator_id: Uuid::parse_str(&row.1).unwrap_or_default(),
@@ -129,8 +141,8 @@ impl RegistryManager {
             name: row.3,
             description: row.4,
             price_coins: row.5 as u64,
-            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe, // TODO: Load from DB
-            metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
+            safety_level,
+            metadata: row.7.and_then(|m| serde_json::from_str(&m).ok()),
         })
     }
 
@@ -143,13 +155,13 @@ impl RegistryManager {
     ) -> Result<Vec<AssetManifest>, AiomeError> {
         let type_str = asset_type.as_ref();
 
-        let rows: Vec<(String, String, String, String, String, i64, Option<String>)> = if scope
+        let rows: Vec<(String, String, String, String, String, i64, String, Option<String>)> = if scope
             == "owned"
         {
             if let Some(agent) = agent_id {
                 let q = format!(
                     r#"
-                    SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.metadata
+                    SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.safety_level, a.metadata
                     FROM asset_registry a
                     LEFT JOIN licenses l ON a.id = l.asset_id AND l.agent_id = {0} AND l.status = 'active'
                     WHERE a.asset_type = {1} AND (a.creator_id = {2} OR l.id IS NOT NULL)
@@ -160,7 +172,7 @@ impl RegistryManager {
                 );
                 crate::sql_fetch_all!(
                     &self.pool,
-                    (String, String, String, String, String, i64, Option<String>),
+                    (String, String, String, String, String, i64, String, Option<String>),
                     &q,
                     agent.to_string(),
                     type_str,
@@ -173,12 +185,12 @@ impl RegistryManager {
             }
         } else {
             let q = format!(
-                "SELECT id, creator_id, asset_type, name, description, price_coins, metadata FROM asset_registry WHERE asset_type = {}",
+                "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = {}",
                 self.pool.ph(0)
             );
             crate::sql_fetch_all!(
                 &self.pool,
-                (String, String, String, String, String, i64, Option<String>),
+                (String, String, String, String, String, i64, String, Option<String>),
                 &q,
                 type_str
             )?
@@ -186,15 +198,22 @@ impl RegistryManager {
 
         let assets = rows
             .into_iter()
-            .map(|row| AssetManifest {
-                id: Uuid::parse_str(&row.0).unwrap_or_default(),
-                creator_id: Uuid::parse_str(&row.1).unwrap_or_default(),
-                asset_type: asset_type.clone(),
-                name: row.3,
-                description: row.4,
-                price_coins: row.5 as u64,
-                safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
-                metadata: row.6.and_then(|m| serde_json::from_str(&m).ok()),
+            .map(|row| {
+                let safety_level = match row.6.as_str() {
+                    "idempotent" => aiome_core_contracts::contracts::ToolSafetyLevel::Idempotent,
+                    "destructive" => aiome_core_contracts::contracts::ToolSafetyLevel::Destructive,
+                    _ => aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
+                };
+                AssetManifest {
+                    id: Uuid::parse_str(&row.0).unwrap_or_default(),
+                    creator_id: Uuid::parse_str(&row.1).unwrap_or_default(),
+                    asset_type: asset_type.clone(),
+                    name: row.3,
+                    description: row.4,
+                    price_coins: row.5 as u64,
+                    safety_level,
+                    metadata: row.7.and_then(|m| serde_json::from_str(&m).ok()),
+                }
             })
             .collect();
         Ok(assets)
@@ -398,6 +417,7 @@ mod tests {
                 name TEXT NOT NULL,
                 description TEXT,
                 price_coins INTEGER NOT NULL DEFAULT 0,
+                safety_level TEXT NOT NULL DEFAULT 'safe',
                 metadata TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -457,6 +477,32 @@ mod tests {
         let fetched = registry.get_asset(asset_id).await.unwrap(); // allow-anti-pattern
         assert_eq!(fetched.name, "Premium Voice");
         assert_eq!(fetched.price_coins, 500);
+    }
+
+    #[tokio::test]
+    async fn test_registry_preserves_safety_level() {
+        let pool = setup_db_for_registry().await;
+        let registry = RegistryManager::new(pool);
+
+        let asset_id = Uuid::new_v4();
+        let manifest = AssetManifest {
+            id: asset_id,
+            creator_id: Uuid::new_v4(),
+            asset_type: AssetType::Plugin,
+            name: "Destructive Tool".into(),
+            description: "High risk tool".into(),
+            price_coins: 0,
+            safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Destructive,
+            metadata: None,
+        };
+
+        registry.register_asset(manifest).await.unwrap();
+        let fetched = registry.get_asset(asset_id).await.unwrap();
+        assert_eq!(
+            fetched.safety_level, 
+            aiome_core_contracts::contracts::ToolSafetyLevel::Destructive,
+            "safety_level should be persisted in DB, but it reverted to {:?}", fetched.safety_level
+        );
     }
 
     #[tokio::test]

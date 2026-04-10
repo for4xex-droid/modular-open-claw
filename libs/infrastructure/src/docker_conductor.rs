@@ -19,6 +19,7 @@ use std::time::Duration;
 use tokio::sync::{mpsc, Semaphore};
 use tracing::{error, info, warn};
 use uuid::Uuid;
+use dashmap::DashMap;
 
 /// 影分身 (Shadow Worker) を安全に実行するための Conductor
 /// BastionGuard, Fork Bomb Protection (Semaphore), Guardrails Sterilization, CommerceEngine Billing を統合。
@@ -27,6 +28,7 @@ pub struct DockerConductor {
     commerce_engine: Option<Arc<dyn CommerceEngine>>,
     concurrency_limit: Arc<Semaphore>,
     grpc_config: GrpcClientConfig,
+    active_escrows: DashMap<String, String>,
 }
 
 impl DockerConductor {
@@ -39,21 +41,11 @@ impl DockerConductor {
             commerce_engine,
             concurrency_limit: Arc::new(Semaphore::new(3)), // MAX 3 concurrent shadow clones
             grpc_config,
+            active_escrows: DashMap::new(),
         }
     }
-}
 
-#[async_trait]
-impl TaskConductor for DockerConductor {
-    fn capable_categories(&self) -> Vec<String> {
-        vec!["docker_shadow_worker".to_string()]
-    }
-
-    fn conductor_name(&self) -> &str {
-        "DockerConductor"
-    }
-
-    async fn conduct(
+    async fn _do_conduct(
         &self,
         job: Job,
         progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
@@ -113,19 +105,41 @@ impl TaskConductor for DockerConductor {
                         reason: format!("Budget Exhausted or Invalid: {:?}", e),
                     })?;
 
-                // Deduct cost
-                let item_id = Uuid::new_v4();
-                let metadata = serde_json::json!({ "reason": "Shadow Worker Invocation" });
-                engine
-                    .execute_autonomous_purchase(agent_id, item_id, metadata)
+                // Deduct cost via Escrow
+                let escrow_id = engine
+                    .escrow_create(agent_id, 1) // 1 token per invocation
                     .await
                     .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to execute purchase: {:?}", e),
+                        reason: format!("Failed to create escrow: {:?}", e),
                     })?;
 
+                if let Some(previous_escrow_id) = self.active_escrows.insert(job.id.clone(), escrow_id.clone()) {
+                    // Self-Healing mechanism: Catch dangling escrows from previous failed rollbacks.
+                    tracing::warn!("⚠️ [DockerConductor] Found dangling escrow {} for job {} during retry. Triggering background refund payload.", previous_escrow_id, job.id);
+                    let engine_clone = engine.clone();
+                    tokio::spawn(async move {
+                        let mut success = false;
+                        for attempt in 1..=5 {
+                            match engine_clone.escrow_refund(&previous_escrow_id).await {
+                                Ok(_) => {
+                                    tracing::info!("✅ [DockerConductor] Successfully refunded dangling escrow {}.", previous_escrow_id);
+                                    success = true;
+                                    break;
+                                }
+                                Err(e) => {
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(1 * attempt)).await;
+                                }
+                            }
+                        }
+                        if !success {
+                            tracing::error!("🚨 CRITICAL: Dangling escrow {} permanently failed to refund. Requires manual reconciliation.", previous_escrow_id);
+                        }
+                    });
+                }
+
                 info!(
-                    "💳 [DockerConductor] Billed agent {} for Shadow Clone usage.",
-                    agent_id
+                    "💳 [DockerConductor] Locked 1 token in escrow ({}) for Shadow Clone usage.",
+                    escrow_id
                 );
             }
         }
@@ -415,7 +429,7 @@ impl TaskConductor for DockerConductor {
         let _ = std::fs::remove_dir_all(&temp_dir);
 
         // Gap K: Clean up container after success
-        if let Err(e) = self.cancel(&job.id).await {
+        if let Err(e) = self.stop_and_remove_container(&job.id).await {
             tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
         }
 
@@ -451,6 +465,29 @@ impl TaskConductor for DockerConductor {
         // Purge sensitive entities
         let clean_output = aiome_core::security_impl::purge_entities(&raw_output);
 
+        // Success: Release escrow (pay to system)
+        if let Some((_, escrow_id)) = self.active_escrows.remove(&job.id) {
+            if let Some(engine) = &self.commerce_engine {
+                tracing::info!("💳 [DockerConductor] Shadow Clone job {} succeeded. Releasing escrow {}.", job.id, escrow_id);
+                
+                let mut success = false;
+                for attempt in 1..=3 {
+                    if let Err(e) = engine.escrow_release(&escrow_id, uuid::Uuid::nil()).await {
+                        tracing::warn!("Release attempt {} failed for escrow {}: {:?}", attempt, escrow_id, e);
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * attempt)).await;
+                    } else {
+                        success = true;
+                        break;
+                    }
+                }
+
+                if !success {
+                    tracing::error!("🚨 CRITICAL: Failed to release escrow {} after 3 attempts. Platform revenue may be lost. Rolling back to active escrows.", escrow_id);
+                    self.active_escrows.insert(job.id.clone(), escrow_id);
+                }
+            }
+        }
+
         info!(
             "✅ [DockerConductor] Shadow Clone session {} completed cleanly in {}ms.",
             session_id, duration_ms
@@ -459,10 +496,10 @@ impl TaskConductor for DockerConductor {
         Ok((clean_output, final_result_hash))
     }
 
-    async fn cancel(&self, job_id: &str) -> Result<(), AiomeError> {
+    async fn stop_and_remove_container(&self, job_id: &str) -> Result<(), AiomeError> {
         let container_name = format!("aiome-job-{}", job_id);
         info!(
-            "🐳 [DockerConductor] Cancelling container: {}",
+            "🐳 [DockerConductor] Stopping container: {}",
             container_name
         );
 
@@ -495,5 +532,67 @@ impl TaskConductor for DockerConductor {
             }
         }
         Ok(())
+    }
+
+
+}
+
+
+#[async_trait]
+impl TaskConductor for DockerConductor {
+    fn capable_categories(&self) -> Vec<String> {
+        vec!["docker_shadow_worker".to_string()]
+    }
+
+    fn conductor_name(&self) -> &str {
+        "DockerConductor"
+    }
+
+    async fn conduct(
+        &self,
+        job: Job,
+        progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
+    ) -> Result<(String, Option<String>), AiomeError> {
+        let result = self._do_conduct(job.clone(), progress_tx).await;
+        if result.is_err() {
+            tracing::warn!("⚠️ [DockerConductor] Job {} failed. Triggering failsafe cancellation & refund.", job.id);
+            if let Err(e) = self.cancel(&job.id).await {
+                tracing::error!("🚨 [DockerConductor] Critical failure in failsafe cleanup for {}: {}", job.id, e);
+            }
+        }
+        result
+    }
+
+    async fn cancel(&self, job_id: &str) -> Result<(), AiomeError> {
+        info!("🛑 [DockerConductor] Processing cancellation for job: {}", job_id);
+
+        // Refund escrow if exists (meaning it wasn't successfully released)
+        if let Some((_, escrow_id)) = self.active_escrows.remove(job_id) {
+            if let Some(engine) = &self.commerce_engine {
+                tracing::info!("💳 [DockerConductor] Refunding unused escrow {} for job {}", escrow_id, job_id);
+                
+                let mut success = false;
+                for attempt in 1..=3 {
+                    match engine.escrow_refund(&escrow_id).await {
+                        Ok(_) => {
+                            success = true;
+                            break;
+                        }
+                        Err(e) => {
+                            tracing::warn!("Refund attempt {} failed for escrow {}: {:?}", attempt, escrow_id, e);
+                            tokio::time::sleep(std::time::Duration::from_millis(500 * attempt)).await;
+                        }
+                    }
+                }
+
+                if !success {
+                    tracing::error!("🚨 CRITICAL: Failed to refund escrow {} after 3 attempts. Tokens may be locked. Rolling back to active escrows.", escrow_id);
+                    // Rollback to prevent token leakage, so a subsequent GC or manual retry can catch it.
+                    self.active_escrows.insert(job_id.to_string(), escrow_id);
+                }
+            }
+        }
+
+        self.stop_and_remove_container(job_id).await
     }
 }

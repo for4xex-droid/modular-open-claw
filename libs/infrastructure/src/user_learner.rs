@@ -56,14 +56,9 @@ impl UserLearner {
         &self,
         conversation_summary: &str,
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        let filename = "USER.md";
-        let (user_path, current_user) = if let Ok(c) = fs::read_to_string(filename) {
-            (filename.to_string(), c)
-        } else if let Ok(c) = fs::read_to_string(format!("../../{}", filename)) {
-            (format!("../../{}", filename), c)
-        } else {
-            (filename.to_string(), String::new())
-        };
+        let resolver = shared::app_data::AppDataResolver::new();
+        let user_path = resolver.resolve("USER.md").to_string_lossy().to_string();
+        let current_user = std::fs::read_to_string(&user_path).unwrap_or_default();
 
         if let Ok(_permit) = self.semaphore.try_acquire() {
             info!("🎓 [UserLearner] Analyzing session for user preference updates...");

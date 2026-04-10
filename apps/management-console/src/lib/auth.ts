@@ -27,8 +27,8 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Handle JSON content type as default for body-bearing requests
-    if (options.body && !headers['Content-Type']) {
+    // Handle JSON content type as default for body-bearing requests, but avoid overriding FormData boundaries
+    if (options.body && !headers['Content-Type'] && !(options.body instanceof FormData)) {
         headers['Content-Type'] = 'application/json';
     }
 

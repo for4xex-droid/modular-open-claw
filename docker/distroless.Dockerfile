@@ -3,6 +3,15 @@
 # Features: Google Distroless, No Shell, Hardened
 # ==========================================
 
+# --- Frontend Build Stage ---
+FROM node:20-bookworm-slim AS frontend-builder
+WORKDIR /app/apps/management-console
+COPY apps/management-console/package*.json ./
+RUN npm ci --ignore-scripts
+COPY apps/management-console ./
+RUN npm run build
+
+
 # --- Build Stage ---
 FROM rust:1.85-slim-bookworm AS builder
 
@@ -47,9 +56,12 @@ COPY --from=builder /app/target/release/${BIN_NAME} /app/aiome-app
 
 # Copy default assets/config if needed
 # COPY --from=builder /app/resources /app/resources
+COPY --from=frontend-builder /app/apps/management-console/dist /app/apps/api-server/static
 
 # Standard ports
 EXPOSE 3015
+
+USER nonroot:nonroot
 
 # Execution
 # Distroless has no shell, so MUST use exec form []

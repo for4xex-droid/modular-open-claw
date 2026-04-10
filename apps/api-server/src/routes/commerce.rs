@@ -166,6 +166,16 @@ pub async fn create_subscription(
         return Err(AppError::forbidden("Unauthorized access to this agent"));
     }
 
+    if !auth.ekyc_verified {
+        tracing::warn!(
+            "🛡️ [Commerce] Blocked unverified subscription request from agent: {}",
+            req.agent_id
+        );
+        return Err(AppError::forbidden(
+            "eKYC verification is required to create subscriptions",
+        ));
+    }
+
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),

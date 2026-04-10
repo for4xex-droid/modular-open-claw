@@ -800,8 +800,8 @@ async fn biome_relay_handler(
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
     let mut valid = false;
     let payload = format!(
-        "{}:{}:{}",
-        msg.sender_pubkey, msg.topic_id, msg.lamport_clock
+        "{}:{}:{}:{}",
+        msg.sender_pubkey, msg.topic_id, msg.lamport_clock, msg.content
     );
     if let (Ok(pubkey_bytes), Ok(sig_bytes)) = (
         BASE64_STANDARD.decode(&msg.sender_pubkey),

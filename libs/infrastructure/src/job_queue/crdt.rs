@@ -42,6 +42,13 @@ impl CrdtOps for UniversalJobQueue {
         };
 
         if let Some(rb) = remote_blob {
+            // SEC: Protect against CRDT OOM Bomb (Size limit: 10MB)
+            if rb.len() > 10 * 1024 * 1024 {
+                return Err(AiomeError::SecurityViolation {
+                    reason: "CRDT remote blob exceeds maximum allowed size of 10MB".into(),
+                });
+            }
+
             let mut remote_doc = AutoCommit::load(rb).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Remote Automerge load error: {}", e),
             })?;

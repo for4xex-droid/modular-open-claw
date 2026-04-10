@@ -1,4 +1,33 @@
 # 🌊 Aiome Ripple Map
+## Phase 2B-2: Task Cancellation & Responsibility-Based Refund Infrastructure
+### 1. Robust Escrow Refunding
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/events.rs` [MODIFY]: `CoreEvent` に `TaskCancelled` を追加。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: `TaskEvent::Cancelled` を追加し、SSE リレーロジックを追加。`cancel_job` コール時に進行中のコンダクターを停止し `Cancelled` イベントを発出するように変更。`CancelTestConductor`を利用したキャンセル発出の統合テストを追加。
+    - `apps/api-server/src/stream.rs` [MODIFY]: `CoreEvent::TaskCancelled` を `task_cancelled` SSE イベントにマッピング。
+    - `libs/infrastructure/src/docker_conductor.rs` [MODIFY]: `DockerConductor` の課金ロジックを `Responsibility-Based Refund`（自己責務型返金）に移行。`execute_autonomous_purchase` から `escrow_create` に変更し、成功時には `escrow_release`、キャンセル（コンテナ停止・エラーなど中断時）には `escrow_refund` を発動するように修正。
+- **波及効果**:
+    - ユーザーによるジョブキャンセルやインフラ的エラーの際に、支払われたトークンが自動で安全に返金されるようになった。
+    - コンダクター（タスク実行側）が自身で返金責務を持つ「局所化」が実現し、上位オーケストレーターと密結合しないスケーラブルな課金アーキテクチャが実現した。
+    - SSEを通じて即座にフロントエンドにキャンセルの事実が伝播し、UI状態が正しく同期されるようになった。
+
+## Phase δ-0 & δ-1: Infrastructure Safety Hardening
+### 1. P2P Federation & System Guardrails
+- **変更内容**:
+    - `apps/samsara-hub/src/main.rs` [MODIFY]: P2Pのシグネチャ検証ペイロードを3フィールドから4フィールド(`sender_pubkey:topic_id:lamport_clock:content`)へ修正し、`biome`との同期を確立。
+    - `apps/key-proxy/src/main.rs` [MODIFY]: Gemini統合においてnullの`system_instruction`がAPI拒否を引き起こす問題を修正。JSONカーゴで条件付き挿入 (`skip_serializing_if = "Option::is_none"`) 相当のロジックへリファクタリングし、E2Eテストを追加。
+    - `libs/infrastructure/src/oracle.rs` [MODIFY]: `evaluate_multi_judge`に1MBのペイロード制限（`payload_size_limit`）を追加し、多重クローンによるOOM（Out of Memory）を未然に防止。
+    - `libs/infrastructure/src/validator.rs` [MODIFY]: `ConstitutionalValidator`内での`slm_bridge`エラー時（TimeoutやFailed to start）にパニックする挙動を修正し、フォールバック（`0.0`）を返すGraceful Degradationへ移行。
+    - `libs/infrastructure/src/user_learner.rs` [MODIFY]: 相対パス(`USER.md`)に依存していたファイル操作を、DIされた `AppDataResolver` 経由の絶対解決に置き換え、Directory Traversal脆弱性とカレントディレクトリへの依存を排除。
+    - `libs/aiome-contracts/src/error.rs` [MODIFY]: `IntoResponse` 実装にて、内部ドメインエラーを「Internal Server Error」として握り潰していた挙動を改修し、より開発者に有用なドメインエラー文字列を返却するよう改善。
+    - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: O(1)キャッシュを持つ `ArtifactStore` において、`file.name` がURIエンコードされておらず、スペースや日本語を含むファイル名で 400 Bad Request を誘発するバグを修正。
+    - `docker-compose.production.yml` [MODIFY]: `samsara-hub`のポートバインディングを `127.0.0.1:3016` から `0.0.0.0:3016` (外部公開) へ変更し、本番環境でのP2P Federationを可能化。
+- **波及効果**:
+    - 本番環境でのP2Pフェデレーションのブロック要因（署名検証ミスとポートバインディング）が解消され、ノード間の安全な通信基盤が完成。
+    - 外部LLMプロキシ（key-proxy）での不正ペイロード生成が防止され、外部モデルへの連携が安定化。
+    - システムレベルのリソース枯渇脆弱性（OOM、相対パストラバーサル）が物理レイヤーで遮断された。
+    - SLMがダウンしてもシステム全体がクラッシュせず、Graceful Degradationにより可用性が維持される。
+
 
 ## Phase 2.1: Execution Layer Hardening (Governed Execution)
 ### 1. Atomic Security Gating & Semantic Elicitation

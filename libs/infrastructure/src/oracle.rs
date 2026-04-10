@@ -139,6 +139,13 @@ impl Oracle {
         likes: i64,
         comments_json: &str,
     ) -> Result<OracleVerdict, AiomeError> {
+        // PP-1: 1MB Guardrail Pre-Check to prevent OOM cloning
+        if comments_json.len() > 1024 * 1024 {
+            return Err(AiomeError::SecurityViolation {
+                reason: "Payload exceeds 1MB limit".to_string(),
+            });
+        }
+
         if self.multi_providers.is_empty() {
             return self
                 .evaluate(milestone_days, topic, style, views, likes, comments_json)
@@ -287,10 +294,13 @@ impl Oracle {
             context.job_id, config.num_reflections
         );
 
+        // SEC-4: Prevent Denial of Wallet / Resource Exhaustion
+        let actual_reflections = config.num_reflections.min(5); 
+
         let mut current_content = content.to_string();
         let mut reflections = Vec::new();
 
-        for i in 1..=config.num_reflections {
+        for i in 1..=actual_reflections {
             info!(
                 "🔮 [Oracle] Reflection Round {}/{}",
                 i, config.num_reflections

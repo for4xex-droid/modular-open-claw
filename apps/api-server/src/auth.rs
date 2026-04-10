@@ -123,6 +123,16 @@ pub async fn auth_middleware(
 
     match state.auth_manager.validate_token(token).await {
         Ok(claims) => {
+            // nil UUID Guard (Expert Review G-3)
+            if claims.agent_id == uuid::Uuid::nil() {
+                let sub_hash = &claims.sub.chars().take(8).collect::<String>();
+                tracing::warn!(
+                    "🛡️ [Auth] Blocked request with nil agent_id for sub: {}...",
+                    sub_hash
+                );
+                return Err(StatusCode::FORBIDDEN);
+            }
+
             // G-2: Per-Agent Rate Limiting
             if let Err(e) = state.rate_limiter.check(claims.agent_id) {
                 warn!(

@@ -258,8 +258,10 @@
   },
   "timeline": {
     "title": "ニューラル・クロニクル (経歴)",
+    "noEntries": "記録が見つかりません。",
+    "loadMore": "さらに読み込む",
+    "loading": "クロニクルを読み込み中...",
     "syncing": "クロノスと同期中...",
-    "noRecords": "記録が見つかりません。",
     "evolutionStep": "進化ステップ",
     "localMemory": "ローカル・メモリ",
     "federatedMemory": "連合（フェデレーテッド）メモリ"

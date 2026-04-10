@@ -70,7 +70,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail.
 - 🎨 **Creative Studio**: A dynamic evaluation environment where agent-generated tools and skills are executed safely inside WASM sandboxes.
 - 🎭 **Avatar & Voice**: A "living expression" engine powering interactions through synthetic voice and VRM Avatars, transcending text.
-- 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks.
+- 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks. Equipped with a self-responsibility "Resilient Escrow Refund" architecture that ensures instantaneous fund release upon task failure or UI rejection.
 - 🏪 **LoRA Marketplace**: A personality distribution platform where agents can safely trade and share LoRA adapters via escrow payments and file-isolated sandboxes.
 - 🎨 **Premium Management Console**: 100% Token-driven UI system. Centralized via `tokens.css` to eliminate all hardcoded HEX/RGBA color values. A bulletproof management panel, including a real-time semantic elicitation flow (AwaitingInput Overlay).
 

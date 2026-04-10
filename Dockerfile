@@ -1,13 +1,13 @@
-ARG RUST_VERSION=1.84.1
+ARG RUST_VERSION=1.85
 
-FROM node:20-bullseye-slim AS frontend-builder
+FROM node:20-bookworm-slim AS frontend-builder
 WORKDIR /app/apps/management-console
 COPY apps/management-console/package*.json ./
 RUN npm ci --ignore-scripts
 COPY apps/management-console ./
 RUN npm run build
 
-FROM rust:${RUST_VERSION}-slim-bullseye AS backend-builder
+FROM rust:${RUST_VERSION}-slim-bookworm AS backend-builder
 WORKDIR /app
 
 # Install dependencies needed for compiling
@@ -25,7 +25,7 @@ COPY apps/ apps/
 # We use release for maximum performance
 RUN cargo build --release --bin api-server
 
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
 # Install runtime dependencies (OpenSSL, etc)
@@ -40,16 +40,20 @@ COPY --from=backend-builder /app/target/release/api-server /usr/local/bin/
 # Copy the frontend built assets to the expected static directory
 COPY --from=frontend-builder /app/apps/management-console/dist /app/apps/api-server/static
 
-# Environment Variables for defaults
-ENV PORT=1420
+# Extract workspace configs
+ENV PORT=3015
 ENV RUST_LOG="info,aiome=debug"
 ENV WORKSPACE_DIR="/data"
 ENV ABYSS_VAULT_PATH="/data/.abyss_vault"
 
-# Ensure workspace directory exists
-RUN mkdir -p /data/skills /data/forge /data/sandbox /data/.abyss_vault
+# Create user, structure, and assign permissions BEFORE switching user
+RUN adduser --disabled-password --no-create-home aiome && \
+    mkdir -p /data/skills /data/forge /data/sandbox /data/.abyss_vault && \
+    chown -R aiome:aiome /data /app
 
 # Expose API port
-EXPOSE 1420
+EXPOSE 3015
+
+USER aiome
 
 ENTRYPOINT ["api-server"]

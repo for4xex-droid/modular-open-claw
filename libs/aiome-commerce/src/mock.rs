@@ -20,8 +20,8 @@ use std::sync::Arc;
 pub struct MockCommerceEngine {
     /// エージェント別の残高
     balances: Arc<DashMap<Uuid, u64>>,
-    /// エスクロー（保留中）の金額
-    escrows: Arc<DashMap<String, u64>>,
+    /// エスクロー（保留中）の金額 (sender_id, amount)
+    escrows: Arc<DashMap<String, (Uuid, u64)>>,
 }
 
 #[cfg(any(test, debug_assertions))]
@@ -85,7 +85,7 @@ impl CommerceEngine for MockCommerceEngine {
         if *balance >= amount {
             *balance -= amount;
             let escrow_id = format!("escrow-{}", Uuid::new_v4());
-            self.escrows.insert(escrow_id.clone(), amount);
+            self.escrows.insert(escrow_id.clone(), (agent_id, amount));
             Ok(escrow_id)
         } else {
             Err(AiomeError::Infrastructure {
@@ -95,7 +95,7 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {
-        if let Some((_, amount)) = self.escrows.remove(escrow_id) {
+        if let Some((_, (_, amount))) = self.escrows.remove(escrow_id) {
             let mut balance = self.balances.entry(recipient_id).or_insert(1000);
             *balance += amount;
             Ok(())
@@ -107,11 +107,15 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError> {
-        // In a real implementation, we'd need to know who the original sender was.
-        // For the mock, we just consume it or we'd need more state.
-        // Let's assume the mock just removes it for now or we can ignore it.
-        self.escrows.remove(escrow_id);
-        Ok(())
+        if let Some((_, (sender_id, amount))) = self.escrows.remove(escrow_id) {
+            let mut balance = self.balances.entry(sender_id).or_insert(1000);
+            *balance += amount;
+            Ok(())
+        } else {
+            Err(AiomeError::Infrastructure {
+                reason: "Escrow for refund not found".into(),
+            })
+        }
     }
 
     async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError> {
@@ -240,16 +244,17 @@ mod tests {
         let amount = 100;
 
         // 1. Create escrow
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000); // allow-anti-pattern
         let escrow_id = engine.escrow_create(agent_id, amount).await.unwrap(); // allow-anti-pattern
         assert!(escrow_id.starts_with("escrow-"));
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 900); // allow-anti-pattern
 
-        // 2. Release escrow (Should fail to compile until trait/impl updated)
-        let result = engine.escrow_release(&escrow_id, agent_id).await;
-        assert!(result.is_ok());
-
-        // 3. Refund escrow
+        // 2. Refund escrow (Expected to return balance to 1000)
         let refund_result = engine.escrow_refund(&escrow_id).await;
         assert!(refund_result.is_ok());
+        
+        // This will FAIL right now because escrow_refund doesn't restore balance
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000, "Balance should be refunded");
     }
 
     #[tokio::test]

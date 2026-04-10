@@ -17,6 +17,7 @@ export interface ToolCheckResponse {
 }
 
 export interface AiomeNativeBridge {
+    error?: unknown;
     karmaBootstrap(sessionId: string): Promise<void>;
     karmaIngest(sessionId: string, message: string): Promise<void>;
     karmaDistillTurn(messages: string, success: boolean): Promise<void>;

@@ -24,8 +24,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Deserialize)]
 struct ProxyRequest {
@@ -322,16 +320,21 @@ pub(crate) async fn handle_llm_complete(
         _ => return (StatusCode::BAD_REQUEST, "Invalid endpoint").into_response(),
     };
 
-    let gemini_payload = serde_json::json!({
+    let mut gemini_payload = serde_json::json!({
         "contents": [{
             "parts": [{
                 "text": payload.prompt
             }]
-        }],
-        "system_instruction": payload.system.map(|s| {
-            serde_json::json!({ "parts": [{ "text": s }] })
-        })
+        }]
     });
+    if let Some(s) = payload.system {
+        if let Some(obj) = gemini_payload.as_object_mut() {
+            obj.insert(
+                "system_instruction".to_string(),
+                serde_json::json!({ "parts": [{ "text": s }] })
+            );
+        }
+    }
 
     let res = state
         .client
@@ -469,16 +472,21 @@ pub(crate) async fn handle_llm_stream(
         _ => return (StatusCode::BAD_REQUEST, "Invalid endpoint").into_response(),
     };
 
-    let gemini_payload = serde_json::json!({
+    let mut gemini_payload = serde_json::json!({
         "contents": [{
             "parts": [{
                 "text": payload.prompt
             }]
-        }],
-        "system_instruction": payload.system.map(|s| {
-            serde_json::json!({ "parts": [{ "text": s }] })
-        })
+        }]
     });
+    if let Some(s) = payload.system {
+        if let Some(obj) = gemini_payload.as_object_mut() {
+            obj.insert(
+                "system_instruction".to_string(),
+                serde_json::json!({ "parts": [{ "text": s }] })
+            );
+        }
+    }
 
     let res = state
         .client
@@ -575,4 +583,59 @@ async fn check_and_increment_quota(
     }
 
     Ok((total, q.last_reset_day))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gemini_payload_serialization_without_system_prompt() {
+        let payload_prompt = "Hello";
+        let payload_system: Option<String> = None;
+
+        let mut gemini_payload = serde_json::json!({
+            "contents": [{
+                "parts": [{
+                    "text": payload_prompt
+                }]
+            }]
+        });
+        
+        if let Some(s) = payload_system {
+            if let Some(obj) = gemini_payload.as_object_mut() {
+                obj.insert(
+                    "system_instruction".to_string(),
+                    serde_json::json!({ "parts": [{ "text": s }] })
+                );
+            }
+        }
+
+        assert_eq!(gemini_payload.get("system_instruction"), None, "Should omit system_instruction when system prompt is absent");
+    }
+
+    #[test]
+    fn test_gemini_payload_serialization_with_system_prompt() {
+        let payload_prompt = "Hello";
+        let payload_system: Option<String> = Some("You are a helpful assistant".to_string());
+
+        let mut gemini_payload = serde_json::json!({
+            "contents": [{
+                "parts": [{
+                    "text": payload_prompt
+                }]
+            }]
+        });
+        
+        if let Some(s) = payload_system {
+            if let Some(obj) = gemini_payload.as_object_mut() {
+                obj.insert(
+                    "system_instruction".to_string(),
+                    serde_json::json!({ "parts": [{ "text": s }] })
+                );
+            }
+        }
+
+        assert!(gemini_payload.get("system_instruction").is_some(), "Should include system_instruction when system prompt is present");
+    }
 }

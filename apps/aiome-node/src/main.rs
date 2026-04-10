@@ -63,7 +63,9 @@ async fn main() {
                 &self,
                 _order_id: Uuid,
             ) -> Result<VerificationResult, AiomeError> {
-                unimplemented!()
+                Err(AiomeError::Infrastructure {
+                    reason: "Not yet implemented for MVP node stub".to_string(),
+                })
             }
         }
 

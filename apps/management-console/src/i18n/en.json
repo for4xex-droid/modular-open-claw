@@ -262,7 +262,10 @@
     "loadMore": "Load More",
     "loading": "Loading chronicle...",
     "syncing": "Synchronizing Chronicles...",
-    "noRecords": "No records found in this aeon."
+    "noRecords": "No records found in this aeon.",
+    "evolutionStep": "Evolution Step",
+    "localMemory": "Local Memory",
+    "federatedMemory": "Federated Memory"
   },
   "agent": {
     "title": "GENESIS NEURAL CONSOLE",
@@ -307,7 +310,8 @@
     "decrypting": "Decrypting Artifact Vault...",
     "verified": "VERIFIED",
     "purge": "Purge Artifact",
-    "confirmDelete": "Are you sure you want to delete this artifact? This action is permanent and will purge physical files."
+    "confirmDelete": "Are you sure you want to delete this artifact? This action is permanent and will purge physical files.",
+    "noArtifacts": "No artifacts found."
   },
   "diagnostics": {
     "title": "Audit & Immunity Ledger",

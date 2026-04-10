@@ -59,6 +59,10 @@ pub enum CoreEvent {
         job_id: String,
         error: String,
     },
+    /// Phase 3B: Task cancellation support
+    TaskCancelled {
+        job_id: String,
+    },
     /// Phase 1-2: セキュリティ違反によるユーザー介入待機
     TaskAwaitingInput {
         job_id: String,

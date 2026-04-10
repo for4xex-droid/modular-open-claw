@@ -55,6 +55,9 @@ pub enum TaskEvent {
         job_id: String,
         error: String,
     },
+    Cancelled {
+        job_id: String,
+    },
     AwaitingInput {
         job_id: String,
         reason: String,
@@ -156,6 +159,9 @@ impl TaskDispatcher {
                         }
                         TaskEvent::Failed { job_id, error } => {
                             aiome_core_contracts::events::CoreEvent::TaskFailed { job_id, error }
+                        }
+                        TaskEvent::Cancelled { job_id } => {
+                            aiome_core_contracts::events::CoreEvent::TaskCancelled { job_id }
                         }
                         TaskEvent::AwaitingInput { job_id, reason } => {
                             aiome_core_contracts::events::CoreEvent::TaskAwaitingInput {
@@ -527,9 +533,8 @@ impl TaskDispatcher {
                             tokio::select! {
                                 _ = job_token.cancelled() => {
                                     info!("⏹️ Job {} was cancelled.", job_id);
-                                    if let Err(e) = progress_tx.send(TaskEvent::Failed {
+                                    if let Err(e) = progress_tx.send(TaskEvent::Cancelled {
                                         job_id: job_id.clone(),
-                                        error: "Cancelled by user".to_string(),
                                     }).await {
                                         tracing::warn!("Failed to send cancelled event: {}", e);
                                     }
@@ -1089,6 +1094,87 @@ mod tests {
             }
             _ => panic!("Expected Evaluating event"),
         }
+    }
+
+    struct CancelTestConductor;
+    #[async_trait]
+    impl TaskConductor for CancelTestConductor {
+        fn conductor_name(&self) -> &str {
+            "CancelTestConductor"
+        }
+        fn capable_categories(&self) -> Vec<String> {
+            vec!["test_cat".into()]
+        }
+        async fn conduct(
+            &self,
+            _job: Job,
+            _progress_tx: mpsc::Sender<TaskEvent>,
+        ) -> Result<(String, Option<String>), AiomeError> {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            Ok(("done".into(), None))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_emits_cancelled_event() {
+        let mut job = Job::default();
+        job.id = "job-cancel-42".into();
+        job.category = "test_cat".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job)),
+            completed: std::sync::Mutex::new(false),
+            ..Default::default()
+        });
+
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        dispatcher.register_conductor(Arc::new(CancelTestConductor));
+
+        let mut rx = dispatcher.subscribe_events();
+
+        let dispatcher = Arc::new(dispatcher);
+        let dispatcher_clone = dispatcher.clone();
+        let handle = tokio::spawn(async move {
+            dispatcher_clone.run_dispatch_loop().await;
+        });
+
+        // Wait for Spawned event
+        let event1 = timeout(Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(event1, TaskEvent::Spawned { .. }));
+
+        // Send cancel_job
+        assert!(dispatcher.cancel_job("job-cancel-42").await.is_ok());
+
+        // We expect either Cancelled or Failed(Cancelled by user)
+        // Since we emit Cancelled from tokio::select! job_token.cancelled() handle
+        let mut got_cancelled = false;
+        for _ in 0..3 {
+            if let Ok(Ok(event)) = timeout(Duration::from_millis(500), rx.recv()).await {
+                if let TaskEvent::Cancelled { job_id: id } = event {
+                    assert_eq!(id, "job-cancel-42");
+                    got_cancelled = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(got_cancelled, "Failed to receive TaskEvent::Cancelled");
+        handle.abort();
     }
 
     struct MockGigEngine {

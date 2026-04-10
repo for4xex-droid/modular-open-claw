@@ -572,7 +572,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
         affiliate_adapter: Component::new(
-            Arc::new(infrastructure::intent::AffiliateAdapter::new()),
+            Arc::new(infrastructure::intent::MockAffiliateAdapter::new()),
         ),
         soul_pipeline: Component::new(Arc::new(SoulPipeline::new(soul_adapter, samsara_engine))),
         transcription_engine: Component::new(Arc::new(
@@ -2024,7 +2024,7 @@ async fn test_autonomous_demo_lifecycle() {
 #[tokio::test]
 async fn test_subscription_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
-    let bearer = test_bearer();
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
 
     // 1. Create Subscription
     let payload = json!({

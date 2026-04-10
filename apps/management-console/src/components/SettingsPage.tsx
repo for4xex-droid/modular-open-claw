@@ -13,7 +13,7 @@ import {
     Shield, Check, X, Loader2, Plus
 } from 'lucide-react';
 import { API_BASE } from '../config';
-import { setAuthToken, authenticatedFetch } from '../lib/auth';
+import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
 import { useTokenHealth } from '../hooks/useTokenHealth';
 
 interface SettingEntry {
@@ -343,10 +343,12 @@ const SecretUpdater: React.FC = () => {
             } else {
                 setResult({ success: false, message: `Authentication failed (${res.status})` });
                 if (oldSecret) setAuthToken(oldSecret);
+                else clearAuthToken();
             }
         } catch {
             setResult({ success: false, message: 'Connection failed' });
             if (oldSecret) setAuthToken(oldSecret);
+            else clearAuthToken();
         } finally {
             setTesting(false);
         }

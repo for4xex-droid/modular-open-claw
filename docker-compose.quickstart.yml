@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "1420:1420"
+      - "3015:3015"
     environment:
       OLLAMA_HOST: "http://ollama:11434"
       # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"

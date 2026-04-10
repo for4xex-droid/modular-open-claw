@@ -99,7 +99,7 @@ services:
       retries: 3
     restart: always
     ports:
-      - "127.0.0.1:3016:3016"
+      - "0.0.0.0:3016:3016"
 
   ruri-embed-server:
     # NOTE: This image is not publicly available on GHCR.

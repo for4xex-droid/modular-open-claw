@@ -378,7 +378,13 @@ const ImmuneSystem: React.FC = () => {
                                     </button>
                                 </div>
                             </motion.div>
-                        )) : quarantinedAssets.map((asset, i) => (
+                        )) : (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
+                                <Shield size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-cyan)" />
+                                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>NO ACTIVE RULES</div>
+                                <div style={{ fontSize: '0.9rem' }}>The immune system has no defensive heuristics loaded.</div>
+                            </motion.div>
+                        ) : quarantinedAssets.length > 0 ? quarantinedAssets.map((asset, i) => (
                             <motion.div
                                 key={asset.id}
                                 initial={{ opacity: 0, y: 10 }}
@@ -440,7 +446,13 @@ const ImmuneSystem: React.FC = () => {
                                     RELEASE EXCEPTION
                                 </button>
                             </motion.div>
-                        ))}
+                        )) : (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
+                                <Lock size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-rose)" />
+                                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>QUARANTINE CLEAN</div>
+                                <div style={{ fontSize: '0.9rem' }}>No anomalies or infected assets detected in the vault.</div>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </div>
 

@@ -257,7 +257,7 @@ const ArtifactVault = () => {
                         </div>
                         <div className="file-actions">
                           <a
-                            href={`${API_BASE}/api/artifacts/${selectedArtifact.id}/files/${file.name}`}
+                            href={`${API_BASE}/api/artifacts/${selectedArtifact.id}/files/${encodeURIComponent(file.name)}`}
                             target="_blank"
                             rel="noreferrer"
                             className="icon-btn"

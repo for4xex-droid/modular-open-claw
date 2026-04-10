@@ -152,34 +152,41 @@ impl axum::response::IntoResponse for AiomeError {
                 StatusCode::INSUFFICIENT_STORAGE,
                 format!("Storage is full (limit: {}%)", threshold),
             ),
-            AiomeError::RemoteServiceError { .. } => {
-                (StatusCode::BAD_GATEWAY, "Remote service error".to_string())
-            }
-            AiomeError::ContentNotVerified { .. } => (
+            AiomeError::RemoteServiceError { url, source } => (
+                StatusCode::BAD_GATEWAY,
+                format!("Remote service error ({}): {}", url, source),
+            ),
+            AiomeError::ContentNotVerified { item_id } => (
                 StatusCode::UNAUTHORIZED,
-                "Content rights not verified".to_string(),
+                format!("Content rights not verified: {}", item_id),
             ),
-            AiomeError::ContextFetch { .. }
-            | AiomeError::LlmResponse { .. }
-            | AiomeError::OsError { .. } => (
+            AiomeError::ContextFetch { source } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
+                format!("Context fetch error: {}", source),
             ),
-            AiomeError::ConfigLoad { .. } => (
+            AiomeError::LlmResponse { source } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Configuration error".to_string(),
+                format!("LLM response error: {}", source),
             ),
-            AiomeError::Infrastructure { .. } => (
+            AiomeError::OsError { source } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Infrastructure error".to_string(),
+                format!("OS error: {}", source),
             ),
-            AiomeError::RemoteServiceExecutionFailed { .. } => (
+            AiomeError::ConfigLoad { source } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Execution failed".to_string(),
+                format!("Configuration error: {}", source),
+            ),
+            AiomeError::Infrastructure { reason } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Infrastructure error: {}", reason),
+            ),
+            AiomeError::RemoteServiceExecutionFailed { reason } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Remote service execution failed: {}", reason),
             ),
             AiomeError::ResourceBusy { reason } => (
                 StatusCode::SERVICE_UNAVAILABLE,
-                format!("System busy: {}", reason),
+                format!("Resource busy: {}", reason),
             ),
             AiomeError::NotFound { reason } => (StatusCode::NOT_FOUND, reason.clone()),
             AiomeError::Unauthorized { reason } => (StatusCode::UNAUTHORIZED, reason.clone()),

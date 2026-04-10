@@ -56,6 +56,25 @@ impl ProxyLlmProvider {
             client: aiome_core::http::get_http_client().clone(),
         }
     }
+
+    fn sign_request(
+        &self,
+        mut builder: reqwest::RequestBuilder,
+        payload: &str,
+    ) -> reqwest::RequestBuilder {
+        if let Some(secret) = &self.proxy_secret {
+            use hmac::{Hmac, Mac};
+            use sha2::Sha256;
+            type HmacSha256 = Hmac<Sha256>;
+            if let Ok(mut mac) = HmacSha256::new_from_slice(secret.as_bytes()) {
+                mac.update(payload.as_bytes());
+                let result = mac.finalize();
+                let signature = hex::encode(result.into_bytes());
+                builder = builder.header("X-Proxy-Signature", signature);
+            }
+        }
+        builder
+    }
 }
 
 #[async_trait]
@@ -85,17 +104,7 @@ impl LlmProvider for ProxyLlmProvider {
             .header("Content-Type", "application/json");
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
-        if let Some(secret) = &self.proxy_secret {
-            use hmac::{Hmac, Mac};
-            use sha2::Sha256;
-            type HmacSha256 = Hmac<Sha256>;
-            if let Ok(mut mac) = HmacSha256::new_from_slice(secret.as_bytes()) {
-                mac.update(payload_json.as_bytes());
-                let result = mac.finalize();
-                let signature = hex::encode(result.into_bytes());
-                request_builder = request_builder.header("X-Proxy-Signature", signature);
-            }
-        }
+        request_builder = self.sign_request(request_builder, &payload_json);
 
         let res = request_builder
             .body(payload_json)
@@ -142,7 +151,7 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             caller_id: self.caller_id.clone(),
             prompt: text.to_string(),
             system: None,
-            endpoint: "gemini-embed".to_string(),
+            endpoint: self.endpoint_tag.clone(),
         };
 
         let payload_json =
@@ -156,17 +165,7 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             .header("Content-Type", "application/json");
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
-        if let Some(secret) = &self.proxy_secret {
-            use hmac::{Hmac, Mac};
-            use sha2::Sha256;
-            type HmacSha256 = Hmac<Sha256>;
-            if let Ok(mut mac) = HmacSha256::new_from_slice(secret.as_bytes()) {
-                mac.update(payload_json.as_bytes());
-                let result = mac.finalize();
-                let signature = hex::encode(result.into_bytes());
-                request_builder = request_builder.header("X-Proxy-Signature", signature);
-            }
-        }
+        request_builder = self.sign_request(request_builder, &payload_json);
 
         let res = request_builder
             .body(payload_json)

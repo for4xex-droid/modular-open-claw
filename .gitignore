@@ -106,3 +106,5 @@ debug_shield.rs
 
 # MLIT MCP Server clones (setup via tools/setup-mlit-mcp.sh)
 tools/mlit-mcp/
+.abyss_vault
+

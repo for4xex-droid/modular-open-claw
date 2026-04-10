@@ -20,6 +20,7 @@ LLM（プランナー）が生成した複数ステップから成る「行動�
 *   **Atomic Plan Verification (Plan-First Gating)**: `TaskDispatcher` は、分解された全てのタスクステップをキューに投入する前に、`AdaptiveImmuneSystem` によって一括検証します。たとえ最初のステップが安全でも、後のステップに高リスクな操作が含まれている場合、その計画全体の実行を事前にサスペンドします。これにより、ポリシー違反の「部分実行」が発生する余地を排除します。
 *   **Semantic Elicitation Workflow**: セキュリティ違反によって計画が中断された場合、システムは単なる「エラー（失敗）」ではなく、`TaskAwaitingInput` イベントを発行して「ユーザー介入待ち（Elicitation）」状態へ遷移します。管理コンソールとのセマンティックな連携により、オペレーターはシステム障害とセキュリティガードレールの発動を明確に区別し、適切な承認処理を行うことができます。
 *   **Human-in-the-Loop Override**: ユーザーがセキュリティ遮断を正当と認めて手動で承認した場合、当該ジョブには `IMMUNE_BYPASS_APPROVED` マーカーが永続化されます。これにより、免疫システムは限定的かつ1回限りその操作を許可し、ユーザー主導のレジリエンスと安全性のバランスを確保します。
+*   **Resilient Escrow Refund (Phase 2B-2)**: `TaskApprovalOverlay` などでのユーザー介入によるキャンセル（Reject）や、システムのフェールセーフ発動時に即座にタスクオーケストレーターに `cancel_job` シグナルが伝播します。内部の `DockerConductor` がこれを受け取ることで、自己責務型のエスクロー返金（Refund）ロジックが確実にトリガーされ、ユーザーのトークン負債を安全かつ不可逆的に解放する防御網が確立されています。
 
 ## 2. ゼロトラスト実行環境 (WASM / Docker Shadow Worker)
 Aiome が実行するスキル（動的コード）は、用途に応じて2種類の強力なサンドボックス内で動作します。
@@ -77,4 +78,4 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-04-10 (Asia/Tokyo) - Execution Robustness & Anti-Pattern Mitigation*
+*最終更新: 2026-04-10 (Asia/Tokyo) - Phase 2B-2 Resilience & Refund Lifecycle*

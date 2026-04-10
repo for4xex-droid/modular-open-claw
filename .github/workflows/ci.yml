@@ -54,6 +54,9 @@ jobs:
           TEST_POSTGRES_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
         run: cargo test --workspace -- --test-threads=1
 
+      - name: Verify Release Build (Phase γ)
+        run: cargo build --release --workspace
+
       - name: Stop Test Database
         if: always()
         run: docker-compose -f docker-compose.test.yml down

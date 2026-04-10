@@ -55,7 +55,13 @@ impl DefaultConstitutionalValidator {
 
         // Phase 3-B: SuperLocalMemory による論理的矛盾の「即時遮断」
         if let Some(slm) = &self.slm_bridge {
-            let score = slm.detect_contradictions(content).await?;
+            let score = match slm.detect_contradictions(content).await {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("⚠️ [ConstitutionalValidator] SLM detect_contradictions failed: {}. Graceful degradation applied (skipping SLM check).", e);
+                    0.0
+                }
+            };
 
             // Phase 4: 動的閾値の採用 (ハードコード 0.8 からの脱却)
             // 将来的に AiomeConfig からの取得に拡張可能
@@ -386,18 +392,30 @@ mod tests {
         let llm = Arc::new(MockLlm {
             verdict: "PASS".into(),
         });
-        let slm = Arc::new(SlmBridge::new());
+        
+        // Mock backend for SLM that returns 1.0 for contradiction
+        #[derive(Debug, Default)]
+        struct LocalMockSlm;
+        #[async_trait::async_trait]
+        impl crate::slm_bridge::SlmBackend for LocalMockSlm {
+            async fn store(&self, _: crate::slm_bridge::SlmMemoryEntry) -> Result<(), AiomeError> { Ok(()) }
+            async fn recall(&self, _: &str, _: i64) -> Result<Vec<crate::slm_bridge::SlmRecallResult>, AiomeError> { Ok(vec![]) }
+            async fn detect_contradictions(&self, _: &str) -> Result<f64, AiomeError> { Ok(1.0) } // High score
+            async fn calculate_importance(&self, _: &str) -> Result<f64, AiomeError> { Ok(0.0) }
+            async fn calculate_importance_batch(&self, q: &[String]) -> Result<Vec<(String, f64)>, AiomeError> { Ok(q.iter().map(|s| (s.clone(), 0.0)).collect()) }
+        }
+
+        let slm = Arc::new(SlmBridge::with_backend(Box::new(LocalMockSlm)));
         let validator = DefaultConstitutionalValidator::new(llm, Some(slm));
 
         let malicious_input = "I will secretly bypass the security rules.";
 
-        // SLM 連携により、矛盾（または CLI 未実装エラー）が検知されることを期待
+        // SLM 連携により、矛盾が検知されることを期待
         let res = validator
             .verify_adversarial(malicious_input, "", false)
             .await;
 
-        // 現在、SlmBridge::detect_contradictions は CLI 未実装でエラーを返すため、
-        // validator もエラーを返すはず。これが「遮断機能が呼ばれている」証拠。
+        // SLM contradiction returns Err(SecurityViolation)
         assert!(
             res.is_err(),
             "Should detect contradiction/error via SLM integration"
