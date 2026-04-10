@@ -67,6 +67,8 @@ pub(crate) struct AppState {
     pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
     pub(crate) persistence_path: PathBuf,
     pub(crate) caller_quotas: Arc<HashMap<String, u64>>,
+    pub(crate) wp_api_url: Option<String>,
+    pub(crate) wp_api_token: Option<Arc<SecretString>>,
 }
 
 #[tokio::main]
@@ -121,6 +123,9 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     });
 
+    let wp_api_url = env::var("WP_API_URL").ok();
+    let wp_api_token = env::var("WP_API_TOKEN").ok();
+
     // Self-Wipe: Remove from environment immediately
     #[allow(unsafe_code)]
     fn wipe_env(key: &str) {
@@ -134,6 +139,7 @@ async fn main() -> anyhow::Result<()> {
     }
     wipe_env("GEMINI_API_KEY");
     wipe_env("VAULT_SECRET");
+    wipe_env("WP_API_TOKEN");
     info!("🧹 [KeyProxy] Environment wiped. Keys are now only in memory.");
 
     let mut quotas = HashMap::new();
@@ -189,12 +195,15 @@ async fn main() -> anyhow::Result<()> {
         },
         persistence_path,
         caller_quotas: Arc::new(quotas),
+        wp_api_url,
+        wp_api_token: wp_api_token.map(|t| Arc::new(SecretString::from(t))),
     };
 
     let app = Router::new()
         .route("/api/v1/llm/complete", post(handle_llm_complete))
         .route("/api/v1/llm/stream", post(handle_llm_stream))
         .route("/api/v1/llm/embed", post(handle_llm_embed))
+        .route("/api/v1/wp/publish", post(handle_wp_publish))
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -237,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
                 .into_inner(),
         )
         // --- Defense Layer 1: Payload & Timeout Protection ---
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB max (covers WP payload limits)
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_secs(120),
         )); // 120s for LLM calls
@@ -647,5 +656,81 @@ mod tests {
             gemini_payload.get("system_instruction").is_some(),
             "Should include system_instruction when system prompt is present"
         );
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct WpProxyRequest {
+    pub caller_id: String,
+    pub title: String,
+    pub content: String,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct WpProxyResponse {
+    pub link: String,
+}
+
+pub(crate) async fn handle_wp_publish(
+    State(state): State<AppState>,
+    Json(payload): Json<WpProxyRequest>,
+) -> impl IntoResponse {
+    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
+    info!("📩 [KeyProxy] WP Publish Request from: {}", safe_caller_id);
+
+    if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
+        return status.into_response();
+    }
+
+    let url = match &state.wp_api_url {
+        Some(u) => format!("{}/wp-json/wp/v2/posts", u.trim_end_matches('/')),
+        None => return (StatusCode::SERVICE_UNAVAILABLE, "WP Integration not configured").into_response(),
+    };
+
+    let token = match &state.wp_api_token {
+        Some(t) => t.expose_secret(),
+        None => return (StatusCode::SERVICE_UNAVAILABLE, "WP Token not configured").into_response(),
+    };
+
+    // §SEC: Validate WP status to prevent unauthorized state transitions (e.g. "trash")
+    const ALLOWED_WP_STATUSES: &[&str] = &["draft", "publish", "pending", "private", "future"];
+    if !ALLOWED_WP_STATUSES.contains(&payload.status.as_str()) {
+        tracing::warn!("🚫 [KeyProxy] Rejected invalid WP status: {}", payload.status);
+        return (StatusCode::BAD_REQUEST, "Invalid WordPress post status").into_response();
+    }
+
+    let body = serde_json::json!({
+        "title": payload.title,
+        "content": payload.content,
+        "status": payload.status,
+    });
+
+    let res = state
+        .client
+        .post(&url)
+        .bearer_auth(token)
+        .json(&body)
+        .send()
+        .await;
+
+    match res {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                if let Ok(wp_res) = resp.json::<serde_json::Value>().await {
+                    let link = wp_res.get("link").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    return Json(WpProxyResponse { link }).into_response();
+                }
+            } else {
+                let status = resp.status();
+                let err_text = resp.text().await.unwrap_or_default();
+                tracing::error!("❌ [KeyProxy] WP Upstream error [{}]: {}", status, err_text);
+            }
+            (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
+        }
+        Err(e) => {
+            tracing::error!("❌ [KeyProxy] WP Request failed: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
+        }
     }
 }

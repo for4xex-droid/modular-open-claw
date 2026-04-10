@@ -16,13 +16,26 @@ use shared::sandbox::PathSandbox;
 use tokio::io::AsyncWriteExt;
 use tracing::{error, info, warn};
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct Inochi2dUploadResponse {
     pub asset_id: uuid::Uuid,
     pub model_url: String,
 }
 
 /// Inochi2D (INX) モデルをアップロード
+#[utoipa::path(
+    post,
+    path = "/api/v1/mascot/inochi2d",
+    request_body(content = String, description = "multipart/form-data with `file` field", content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Inochi2D upload success", body = Inochi2dUploadResponse),
+        (status = 403, description = "Forbidden: eKYC verification required"),
+        (status = 400, description = "Bad Request: Invalid file")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn upload_inochi2d_handler(
     State(state): State<AppState>,
     axum::extract::Extension(user): axum::extract::Extension<AuthenticatedUser>,

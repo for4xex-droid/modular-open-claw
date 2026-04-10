@@ -10,14 +10,14 @@
 | `belief_consistency_gate`| コア信念（SOUL.md）との整合性検証ゲート。CortexSynthパイプラインと統合され、生成データから矛盾を破棄する堅牢なフィルターとして稼働。 | **実装完了** |
 | `boundary_verifier` | LLM を介さない O(1) のシェルコマンド境界検証（不変条件強制）を提供。 | **Phase 47 完了** |
 | `cortex_synth` | ドキュメント群からタスクに応じた高品質なJSONLデータセット（ShareGPT形式）を自律生成する教師データ蒸留エンジン。 | **実装完了** |
-| `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **Phase 21 継続中** |
+| `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **実装完了 (Phase 8.2)** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
 | `tests/common/chaos` | **ADR chaos**: `ChaosMode` と `ChaosLlmProvider` を提供するテスト専用のフォルトインジェクション基盤。本番環境に影響を与えずLLM障害（空応答、不正JSON、巨大サイズ、タイムアウト）を注入可能。 | **実装完了** |
 | `commerce` | 外部決済・ギフトAPI（Tremendous等）及び Stripe との自律的な商用連携基盤。**Phase 37a** で実機環境連携（create/cancel_subscription）と webhook 冪等性を実装。 | **Phase 37a 完了** |
 | `commerce_mock` | 決済フローのカルシウム（テスト用途）。 | 実装完了 |
-| `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **新規実装** |
+| `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **実装完了** |
 | `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
 | `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。`GET /api/v1/audit/quarantine` および `POST /api/v1/audit/quarantine/{id}/release` (検疫強制リリースAPI)を開通し、フロントエンドUI統合完了。 | **Phase 2A-3 完了** |
 | `cognitive_sentinel`| 感情が極端な鬱状態などに陥った場合に検知し、自律的に回復イベントを発火させる防御層。**Phase 55** でジョブ失敗率（60%以上）に基づく Panic State 防御を追加。 | **Phase 55 完了** |
@@ -43,8 +43,8 @@
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
 | `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
 | `output_filter` | RTK(Rust Token Killer)に着想を得たコマンド出力フィルタ。ボイラープレートや重複行を削減しLLMコンテキストを最適化。**Phase 3**で削減数を `ToolExecutionEvent::TokenSaved` として上層やSSE（Management Console）へ流す計測基盤を結合済。 | **Phase 3 完了** |
-| `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。防衛的境界テスト込み。 | **強化完了** |
-| `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **新規実装** |
+| `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。**Phase 4** にて WordPress API トークンを排除し AbyssVault (Key Proxy) へ委譲するゼロトラストアーキテクチャへ進化。 | **Phase 4 完了** |
+| `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |

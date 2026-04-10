@@ -99,6 +99,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 76 | **Elicitation UX Hijacking**| **Security suspenion misreported as crash, confusing operators** | 🟡 Mid | **Semantic `TaskAwaitingInput` events for clear UI distinction (Phase 2.1)** |
 | 77 | **Plan Hijacking (DAG Injection)** | **Malicious sub-task insertion into active plan** | 🔴 High | **Invariant-DAG Hash Chain Validation (Phase 48)** |
 | 78 | **Social Elicitation (Persona Drift)** | **Agent tricked into revealing system prompt** | 🔴 High | **Constitutional Core Defense (Phase 2B-2)** |
+| 79 | **WP Token Memory Extraction** | **WP_API_TOKEN static presence in memory** | 🔴 High | **AbyssVault (Key Proxy) WP Endpoint + Zeroize (Phase 4)** |
+| 80 | **WP Lifecycle Sabotage** | **Crafted `status: trash` payload to delete active posts** | 🔴 High | **Pre-computation Proxy Allowance Whitelist (Phase 4)** |
 
 ## 3. Defense Architecture
 
@@ -209,5 +211,8 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 2. **Asset Data Keys (DEK)**: A unique 256-bit symmetric key is randomly generated per uploaded asset (e.g. Voice Models) for AES-256-GCM.
 3. **Encrypted Key Storage (KEK)**: The Asset Data Keys are encrypted by the Master Key and stored persistently in the `vault_keys` SQLite table, ensuring that a database compromise without the Master Key yields no usable assets.
 
+### 6.6 Semantic Endpoint Bridging (Phase 4)
+For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
+
 ---
-*最終更新: 2026-04-10 (Execution Robustness & Constitutional Policy)*
+*最終更新: 2026-04-11 (Execution Robustness & Constitutional Policy)*

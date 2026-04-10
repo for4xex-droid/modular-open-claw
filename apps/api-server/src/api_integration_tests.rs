@@ -573,7 +573,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         audit_logger: Component::new(audit_logger),
         affiliate_adapter: Component::new(Arc::new(
             infrastructure::intent::MockAffiliateAdapter::new(),
-        )),
+        ) as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>),
         soul_pipeline: Component::new(Arc::new(SoulPipeline::new(soul_adapter, samsara_engine))),
         transcription_engine: Component::new(Arc::new(
             infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(

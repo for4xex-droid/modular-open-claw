@@ -289,7 +289,11 @@
     "shield": "シールド",
     "enabled": "有効",
     "disabled": "無効",
-    "quarantineEmpty": "検疫は空です。"
+    "quarantineEmpty": "検疫は空です。",
+    "noActiveRules": "アクティブルールなし",
+    "noActiveRulesDesc": "防御ヒューリスティックはロードされていません。",
+    "quarantineClean": "検疫クリア",
+    "quarantineCleanDesc": "Vault 内に異常や感染ファイルは検出されていません。"
   },
   "skill": {
     "search": "ツール、機能、ソースを検索...",

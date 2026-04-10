@@ -67,6 +67,7 @@ graph TB
         subgraph "Apps"
             API["api-server (108 endpoints)"]
             MGMT["Management Console (57 screens)"]
+            PROXY["key-proxy (AbyssVault/WP)"]
             TAURI["Tauri Desktop (計画)"]
         end
     end
@@ -625,8 +626,8 @@ gantt
 | クレート | シンボル数 | 代表的なシンボル |
 |---------|----------|---------------|
 | `aiome-contracts` | 16 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
-| `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `SoulStore`, `GigEngine` |
-| `infrastructure` | 150+ | `RegistryManager`, `BastionGuard`, `ContextEngine`, `SoTEngine`, `CortexCompiler` |
+| `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
+| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine` |
 | `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |
 | `avatar-engine` | 15+ | `Inochi2dLoader`, `SimpleLipSyncEngine`, `PhysicsSimulator` |

@@ -286,12 +286,12 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
     static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
         vec![
-            Regex::new(r"(?i)rm\s+-rf").unwrap(),
-            Regex::new(r"(?i)chmod\s+777").unwrap(),
-            Regex::new(r"(?i)cat\s+/etc/shadow").unwrap(),
-            Regex::new(r"(?i)shutdown").unwrap(),
-            Regex::new(r"(?i)reboot").unwrap(),
-            Regex::new(r#"(?i)":\s*".*";"#).unwrap(), // Simplified injection sniff
+            Regex::new(r"(?i)rm\s+-rf").unwrap(), // allow-anti-pattern
+            Regex::new(r"(?i)chmod\s+777").unwrap(), // allow-anti-pattern
+            Regex::new(r"(?i)cat\s+/etc/shadow").unwrap(), // allow-anti-pattern
+            Regex::new(r"(?i)shutdown").unwrap(), // allow-anti-pattern
+            Regex::new(r"(?i)reboot").unwrap(), // allow-anti-pattern
+            Regex::new(r#"(?i)":\s*".*";"#).unwrap(), // allow-anti-pattern
         ]
     });
 

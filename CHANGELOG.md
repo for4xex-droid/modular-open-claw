@@ -1,6 +1,8 @@
 ## [Unreleased] - 2026-04-11
-  - **Phase 8.7: TrendSonar Resilience & Concurrency Hardening**:
-    - X API 連携における `429 Too Many Requests` エラーの自律ハンドリング機構を実装。レスポンスヘッダから `Retry-After` 時間を動的に取得し、API クオータ枯渇時の無駄な再試行を完全に遮断。
+  - **Phase 4 WordPress AbyssVault Migration**:
+    - `api-server` (WordPressAdapter) 内に WP の API トークンをプレーンテキストで保持する脆弱性を解消。トークンの保持とリクエストプロキシを `key-proxy` (AbyssVault) に委譲。
+    - `key-proxy` に `/api/v1/wp/publish` エンドポイントを新設し、WP 側の通信を AbyssVault 内に完全隔離するゼロトラストアーキテクチャへの移行を達成。
+    - 互換性のためレガシーモードも残しつつ、環境変数 `KEY_PROXY_URL` と `WP_API_URL` を動的に判別してセキュアエンドポイントを自動選択するように `bootstrap.rs` の Publishing Pipeline を改修。
     - レート制限管理の `DashMap` 状態演算パニック（TOCTOU問題）を解消するため、`Instant` に `Duration` の差分を計算するハックを廃止。`(Instant, Duration)` 型による絶対安全・アンダーフロー無縁の `saturating_sub` 設計へリファクタリング。`SerpAnalysisAdapter` の実装対称性（Symmetry）も担保。
     - `TrendSonar` のアダプタ群のループ並行フェッチを `FuturesUnordered` + `tokio::time::timeout` 構成へ完全置換。通信の遅い1つの外部APIによる全体のスレッドストールを回避。
     - Rust の `cargo test` 並列実行環境下での環境変数（`std::env::set_var`）の汚染や `DashMap::clear()` 競合による Flaky（不安定）テストの温床を根本排除。DI（依存性の注入）パラダイムを用いたテスト専用エンドポイント構築と、テナントキーによるアイソレーションを実施。

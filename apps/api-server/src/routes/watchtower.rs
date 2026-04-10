@@ -22,6 +22,16 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/watchtower",
+    responses(
+        (status = 101, description = "WebSocket switch protocols")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,

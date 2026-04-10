@@ -1416,3 +1416,13 @@ graph TD
 *   **Ripple effect**: 
     *   Tokens/keys like `X_BEARER_TOKEN` added via the UI are now instantly available globally without server restart.
     *   `ExternalTrendSonar` is now explicitly bounded to `LlmProvider + Send + Sync`.
+
+## Phase 4 WordPress AbyssVault Migration
+### 1. WordPress Token Zero-Trust Migration
+- **変更内容**:
+    - `apps/key-proxy/src/main.rs` [MODIFY]: 新しく `/api/v1/wp/publish` エンドポイントを開設し、`WP_API_URL`と`WP_API_TOKEN`環境変数をプロキシ内でロード・パージするゼロトラスト防御層を追加。
+    - `libs/infrastructure/src/publisher/wordpress.rs` [MODIFY]: `WordPressAdapter` にトークン情報を保持せず、Abyss Vault Proxy を経由して HTTP リクエストをプロキシする `new_vault` コンストラクタを新設。`Authorization: Bearer <vault_secret>` による Key Proxy の `auth_middleware` 回避を追加。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: バックエンドシステムのブートストラップ処理に、`KEY_PROXY_URL` を利用して動的に `new_vault` を注入し、フォールバックとしてレガシー設定に縮退する柔軟なインフラ初期化を導入。
+- **波及効果**:
+    - WordPress トークンが API サーバーのメモリ空間から完全に追放され、SSR / RCE 脆弱性等によるプレーンテキストのクレデンシャル漏洩リスクを物理遮断した。
+    - プロキシを介した通信により、WP API へのレート制限・通信遮断が `key-proxy` コンポーネント単独の責務となり、API サーバーのスレッドが枯渇するブロッキング障害が予防された。

@@ -982,3 +982,13 @@ mod tests {
         // Dummy test to ensure the trait module is sound
     }
 }
+
+#[async_trait::async_trait]
+pub trait AffiliateAdapter: Send + Sync {
+    async fn fetch_bids_for_intent(
+        &self,
+        intent: &crate::gig::GigIntent,
+    ) -> Result<Vec<crate::gig::GigBid>, crate::error::AiomeError>;
+    
+    fn validate_url(&self, url: &str) -> Result<(), crate::error::AiomeError>;
+}

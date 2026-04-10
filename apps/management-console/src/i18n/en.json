@@ -290,7 +290,11 @@
     "shield": "Shield",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "quarantineEmpty": "Quarantine is empty."
+    "quarantineEmpty": "Quarantine is empty.",
+    "noActiveRules": "NO ACTIVE RULES",
+    "noActiveRulesDesc": "The immune system has no defensive heuristics loaded.",
+    "quarantineClean": "QUARANTINE CLEAN",
+    "quarantineCleanDesc": "No anomalies or infected assets detected in the vault."
   },
   "skill": {
     "search": "Search for tools, capabilities, or sources...",

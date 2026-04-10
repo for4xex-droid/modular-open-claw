@@ -16,7 +16,7 @@ use serde::Serialize;
 use shared::bootstrap_detector::{BootMode, BootstrapDetector};
 
 /// Bootstrap ステータスレスポンス
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct BootstrapStatusResponse {
     /// 起動モード ("normal" or "setup")
     pub mode: String,
@@ -37,6 +37,13 @@ pub struct BootstrapStatusResponse {
 /// セットアップの完了状態を返す。認証不要。
 /// フロントエンドはこのエンドポイントを最初に呼び出し、
 /// `mode == "setup"` の場合はセットアップ WebUI に遷移する。
+#[utoipa::path(
+    get,
+    path = "/api/v1/bootstrap/status",
+    responses(
+        (status = 200, description = "Bootstrap status", body = BootstrapStatusResponse)
+    )
+)]
 pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapStatusResponse> {
     let config = state.config.get_inner();
     let root = config.resolver.root();
@@ -56,7 +63,7 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
 }
 
 /// Ollama 自動検出の結果
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct OllamaDetectionResponse {
     /// Ollama が利用可能か
     pub available: bool,
@@ -72,6 +79,13 @@ pub struct OllamaDetectionResponse {
 ///
 /// ローカルの Ollama サーバーを自動検出する。認証不要。
 /// Phase 2B-3: Ollama 自動検出
+#[utoipa::path(
+    get,
+    path = "/api/v1/bootstrap/detect-ollama",
+    responses(
+        (status = 200, description = "Ollama detection result", body = OllamaDetectionResponse)
+    )
+)]
 pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
     let client = aiome_core::http::get_http_client().clone();
 
@@ -126,7 +140,7 @@ pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
 }
 
 /// Factory Reset レスポンス
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct FactoryResetResponse {
     /// 成功したか
     pub success: bool,
@@ -144,6 +158,17 @@ pub struct FactoryResetResponse {
 ///
 /// Factory Reset を実行する。**System Admin 権限が必要**。
 /// Phase 2B-4: Factory Reset
+#[utoipa::path(
+    post,
+    path = "/api/v1/bootstrap/factory-reset",
+    responses(
+        (status = 200, description = "Factory reset complete", body = FactoryResetResponse),
+        (status = 403, description = "Forbidden")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn factory_reset(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,

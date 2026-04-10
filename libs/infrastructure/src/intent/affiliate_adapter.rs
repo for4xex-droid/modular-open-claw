@@ -26,20 +26,20 @@ impl MockAffiliateAdapter {
             ],
         }
     }
+}
 
-    /// インテントに基づき、商品/広告の入札 (GigBid) を取得する (AS-1.3)
-    pub async fn fetch_bids_for_intent(
+#[async_trait]
+impl aiome_core_contracts::traits::AffiliateAdapter for MockAffiliateAdapter {
+    async fn fetch_bids_for_intent(
         &self,
         intent: &aiome_core_contracts::gig::GigIntent,
     ) -> Result<Vec<aiome_core_contracts::gig::GigBid>, AiomeError> {
         info!("🏷️ [Affiliate] Searching items for: {}", intent.description);
 
-        // AS-1.3: 実効的なアダプター実装（モック）
-        // 実際には各アフィリエイトAPIを叩き、商品の詳細を取得して GigBid に変換する
         let mock_bid = aiome_core_contracts::gig::GigBid {
             id: uuid::Uuid::new_v4(),
             intent_id: intent.id,
-            bidder_id: uuid::Uuid::nil(), // システム自身またはアフィリエイトプロバイダのID
+            bidder_id: uuid::Uuid::nil(),
             price_coins: 10,
             est_duration_sec: 0,
             deposit_amount: 0,
@@ -48,8 +48,7 @@ impl MockAffiliateAdapter {
         Ok(vec![mock_bid])
     }
 
-    /// URLが許可リストにあるかチェックする (QW-1: SSRF対策)
-    pub fn validate_url(&self, url: &str) -> Result<(), AiomeError> {
+    fn validate_url(&self, url: &str) -> Result<(), AiomeError> {
         let parsed = url::Url::parse(url).map_err(|_| AiomeError::Infrastructure {
             reason: format!("Invalid URL: {}", url),
         })?;
@@ -87,6 +86,7 @@ impl TrendAdapter for MockAffiliateAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core_contracts::traits::AffiliateAdapter;
 
     #[test]
     fn test_affiliate_adapter_ssrf_blocking_red() {
