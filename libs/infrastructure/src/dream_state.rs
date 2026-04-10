@@ -279,7 +279,7 @@ impl DreamState {
             )
             .await?;
 
-        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&resp.content)?;
         let manifest: Value = serde_json::from_str(json_str.as_ref())?;
 
         let domain = manifest["domain"].as_str().unwrap_or("General");

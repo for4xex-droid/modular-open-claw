@@ -23,33 +23,42 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!token) return;
+        const trimmedToken = token.trim();
+        if (!trimmedToken) return;
 
         setIsLoading(true);
         setError('');
-        console.log("DEBUG: handleLogin started fetching...");
+
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), 10000);
+
         try {
             // 認証が必要なエンドポイントで検証する（/api/health は公開なのでトークン検証にならない）
             const response = await fetch(`${API_BASE}/api/v1/settings`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    'Authorization': `Bearer ${trimmedToken}`
+                },
+                signal: abortController.signal
             });
-            console.log("DEBUG: fetch completed, status:", response.status);
+
+            clearTimeout(timeoutId);
 
             if (response.ok || response.status === 200) {
-                setAuthToken(token);
+                setAuthToken(trimmedToken);
                 onAuthenticated();
             } else if (response.status === 401) {
                 setError(t('auth.errorInvalidKey'));
             } else {
                 setError(t('auth.errorServer', { status: response.status }));
             }
-        } catch (err) {
-            console.log("DEBUG: fetch failed with error:", err);
-            setError(t('auth.errorConnection'));
+        } catch (err: any) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                setError(t('auth.errorTimeout') || 'Connection timed out');
+            } else {
+                setError(t('auth.errorConnection'));
+            }
         } finally {
-            console.log("DEBUG: finally block executed");
             setIsLoading(false);
         }
     };

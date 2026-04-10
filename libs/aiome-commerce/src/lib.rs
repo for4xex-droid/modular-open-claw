@@ -22,7 +22,7 @@ pub use crate::ekyc::StripeEkycEngine;
 pub use crate::factory::CommerceEngineFactory;
 pub use crate::gig::UniversalGigEngine;
 pub use crate::stripe::StripeCommerceEngine;
-pub use crate::syndicate::SqliteSyndicateStore;
+pub use crate::syndicate::UniversalSyndicateStore;
 
 #[cfg(test)]
 mod tests {

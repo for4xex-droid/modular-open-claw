@@ -111,6 +111,7 @@ impl ExpressionEngine {
 
         let resp = client
             .post("https://api.openai.com/v1/audio/speech")
+            .timeout(std::time::Duration::from_secs(30))
             .header("Authorization", format!("Bearer {}", api_key))
             .json(&payload)
             .send()
@@ -154,11 +155,15 @@ impl ExpressionEngine {
 
         let url = format!("{}/tts_to_audio", endpoint.trim_end_matches('/'));
 
-        let resp = client.post(&url).json(&payload).send().await.map_err(|e| {
-            AiomeError::Infrastructure {
+        let resp = client
+            .post(&url)
+            .timeout(std::time::Duration::from_secs(30))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("XTTS request failed: {}", e),
-            }
-        })?;
+            })?;
 
         if !resp.status().is_success() {
             let status = resp.status();

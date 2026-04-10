@@ -108,7 +108,7 @@ impl CortexQueryEngine {
                 Some("You are a helpful assistant. Output pure JSON."),
             )
             .await?;
-        let json_str = crate::concept_manager::extract_json(&keyword_res.content)
+        let json_str = crate::llm::utils::extract_json(&keyword_res.content)
             .unwrap_or_else(|_| "[]".to_string());
         let keywords: Vec<String> = serde_json::from_str(&json_str).unwrap_or_default();
 
@@ -125,15 +125,47 @@ impl CortexQueryEngine {
         let mut all_article_ids = std::collections::HashSet::new();
         for kw in keywords {
             let norm_kw = kw.to_lowercase();
-            let query = "SELECT article_ids FROM cortex_concept_index WHERE concept LIKE ?";
+            // [PATCH-8] FTS5 Escape: replace double quotes to prevent syntax error panics
+            let fts_kw = norm_kw.replace("\"", "\"\"");
+            let match_str = format!("\"{}\"", fts_kw);
+
+            let fts_query = r#"
+                SELECT article_ids 
+                FROM cortex_concept_index 
+                WHERE rowid IN (
+                    SELECT rowid FROM cortex_concept_fts WHERE concept MATCH ?
+                )
+            "#;
             let like_str = format!("%{}%", norm_kw);
-            let rows = sqlx::query(query)
-                .bind(like_str)
+            let like_query = "SELECT article_ids FROM cortex_concept_index WHERE concept LIKE ?";
+
+            // [PATCH-3, PATCH-7] Fallback from FTS5 to LIKE
+            let rows = match sqlx::query(fts_query)
+                .bind(&match_str)
                 .fetch_all(sqlite_pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+            {
+                Ok(fts_rows) => fts_rows,
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    if err_msg.contains("no such table")
+                        || err_msg.contains("syntax error")
+                        || err_msg.contains("fts")
+                        || err_msg.contains("no such module")
+                    {
+                        tracing::debug!("FTS5 query failed (falling back to LIKE): {}", err_msg);
+                        sqlx::query(like_query)
+                            .bind(&like_str)
+                            .fetch_all(sqlite_pool)
+                            .await
+                            .map_err(|e| AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            })?
+                    } else {
+                        return Err(AiomeError::Infrastructure { reason: err_msg });
+                    }
+                }
+            };
 
             for row in rows {
                 use sqlx::Row;
@@ -187,8 +219,8 @@ impl CortexQueryEngine {
         let answer_prompt = format!("Using the following Cortex Wiki articles context, answer the user's question.\nQuestion: {}\nContext:\n{}\n\nProvide your answer in JSON format exactly like this:\n{{\"answer_md\": \"your detailed answer in markdown\", \"confidence\": 0.95}}", question, context_text); // allow-anti-pattern
         let ans_res = self.llm_provider.complete(&answer_prompt, Some("You are a knowledge retrieval assistant. Provide accurate answers based ONLY on the context. If you don't know, set confidence to 0.1.")).await?;
 
-        let ans_json_str = crate::concept_manager::extract_json(&ans_res.content)
-            .unwrap_or_else(|_| "{}".to_string());
+        let ans_json_str =
+            crate::llm::utils::extract_json(&ans_res.content).unwrap_or_else(|_| "{}".to_string());
 
         let parsed_ans: serde_json::Value =
             serde_json::from_str(&ans_json_str).unwrap_or_else(|_| {
@@ -382,6 +414,33 @@ mod tests {
         .await
         .unwrap(); // allow-anti-pattern
 
+        // [PATCH-6] cortex_activity_log definition
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS cortex_activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                detail_json TEXT DEFAULT '{}',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+        )
+        .execute(sqlite_pool)
+        .await
+        .unwrap(); // allow-anti-pattern
+
+        // [PATCH-4, PATCH-9] FTS5 setup for tests
+        sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS cortex_concept_fts USING fts5(concept, content=cortex_concept_index, content_rowid=rowid);")
+            .execute(sqlite_pool)
+            .await
+            .unwrap(); // allow-anti-pattern
+
+        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_insert AFTER INSERT ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
+            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_update AFTER UPDATE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
+            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_delete AFTER DELETE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); END;")
+            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+
         pool
     }
 
@@ -564,5 +623,24 @@ mod tests {
         let ans_val = ans.unwrap(); // allow-anti-pattern
         assert_eq!(ans_val.answer_md, "This is a mock answer");
         assert_eq!(ans_val.confidence, 0.95);
+    }
+
+    #[tokio::test]
+    async fn test_edge_query_with_fts5_and_escaping() {
+        let pool = setup_db_pool().await;
+        seed_test_data(&pool).await;
+
+        // "rust-" simulates an FTS5 token that would normally crash without escaping
+        // because of the hyphen, or quotes.
+        let provider = Arc::new(MockLlmProvider {
+            responses: tokio::sync::Mutex::new(vec![
+                r#"["rust-", "\"async\""]"#.to_string(),
+                r#"{"answer_md": "Safe from syntax panics", "confidence": 0.99}"#.to_string(),
+            ]),
+        });
+
+        let engine = CortexQueryEngine::new(provider, pool);
+        let ans = engine.query("What is \"rust-\" async?").await.unwrap(); // allow-anti-pattern
+        assert_eq!(ans.answer_md, "Safe from syntax panics");
     }
 }

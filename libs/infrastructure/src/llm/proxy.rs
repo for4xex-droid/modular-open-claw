@@ -21,6 +21,8 @@ pub struct ProxyLlmProvider {
     pub caller_id: String,
     /// proxy_secret (VULN-65: used for HMAC signature)
     pub proxy_secret: Option<String>,
+    /// vault_secret (for Authorization header)
+    pub vault_secret: Option<String>,
     client: reqwest::Client,
 }
 
@@ -47,12 +49,14 @@ impl ProxyLlmProvider {
         endpoint_tag: String,
         caller_id: String,
         proxy_secret: Option<String>,
+        vault_secret: Option<String>,
     ) -> Self {
         Self {
             proxy_url,
             endpoint_tag,
             caller_id,
             proxy_secret,
+            vault_secret,
             client: aiome_core::http::get_http_client().clone(),
         }
     }
@@ -103,6 +107,10 @@ impl LlmProvider for ProxyLlmProvider {
             .timeout(std::time::Duration::from_secs(120))
             .header("Content-Type", "application/json");
 
+        if let Some(secret) = &self.vault_secret {
+            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret));
+        }
+
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
         request_builder = self.sign_request(request_builder, &payload_json);
 
@@ -133,7 +141,28 @@ impl LlmProvider for ProxyLlmProvider {
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
-        self.complete("ping", None).await?;
+        let url = format!("{}/api/v1/health", self.proxy_url);
+        let mut request_builder = self
+            .client
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(5));
+
+        if let Some(secret) = &self.vault_secret {
+            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret));
+        }
+
+        let res = request_builder
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Health check failed: {}", e),
+            })?;
+
+        if !res.status().is_success() {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("KeyProxy health check returned status: {}", res.status()),
+            });
+        }
         Ok(())
     }
 
@@ -151,7 +180,7 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             caller_id: self.caller_id.clone(),
             prompt: text.to_string(),
             system: None,
-            endpoint: self.endpoint_tag.clone(),
+            endpoint: format!("{}-embed", self.endpoint_tag),
         };
 
         let payload_json =
@@ -163,6 +192,10 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             .post(&url)
             .timeout(std::time::Duration::from_secs(120))
             .header("Content-Type", "application/json");
+
+        if let Some(secret) = &self.vault_secret {
+            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret));
+        }
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
         request_builder = self.sign_request(request_builder, &payload_json);
@@ -193,8 +226,8 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
-        self.embed("ping", false).await?;
-        Ok(())
+        // Phase E-2 Fix: Prevent API cost and hang by sharing the /api/v1/health endpoint logic
+        LlmProvider::test_connection(self).await
     }
 
     fn name(&self) -> &str {

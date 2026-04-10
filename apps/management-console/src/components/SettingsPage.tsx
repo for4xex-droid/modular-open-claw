@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
-import { useTokenHealth } from '../hooks/useTokenHealth';
 
 interface SettingEntry {
     key: string;
@@ -324,7 +323,6 @@ const SecretUpdater: React.FC = () => {
     const [newSecret, setNewSecret] = useState('');
     const [result, setResult] = useState<{ success: boolean, message: string } | null>(null);
     const [testing, setTesting] = useState(false);
-    const { isExpired, dismiss } = useTokenHealth();
 
     const handleUpdate = async () => {
         if (!newSecret.trim()) return;
@@ -339,7 +337,6 @@ const SecretUpdater: React.FC = () => {
             if (res.ok) {
                 setResult({ success: true, message: 'Connection verified! Token saved.' });
                 setNewSecret('');
-                dismiss();
             } else {
                 setResult({ success: false, message: `Authentication failed (${res.status})` });
                 if (oldSecret) setAuthToken(oldSecret);
@@ -356,16 +353,6 @@ const SecretUpdater: React.FC = () => {
 
     return (
         <div>
-            {isExpired && (
-                <div style={{
-                    background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)',
-                    borderRadius: 'var(--radius-sm)', padding: '0.8rem', marginBottom: '0.8rem',
-                    fontSize: '0.8rem', color: 'var(--accent-rose)',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem'
-                }}>
-                    <Shield size={16} /> Token expired or changed on server. Please update below.
-                </div>
-            )}
             <label style={labelStyle}>Update API Secret</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input

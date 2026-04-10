@@ -69,7 +69,7 @@ impl AdaptiveImmuneSystem {
 
         let resp = self.provider.complete(&logs_concat, Some(preamble)).await?;
 
-        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&resp.content)?;
         let v: serde_json::Value =
             serde_json::from_str(json_str.as_str()).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to parse immune rule JSON: {}", e),

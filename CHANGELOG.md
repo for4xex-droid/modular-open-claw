@@ -1,4 +1,20 @@
 ## [Unreleased] - 2026-04-10
+  - **Phase D: Cortex FTS5 Knowledge Migration (High-Performance Edge AI)**:
+    - `CortexQueryEngine` の内部レイテンシを改善するため、O(N) であった `LIKE` 探索を廃止し、大規模なWikiデータ（記事数1万件以上）に対しても常時 O(1) のレイテンシを担保する SQLite FTS5 (Full-Text Search) 機構へ移行完了。
+    - **Zero-Downtime Fallback**: FTS テーブルの未作成状態や、FTS5 モジュールが非搭載の特殊な SQLite バージョンで実行された場合に発生する `no such module: fts5` や `syntax error` を即座に検知し、安全に既存の `LIKE` 検索へ縮退運転（フォールバック）するフェイルセーフを構築し、システム全体のクラッシュを防御。
+    - **Robust Sanitization**: ユーザー由来の文字列（`"`, `-`, `OR`, `*` 等）が引き起こす FTS5 特有のパーサーパニックを防止するため、徹底した文字エスケープと Phrasal Query (句検索 `""`) 強制を実装。
+    - **No Knowledge Drift**: モックおよびマイグレーション（`20260410000002_cortex_fts5.sql`）内にデータベーストリガー（INSERT/UPDATE/DELETE）を実装し、コンパイラーが記事を更新した瞬間に FTS テーブル側へロスレスかつ遅延ゼロでデータコピーが同期される仕組み（3-way-trigger）を統合。
+  - **Phase 4C: UniversalSyndicateStore & Database Abstraction**:
+    - `SqliteSyndicateStore` を `UniversalSyndicateStore` へ移行完了。全ての実装を `shared::db::DatabasePool` に適合させ、SQLite 環境のみならず PostgreSQL 環境でも一貫性を持ったギルドデータストアを実現。
+    - API サーバーの各初期化レイヤーとテスト基盤 (bootstrap.rs, app_state.rs, api_integration_tests.rs) から依存結合を排除し、完全な TDD GREEN を達成。
+  - **Phase 52: LoRA Archiving & Secure Training Pipeline completed**:
+    - 実装した `LoraTrainingService` 内で、学習後の隔離完了モデル (.safetensors) を `Modelfile` と共に自動生成し、`ollama create` コマンドを通じて自律的に推論エンジンへ再登録・リロードするフローを実装。これによりエージェントが学習した微細な人格の変更を直ちにローカルLLMに反映可能に。
+    - Rebirth (転生) 時における旧世代の LoRA アーカイブ処理を強化。過剰なデータポイズニングを防ぐため、旧モデルを `archived_lora_models` へ隔離・記録した上で、次代の魂は LoRA 設定を白紙 (None) から開始するように統一し、安定性を保証。
+  - **Zero-Trust LLM Infrastructure Hardening (Phase E-2)**:
+    - 完全にゼロトラストなLLMプロキシ通信を確立するため、`key-proxy` と `ProxyLlmProvider` を本稼働グレードに引き上げました。
+    - `AiomeConfig` で `VAULT_SECRET` を自動パージしながら読み込むセキュア実装を追加し、`ProxyLlmProvider` の通信を `Authorization: Bearer` で保護。
+    - `api-server` のフォールバックルーター起動時の Ping テスト (`.test_connection()`) において、Gemini API へのフルリクエスト (`complete("ping")`) を廃止し、`key-proxy` の内部 `/api/v1/health` エンドポイントへ向き先を変更。これにより起動時の API 課金発生をゼロに抑えつつ、通信ブロック時の `tokio::time::timeout` (3秒/5秒) フォールバックを統合し、ローカル開発時 (DevEx) のハングアップを完全撲滅。
+    - APIエンドポイントから物理的に孤立した旧 `ConceptManager` を安全に非推奨化・削除 (`Sunset`) し、依存していた `extract_json` を `llm/utils.rs` に再配置することで不要コードの技術的負債を解消。
   - **Task Cancellation & Responsibility-Based Refund (Phase 2B-2)**:
     - ユーザーによるジョブキャンセルやインフラ的エラーの際に、支払われたトークンが自動で安全に返金されるアーキテクチャへの完全移行を達成。
     - `DockerConductor` の課金ロジックを自己責務型（`escrow_create` / `escrow_refund` / `escrow_release`）に移行し、タスクオーケストレーターと密結合しないスケール可能な課金モデルを確立。

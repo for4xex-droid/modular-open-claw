@@ -40,6 +40,7 @@ services:
         BIN_NAME: api-server
     environment:
       - KEY_PROXY_URL=http://key-proxy:9999
+      - VAULT_SECRET=${VAULT_SECRET}
       - SAMSARA_HUB_REST=http://samsara-hub:3016
       - SAMSARA_HUB_WS=ws://samsara-hub:3016/api/v1/federation/ws
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}

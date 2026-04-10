@@ -499,7 +499,41 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         std::path::PathBuf::from("."),
         Some(belief_gate.clone()),
     ));
-    let primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
+    let mut primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
+
+    use secrecy::ExposeSecret;
+    let proxy_provider = infrastructure::llm::proxy::ProxyLlmProvider::new(
+        config.key_proxy_url.clone(),
+        "gemini".to_string(),
+        "api-server".to_string(),
+        None,
+        config
+            .vault_secret
+            .as_ref()
+            .map(|s| s.expose_secret().to_string()),
+    );
+
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        aiome_core::llm_provider::LlmProvider::test_connection(&proxy_provider),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {
+            info!("🔐 [KeyProxy] Connected successfully! Enabling Zero-Trust primary routing.");
+            primary_provider = Arc::new(proxy_provider);
+        }
+        Ok(Err(e)) => {
+            warn!(
+                "⚠️ [KeyProxy] Unreachable (Error: {})! Falling back to Local DynamicLlmProvider.",
+                e
+            );
+        }
+        Err(_) => {
+            warn!("⚠️ [KeyProxy] Unreachable (Timeout)! Falling back to Local DynamicLlmProvider.");
+        }
+    }
+
     let fallback_provider: Arc<dyn LlmProvider + Send + Sync> = bg_provider.clone();
     let base_router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
         primary_provider,
@@ -903,15 +937,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         },
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
-            aiome_commerce::syndicate::SqliteSyndicateStore::new(
-                // Phase 4C TODO: Convert SyndicateStore to use UniversalSyndicateStore with DatabasePool // allow-anti-pattern
-                // to support PostgreSQL dynamically without unwrapping here.
-                job_queue
-                    .get_pool()
-                    .get_sqlite_pool()
-                    .cloned()
-                    .expect("SQLite pool required for SyndicateStore"), // allow-anti-pattern
-            ),
+            aiome_commerce::syndicate::UniversalSyndicateStore::new(job_queue.get_pool().clone()),
         )),
         hierarchical_router: Component::new(Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(

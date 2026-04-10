@@ -183,13 +183,16 @@ impl LoraTrainingService {
         );
 
         // SEC-PATH: P-08 Dataset Validation
-        if !std::path::Path::new(&config.dataset_path).exists() {
+        if !tokio::fs::try_exists(&config.dataset_path)
+            .await
+            .unwrap_or(false)
+        {
             return Err(AiomeError::Infrastructure {
                 reason: format!("Dataset not found at: {}", config.dataset_path),
             });
         }
         // Basic check for Dataset format
-        if let Ok(content) = std::fs::read_to_string(&config.dataset_path) {
+        if let Ok(content) = tokio::fs::read_to_string(&config.dataset_path).await {
             if !content.contains("\"text\"") && !content.contains("\"messages\"") {
                 return Err(AiomeError::Infrastructure {
                     reason: "Dataset is missing 'text' or 'messages' fields (P-08)".to_string(),
@@ -203,9 +206,11 @@ impl LoraTrainingService {
         let script_path = self.find_mlx_script_path()?;
 
         // B-002: Ensure vault directory exists before external script writes to it
-        std::fs::create_dir_all(&config.vault_path).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to create vault directory for LoRA: {}", e),
-        })?;
+        tokio::fs::create_dir_all(&config.vault_path)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create vault directory for LoRA: {}", e),
+            })?;
 
         // F-02: Acquire semaphore permit
         let _permit =
@@ -222,11 +227,11 @@ impl LoraTrainingService {
             vec![
                 script_path.to_string_lossy().to_string(),
                 "--model".to_string(),
-                config.base_model,
+                config.base_model.clone(),
                 "--data".to_string(),
-                config.dataset_path,
+                config.dataset_path.clone(),
                 "--adapter-file".to_string(),
-                adapter_output,
+                adapter_output.clone(),
                 "--learning-rate".to_string(),
                 config.learning_rate.to_string(),
                 "--epochs".to_string(),
@@ -328,6 +333,73 @@ impl LoraTrainingService {
             "🔐 [LoraTrainingService] isolated weights securely at {}",
             config.vault_path
         );
+
+        // --- Phase 52: Modelfile Generation & Auto Registration ---
+        // Quote the paths to prevent parsing errors if spaces are present in the directory structure
+        let modelfile_content = format!(
+            "FROM \"{}\"\nADAPTER \"{}\"",
+            config.base_model, adapter_output
+        );
+        let modelfile_path = std::path::Path::new(&config.vault_path).join("Modelfile");
+        tokio::fs::write(&modelfile_path, modelfile_content)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to write Modelfile: {}", e),
+            })?;
+
+        let clean_base = crate::lora_training::extract_model_family(&config.base_model);
+        let target_model_name = format!("{}-lora:{}", clean_base, job_id).to_lowercase();
+
+        tracing::info!(
+            "🚀 [LoraTrainingService] Registering model to Ollama as: {}",
+            target_model_name
+        );
+
+        if std::env::var("AIOME_SKIP_OLLAMA").is_err() {
+            let mut child = tokio::process::Command::new("ollama")
+                .arg("create")
+                .arg(&target_model_name)
+                .arg("-f")
+                .arg(&modelfile_path)
+                .kill_on_drop(true)
+                .spawn()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!(
+                        "Failed to spawn 'ollama create'. Is Ollama installed? {}",
+                        e
+                    ),
+                })?;
+
+            let status_res = tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    let _ = child.kill().await;
+                    return Err(AiomeError::Infrastructure {
+                        reason: "Model registration cancelled".to_string(),
+                    });
+                }
+                res = tokio::time::timeout(std::time::Duration::from_secs(900), child.wait()) => {
+                    match res {
+                        Ok(r) => r,
+                        Err(_) => {
+                            let _ = child.kill().await;
+                            return Err(AiomeError::Infrastructure {
+                                reason: "Model registration timed out after 15 minutes".to_string(),
+                            });
+                        }
+                    }
+                }
+            };
+
+            let status = status_res.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("ollama create failed to execute: {}", e),
+            })?;
+
+            if !status.success() {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("ollama create exited with error ({})", status),
+                });
+            }
+        }
 
         Ok(())
     }
@@ -678,6 +750,7 @@ pub fn get_adapter_info(
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
@@ -691,6 +764,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_start_training_isolates_weights_in_vault() {
+        // Skip ollama binary dependency in test environments
+        unsafe {
+            std::env::set_var("AIOME_SKIP_OLLAMA", "1");
+        }
         // RED test: Should assert that weights are moved to the vault.
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, None, None, None, None);
@@ -731,7 +808,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_start_training_registers_model_in_ollama() {
+        // Skip ollama binary dependency in test environments
+        unsafe {
+            std::env::set_var("AIOME_SKIP_OLLAMA", "1");
+        }
+        // RED test: Should assert that Modelfile is created for auto-registration
+        let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
+        let service = LoraTrainingService::new(core, None, None, None, None);
+        let tmp = tempdir().unwrap(); // allow-anti-pattern
+        let output_dir = tmp.path().join("output").to_string_lossy().to_string();
+        let vault_path = tmp.path().join("vault").to_string_lossy().to_string();
+
+        let dataset_path = tmp.path().join("dataset.jsonl");
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap(); // allow-anti-pattern
+
+        let config = LoraTrainingConfig {
+            base_model: "test-model".into(),
+            dataset_path: dataset_path.to_string_lossy().to_string(),
+            output_dir,
+            vault_path: vault_path.clone(),
+            ..Default::default()
+        };
+
+        // Mock execute, check if it creates Modelfile
+        let res = service
+            .start_training(
+                "mock_job",
+                config,
+                tokio_util::sync::CancellationToken::new(),
+            )
+            .await;
+
+        assert!(res.is_ok(), "start_training failed!");
+
+        let modelfile_exists = std::path::Path::new(&vault_path).join("Modelfile").exists();
+        assert!(
+            modelfile_exists,
+            "Modelfile must be created in the vault for ollama registration"
+        );
+    }
+
+    #[tokio::test]
     async fn test_training_triggers_evolution() {
+        // Skip ollama binary dependency in test environments
+        unsafe {
+            std::env::set_var("AIOME_SKIP_OLLAMA", "1");
+        }
         use crate::test_utils::job_queue_mock::{GlobalMockJobQueue, GlobalMockLlm};
 
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());

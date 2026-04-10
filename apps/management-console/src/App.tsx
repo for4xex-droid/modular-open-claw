@@ -54,6 +54,7 @@ import { useDisplayMode } from "./hooks/useDisplayMode";
 import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
+import { useTokenHealth } from "./hooks/useTokenHealth";
 
 function App() {
   const { t } = useTranslation();
@@ -210,6 +211,7 @@ function App() {
   };
 
   const { viewMode } = useViewMode();
+  const { isExpired, dismiss } = useTokenHealth();
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
@@ -228,6 +230,39 @@ function App() {
           <React.Suspense fallback={null}>
             <AuthOverlay onAuthenticated={() => setIsAuth(true)} />
           </React.Suspense>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isExpired && isAuth && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 20 }}
+            exit={{ opacity: 0, y: -50 }}
+            style={{
+              position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 10000,
+              background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)',
+              borderRadius: 'var(--radius-md)', padding: '1rem',
+              display: 'flex', alignItems: 'center', gap: '1rem',
+              boxShadow: '0 10px 30px var(--black-50), 0 0 20px var(--accent-rose-10)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <Shield size={20} color="var(--accent-rose)" />
+            <span style={{ color: 'var(--accent-rose)', fontWeight: 600, fontSize: '0.9rem' }}>
+              Session expired. Please update your API secret.
+            </span>
+            <button
+               onClick={() => { setActiveTab("settings"); dismiss(); }}
+               style={{
+                 background: 'var(--accent-rose)', color: 'var(--bg-primary)',
+                 border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px',
+                 fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
+               }}
+            >
+               Go to Settings
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

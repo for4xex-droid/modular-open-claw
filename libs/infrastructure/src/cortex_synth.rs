@@ -99,7 +99,7 @@ impl CortexSynthesizer {
 
                 match res_timeout {
                     Ok(Ok(res)) => {
-                        let json_str = crate::concept_manager::extract_json(&res.content)
+                        let json_str = crate::llm::utils::extract_json(&res.content)
                             .unwrap_or_else(|_| "[]".to_string());
 
                         let extracted_pairs: Vec<SynthPair> = match serde_json::from_str(&json_str)

@@ -115,7 +115,7 @@ impl SkillArena {
             .complete(&judge_prompt, Some(judge_preamble))
             .await?;
 
-        let json_str = crate::concept_manager::extract_json(&judge_res.content)?;
+        let json_str = crate::llm::utils::extract_json(&judge_res.content)?;
         let v: serde_json::Value =
             serde_json::from_str(json_str.as_str()).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Judge JSON error: {}", e),

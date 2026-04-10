@@ -202,7 +202,12 @@ const SkillCard: React.FC<{ skill: Skill, index: number }> = ({ skill, index }) 
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
                 {skill.source === 'marketplace' ? (
-                    <button className="primary-button" style={{ flex: 1, padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <button 
+                        className="primary-button" 
+                        disabled
+                        title="Coming soon in Phase 3"
+                        style={{ flex: 1, padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: 0.5, cursor: 'not-allowed' }}
+                    >
                         <Download size={14} /> Install Skill
                     </button>
                 ) : (

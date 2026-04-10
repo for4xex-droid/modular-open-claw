@@ -638,13 +638,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         news_service: Component::default(),
         live_session_manager: Component::new(Arc::new(MockLiveSessionManager::default())),
         syndicate_store: Component::new(Arc::new(
-            aiome_commerce::syndicate::SqliteSyndicateStore::new(
-                job_queue
-                    .get_pool()
-                    .get_sqlite_pool()
-                    .cloned()
-                    .expect("SQLite pool required for SyndicateStore"),
-            ),
+            aiome_commerce::syndicate::UniversalSyndicateStore::new(job_queue.get_pool().clone()),
         )),
         hierarchical_router: Component::new(Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(

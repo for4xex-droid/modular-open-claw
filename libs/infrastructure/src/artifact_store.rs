@@ -93,53 +93,53 @@ impl UniversalArtifactStore {
 
     // Helper to map Sqlite row to ArtifactMeta
     fn map_sqlite_row(row: sqlx::sqlite::SqliteRow) -> Result<ArtifactMeta, AiomeError> {
-        let cat_str: String = row.get("category");
-        let tags_json: String = row.get("tags");
-        let manifest_json: String = row.get("file_manifest");
-        let karma_json: String = row.get("karma_refs");
+        let cat_str: String = row.try_get("category").unwrap_or_default();
+        let tags_json: String = row.try_get("tags").unwrap_or_default();
+        let manifest_json: String = row.try_get("file_manifest").unwrap_or_default();
+        let karma_json: String = row.try_get("karma_refs").unwrap_or_default();
 
         Ok(ArtifactMeta {
-            id: row.get("id"),
-            title: row.get("title"),
+            id: row.try_get("id").unwrap_or_default(),
+            title: row.try_get("title").unwrap_or_default(),
             category: serde_json::from_str(&format!("\"{}\"", cat_str))
                 .unwrap_or(ArtifactCategory::Report),
             tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-            created_by: row.get("created_by"),
-            dir_path: row.get("dir_path"),
+            created_by: row.try_get("created_by").unwrap_or_default(),
+            dir_path: row.try_get("dir_path").unwrap_or_default(),
             files: serde_json::from_str(&manifest_json).unwrap_or_default(),
             karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
-            job_ref: row.get("job_ref"),
-            soul_version_hash: row.get("soul_version_hash"),
-            signature: row.get("signature"),
-            text_content: row.get("text_content"),
+            job_ref: row.try_get("job_ref").unwrap_or_default(),
+            soul_version_hash: row.try_get("soul_version_hash").unwrap_or_default(),
+            signature: row.try_get("signature").unwrap_or_default(),
+            text_content: row.try_get("text_content").unwrap_or_default(),
             edges: Vec::new(),
-            created_at: row.get("created_at"),
+            created_at: row.try_get("created_at").unwrap_or_default(),
         })
     }
 
     // Helper to map Postgres row to ArtifactMeta
     fn map_postgres_row(row: sqlx::postgres::PgRow) -> Result<ArtifactMeta, AiomeError> {
-        let cat_str: String = row.get("category");
-        let tags_json: String = row.get("tags");
-        let manifest_json: String = row.get("file_manifest");
-        let karma_json: String = row.get("karma_refs");
+        let cat_str: String = row.try_get("category").unwrap_or_default();
+        let tags_json: String = row.try_get("tags").unwrap_or_default();
+        let manifest_json: String = row.try_get("file_manifest").unwrap_or_default();
+        let karma_json: String = row.try_get("karma_refs").unwrap_or_default();
 
         Ok(ArtifactMeta {
-            id: row.get("id"),
-            title: row.get("title"),
+            id: row.try_get("id").unwrap_or_default(),
+            title: row.try_get("title").unwrap_or_default(),
             category: serde_json::from_str(&format!("\"{}\"", cat_str))
                 .unwrap_or(ArtifactCategory::Report),
             tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-            created_by: row.get("created_by"),
-            dir_path: row.get("dir_path"),
+            created_by: row.try_get("created_by").unwrap_or_default(),
+            dir_path: row.try_get("dir_path").unwrap_or_default(),
             files: serde_json::from_str(&manifest_json).unwrap_or_default(),
             karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
-            job_ref: row.get("job_ref"),
-            soul_version_hash: row.get("soul_version_hash"),
-            signature: row.get("signature"),
-            text_content: row.get("text_content"),
+            job_ref: row.try_get("job_ref").unwrap_or_default(),
+            soul_version_hash: row.try_get("soul_version_hash").unwrap_or_default(),
+            signature: row.try_get("signature").unwrap_or_default(),
+            text_content: row.try_get("text_content").unwrap_or_default(),
             edges: Vec::new(),
-            created_at: row.get("created_at"),
+            created_at: row.try_get("created_at").unwrap_or_default(),
         })
     }
 }

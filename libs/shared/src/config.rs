@@ -38,6 +38,8 @@ pub struct AiomeConfig {
     pub api_server_port: u16,
     /// Key Proxy（Abyss Vault）の接続先URL
     pub key_proxy_url: String,
+    /// Abyss Vault Secret Token (for authentication with key-proxy)
+    pub vault_secret: Option<SecretString>,
     /// Samsara Hub の接続先URL
     pub samsara_hub_url: String,
     /// CORS許可オリジンのリスト
@@ -95,6 +97,7 @@ impl Default for AiomeConfig {
             anthropic_api_key: None,
             api_server_port: 3015,
             key_proxy_url: DEFAULT_KEY_PROXY_URL.to_string(),
+            vault_secret: None,
             samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
             allowed_origins: vec!["http://localhost:1420".to_string()], // allow-anti-pattern
             abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
@@ -132,6 +135,11 @@ impl AiomeConfig {
 
         let key_proxy_url =
             env::var("KEY_PROXY_URL").unwrap_or_else(|_| DEFAULT_KEY_PROXY_URL.to_string());
+
+        let vault_secret = env::var("VAULT_SECRET").ok().map(|secret| {
+            env::remove_var("VAULT_SECRET"); // 安全のため環境変数から削除
+            SecretString::from(secret)
+        });
 
         let samsara_hub_url = env::var("SAMSARA_HUB_URL")
             .or_else(|_| env::var("SAMSARA_HUB_REST"))
@@ -176,6 +184,7 @@ impl AiomeConfig {
             anthropic_api_key,
             api_server_port,
             key_proxy_url,
+            vault_secret,
             samsara_hub_url,
             allowed_origins,
             abyss_vault_path,

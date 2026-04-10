@@ -53,8 +53,6 @@ pub mod gig_gateway;
 pub mod cognitive_sentinel;
 /// コンプライアンス・eKYC
 pub mod compliance;
-/// コンセプト（概念）のベクター管理
-pub mod concept_manager;
 /// AgentRx 行動制約チェッカー
 pub mod constraint_checker;
 /// LLM向けコンテキスト生成エンジン

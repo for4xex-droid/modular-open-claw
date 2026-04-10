@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.2
-**Last Updated:** 2026-03-27
+**Version:** 1.3
+**Last Updated:** 2026-04-10
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -120,15 +120,17 @@ EMBEDDING_PROVIDER 環境変数で分岐:
 
 ---
 
-## 5. ProxyLlmProvider（Abyss Vault 経由）
+## 5. ProxyLlmProvider（Abyss Vault 経由, Zero-Trust Architecture）
 
 Key Proxy を経由する特殊なプロバイダーです。API キーを直接保持せず、
-すべてのリクエストを `KEY_PROXY_URL` に転送します。
+すべてのリクエストを `KEY_PROXY_URL` に転送し、`VAULT_SECRET` を使って `Authorization: Bearer` で認証します。
 
 ```
-アプリ → ProxyLlmProvider → Key Proxy (Abyss Vault) → 外部API
-         API キー不保持         API キー物理隔離        Gemini/OpenAI
+アプリ(api-server) → [Bearer {VAULT_SECRET}] → Key Proxy (Abyss Vault) → 外部API
+      API キー不保持                                API キー物理隔離         Gemini/OpenAI
 ```
+※ Local Development フォールバック:
+`bootstrap.rs` 起動時にプロキシへのヘルスチェック (Ping) を行い、プロキシがダウンしている（ローカル未起動など）場合は、自動的に `DynamicLlmProvider` (Ollama等) へフォールバックし、開発体験の崩壊を防ぎます。
 
 ---
 

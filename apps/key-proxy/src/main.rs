@@ -34,7 +34,8 @@ struct ProxyRequest {
 
 #[derive(Debug, Serialize)]
 struct ProxyResponse {
-    result: String,
+    content: String,
+    stop_reason: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -138,8 +139,8 @@ async fn main() -> anyhow::Result<()> {
     let mut quotas = HashMap::new();
     quotas.insert("daemon".to_string(), 1000);
     quotas.insert("watchtower".to_string(), 100);
-    quotas.insert("api-server".to_string(), 1000);
-    quotas.insert("aiome-agent".to_string(), 1000);
+    quotas.insert("api-server".to_string(), 50000);
+    quotas.insert("aiome-agent".to_string(), 10000);
 
     let resolver = shared::app_data::AppDataResolver::new();
     let persistence_path = env::var("QUOTA_DB_PATH")
@@ -241,7 +242,7 @@ async fn main() -> anyhow::Result<()> {
             std::time::Duration::from_secs(120),
         )); // 120s for LLM calls
 
-    let port = env::var("KEY_PROXY_PORT").unwrap_or_else(|_| "3010".to_string());
+    let port = env::var("KEY_PROXY_PORT").unwrap_or_else(|_| "3017".to_string());
     let bind_addr = if env::var("BIND_ALL").map(|v| v == "true").unwrap_or(false) {
         "0.0.0.0"
     } else {
@@ -361,7 +362,11 @@ pub(crate) async fn handle_llm_complete(
                             .unwrap_or("")
                             .to_string();
 
-                        Json(ProxyResponse { result: text }).into_response()
+                        Json(ProxyResponse {
+                            content: text,
+                            stop_reason: "end_turn".to_string(),
+                        })
+                        .into_response()
                     }
                     Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error")
                         .into_response(),
@@ -563,7 +568,7 @@ async fn check_and_increment_quota(
         return Err(StatusCode::TOO_MANY_REQUESTS);
     }
 
-    if total > 5000 {
+    if total > 150000 {
         error!(
             "🛑 [KeyProxy] Global quota exceeded! (Day: {})",
             q.last_reset_day
@@ -586,7 +591,6 @@ async fn check_and_increment_quota(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_gemini_payload_serialization_without_system_prompt() {

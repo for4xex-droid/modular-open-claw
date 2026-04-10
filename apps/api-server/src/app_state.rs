@@ -128,7 +128,7 @@ pub struct AppState {
     pub tts_provider: Component<Arc<dyn aiome_core_contracts::traits::TtsProvider>>,
     pub news_service: Component<Arc<dyn aiome_core_contracts::traits::NewsService>>,
     pub live_session_manager: Component<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
-    pub syndicate_store: Component<Arc<aiome_commerce::syndicate::SqliteSyndicateStore>>,
+    pub syndicate_store: Component<Arc<aiome_commerce::syndicate::UniversalSyndicateStore>>,
     pub hierarchical_router:
         Component<Arc<infrastructure::hierarchical_router::HierarchicalRouter>>,
     // --- Phase 51 Expansion ---

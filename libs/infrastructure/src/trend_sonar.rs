@@ -292,7 +292,7 @@ impl ExternalTrendSonar {
         let resp = provider
             .complete(&prompt, Some("You are a Trend Analysis Expert."))
             .await?;
-        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&resp.content)?;
 
         #[derive(serde::Deserialize)]
         struct EvaluatedTrend {

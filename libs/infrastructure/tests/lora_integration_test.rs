@@ -20,6 +20,7 @@ use tokio_util::sync::CancellationToken;
 #[tokio::test]
 async fn test_autotuner_to_training_service_integration() {
     // --- Arrange ---
+    std::env::set_var("AIOME_SKIP_OLLAMA", "1");
     let metrics = TrainingMetrics {
         loss_history: vec![2.0, 1.0, 0.1, 0.01, 0.001],
         previous_params: TunedHyperparams::default(),

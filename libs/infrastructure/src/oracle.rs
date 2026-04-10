@@ -114,7 +114,7 @@ impl Oracle {
             .complete(prompt_text, Some(&preamble))
             .await?;
 
-        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&resp.content)?;
         let verdict = serde_json::from_str::<OracleVerdict>(json_str.as_str()).map_err(|e| {
             AiomeError::Infrastructure {
                 reason: format!("Failed to parse Oracle JSON: {}", e),
@@ -345,7 +345,7 @@ impl Oracle {
             )
             .await?;
 
-        let json_str = crate::concept_manager::extract_json(&final_resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&final_resp.content)?;
         let mut result =
             serde_json::from_str::<aiome_core_contracts::contracts::MultiReviewResult>(
                 json_str.as_str(),

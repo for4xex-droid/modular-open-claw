@@ -80,6 +80,7 @@ pub async fn list_topics(
     let res = state
         .http_client
         .get(url)
+        .timeout(std::time::Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| aiome_core::error::AiomeError::RemoteServiceError {
@@ -126,6 +127,7 @@ pub async fn create_topic(
     state.security_policy.validate_url(&hub_url).await?;
     let res = client
         .post(format!("{}/api/v1/biome/topics", hub_url))
+        .timeout(std::time::Duration::from_secs(10))
         .header("Authorization", format!("Bearer {}", hub_secret))
         .json(&req)
         .send()
@@ -456,6 +458,7 @@ pub async fn send_message(
     );
     let res = client
         .post(format!("{}/api/v1/biome/relay", hub_url))
+        .timeout(std::time::Duration::from_secs(10))
         .header("Authorization", format!("Bearer {}", hub_secret))
         .json(&msg)
         .send()

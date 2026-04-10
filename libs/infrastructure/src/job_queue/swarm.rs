@@ -79,17 +79,14 @@ impl SwarmOps for UniversalJobQueue {
             .unwrap_or(0);
 
         let next = current + 1;
+        let cooldown_ts =
+            (chrono::Utc::now() + chrono::Duration::minutes(cooldown_minutes)).to_rfc3339();
+
         let q_upsert = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, datetime('now', '+{2} minutes')) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = datetime('now', '+{2} minutes')", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, NOW() + interval '{2} minutes') ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = NOW() + interval '{2} minutes'", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
+            crate::db::DatabasePool::Sqlite(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, {2}) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = {2}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
+            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, {2}::timestamptz) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = {2}::timestamptz", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
         };
-        crate::sql_exec!(
-            &self.pool,
-            &q_upsert,
-            topic_id,
-            1,
-            cooldown_minutes.to_string()
-        )?;
+        crate::sql_exec!(&self.pool, &q_upsert, topic_id, 1, cooldown_ts)?;
         Ok(next)
     }
 
@@ -256,13 +253,23 @@ impl SwarmOps for UniversalJobQueue {
                 .bind("logical_clock")
                 .fetch_one(&mut **t)
                 .await
-                .map(|r| r.get::<String, _>("value").parse().unwrap_or(0))
+                .map(|r| {
+                    r.try_get::<String, _>("value")
+                        .unwrap_or_default()
+                        .parse()
+                        .unwrap_or(0)
+                })
                 .unwrap_or(0),
             crate::db::DatabaseTransaction::Postgres(t) => sqlx::query(&q1)
                 .bind("logical_clock")
                 .fetch_one(&mut **t)
                 .await
-                .map(|r| r.get::<String, _>("value").parse().unwrap_or(0))
+                .map(|r| {
+                    r.try_get::<String, _>("value")
+                        .unwrap_or_default()
+                        .parse()
+                        .unwrap_or(0)
+                })
                 .unwrap_or(0),
         };
 
@@ -317,13 +324,23 @@ impl SwarmOps for UniversalJobQueue {
                 .bind("logical_clock")
                 .fetch_one(&mut **t)
                 .await
-                .map(|r| r.get::<String, _>("value").parse().unwrap_or(0))
+                .map(|r| {
+                    r.try_get::<String, _>("value")
+                        .unwrap_or_default()
+                        .parse()
+                        .unwrap_or(0)
+                })
                 .unwrap_or(0),
             crate::db::DatabaseTransaction::Postgres(t) => sqlx::query(&q1)
                 .bind("logical_clock")
                 .fetch_one(&mut **t)
                 .await
-                .map(|r| r.get::<String, _>("value").parse().unwrap_or(0))
+                .map(|r| {
+                    r.try_get::<String, _>("value")
+                        .unwrap_or_default()
+                        .parse()
+                        .unwrap_or(0)
+                })
                 .unwrap_or(0),
         };
 

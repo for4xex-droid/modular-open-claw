@@ -106,19 +106,19 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         className="glass-panel"
                         style={{
                             padding: '1.2rem',
-                            background: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found')
+                            background: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found')
                                 ? 'var(--accent-rose-10)'
                                 : 'var(--accent-cyan-05)',
-                            border: `1px solid ${relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose-20)' : 'var(--accent-cyan-10)'}`,
+                            border: `1px solid ${relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose-20)' : 'var(--accent-cyan-10)'}`,
                             borderLeftWidth: '4px',
-                            borderLeftColor: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
+                            borderLeftColor: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
                             fontSize: '0.8rem',
                             marginBottom: '1rem',
                         }}
                     >
                         <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--white-50)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
-                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
-                            {relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('found') ? t('agent.outOfDomain') : t('agent.synapticMemory')}
+                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
+                            {relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? t('agent.outOfDomain') : t('agent.synapticMemory')}
                         </div>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--white-80)' }}>
                             {relevantKarma}

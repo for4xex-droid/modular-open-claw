@@ -100,7 +100,6 @@ pub const ALLOWED_CATEGORIES: &[&str] = &[
 ];
 
 pub const SECRETS: &[&str] = &[
-    "ollama_host",
     "discord_token",
     "telegram_token",
     "api_server_secret",
@@ -590,6 +589,18 @@ mod tests {
         assert!(
             SECRETS.contains(&"search_api_key"),
             "search_api_key should be in secrets"
+        );
+    }
+
+    #[test]
+    fn test_ollama_host_is_allowed_but_not_secret() {
+        assert!(
+            ALLOWED_KEYS.contains(&"ollama_host"),
+            "ollama_host should be in allowed_keys"
+        );
+        assert!(
+            !SECRETS.contains(&"ollama_host"),
+            "ollama_host should NOT be in secrets, it is just a URL"
         );
     }
 }

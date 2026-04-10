@@ -66,5 +66,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-04-01 (Phase 1A-2 / Data Distillation Pipeline)
+最終更新: 2026-04-10 (Phase E-2 / Zero-Trust Architecture)
 Aiome Development Team

@@ -7,22 +7,23 @@
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
 use async_trait::async_trait;
-use sqlx::{Row, SqlitePool};
+use shared::db::DatabasePool;
+use sqlx::Row;
 use tracing::error;
 use uuid::Uuid;
 
-pub struct SqliteSyndicateStore {
-    pool: SqlitePool,
+pub struct UniversalSyndicateStore {
+    pool: DatabasePool,
 }
 
-impl SqliteSyndicateStore {
-    pub fn new(pool: SqlitePool) -> Self {
+impl UniversalSyndicateStore {
+    pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 }
 
 #[async_trait]
-impl SyndicateOps for SqliteSyndicateStore {
+impl SyndicateOps for UniversalSyndicateStore {
     async fn create_guild(
         &self,
         name: String,
@@ -33,19 +34,42 @@ impl SyndicateOps for SqliteSyndicateStore {
         let id_str = id.to_string();
         let owner_str = owner_id.to_string();
 
-        sqlx::query("INSERT INTO guilds (id, name, description, owner_id) VALUES (?, ?, ?, ?)")
-            .bind(&id_str)
-            .bind(name)
-            .bind(description)
-            .bind(&owner_str)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| {
-                error!("Failed to create guild: {}", e);
-                AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                }
-            })?;
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query(
+                    "INSERT INTO guilds (id, name, description, owner_id) VALUES (?, ?, ?, ?)",
+                )
+                .bind(&id_str)
+                .bind(&name)
+                .bind(&description)
+                .bind(&owner_str)
+                .execute(p)
+                .await
+                .map_err(|e| {
+                    error!("Failed to create guild: {}", e);
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query(
+                    "INSERT INTO guilds (id, name, description, owner_id) VALUES ($1, $2, $3, $4)",
+                )
+                .bind(&id_str)
+                .bind(&name)
+                .bind(&description)
+                .bind(&owner_str)
+                .execute(p)
+                .await
+                .map_err(|e| {
+                    error!("Failed to create guild: {}", e);
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+            }
+        }
 
         // Add owner as a member with 'admin' role
         self.add_member(id, owner_id, "admin".to_string(), owner_id)
@@ -59,16 +83,40 @@ impl SyndicateOps for SqliteSyndicateStore {
         let requester_str = requester_id.to_string();
 
         // Security check: Only owner can delete
-        let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-            .bind(&guild_id_str)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        let owner_id_str = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
 
-        if let Some(row) = row {
-            let owner_id: String = row.get("owner_id");
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+        };
+
+        if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str {
                 return Err(AiomeError::Unauthorized {
                     reason: "Only owner can delete guild".into(),
@@ -80,13 +128,26 @@ impl SyndicateOps for SqliteSyndicateStore {
             });
         }
 
-        sqlx::query("DELETE FROM guilds WHERE id = ?")
-            .bind(&guild_id_str)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query("DELETE FROM guilds WHERE id = ?")
+                    .bind(&guild_id_str)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query("DELETE FROM guilds WHERE id = $1")
+                    .bind(&guild_id_str)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+        }
 
         Ok(())
     }
@@ -102,39 +163,75 @@ impl SyndicateOps for SqliteSyndicateStore {
         let agent_id_str = agent_id.to_string();
         let requester_str = requester_id.to_string();
 
-        // Validation: Requester must be a member or owner?
-        // For MVP, if adding ANYONE, let's check if requester is owner of the guild
-        // Skip for initial owner addition (where agent_id == requester_id == owner_id)
-        let owner_check = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-            .bind(&guild_id_str)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        let owner_id_str = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
 
-        if let Some(row) = owner_check {
-            let owner_id: String = row.get("owner_id");
-            // If it's not the initial owner addition, check permission
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+        };
+
+        if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str && agent_id_str != owner_id {
-                // For now, only owner can add members
                 return Err(AiomeError::Unauthorized {
                     reason: "Only owner can add members".into(),
                 });
             }
+        } else {
+            return Err(AiomeError::NotFound {
+                reason: "Guild not found".into(),
+            });
         }
 
-        sqlx::query(
-            "INSERT OR REPLACE INTO guild_members (guild_id, agent_id, role) VALUES (?, ?, ?)",
-        )
-        .bind(&guild_id_str)
-        .bind(&agent_id_str)
-        .bind(role)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query("INSERT OR REPLACE INTO guild_members (guild_id, agent_id, role) VALUES (?, ?, ?)")
+                    .bind(&guild_id_str)
+                    .bind(&agent_id_str)
+                    .bind(&role)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query("INSERT INTO guild_members (guild_id, agent_id, role) VALUES ($1, $2, $3) ON CONFLICT (guild_id, agent_id) DO UPDATE SET role = EXCLUDED.role")
+                    .bind(&guild_id_str)
+                    .bind(&agent_id_str)
+                    .bind(&role)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+        }
 
         Ok(())
     }
@@ -149,83 +246,160 @@ impl SyndicateOps for SqliteSyndicateStore {
         let agent_id_str = agent_id.to_string();
         let requester_str = requester_id.to_string();
 
-        // Only owner can remove someone, OR you can remove yourself
-        let owner_check = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-            .bind(&guild_id_str)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        let owner_id_str = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
+                    .bind(&guild_id_str)
+                    .fetch_optional(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                if let Some(r) = row {
+                    Some(r.get::<String, _>("owner_id"))
+                } else {
+                    None
+                }
+            }
+        };
 
-        if let Some(row) = owner_check {
-            let owner_id: String = row.get("owner_id");
+        if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str && agent_id_str != requester_str {
                 return Err(AiomeError::Unauthorized {
                     reason: "Insufficient permissions to remove member".into(),
                 });
             }
-            // Cannot remove owner?
             if agent_id_str == owner_id && requester_str != owner_id {
                 return Err(AiomeError::Unauthorized {
                     reason: "Cannot remove guild owner".into(),
                 });
             }
+        } else {
+            return Err(AiomeError::NotFound {
+                reason: "Guild not found".into(),
+            });
         }
 
-        sqlx::query("DELETE FROM guild_members WHERE guild_id = ? AND agent_id = ?")
-            .bind(&guild_id_str)
-            .bind(&agent_id_str)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query("DELETE FROM guild_members WHERE guild_id = ? AND agent_id = ?")
+                    .bind(&guild_id_str)
+                    .bind(&agent_id_str)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query("DELETE FROM guild_members WHERE guild_id = $1 AND agent_id = $2")
+                    .bind(&guild_id_str)
+                    .bind(&agent_id_str)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+        }
 
         Ok(())
     }
 
     async fn fetch_guilds(&self) -> Result<Vec<Guild>, AiomeError> {
-        let rows = sqlx::query("SELECT id, name, description, owner_id, created_at FROM guilds")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
-
         let mut guilds = Vec::new();
-        for row in rows {
-            guilds.push(Guild {
-                id: Uuid::parse_str(row.get("id")).unwrap(), // allow-anti-pattern
-                name: row.get("name"),
-                description: row.get("description"),
-                owner_id: Uuid::parse_str(row.get("owner_id")).unwrap(), // allow-anti-pattern
-                created_at: row.get("created_at"),
-            });
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows =
+                    sqlx::query("SELECT id, name, description, owner_id, created_at FROM guilds")
+                        .fetch_all(p)
+                        .await
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                for row in rows {
+                    guilds.push(Guild {
+                        id: Uuid::parse_str(row.get("id")).unwrap(), // allow-anti-pattern
+                        name: row.get("name"),
+                        description: row.get("description"),
+                        owner_id: Uuid::parse_str(row.get("owner_id")).unwrap(), // allow-anti-pattern
+                        created_at: row.get("created_at"),
+                    });
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT id::TEXT, name::TEXT, description::TEXT, owner_id::TEXT, created_at::TEXT FROM guilds")
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for row in rows {
+                    guilds.push(Guild {
+                        id: Uuid::parse_str(row.get("id")).unwrap(), // allow-anti-pattern
+                        name: row.get("name"),
+                        description: row.get("description"),
+                        owner_id: Uuid::parse_str(row.get("owner_id")).unwrap(), // allow-anti-pattern
+                        created_at: row.get("created_at"),
+                    });
+                }
+            }
         }
         Ok(guilds)
     }
 
     async fn fetch_members(&self, guild_id: Uuid) -> Result<Vec<GuildMember>, AiomeError> {
         let guild_id_str = guild_id.to_string();
-        let rows = sqlx::query(
-            "SELECT guild_id, agent_id, role, joined_at FROM guild_members WHERE guild_id = ?",
-        )
-        .bind(&guild_id_str)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: e.to_string(),
-        })?;
-
         let mut members = Vec::new();
-        for row in rows {
-            members.push(GuildMember {
-                guild_id: Uuid::parse_str(row.get("guild_id")).unwrap(), // allow-anti-pattern
-                agent_id: Uuid::parse_str(row.get("agent_id")).unwrap(), // allow-anti-pattern
-                role: row.get("role"),
-                joined_at: row.get("joined_at"),
-            });
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query("SELECT guild_id, agent_id, role, joined_at FROM guild_members WHERE guild_id = ?")
+                    .bind(&guild_id_str)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for row in rows {
+                    members.push(GuildMember {
+                        guild_id: Uuid::parse_str(row.get("guild_id")).unwrap(), // allow-anti-pattern
+                        agent_id: Uuid::parse_str(row.get("agent_id")).unwrap(), // allow-anti-pattern
+                        role: row.get("role"),
+                        joined_at: row.get("joined_at"),
+                    });
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query("SELECT guild_id::TEXT, agent_id::TEXT, role::TEXT, joined_at::TEXT FROM guild_members WHERE guild_id = $1")
+                    .bind(&guild_id_str)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for row in rows {
+                    members.push(GuildMember {
+                        guild_id: Uuid::parse_str(row.get("guild_id")).unwrap(), // allow-anti-pattern
+                        agent_id: Uuid::parse_str(row.get("agent_id")).unwrap(), // allow-anti-pattern
+                        role: row.get("role"),
+                        joined_at: row.get("joined_at"),
+                    });
+                }
+            }
         }
         Ok(members)
     }
@@ -236,16 +410,17 @@ mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
 
-    async fn setup_test_db() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
+    async fn setup_test_db() -> shared::db::DatabasePool {
+        let pool = shared::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
             .expect("Failed to create memory DB"); // allow-anti-pattern
 
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+
         sqlx::query("CREATE TABLE guilds (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, owner_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
-            .execute(&pool).await.unwrap(); // allow-anti-pattern
+            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
         sqlx::query("CREATE TABLE guild_members (guild_id TEXT NOT NULL, agent_id TEXT NOT NULL, role TEXT NOT NULL, joined_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (guild_id, agent_id))")
-            .execute(&pool).await.unwrap(); // allow-anti-pattern
+            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
 
         pool
     }
@@ -253,7 +428,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_and_fetch_guilds() {
         let pool = setup_test_db().await;
-        let store = SqliteSyndicateStore::new(pool);
+        let store = UniversalSyndicateStore::new(pool);
 
         let owner_id = Uuid::new_v4();
         let guild_id = store
@@ -276,7 +451,7 @@ mod tests {
     #[tokio::test]
     async fn test_guild_management_cycle() {
         let pool = setup_test_db().await;
-        let store = SqliteSyndicateStore::new(pool);
+        let store = UniversalSyndicateStore::new(pool);
 
         let owner_id = Uuid::new_v4();
         let other_agent_id = Uuid::new_v4();
@@ -316,5 +491,24 @@ mod tests {
         store.delete_guild(guild_id, owner_id).await.unwrap(); // allow-anti-pattern
         let guilds = store.fetch_guilds().await.unwrap(); // allow-anti-pattern
         assert_eq!(guilds.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_non_existent_guild_operations() {
+        let pool = setup_test_db().await;
+        let store = UniversalSyndicateStore::new(pool);
+        let fake_guild_id = Uuid::new_v4();
+        let agent_id = Uuid::new_v4();
+
+        let res_add = store
+            .add_member(fake_guild_id, agent_id, "admin".into(), agent_id)
+            .await;
+        assert!(matches!(res_add, Err(AiomeError::NotFound { .. })));
+
+        let res_remove = store.remove_member(fake_guild_id, agent_id, agent_id).await;
+        assert!(matches!(res_remove, Err(AiomeError::NotFound { .. })));
+
+        let res_delete = store.delete_guild(fake_guild_id, agent_id).await;
+        assert!(matches!(res_delete, Err(AiomeError::NotFound { .. })));
     }
 }

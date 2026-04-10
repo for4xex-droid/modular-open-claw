@@ -565,8 +565,8 @@ impl CortexCompiler {
             .complete(&prompt, Some("You are a helpful JSON extractor."))
             .await?;
 
-        let json_str = crate::concept_manager::extract_json(&resp.content)
-            .unwrap_or_else(|_| "[]".to_string());
+        let json_str =
+            crate::llm::utils::extract_json(&resp.content).unwrap_or_else(|_| "[]".to_string());
 
         let candidates: Vec<ConceptCandidate> =
             serde_json::from_str(&json_str).unwrap_or_else(|e| {
@@ -758,8 +758,7 @@ Source Texts:
             // "Should return the mock issues instead of an empty vec immediately"
             let prompt = "Analyze the wiki for issues. Return a JSON array of issues.";
             if let Ok(resp) = self.llm_provider.complete(prompt, None).await {
-                let json_str =
-                    crate::concept_manager::extract_json(&resp.content).unwrap_or_default();
+                let json_str = crate::llm::utils::extract_json(&resp.content).unwrap_or_default();
                 match serde_json::from_str::<Vec<WikiIssue>>(&json_str) {
                     Ok(parsed) => return Ok(parsed),
                     Err(e) => tracing::error!("Failed to parse lint_wiki mock response: {}", e),

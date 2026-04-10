@@ -80,7 +80,7 @@ impl AgentRxDiagnostics {
         };
 
         // JSON抽出（既存のロジックを想定、あるいはシンプルにパース）
-        let json_str = crate::concept_manager::extract_json(&resp.content)?;
+        let json_str = crate::llm::utils::extract_json(&resp.content)?;
         let v: serde_json::Value =
             serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to parse diagnostic JSON: {}", e),
