@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-11T01:35:20.013755
+> Generated at: 2026-04-11T03:18:13.973130
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, React, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, Tag, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
+- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, React, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**
@@ -155,6 +155,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/llm/complete`
 - `/api/v1/llm/embed`
 - `/api/v1/llm/stream`
+- `/api/v1/wp/publish`
 
 ### `aiome-migrate`
 
@@ -187,7 +188,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `aiome-core-contracts`
 **Traits (Interfaces)**
-- A2aClient, AgentAct, AgentEvolver, AiomeLogger, ArtifactStore, AuditLogger, AuditStore, BiomeRegistry, CapabilityProvider, ChatStore, ConstitutionalValidator, EkycEngine, EkycSessionStore, FederationRegistry, ForecastProvider, GenerativeEngine, GigEngine, HarnessRegistryOps, ImmuneSystemOps, JobQueue, KarmaRegistry, LiveSessionManager, LoraEngine, LoraMarketplace, MediaProcessor, NewsService, PromptExtractor, Publisher, SoulStore, StrategicPlanner, SyndicateOps, SystemStateOps, TaskRegistry, ToolDiscoveryEngine, TrajectoryStore, TranscriptionEngine, TrendSource, TtsProvider, VaultBackend, VoiceKeyVault
+- A2aClient, AffiliateAdapter, AgentAct, AgentEvolver, AiomeLogger, ArtifactStore, AuditLogger, AuditStore, BiomeRegistry, CapabilityProvider, ChatStore, ConstitutionalValidator, EkycEngine, EkycSessionStore, FederationRegistry, ForecastProvider, GenerativeEngine, GigEngine, HarnessRegistryOps, ImmuneSystemOps, JobQueue, KarmaRegistry, LiveSessionManager, LoraEngine, LoraMarketplace, MediaProcessor, NewsService, PromptExtractor, Publisher, SoulStore, StrategicPlanner, SyndicateOps, SystemStateOps, TaskRegistry, ToolDiscoveryEngine, TrajectoryStore, TranscriptionEngine, TrendSource, TtsProvider, VaultBackend, VoiceKeyVault
 **Domain Structs**
 - A2aTaskProgress, A2aTaskRequest, AgentCard, AgentDiagnosis, AgentStats, AnomalyResult, ArenaMatch, ArtifactEdge, ArtifactEdgeInput, ArtifactFile, ArtifactMeta, ArtifactResponse, BiomeDialogue, BiomeMessage, ConceptRequest, ConceptResponse, ConstraintViolation, ContextEntry, CreateArtifactRequest, CustomStyle, DelegationResult, DialogueDistillation, EkycSession, ElicitationField, ElicitationRequest, Endpoints, Expression, FederatedMetrics, FederationHandshake, FederationPushRequest, FederationPushResponse, FederationSyncRequest, FederationSyncResponse, ForecastConfig, ForecastResult, GenerativeRequest, GigBid, GigDeliverable, GigIntent, Guild, GuildMember, HarnessRecord, HypothesisManifest, ImmuneRule, Invariant, InvariantDagNode, Job, JobMetrics, KarmaClassification, KarmaDirectives, KarmaEntry, KarmaMetrics, KarmaSearchResult, ListingFilter, LiveFunctionCall, LiveFunctionResponse, LiveToolCall, LiveToolResponse, LlmJobResponse, LocalizedScript, LogEntry, LoraListing, LoraPurchase, MediaProcessingRequest, MediaProcessingResponse, Message, MessageMeta, MultiReviewResult, OracleVerdict, OutputArtifact, PricingConfig, QuarantinedAsset, RefundedEscrow, ResourceUsageLog, ReviewConfig, ReviewContext, ScoringCriterion, SecurityProfile, SlaConfig, SnsMetricsRecord, SoTConfig, SpentEscrow, SynthesisRequest, SynthesisResponse, SystemSetting, SystemStatus, TrajectoryStep, TranscriptionResult, TranscriptionSegment, TreasureFeedback, TreasureItem, TrendItem, TrendRequest, TrendResponse, UnspentEscrow, UpdateJobStatusRequest, VerificationResult, WorkflowRequest, WorkflowResponse, ZtasProfile
 

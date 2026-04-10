@@ -1,4 +1,4 @@
-# ADR-025: Poincare-based Autonomous Memory Lifecycle Management
+# ADR-034: Poincare-based Autonomous Memory Lifecycle Management
 
 ## 📜 Status
 Proposed / Accepted (Phase 4 Finalized)
