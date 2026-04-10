@@ -852,9 +852,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
-        affiliate_adapter: Component::new(
-            Arc::new(infrastructure::intent::MockAffiliateAdapter::new()),
-        ),
+        affiliate_adapter: Component::new(Arc::new(
+            infrastructure::intent::MockAffiliateAdapter::new(),
+        )),
         soul_pipeline: Component::new(soul_pipeline),
         transcription_engine: Component::new(transcription_engine),
         task_dispatcher: Component::new(task_dispatcher),

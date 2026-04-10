@@ -13,13 +13,13 @@ use aiome_core_contracts::a2a::{A2aClient, A2aTaskRequest};
 use aiome_core_contracts::commerce::CommerceEngine;
 use async_trait::async_trait;
 use base64::Engine;
+use dashmap::DashMap;
 use futures::StreamExt;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, Semaphore};
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use dashmap::DashMap;
 
 /// 影分身 (Shadow Worker) を安全に実行するための Conductor
 /// BastionGuard, Fork Bomb Protection (Semaphore), Guardrails Sterilization, CommerceEngine Billing を統合。
@@ -113,7 +113,10 @@ impl DockerConductor {
                         reason: format!("Failed to create escrow: {:?}", e),
                     })?;
 
-                if let Some(previous_escrow_id) = self.active_escrows.insert(job.id.clone(), escrow_id.clone()) {
+                if let Some(previous_escrow_id) = self
+                    .active_escrows
+                    .insert(job.id.clone(), escrow_id.clone())
+                {
                     // Self-Healing mechanism: Catch dangling escrows from previous failed rollbacks.
                     tracing::warn!("⚠️ [DockerConductor] Found dangling escrow {} for job {} during retry. Triggering background refund payload.", previous_escrow_id, job.id);
                     let engine_clone = engine.clone();
@@ -127,7 +130,10 @@ impl DockerConductor {
                                     break;
                                 }
                                 Err(e) => {
-                                    tokio::time::sleep(tokio::time::Duration::from_secs(1 * attempt)).await;
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(
+                                        1 * attempt,
+                                    ))
+                                    .await;
                                 }
                             }
                         }
@@ -468,12 +474,21 @@ impl DockerConductor {
         // Success: Release escrow (pay to system)
         if let Some((_, escrow_id)) = self.active_escrows.remove(&job.id) {
             if let Some(engine) = &self.commerce_engine {
-                tracing::info!("💳 [DockerConductor] Shadow Clone job {} succeeded. Releasing escrow {}.", job.id, escrow_id);
-                
+                tracing::info!(
+                    "💳 [DockerConductor] Shadow Clone job {} succeeded. Releasing escrow {}.",
+                    job.id,
+                    escrow_id
+                );
+
                 let mut success = false;
                 for attempt in 1..=3 {
                     if let Err(e) = engine.escrow_release(&escrow_id, uuid::Uuid::nil()).await {
-                        tracing::warn!("Release attempt {} failed for escrow {}: {:?}", attempt, escrow_id, e);
+                        tracing::warn!(
+                            "Release attempt {} failed for escrow {}: {:?}",
+                            attempt,
+                            escrow_id,
+                            e
+                        );
                         tokio::time::sleep(std::time::Duration::from_millis(500 * attempt)).await;
                     } else {
                         success = true;
@@ -533,10 +548,7 @@ impl DockerConductor {
         }
         Ok(())
     }
-
-
 }
-
 
 #[async_trait]
 impl TaskConductor for DockerConductor {
@@ -555,22 +567,36 @@ impl TaskConductor for DockerConductor {
     ) -> Result<(String, Option<String>), AiomeError> {
         let result = self._do_conduct(job.clone(), progress_tx).await;
         if result.is_err() {
-            tracing::warn!("⚠️ [DockerConductor] Job {} failed. Triggering failsafe cancellation & refund.", job.id);
+            tracing::warn!(
+                "⚠️ [DockerConductor] Job {} failed. Triggering failsafe cancellation & refund.",
+                job.id
+            );
             if let Err(e) = self.cancel(&job.id).await {
-                tracing::error!("🚨 [DockerConductor] Critical failure in failsafe cleanup for {}: {}", job.id, e);
+                tracing::error!(
+                    "🚨 [DockerConductor] Critical failure in failsafe cleanup for {}: {}",
+                    job.id,
+                    e
+                );
             }
         }
         result
     }
 
     async fn cancel(&self, job_id: &str) -> Result<(), AiomeError> {
-        info!("🛑 [DockerConductor] Processing cancellation for job: {}", job_id);
+        info!(
+            "🛑 [DockerConductor] Processing cancellation for job: {}",
+            job_id
+        );
 
         // Refund escrow if exists (meaning it wasn't successfully released)
         if let Some((_, escrow_id)) = self.active_escrows.remove(job_id) {
             if let Some(engine) = &self.commerce_engine {
-                tracing::info!("💳 [DockerConductor] Refunding unused escrow {} for job {}", escrow_id, job_id);
-                
+                tracing::info!(
+                    "💳 [DockerConductor] Refunding unused escrow {} for job {}",
+                    escrow_id,
+                    job_id
+                );
+
                 let mut success = false;
                 for attempt in 1..=3 {
                     match engine.escrow_refund(&escrow_id).await {
@@ -579,8 +605,14 @@ impl TaskConductor for DockerConductor {
                             break;
                         }
                         Err(e) => {
-                            tracing::warn!("Refund attempt {} failed for escrow {}: {:?}", attempt, escrow_id, e);
-                            tokio::time::sleep(std::time::Duration::from_millis(500 * attempt)).await;
+                            tracing::warn!(
+                                "Refund attempt {} failed for escrow {}: {:?}",
+                                attempt,
+                                escrow_id,
+                                e
+                            );
+                            tokio::time::sleep(std::time::Duration::from_millis(500 * attempt))
+                                .await;
                         }
                     }
                 }

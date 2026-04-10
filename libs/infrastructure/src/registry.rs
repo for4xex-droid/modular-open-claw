@@ -113,9 +113,27 @@ impl RegistryManager {
             self.pool.ph(0)
         );
 
-        let row: (String, String, String, String, String, i64, String, Option<String>) = crate::sql_fetch_one!(
+        let row: (
+            String,
+            String,
+            String,
+            String,
+            String,
+            i64,
+            String,
+            Option<String>,
+        ) = crate::sql_fetch_one!(
             &self.pool,
-            (String, String, String, String, String, i64, String, Option<String>),
+            (
+                String,
+                String,
+                String,
+                String,
+                String,
+                i64,
+                String,
+                Option<String>
+            ),
             &q,
             asset_id.to_string()
         )?;
@@ -155,9 +173,16 @@ impl RegistryManager {
     ) -> Result<Vec<AssetManifest>, AiomeError> {
         let type_str = asset_type.as_ref();
 
-        let rows: Vec<(String, String, String, String, String, i64, String, Option<String>)> = if scope
-            == "owned"
-        {
+        let rows: Vec<(
+            String,
+            String,
+            String,
+            String,
+            String,
+            i64,
+            String,
+            Option<String>,
+        )> = if scope == "owned" {
             if let Some(agent) = agent_id {
                 let q = format!(
                     r#"
@@ -172,7 +197,16 @@ impl RegistryManager {
                 );
                 crate::sql_fetch_all!(
                     &self.pool,
-                    (String, String, String, String, String, i64, String, Option<String>),
+                    (
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        i64,
+                        String,
+                        Option<String>
+                    ),
                     &q,
                     agent.to_string(),
                     type_str,
@@ -190,7 +224,16 @@ impl RegistryManager {
             );
             crate::sql_fetch_all!(
                 &self.pool,
-                (String, String, String, String, String, i64, String, Option<String>),
+                (
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    i64,
+                    String,
+                    Option<String>
+                ),
                 &q,
                 type_str
             )?
@@ -499,9 +542,10 @@ mod tests {
         registry.register_asset(manifest).await.unwrap();
         let fetched = registry.get_asset(asset_id).await.unwrap();
         assert_eq!(
-            fetched.safety_level, 
+            fetched.safety_level,
             aiome_core_contracts::contracts::ToolSafetyLevel::Destructive,
-            "safety_level should be persisted in DB, but it reverted to {:?}", fetched.safety_level
+            "safety_level should be persisted in DB, but it reverted to {:?}",
+            fetched.safety_level
         );
     }
 

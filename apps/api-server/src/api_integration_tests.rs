@@ -571,9 +571,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
-        affiliate_adapter: Component::new(
-            Arc::new(infrastructure::intent::MockAffiliateAdapter::new()),
-        ),
+        affiliate_adapter: Component::new(Arc::new(
+            infrastructure::intent::MockAffiliateAdapter::new(),
+        )),
         soul_pipeline: Component::new(Arc::new(SoulPipeline::new(soul_adapter, samsara_engine))),
         transcription_engine: Component::new(Arc::new(
             infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(

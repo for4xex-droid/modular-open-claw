@@ -24,7 +24,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-
 #[derive(Debug, Deserialize)]
 struct ProxyRequest {
     caller_id: String,
@@ -331,7 +330,7 @@ pub(crate) async fn handle_llm_complete(
         if let Some(obj) = gemini_payload.as_object_mut() {
             obj.insert(
                 "system_instruction".to_string(),
-                serde_json::json!({ "parts": [{ "text": s }] })
+                serde_json::json!({ "parts": [{ "text": s }] }),
             );
         }
     }
@@ -483,7 +482,7 @@ pub(crate) async fn handle_llm_stream(
         if let Some(obj) = gemini_payload.as_object_mut() {
             obj.insert(
                 "system_instruction".to_string(),
-                serde_json::json!({ "parts": [{ "text": s }] })
+                serde_json::json!({ "parts": [{ "text": s }] }),
             );
         }
     }
@@ -601,17 +600,21 @@ mod tests {
                 }]
             }]
         });
-        
+
         if let Some(s) = payload_system {
             if let Some(obj) = gemini_payload.as_object_mut() {
                 obj.insert(
                     "system_instruction".to_string(),
-                    serde_json::json!({ "parts": [{ "text": s }] })
+                    serde_json::json!({ "parts": [{ "text": s }] }),
                 );
             }
         }
 
-        assert_eq!(gemini_payload.get("system_instruction"), None, "Should omit system_instruction when system prompt is absent");
+        assert_eq!(
+            gemini_payload.get("system_instruction"),
+            None,
+            "Should omit system_instruction when system prompt is absent"
+        );
     }
 
     #[test]
@@ -626,16 +629,19 @@ mod tests {
                 }]
             }]
         });
-        
+
         if let Some(s) = payload_system {
             if let Some(obj) = gemini_payload.as_object_mut() {
                 obj.insert(
                     "system_instruction".to_string(),
-                    serde_json::json!({ "parts": [{ "text": s }] })
+                    serde_json::json!({ "parts": [{ "text": s }] }),
                 );
             }
         }
 
-        assert!(gemini_payload.get("system_instruction").is_some(), "Should include system_instruction when system prompt is present");
+        assert!(
+            gemini_payload.get("system_instruction").is_some(),
+            "Should include system_instruction when system prompt is present"
+        );
     }
 }

@@ -12,8 +12,8 @@
 #![allow(missing_docs)]
 #![deny(clippy::all)]
 
-use std::sync::OnceLock;
 use regex::Regex;
+use std::sync::OnceLock;
 
 use napi::Result;
 use napi_derive::napi;
@@ -269,7 +269,10 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
         if re.is_match(&params) {
             return Ok(ToolCheckResponse {
                 blocked: true,
-                reason: Some(format!("[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}", re.as_str())),
+                reason: Some(format!(
+                    "[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}",
+                    re.as_str()
+                )),
                 new_params: None,
             });
         }

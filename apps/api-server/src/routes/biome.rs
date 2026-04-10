@@ -409,7 +409,10 @@ pub async fn send_message(
 
     // 1. Sign the message
     // SEC-1: Cryptographic fixation binding the content to the signature
-    let payload_to_sign = format!("{}:{}:{}:{}", sender_pubkey, req.topic_id, clock, req.content);
+    let payload_to_sign = format!(
+        "{}:{}:{}:{}",
+        sender_pubkey, req.topic_id, clock, req.content
+    );
     let signature = state.job_queue.sign_swarm_payload(&payload_to_sign).await?;
 
     // Phase 20: Karma Root is derived from the signature of the turn

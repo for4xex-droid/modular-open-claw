@@ -245,12 +245,16 @@ pub async fn submit_job_review(
         let reason = payload
             .comments
             .unwrap_or_else(|| "Rejected by user".to_string());
-            
+
         // Trigger orchestrator cancellation so conductors can refund their escrows.
         // We do this before fail_job because fail_job marks it as completely failed in the DB.
         if let Some(dispatcher) = state.task_dispatcher.as_opt() {
             if let Err(e) = dispatcher.cancel_job(&job_id).await {
-                tracing::error!("Failed to cancel orchestrated task for rejected job {}: {}", job_id, e);
+                tracing::error!(
+                    "Failed to cancel orchestrated task for rejected job {}: {}",
+                    job_id,
+                    e
+                );
             }
         }
 

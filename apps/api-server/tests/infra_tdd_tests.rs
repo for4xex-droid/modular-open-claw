@@ -15,7 +15,7 @@ fn workspace_root() -> PathBuf {
 fn alpha_td_1_and_6_dockerfile_security_and_version() {
     let path = workspace_root().join("Dockerfile");
     let content = fs::read_to_string(path).unwrap_or_default();
-    
+
     // D-1: Rust version mismatch
     assert!(
         content.contains("RUST_VERSION=1.85"),
@@ -25,7 +25,7 @@ fn alpha_td_1_and_6_dockerfile_security_and_version() {
         content.contains("bookworm"),
         "TDD RED: Missing bookworm base image"
     );
-    
+
     // F-1: Dockerfile USER non-root
     assert!(
         content.contains("USER aiome"),
@@ -131,7 +131,7 @@ fn td_f2_changelog_unreleased_count() {
     let path = workspace_root().join("CHANGELOG.md");
     let content = fs::read_to_string(path).unwrap_or_default();
     let unreleased_count = content.matches("[Unreleased]").count();
-    
+
     assert_eq!(
         unreleased_count, 1,
         "TDD RED: CHANGELOG.md has {} [Unreleased] sections, expected 1",

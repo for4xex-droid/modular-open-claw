@@ -295,7 +295,7 @@ impl Oracle {
         );
 
         // SEC-4: Prevent Denial of Wallet / Resource Exhaustion
-        let actual_reflections = config.num_reflections.min(5); 
+        let actual_reflections = config.num_reflections.min(5);
 
         let mut current_content = content.to_string();
         let mut reflections = Vec::new();

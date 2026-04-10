@@ -252,9 +252,13 @@ mod tests {
         // 2. Refund escrow (Expected to return balance to 1000)
         let refund_result = engine.escrow_refund(&escrow_id).await;
         assert!(refund_result.is_ok());
-        
+
         // This will FAIL right now because escrow_refund doesn't restore balance
-        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000, "Balance should be refunded");
+        assert_eq!(
+            engine.get_balance(agent_id).await.unwrap(),
+            1000,
+            "Balance should be refunded"
+        );
     }
 
     #[tokio::test]

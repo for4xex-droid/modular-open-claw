@@ -392,17 +392,34 @@ mod tests {
         let llm = Arc::new(MockLlm {
             verdict: "PASS".into(),
         });
-        
+
         // Mock backend for SLM that returns 1.0 for contradiction
         #[derive(Debug, Default)]
         struct LocalMockSlm;
         #[async_trait::async_trait]
         impl crate::slm_bridge::SlmBackend for LocalMockSlm {
-            async fn store(&self, _: crate::slm_bridge::SlmMemoryEntry) -> Result<(), AiomeError> { Ok(()) }
-            async fn recall(&self, _: &str, _: i64) -> Result<Vec<crate::slm_bridge::SlmRecallResult>, AiomeError> { Ok(vec![]) }
-            async fn detect_contradictions(&self, _: &str) -> Result<f64, AiomeError> { Ok(1.0) } // High score
-            async fn calculate_importance(&self, _: &str) -> Result<f64, AiomeError> { Ok(0.0) }
-            async fn calculate_importance_batch(&self, q: &[String]) -> Result<Vec<(String, f64)>, AiomeError> { Ok(q.iter().map(|s| (s.clone(), 0.0)).collect()) }
+            async fn store(&self, _: crate::slm_bridge::SlmMemoryEntry) -> Result<(), AiomeError> {
+                Ok(())
+            }
+            async fn recall(
+                &self,
+                _: &str,
+                _: i64,
+            ) -> Result<Vec<crate::slm_bridge::SlmRecallResult>, AiomeError> {
+                Ok(vec![])
+            }
+            async fn detect_contradictions(&self, _: &str) -> Result<f64, AiomeError> {
+                Ok(1.0)
+            } // High score
+            async fn calculate_importance(&self, _: &str) -> Result<f64, AiomeError> {
+                Ok(0.0)
+            }
+            async fn calculate_importance_batch(
+                &self,
+                q: &[String],
+            ) -> Result<Vec<(String, f64)>, AiomeError> {
+                Ok(q.iter().map(|s| (s.clone(), 0.0)).collect())
+            }
         }
 
         let slm = Arc::new(SlmBridge::with_backend(Box::new(LocalMockSlm)));
