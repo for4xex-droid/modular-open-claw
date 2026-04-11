@@ -1164,12 +1164,12 @@ mod tests {
         // Since we emit Cancelled from tokio::select! job_token.cancelled() handle
         let mut got_cancelled = false;
         for _ in 0..3 {
-            if let Ok(Ok(event)) = timeout(Duration::from_millis(500), rx.recv()).await {
-                if let TaskEvent::Cancelled { job_id: id } = event {
-                    assert_eq!(id, "job-cancel-42");
-                    got_cancelled = true;
-                    break;
-                }
+            if let Ok(Ok(TaskEvent::Cancelled { job_id: id })) =
+                timeout(Duration::from_millis(500), rx.recv()).await
+            {
+                assert_eq!(id, "job-cancel-42");
+                got_cancelled = true;
+                break;
             }
         }
 

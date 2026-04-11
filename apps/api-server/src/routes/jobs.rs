@@ -207,7 +207,7 @@ pub async fn submit_job_review(
         .job_queue
         .fetch_job(&job_id)
         .await
-        .map_err(|e| AppError::internal(&format!("Failed to fetch job for review: {}", e)))?;
+        .map_err(|e| AppError::internal(format!("Failed to fetch job for review: {}", e)))?;
 
     let job = match job_opt {
         Some(j) => j,
@@ -229,7 +229,7 @@ pub async fn submit_job_review(
             .store_execution_log(&job_id, "IMMUNE_BYPASS_APPROVED")
             .await
             .map_err(|e| {
-                AppError::internal(&format!("Failed to persist immune bypass flag: {}", e))
+                AppError::internal(format!("Failed to persist immune bypass flag: {}", e))
             })?;
 
         // Re-enqueue the job to resume processing
@@ -237,7 +237,7 @@ pub async fn submit_job_review(
             .job_queue
             .requeue_job(&job_id)
             .await
-            .map_err(|e| AppError::internal(&format!("Failed to requeue approved job: {}", e)))?;
+            .map_err(|e| AppError::internal(format!("Failed to requeue approved job: {}", e)))?;
 
         tracing::info!("✅ Job {} approved and requeued.", job_id);
     } else {
@@ -262,7 +262,7 @@ pub async fn submit_job_review(
             .job_queue
             .fail_job(&job_id, &reason)
             .await
-            .map_err(|e| AppError::internal(&format!("Failed to mark job as failed: {}", e)))?;
+            .map_err(|e| AppError::internal(format!("Failed to mark job as failed: {}", e)))?;
 
         tracing::warn!("❌ Job {} rejected. Reason: {}", job_id, reason);
     }
@@ -294,7 +294,7 @@ pub async fn get_awaiting_input_jobs(
         .job_queue
         .fetch_recent_jobs(100)
         .await
-        .map_err(|e| AppError::internal(&format!("Failed to fetch jobs: {}", e)))?;
+        .map_err(|e| AppError::internal(format!("Failed to fetch jobs: {}", e)))?;
 
     let awaiting_jobs: Vec<_> = jobs
         .into_iter()

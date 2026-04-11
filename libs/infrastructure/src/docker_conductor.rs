@@ -130,10 +130,8 @@ impl DockerConductor {
                                     break;
                                 }
                                 Err(e) => {
-                                    tokio::time::sleep(tokio::time::Duration::from_secs(
-                                        1 * attempt,
-                                    ))
-                                    .await;
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(attempt))
+                                        .await;
                                 }
                             }
                         }

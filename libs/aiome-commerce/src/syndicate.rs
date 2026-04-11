@@ -93,11 +93,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
 
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
             DatabasePool::Postgres(p) => {
                 let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
@@ -108,11 +104,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
 
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
         };
 
@@ -173,11 +165,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
 
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
             DatabasePool::Postgres(p) => {
                 let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
@@ -188,11 +176,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
 
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
         };
 
@@ -255,11 +239,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
             DatabasePool::Postgres(p) => {
                 let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
@@ -269,11 +249,7 @@ impl SyndicateOps for UniversalSyndicateStore {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                if let Some(r) = row {
-                    Some(r.get::<String, _>("owner_id"))
-                } else {
-                    None
-                }
+                row.map(|r| r.get::<String, _>("owner_id"))
             }
         };
 
