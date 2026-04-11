@@ -949,3 +949,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.0]: https://github.com/motivationstudio-llc/aiome/releases/tag/v0.1.0
 
 *Initial Release*
+- **Security Hardening (Phase 8)**: Eliminated production SSRF and unauthenticated background job risks by isolating /api/v1/settings/test and /api/v1/demo/start endpoints behind standard config runtime guards and compilation assertions, tested and pushed.
