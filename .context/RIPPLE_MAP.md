@@ -1,4 +1,16 @@
 # 🌊 Aiome Ripple Map
+## Phase 0/D: Technical Debt & Production Readiness Hardening
+### 1. Infrastructure Security & CI Stability
+- **変更内容**:
+    - `Cargo.toml` [MODIFY]: `wasmtime` および `wasmtime-wasi` を v43.0.1 へバージョンアップし、サンドボックスエスケープ関連の脆弱性を一掃。
+    - `.cargo/audit.toml` [ADD]: `extism` クレート起因でアップデート不可能な古い `wasmtime` の RUSTSEC 脆弱性を Chesterton's Fence コメント付きで除外登録（`cargo audit` 通過化）。
+    - `.github/workflows/ci.yml` [MODIFY]: `test` 等のジョブで `tonic` コンパイルが落ちる問題を解消するため、`protobuf-compiler` の事前インストールステップを追加。
+    - `.env.example` [MODIFY]: 環境構築のブロッカーになっていた未記載の環境変数 31 件をすべて補完。
+    - `docs/DESIGN.md` [ADD]: Golden Rule U-002 (トークン強制) に基づき、Artemis UI デザインの `tokens.css` 仕様を言語化し、ドキュメント同期ルールのフェイルを解消。
+- **波及効果**:
+    - CI/CD パイプラインの恒久的な安定化と `cargo audit` の 0 エラー化（GREEN維持）。
+    - 本番デプロイ（Production Readiness）の最終障壁であったインフラストラクチャー負債・未指定変数のクラッシュリスクの完全排除。
+
 ## Phase D: Cortex FTS5 Migration & Query Hardening
 ### 1. High-Performance Knowledge Retrieval
 - **変更内容**:

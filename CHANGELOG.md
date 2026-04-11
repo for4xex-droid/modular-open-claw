@@ -1,5 +1,12 @@
 ## [Unreleased] - 2026-04-11
-  - **Phase 4 WordPress AbyssVault Migration**:
+  - **Phase 0-D Technical Debt & Blockers Fixes (Production Readiness)**:
+    - **Security**: Upgraded `wasmtime` and `wasmtime-wasi` to `v43.0.1` to resolve multiple sandbox escape vulnerabilities. Created `.cargo/audit.toml` to track un-patchable `wasmtime` legacy vulnerabilities blocked by `extism` pinning, implementing explicit Chesterton's Fence comments for transparency, allowing `cargo audit` to return GREEN.
+    - **CI Pipeline**: Added `sudo apt-get install -y protobuf-compiler` to `ci.yml` (`test`, `semver-check`, `unused-deps` jobs) to permanently unblock GitHub Actions runners from failing when resolving the `tonic` gRPC code generation dependency.
+    - **Front-end**: Executed `npm audit fix` in `apps/management-console` to resolve Vite High-Severity vulnerabilities. Added missing Japanese i18n translation key `timeline.noRecords` in `ja.json`.
+    - **Configuration / Architecture Sync**:
+      - Merged 31 strictly required environment variables into `.env.example` to provide a complete setup template and eliminate missing variable crashes.
+      - Resolved ADR naming duplication (`ADR-025` -> `034-poincare-memory-lifecycle.md`) and successfully regenerated the core `ARCHITECTURE.md` via python scripts.
+      - Generated `docs/DESIGN.md` explicitly defining the Artemis CSS tokenization architecture (`tokens.css`), strictly adhering to Golden Rule `#10`.
     - `api-server` (WordPressAdapter) 内に WP の API トークンをプレーンテキストで保持する脆弱性を解消。トークンの保持とリクエストプロキシを `key-proxy` (AbyssVault) に委譲。
     - `key-proxy` に `/api/v1/wp/publish` エンドポイントを新設し、WP 側の通信を AbyssVault 内に完全隔離するゼロトラストアーキテクチャへの移行を達成。
     - 互換性のためレガシーモードも残しつつ、環境変数 `KEY_PROXY_URL` と `WP_API_URL` を動的に判別してセキュアエンドポイントを自動選択するように `bootstrap.rs` の Publishing Pipeline を改修。
