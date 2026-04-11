@@ -837,6 +837,7 @@ async fn test_settings_authorized_and_crud() {
 #[serial]
 #[tokio::test]
 async fn test_settings_ssrf_protection() {
+    std::env::set_var("AIOME_DEV_MODE", "1");
     let (server, _state, _tmp) = create_test_server().await;
 
     let payload = json!({
@@ -1893,7 +1894,20 @@ async fn test_test_endpoints_are_inaccessible_in_release() {
 
     let res = server
         .post("/api/v1/settings/test")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .json(&serde_json::json!({}))
+        .await;
+    let code = res.status_code();
+    assert!(
+        code == axum::http::StatusCode::NOT_FOUND
+            || code == axum::http::StatusCode::METHOD_NOT_ALLOWED,
+        "Status was: {}",
+        code
+    );
+
+    let res = server
+        .post("/api/v1/demo/start")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
     let code = res.status_code();
     assert!(
@@ -1911,13 +1925,21 @@ async fn test_test_endpoints_are_inaccessible_in_release() {
 async fn test_test_endpoints_are_accessible_in_debug() {
     let (server, _state, _dir) = create_test_server().await;
 
+    std::env::set_var("AIOME_DEV_MODE", "1");
     // test endpoints might require authorization and params, so 401/400 is fine, but NOT 404.
     let res = server.post("/api/synergy/test/failure").await;
     assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 
     let res = server
         .post("/api/v1/settings/test")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .json(&serde_json::json!({}))
+        .await;
+    assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
+
+    let res = server
+        .post("/api/v1/demo/start")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
     assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 }
@@ -1996,6 +2018,7 @@ async fn test_treasure_get_recommendations() {
 
 #[serial]
 #[tokio::test]
+#[cfg(debug_assertions)]
 async fn test_autonomous_demo_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
 

@@ -973,16 +973,6 @@ pub trait HarnessRegistryOps: Send + Sync + std::fmt::Debug {
     async fn increment_harness_stats(&self, id: &str, fire: bool) -> Result<(), AiomeError>;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_trait_impl_compiles() {
-        // Dummy test to ensure the trait module is sound
-    }
-}
-
 #[async_trait::async_trait]
 pub trait AffiliateAdapter: Send + Sync {
     async fn fetch_bids_for_intent(
@@ -991,4 +981,14 @@ pub trait AffiliateAdapter: Send + Sync {
     ) -> Result<Vec<crate::gig::GigBid>, crate::error::AiomeError>;
 
     fn validate_url(&self, url: &str) -> Result<(), crate::error::AiomeError>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trait_impl_compiles() {
+        // Dummy test to ensure the trait module is sound
+    }
 }

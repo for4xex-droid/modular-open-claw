@@ -201,6 +201,7 @@ pub struct ApiDoc;
     crate::routes::karma::trigger_failure_demo,
     crate::routes::karma::trigger_security_demo,
     crate::routes::karma::trigger_federation_demo,
+    crate::routes::demo::start_demo,
 ))]
 pub struct DemoApiDoc;
 

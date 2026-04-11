@@ -252,7 +252,8 @@ pub fn build_app(
         .route(
             "/api/synergy/test/federation",
             post(routes::karma::trigger_federation_demo),
-        );
+        )
+        .route("/api/v1/demo/start", post(routes::demo::start_demo));
 
     let internal_router = internal_router
         .route(
@@ -370,8 +371,7 @@ pub fn build_app(
                         .buffer(5)
                         .rate_limit(2, std::time::Duration::from_secs(1)), // 2 member ops per sec
                 ),
-        )
-        .route("/api/v1/demo/start", post(routes::demo::start_demo));
+        );
 
     let internal_router = internal_router.route(
         "/api/v1/settings/test",

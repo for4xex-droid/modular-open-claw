@@ -1524,6 +1524,33 @@
         ]
       }
     },
+    "/api/v1/demo/start": {
+      "post": {
+        "tags": [
+          "crate::routes::demo"
+        ],
+        "summary": "デモの開始要請",
+        "operationId": "start_demo",
+        "responses": {
+          "200": {
+            "description": "Demo started",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/ekyc/session": {
       "post": {
         "tags": [

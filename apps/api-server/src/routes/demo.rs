@@ -11,6 +11,7 @@ use aiome_core_contracts::error::AiomeError;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 
+#[cfg(debug_assertions)]
 /// デモの開始要請
 #[utoipa::path(
     post,
@@ -21,7 +22,10 @@ use serde_json::json;
     ),
     security(("api_key" = []))
 )]
-pub async fn start_demo(State(state): State<AppState>) -> Result<impl IntoResponse, AiomeError> {
+pub async fn start_demo(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<impl IntoResponse, AiomeError> {
     // デモをバックグラウンドで開始
     tokio::spawn(AutonomousDemo::run(state));
 

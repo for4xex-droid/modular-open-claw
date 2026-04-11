@@ -90,6 +90,10 @@ const SettingsPage: React.FC = () => {
                 method: 'POST',
                 body: JSON.stringify({ service, url, model })
             });
+            if (res.status === 404) {
+                setTestResults(prev => ({ ...prev, [service]: { success: false, message: t('settings.testDisabledInProd', 'Connection testing is disabled in production to protect against SSRF reconnaissance.'), loading: false } }));
+                return;
+            }
             const data = await res.json();
             setTestResults(prev => ({ ...prev, [service]: { success: data.success, message: data.message, loading: false } }));
         } catch (error) {

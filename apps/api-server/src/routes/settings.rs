@@ -267,6 +267,13 @@ pub async fn test_connection(
     _auth: Authenticated,
     Json(payload): Json<TestConnectionRequest>,
 ) -> Result<Json<TestConnectionResponse>, AppError> {
+    // Only allow test_connection when explicitly enabled via AIOME_DEV_MODE (Perfect Plan mitigation)
+    if std::env::var("AIOME_DEV_MODE").unwrap_or_default() != "1" {
+        return Err(AppError::not_found(
+            "Test connection is disabled in production",
+        ));
+    }
+
     // SSRF Protection: Use unified SecurityPolicy from State
     if let Err(e) = state.security_policy.validate_url(&payload.url).await {
         return Ok(Json(TestConnectionResponse {
