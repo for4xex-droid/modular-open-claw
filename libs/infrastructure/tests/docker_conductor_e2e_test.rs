@@ -9,7 +9,7 @@ use aiome_core::traits::Job;
 use infrastructure::docker_conductor::DockerConductor;
 use infrastructure::grpc::a2a_grpc_client::GrpcClientConfig;
 use infrastructure::task_orchestrator::{TaskConductor, TaskEvent};
-use secrecy::{Secret, SecretString};
+use secrecy::SecretString;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::info;

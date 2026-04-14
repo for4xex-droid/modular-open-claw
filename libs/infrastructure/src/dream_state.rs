@@ -132,10 +132,10 @@ impl DreamState {
             }
 
             if !insights.is_empty() {
-                return Ok(Some(format!(
+                Ok(Some(format!(
                     "Observability Insights: {}",
                     insights.join("; ")
-                )));
+                )))
             } else {
                 info!(
                     "✅ [DreamState] All LLM providers are operating within acceptable parameters."
@@ -154,7 +154,7 @@ impl DreamState {
                     }
                 });
 
-                return Ok(None);
+                Ok(None)
             }
         } else {
             info!("💤 [DreamState] Observability logger is not connected.");

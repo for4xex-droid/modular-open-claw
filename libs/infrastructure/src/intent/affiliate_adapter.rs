@@ -18,7 +18,6 @@ pub struct MockAffiliateAdapter {
 }
 
 #[cfg(debug_assertions)]
-
 impl MockAffiliateAdapter {
     /// アフィリエイトアダプターの新規インスタンスを生成する
     pub fn new() -> Self {
