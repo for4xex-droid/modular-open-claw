@@ -17,8 +17,8 @@
     "voiceStore": "ボイスストア",
     "immuneSystem": "免疫システム",
     "agentConsole": "エージェントコンソール",
-    "skillVault": "スキル保管庫",
     "loraAutotuner": "LoRA オートチューナー",
+    "promptStats": "LLM コスト・遅延統計",
     "settings": "設定"
   },
   "page": {
@@ -35,8 +35,8 @@
     "expressions": "AI 自己表現パイプライン",
     "biomeLab": "バイオーム共創ラボ",
     "voiceStore": "クリエイターボイスストア",
-    "causalTrace": "因果推論トレース",
     "loraAutotuner": "LoRA オートチューナー",
+    "promptStats": "LLM オブザーバビリティ",
     "settings": "システム設定"
   },
   "status": {
@@ -449,5 +449,14 @@
     "configurationWarnings": "設定に関する警告",
     "refreshTrends": "トレンドを更新",
     "loadTrendsFailed": "トレンドの取得に失敗しました。"
+  },
+  "promptStats": {
+    "title": "プロンプト監査 & プロバイダー統計",
+    "loadFailed": "プロンプト統計の取得に失敗しました",
+    "noData": "プロンプト統計データがありません",
+    "calls": "呼び出し回数",
+    "latency": "レイテンシ",
+    "cost": "コスト",
+    "cache": "キャッシュ率"
   }
 }

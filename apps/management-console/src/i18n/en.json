@@ -17,8 +17,8 @@
     "voiceStore": "Voice Store",
     "immuneSystem": "Immune System",
     "agentConsole": "Agent Console",
-    "skillVault": "Skill Vault",
     "loraAutotuner": "LoRA Autotuner",
+    "promptStats": "LLM Provider Stats",
     "settings": "Settings"
   },
   "page": {
@@ -35,8 +35,8 @@
     "expressions": "AI Self-Expression Pipeline",
     "biomeLab": "Biome Collaborative Lab",
     "voiceStore": "Creator Voice Store",
-    "causalTrace": "Causal Reasoning Trace",
     "loraAutotuner": "LoRA Autotuner",
+    "promptStats": "LLM Observability",
     "settings": "System Settings"
   },
   "status": {
@@ -449,5 +449,14 @@
     "configurationWarnings": "Configuration Warnings",
     "refreshTrends": "Refresh Trends",
     "loadTrendsFailed": "Failed to fetch trends."
+  },
+  "promptStats": {
+    "title": "Prompt Audit & Provider Stats",
+    "loadFailed": "Failed to load prompt stats",
+    "noData": "No prompt stats available",
+    "calls": "Calls",
+    "latency": "Latency",
+    "cost": "Cost",
+    "cache": "Cache Hit"
   }
 }

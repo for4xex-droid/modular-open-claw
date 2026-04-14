@@ -251,10 +251,15 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 - **SoTProgress SSE**: 審議の各ステップ（メタ思考、批判内容、修正案）を `SoTProgress` イベントとしてリアルタイムに配信。ユーザーはエージェントの「思考過程」を視覚的に追跡可能です。
 - **Deterministic Judge**: 最終判定フェーズでは `format: "json"` を強制し、構造化された結論（承認/却下/要修正）を得ることで、後続のタスク自動実行を確実に制御します。
 
+### 3.11 Observability & Telemetry (Phase 3-A 実装)
+`EvaluationLogger` は、`DynamicLlmProvider` および `BackgroundLlmProvider` で発生する推論リクエストのレイテンシ (`latency_ms`)、コスト (`cost_usd`)、ならびにトークン消費量 (`token_count_in/out`) を一元的にキャプチャし、`prompt_evaluation_log` テーブルに永続化します。
+- **Asynchronous & Non-blocking**: `tokio::spawn` を介してバックグラウンドでロギングタスクを実行するため、リアルタイムの推論性能（Time to First Token）に一切の遅延（ブロック）を与えません。
+- **Prompt Stats API**: 管理ダッシュボードやテレメトリーツールに向け、抽出用エンドポイント `GET /api/v1/audit/prompt-stats` を備え、コスト監視におけるBOLA（越権アクセス）を防ぐ厳格な `system_agent_id` 検証を実施しています。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-03-31 (Phase 53 / SoT & Security Hardening)*
+*最終更新: 2026-04-12 (Phase 3-A / Observability Telemetry)*
 
 ---
 

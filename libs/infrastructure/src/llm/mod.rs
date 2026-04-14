@@ -9,6 +9,7 @@
 pub mod cost_breaker;
 /// `dynamic` モジュール
 pub mod dynamic;
+pub mod evaluation_logger;
 /// `fallback_router` モジュール
 pub mod fallback_router;
 

@@ -249,6 +249,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             });
     let job_queue = Arc::new(job_queue);
 
+    let eval_logger =
+        Arc::new(infrastructure::llm::evaluation_logger::EvaluationLogger::new(job_queue.clone()));
+
     let audit_logger = Arc::new(AsyncAuditLogger::new(
         Arc::new(job_queue.get_pool().clone()),
         10000, // Process up to 10k items in memory before blocking
@@ -308,6 +311,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         slo_engine: slo_engine.clone(),
         hook_manager: hook_manager.clone(),
         live_manager: live_manager.clone(),
+        eval_logger: Some(eval_logger.clone()),
     });
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
@@ -320,6 +324,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         anthropic_api_key: config.anthropic_api_key.clone(),
         hook_manager: hook_manager.clone(),
         live_manager: live_manager.clone(),
+        eval_logger: Some(eval_logger.clone()),
     });
 
     let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
@@ -401,6 +406,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let api_server_secret = Arc::new(secrecy::SecretString::from(api_server_secret_raw.clone()));
     let federation_secret = federation_secret_raw.map(|s| Arc::new(secrecy::SecretString::from(s)));
+
+    std::env::remove_var("API_SERVER_SECRET");
+    std::env::remove_var("FEDERATION_SECRET");
 
     // Soul (Sense Foundation)
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
@@ -714,7 +722,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
         if wp_enabled {
             if let Ok(proxy_url) = std::env::var("KEY_PROXY_URL") {
-                let vault_secret = std::env::var("VAULT_SECRET").unwrap_or_default();
+                use secrecy::ExposeSecret;
+                let vault_secret = config
+                    .vault_secret
+                    .as_ref()
+                    .map(|s| s.expose_secret().to_string())
+                    .unwrap_or_default();
                 publishers.push(Box::new(
                     infrastructure::publisher::wordpress::WordPressAdapter::new_vault(
                         proxy_url,
@@ -746,10 +759,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             }
         }
 
-        if cfg!(debug_assertions)
-            && std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok()
-            && publishers.is_empty()
-        {
+        #[cfg(debug_assertions)]
+        if std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok() && publishers.is_empty() {
             tracing::info!("🧪 [PublishPipeline] Forcing MockXPublisher due to AIOME_FORCE_MOCK_PUBLISHER env var.");
             publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
         }
@@ -782,9 +793,15 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         connect_timeout: std::time::Duration::from_secs(5),
         auth_token: "".to_string(), // dynamically overwritten in conduct()
     };
+    let docker_gemini_key = config
+        .gemini_api_key
+        .as_ref()
+        .map(|k| secrecy::SecretString::from(secrecy::ExposeSecret::expose_secret(k).to_string()))
+        .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
     let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(
         commerce_engine.clone(),
         grpc_config,
+        docker_gemini_key,
     ));
     task_dispatcher.register_conductor(docker_conductor);
 
@@ -920,10 +937,18 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         intent_generator: Component::new(intent_generator),
         intent_firewall: Component::new(intent_firewall),
         audit_logger: Component::new(audit_logger),
-        affiliate_adapter: Component::new(Arc::new(
-            infrastructure::intent::MockAffiliateAdapter::new(),
-        )
-            as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>),
+        affiliate_adapter: Component::new({
+            #[cfg(debug_assertions)]
+            {
+                Arc::new(infrastructure::intent::MockAffiliateAdapter::new())
+                    as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                Arc::new(infrastructure::intent::DisabledAffiliateAdapter::new())
+                    as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
+            }
+        }),
         soul_pipeline: Component::new(soul_pipeline),
         transcription_engine: Component::new(transcription_engine),
         task_dispatcher: Component::new(task_dispatcher),
@@ -960,7 +985,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                             .unwrap_or_else(|_| "http://localhost:18020".to_string()); // allow-anti-pattern
                         Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
                     }
-                    _ => Arc::new(infrastructure::tts::MockTtsProvider::default()),
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        {
+                            Arc::new(infrastructure::tts::MockTtsProvider::default())
+                        }
+                        #[cfg(not(debug_assertions))]
+                        {
+                            Arc::new(infrastructure::tts::DisabledTtsProvider::default())
+                        }
+                    }
                 };
             Component::new(provider)
         },
@@ -1069,6 +1103,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         },
         publish_pipeline: Component::new(publish_pipeline),
         cortex_projector: Component::new(cortex_projector_arc.clone()),
+        feature_flags_cache: Component::new(Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(60))
+                .build(),
+        )),
+        eval_logger: Component::new(eval_logger),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

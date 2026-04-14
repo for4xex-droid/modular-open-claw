@@ -288,6 +288,44 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </section>
 
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <Shield size={24} color="var(--accent-emerald)" />
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Feature Flags</h3>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <FeatureToggle 
+                            label="SEO Publishing" 
+                            flag="feature_flag.seo_publish" 
+                            current={getSetting('feature_flag.seo_publish')} 
+                            onUpdate={(v) => updateSetting('feature_flag.seo_publish', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.seo_publish'} 
+                        />
+                        <FeatureToggle 
+                            label="P2P Federation" 
+                            flag="feature_flag.p2p_federation" 
+                            current={getSetting('feature_flag.p2p_federation')} 
+                            onUpdate={(v) => updateSetting('feature_flag.p2p_federation', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.p2p_federation'} 
+                        />
+                        <FeatureToggle 
+                            label="LoRA Training" 
+                            flag="feature_flag.lora_training" 
+                            current={getSetting('feature_flag.lora_training')} 
+                            onUpdate={(v) => updateSetting('feature_flag.lora_training', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.lora_training'} 
+                        />
+                        <FeatureToggle 
+                            label="Gig Marketplace" 
+                            flag="feature_flag.gig_marketplace" 
+                            current={getSetting('feature_flag.gig_marketplace')} 
+                            onUpdate={(v) => updateSetting('feature_flag.gig_marketplace', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.gig_marketplace'} 
+                        />
+                    </div>
+                </section>
+
                 <McpConfigManager />
 
             </div>
@@ -587,6 +625,35 @@ const McpConfigManager: React.FC = () => {
                 </div>
             )}
         </section>
+    );
+};
+
+const FeatureToggle: React.FC<{ label: string, flag: string, current: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ label, flag, current, onUpdate, saving }) => {
+    const isEnabled = current === "true" || current === "1";
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--white-03)', padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{label}</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>({flag})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {saving && <Loader2 size={14} className="ani-spin" color="var(--accent-emerald)" />}
+                <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+                    <input type="checkbox" checked={isEnabled} onChange={(e) => onUpdate(e.target.checked ? "true" : "false")} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ 
+                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
+                        backgroundColor: isEnabled ? 'var(--accent-emerald)' : 'var(--black-40)', 
+                        transition: '.4s', borderRadius: '22px' 
+                    }}>
+                        <span style={{ 
+                            position: 'absolute', content: '""', height: '16px', width: '16px', left: '3px', bottom: '3px', 
+                            backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                            transform: isEnabled ? 'translateX(18px)' : 'translateX(0)'
+                        }}></span>
+                    </span>
+                </label>
+            </div>
+        </div>
     );
 };
 

@@ -1,8 +1,25 @@
-## [Unreleased] - 2026-04-11
+## [Unreleased] - 2026-04-12
+  - **Phase 3 A/B: AI Quality & Observability Infrastructure (Telemetry)**:
+    - **Prompt Evaluation Log (DB)**: Introduced `EvaluationLogger` to silently record `latency_ms`, `token_count`, `cost_usd`, and `cache_hit` for all inferences across both `DynamicLlmProvider` and `BackgroundLlmProvider`.
+    - **Async Non-Blocking Audits**: Logging hooks use `tokio::spawn` locally over shared `UniversalJobQueue` to ensure recording does not degrade LLM response latency.
+    - **Audit Prompt Stats API**: Implemented `GET /api/v1/audit/prompt-stats` in the API server to retrieve live query cost metrics aggregated by provider and model. Fully integrated into OpenAPI schema. Hardened via an internal `/reflexion` loop establishing strict `system_agent_id` verification (BOLA defense) and a ReDoS defense boundary ceiling limit of `3650d` (10 years) for dynamic period parsing.
+    - **Cost Circuit Breaker**: Added 30-day rolling aggregation with `cost_limit_monthly` limits to `CostCircuitBreaker`, propagating state universally to prevent cost blowout. Added monthly tracking details to user-facing error messages.
+    - **Defensive Error Masking (CWE-209)**: Implemented Information Leakage Prevention in `AiomeError::IntoResponse`. In release builds (`#[cfg(not(debug_assertions))]`), internal 500-level error messages are safely masked with short UUIDs while preserving detailed logs for system operators, and unified variant names as "InternalError" to prevent architecture leak. 
+    - **Polyglot & Arbitrary Exec Defenses (CWE-434)**: Standardized `validate_magic_bytes` validation in `file_validator.rs` for images (PNG, JPEG, GIF, PDF), audio (`Wav`), images (`WebP`), and external payloads (`Inx`). Handlers for Voice, Avatar, and Mascot uploads now explicitly verify binary signatures to thwart header spoofing/upload bypasses.
+    - **Infrastructure Integrity**: Injected `api-server` default `volumes` mounts within `docker-compose.production.yml` to guarantee SQLite DB file data permanence after container restarts. Added `Validation` variant to `AiomeError` to explicitly segregate 400 Bad Request behaviors. 
+  - **Phase 3-D: DreamState Autonomous Observability Loops**:
+    - **EvaluationLogger DI into DreamState**: Injected `EvaluationLogger` (via `Option<Arc<...>>`) into `DreamState`, wired through `AppState` → `bootstrap.rs` → `internal_services/dream.rs`. Builder pattern (`with_eval_logger`) preserves backward compatibility.
+    - **observability_dream**: Implemented a dedicated dream mode that queries 7-day rolling `ProviderEvalStat` aggregates and generates insights when latency exceeds 2000ms or 7-day cost exceeds $1.0. Dispatched with a dedicated 15% probability slot in the dream loop (not buried in a dead else-if branch).
+    - **Edge-Case Resilience**: Handles `eval_logger: None` (returns `None`), empty stats (returns `None`), and DB failures (propagates `AiomeError` through `Box<dyn Error>`).
+    - **TDD Coverage**: 3 tests — happy path (high latency + high cost detection), `without_logger → None`, `empty_stats → None`. All GREEN.
+  - **Phase 3-C+/D+: Observability UI & SQL Inference Hardening**:
+    - **LLM Token Cost Dynamic Injection** (3-D+): Centralized cost calculation logic (e.g., $5.0/1M tokens for `gpt-4o`) directly within `DynamicLlmProvider` and `BackgroundLlmProvider` telemetry hook to persist detailed financial metrics structurally to the `prompt_evaluation_log` table.
+    - **Database Garbage Collection DI** (3-D+): Migrated `DreamState` 90-day GC background process to use parameterized SQLite (`datetime('now', ?)`) query injection to completely eliminate runtime panic bugs resulting from incorrect `{0}` formatting constraints.
+    - **Prompt Stats UI Redesign** (3-C+): Upgraded `PromptStatsView.tsx` with period filters (`7d`, `30d`, `90d`) and a responsive cost bar chart. Enforced U-002/U-004 Golden Rules by strictly relying on `tokens.css` `--chart-*` color variables and OpenAPI generated interface `components['schemas']['ProviderEvalStat']` over manual type duplication.
   - **Phase 0-D Technical Debt & Blockers Fixes (Production Readiness)**:
     - **Security**: Upgraded `wasmtime` and `wasmtime-wasi` to `v43.0.1` to resolve multiple sandbox escape vulnerabilities. Created `.cargo/audit.toml` to track un-patchable `wasmtime` legacy vulnerabilities blocked by `extism` pinning, implementing explicit Chesterton's Fence comments for transparency, allowing `cargo audit` to return GREEN.
     - **CI Pipeline**: Added `sudo apt-get install -y protobuf-compiler` to `ci.yml` (`test`, `semver-check`, `unused-deps` jobs) to permanently unblock GitHub Actions runners from failing when resolving the `tonic` gRPC code generation dependency.
-    - **Front-end**: Executed `npm audit fix` in `apps/management-console` to resolve Vite High-Severity vulnerabilities. Added missing Japanese i18n translation key `timeline.noRecords` in `ja.json`.
+    - **Front-end**: Executed `npm audit fix` in `apps/management-console` to resolve Vite High-Severity vulnerabilities. Added missing Japanese i18n translation key `timeline.noRecords` in `ja.json`. Added complete i18n translations for `nav.promptStats`, `page.promptStats`, and `promptStats.title` in both `en.json` and `ja.json` to support the new LLM Observability UI in Phase 3.
     - **Configuration / Architecture Sync**:
       - Merged 31 strictly required environment variables into `.env.example` to provide a complete setup template and eliminate missing variable crashes.
       - Resolved ADR naming duplication (`ADR-025` -> `034-poincare-memory-lifecycle.md`) and successfully regenerated the core `ARCHITECTURE.md` via python scripts.
@@ -11,6 +28,10 @@
     - `key-proxy` に `/api/v1/wp/publish` エンドポイントを新設し、WP 側の通信を AbyssVault 内に完全隔離するゼロトラストアーキテクチャへの移行を達成。
     - 互換性のためレガシーモードも残しつつ、環境変数 `KEY_PROXY_URL` と `WP_API_URL` を動的に判別してセキュアエンドポイントを自動選択するように `bootstrap.rs` の Publishing Pipeline を改修。
     - レート制限管理の `DashMap` 状態演算パニック（TOCTOU問題）を解消するため、`Instant` に `Duration` の差分を計算するハックを廃止。`(Instant, Duration)` 型による絶対安全・アンダーフロー無縁の `saturating_sub` 設計へリファクタリング。`SerpAnalysisAdapter` の実装対称性（Symmetry）も担保。
+    - **Production Security Hardening (Phase D-7)**:
+      - 本番環境でのモック機能（`MockAffiliateAdapter`, `MockCommerceEngine`, `MockTtsProvider`, `MockXPublisher`）の意図しない露出を防止するため、これらを `#[cfg(debug_assertions)]` と `Disabled*` トレイトで本番ビルドから完全に排除。`cargo check --workspace --release` が緑になるよう修正。
+      - `bootstrap.rs` 起動時に `API_SERVER_SECRET`, `FEDERATION_SECRET`, `VAULT_SECRET` などの機密環境変数を `std::env::remove_var` でメモリからパージし、サードパーティクレート等への秘密情報漏洩リスクを削減。
+      - Swagger UI のルーティングを `debug_assertions` で隔離し、Production におけるAPIスキーマ探索リスクを排除。
     - `TrendSonar` のアダプタ群のループ並行フェッチを `FuturesUnordered` + `tokio::time::timeout` 構成へ完全置換。通信の遅い1つの外部APIによる全体のスレッドストールを回避。
     - Rust の `cargo test` 並列実行環境下での環境変数（`std::env::set_var`）の汚染や `DashMap::clear()` 競合による Flaky（不安定）テストの温床を根本排除。DI（依存性の注入）パラダイムを用いたテスト専用エンドポイント構築と、テナントキーによるアイソレーションを実施。
     - `TrendView.tsx` の TypeScript 型定義を、`npm run generate-types` を用いた OpenAPI スキーマ連動定義へ移行（Golden Rule U-004 完全準拠）。UI 進捗バーのスコア・スケーラビリティの欠陥（10% 上限バグ）と残存ハードコード `gap` トークン修正を解決。

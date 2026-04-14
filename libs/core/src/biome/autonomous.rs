@@ -43,6 +43,8 @@ impl AutonomousBiomeEngine {
         llm_semaphore: Arc<Semaphore>,
         gift_engine: Option<Arc<dyn aiome_core_contracts::commerce::GiftEngine>>,
         master_email: Option<String>,
+        hub_url: String,
+        hub_secret: String,
     ) {
         info!(
             "🤖 [AutonomousBiome] Starting dialogue loop for topic: {}",
@@ -87,7 +89,15 @@ impl AutonomousBiomeEngine {
             match response_result {
                 Ok(content) => {
                     // 4. Send Message (via standard route logic)
-                    if let Err(e) = Self::send_autonomous_message(&config, content, &*queue).await {
+                    if let Err(e) = Self::send_autonomous_message(
+                        &config,
+                        content,
+                        &*queue,
+                        &hub_url,
+                        &hub_secret,
+                    )
+                    .await
+                    {
                         error!(
                             "❌ [AutonomousBiome] Failed to send autonomous message: {}",
                             e
@@ -198,6 +208,8 @@ impl AutonomousBiomeEngine {
         config: &AutonomousConfig,
         content: String,
         queue: &dyn JobQueue,
+        hub_url: &str,
+        hub_secret: &str,
     ) -> Result<(), AiomeError> {
         let sender_pubkey = queue.get_node_id().await?;
         let clock = queue.tick_local_clock().await?;
@@ -205,15 +217,6 @@ impl AutonomousBiomeEngine {
         // MVP: Simple signature same as in routes/biome.rs
         let payload_to_sign = format!("{}:{}:{}", sender_pubkey, config.topic_id, clock);
         let signature = queue.sign_swarm_payload(&payload_to_sign).await?;
-
-        let hub_url = std::env::var("SAMSARA_HUB_URL")
-            .or_else(|_| std::env::var("SAMSARA_HUB_REST"))
-            .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
-
-        let hub_secret =
-            std::env::var("FEDERATION_SECRET").map_err(|_| AiomeError::Infrastructure {
-                reason: "FEDERATION_SECRET missing for autonomous biome communication".to_string(),
-            })?;
 
         let msg = {
             let mut m = BiomeMessage {
@@ -229,7 +232,7 @@ impl AutonomousBiomeEngine {
             };
 
             // Phase 6.9: Cryptographic enforcement
-            let key = shared::crypto::derive_biome_key(&hub_secret);
+            let key = shared::crypto::derive_biome_key(hub_secret);
 
             m.encrypt(&key).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to encrypt biome telemetry: {}", e),

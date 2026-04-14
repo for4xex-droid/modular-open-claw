@@ -104,6 +104,13 @@ pub async fn upload_inochi2d_handler(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
+    // P-1: Validate magic bytes to prevent CWE-434/polyglot attacks
+    if let Err(_e) = shared::file_validator::validate_magic_bytes("inx", &body) {
+        return Err(AppError::bad_request(
+            "Invalid INX file signature. Must be a valid archive.",
+        ));
+    }
+
     let _metadata = Inochi2dLoader::load_metadata(&body)
         .map_err(|e| AppError::bad_request(format!("Invalid INX file: {}", e)))?;
 

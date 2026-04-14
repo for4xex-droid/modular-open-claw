@@ -1676,6 +1676,16 @@ export interface components {
             recommended_model: string;
             setup_required: boolean;
         };
+        ProviderEvalStat: {
+            average_latency_ms: number;
+            cache_hit_rate: number;
+            model: string;
+            provider: string;
+            total_calls: number;
+            total_cost_usd: number;
+            total_tokens_in: number;
+            total_tokens_out: number;
+        };
         PublishListingRequest: {
             /** @description SHA-256 ハッシュ */
             adapter_hash: string;

@@ -38,6 +38,13 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Amber** — `var(--accent-amber)` (#f59e0b): Warning/paused states. Warm caution.
 - **Fuchsia** — `var(--accent-fuchsia)` (#d946ef): Tertiary accent for special highlights.
 
+### Chart Colors
+- **Chart 1** — `var(--chart-1)` (rgb(0, 242, 255)): Primary chart color, maps to Cyan.
+- **Chart 2** — `var(--chart-2)` (rgb(188, 140, 255)): Secondary chart color, maps to Purple.
+- **Chart 3** — `var(--chart-3)` (rgb(255, 77, 148)): Tertiary chart color, maps to Rose.
+- **Chart 4** — `var(--chart-4)` (rgb(16, 185, 129)): Quaternary chart color, maps to Emerald.
+- **Chart 5** — `var(--chart-5)` (rgb(245, 158, 11)): Quinary chart color, maps to Amber.
+
 ### Text & Content
 - **Primary Text** — `var(--text-primary)` (#f0f2f5): Near-white with a cool cast. Default text color on dark backgrounds.
 - **Secondary Text** — `var(--text-secondary)` (#94a3b8): Cool silver-gray for body text, descriptions, metadata.
@@ -363,6 +370,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - Success: `var(--accent-emerald)` (#10b981)
 - Error: `var(--accent-rose)` (#ff4d94)
 - Warning: `var(--accent-amber)` (#f59e0b)
+- Charts: `var(--chart-1)` to `var(--chart-5)`
 
 ---
 

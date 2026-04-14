@@ -80,6 +80,17 @@ pub async fn upload_avatar_handler(
             })
         })?;
 
+    // P-1: Validate magic bytes to prevent CWE-434/polyglot attacks
+    let ext = std::path::Path::new(&req.name)
+        .extension()
+        .and_then(|ex| ex.to_str())
+        .unwrap_or("");
+    if let Err(_e) = shared::file_validator::validate_magic_bytes(ext, &content_bytes) {
+        return Err(AppError::bad_request(
+            "Invalid image file signature. File may be spoofed.",
+        ));
+    }
+
     // NOTE: ImageHasher は非 Send なため、await ポイント前にドロップさせるためブロックで囲う
     let (hash, is_csam_hit) = {
         let hasher = ImageHasher::new();

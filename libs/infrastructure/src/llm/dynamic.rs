@@ -41,6 +41,8 @@ pub struct DynamicLlmProvider {
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
     /// live_manager (Phase 6)
     pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
+    /// Phase 3-D+: Injected EvaluationLogger for observability DI
+    pub eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
 }
 
 #[async_trait]
@@ -85,6 +87,10 @@ impl LlmProvider for DynamicLlmProvider {
                 reason: e.to_string(),
             });
         }
+
+        let log_provider = provider_type.clone();
+        let log_model = model.clone();
+        let start_time = std::time::Instant::now();
 
         let result = match provider_type.as_str() {
             "gemini" => {
@@ -136,8 +142,46 @@ impl LlmProvider for DynamicLlmProvider {
 
         let result = self.handle_result(result).await;
 
+        let latency_ms = start_time.elapsed().as_millis() as i64;
+
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = result {
+            let cache_hit = response
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("cache_hit"))
+                .map(|v| v == "true")
+                .unwrap_or(false);
+            let p = prompt.to_string();
+            let s = system.map(|s| s.to_string());
+            let logger_opt = self.eval_logger.clone();
+
+            let (token_in, token_out) = response.metadata.as_ref().map_or((None, None), |m| {
+                (
+                    m.get("prompt_tokens").and_then(|v| v.parse::<i64>().ok()),
+                    m.get("completion_tokens")
+                        .and_then(|v| v.parse::<i64>().ok()),
+                )
+            });
+
+            // Non-blocking log using tokio::spawn
+            tokio::spawn(async move {
+                if let Some(logger) = logger_opt {
+                    log_evaluation(
+                        logger,
+                        p,
+                        s,
+                        log_provider,
+                        log_model,
+                        latency_ms,
+                        cache_hit,
+                        token_in,
+                        token_out,
+                    )
+                    .await;
+                }
+            });
+
             self.hook_manager
                 .trigger_post_execute(&request, response)
                 .await?;
@@ -190,6 +234,14 @@ impl LlmProvider for DynamicLlmProvider {
 
         let (provider_type, model) = self.resolve_config(false).await;
 
+        // Deep Scan Layer Fix: Capture context for logging intercept
+        let log_provider = provider_type.clone();
+        let log_model = model.clone();
+        let p = prompt.to_string();
+        let s = system.map(|s| s.to_string());
+        let logger_opt = self.eval_logger.clone();
+        let start_time = std::time::Instant::now();
+
         let result = match provider_type.as_str() {
             "gemini" => {
                 let api_key = self.get_api_key("llm_api_key", "gemini").await;
@@ -225,7 +277,33 @@ impl LlmProvider for DynamicLlmProvider {
             }
         };
 
-        self.handle_result(result).await
+        match self.handle_result(result).await {
+            Ok(mut stream) => {
+                use futures::StreamExt;
+                let stream_wrapper = async_stream::stream! {
+                    let mut success_flag = false;
+                    while let Some(chunk) = stream.next().await {
+                        if chunk.is_ok() {
+                            success_flag = true;
+                        }
+                        yield chunk;
+                    }
+                    if success_flag {
+                         let latency_ms = start_time.elapsed().as_millis() as i64;
+                         tokio::spawn(async move {
+                             if let Some(logger) = logger_opt {
+                                 log_evaluation(logger, p, s, log_provider, log_model, latency_ms, false, None, None).await;
+                             }
+                         });
+                    }
+                };
+                Ok(Box::pin(stream_wrapper)
+                    as Pin<
+                        Box<dyn Stream<Item = Result<String, AiomeError>> + Send>,
+                    >)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -251,6 +329,10 @@ impl LlmProvider for DynamicLlmProvider {
                 reason: e.to_string(),
             });
         }
+
+        let log_provider = provider_type.clone();
+        let log_model = model.clone();
+        let start_time = std::time::Instant::now();
 
         let result = match provider_type.as_str() {
             "gemini" => {
@@ -301,8 +383,55 @@ impl LlmProvider for DynamicLlmProvider {
 
         let result = self.handle_result(result).await;
 
+        let latency_ms = start_time.elapsed().as_millis() as i64;
+
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = result {
+            let cache_hit = response
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("cache_hit"))
+                .map(|v| v == "true")
+                .unwrap_or(false);
+
+            let mut p = String::new();
+            let mut s = None;
+            for m in &request.messages {
+                if m.role == "user" {
+                    p = m.content.clone();
+                }
+                if m.role == "system" {
+                    s = Some(m.content.clone());
+                }
+            }
+
+            let logger_opt = self.eval_logger.clone();
+
+            let (token_in, token_out) = response.metadata.as_ref().map_or((None, None), |m| {
+                (
+                    m.get("prompt_tokens").and_then(|v| v.parse::<i64>().ok()),
+                    m.get("completion_tokens")
+                        .and_then(|v| v.parse::<i64>().ok()),
+                )
+            });
+
+            tokio::spawn(async move {
+                if let Some(logger) = logger_opt {
+                    log_evaluation(
+                        logger,
+                        p,
+                        s,
+                        log_provider,
+                        log_model,
+                        latency_ms,
+                        cache_hit,
+                        token_in,
+                        token_out,
+                    )
+                    .await;
+                }
+            });
+
             self.hook_manager
                 .trigger_post_execute(&request, response)
                 .await?;
@@ -453,6 +582,8 @@ pub struct BackgroundLlmProvider {
     pub hook_manager: Arc<crate::security::hook_manager::HookManager>,
     /// live_manager (Phase 6)
     pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
+    /// Phase 3-D+: Injected EvaluationLogger for observability DI
+    pub eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
 }
 
 #[async_trait]
@@ -506,6 +637,10 @@ impl LlmProvider for BackgroundLlmProvider {
 
         let api_key = self.resolve_bg_api_key().await;
 
+        let log_provider = provider_type.clone();
+        let log_model = model.clone();
+        let start_time = std::time::Instant::now();
+
         let res = match provider_type.as_str() {
             // ... (keep existing patterns)
             "gemini" => {
@@ -556,8 +691,46 @@ impl LlmProvider for BackgroundLlmProvider {
             }
         };
 
+        let latency_ms = start_time.elapsed().as_millis() as i64;
+
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = res {
+            let cache_hit = response
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("cache_hit"))
+                .map(|v| v == "true")
+                .unwrap_or(false);
+            let p = prompt.to_string();
+            let s = system.map(|s| s.to_string());
+            let logger_opt = self.eval_logger.clone();
+
+            // Extract token counts from metadata if available (typical keys: prompt_tokens, completion_tokens)
+            let (token_in, token_out) = response.metadata.as_ref().map_or((None, None), |m| {
+                (
+                    m.get("prompt_tokens").and_then(|v| v.parse::<i64>().ok()),
+                    m.get("completion_tokens")
+                        .and_then(|v| v.parse::<i64>().ok()),
+                )
+            });
+
+            tokio::spawn(async move {
+                if let Some(logger) = logger_opt {
+                    log_evaluation(
+                        logger,
+                        p,
+                        s,
+                        log_provider,
+                        log_model,
+                        latency_ms,
+                        cache_hit,
+                        token_in,
+                        token_out,
+                    )
+                    .await;
+                }
+            });
+
             self.hook_manager
                 .trigger_post_execute(&request, response)
                 .await?;
@@ -606,6 +779,10 @@ impl LlmProvider for BackgroundLlmProvider {
             .unwrap_or_else(|| self.fallback_model.clone());
 
         let api_key = self.resolve_bg_api_key().await;
+
+        let log_provider = provider_type.clone();
+        let log_model = model.clone();
+        let start_time = std::time::Instant::now();
 
         let res = match provider_type.as_str() {
             "gemini" => {
@@ -656,8 +833,55 @@ impl LlmProvider for BackgroundLlmProvider {
             }
         };
 
+        let latency_ms = start_time.elapsed().as_millis() as i64;
+
         // --- Phase 36: Post Hooks ---
         if let Ok(ref response) = res {
+            let cache_hit = response
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("cache_hit"))
+                .map(|v| v == "true")
+                .unwrap_or(false);
+
+            let mut p = String::new();
+            let mut s = None;
+            for m in &request.messages {
+                if m.role == "user" {
+                    p = m.content.clone();
+                }
+                if m.role == "system" {
+                    s = Some(m.content.clone());
+                }
+            }
+
+            let logger_opt = self.eval_logger.clone();
+
+            let (token_in, token_out) = response.metadata.as_ref().map_or((None, None), |m| {
+                (
+                    m.get("prompt_tokens").and_then(|v| v.parse::<i64>().ok()),
+                    m.get("completion_tokens")
+                        .and_then(|v| v.parse::<i64>().ok()),
+                )
+            });
+
+            tokio::spawn(async move {
+                if let Some(logger) = logger_opt {
+                    log_evaluation(
+                        logger,
+                        p,
+                        s,
+                        log_provider,
+                        log_model,
+                        latency_ms,
+                        cache_hit,
+                        token_in,
+                        token_out,
+                    )
+                    .await;
+                }
+            });
+
             self.hook_manager
                 .trigger_post_execute(&request, response)
                 .await?;
@@ -778,5 +1002,54 @@ impl BackgroundLlmProvider {
         )
         .embed(text, is_query)
         .await
+    }
+}
+
+pub async fn log_evaluation(
+    logger: Arc<crate::llm::evaluation_logger::EvaluationLogger>,
+    prompt: String,
+    system: Option<String>,
+    provider: String,
+    model: String,
+    latency_ms: i64,
+    cache_hit: bool,
+    token_in: Option<i64>,
+    token_out: Option<i64>,
+) {
+    // Gap #4 Fix: Inject cost_usd / token logic here
+    let cost = match model.as_str() {
+        "gpt-4o" => {
+            (token_in.unwrap_or(0) as f64 * 5.0 / 1_000_000.0)
+                + (token_out.unwrap_or(0) as f64 * 15.0 / 1_000_000.0)
+        }
+        "claude-3-5-sonnet-20241022" | "claude-3-7-sonnet" => {
+            (token_in.unwrap_or(0) as f64 * 3.0 / 1_000_000.0)
+                + (token_out.unwrap_or(0) as f64 * 15.0 / 1_000_000.0)
+        }
+        "gemini-1.5-pro-002" | "gemini-2.0-flash-exp" => {
+            (token_in.unwrap_or(0) as f64 * 1.25 / 1_000_000.0)
+                + (token_out.unwrap_or(0) as f64 * 5.0 / 1_000_000.0)
+        }
+        _ => 0.0, // Default internal model -> 0 cost
+    };
+
+    if let Err(e) = logger
+        .log(crate::llm::evaluation_logger::EvaluationLogEntry {
+            prompt,
+            system,
+            provider,
+            model,
+            latency_ms,
+            token_count_in: token_in,
+            token_count_out: token_out,
+            cost_usd: Some(cost),
+            cache_hit,
+        })
+        .await
+    {
+        tracing::warn!(
+            "Observability: evaluation log write failed (non-fatal): {}",
+            e
+        );
     }
 }

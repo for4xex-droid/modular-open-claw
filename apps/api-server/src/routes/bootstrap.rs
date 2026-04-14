@@ -47,7 +47,14 @@ pub struct BootstrapStatusResponse {
 pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapStatusResponse> {
     let config = state.config.get_inner();
     let root = config.resolver.root();
-    let diagnosis = BootstrapDetector::diagnose(root);
+
+    let api_secret_set = state.api_server_secret.as_opt().is_some();
+    let llm_configured = config.gemini_api_key.is_some()
+        || config.openai_api_key.is_some()
+        || config.anthropic_api_key.is_some()
+        || !config.ollama_host.is_empty();
+
+    let diagnosis = BootstrapDetector::diagnose(root, Some(api_secret_set), Some(llm_configured));
 
     Json(BootstrapStatusResponse {
         mode: match diagnosis.mode {

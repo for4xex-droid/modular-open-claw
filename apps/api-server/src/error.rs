@@ -37,7 +37,7 @@ impl AppError {
 
     /// Validation / Bad Request (400 Bad Request)
     pub fn bad_request(reason: impl Into<String>) -> Self {
-        Self(AiomeError::Infrastructure {
+        Self(AiomeError::Validation {
             reason: reason.into(),
         })
     }

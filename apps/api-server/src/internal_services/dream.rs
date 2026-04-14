@@ -32,8 +32,9 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         }
     }
 
-    // 1. DreamState の初期化 (ADR-025: Agent-Native Discovery 有効化)
-    let dream_state = DreamState::new(state.provider.get_inner().clone());
+    // 1. DreamState の初期化 (ADR-025: Agent-Native Discovery 有効化、Phase 3-D Observability 有効化)
+    let dream_state = DreamState::new(state.provider.get_inner().clone())
+        .with_eval_logger(state.eval_logger.get_inner().clone());
 
     // 2. Queue / AgentLevel 情報へのアクセス
     let job_queue = job_queue_inner;

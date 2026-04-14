@@ -11,6 +11,30 @@
     - CI/CD パイプラインの恒久的な安定化と `cargo audit` の 0 エラー化（GREEN維持）。
     - 本番デプロイ（Production Readiness）の最終障壁であったインフラストラクチャー負債・未指定変数のクラッシュリスクの完全排除。
 
+## Phase 1: Security & Cost Hardening
+### 1. Cost Circuit Breaker & Defensive Validations
+- **変更内容**:
+    - `libs/infrastructure/src/llm/cost_breaker.rs` [MODIFY]: `CostCircuitBreaker` に 30日ローリング集計（月次上限 `cost_limit_monthly`）を追加し、`CostBypassSwitch` の評価を日次・月次の両方の制限に波及するように統合。UX向上のため `CostStatus` 構造体を拡張。
+    - `libs/aiome-contracts/src/error.rs` [MODIFY]: Release環境 `#[cfg(not(debug_assertions))]` において、`AiomeError` が 500 系エラーの際に内部情報を UUID にマスキングする CWE-209 防止機構 (Information Leakage Prevention) を導入。
+    - `libs/shared/src/file_validator.rs` [NEW]: `validate_magic_bytes` を新設し、拡張子に依存しない画像ファイル（PNG, JPEG, GIF, PDF）のシグネチャ検証と EOF（終端）チェックを実装。PHP スクリプト等の追記型ポリグロット攻撃を O(1) で遮断。
+    - `libs/infrastructure/migrations/{sqlite,postgres}/20260412000000_cost_breaker_indexes.sql` [NEW]: `resource_usage_logs(created_at)` にインデックスを追加し、Cost Circuit Breaker のフルテーブルスキャン（O(N) 負荷）を防止。
+- **波及効果**:
+    - Aiome の運用における経済的リスク（Cost Blowout）とセキュリティリスク（CWE-209, ポリグロットRCE）が物理次元で遮断された。
+    - 頻繁にコールされる `CostCircuitBreaker` のデータベース負荷が激減し、AI 自身による大量自律ループ時もシステムがボトルネックにならない状態を確保。
+
+## Phase 3-D: DreamState Autonomous Observability Loops
+### 1. EvaluationLogger → DreamState DI & observability_dream
+- **変更内容**:
+    - `libs/infrastructure/src/dream_state.rs` [MODIFY]: `DreamState` 構造体に `eval_logger: Option<Arc<EvaluationLogger>>` フィールドを追加。`with_eval_logger` ビルダーメソッドを新設。`observability_dream` (`pub(crate)`) を実装し、7日間ローリングの `ProviderEvalStat` を集計、レイテンシ 2000ms/コスト $1.0 の閾値超過を検知してインサイトを生成。`dream()` ループの確率分岐に 15% の専用スロットを新設。
+    - `apps/api-server/src/app_state.rs` [MODIFY]: `AppState` に `eval_logger: Component<Arc<EvaluationLogger>>` を追加。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `EvaluationLogger::new(job_queue.clone())` による初期化を追加し、`AppState` 構成体の末尾に注入。
+    - `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `DreamState::new(llm).with_eval_logger(...)` で DI を完了。
+    - `apps/api-server/src/api_integration_tests.rs` [MODIFY]: テスト用 `AppState` に `eval_logger` フィールドを追加。
+- **波及効果**:
+    - DreamState が単なる「探索・省察」エンジンから「自律パフォーマンス監視」エンジンへ進化し、LLM プロバイダーの劣化を Agent 自身が能動的に検知可能になった。
+    - `AppState` に新規フィールドが追加されたため、今後新たな統合テストケースを追加する際は `eval_logger` の初期化が必須。
+    - `dream()` の確率分岐が変更されたため、高レベル Agent（Lv10: comm_prob=45, sci_prob=20, obs_prob=15 = 80%）では explorative/reflective の発火率が低下した点に注意。
+
 ## Phase D: Cortex FTS5 Migration & Query Hardening
 ### 1. High-Performance Knowledge Retrieval
 - **変更内容**:
@@ -30,6 +54,7 @@
     - `apps/management-console/src/i18n/{en,ja}.json` [MODIFY]: 追加されたUIの翻訳キーを統合。
     - `apps/management-console/src/components/cortex/CortexView.test.tsx` [ADD]: TDD による i18n テストを追加し、UIレンダリングの健全性を検証。
     - `apps/management-console/src/components/SettingsPage.test.tsx` [ADD]: TDD によるインテグレーション設定UIのテストを追加。
+    - `apps/management-console/src/i18n/{en,ja}.json` [MODIFY]: Phase 3-C (LLM Observability) で追加された `PromptStatsView` の i18n 翻訳キー (`promptStats`) を完全同期。
 - **波及効果**:
     - NURTURE UI/UX ガイドラインにおける国際化（i18n）の要件を完全に満たした。
     - X API トークンをフロントエンドから動的に管理できるようになり、TrendSonar 機能の実働テストが可能となった。

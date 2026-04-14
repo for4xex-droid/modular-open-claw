@@ -43,8 +43,13 @@ pub struct BootstrapDiagnosis {
 pub struct BootstrapDetector;
 
 impl BootstrapDetector {
-    /// 環境変数とファイルシステムの状態からセットアップ完了度を判定する
-    pub fn diagnose(app_data_root: &Path) -> BootstrapDiagnosis {
+    /// 環境変数とファイルシステムの状態からセットアップ完了度を判定する。
+    /// 引数によりインメモリの LLM / API シークレット設定状態を優先的に評価可能（パージ対応）。
+    pub fn diagnose(
+        app_data_root: &Path,
+        api_secret_override: Option<bool>,
+        llm_override: Option<bool>,
+    ) -> BootstrapDiagnosis {
         let mut missing = Vec::new();
 
         // 1. DB の存在チェック
@@ -60,10 +65,12 @@ impl BootstrapDetector {
 
         // Settings DB からの動的設定も考慮する必要があるが、
         // Bootstrap 判定は DB 接続前に行うため、env のみを参照する
-        let llm_configured = ollama_host.is_some()
-            || gemini_key.is_some()
-            || openai_key.is_some()
-            || anthropic_key.is_some();
+        let llm_configured = llm_override.unwrap_or_else(|| {
+            ollama_host.is_some()
+                || gemini_key.is_some()
+                || openai_key.is_some()
+                || anthropic_key.is_some()
+        });
 
         if !llm_configured {
             missing.push(
@@ -72,8 +79,8 @@ impl BootstrapDetector {
             );
         }
 
-        // 3. API_SERVER_SECRET チェック
-        let api_secret_set = std::env::var("API_SERVER_SECRET").is_ok();
+        let api_secret_set =
+            api_secret_override.unwrap_or_else(|| std::env::var("API_SERVER_SECRET").is_ok());
         if !api_secret_set {
             missing.push("API_SERVER_SECRET".to_string());
         }
@@ -230,7 +237,7 @@ mod tests {
         let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path());
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
 
         // Assert
         assert_eq!(result.mode, BootMode::Setup);
@@ -255,7 +262,7 @@ mod tests {
         std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap(); // allow-anti-pattern
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path());
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
 
         // Assert
         assert_eq!(result.mode, BootMode::Normal);
@@ -282,7 +289,7 @@ mod tests {
         std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap(); // allow-anti-pattern
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path());
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
 
         // Assert: LLM が設定済みなので Normal
         assert_eq!(result.mode, BootMode::Normal);
@@ -300,7 +307,7 @@ mod tests {
         let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path());
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
 
         // Assert: LLM があれば Normal (DB は boot_sequence で自動作成)
         assert_eq!(result.mode, BootMode::Normal);
@@ -321,7 +328,7 @@ mod tests {
         let tmp = TempDir::new().unwrap(); // allow-anti-pattern
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path());
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
 
         // Assert: LLM と API_SERVER_SECRET の 2 項目が不足
         assert_eq!(result.missing_items.len(), 2);
@@ -431,7 +438,7 @@ mod tests {
         let _report = FactoryReset::execute(tmp.path()).unwrap(); // allow-anti-pattern
 
         // Assert: Reset 後は Setup モードに戻る
-        let diagnosis = BootstrapDetector::diagnose(tmp.path());
+        let diagnosis = BootstrapDetector::diagnose(tmp.path(), None, None);
         assert_eq!(diagnosis.mode, BootMode::Setup);
         assert!(!diagnosis.db_exists);
         assert!(!diagnosis.soul_exists);

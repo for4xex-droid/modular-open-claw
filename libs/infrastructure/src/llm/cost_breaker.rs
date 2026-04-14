@@ -15,8 +15,12 @@ use tracing::{info, warn};
 pub struct CostStatus {
     /// 過去24時間の合計使用額 (USD)
     pub total_usd_24h: f64,
-    /// 利用制限額 (USD)
+    /// 24時間の利用制限額 (USD)
     pub limit_usd: f64,
+    /// 過去30日間の合計使用額 (USD)
+    pub total_usd_30d: Option<f64>,
+    /// 30日間の月次利用制限額 (USD)
+    pub monthly_limit_usd: Option<f64>,
     /// 制限に達したかどうか (サーキットブレーカーの状態)
     pub is_tripped: bool,
 }
@@ -49,8 +53,16 @@ impl CostCircuitBreaker {
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(self.default_limit_usd);
 
+        let monthly_limit_usd = self
+            .jq
+            .get_setting_value("cost_limit_monthly")
+            .await
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse::<f64>().ok());
+
         // 過去24時間の累計コストを集計
-        let res_opt = match &self.jq.get_pool() {
+        let res_opt_24h = match &self.jq.get_pool() {
             crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-1 day')")
                 .fetch_one(p)
                 .await
@@ -61,14 +73,12 @@ impl CostCircuitBreaker {
                 .map(|row| row.get::<Option<f64>, _>(0)),
         };
 
-        let total_usd: f64 =
-            res_opt
+        let total_usd_24h: f64 =
+            res_opt_24h
                 .map(|opt| opt.unwrap_or(0.0))
                 .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to aggregate costs: {}", e),
+                    reason: format!("Failed to aggregate 24h costs: {}", e),
                 })?;
-
-        let is_tripped = total_usd >= limit_usd;
 
         // バイパススイッチ（手動拡張）の確認
         let bypass_amount = self
@@ -80,24 +90,71 @@ impl CostCircuitBreaker {
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(0.0);
 
-        let final_tripped = if bypass_amount > 0.0 {
-            total_usd >= (limit_usd + bypass_amount)
+        // 過去30日（月次ローリング）の累計コストを集計
+        let mut is_monthly_tripped = false;
+        let mut final_total_usd_30d = None;
+        let mut final_monthly_limit = None;
+
+        if let Some(m_limit) = monthly_limit_usd {
+            let res_opt_30d = match &self.jq.get_pool() {
+                crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-30 days')")
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0)),
+                crate::db::DatabasePool::Postgres(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - INTERVAL '30 days'")
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0)),
+            };
+
+            let total_usd_30d: f64 = res_opt_30d.map(|opt| opt.unwrap_or(0.0)).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to aggregate 30d costs: {}", e),
+                }
+            })?;
+
+            final_total_usd_30d = Some(total_usd_30d);
+            final_monthly_limit = Some(m_limit + bypass_amount);
+
+            if bypass_amount > 0.0 {
+                if total_usd_30d >= (m_limit + bypass_amount) {
+                    is_monthly_tripped = true;
+                }
+            } else if total_usd_30d >= m_limit {
+                is_monthly_tripped = true;
+            }
+
+            if is_monthly_tripped {
+                warn!(
+                    "🚨 [CostCircuitBreaker] TRIP! 30d rolling monthly cost ${:.4} exceeds limit ${:.4}",
+                    total_usd_30d,
+                    m_limit + bypass_amount
+                );
+            }
+        }
+
+        let is_24h_tripped = total_usd_24h >= limit_usd;
+
+        let final_24h_tripped = if bypass_amount > 0.0 {
+            total_usd_24h >= (limit_usd + bypass_amount)
         } else {
-            is_tripped
+            is_24h_tripped
         };
 
-        if final_tripped {
+        if final_24h_tripped {
             warn!(
                 "🚨 [CostCircuitBreaker] TRIP! 24h cost ${:.4} exceeds limit ${:.4}",
-                total_usd,
+                total_usd_24h,
                 limit_usd + bypass_amount
             );
         }
 
         Ok(CostStatus {
-            total_usd_24h: total_usd,
+            total_usd_24h,
             limit_usd: limit_usd + bypass_amount,
-            is_tripped: final_tripped,
+            total_usd_30d: final_total_usd_30d,
+            monthly_limit_usd: final_monthly_limit,
+            is_tripped: final_24h_tripped || is_monthly_tripped,
         })
     }
 
@@ -108,8 +165,8 @@ impl CostCircuitBreaker {
             // AS-1.8: (Future) Emit SSE event for UI notification when budget is exceeded.
             // This will be integrated with the api-server's event_sender in Phase 30.
             return Err(AiomeError::Infrastructure {
-                reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Please expand quota in settings.", 
-                                 status.total_usd_24h, status.limit_usd),
+                reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Monthly usage: ${:.4} / limit: ${:.4}. Please expand quota in settings.", 
+                                 status.total_usd_24h, status.limit_usd, status.total_usd_30d.unwrap_or(0.0), status.monthly_limit_usd.unwrap_or(0.0)),
             });
         }
         Ok(())
@@ -215,5 +272,72 @@ mod tests {
         // デフォルト制限 ($0.50) を超えるとエラー
         let result = breaker.enforce_session_limit("session_456", 0.6).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_monthly_cost_limit() {
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(), // allow-anti-pattern
+                ),
+            ),
+        );
+        let jq = Arc::new(
+            UniversalJobQueue::new("sqlite::memory:", None, ts)
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
+
+        // Initialize migrations to create resource_usage_logs table
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        let pool = jq.pool.get_sqlite_pool().unwrap();
+
+        // 0. Insert dummy jobs to satisfy foreign keys
+        // (id, category, topic, style_name, karma_directives, status)
+        sqlx::query("INSERT INTO jobs (id, category, topic, style_name, karma_directives, status) VALUES ('1', 'cat', 'topic', 'style', '{}', 'Pending')")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO jobs (id, category, topic, style_name, karma_directives, status) VALUES ('2', 'cat', 'topic', 'style', '{}', 'Pending')")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // 1. Insert a log entry from 15 days ago with a massive cost ($1000)
+        sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES ('1', 'p', 'm', 't', 1, 1000.0, datetime('now', '-15 days'))")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // 2. Insert a small recent cost ($1) so 24h limit is NOT triggered (assuming 24h limit is $10 by default)
+        sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES ('2', 'p', 'm', 't', 1, 1.0, datetime('now', '-1 hour'))")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // 3. Set the monthly limit to $500.
+        jq.update_setting("cost_limit_monthly", "500.0", "system", false)
+            .await
+            .unwrap();
+
+        let breaker = CostCircuitBreaker::new(jq.clone(), 10.0);
+
+        // 4. check_state should result in an error or tripped state! (Since $1001 > $500)
+        let result = breaker.check_state().await;
+        assert!(result.is_ok()); // check_state won't return Err but returns CostStatus
+        let status = result.unwrap();
+
+        // RED test: This should fail initially because `is_tripped` only checks 24h ($1), while monthly is $1001. So is_tripped will be false, but our assert will expect true!
+        assert!(
+            status.is_tripped,
+            "Breaker should trip due to monthly limit of $500, current: $1001"
+        );
     }
 }

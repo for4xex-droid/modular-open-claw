@@ -1082,6 +1082,45 @@
         ]
       }
     },
+    "/api/v1/audit/prompt-stats": {
+      "get": {
+        "tags": [
+          "crate::routes::general"
+        ],
+        "operationId": "get_audit_prompt_stats",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "Statistics period (e.g., 7d)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fetch prompt evaluation stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/audit/quarantine": {
       "get": {
         "tags": [
@@ -4136,6 +4175,69 @@
           },
           "setup_required": {
             "type": "boolean"
+          }
+        }
+      },
+      "PromptStatsResponse": {
+        "type": "object",
+        "required": [
+          "period",
+          "providers"
+        ],
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderEvalStat"
+            }
+          }
+        }
+      },
+      "ProviderEvalStat": {
+        "type": "object",
+        "required": [
+          "provider",
+          "model",
+          "average_latency_ms",
+          "total_calls",
+          "total_tokens_in",
+          "total_tokens_out",
+          "total_cost_usd",
+          "cache_hit_rate"
+        ],
+        "properties": {
+          "average_latency_ms": {
+            "type": "number",
+            "format": "double"
+          },
+          "cache_hit_rate": {
+            "type": "number",
+            "format": "double"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "total_calls": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_cost_usd": {
+            "type": "number",
+            "format": "double"
+          },
+          "total_tokens_in": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_tokens_out": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

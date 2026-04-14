@@ -96,6 +96,10 @@ pub fn build_app(
             get(routes::general::get_audit_ledger),
         )
         .route(
+            "/api/v1/audit/prompt-stats",
+            get(routes::general::get_audit_prompt_stats),
+        )
+        .route(
             "/api/v1/audit/diagnostics",
             get(routes::general::get_diagnoses),
         )
@@ -513,11 +517,16 @@ pub fn build_app(
         .route(
             "/api/v1/commerce/webhook",
             axum::routing::post(routes::commerce_webhook::stripe_webhook),
-        )
-        .merge(
-            utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
-                .url("/api-docs/openapi.json", crate::api::ApiDoc::openapi()),
-        )
+        );
+
+    #[cfg(debug_assertions)]
+    let public_router = public_router.merge(
+        utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
+            .url("/api-docs/openapi.json", crate::api::ApiDoc::openapi())
+            .url("/api-docs/demo.json", crate::api::DemoApiDoc::openapi()),
+    );
+
+    let public_router = public_router
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true));
 
     // 3. Apply 2MB limit to the combined base router

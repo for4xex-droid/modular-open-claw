@@ -25,6 +25,8 @@ pub mod crypto;
 pub mod csam;
 /// データベース・共通マクロ
 pub mod db;
+/// ファイルの Magic Bytes 検証
+pub mod file_validator;
 
 /// ガードレール機能
 pub mod guardrails;

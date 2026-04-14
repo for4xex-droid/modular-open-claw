@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-09  
+> **最終更新**: 2026-04-14  
 > **対象リポジトリ**: `aiome/` (OSS) + `ProjectーNurture/` (商用拡張)
 
 ---
@@ -45,6 +45,7 @@ graph TB
             KARMA["KarmaRegistry"]
             TRAJECTORY["TrajectoryStore"]
             SOT["SoTEngine"]
+            DREAM["DreamState / DreamService"]
         end
 
         subgraph "L2: Capabilities"
@@ -56,6 +57,7 @@ graph TB
             SKILL["SkillForge (WASM)"]
             MCP_REG["RegistryManager (MCP)"]
             TREND["TrendSonar (X/Serp)"]
+            EVAL["EvaluationLogger (Telemetry)"]
         end
 
         subgraph "L3: Social Infrastructure"
@@ -141,6 +143,7 @@ graph TB
     LLM --> CONST
     SKILL --> BASTION
     AVATAR --> TTS
+    DREAM --> EVAL
     MCP_REG -.->|将来| MC_MCP
     MCP_REG -.->|将来| VISION_MOD
 
@@ -627,8 +630,8 @@ gantt
 |---------|----------|---------------|
 | `aiome-contracts` | 16 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
-| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine` |
-| `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller` |
+| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger` |
+| `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |
 | `avatar-engine` | 15+ | `Inochi2dLoader`, `SimpleLipSyncEngine`, `PhysicsSimulator` |
 

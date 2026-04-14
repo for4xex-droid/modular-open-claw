@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use base64::Engine;
 use dashmap::DashMap;
 use futures::StreamExt;
+use secrecy::{ExposeSecret, SecretString};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, Semaphore};
@@ -29,12 +30,15 @@ pub struct DockerConductor {
     concurrency_limit: Arc<Semaphore>,
     grpc_config: GrpcClientConfig,
     active_escrows: DashMap<String, String>,
+    /// Shadow Worker コンテナに渡す Gemini API キー（パージ済み環境変数の代替）
+    gemini_api_key: SecretString,
 }
 
 impl DockerConductor {
     pub fn new(
         commerce_engine: Option<Arc<dyn CommerceEngine>>,
         grpc_config: GrpcClientConfig,
+        gemini_api_key: SecretString,
     ) -> Self {
         Self {
             bastion: BastionGuard::new_internal(PermissionManifest::default()),
@@ -42,6 +46,7 @@ impl DockerConductor {
             concurrency_limit: Arc::new(Semaphore::new(3)), // MAX 3 concurrent shadow clones
             grpc_config,
             active_escrows: DashMap::new(),
+            gemini_api_key,
         }
     }
 
@@ -218,10 +223,10 @@ impl DockerConductor {
         // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
         // This prevents API keys from being visible via `ps aux` on the host.
         let env_file_path = temp_dir.join(".env.shadow");
-        let gemini_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
         let env_file_content = format!(
             "A2A_AUTH_TOKEN={}\nGEMINI_API_KEY={}\n",
-            auth_token, gemini_key
+            auth_token,
+            self.gemini_api_key.expose_secret()
         );
         if let Err(e) = std::fs::write(&env_file_path, &env_file_content) {
             let _ = std::fs::remove_dir_all(&temp_dir);

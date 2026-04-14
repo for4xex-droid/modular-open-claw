@@ -148,4 +148,28 @@ pub struct AppState {
     pub publish_pipeline: Component<Arc<infrastructure::publisher::PublishPipeline>>,
     pub cortex_projector:
         Component<Arc<infrastructure::cortex_file_projector::CortexFileProjector>>,
+    // --- Phase 2-D ---
+    pub feature_flags_cache: Component<Arc<moka::future::Cache<String, bool>>>,
+    // --- Phase 3-D ---
+    pub eval_logger: Component<Arc<infrastructure::llm::evaluation_logger::EvaluationLogger>>,
+}
+
+impl AppState {
+    /// 特徴フラグの状態を取得します。mokaキャッシュを優先し、DBヒットを抑えます。
+    pub async fn is_feature_enabled(&self, flag: &str) -> bool {
+        if let Some(cache) = self.feature_flags_cache.as_opt() {
+            if let Some(val) = cache.get(flag).await {
+                return val;
+            }
+        }
+
+        use infrastructure::job_queue::settings::SettingsOps;
+        let val = self.job_queue.get_inner().is_feature_enabled(flag).await;
+
+        if let Some(cache) = self.feature_flags_cache.as_opt() {
+            cache.insert(flag.to_string(), val).await;
+        }
+
+        val
+    }
 }

@@ -83,11 +83,19 @@ pub async fn get_wiki_content(
 pub async fn get_health_status(
     State(state): State<AppState>,
 ) -> Result<Json<ResourceStatus>, AppError> {
-    let mut monitor = state.health_monitor.lock().await;
-    let mut status = monitor.check();
+    let mut status = {
+        let mut monitor = state.health_monitor.lock().await;
+        monitor.check()
+    };
+
+    let (stats_res, cb_status, lora_check) = tokio::join!(
+        state.job_queue.get_agent_stats(),
+        state.circuit_breaker.get_status(),
+        state.lora_engine.health_check()
+    );
 
     // Fetch real agent stats
-    if let Ok(stats) = state.job_queue.get_agent_stats().await {
+    if let Ok(stats) = stats_res {
         status.level = stats.level;
         status.exp = stats.exp;
         status.resonance = stats.resonance;
@@ -96,17 +104,74 @@ pub async fn get_health_status(
     }
 
     // G-1: LLM サーキットブレーカーの状態を取得して追加
-    let cb_status = state.circuit_breaker.get_status().await;
     status.llm_circuit_breaker = Some(serde_json::to_value(cb_status).unwrap_or_default());
 
     // 🔍 Sprint 4: LoRA 学習エンジンの健全性チェック
-    let lora_ok = state.lora_engine.health_check().await.unwrap_or(false);
+    let lora_ok = lora_check.unwrap_or(false);
     status.lora_engine = Some(serde_json::json!({
         "mlx_available": lora_ok,
         "status": if lora_ok { "ready" } else { "unavailable" }
     }));
 
     Ok(Json(status))
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct PromptStatsResponse {
+    pub period: String,
+    pub providers: Vec<infrastructure::llm::evaluation_logger::ProviderEvalStat>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit/prompt-stats",
+    params(
+        ("period" = String, Query, description = "Statistics period (e.g., 7d)")
+    ),
+    responses(
+        (status = 200, description = "Fetch prompt evaluation stats", body = PromptStatsResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_audit_prompt_stats(
+    State(state): State<AppState>,
+    axum::extract::Query(_params): axum::extract::Query<std::collections::HashMap<String, String>>,
+    auth: crate::auth::Authenticated,
+) -> Result<Json<PromptStatsResponse>, AppError> {
+    if auth.agent_id != state.system_agent_id {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied".to_string(),
+        }
+        .into());
+    }
+
+    let raw_period = _params.get("period").map(|s| s.as_str()).unwrap_or("7d");
+    let actual_period = if raw_period.ends_with('d') {
+        if let Ok(days) = raw_period.trim_end_matches('d').parse::<u32>() {
+            // Clamp: min 1 day, max 10 years (prevent SQLite datetime NULL boundary faults)
+            let clamped = days.clamp(1, 3650);
+            format!("{}d", clamped)
+        } else {
+            "7d".to_string()
+        }
+    } else {
+        "7d".to_string()
+    };
+    let days = actual_period
+        .trim_end_matches('d')
+        .parse::<u32>()
+        .unwrap_or(7);
+
+    let logger = state.eval_logger.get_inner().clone();
+    let stats = logger.get_all_provider_stats(days).await?;
+
+    let providers = stats;
+
+    Ok(Json(PromptStatsResponse {
+        period: actual_period,
+        providers,
+    }))
 }
 
 #[derive(serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -197,8 +262,11 @@ pub async fn get_audit_ledger(
     .fetch_all(pool)
     .await;
 
-    let ledger = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: format!("DB Error: {}", e),
+    let ledger = rows.map_err(|e| {
+        tracing::error!("Failed to fetch audit ledger: {}", e);
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Failed to retrieve ledger".to_string(),
+        }
     })?;
 
     Ok(Json(ledger))

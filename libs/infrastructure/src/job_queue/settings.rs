@@ -28,6 +28,16 @@ pub trait SettingsOps {
     async fn do_get_all_settings(
         &self,
     ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError>;
+
+    /// 特定のフィーチャーフラグが有効か確認する (Phase 2-D)
+    async fn is_feature_enabled(&self, flag: &str) -> bool {
+        self.do_get_setting(&format!("feature_flag.{}", flag))
+            .await
+            .ok()
+            .flatten()
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false)
+    }
 }
 
 #[async_trait]

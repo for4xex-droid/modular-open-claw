@@ -73,6 +73,7 @@ use utoipa::OpenApi;
         crate::routes::ekyc::create_ekyc_session_handler,
         // Audit & Trends (Phase 8.6)
         crate::routes::general::get_audit_ledger,
+        crate::routes::general::get_audit_prompt_stats,
         crate::routes::general::get_diagnoses,
         crate::routes::general::get_quarantined_assets,
         crate::routes::general::release_quarantined_asset,
@@ -139,6 +140,8 @@ use utoipa::OpenApi;
             crate::routes::artifacts::ListArtifactsParams,
             crate::routes::model_setup::ModelStatusResponse,
             crate::routes::general::AuditLedgerResponse,
+            crate::routes::general::PromptStatsResponse,
+            infrastructure::llm::evaluation_logger::ProviderEvalStat,
             crate::routes::general::DiagnosisResponse,
             crate::routes::general::TrendsResponse,
             aiome_core_contracts::traits::TrendItem,

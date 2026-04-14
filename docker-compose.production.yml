@@ -55,6 +55,8 @@ services:
       - key-proxy
       - samsara-hub
       - ruri-embed-server
+    volumes:
+      - ./data/api:/app/data
     deploy:
       resources:
         limits:

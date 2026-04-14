@@ -30,12 +30,24 @@ use uuid::Uuid;
 /// `DreamState` 構造体
 pub struct DreamState {
     llm: Arc<dyn aiome_core::llm_provider::LlmProvider>,
+    eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
 }
 
 impl DreamState {
     /// 新しいインスタンスを生成する
     pub fn new(llm: Arc<dyn aiome_core::llm_provider::LlmProvider>) -> Self {
-        Self { llm }
+        Self {
+            llm,
+            eval_logger: None,
+        }
+    }
+
+    pub fn with_eval_logger(
+        mut self,
+        logger: Arc<crate::llm::evaluation_logger::EvaluationLogger>,
+    ) -> Self {
+        self.eval_logger = Some(logger);
+        self
     }
 
     /// 「夢想状態（Dream State）」を実行する。
@@ -64,11 +76,15 @@ impl DreamState {
         // Level-based Behavioral Shift: Probability of communicative dream increases with level
         let comm_prob = ((level - 1) * 5).clamp(0, 50);
         let sci_prob = if level >= 5 { 20 } else { 0 };
+        // Observability dreams get a dedicated 15% slot when eval_logger is connected
+        let obs_prob = if self.eval_logger.is_some() { 15 } else { 0 };
 
         let insight = if rand_val < comm_prob as i64 {
             self.communicative_dream(job_queue).await?
         } else if rand_val < (comm_prob + sci_prob) as i64 {
             self.scientific_dream(job_queue).await?
+        } else if rand_val < (comm_prob + sci_prob + obs_prob) as i64 {
+            self.observability_dream().await?
         } else if rand_val % 2 == 0 {
             self.explorative_dream(job_queue, trend_sonar).await?
         } else {
@@ -76,6 +92,74 @@ impl DreamState {
         };
 
         Ok(insight)
+    }
+
+    /// Observability夢 (Phase 3-D)
+    pub(crate) async fn observability_dream(
+        &self,
+    ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+        info!("💤 [DreamState] Mode: Observability — Reviewing performance metrics of LLM providers...");
+        if let Some(logger) = &self.eval_logger {
+            let stats = logger.get_all_provider_stats(7).await?;
+            if stats.is_empty() {
+                info!("💤 [DreamState] No recent provider stats found.");
+                return Ok(None);
+            }
+
+            let mut insights = Vec::new();
+
+            for stat in stats {
+                // Latency Threshold Check
+                if stat.average_latency_ms > 2000.0 {
+                    let msg = format!(
+                        "⚠️ Provider '{}' ({}) is experiencing high average latency ({:.1} ms).",
+                        stat.provider, stat.model, stat.average_latency_ms
+                    );
+                    warn!("🚨 [DreamState] Observability Alert: {}", msg);
+                    insights.push(format!("high latency for {}", stat.model));
+                }
+
+                // Cost Threshold Check (Phase 3-D Requirement)
+                if stat.total_cost_usd > 1.0 {
+                    // $1.0 in 7 days as a warning threshold
+                    let msg = format!(
+                        "💰 Provider '{}' ({}) has accrued significant costs: ${:.4}.",
+                        stat.provider, stat.model, stat.total_cost_usd
+                    );
+                    warn!("🚨 [DreamState] Observability Cost Alert: {}", msg);
+                    insights.push(format!("high cost for {}", stat.model));
+                }
+            }
+
+            if !insights.is_empty() {
+                return Ok(Some(format!(
+                    "Observability Insights: {}",
+                    insights.join("; ")
+                )));
+            } else {
+                info!(
+                    "✅ [DreamState] All LLM providers are operating within acceptable parameters."
+                );
+
+                // Phase 3-D+ DB GC Logic (Fire and Forget)
+                let gc_logger = logger.clone();
+                tokio::spawn(async move {
+                    match gc_logger.garbage_collect(90).await {
+                        Ok(cleaned) if cleaned > 0 => info!(
+                            "🧹 [DreamState] GC removed {} old observability records.",
+                            cleaned
+                        ),
+                        Err(e) => warn!("⚠️ [DreamState] GC for observability logs failed: {}", e),
+                        _ => {}
+                    }
+                });
+
+                return Ok(None);
+            }
+        } else {
+            info!("💤 [DreamState] Observability logger is not connected.");
+            Ok(None)
+        }
     }
 
     /// 探索夢
@@ -920,5 +1004,199 @@ mod tests {
         let dream = DreamState::new(llm);
         let res = dream.dream(&jq, &sonar, 10).await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_observability_dream() {
+        use crate::job_queue::UniversalJobQueue;
+        use crate::llm::evaluation_logger::{EvaluationLogEntry, EvaluationLogger};
+        use std::sync::Arc;
+
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(), // allow-anti-pattern
+                ),
+            ),
+        );
+        let jq = Arc::new(
+            UniversalJobQueue::new("sqlite::memory:", None, ts)
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        let logger = EvaluationLogger::new(jq.clone());
+        logger
+            .log(EvaluationLogEntry {
+                prompt: "P1".into(),
+                system: None,
+                provider: "gemini".into(),
+                model: "gemini-2.5-flash".into(),
+                latency_ms: 2500, // HIGH LATENCY (> 2000)
+                token_count_in: None,
+                token_count_out: None,
+                cost_usd: Some(2.5), // HIGH COST (> 1.0)
+                cache_hit: false,
+            })
+            .await
+            .expect("test seed data insertion must succeed"); // allow-anti-pattern
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let llm = Arc::new(MockLlm);
+        let dream = DreamState::new(llm).with_eval_logger(Arc::new(logger));
+
+        let res = dream.observability_dream().await.unwrap();
+        assert!(res.is_some(), "observability_dream should return insight");
+        let insight = res.unwrap();
+        assert!(
+            insight.contains("gemini-2.5-flash"),
+            "Insight must mention the high latency model"
+        );
+        assert!(
+            insight.contains("high cost"),
+            "Insight must mention the high cost indicator"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_observability_dream_without_logger_returns_none() {
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        // DreamState WITHOUT eval_logger → should return None
+        let dream = DreamState::new(std::sync::Arc::new(MockLlm));
+        let res = dream.observability_dream().await.unwrap();
+        assert!(
+            res.is_none(),
+            "Without eval_logger, observability_dream must return None"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_observability_dream_with_empty_stats_returns_none() {
+        use crate::job_queue::UniversalJobQueue;
+        use crate::llm::evaluation_logger::EvaluationLogger;
+        use std::sync::Arc;
+
+        let ts = Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
+                crate::db::DatabasePool::Sqlite(
+                    sqlx::sqlite::SqlitePoolOptions::new()
+                        .connect("sqlite::memory:")
+                        .await
+                        .unwrap(), // allow-anti-pattern
+                ),
+            ),
+        );
+        let jq = Arc::new(
+            UniversalJobQueue::new("sqlite::memory:", None, ts)
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        let logger = EvaluationLogger::new(jq.clone());
+        // No data inserted — empty stats
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let dream = DreamState::new(Arc::new(MockLlm)).with_eval_logger(Arc::new(logger));
+        let res = dream.observability_dream().await.unwrap();
+        assert!(
+            res.is_none(),
+            "With empty stats, observability_dream must return None"
+        );
     }
 }

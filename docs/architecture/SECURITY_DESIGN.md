@@ -101,6 +101,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 78 | **Social Elicitation (Persona Drift)** | **Agent tricked into revealing system prompt** | 🔴 High | **Constitutional Core Defense (Phase 2B-2)** |
 | 79 | **WP Token Memory Extraction** | **WP_API_TOKEN static presence in memory** | 🔴 High | **AbyssVault (Key Proxy) WP Endpoint + Zeroize (Phase 4)** |
 | 80 | **WP Lifecycle Sabotage** | **Crafted `status: trash` payload to delete active posts** | 🔴 High | **Pre-computation Proxy Allowance Whitelist (Phase 4)** |
+| 81 | **Observability BOLA** | **Tenant accessing global metrics via Audit API** | 🔴 High | **Strict `system_agent_id` RBAC Check enforcement (Phase 3-A)** |
+| 82 | **Internal Error Leakage** | **Database SQL details exposed via API (CWE-209)** | 🔴 High | **Defensive Error Masking (`tracing` isolation) (Phase 3-A Reflexion)** |
 
 ## 3. Defense Architecture
 

@@ -25,6 +25,9 @@ Accents provide semantic meaning and brand identity. Each primary accent has RGB
 - **Rose / Fuchsia**: Used for highlights or crucial warnings.
 - **Emerald / Amber**: Used for success and advisory statuses.
 
+### 📊 Chart Colors
+Explicitly mapped semantic colors (`--chart-1` to `--chart-5`) to maintain consistent token-driven styling for all data visualizations (Recharts/Vis.js).
+
 ### 🔤 Typography
 - **Display**: `'Outfit'` - Clean, geometric, used for massive titles and emphasis.
 - **Body**: `'Artemis Inter'` (Inter variant) - Highly legible UI font.

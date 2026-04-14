@@ -674,6 +674,14 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )),
         cortex_projector: Default::default(),
+        feature_flags_cache: Component::new(Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(60))
+                .build(),
+        )),
+        eval_logger: Component::new(Arc::new(
+            infrastructure::llm::evaluation_logger::EvaluationLogger::new(job_queue.clone()),
+        )),
         lora_marketplace: {
             let vault_root = tmp_dir.path().join("vault");
             std::fs::create_dir_all(&vault_root).ok();
@@ -791,6 +799,57 @@ async fn test_settings_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
     let response = server.get("/api/v1/settings").await;
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_get_prompt_stats() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // Arrange: Insert seed data
+    let db_pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    sqlx::query(
+        "INSERT INTO prompt_evaluation_log (prompt_hash, provider, model, latency_ms, token_count_in, token_count_out, cost_usd, cache_hit) VALUES ('testhash', 'test_provider', 'test_model', 100, 10, 20, 0.0015, 1)"
+    )
+    .execute(db_pool)
+    .await
+    .unwrap();
+
+    // Validate GET /api/v1/audit/prompt-stats
+    let response = server
+        .get("/api/v1/audit/prompt-stats")
+        .add_query_param("period", "7d")
+        .add_header(axum::http::header::AUTHORIZATION, bearer)
+        .await;
+
+    assert_eq!(
+        response.status_code(),
+        StatusCode::OK,
+        "Audit prompt stats should return 200 OK"
+    );
+    let json = response.json::<serde_json::Value>();
+    assert!(json.get("period").is_some(), "Should contain period field");
+    assert!(
+        json.get("providers").is_some(),
+        "Should contain providers field"
+    );
+
+    let providers = json.get("providers").unwrap().as_array().unwrap();
+    assert!(
+        !providers.is_empty(),
+        "Should contain at least one provider stat"
+    );
+
+    let first = &providers[0];
+    assert!(
+        first.get("total_cost_usd").is_some(),
+        "ProviderStat should contain total_cost_usd"
+    );
+    assert!(
+        first.get("cache_hit_rate").is_some(),
+        "ProviderStat should contain cache_hit_rate"
+    );
 }
 
 #[serial]
@@ -1264,7 +1323,8 @@ async fn test_voice_drm_roundtrip() {
     let registry = state.registry.clone();
     let token = test_bearer();
 
-    let original_audio = b"secret_ai_voice_model_data_12345".to_vec();
+    let mut original_audio = b"RIFFAAAAWAVE".to_vec();
+    original_audio.extend_from_slice(b"secret_ai_voice_model_data_12345");
 
     // 1. Upload
     let multipart = axum_test::multipart::MultipartForm::new().add_part(
@@ -2691,4 +2751,53 @@ async fn test_whisper_monologue_api() {
         .await;
 
     assert_eq!(res.status_code(), reqwest::StatusCode::OK);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_auth_full_oauth_workflow() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    // 1. Authorize (Request Code)
+    // We expect a valid JSON auth code, not a plain string Mock.
+    let authorize_res = server
+        .get("/api/v1/auth/authorize")
+        .add_query_param("client_id", "aiome_test_client")
+        .add_query_param("response_type", "code")
+        .await;
+
+    assert_eq!(authorize_res.status_code(), reqwest::StatusCode::OK);
+    let authorize_json: serde_json::Value = authorize_res.json();
+    let auth_code = authorize_json["code"]
+        .as_str()
+        .expect("Must return auth code");
+
+    // 2. Token Exchange
+    let token_payload = serde_json::json!({
+        "grant_type": "authorization_code",
+        "code": auth_code,
+        "client_id": "aiome_test_client"
+    });
+
+    let token_res = server.post("/api/v1/auth/token").json(&token_payload).await;
+
+    assert_eq!(token_res.status_code(), reqwest::StatusCode::OK);
+    let token_json: serde_json::Value = token_res.json();
+
+    assert!(token_json.get("access_token").is_some());
+    let access_token = token_json["access_token"].as_str().unwrap();
+
+    // The returned token MUST be signed by AuthManager (which in tests is MockAuthManager)
+    assert!(
+        access_token.starts_with("eyJ") || access_token.starts_with("mock_valid_token_"),
+        "Token must be a valid JWT or mock token"
+    );
+
+    // Validate the token via inner AuthManager
+    let claim = state
+        .auth_manager
+        .validate_token(access_token)
+        .await
+        .expect("Token must be validly signed");
+    assert_eq!(claim.roles, vec!["user".to_string()]);
 }

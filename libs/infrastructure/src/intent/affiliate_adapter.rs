@@ -12,9 +12,12 @@ use async_trait::async_trait;
 use tracing::info;
 
 /// MockAffiliateAdapter: アフィリエイトAPI (Amazon/Rakuten) から商品情報を取得し TrendItem に変換する
+#[cfg(debug_assertions)]
 pub struct MockAffiliateAdapter {
     allowlist: Vec<String>,
 }
+
+#[cfg(debug_assertions)]
 
 impl MockAffiliateAdapter {
     /// アフィリエイトアダプターの新規インスタンスを生成する
@@ -28,6 +31,7 @@ impl MockAffiliateAdapter {
     }
 }
 
+#[cfg(debug_assertions)]
 #[async_trait]
 impl aiome_core_contracts::traits::AffiliateAdapter for MockAffiliateAdapter {
     async fn fetch_bids_for_intent(
@@ -69,6 +73,7 @@ impl aiome_core_contracts::traits::AffiliateAdapter for MockAffiliateAdapter {
     }
 }
 
+#[cfg(debug_assertions)]
 #[async_trait]
 impl TrendAdapter for MockAffiliateAdapter {
     fn name(&self) -> &str {
@@ -79,6 +84,41 @@ impl TrendAdapter for MockAffiliateAdapter {
         info!("🏷️ [Affiliate] Fetching items for query: {}", _query);
         // AS-1.3 integration: In a real scenario, this would call Amazon/Rakuten API.
         // For now, it returns an empty vector, satisfying the trait without raw TODOs.
+        Ok(vec![])
+    }
+}
+
+pub struct DisabledAffiliateAdapter;
+
+impl DisabledAffiliateAdapter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[async_trait]
+impl aiome_core_contracts::traits::AffiliateAdapter for DisabledAffiliateAdapter {
+    async fn fetch_bids_for_intent(
+        &self,
+        _intent: &aiome_core_contracts::gig::GigIntent,
+    ) -> Result<Vec<aiome_core_contracts::gig::GigBid>, AiomeError> {
+        Ok(vec![])
+    }
+
+    fn validate_url(&self, _url: &str) -> Result<(), AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "Affiliate feature is disabled in production".into(),
+        })
+    }
+}
+
+#[async_trait]
+impl TrendAdapter for DisabledAffiliateAdapter {
+    fn name(&self) -> &str {
+        "DisabledAffiliate"
+    }
+
+    async fn fetch(&self, _query: &str) -> Result<Vec<TrendItem>, AiomeError> {
         Ok(vec![])
     }
 }

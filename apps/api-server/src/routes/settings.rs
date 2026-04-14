@@ -105,6 +105,7 @@ pub const ALLOWED_CATEGORIES: &[&str] = &[
     "voice",
     "ui",
     "integrations",
+    "feature_flags",
 ];
 
 pub const SECRETS: &[&str] = &[
@@ -138,7 +139,7 @@ pub async fn update_setting(
     Json(payload): Json<UpdateSettingsRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // 1. Key whitelist check
-    if !ALLOWED_KEYS.contains(&payload.key.as_str()) {
+    if !ALLOWED_KEYS.contains(&payload.key.as_str()) && !payload.key.starts_with("feature_flag.") {
         warn!(
             "🚨 [Security] Unauthorized settings key attempt: {}",
             payload.key
@@ -191,6 +192,18 @@ pub async fn update_setting(
         .job_queue
         .update_setting(&payload.key, &payload.value, &payload.category, is_secret)
         .await?;
+
+    // Phase 2-D: Synchronize Feature Flag Cache
+    if payload.key.starts_with("feature_flag.") {
+        if let Some(cache) = state.feature_flags_cache.as_opt() {
+            let actual_flag = payload
+                .key
+                .strip_prefix("feature_flag.")
+                .unwrap_or(&payload.key);
+            let bool_val = payload.value == "true" || payload.value == "1";
+            cache.insert(actual_flag.to_string(), bool_val).await;
+        }
+    }
 
     // Phase 6.5: Sync hook for AgentSoul
     if payload.key == "lora_adapter_path" || payload.key == "lora_base_model" {

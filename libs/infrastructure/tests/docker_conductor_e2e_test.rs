@@ -9,6 +9,7 @@ use aiome_core::traits::Job;
 use infrastructure::docker_conductor::DockerConductor;
 use infrastructure::grpc::a2a_grpc_client::GrpcClientConfig;
 use infrastructure::task_orchestrator::{TaskConductor, TaskEvent};
+use secrecy::{Secret, SecretString};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::info;
@@ -41,7 +42,11 @@ async fn test_docker_conductor_e2e_success_flow() {
         auth_token: "dummy-token".to_string(),
     };
 
-    let conductor = DockerConductor::new(None, config); // No commerce engine for test
+    let conductor = DockerConductor::new(
+        None,
+        config,
+        SecretString::new("dummy-gemini-key".to_string()),
+    ); // No commerce engine for test
     let (tx, mut rx) = mpsc::channel(100);
 
     let job_id = Uuid::new_v4().to_string();

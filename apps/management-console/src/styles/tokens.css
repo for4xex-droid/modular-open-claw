@@ -91,6 +91,14 @@
     --accent-amber-30: rgba(245, 158, 11, 0.3);
     --accent-amber-80: rgba(245, 158, 11, 0.8);
 
+    /* Chart Colors */
+    --chart-1: var(--accent-purple);
+    --chart-2: var(--accent-cyan);
+    --chart-3: var(--accent-emerald);
+    --chart-4: var(--accent-amber);
+    --chart-5: var(--accent-rose);
+
+
     /* Text */
     --text-primary: #f0f2f5;
     --text-secondary: #94a3b8;

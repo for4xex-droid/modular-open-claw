@@ -79,6 +79,13 @@ pub async fn upload_voice_handler(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
+    // P-1: Validate magic bytes to prevent CWE-434/polyglot attacks
+    if let Err(_e) = shared::file_validator::validate_magic_bytes("wav", &body) {
+        return Err(AppError::bad_request(
+            "Invalid audio file signature. Only WAV is supported.",
+        ));
+    }
+
     let asset_id = Uuid::new_v4();
     let agent_id = auth.agent_id; // §SEC-4: Creator Auth
 

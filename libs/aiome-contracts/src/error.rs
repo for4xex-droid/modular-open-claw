@@ -121,6 +121,10 @@ pub enum AiomeError {
     #[error("権限がありません: {reason}")]
     Unauthorized { reason: String },
 
+    /// P-4: バリデーションエラー（400 Bad Request を返す）
+    #[error("入力値エラー: {reason}")]
+    Validation { reason: String },
+
     #[error("JSON 処理エラー: {0}")]
     JsonSerialization(#[from] serde_json::Error),
 }
@@ -131,7 +135,7 @@ impl axum::response::IntoResponse for AiomeError {
         use axum::http::StatusCode;
         use axum::Json;
 
-        let (status, error_message) = match &self {
+        let (status, mut error_message) = match &self {
             AiomeError::PromptBlocked { reason } => (StatusCode::FORBIDDEN, reason.clone()),
             AiomeError::ArtifactNotFound { .. } => {
                 (StatusCode::NOT_FOUND, "Artifact not found".to_string())
@@ -190,6 +194,10 @@ impl axum::response::IntoResponse for AiomeError {
             ),
             AiomeError::NotFound { reason } => (StatusCode::NOT_FOUND, reason.clone()),
             AiomeError::Unauthorized { reason } => (StatusCode::UNAUTHORIZED, reason.clone()),
+            AiomeError::Validation { reason } => (
+                StatusCode::BAD_REQUEST,
+                format!("Validation error: {}", reason),
+            ),
             AiomeError::JsonSerialization(e) => (
                 StatusCode::BAD_REQUEST,
                 format!("JSON processing error: {}", e),
@@ -200,16 +208,47 @@ impl axum::response::IntoResponse for AiomeError {
             ),
         };
 
+        // CWE-209: Prevent Information Leakage in production
+        #[cfg(not(debug_assertions))]
+        if status.is_server_error() {
+            let error_id = uuid::Uuid::new_v4().to_string();
+            // Log the actual detailed error in server logs
+            tracing::error!(
+                "Internal Server Error [Error ID: {}]: {}",
+                error_id,
+                error_message
+            );
+            // Replace user-facing message with safe generic response
+            error_message = format!(
+                "An internal service error occurred. Please contact support with Error ID: {}",
+                error_id
+            );
+        }
+
         // Get variant name as code using Debug output hack (standard pattern for simple enums)
-        let code = format!("{:?}", self);
-        let code = code
-            .split('(')
-            .next()
-            .unwrap_or("Unknown")
-            .split('{')
-            .next()
-            .unwrap_or("Unknown")
-            .trim();
+        let code = {
+            let raw = format!("{:?}", self);
+            let variant = raw
+                .split('(')
+                .next()
+                .unwrap_or("Unknown")
+                .split('{')
+                .next()
+                .unwrap_or("Unknown")
+                .trim()
+                .to_string();
+
+            // CWE-209 (P-2): リリースビルドでは内部バリアント名を隠蔽し、
+            // サーバーエラー(5xx)の場合は "InternalError" に統一する
+            #[cfg(not(debug_assertions))]
+            if status.is_server_error() {
+                "InternalError".to_string()
+            } else {
+                variant
+            }
+            #[cfg(debug_assertions)]
+            variant
+        };
 
         let body = Json(serde_json::json!({
             "error": error_message,

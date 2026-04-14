@@ -218,6 +218,15 @@ pub async fn autonomous_start(
     let gift_engine = (*state.gift_engine).clone();
     let master_email = state.config.master_email.clone();
 
+    let hub_url = state.config.samsara_hub_url.clone();
+    let hub_secret = state
+        .federation_secret
+        .as_opt()
+        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
+        .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
+            source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
+        })?;
+
     tokio::spawn(async move {
         AutonomousBiomeEngine::start_loop(
             config,
@@ -227,6 +236,8 @@ pub async fn autonomous_start(
             semaphore,
             Some(gift_engine),
             master_email,
+            hub_url,
+            hub_secret,
         )
         .await;
     });

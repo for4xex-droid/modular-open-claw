@@ -35,6 +35,7 @@ const SkillVault = React.lazy(() => import("./components/SkillVault"));
 const ArtifactVault = React.lazy(() => import("./components/ArtifactVault"));
 const DiagnosticsHistory = React.lazy(() => import("./components/DiagnosticsHistory"));
 const GraphView = React.lazy(() => import("./components/GraphView"));
+const PromptStatsView = React.lazy(() => import("./components/PromptStatsView"));
 const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
 const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
@@ -216,7 +217,7 @@ function App() {
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
     const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'biome', 'causal', 'lora'];
-    const advanced = [...intermediate, 'graph', 'audit', 'immune'];
+    const advanced = [...intermediate, 'graph', 'audit', 'prompt-stats', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
     if (viewMode === 'intermediate') return intermediate.includes(tab);
@@ -432,6 +433,14 @@ function App() {
               onClick={() => setActiveTab("vault")}
             />
           )}
+          {isVisible("prompt-stats") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label={t('nav.promptStats')}
+              active={activeTab === "prompt-stats"}
+              onClick={() => setActiveTab("prompt-stats")}
+            />
+          )}
           {isVisible("lora") && (
             <NavItem
               icon={<BrainCircuit size={20} />}
@@ -521,6 +530,7 @@ function App() {
             {activeTab === "vault" && t('page.skillVault')}
             {activeTab === "artifacts" && t('page.artifactVault')}
             {activeTab === "audit" && t('page.audit')}
+            {activeTab === "prompt-stats" && t('page.promptStats')}
             {activeTab === "expressions" && t('page.expressions')}
             {activeTab === "biome" && t('page.biomeLab')}
             {activeTab === "store" && t('page.voiceStore')}
@@ -555,6 +565,7 @@ function App() {
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}
               {activeTab === "audit" && <DiagnosticsHistory />}
+              {activeTab === "prompt-stats" && <PromptStatsView />}
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}

@@ -219,6 +219,23 @@ impl TtsProvider for MockTtsProvider {
     }
 }
 
+/// Disabled TTS Provider for Production without credentials
+#[derive(Debug, Default)]
+pub struct DisabledTtsProvider;
+
+#[async_trait]
+impl TtsProvider for DisabledTtsProvider {
+    async fn synthesize(&self, _text: &str, _voice_id: &str) -> Result<Vec<u8>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "TTS feature is disabled in production".into(),
+        })
+    }
+
+    async fn health_check(&self) -> Result<bool, AiomeError> {
+        Ok(true)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -68,7 +68,7 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
 
         // SEC-4: Secret Masking (Expert 4 Gap)
         // Simple heuristic to obfuscate common API keys or Stripe secrets from being logged
-        let masked_message = if visitor.message.contains("STRIPE_")
+        let mut masked_message = if visitor.message.contains("STRIPE_")
             || visitor.message.contains("API_KEY")
             || visitor.message.contains("sk_")
         {
@@ -80,6 +80,9 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
         } else {
             visitor.message
         };
+
+        // Phase 2-C: Apply GDPR PII Masking
+        masked_message = shared::guardrails::mask_pii(&masked_message);
 
         let entry = LogEntry {
             level,

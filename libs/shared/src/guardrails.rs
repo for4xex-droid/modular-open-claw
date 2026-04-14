@@ -99,6 +99,37 @@ pub fn sanitize_input(input: &str) -> String {
     bastion::text_guard::Guard::new().sanitize(input)
 }
 
+use regex::Regex;
+use std::sync::OnceLock;
+
+static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
+static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
+static CREDIT_CARD_REGEX: OnceLock<Regex> = OnceLock::new();
+
+/// ログ出力前などに PII (個人特定情報) をマスキングする (GDPR P-2-C)
+pub fn mask_pii(text: &str) -> String {
+    let mut masked = text.to_string();
+
+    let email_re = EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap() // allow-anti-pattern
+    });
+    let cc_re = CREDIT_CARD_REGEX.get_or_init(|| {
+        Regex::new(r"\b(?:\d[ -\.]*?){13,16}\b").unwrap() // allow-anti-pattern
+    });
+    let phone_re = PHONE_REGEX.get_or_init(|| {
+        let pattern = r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}\b";
+        Regex::new(pattern).unwrap() // allow-anti-pattern
+    });
+
+    masked = email_re.replace_all(&masked, "[EMAIL_MASKED]").into_owned();
+    masked = cc_re
+        .replace_all(&masked, "[CREDIT_CARD_MASKED]")
+        .into_owned();
+    masked = phone_re.replace_all(&masked, "[PHONE_MASKED]").into_owned();
+
+    masked
+}
+
 /// ファイル名やタイトルなど、AIが生成した文字列を「自動で」NFC正規化・無害化する
 pub fn sanitize_asset_name(name: &str) -> String {
     // 1. NFC正規化 (Macの濁点問題などへの対応)
@@ -214,6 +245,30 @@ impl BeggingSupervisor {
 mod tests {
     use super::*;
     use chrono::{Duration, TimeZone, Utc};
+
+    #[test]
+    fn test_pii_masking_emails() {
+        let text = "Contact me at user@example.com or support@aiome.co.jp.";
+        let masked = mask_pii(text);
+        assert_eq!(masked, "Contact me at [EMAIL_MASKED] or [EMAIL_MASKED].");
+    }
+
+    #[test]
+    fn test_pii_masking_credit_cards() {
+        let text = "My card is 1234-5678-9012-3456... wait no, it's 1234567890123456.";
+        let masked = mask_pii(text);
+        assert_eq!(
+            masked,
+            "My card is [CREDIT_CARD_MASKED]... wait no, it's [CREDIT_CARD_MASKED]."
+        );
+    }
+
+    #[test]
+    fn test_pii_masking_phone_numbers() {
+        let text = "Call 090-1234-5678 or +81 90 1234 5678.";
+        let masked = mask_pii(text);
+        assert_eq!(masked, "Call [PHONE_MASKED] or [PHONE_MASKED].");
+    }
 
     #[test]
     fn test_valid_input() {
