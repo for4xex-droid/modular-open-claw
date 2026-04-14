@@ -35,6 +35,7 @@ pub struct AutonomousBiomeEngine;
 
 impl AutonomousBiomeEngine {
     /// 指定された設定に基づいてバックグラウンドで対話ループを開始する
+    #[allow(clippy::too_many_arguments)]
     pub async fn start_loop(
         config: AutonomousConfig,
         queue: Arc<dyn JobQueue>,
