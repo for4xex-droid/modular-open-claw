@@ -45,6 +45,12 @@ grep -rn "google/antigravity" README.md README_en.md 2>/dev/null || echo "OK: No
 cargo check --workspace 2>&1 | tail -3
 ```
 
+## ステップ 5.5: リリースゲートテスト
+`#[ignore]` でマークされたリリース前限定テスト（プレースホルダー検知等）を実行する。1件でも FAILED ならリリースを中止。
+```bash
+cargo test --workspace -- --ignored 2>&1 | tail -10
+```
+
 ## ステップ 6: リポジトリサイズ確認
 ```bash
 echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1

@@ -9,6 +9,15 @@
     "description": "A cross-platform symbolication library written in Rust, using `gimli`"
   },
   {
+    "name": "addr2line",
+    "version": "0.26.1",
+    "authors": null,
+    "repository": "https://github.com/gimli-rs/addr2line",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A cross-platform symbolication library written in Rust, using `gimli`"
+  },
+  {
     "name": "adler",
     "version": "1.0.2",
     "authors": "Jonas Schievink <jonasschievink@gmail.com>",
@@ -523,7 +532,7 @@
   },
   {
     "name": "aws-lc-sys",
-    "version": "0.39.0",
+    "version": "0.39.1",
     "authors": "AWS-LC",
     "repository": "https://github.com/aws/aws-lc-rs",
     "license": "(Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) AND (Apache-2.0 OR ISC) AND Apache-2.0 AND BSD-3-Clause AND ISC AND MIT",
@@ -937,7 +946,7 @@
   },
   {
     "name": "cc",
-    "version": "1.2.57",
+    "version": "1.2.59",
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/rust-lang/cc-rs",
     "license": "Apache-2.0 OR MIT",
@@ -1072,7 +1081,7 @@
   },
   {
     "name": "cmake",
-    "version": "0.1.57",
+    "version": "0.1.58",
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/rust-lang/cmake-rs",
     "license": "Apache-2.0 OR MIT",
@@ -1297,7 +1306,7 @@
   },
   {
     "name": "cranelift-assembler-x64",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": null,
     "repository": null,
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1306,7 +1315,7 @@
   },
   {
     "name": "cranelift-assembler-x64",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": null,
     "repository": null,
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1315,7 +1324,7 @@
   },
   {
     "name": "cranelift-assembler-x64-meta",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": null,
     "repository": null,
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1324,7 +1333,7 @@
   },
   {
     "name": "cranelift-assembler-x64-meta",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": null,
     "repository": null,
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1333,7 +1342,7 @@
   },
   {
     "name": "cranelift-bforest",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1342,7 +1351,7 @@
   },
   {
     "name": "cranelift-bforest",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1351,7 +1360,7 @@
   },
   {
     "name": "cranelift-bitset",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1360,7 +1369,7 @@
   },
   {
     "name": "cranelift-bitset",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1369,7 +1378,7 @@
   },
   {
     "name": "cranelift-codegen",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1378,7 +1387,7 @@
   },
   {
     "name": "cranelift-codegen",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1387,7 +1396,7 @@
   },
   {
     "name": "cranelift-codegen-meta",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1396,7 +1405,7 @@
   },
   {
     "name": "cranelift-codegen-meta",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1405,7 +1414,7 @@
   },
   {
     "name": "cranelift-codegen-shared",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1414,7 +1423,7 @@
   },
   {
     "name": "cranelift-codegen-shared",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1423,7 +1432,7 @@
   },
   {
     "name": "cranelift-control",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1432,7 +1441,7 @@
   },
   {
     "name": "cranelift-control",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1441,7 +1450,7 @@
   },
   {
     "name": "cranelift-entity",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1450,7 +1459,7 @@
   },
   {
     "name": "cranelift-entity",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1459,7 +1468,7 @@
   },
   {
     "name": "cranelift-frontend",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1468,7 +1477,7 @@
   },
   {
     "name": "cranelift-frontend",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1477,7 +1486,7 @@
   },
   {
     "name": "cranelift-isle",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/isle",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1486,7 +1495,7 @@
   },
   {
     "name": "cranelift-isle",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/isle",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1495,7 +1504,7 @@
   },
   {
     "name": "cranelift-native",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1504,7 +1513,7 @@
   },
   {
     "name": "cranelift-native",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Cranelift Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1513,7 +1522,7 @@
   },
   {
     "name": "cranelift-srcgen",
-    "version": "0.124.3",
+    "version": "0.128.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -1522,7 +1531,7 @@
   },
   {
     "name": "cranelift-srcgen",
-    "version": "0.128.4",
+    "version": "0.130.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -2080,7 +2089,7 @@
   },
   {
     "name": "embed-resource",
-    "version": "3.0.7",
+    "version": "3.0.8",
     "authors": "наб <nabijaczleweli@nabijaczleweli.xyz>|Cat Plus Plus <piotrlegnica@piotrl.pl>|Liigo <liigo@qq.com>|azyobuzin <azyobuzin@users.sourceforge.jp>|Peter Atashian <retep998@gmail.com>|pravic <ehysta@gmail.com>|Gabriel Majeri <gabriel.majeri6@gmail.com>|SonnyX|Johan Andersson <repi@repi.se>|Jordan Poles <jpdev.noreply@gmail.com>|MSxDOS <melcodos@gmail.com>|Jim McGrath <jimmc2@gmail.com>|roblabla <unfiltered@roblab.la>|Jasper Bekkers <jasper@traverseresearch.nl>|Richard Markiewicz <rmarkiewicz@devolutions.net>|Emerson de Freitas Barcelos <emersonfxbx@gmail.com>|Li Keqing <me@kaze.ai>|Alexis Bourget <alexis.bourget@gmail.com>|Michael Farrell <micolous+git@gmail.com>|Jacob Okamoto <oko@oko.io>|Marijn Suijten <marijn@traverseresearch.nl>|Lucas Nogueira <lucas@tauri.app>|CharlesChen0823 <yongchen0823@gmail.com>|Daniel Schaefer <dhs@frame.work>|Rene Leonhardt|ssrlive|Kan-Ru Chen <kanru@kanru.info>",
     "repository": "https://github.com/nabijaczleweli/rust-embed-resource",
     "license": "MIT",
@@ -2251,7 +2260,7 @@
   },
   {
     "name": "extism",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "authors": "The Extism Authors|oss@extism.org",
     "repository": "https://github.com/extism/extism",
     "license": "BSD-3-Clause",
@@ -2260,7 +2269,7 @@
   },
   {
     "name": "extism-convert",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "authors": "The Extism Authors|oss@extism.org",
     "repository": "https://github.com/extism/extism",
     "license": "BSD-3-Clause",
@@ -2269,7 +2278,7 @@
   },
   {
     "name": "extism-convert-macros",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "authors": "The Extism Authors|oss@extism.org",
     "repository": "https://github.com/extism/extism",
     "license": "BSD-3-Clause",
@@ -2278,7 +2287,7 @@
   },
   {
     "name": "extism-manifest",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "authors": "The Extism Authors|oss@extism.org",
     "repository": "https://github.com/extism/extism",
     "license": "BSD-3-Clause",
@@ -2332,7 +2341,7 @@
   },
   {
     "name": "fastrand",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "authors": "Stjepan Glavina <stjepang@gmail.com>",
     "repository": "https://github.com/smol-rs/fastrand",
     "license": "Apache-2.0 OR MIT",
@@ -2396,6 +2405,15 @@
   {
     "name": "fixedbitset",
     "version": "0.4.2",
+    "authors": "bluss",
+    "repository": "https://github.com/petgraph/fixedbitset",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "FixedBitSet is a simple bitset collection"
+  },
+  {
+    "name": "fixedbitset",
+    "version": "0.5.7",
     "authors": "bluss",
     "repository": "https://github.com/petgraph/fixedbitset",
     "license": "Apache-2.0 OR MIT",
@@ -2683,15 +2701,6 @@
   },
   {
     "name": "fxprof-processed-profile",
-    "version": "0.6.0",
-    "authors": "Markus Stange <mstange.moz@gmail.com>",
-    "repository": "https://github.com/mstange/samply/",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Create profiles in the Firefox Profiler's processed profile JSON format."
-  },
-  {
-    "name": "fxprof-processed-profile",
     "version": "0.8.1",
     "authors": "Markus Stange <mstange.moz@gmail.com>",
     "repository": "https://github.com/mstange/samply/",
@@ -2828,6 +2837,15 @@
   {
     "name": "gimli",
     "version": "0.32.3",
+    "authors": null,
+    "repository": "https://github.com/gimli-rs/gimli",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for reading and writing the DWARF debugging format."
+  },
+  {
+    "name": "gimli",
+    "version": "0.33.1",
     "authors": null,
     "repository": "https://github.com/gimli-rs/gimli",
     "license": "Apache-2.0 OR MIT",
@@ -3232,7 +3250,7 @@
   },
   {
     "name": "hyper",
-    "version": "1.8.1",
+    "version": "1.9.0",
     "authors": "Sean McArthur <sean@seanmonstar.com>",
     "repository": "https://github.com/hyperium/hyper",
     "license": "MIT",
@@ -3322,7 +3340,7 @@
   },
   {
     "name": "icu_collections",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3331,7 +3349,7 @@
   },
   {
     "name": "icu_locale_core",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3340,7 +3358,7 @@
   },
   {
     "name": "icu_normalizer",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3349,7 +3367,7 @@
   },
   {
     "name": "icu_normalizer_data",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3358,7 +3376,7 @@
   },
   {
     "name": "icu_properties",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3367,7 +3385,7 @@
   },
   {
     "name": "icu_properties_data",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3376,7 +3394,7 @@
   },
   {
     "name": "icu_provider",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -3502,7 +3520,7 @@
   },
   {
     "name": "indexmap",
-    "version": "2.13.0",
+    "version": "2.13.1",
     "authors": null,
     "repository": "https://github.com/indexmap-rs/indexmap",
     "license": "Apache-2.0 OR MIT",
@@ -3583,7 +3601,7 @@
   },
   {
     "name": "ipconfig",
-    "version": "0.3.2",
+    "version": "0.3.4",
     "authors": "Liran Ringel <liranringel@gmail.com>",
     "repository": "https://github.com/liranringel/ipconfig",
     "license": "Apache-2.0 OR MIT",
@@ -3601,7 +3619,7 @@
   },
   {
     "name": "iri-string",
-    "version": "0.7.11",
+    "version": "0.7.12",
     "authors": "YOSHIOKA Takuma <nop_thread@nops.red>",
     "repository": "https://github.com/lo48576/iri-string",
     "license": "Apache-2.0 OR MIT",
@@ -3781,7 +3799,7 @@
   },
   {
     "name": "js-sys",
-    "version": "0.3.91",
+    "version": "0.3.94",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys",
     "license": "Apache-2.0 OR MIT",
@@ -3907,7 +3925,7 @@
   },
   {
     "name": "libc",
-    "version": "0.2.183",
+    "version": "0.2.184",
     "authors": "The Rust Project Developers",
     "repository": "https://github.com/rust-lang/libc",
     "license": "Apache-2.0 OR MIT",
@@ -3943,7 +3961,7 @@
   },
   {
     "name": "libredox",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "authors": "4lDO2 <4lDO2@protonmail.com>",
     "repository": "https://gitlab.redox-os.org/redox-os/libredox.git",
     "license": "MIT",
@@ -3988,7 +4006,7 @@
   },
   {
     "name": "litemap",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -4339,7 +4357,7 @@
   },
   {
     "name": "mio",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "authors": "Carl Lerche <me@carllerche.com>|Thomas de Zeeuw <thomasdezeeuw@gmail.com>|Tokio Contributors <team@tokio.rs>",
     "repository": "https://github.com/tokio-rs/mio",
     "license": "MIT",
@@ -4357,9 +4375,9 @@
   },
   {
     "name": "muda",
-    "version": "0.17.1",
+    "version": "0.17.2",
     "authors": null,
-    "repository": "https://github.com/amrbashir/muda",
+    "repository": "https://github.com/tauri-apps/muda",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Menu Utilities for Desktop Applications"
@@ -4618,7 +4636,7 @@
   },
   {
     "name": "num-conv",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "authors": "Jacob Pratt <jacob@jhpratt.dev>",
     "repository": "https://github.com/jhpratt/num-conv",
     "license": "Apache-2.0 OR MIT",
@@ -4808,6 +4826,15 @@
   {
     "name": "object",
     "version": "0.37.3",
+    "authors": null,
+    "repository": "https://github.com/gimli-rs/object",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A unified interface for reading and writing object file formats."
+  },
+  {
+    "name": "object",
+    "version": "0.38.1",
     "authors": null,
     "repository": "https://github.com/gimli-rs/object",
     "license": "Apache-2.0 OR MIT",
@@ -5058,6 +5085,15 @@
     "description": "Graph data structure library. Provides graph types and graph algorithms."
   },
   {
+    "name": "petgraph",
+    "version": "0.7.1",
+    "authors": "bluss|mitchmindtree",
+    "repository": "https://github.com/petgraph/petgraph",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Graph data structure library. Provides graph types and graph algorithms."
+  },
+  {
     "name": "phf",
     "version": "0.8.0",
     "authors": "Steven Fackler <sfackler@gmail.com>",
@@ -5247,15 +5283,6 @@
     "description": "A lightweight version of pin-project written with declarative macros."
   },
   {
-    "name": "pin-utils",
-    "version": "0.1.0",
-    "authors": "Josef Brandl <mail@josefbrandl.de>",
-    "repository": "https://github.com/rust-lang-nursery/pin-utils",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Utilities for pinning"
-  },
-  {
     "name": "piper",
     "version": "0.2.5",
     "authors": "Stjepan Glavina <stjepang@gmail.com>|John Nunley <dev@notgull.net>",
@@ -5401,7 +5428,7 @@
   },
   {
     "name": "potential_utf",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -5473,7 +5500,7 @@
   },
   {
     "name": "proc-macro-crate",
-    "version": "2.0.0",
+    "version": "2.0.2",
     "authors": "Bastian Köcher <git@kchr.de>",
     "repository": "https://github.com/bkchr/proc-macro-crate",
     "license": "Apache-2.0 OR MIT",
@@ -5536,7 +5563,7 @@
   },
   {
     "name": "proptest",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "authors": "Jason Lingle",
     "repository": "https://github.com/proptest-rs/proptest",
     "license": "Apache-2.0 OR MIT",
@@ -5599,7 +5626,7 @@
   },
   {
     "name": "pulley-interpreter",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Pulley Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/pulley",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -5608,7 +5635,7 @@
   },
   {
     "name": "pulley-interpreter",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Pulley Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/pulley",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -5617,7 +5644,7 @@
   },
   {
     "name": "pulley-macros",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": null,
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/pulley/macros",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -5626,7 +5653,7 @@
   },
   {
     "name": "pulley-macros",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": null,
     "repository": "https://github.com/bytecodealliance/wasmtime/tree/main/pulley/macros",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -5967,6 +5994,15 @@
     "description": "Backtracking register allocator inspired from IonMonkey"
   },
   {
+    "name": "regalloc2",
+    "version": "0.15.0",
+    "authors": "Chris Fallin <chris@cfallin.org>|Mozilla SpiderMonkey Developers",
+    "repository": "https://github.com/bytecodealliance/regalloc2",
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "license_file": null,
+    "description": "Backtracking register allocator inspired from IonMonkey"
+  },
+  {
     "name": "regex",
     "version": "1.12.3",
     "authors": "The Rust Project Developers|Andrew Gallant <jamslam@gmail.com>",
@@ -6148,7 +6184,7 @@
   },
   {
     "name": "rustc-hash",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "authors": "The Rust Project Developers",
     "repository": "https://github.com/rust-lang/rustc-hash",
     "license": "Apache-2.0 OR MIT",
@@ -6499,7 +6535,7 @@
   },
   {
     "name": "semver",
-    "version": "1.0.27",
+    "version": "1.0.28",
     "authors": "David Tolnay <dtolnay@gmail.com>",
     "repository": "https://github.com/dtolnay/semver",
     "license": "Apache-2.0 OR MIT",
@@ -6616,7 +6652,7 @@
   },
   {
     "name": "serde_spanned",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "authors": null,
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -6814,7 +6850,7 @@
   },
   {
     "name": "simd-adler32",
-    "version": "0.3.8",
+    "version": "0.3.9",
     "authors": "Marvin Countryman <me@maar.vin>",
     "repository": "https://github.com/mcountryman/simd-adler32",
     "license": "MIT",
@@ -7597,7 +7633,7 @@
   },
   {
     "name": "tinystr",
-    "version": "0.8.2",
+    "version": "0.8.3",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -7624,7 +7660,7 @@
   },
   {
     "name": "tokio",
-    "version": "1.50.0",
+    "version": "1.51.0",
     "authors": "Tokio Contributors <team@tokio.rs>",
     "repository": "https://github.com/tokio-rs/tokio",
     "license": "MIT",
@@ -7633,7 +7669,7 @@
   },
   {
     "name": "tokio-macros",
-    "version": "2.6.1",
+    "version": "2.7.0",
     "authors": "Tokio Contributors <team@tokio.rs>",
     "repository": "https://github.com/tokio-rs/tokio",
     "license": "MIT",
@@ -7732,8 +7768,8 @@
   },
   {
     "name": "toml",
-    "version": "0.8.23",
-    "authors": null,
+    "version": "0.8.2",
+    "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -7750,8 +7786,8 @@
   },
   {
     "name": "toml_datetime",
-    "version": "0.6.11",
-    "authors": null,
+    "version": "0.6.3",
+    "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -7768,7 +7804,7 @@
   },
   {
     "name": "toml_datetime",
-    "version": "1.1.0+spec-1.1.0",
+    "version": "1.1.1+spec-1.1.0",
     "authors": null,
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -7786,7 +7822,7 @@
   },
   {
     "name": "toml_edit",
-    "version": "0.20.7",
+    "version": "0.20.2",
     "authors": "Andronik Ordian <write@reusable.software>|Ed Page <eopage@gmail.com>",
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -7795,16 +7831,7 @@
   },
   {
     "name": "toml_edit",
-    "version": "0.22.27",
-    "authors": null,
-    "repository": "https://github.com/toml-rs/toml",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Yet another format-preserving TOML parser."
-  },
-  {
-    "name": "toml_edit",
-    "version": "0.25.8+spec-1.1.0",
+    "version": "0.25.10+spec-1.1.0",
     "authors": null,
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -7813,7 +7840,7 @@
   },
   {
     "name": "toml_parser",
-    "version": "1.1.0+spec-1.1.0",
+    "version": "1.1.2+spec-1.1.0",
     "authors": null,
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -7821,17 +7848,8 @@
     "description": "Yet another format-preserving TOML parser."
   },
   {
-    "name": "toml_write",
-    "version": "0.1.2",
-    "authors": null,
-    "repository": "https://github.com/toml-rs/toml",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "A low-level interface for writing out TOML"
-  },
-  {
     "name": "toml_writer",
-    "version": "1.1.0+spec-1.1.0",
+    "version": "1.1.1+spec-1.1.0",
     "authors": null,
     "repository": "https://github.com/toml-rs/toml",
     "license": "Apache-2.0 OR MIT",
@@ -8227,7 +8245,7 @@
   },
   {
     "name": "unicode-segmentation",
-    "version": "1.12.0",
+    "version": "1.13.2",
     "authors": "kwantam <kwantam@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-rs/unicode-segmentation",
     "license": "Apache-2.0 OR MIT",
@@ -8398,7 +8416,7 @@
   },
   {
     "name": "uuid",
-    "version": "1.22.0",
+    "version": "1.23.0",
     "authors": "Ashley Mannix<ashleymannix@live.com.au>|Dylan DPC<dylan.dpc@gmail.com>|Hunar Roop Kahlon<hunar.roop@gmail.com>",
     "repository": "https://github.com/uuid-rs/uuid",
     "license": "Apache-2.0 OR MIT",
@@ -8524,7 +8542,7 @@
   },
   {
     "name": "wasi-common",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8560,7 +8578,7 @@
   },
   {
     "name": "wasm-bindgen",
-    "version": "0.2.114",
+    "version": "0.2.117",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen",
     "license": "Apache-2.0 OR MIT",
@@ -8569,7 +8587,7 @@
   },
   {
     "name": "wasm-bindgen-futures",
-    "version": "0.4.64",
+    "version": "0.4.67",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures",
     "license": "Apache-2.0 OR MIT",
@@ -8578,7 +8596,7 @@
   },
   {
     "name": "wasm-bindgen-macro",
-    "version": "0.2.114",
+    "version": "0.2.117",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro",
     "license": "Apache-2.0 OR MIT",
@@ -8587,7 +8605,7 @@
   },
   {
     "name": "wasm-bindgen-macro-support",
-    "version": "0.2.114",
+    "version": "0.2.117",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro-support",
     "license": "Apache-2.0 OR MIT",
@@ -8596,7 +8614,7 @@
   },
   {
     "name": "wasm-bindgen-shared",
-    "version": "0.2.114",
+    "version": "0.2.117",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared",
     "license": "Apache-2.0 OR MIT",
@@ -8613,13 +8631,13 @@
     "description": "A library for composing WebAssembly components."
   },
   {
-    "name": "wasm-encoder",
-    "version": "0.239.0",
-    "authors": "Nick Fitzgerald <fitzgen@gmail.com>",
-    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder",
+    "name": "wasm-compose",
+    "version": "0.245.1",
+    "authors": "Peter Huene <peter@huene.dev>",
+    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-compose",
     "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
     "license_file": null,
-    "description": "A low-level WebAssembly encoder."
+    "description": "A library for composing WebAssembly components."
   },
   {
     "name": "wasm-encoder",
@@ -8642,6 +8660,15 @@
   {
     "name": "wasm-encoder",
     "version": "0.245.1",
+    "authors": "Nick Fitzgerald <fitzgen@gmail.com>",
+    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder",
+    "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
+    "license_file": null,
+    "description": "A low-level WebAssembly encoder."
+  },
+  {
+    "name": "wasm-encoder",
+    "version": "0.246.2",
     "authors": "Nick Fitzgerald <fitzgen@gmail.com>",
     "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder",
     "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
@@ -8677,15 +8704,6 @@
   },
   {
     "name": "wasmparser",
-    "version": "0.239.0",
-    "authors": "Yury Delendik <ydelendik@mozilla.com>",
-    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser",
-    "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
-    "license_file": null,
-    "description": "A simple event-driven library for parsing WebAssembly binary files."
-  },
-  {
-    "name": "wasmparser",
     "version": "0.243.0",
     "authors": "Yury Delendik <ydelendik@mozilla.com>",
     "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser",
@@ -8712,13 +8730,13 @@
     "description": "A simple event-driven library for parsing WebAssembly binary files."
   },
   {
-    "name": "wasmprinter",
-    "version": "0.239.0",
-    "authors": "Alex Crichton <alex@alexcrichton.com>",
-    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmprinter",
+    "name": "wasmparser",
+    "version": "0.246.2",
+    "authors": "Yury Delendik <ydelendik@mozilla.com>",
+    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser",
     "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
     "license_file": null,
-    "description": "Rust converter from the WebAssembly binary format to the text format."
+    "description": "A simple event-driven library for parsing WebAssembly binary files."
   },
   {
     "name": "wasmprinter",
@@ -8730,13 +8748,13 @@
     "description": "Rust converter from the WebAssembly binary format to the text format."
   },
   {
-    "name": "wasmtime",
-    "version": "37.0.3",
-    "authors": "The Wasmtime Project Developers",
-    "repository": "https://github.com/bytecodealliance/wasmtime",
-    "license": "Apache-2.0 WITH LLVM-exception",
+    "name": "wasmprinter",
+    "version": "0.245.1",
+    "authors": "Alex Crichton <alex@alexcrichton.com>",
+    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmprinter",
+    "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
     "license_file": null,
-    "description": "High-level API to expose the Wasmtime runtime"
+    "description": "Rust converter from the WebAssembly binary format to the text format."
   },
   {
     "name": "wasmtime",
@@ -8748,13 +8766,13 @@
     "description": "High-level API to expose the Wasmtime runtime"
   },
   {
-    "name": "wasmtime-environ",
-    "version": "37.0.3",
+    "name": "wasmtime",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "Standalone environment support for WebAssembly code in Cranelift"
+    "description": "High-level API to expose the Wasmtime runtime"
   },
   {
     "name": "wasmtime-environ",
@@ -8766,22 +8784,13 @@
     "description": "Standalone environment support for WebAssembly code in Cranelift"
   },
   {
-    "name": "wasmtime-internal-asm-macros",
-    "version": "37.0.3",
+    "name": "wasmtime-environ",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Macros for defining asm functions in Wasmtime"
-  },
-  {
-    "name": "wasmtime-internal-cache",
-    "version": "37.0.3",
-    "authors": "The Wasmtime Project Developers",
-    "repository": "https://github.com/bytecodealliance/wasmtime",
-    "license": "Apache-2.0 WITH LLVM-exception",
-    "license_file": null,
-    "description": "INTERNAL: Support for automatic module caching with Wasmtime"
+    "description": "Standalone environment support for WebAssembly code in Cranelift"
   },
   {
     "name": "wasmtime-internal-cache",
@@ -8793,13 +8802,13 @@
     "description": "INTERNAL: Support for automatic module caching with Wasmtime"
   },
   {
-    "name": "wasmtime-internal-component-macro",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-cache",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Macros for deriving component interface types from Rust types"
+    "description": "INTERNAL: Support for automatic module caching with Wasmtime"
   },
   {
     "name": "wasmtime-internal-component-macro",
@@ -8811,13 +8820,13 @@
     "description": "INTERNAL: Macros for deriving component interface types from Rust types"
   },
   {
-    "name": "wasmtime-internal-component-util",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-component-macro",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Utility types and functions to support the component model in Wasmtime"
+    "description": "INTERNAL: Macros for deriving component interface types from Rust types"
   },
   {
     "name": "wasmtime-internal-component-util",
@@ -8829,13 +8838,22 @@
     "description": "INTERNAL: Utility types and functions to support the component model in Wasmtime"
   },
   {
-    "name": "wasmtime-internal-cranelift",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-component-util",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Integration between Cranelift and Wasmtime"
+    "description": "INTERNAL: Utility types and functions to support the component model in Wasmtime"
+  },
+  {
+    "name": "wasmtime-internal-core",
+    "version": "43.0.1",
+    "authors": "The Wasmtime Project Developers",
+    "repository": null,
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "license_file": null,
+    "description": "INTERNAL: Wasmtime's core utilities and helpers with minimal dependencies"
   },
   {
     "name": "wasmtime-internal-cranelift",
@@ -8847,13 +8865,13 @@
     "description": "INTERNAL: Integration between Cranelift and Wasmtime"
   },
   {
-    "name": "wasmtime-internal-fiber",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-cranelift",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Fiber support for Wasmtime"
+    "description": "INTERNAL: Integration between Cranelift and Wasmtime"
   },
   {
     "name": "wasmtime-internal-fiber",
@@ -8865,13 +8883,13 @@
     "description": "INTERNAL: Fiber support for Wasmtime"
   },
   {
-    "name": "wasmtime-internal-jit-debug",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-fiber",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: JIT debug interfaces support for Wasmtime"
+    "description": "INTERNAL: Fiber support for Wasmtime"
   },
   {
     "name": "wasmtime-internal-jit-debug",
@@ -8883,13 +8901,13 @@
     "description": "INTERNAL: JIT debug interfaces support for Wasmtime"
   },
   {
-    "name": "wasmtime-internal-jit-icache-coherence",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-jit-debug",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Utilities for JIT icache maintenance"
+    "description": "INTERNAL: JIT debug interfaces support for Wasmtime"
   },
   {
     "name": "wasmtime-internal-jit-icache-coherence",
@@ -8901,13 +8919,13 @@
     "description": "INTERNAL: Utilities for JIT icache maintenance"
   },
   {
-    "name": "wasmtime-internal-math",
-    "version": "37.0.3",
+    "name": "wasmtime-internal-jit-icache-coherence",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
-    "description": "INTERNAL: Low-level math routines used in Wasmtime"
+    "description": "INTERNAL: Utilities for JIT icache maintenance"
   },
   {
     "name": "wasmtime-internal-math",
@@ -8917,15 +8935,6 @@
     "license": "Apache-2.0 WITH LLVM-exception",
     "license_file": null,
     "description": "INTERNAL: Low-level math routines used in Wasmtime"
-  },
-  {
-    "name": "wasmtime-internal-slab",
-    "version": "37.0.3",
-    "authors": "The Wasmtime Project Developers",
-    "repository": "https://github.com/bytecodealliance/wasmtime",
-    "license": "Apache-2.0 WITH LLVM-exception",
-    "license_file": null,
-    "description": "INTERNAL: Uni-typed slab with a free list for use in Wasmtime"
   },
   {
     "name": "wasmtime-internal-slab",
@@ -8938,7 +8947,7 @@
   },
   {
     "name": "wasmtime-internal-unwinder",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8947,7 +8956,7 @@
   },
   {
     "name": "wasmtime-internal-unwinder",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8956,7 +8965,7 @@
   },
   {
     "name": "wasmtime-internal-versioned-export-macros",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8965,7 +8974,7 @@
   },
   {
     "name": "wasmtime-internal-versioned-export-macros",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8974,7 +8983,7 @@
   },
   {
     "name": "wasmtime-internal-winch",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8983,7 +8992,7 @@
   },
   {
     "name": "wasmtime-internal-winch",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -8992,7 +9001,7 @@
   },
   {
     "name": "wasmtime-internal-wit-bindgen",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9001,7 +9010,7 @@
   },
   {
     "name": "wasmtime-internal-wit-bindgen",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9010,7 +9019,7 @@
   },
   {
     "name": "wasmtime-wasi",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9019,7 +9028,7 @@
   },
   {
     "name": "wasmtime-wasi-io",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Wasmtime Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9037,7 +9046,7 @@
   },
   {
     "name": "wast",
-    "version": "245.0.1",
+    "version": "246.0.2",
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wast",
     "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
@@ -9046,7 +9055,7 @@
   },
   {
     "name": "wat",
-    "version": "1.245.1",
+    "version": "1.246.2",
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wat",
     "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
@@ -9055,7 +9064,7 @@
   },
   {
     "name": "web-sys",
-    "version": "0.3.91",
+    "version": "0.3.94",
     "authors": "The wasm-bindgen Developers",
     "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys",
     "license": "Apache-2.0 OR MIT",
@@ -9181,7 +9190,7 @@
   },
   {
     "name": "wiggle",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkonk@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9190,7 +9199,7 @@
   },
   {
     "name": "wiggle",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkonk@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9199,7 +9208,7 @@
   },
   {
     "name": "wiggle-generate",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkon@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9208,7 +9217,7 @@
   },
   {
     "name": "wiggle-generate",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkon@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9217,7 +9226,7 @@
   },
   {
     "name": "wiggle-macro",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkon@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9226,7 +9235,7 @@
   },
   {
     "name": "wiggle-macro",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "Pat Hickey <phickey@fastly.com>|Jakub Konka <kubkon@jakubkonka.com>|Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9271,7 +9280,7 @@
   },
   {
     "name": "winch-codegen",
-    "version": "37.0.3",
+    "version": "41.0.4",
     "authors": "The Winch Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9280,7 +9289,7 @@
   },
   {
     "name": "winch-codegen",
-    "version": "41.0.4",
+    "version": "43.0.1",
     "authors": "The Winch Project Developers",
     "repository": "https://github.com/bytecodealliance/wasmtime",
     "license": "Apache-2.0 WITH LLVM-exception",
@@ -9874,7 +9883,7 @@
   },
   {
     "name": "winnow",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "authors": null,
     "repository": "https://github.com/winnow-rs/winnow",
     "license": "MIT",
@@ -9964,15 +9973,6 @@
   },
   {
     "name": "wit-parser",
-    "version": "0.239.0",
-    "authors": "Alex Crichton <alex@alexcrichton.com>",
-    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wit-parser",
-    "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
-    "license_file": null,
-    "description": "Tooling for parsing `*.wit` files and working with their contents."
-  },
-  {
-    "name": "wit-parser",
     "version": "0.243.0",
     "authors": "Alex Crichton <alex@alexcrichton.com>",
     "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wit-parser",
@@ -9990,6 +9990,15 @@
     "description": "Tooling for parsing `*.wit` files and working with their contents."
   },
   {
+    "name": "wit-parser",
+    "version": "0.245.1",
+    "authors": "Alex Crichton <alex@alexcrichton.com>",
+    "repository": "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wit-parser",
+    "license": "Apache-2.0 OR Apache-2.0 WITH LLVM-exception OR MIT",
+    "license_file": null,
+    "description": "Tooling for parsing `*.wit` files and working with their contents."
+  },
+  {
     "name": "witx",
     "version": "0.9.1",
     "authors": "Pat Hickey <phickey@fastly.com>|Alex Crichton <alex@alexcrichton.com>",
@@ -10000,7 +10009,7 @@
   },
   {
     "name": "writeable",
-    "version": "0.6.2",
+    "version": "0.6.3",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10072,7 +10081,7 @@
   },
   {
     "name": "yoke",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10081,7 +10090,7 @@
   },
   {
     "name": "yoke-derive",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10117,7 +10126,7 @@
   },
   {
     "name": "zerocopy",
-    "version": "0.8.47",
+    "version": "0.8.48",
     "authors": "Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>",
     "repository": "https://github.com/google/zerocopy",
     "license": "Apache-2.0 OR BSD-2-Clause OR MIT",
@@ -10126,7 +10135,7 @@
   },
   {
     "name": "zerocopy-derive",
-    "version": "0.8.47",
+    "version": "0.8.48",
     "authors": "Joshua Liebow-Feeser <joshlf@google.com>|Jack Wrenn <jswrenn@amazon.com>",
     "repository": "https://github.com/google/zerocopy",
     "license": "Apache-2.0 OR BSD-2-Clause OR MIT",
@@ -10135,7 +10144,7 @@
   },
   {
     "name": "zerofrom",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10144,7 +10153,7 @@
   },
   {
     "name": "zerofrom-derive",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10171,7 +10180,7 @@
   },
   {
     "name": "zerotrie",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10180,7 +10189,7 @@
   },
   {
     "name": "zerovec",
-    "version": "0.11.5",
+    "version": "0.11.6",
     "authors": "The ICU4X Project Developers",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",
@@ -10189,7 +10198,7 @@
   },
   {
     "name": "zerovec-derive",
-    "version": "0.11.2",
+    "version": "0.11.3",
     "authors": "Manish Goregaokar <manishsmail@gmail.com>",
     "repository": "https://github.com/unicode-org/icu4x",
     "license": "Unicode-3.0",

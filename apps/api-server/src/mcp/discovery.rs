@@ -60,6 +60,13 @@ pub async fn discover_and_connect(
         }
         let default_config = serde_json::json!({
             "mcp_servers": {
+                "fff-mcp": {
+                    "command": "fff-mcp",
+                    "args": [],
+                    "env": {
+                        "RUST_LOG": "info"
+                    }
+                },
                 "ga4": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-everything"],

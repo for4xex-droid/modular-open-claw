@@ -233,8 +233,15 @@ cross_cutting_checks() {
   echo ""
   echo "── CC-6: Type-Driven Security (Auth Extractor Enforcement) ──"
   local total_handlers auth_handlers missing_auth_count
-  total_handlers=$(find apps/api-server/src/routes -name "*.rs" -exec awk '/pub async fn/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
-  auth_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '/(auth|_auth): .*Authenticated/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
+  total_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '
+    /auth-exempt/ { exempt_seen=1 }
+    /pub async fn/ {
+      if (!exempt_seen) c++
+      exempt_seen=0
+    }
+    END { print c+0 }
+  ' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
+  auth_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '/(auth|_auth): .*Authenticated|Extension.*AuthenticatedUser/{c++} END{print c+0}' {} + | awk '{s+=$1} END {print s+0}' 2>/dev/null || echo "0")
   
   if [[ "$total_handlers" -gt 0 ]]; then
     missing_auth_count=$((total_handlers - auth_handlers))

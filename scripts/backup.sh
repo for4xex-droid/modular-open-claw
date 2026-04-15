@@ -13,6 +13,13 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 TAR_FILE="$BACKUP_DIR/aiome_backup_$TIMESTAMP.tar.gz"
 CHECKSUM_FILE="$TAR_FILE.sha256"
 
+# Container runtime (Podman-first, Docker fallback)
+if command -v podman &> /dev/null; then
+    COMPOSE_CMD="podman compose"
+else
+    COMPOSE_CMD="docker compose"
+fi
+
 # Check required directories
 if [ ! -d "$DATA_DIR/api" ]; then
     echo "ERROR: Data directory '$DATA_DIR/api' not found. Are you running this from the project root?"
@@ -69,9 +76,10 @@ command_restore() {
         echo "Restore cancelled."
         exit 0
     fi
-    
-    echo "🛑 Stopping services (docker-compose)..."
-    docker compose -f docker-compose.production.yml stop api-server || true
+    # COMPOSE_CMD is set at the top of this script
+
+    echo "🛑 Stopping services ($COMPOSE_CMD)..."
+    $COMPOSE_CMD -f docker-compose.production.yml stop api-server || true
     
     echo "🗑️  Clearing current api data..."
     rm -rf "$DATA_DIR/api"
@@ -80,7 +88,7 @@ command_restore() {
     tar -xzf "$RESTORE_FILE" -C "$DATA_DIR"
     
     echo "✅ Restore Completed! Restart your services using:"
-    echo "docker compose -f docker-compose.production.yml up -d api-server"
+    echo "$COMPOSE_CMD -f docker-compose.production.yml up -d api-server"
 }
 
 case "${1:-}" in

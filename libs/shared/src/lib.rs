@@ -19,6 +19,8 @@ pub mod bootstrap_detector;
 pub mod cleaner;
 /// アプリケーション設定の管理
 pub mod config;
+/// コンテナランタイム検出 (Podman / Docker) の SSOT
+pub mod container_runtime;
 /// 暗号化・ハッシュ処理共有ロジック
 pub mod crypto;
 /// CSAM (Child Safety & Compliance)
@@ -32,6 +34,8 @@ pub mod file_validator;
 pub mod guardrails;
 /// システムヘルスモニタリング
 pub mod health;
+/// MCP の セキュリティ定数
+pub mod mcp_constants;
 /// OS依存ユーティリティ
 pub mod os_utils;
 /// 出力バリデーター機能

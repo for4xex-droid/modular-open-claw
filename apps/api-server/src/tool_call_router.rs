@@ -165,14 +165,91 @@ impl ToolCallRouter for DefaultToolCallRouter {
             } else if sn == "describe_skill" {
                 crate::skill_handler::describe_skill(&actual_input, &state_rc).await
             } else {
-                let out = crate::skill_handler::execute_wasm_skill(
-                    &sn,
-                    &actual_input,
-                    &state_rc,
-                    None,
-                    0,
-                )
-                .await;
+                // === MCP Server Polling: O(N) scan of active MCP clients ===
+                let mut mcp_result = None;
+                let active_clients = state_rc.mcp_manager.active_client_ids().await;
+                'mcp_scan: for cid in active_clients {
+                    if let Some(client) = state_rc.mcp_manager.get_client(&cid).await {
+                        match tokio::time::timeout(
+                            tokio::time::Duration::from_secs(2),
+                            client.list_tools(),
+                        )
+                        .await
+                        {
+                            Ok(Ok(tools)) => {
+                                if tools.iter().any(|t| t.name == sn) {
+                                    let args: serde_json::Value =
+                                        serde_json::from_str(&actual_input)
+                                            .unwrap_or(serde_json::json!({}));
+                                    mcp_result = Some(
+                                        match tokio::time::timeout(
+                                            tokio::time::Duration::from_secs(30),
+                                            client.call_tool(&sn, args),
+                                        )
+                                        .await
+                                        {
+                                            Ok(Ok(res)) => {
+                                                let mut out = String::new();
+                                                for c in res.content {
+                                                    match c {
+                                                        crate::mcp::types::McpContent::Text {
+                                                            text,
+                                                        } => out.push_str(&text),
+                                                        crate::mcp::types::McpContent::Image {
+                                                            ..
+                                                        } => out.push_str("[Image Data]"),
+                                                    }
+                                                }
+                                                if res.is_error {
+                                                    format!("Error: {}", out)
+                                                } else {
+                                                    out
+                                                }
+                                            }
+                                            Ok(Err(e)) => {
+                                                format!("Error: MCP tool execution failed: {}", e)
+                                            }
+                                            Err(_) => {
+                                                // Timeout: the `pending_requests` entry inside
+                                                // McpClient now holds an orphaned oneshot::Sender
+                                                // that will never be consumed. Evict the client
+                                                // to prevent memory accumulation and stale state.
+                                                tracing::warn!(
+                                                    "⏰ MCP tool '{}' on server '{}' timed out after 30s — evicting client to prevent resource leak",
+                                                    sn, cid
+                                                );
+                                                state_rc.mcp_manager.remove_client(&cid).await;
+                                                "Error: MCP tool execution timed out after 30s"
+                                                    .to_string()
+                                            }
+                                        },
+                                    );
+                                    break 'mcp_scan;
+                                }
+                            }
+                            Ok(Err(e)) => {
+                                tracing::debug!(
+                                    "MCP server '{}' list_tools() failed: {} — skipping",
+                                    cid,
+                                    e
+                                );
+                            }
+                            Err(_) => {
+                                tracing::debug!(
+                                    "MCP server '{}' list_tools() timed out after 2s — skipping",
+                                    cid
+                                );
+                            }
+                        }
+                    }
+                }
+
+                let out = if let Some(res) = mcp_result {
+                    res
+                } else {
+                    crate::skill_handler::execute_wasm_skill(&sn, &actual_input, &state_rc, None, 0)
+                        .await
+                };
                 let stats = state_rc
                     .job_queue
                     .get_agent_stats()

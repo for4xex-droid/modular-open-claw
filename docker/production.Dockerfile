@@ -44,6 +44,10 @@ RUN groupadd -g 10001 aiome && \
     useradd -u 10001 -g aiome -m -s /bin/false aiome
 
 # 2. Hardening: Install only necessary CA certs, runtime libraries, and gVisor (runsc)
+# fff-mcp: High-performance file search MCP server (MIT, github.com/dmtrKovalenko/fff.nvim)
+# SUPPLY CHAIN NOTE: The fff-mcp install step pipes a remote script. The script downloads
+# a checksummed binary from GitHub Releases. For hardened builds, pin to a specific release
+# tarball and verify SHA256 manually instead of using the convenience installer.
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
@@ -54,6 +58,7 @@ RUN apt-get update && apt-get install -y \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" > /etc/apt/sources.list.d/gvisor.list \
     && apt-get update && apt-get install -y runsc \
     && setcap cap_sys_ptrace+ep /usr/bin/runsc \
+    && FFF_MCP_INSTALL_DIR=/usr/local/bin curl -L https://dmtrkovalenko.dev/install-fff-mcp.sh | bash \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

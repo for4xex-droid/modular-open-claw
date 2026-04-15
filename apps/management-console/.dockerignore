@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.DS_Store
+src-tauri
+playwright-report
+test-results
+test_output.txt
+e2e
+.vscode
+DESIGN.md
+CHANGELOG.md
+*.md
+!README.md

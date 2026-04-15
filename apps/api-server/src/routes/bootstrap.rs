@@ -44,6 +44,7 @@ pub struct BootstrapStatusResponse {
         (status = 200, description = "Bootstrap status", body = BootstrapStatusResponse)
     )
 )]
+// auth-exempt: セットアップ前に使用
 pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapStatusResponse> {
     let config = state.config.get_inner();
     let root = config.resolver.root();
@@ -93,6 +94,7 @@ pub struct OllamaDetectionResponse {
         (status = 200, description = "Ollama detection result", body = OllamaDetectionResponse)
     )
 )]
+// auth-exempt: セットアップ前に使用
 pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
     let client = aiome_core::http::get_http_client().clone();
 

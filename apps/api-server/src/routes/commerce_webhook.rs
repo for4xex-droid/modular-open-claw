@@ -24,6 +24,7 @@ use tracing::{error, info, warn};
         (status = 400, description = "Bad request / Invalid signature")
     )
 )]
+// auth-exempt: Stripe 署名検証
 pub async fn stripe_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,

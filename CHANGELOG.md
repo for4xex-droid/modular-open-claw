@@ -1,4 +1,25 @@
-## [Unreleased] - 2026-04-12
+## [Unreleased] - 2026-04-15
+  - **Infrastructure (Phase 1 & 2 Podman Integration)**: Aiome インフラのコンテナランタイムを Docker から `Podman (rootless)` および `podman-compose` へ完全対応させました。
+    - コンテナランタイム検出ロジックを `shared::container_runtime::detect_runtime()` (SSOT) として新設し、一元化。自動検出(`podman`優先、`docker`フォールバック)に加え、`CONTAINER_RUNTIME`環境変数による明示的なオーバーライドに対応。
+    - `DockerConductor`、`Self-Diagnosis`、`Delegator` モジュールにおいて、`podman` コマンドの存在を動的に自動検出・フォールバックするロジックを統合し、プロセス毎のキャッシュ (`OnceLock`) により呼び出しコストをゼロ化。
+    - BoundaryVerifier (AST セキュリティ) のハードコード whitelist に `podman` バイナリを追加。
+    - `backup.sh` などのインフラスクリプトを、ランタイムに依存しない動的 compose コマンドへ改修。
+  - **Tooling (Phase 1B)**: 抽象化された MCP 実行基盤を利用し、高速検索エンジン `fff.nvim` (`fff-mcp`) を本番環境へ正式統合。`mcp_servers.json` のデフォルトプロファイルへの組み込みおよび Docker コンテナのランタイム自動取得ロジックを追加し、エージェントが自律的に超大規摸コードベースを高速探索可能な環境を構築。
+  - **Tooling (Phase 1A)**: `fff.nvim` 等の高性能 MCP サーバーを Aiome チャットループに統合するため、`tool_call_router.rs` に O(N) のプロセス・ポーリングによる MCP ディスパッチ機構を実装。Wasm スキルへの無条件フォールバックを廃止し、MCP ツール（`find_files`, `grep` 等）が自律実行可能に。
+  - **Security**: 散在していた MCP ツールのバイナリ・コマンドおよび NPM パッケージの実行許可ホワイトリストを `libs/shared/src/mcp_constants.rs` に一元化し、単一の真実源 (SSOT) 型の堅牢な境界防御を再構築。
+  - **Stability**: `tool_call_router` にける MCP ツール実行のタイムアウト (30秒) と ListTools 通信のタイムアウト (2秒) を明示化し、巨大ディレクトリ検索時等のハングアップやプロセス凍結を完全な制御下に置いた。
+  - **DevOps**:
+    - **GitHub Actions Auto-Publish (Sprint 1-B)**: Added `.github/workflows/docker-publish.yml` to automatically build and push multi-architecture (`linux/amd64`, `linux/arm64`) Docker images for both `api-server` and `management-console` (`ghcr.io/motivationstudio-llc/aiome` and `aiome-console`) on `main` branch pushes or `v*` tags.
+    - **One-Click Management Console (Sprint 1-A)**: Created multi-stage `Dockerfile` and SPA routing `nginx.conf` for the `management-console` application using `node:20-alpine` and `nginx:alpine`.
+    - Integrated `management-console` (`ghcr.io/motivationstudio-llc/aiome-console:v0.2.0-beta`) into `docker-compose.quickstart.yml` with strict `healthcheck` dependencies (`api-server` waits for `ollama`, `management-console` waits for `api-server`), updating the `api-server` image to `v0.2.0-beta` and OLLAMA_MODEL to `gemma4:e4b` to consolidate the quickstart experience.
+  - **Security**: Auth Extractor を全 API ハンドラに適用完了 (skill MCP config, whisper monologue)
+  - **Tooling**: deep-scan CC-6 が AuthenticatedUser パターンを正しく認識するよう修正、auth-exempt対応
+  - **E2E Testing (Sprint 2-A)**: `docker-compose.wp-test.yml` を新設。WP-CLI による自動セットアップ（`core install` + `user application-password create`）と shared volume パターンにより、WordPress REST API の E2E テスト環境を自動化。
+  - **PR Assets (Sprint 2-B)**: `apps/management-console/e2e/screencast.spec.ts` を新設。Playwright の `video: 'on'` + `slowMo: 400` で管理コンソールの主要タブ（Onboarding, Chat, Cortex, SystemBirth）を自動巡回し、90秒のスクリーンキャスト動画を生成。
+  - **Legal Compliance (Sprint 2-D)**: `docs/legal/TERMS_OF_SERVICE.md` を作成（β 版スキャフォールド）。README / README_en に Legal & Privacy セクションを追加し、ToS / Privacy Policy へのリンクを設置。
+  - **Git Hygiene**: `apps/management-console/.gitignore` に Playwright 出力ディレクトリ（`test-results/`, `playwright-report/`）を追加し、大容量動画ファイルのコミットを防止。
+  - **E2E Testing (Sprint 2-C)**: `wp_publish.spec.ts` を追加し、自律投稿パイプラインにおける代理テストを実装。LLM のストリーミング応答における `.last()` Flakiness を `.filter({hasText})` パターンで排除。
+  - **Growth Tactics (Sprint 2-F)**: Postiz Playbook 戦略の自動化。`README.md` および `README_en.md` に、$0 CTA と YouTube チュートリアルへの動画導線を整備し、SEO最適化のための `setup-github-topics.sh` を導入。これに併随して `marketing_assets_test.rs` を実装し、重要アセットの欠落を防止。
   - **Phase 3 A/B: AI Quality & Observability Infrastructure (Telemetry)**:
     - **Prompt Evaluation Log (DB)**: Introduced `EvaluationLogger` to silently record `latency_ms`, `token_count`, `cost_usd`, and `cache_hit` for all inferences across both `DynamicLlmProvider` and `BackgroundLlmProvider`.
     - **Async Non-Blocking Audits**: Logging hooks use `tokio::spawn` locally over shared `UniversalJobQueue` to ensure recording does not degrade LLM response latency.

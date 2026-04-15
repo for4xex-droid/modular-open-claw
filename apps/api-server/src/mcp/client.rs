@@ -39,7 +39,7 @@ impl McpClient {
         );
 
         // (P-6) Strict MCP Command Validation
-        let allowed_cmds = ["npx", "node", "python3", "uvx"];
+        let allowed_cmds = shared::mcp_constants::ALLOWED_MCP_COMMANDS;
         if !allowed_cmds.contains(&cmd) {
             return Err(anyhow!(
                 "🚨 [SECURITY VIOLATION] Unapproved command '{}'. Only {:?} are allowed for MCP.",
@@ -53,12 +53,7 @@ impl McpClient {
             // Search for first positional argument that isn't a flag
             let pkg = args.iter().find(|a| !a.starts_with('-'));
             if let Some(p) = pkg {
-                let allowed_prefixes = [
-                    "@modelcontextprotocol/",
-                    "@stripe/",
-                    "@appsyogi/",
-                    "@secops/",
-                ];
+                let allowed_prefixes = shared::mcp_constants::ALLOWED_MCP_PREFIXES;
                 if !allowed_prefixes.iter().any(|prefix| p.starts_with(prefix)) {
                     return Err(anyhow!(
                         "🚨 [SECURITY VIOLATION] Unapproved package '{}'. Must start with one of {:?}",
@@ -71,6 +66,9 @@ impl McpClient {
                     cmd
                 ));
             }
+        } else {
+            // Binary commands (like fff-mcp, python3, node) skip prefix validation
+            // because they are either system-level binaries or pre-installed and trusted.
         }
 
         // Use tokio::process::Command for async I/O
@@ -453,6 +451,18 @@ mod tests {
             HashMap::new(),
         );
         if let Err(e) = res3 {
+            assert!(
+                !e.to_string().contains("SECURITY VIOLATION"),
+                "Should pass security violation: {}",
+                e
+            );
+        }
+
+        // Green test: Try to spawn fff-mcp binary command
+        // Since it's an allowed binary command, it should skip the package prefix check.
+        // It might fail OS spawn if fff-mcp isn't installed, but it should NOT be a SECURITY VIOLATION.
+        let res4 = McpClient::spawn("test4".to_string(), "fff-mcp", vec![], HashMap::new());
+        if let Err(e) = res4 {
             assert!(
                 !e.to_string().contains("SECURITY VIOLATION"),
                 "Should pass security violation: {}",

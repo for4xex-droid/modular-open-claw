@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 use crate::trend_sonar::TrendAdapter;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::traits::TrendItem;

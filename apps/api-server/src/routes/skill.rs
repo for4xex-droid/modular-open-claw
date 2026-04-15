@@ -297,8 +297,7 @@ pub async fn spawn_mcp_server(
     Json(payload): Json<McpSpawnRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // SEC: Command whitelist to prevent arbitrary process execution
-    const ALLOWED_MCP_COMMANDS: &[&str] = &["npx", "node", "python3", "uvx"];
-    if !ALLOWED_MCP_COMMANDS.contains(&payload.command.as_str()) {
+    if !shared::mcp_constants::ALLOWED_MCP_COMMANDS.contains(&payload.command.as_str()) {
         return Err(aiome_core::error::AiomeError::SecurityViolation {
             reason: format!("MCP command '{}' is not whitelisted", payload.command),
         }
@@ -349,6 +348,7 @@ pub async fn spawn_mcp_server(
 )]
 pub async fn update_mcp_config(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<crate::mcp::discovery::McpDiscoveryFile>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
@@ -388,6 +388,7 @@ pub async fn update_mcp_config(
 )]
 pub async fn get_mcp_config(
     State(_state): State<AppState>,
+    _auth: crate::auth::Authenticated,
 ) -> Result<Json<crate::mcp::discovery::McpDiscoveryFile>, AppError> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");

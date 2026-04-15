@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-04-06
+**Last Updated:** 2026-04-15
 
 ---
 
@@ -72,6 +72,7 @@ RURI_EMBED_URL=http://localhost:8100             # RuriサーバーURL
 ABYSS_VAULT_PATH=~/.aiome/abyss_vault            # APIキー物理隔離ディレクトリ
 TIMESFM_AUTH_TOKEN=your_secure_token             # TimesFM 予測側認証トークン (必須)
 TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
+CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator で強制利用するコンテナランタイム (podman or docker). 指定がない場合は podman 優先の自動フォールバック。
 ```
 
 > **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。

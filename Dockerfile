@@ -1,3 +1,9 @@
+# ⚠️ DEPRECATED: This monolith Dockerfile bundles frontend + backend in one image.
+# The new architecture uses separate containers:
+#   - API Server:          docker/production.Dockerfile
+#   - Management Console:  apps/management-console/Dockerfile
+# See docker-compose.quickstart.yml for the canonical setup.
+# Known issue: `npm ci --ignore-scripts` (L7) breaks esbuild binary download.
 ARG RUST_VERSION=1.85
 
 FROM node:20-bookworm-slim AS frontend-builder

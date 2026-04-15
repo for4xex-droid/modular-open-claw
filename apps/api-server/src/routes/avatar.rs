@@ -203,6 +203,7 @@ pub async fn get_ekyc_status_handler(
         (status = 404, description = "ファイルが見つからない")
     )
 )]
+// auth-exempt: 静的アセット配信
 pub async fn serve_inochi2d_asset(
     axum::extract::Path(filename): axum::extract::Path<String>,
 ) -> Result<axum::response::Response, AppError> {

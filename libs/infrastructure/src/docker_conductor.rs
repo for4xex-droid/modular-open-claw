@@ -32,6 +32,8 @@ pub struct DockerConductor {
     active_escrows: DashMap<String, String>,
     /// Shadow Worker コンテナに渡す Gemini API キー（パージ済み環境変数の代替）
     gemini_api_key: SecretString,
+    /// ランタイム（podman優先、なければdocker）
+    container_runtime: String,
 }
 
 impl DockerConductor {
@@ -40,6 +42,8 @@ impl DockerConductor {
         grpc_config: GrpcClientConfig,
         gemini_api_key: SecretString,
     ) -> Self {
+        let container_runtime = shared::container_runtime::detect_runtime().to_string();
+
         Self {
             bastion: BastionGuard::new_internal(PermissionManifest::default()),
             commerce_engine,
@@ -47,6 +51,7 @@ impl DockerConductor {
             grpc_config,
             active_escrows: DashMap::new(),
             gemini_api_key,
+            container_runtime,
         }
     }
 
@@ -193,17 +198,21 @@ impl DockerConductor {
 
         let task_prompt_b64 = base64::engine::general_purpose::STANDARD.encode(task_prompt);
 
-        // Capability Check: Verify Docker is installed
+        // Capability Check: Verify runtime is installed
+        let version_cmd = format!("{} --version", self.container_runtime);
         match self
             .bastion
-            .safe_exec_with_profile("docker --version", SandboxProfile::Default)
+            .safe_exec_with_profile(&version_cmd, SandboxProfile::Default)
             .await
         {
             Ok(_) => {}
             Err(_) => {
                 let _ = std::fs::remove_dir_all(&temp_dir);
                 return Err(AiomeError::Infrastructure {
-                    reason: "Docker capability check failed.".to_string(),
+                    reason: format!(
+                        "Container runtime check failed for: {}",
+                        self.container_runtime
+                    ),
                 });
             }
         }
@@ -212,12 +221,13 @@ impl DockerConductor {
 
         // Gap S: Ensure aiome-internal network exists (idempotent)
         // Note: BastionGuard executes binaries directly without a shell, so we cannot use `|| true` or redirections.
+        let network_cmd = format!(
+            "{} network create --driver bridge aiome-internal",
+            self.container_runtime
+        );
         let _ = self
             .bastion
-            .safe_exec_with_profile(
-                "docker network create --driver bridge aiome-internal",
-                SandboxProfile::Strict,
-            )
+            .safe_exec_with_profile(&network_cmd, SandboxProfile::Strict)
             .await;
 
         // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
@@ -242,9 +252,10 @@ impl DockerConductor {
                 std::fs::set_permissions(&env_file_path, std::fs::Permissions::from_mode(0o600));
         }
 
-        // Detached Docker Execution (gRPC Server) - Gap I, J, L, N, R, S
+        // Detached Container Execution (gRPC Server) - Gap I, J, L, N, R, S
         let cmd = format!(
-            "docker run -d --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
+            "{} run -d --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
+            self.container_runtime,
             container_name,
             yaml_path.display(),
             env_file_path.display()
@@ -269,7 +280,7 @@ impl DockerConductor {
         }
 
         // 2. Get dynamic port mapped to 50051
-        let port_cmd = format!("docker port {} 50051", container_name);
+        let port_cmd = format!("{} port {} 50051", self.container_runtime, container_name);
 
         // Simple retry loop to wait for container to bind port
         let mut mapped_port = String::new();
@@ -522,7 +533,7 @@ impl DockerConductor {
         );
 
         // Attempt to stop and remove the container
-        let cmd = format!("docker stop {}", container_name);
+        let cmd = format!("{} stop {}", self.container_runtime, container_name);
         match self
             .bastion
             .safe_exec_with_profile(&cmd, SandboxProfile::Default)
@@ -533,11 +544,10 @@ impl DockerConductor {
                     "✅ [DockerConductor] Container {} stopped successfully.",
                     container_name
                 );
-                // Also try to remove it
                 let _ = self
                     .bastion
                     .safe_exec_with_profile(
-                        &format!("docker rm {}", container_name),
+                        &format!("{} rm {}", self.container_runtime, container_name),
                         SandboxProfile::Default,
                     )
                     .await;

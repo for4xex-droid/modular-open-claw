@@ -2,6 +2,14 @@
   "_comment": "Aiome MCP Server Discovery Configuration",
   "_docs": "Place this file at ~/.aiome/mcp_servers.json to auto-connect external MCP tools on Aiome startup.",
   "mcp_servers": {
+    "fff-mcp": {
+      "_comment": "Blazing fast exact-match search tool for Aiome, using fff.nvim",
+      "command": "fff-mcp",
+      "args": [],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    },
     "ga4": {
       "_comment": "Google Analytics 4 MCP integration",
       "command": "npx",

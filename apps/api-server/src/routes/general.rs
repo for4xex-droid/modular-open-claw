@@ -80,6 +80,7 @@ pub async fn get_wiki_content(
     ),
     security(("api_key" = []))
 )]
+// auth-exempt: ヘルスチェック
 pub async fn get_health_status(
     State(state): State<AppState>,
 ) -> Result<Json<ResourceStatus>, AppError> {

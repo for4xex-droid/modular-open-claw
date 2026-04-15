@@ -1,0 +1,73 @@
+services:
+  wp-db:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: wp
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: wp
+    volumes:
+      - wp_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  wordpress:
+    image: wordpress:6.7
+    ports: ["8080:80"]
+    environment:
+      WORDPRESS_DB_HOST: wp-db
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_app_data:/var/www/html
+    depends_on:
+      wp-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/wp-login.php || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # WP-CLI auto-setup: installs WP + creates admin + generates Application Password
+  wp-setup:
+    image: wordpress:cli
+    user: "33:33" # Run as www-data to match wordpress image permissions
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: wp-db
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_app_data:/var/www/html
+    command: >
+      sh -c '
+        echo "⏳ Waiting for WP database tables..."
+        sleep 5
+        wp core install \
+          --url="http://localhost:8080" \
+          --title="Aiome E2E Test" \
+          --admin_user=admin \
+          --admin_password=admin \
+          --admin_email=test@aiome.local \
+          --skip-email
+        echo "✅ WordPress installed"
+        
+        # Ensure pretty permalinks are enabled (required for modern REST API routing)
+        wp rewrite structure "/%postname%/"
+        
+        # Create Application Password for key-proxy usage
+        wp user application-password create admin aiome-e2e-key --porcelain
+        echo "🔑 Application password created (copy from output above to .env)"
+      '
+
+volumes:
+  wp_db_data:
+  wp_app_data:

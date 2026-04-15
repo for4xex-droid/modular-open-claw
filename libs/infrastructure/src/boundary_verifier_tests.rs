@@ -85,11 +85,16 @@ mod tests {
     #[test]
     fn test_binary_whitelist_dynamic_pass() {
         let verifier = BoundaryVerifier::from_global_config();
-        // 'docker' は GLOBAL_SECURITY_CONFIG にあるが、現在の BoundaryVerifier にはハードコードされていない
-        let result = verifier.verify_command("docker ps", false);
+        // 'docker' / 'podman' は GLOBAL_SECURITY_CONFIG にあるが、現在の BoundaryVerifier にはハードコードされていない
+        let result_docker = verifier.verify_command("docker ps", false);
         assert!(
-            result.is_ok(),
+            result_docker.is_ok(),
             "Expected 'docker' to pass via GLOBAL_SECURITY_CONFIG"
+        );
+        let result_podman = verifier.verify_command("podman ps", false);
+        assert!(
+            result_podman.is_ok(),
+            "Expected 'podman' to pass via GLOBAL_SECURITY_CONFIG"
         );
     }
 

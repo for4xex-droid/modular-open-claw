@@ -7,22 +7,29 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      # ollama CLI is guaranteed to exist; curl is NOT included in the minimal Ubuntu base.
+      # `ollama list` connects to the server and succeeds even with zero models pulled.
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     # Note: For GPU support, you should run this using docker compose up with --gpus=all flag on Linux.
     # On Mac, native Ollama installation is recommended instead of using this container.
 
   api-server:
     # Use the pre-built image to save 10+ minutes of build time
-    image: ghcr.io/motivationstudio/aiome:v0.1.0
+    image: ghcr.io/motivationstudio-llc/aiome:v0.2.0-beta
     container_name: aiome-api-server
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/production.Dockerfile
     ports:
       - "3015:3015"
     environment:
       OLLAMA_HOST: "http://ollama:11434"
       # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"
-      OLLAMA_MODEL: "llama3"
+      OLLAMA_MODEL: "gemma4:e4b"  # Gemma4 — multimodal, ~6GB RAM
       RUST_LOG: "info,aiome=debug"
       WORKSPACE_DIR: "/data"
       API_SERVER_SECRET: "quickstart_secret_change_in_production"
@@ -31,6 +38,27 @@ services:
       # STRIPE_API_KEY: "" # Leave empty for automatic mock mode capability
     volumes:
       - aiome_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3015/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  management-console:
+    image: ghcr.io/motivationstudio-llc/aiome-console:v0.2.0-beta
+    container_name: aiome-mc
+    build:
+      context: apps/management-console
+      dockerfile: Dockerfile
+    ports:
+      - "1420:80"
+    depends_on:
+      api-server:
+        condition: service_healthy
+
 volumes:
   ollama_data:
   aiome_data:

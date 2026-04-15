@@ -49,6 +49,7 @@ pub struct TokenResponse {
         (status = 200, description = "OAuth 2.1 Authorization Endpoint")
     )
 )]
+// auth-exempt: OAuth フロー
 pub async fn authorize_handler(
     Query(query): Query<AuthorizeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -68,6 +69,7 @@ pub async fn authorize_handler(
         (status = 200, description = "OAuth 2.1 Token Endpoint", body = TokenResponse)
     )
 )]
+// auth-exempt: OAuth フロー
 pub async fn token_handler(
     State(state): State<AppState>,
     Json(payload): Json<TokenRequest>,

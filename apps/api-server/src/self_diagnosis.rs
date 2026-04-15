@@ -60,19 +60,24 @@ pub async fn run_startup_diagnosis(config: &shared::config::AiomeConfig) -> Resu
     }
     info!("✅ [Self-Diagnosis] Database connection successfully established.");
 
-    // 3. Docker API Ping
-    let docker_out = tokio::process::Command::new("docker")
+    // 3. Container Runtime Ping
+    let runtime = shared::container_runtime::detect_runtime();
+
+    let docker_out = tokio::process::Command::new(runtime)
         .arg("info")
         .output()
         .await;
 
     match docker_out {
         Ok(out) if out.status.success() => {
-            info!("✅ [Self-Diagnosis] Docker daemon is perfectly reachable.");
+            info!(
+                "✅ [Self-Diagnosis] {} daemon is perfectly reachable.",
+                runtime
+            );
         }
         _ => {
-            tracing::warn!("⚠️ [Self-Diagnosis] Docker daemon is NOT reachable. Some features (like Docker-based Actions) may not work.");
-            // We no longer bail here because Docker is not strictly required for users using Cloud LLMs or native actions.
+            tracing::warn!("⚠️ [Self-Diagnosis] {} daemon is NOT reachable. Some features (like Docker-based Actions) may not work.", runtime);
+            // We no longer bail here because Docker/Podman is not strictly required for users using Cloud LLMs or native actions.
         }
     }
 

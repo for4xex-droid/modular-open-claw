@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 //! # Chaos Experiments
 //!
 //! 定常状態仮説に基づく制御された障害実験。

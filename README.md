@@ -9,7 +9,8 @@
 <h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 75,000+ lines of production Rust.</em>
+  <em>Written entirely by AI agents. 90,000+ lines of production Rust.</em><br><br>
+  <strong>AIが自分たちで実装した、AIが安全に活動・進化するための「自律型オペレーティングシステム」</strong>
 </p>
 
 <p align="center">
@@ -21,16 +22,21 @@
 
 ---
 
-![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=PENDING_TUTORIAL)
+*(Click to watch the 90-second YouTube Tutorial)*
 
 ---
 
 ## ⚡ Quick Start (5秒で起動 / No config needed)
 
+> [!TIP]
+> **$0 / month 💸**
+> Docker / Podman を使って自分のマシンでセルフホストすれば、高度な AI エージェント OS を**毎月 $0** で無制限に利用できます。すべての機能がデフォルトで手に入ります。
+
 Aiome は、面倒な設定なしで、コマンド一発で全機能（チャット、ツール実行、自己修復、シミュレートされたAI経済）が体験できるように設計されています。
 商用決済（Commerce / Stripe）等の高度な機能も、キー未設定時には**すべて自動でモックモード**として動作するため、何も壊れません。
 
-### オプション A: Docker を使う（推奨）
+### オプション A: Docker / Podman を使う（推奨）
 初回ビルドの10分以上をスキップし、あらかじめビルドされたイメージと Ollama を立ち上げます。
 
 ```bash
@@ -124,6 +130,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Docker](https://img.shields.io/badge/docker-%232496ED.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Podman](https://img.shields.io/badge/podman-%23892CA0.svg?style=for-the-badge&logo=podman&logoColor=white)
 
 | コンポーネント | 採用技術 | 役割 |
 |---|---|---|
@@ -146,6 +153,15 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 「Built by Agents」のプロジェクトに人間が貢献するためのルール。
 - **[脆弱性の報告 (SECURITY.md)](SECURITY.md)**: セキュリティインシデントの連絡先。
+
+---
+
+## ⚖️ 法的文書 (Legal & Privacy)
+
+プロダクトのパブリックβリリースに伴い、以下の法的文書を定めています。利用前に必ずご確認ください。
+
+- **[利用規約 (Terms of Service)](docs/legal/TERMS_OF_SERVICE.md)**
+- **[プライバシーポリシー (Privacy Policy)](docs/legal/PRIVACY_POLICY.md)**
 
 ---
 

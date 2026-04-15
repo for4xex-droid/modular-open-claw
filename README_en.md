@@ -9,7 +9,8 @@
 <h1 align="center">Aiome</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 75,000+ lines of production Rust.</em>
+  <em>Written entirely by AI agents. 90,000+ lines of production Rust.</em><br><br>
+  <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
 </p>
 
 <p align="center">
@@ -21,16 +22,21 @@
 
 ---
 
-![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=PENDING_TUTORIAL)
+*(Click to watch the 90-second YouTube Tutorial)*
 
 ---
 
 ## ⚡ Quick Start (5 Seconds / No config needed)
 
+> [!TIP]
+> **$0 / month 💸**
+> Self-host Aiome on your own machine using Docker / Podman and get an advanced AI Agent OS for **$0 per month** with unlimited usage. All features are included by default.
+
 Aiome is designed to let you experience all features (chat, autonomous tool execution, self-healing, simulated AI economy) instantly with a single command, without tedious configuration.
 Advanced features like commercial payments (Commerce/Stripe) **automatically operate in mock mode** when API keys are not set, ensuring nothing breaks and you can evaluate everything.
 
-### Option A: Using Docker (Recommended)
+### Option A: Using Docker / Podman (Recommended)
 Skip the 10+ minute initial compilation locally by using our pre-built image running alongside Ollama.
 
 ```bash
@@ -124,6 +130,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Docker](https://img.shields.io/badge/docker-%232496ED.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Podman](https://img.shields.io/badge/podman-%23892CA0.svg?style=for-the-badge&logo=podman&logoColor=white)
 
 | Component | Technology | Role |
 |---|---|---|
@@ -146,6 +153,15 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 
 - **[Contributing Guide (CONTRIBUTING.md)](CONTRIBUTING.md)**: Rules for human contributions to a "Built by Agents" project.
 - **[Reporting Vulnerabilities (SECURITY.md)](SECURITY.md)**: Security incident contact points.
+
+---
+
+## ⚖️ Legal & Privacy
+
+With the public beta release of the product, we have established the following legal documents. Please review them before use.
+
+- **[Terms of Service](docs/legal/TERMS_OF_SERVICE.md)**
+- **[Privacy Policy](docs/legal/PRIVACY_POLICY.md)**
 
 ---
 

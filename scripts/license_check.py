@@ -92,6 +92,9 @@ for dir_name in DIRS_TO_CHECK:
         rel = str(rs_file.relative_to(PROJECT_ROOT))
         if "target/" in rel or "build/" in rel:
             continue
+        # Skip generated artifacts
+        if "workspace/artifacts/" in rel:
+            continue
         try:
             with open(rs_file, 'r', errors='replace') as f:
                 # Read first 10 lines for header check

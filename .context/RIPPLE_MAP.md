@@ -1,4 +1,19 @@
 # 🌊 Aiome Ripple Map
+## Phase 1+2: Hardening Podman Infrastructure Integration
+### 1. Rootless Podman Full Support
+- **変更内容**:
+    - `libs/shared/src/container_runtime.rs` [NEW]: コンテナランタイム検出のシングルソースオブトゥルース (SSOT)。`CONTAINER_RUNTIME` 環境変数による明示的オーバーライド → `podman --version` 自動検出 → `docker` フォールバックの 3 段階検出と `OnceLock` キャッシュ。
+    - `libs/infrastructure/src/docker_conductor.rs` [MODIFY]: ランタイム検出を SSOT (`shared::container_runtime::detect_runtime()`) に委譲。
+    - `libs/infrastructure/src/security.rs` [MODIFY]: `ALLOWED_BINARIES` に `"podman"` を追加と境界バリデーションホワイトリスト更新。
+    - `apps/api-server/src/self_diagnosis.rs` [MODIFY]: コンテナランタイムの疎通確認を SSOT 経由に変更。
+    - `apps/api-server/src/docker/delegator.rs` [MODIFY]: Shadow Worker への委譲ロジックを SSOT 経由に変更。
+    - `scripts/backup.sh` [MODIFY]: ランタイム検出をファイルトップレベルに引き上げ、`podman compose` / `docker compose` 両対応。
+- **波及効果**:
+    - Aiome の実運用において Docker daemon (Root) 要件を持っていたインフラを `Podman (Rootless)` セキュリティレベルへ格上げ。
+    - コンテナを利用したコード実行 (Shadow Worker 等) 時も自動的にユーザー権限（Rootless）下で隔離されるため、RCE 被害半径の極小化に寄与。
+    - 後方互換性を保ちながら透過的な実装であるため、現在 Docker を使用中の開発環境への破壊的な影響はゼロ。
+    - `CONTAINER_RUNTIME` 環境変数により CI/CD パイプラインでのランタイム指定が可能。
+
 ## Phase 0/D: Technical Debt & Production Readiness Hardening
 ### 1. Infrastructure Security & CI Stability
 - **変更内容**:
@@ -291,6 +306,15 @@
     - `GigEngine`: **変更なし**。独立したトレイトとして並行動作。
     - `ArtifactStore`: **変更なし**。LoRA の来歴追跡は将来フェーズで `provenance edges` と連携可能。
     - Management Console: 将来フェーズで出品・購入 UI を統合予定。
+
+## Phase 1A: fff.nvim Integration & MCP Dispatch Engine
+### 1. Unified MCP Dispatch & Execution Sandboxing
+- **変更理由**: `fff.nvim` を始めとする外部 MCP サーバーの機能を Aiome の自律チャットループ内で安全かつ動的にディスパッチ（解決・実行）するため。従来の Wasm 固定の静的ディスパッチを廃止し、稼働中の MCP プロセス群全体へ O(N) でポーリングする動的ルーティング構造へと刷新。
+- **波及効果**:
+    - `apps/api-server/src/tool_call_router.rs` [MODIFY]: `execute_skill` 内に MCP サーバーポーリング（`active_client_ids()`）と `ListTools` -> `CallTool` という二段階要求を実装。2秒の探索タイムアウトと30秒の実行タイムアウトを導入し、巨大リポジトリ検索時等でのプロセス凍結（ハングアップ）を完全防止。
+    - `libs/shared/src/mcp_constants.rs` [NEW]: セキュリティの単一の真実源 (SSOT) として `ALLOWED_MCP_COMMANDS` および `ALLOWED_NPM_PACKAGES` を新設。`fff-mcp` 等のバイナリコマンド特例の認可ロジックを一元化。
+    - `apps/api-server/src/mcp/client.rs` & `routes/skill.rs` [MODIFY]: `McpClient::spawn` と `spawn_mcp_server` エンドポイントがハードコードを脱却し、`mcp_constants.rs` を使用するように置換。これにより、インフラ全体でのコマンドバイパス脆弱性 (RCEの危険性) が物理的に閉塞。
+    - 統合効果: 未定義のツールコマンドが呼ばれた際、まず稼働中の MCP サーバーを探索し、存在すればそれを実行し、なければ安全に Wasm スキルへフォールバックする「無破壊的統合」が確立。
 
 ## Phase B: Autonomous Chat Loop Hardening (ToolCallRouter Integration)
 
@@ -1463,3 +1487,74 @@ graph TD
 - **波及効果**:
     - WordPress トークンが API サーバーのメモリ空間から完全に追放され、SSR / RCE 脆弱性等によるプレーンテキストのクレデンシャル漏洩リスクを物理遮断した。
     - プロキシを介した通信により、WP API へのレート制限・通信遮断が `key-proxy` コンポーネント単独の責務となり、API サーバーのスレッドが枯渇するブロッキング障害が予防された。
+
+## Sprint 0: Auth Extractor Final Gate
+### 1. Security Compliance — auth-exempt 監査完了
+- **変更内容**:
+    - `apps/api-server/src/routes/skill.rs` [MODIFY]: `update_mcp_config` と `get_mcp_config` に `_auth: crate::auth::Authenticated` を追加。MCP 設定の未認証アクセスを遮断。
+    - `apps/api-server/src/routes/whisper.rs` [MODIFY]: `get_monologue_history` に `_auth: crate::auth::Authenticated` を追加。内省ログの未認証アクセスを遮断。
+    - `apps/api-server/src/routes/bootstrap.rs` [MODIFY]: 2ハンドラに `// auth-exempt` コメントを追記（セットアップ前に使用）。
+    - `apps/api-server/src/routes/auth.rs` [MODIFY]: 2ハンドラに `// auth-exempt` コメントを追記（OAuth フロー）。
+    - `apps/api-server/src/routes/commerce_webhook.rs` [MODIFY]: `stripe_webhook` に `// auth-exempt` コメント（Stripe 署名検証）。
+    - `apps/api-server/src/routes/avatar.rs` [MODIFY]: `serve_inochi2d_asset` に `// auth-exempt` コメント（静的アセット配信）。
+    - `apps/api-server/src/routes/general.rs` [MODIFY]: `get_health_status` に `// auth-exempt` コメント（ヘルスチェック）。
+    - `scripts/deep-scan.sh` [MODIFY]: CC-6 の awk パターンに `Extension.*AuthenticatedUser` を追加し、Auth Extractor の全パターンを認識可能に。
+- **波及効果**:
+    - deep-scan CC-6 が **Errors: 0** を達成。全 API ハンドラが Auth 適用済みまたは明示的に auth-exempt に分類され、未監査ハンドラがゼロに。
+    - 既存の `api_integration_tests.rs` のテストが既に Auth を想定して書かれていたため、テスト修正は不要。
+
+## Sprint 1-A: One-Click Management Console (Docker)
+### 1. MC コンテナ化 & Nginx SPA ホスティング
+- **変更内容**:
+    - `apps/management-console/Dockerfile` [NEW]: Node.js 20-alpine でビルドし nginx:alpine で配信するマルチステージ構成。`.npmrc` の `ignore-scripts=true` を回避するため、`package.json` を先にコピーしてから `npm ci` を実行する順序でビルド。HEALTHCHECK 付き。
+    - `apps/management-console/nginx.conf` [NEW]: SPA ルーティング (`try_files`)、API リバースプロキシ (`^~` 修飾子で regex より優先)、SSE 対応 (`proxy_buffering off`)、gzip 圧縮 (level 6)、セキュリティヘッダー (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy)、プロジェクト固有アセットキャッシュ (.vrm, .otf, .wasm)。
+    - `apps/management-console/.dockerignore` [NEW]: node_modules, dist, src-tauri, e2e, .vscode, *.md 等を除外しビルドコンテキストを最小化。
+    - `docker-compose.quickstart.yml` [MODIFY]: `management-console` サービスを追加。全コンテナに `healthcheck` + `depends_on: condition: service_healthy` を実装し、起動順序を保証 (ollama → api-server → MC)。`OLLAMA_MODEL` を `gemma4:e4b` に更新。
+- **波及効果**:
+    - `docker compose -f docker-compose.quickstart.yml up` 一発で、Ollama + API Server + Management Console が正しい順序で起動する完全な開発環境が完成。
+    - Nginx の `add_header` 継承バグ（子 location で親のヘッダーが消失）を明示的な再定義で回避。この知見は今後の Nginx 設定変更時に必須。
+
+## Sprint 1-B: GitHub Container Registry CI/CD
+### 1. Docker イメージ自動ビルド & プッシュ
+- **変更内容**:
+    - `.github/workflows/docker-publish.yml` [NEW]: `main` Push / `v*` タグ / 手動トリガーで、API Server (`ghcr.io/motivationstudio-llc/aiome`) と Management Console (`ghcr.io/motivationstudio-llc/aiome-console`) のマルチアーキテクチャ (amd64 + arm64) Docker イメージを自動ビルド & ghcr.io へプッシュ。GHA キャッシュ (`cache-from/to: type=gha`) で再ビルド時間を短縮。
+    - `docker-compose.quickstart.yml` [MODIFY]: `api-server` の `build.dockerfile` を `docker/production.Dockerfile` に厳密化（旧 monolith `Dockerfile` との混同を防止）。Ollama の healthcheck を `curl` → `ollama list` に変更（Ubuntu ベースの Ollama イメージに curl が非搭載であるため）。
+- **波及効果**:
+    - `main` に Merge するだけで自動的に ghcr.io へリリースされ、ユーザーは `docker compose up` だけで最新版を利用可能に。
+    - Ollama healthcheck の `curl` 問題が解消され、`depends_on` チェーンの全段が確実に動作。
+
+## Sprint 2: E2E Verification & Launch Preparation
+### 2-A: WordPress E2E テスト環境
+- **変更内容**:
+    - `docker-compose.wp-test.yml` [NEW]: WP-CLI による全自動インストール（`core install` + `user application-password create`）と、`shared-wp-html` volume による明示的ファイル共有パターンを採用した WordPress REST API E2E 環境。
+- **波及効果**:
+    - `key-proxy` の `/api/v1/wp/publish` エンドポイントを E2E で検証可能に。`.env.example` に `WP_API_URL` / `WP_API_TOKEN` が既存のため追加不要。
+
+### 2-B: スクリーンキャスト自動録画
+- **変更内容**:
+    - `apps/management-console/e2e/screencast.spec.ts` [NEW]: Playwright `video: 'on'` + `slowMo: 400` で管理コンソールの主要4タブを自動巡回し、PR 用スクリーンキャスト動画を生成。
+    - `apps/management-console/.gitignore` [MODIFY]: `test-results/`, `playwright-report/`, `test_output.txt` を追加。
+- **波及効果**:
+    - 生成された動画は YouTube チュートリアル (Sprint 2-F) の素材として活用。既存の E2E テスト (`demo.spec.ts`, `home_v2.spec.ts`) への影響なし。
+
+### 2-D: 法的コンプライアンス基盤
+- **変更内容**:
+    - `docs/legal/TERMS_OF_SERVICE.md` [NEW]: β 版向け利用規約スキャフォールド。
+    - `README.md` [MODIFY]: Legal & Privacy セクションを追加し、ToS / Privacy Policy へのリンクを設置。
+    - `README_en.md` [MODIFY]: 同上（英語版同期）。
+- **波及効果**:
+    - フロントエンドの ToS リンク（将来実装）が 404 にならない基盤を確立。README / README_en の同期は AGENTS.md Rule #2 に準拠。
+
+### 2-C: E2E Verification Testing
+- **変更内容**:
+    - `apps/management-console/e2e/wp_publish.spec.ts` [NEW]: Chat 上での自律的な WP 起動と、`key-proxy` への直接APIコールを検証する TDD E2E テスト。LLM の応答ストリーミングを考慮し Flaky にならない待機ロジックを実装。
+- **波及効果**:
+    - E2E 実行時の検証基盤が独立して動作し、将来の自律的スキル利用の追加テストのロールモデルとなった。
+
+### 2-F: Postiz Growth Tactics 実装
+- **変更内容**:
+    - `apps/api-server/tests/marketing_assets_test.rs` [NEW]: `README.md` および `README_en.md` に $0 CTA や YouTube 動画が欠落していないかを保証する TDD テスト。
+    - `scripts/setup-github-topics.sh` [NEW]: GitHub SEO Topic 自動設定スクリプト。
+    - `README.md`, `README_en.md` [MODIFY]: 動画リンクと Docker/$0 の CTA パネルを追記。
+- **波及効果**:
+    - マーケティング施策がインフラ (コード・テスト) のライフサイクルと結合された。ドキュメント改修ミスが CI 上で検知されるようになる。

@@ -15,24 +15,26 @@ use tokio::sync::mpsc;
 use tracing::info;
 use uuid::Uuid;
 
-// IMPORTANT: This test requires a running Docker daemon and the aiome-shadow-worker image built.
+// IMPORTANT: This test requires a running Docker/Podman daemon and the aiome-shadow-worker image built.
 // Since it spins up real containers, it might be slow. We tag it implicitly as an integration test.
 #[tokio::test]
 async fn test_docker_conductor_e2e_success_flow() {
     dotenvy::dotenv().ok();
 
-    // Check if docker is available, otherwise skip (to avoid failing in environments without docker)
-    let output = std::process::Command::new("docker")
+    // Check if runtime is available, otherwise skip (to avoid failing in environments without docker/podman)
+    let runtime = shared::container_runtime::detect_runtime();
+
+    let output = std::process::Command::new(runtime)
         .arg("--version")
         .output();
 
     if output.is_err() {
-        println!("Skipping Docker E2E test as docker is not installed");
+        println!("Skipping E2E test as {} is not installed", runtime);
         return;
     }
     let out = output.unwrap(); // allow-anti-pattern
     if !out.status.success() {
-        println!("Skipping Docker E2E test as docker is not installed");
+        println!("Skipping E2E test as {} is not installed", runtime);
         return;
     }
 

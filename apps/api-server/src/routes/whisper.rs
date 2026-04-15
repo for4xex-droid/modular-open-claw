@@ -46,6 +46,7 @@ pub struct MonologueResponse {
 )]
 pub async fn get_monologue_history(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Query(query): Query<MonologueQuery>,
 ) -> Result<Json<MonologueResponse>, AppError> {
     let limit = query.limit.unwrap_or(20).clamp(1, 100);

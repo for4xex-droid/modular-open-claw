@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-14  
+> **最終更新**: 2026-04-15  
 > **対象リポジトリ**: `aiome/` (OSS) + `ProjectーNurture/` (商用拡張)
 
 ---
@@ -535,6 +535,7 @@ graph TB
         A2["ConstitutionalValidator — 倫理フィルター"]
         A3["PathSandbox — ファイルシステム隔離"]
         A4["IntentFirewall — MCP インテント検証"]
+        A5["container_runtime — ランタイム検出 SSOT"]
     end
 
     subgraph "Trust Zone B (NURTURE)"

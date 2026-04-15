@@ -60,6 +60,7 @@ impl Default for SecurityConfig {
                 "sandbox-exec".to_string(),
                 "ollama".to_string(),
                 "docker".to_string(),
+                "podman".to_string(),
                 "slm".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()

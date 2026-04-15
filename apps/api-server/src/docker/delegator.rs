@@ -64,8 +64,9 @@ pub async fn delegate_docker_worker(
             use base64::Engine;
             base64::engine::general_purpose::STANDARD.encode(task_prompt)
         };
+        let runtime = shared::container_runtime::detect_runtime().to_string();
         move || {
-            Command::new("docker")
+            Command::new(&runtime)
                 .arg("agent")
                 .arg("run")
                 .arg("--exec")
