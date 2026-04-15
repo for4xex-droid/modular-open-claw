@@ -499,9 +499,9 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
             } else {
                 setError(`Failed to fetch models: ${res.status}`);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Fetch models error:", err);
-            setError(`Connection error: ${err.message || 'Unknown error'}`);
+            setError(`Connection error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
             setLoading(false);
         }

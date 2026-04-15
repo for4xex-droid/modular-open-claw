@@ -51,9 +51,9 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
             } else {
                 setError(t('auth.errorServer', { status: response.status }));
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             clearTimeout(timeoutId);
-            if (err.name === 'AbortError') {
+            if (err instanceof Error && err.name === 'AbortError') {
                 setError(t('auth.errorTimeout') || 'Connection timed out');
             } else {
                 setError(t('auth.errorConnection'));

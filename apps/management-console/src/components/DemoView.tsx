@@ -104,8 +104,8 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
         addLog('WARNING: SSE not connected — steps will not update in real-time');
         setError('⚠️ SSE未接続: デモは開始されましたが、リアルタイム更新ができません。Settings でAPIトークンを確認してください。');
       }
-    } catch (err: any) {
-      const errMsg = err.message || 'Network error';
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Network error';
       addLog(`FETCH ERROR: ${errMsg}`);
       setError(`接続エラー: ${errMsg}`);
       setIsRunning(false);

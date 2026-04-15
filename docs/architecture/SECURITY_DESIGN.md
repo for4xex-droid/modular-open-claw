@@ -103,6 +103,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 80 | **WP Lifecycle Sabotage** | **Crafted `status: trash` payload to delete active posts** | 🔴 High | **Pre-computation Proxy Allowance Whitelist (Phase 4)** |
 | 81 | **Observability BOLA** | **Tenant accessing global metrics via Audit API** | 🔴 High | **Strict `system_agent_id` RBAC Check enforcement (Phase 3-A)** |
 | 82 | **Internal Error Leakage** | **Database SQL details exposed via API (CWE-209)** | 🔴 High | **Defensive Error Masking (`tracing` isolation) (Phase 3-A Reflexion)** |
+| 83 | **Webhook Replay / Parse Error** | **Malicious payload or duplicate Stripe event** | 🔴 High | **Parse-What-You-Need Resiliency & Idempotency Check** |
+| 84 | **Frontend Type Panic** | **Catching unpredictable exceptions without guards** | 🟡 Mid | **Tier A/B Strict `unknown` typing & `instanceof Error` checks** |
 
 ## 3. Defense Architecture
 
@@ -174,8 +176,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Autonomous Memory Lifecycle (Phase 4)**: Mitigates "cognitive noise" and resource exhaustion by autonomously pruning low-importance memories. Integrates `SlmBridge` for Poincare-based importance scoring and enforces a 0.3 threshold for background archival via Watchtower.
 - **Resilient Memory Trajectories (Phase 1-2 Reflexion)**: Swallows in `MemoryCrystallizer` and `napi-bridge` (`let _ =`) were replaced with explicit error tracking to eliminate silent failures in the causal trajectory path.
 - **Fail-Safe Skill Arena (Phase 1-2 Reflexion)**: Handled edge cases in parallel AI execution where both skills crash simultaneously (`Err`, `Err`), allowing the Arena to retreat safely rather than crashing the evaluation thread.
-- **Strict CRDT Persistence (Phase 1-2 Reflexion)**: Reinforced `UniversalJobQueue` with `ON CONFLICT DO UPDATE` (UPSERT) for Timeline synchronization, permanently eliminating logical data loss upon service restarts.
 - **Zero-Panic Infrastructure Policy (AADP v5)**: Implemented strict AST and RegEx-based Anti-Pattern enforcement (`pattern-enforcer.sh`). All unauthorized `unwrap()`, `expect()`, and `panic!()` invocations are completely eradicated across production code and integration tests to ensure deterministic stability. Known safe test unwraps are rigorously annotated with `// allow-anti-pattern`.
+- **Resilient Webhook Parsing**: Applies the "Parse-What-You-Need" pattern for Stripe webhooks, isolating standard deserialization panics. Enforces early idempotency rejection to prevent duplicate or tampered replay attacks on financial transactions.
+- **Frontend Type Hardening**: Eradicates the use of `any` types in global Catch blocks across the Management Console and deeply nested Trajectory records. Enforces TypeScript's safe `err: unknown` pattern with explicit `instanceof Error` boundaries, mathematically neutralizing runtime TypeErrors caused by unhandled upstream panics.
 
 ## 5. Comparison with Traditional Systems
 
@@ -187,7 +190,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-04-08*
+*Last Mutated: 2026-04-16*
 *Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)

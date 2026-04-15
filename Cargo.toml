@@ -38,7 +38,7 @@ unicode-normalization = "0.1"
 nix = { version = "0.27", features = ["process", "signal", "user", "fs", "ptrace"] }
 tokio-util = { version = "0.7", features = ["codec", "io", "rt"] }
 secrecy = { version = "0.8", features = ["serde"] }
-jsonschema = "0.17"
+jsonschema = { version = "0.17", default-features = false, features = ["resolve-file"] }
 tower = { version = "0.4", features = ["limit"] }
 futures = "0.3"
 tokio-stream = "0.1"
@@ -57,13 +57,13 @@ sha2 = "0.10"
 proptest = "1.6.0"
 img_hash = "3.2"
 image = "0.23"
-stripe = { version = "0.41", package = "async-stripe", features = ["runtime-tokio-hyper-rustls"] }
+stripe = { version = "1.0.0-rc.5", package = "async-stripe", features = ["rustls-tls-webpki-roots", "rustls-aws-lc-rs"] }
 hkdf = "0.12"
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 url = "2.5"
 html-escape = "0.2"
-lru = "0.13"
+lru = "0.17"
 clap = { version = "4.5.4", features = ["derive"] }
 indicatif = "0.17"
 dotenvy = "0.15"

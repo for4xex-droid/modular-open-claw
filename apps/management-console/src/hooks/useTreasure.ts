@@ -24,8 +24,8 @@ export const useTreasure = () => {
             }
             const data: TreasureItem[] = await res.json();
             setItems(data);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
             console.error(err);
         } finally {
             setLoading(false);

@@ -31,9 +31,9 @@ export const useModelStatus = () => {
             }
             const data: ModelStatusResponse = await res.json();
             setStatus(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("fetch status error:", err);
-            setError(err.message || "Connection error");
+            setError(err instanceof Error ? err.message || "Connection error" : "Connection error");
         } finally {
             setLoading(false);
         }
@@ -99,9 +99,13 @@ export const useModelStatus = () => {
                     throw err; // Stop retrying
                 }
             });
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                setError(err.message || "Failed to download model.");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                if (err.name !== 'AbortError') {
+                    setError(err.message || "Failed to download model.");
+                }
+            } else {
+                setError("Failed to download model.");
             }
             setIsPulling(false);
         }

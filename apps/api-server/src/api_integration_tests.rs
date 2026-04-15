@@ -1225,17 +1225,34 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
     metadata.insert(String::from("agent_id"), agent_id.to_string());
     metadata.insert(String::from("asset_id"), asset_id.to_string());
 
-    let session = stripe::CheckoutSession {
-        id: "cs_test_123".parse().unwrap(),
-        metadata: Some(metadata),
-        amount_total: Some(1000), // $10.00
-        ..Default::default()
-    };
-
-    let mut session_val = serde_json::to_value(&session).unwrap();
-    if let Some(obj) = session_val.as_object_mut() {
-        obj.insert("object".to_string(), serde_json::json!("checkout.session"));
-    }
+    // async-stripe 1.0.0-rc.5 の strict deserialization をバイパスするため
+    // serde_json::Value で手動構築。必須フィールドのみ明示的に設定し、
+    // 残りは CheckoutSession スキーマ充填（テスト安定性のため）。
+    let session_val = serde_json::json!({
+        // === テスト本質フィールド ===
+        "id": "cs_test_123",
+        "object": "checkout.session",
+        "metadata": metadata,
+        "amount_total": 1000,
+        // === スキーマ充填（strict deserialization 対策） ===
+        "automatic_tax": { "enabled": false, "status": null },
+        "created": 1677628800,
+        "currency": "usd",
+        "livemode": false,
+        "mode": "payment",
+        "payment_status": "paid",
+        "status": "complete",
+        "amount_subtotal": 1000,
+        "cancel_url": "http://example.com/cancel",
+        "custom_fields": [],
+        "custom_text": { "shipping_address": null, "submit": null, "terms_of_service_acceptance": null, "after_submit": null },
+        "customer_creation": "always",
+        "expires_at": 1677629800,
+        "payment_method_types": ["card"],
+        "phone_number_collection": { "enabled": false },
+        "success_url": "http://example.com/success",
+        "tax_id_collection": { "enabled": false }
+    });
 
     let db_path = _tmp.path().join("test.db");
     let pool = sqlx::sqlite::SqlitePoolOptions::new()

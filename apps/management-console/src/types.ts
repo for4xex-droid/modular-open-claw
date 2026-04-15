@@ -86,7 +86,7 @@ export interface TreasureItem {
 export interface TreasureFeedback {
     item_id: string;
     action: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface TrajectoryStep {
@@ -94,8 +94,8 @@ export interface TrajectoryStep {
     job_id?: string;
     action: string;
     tool_name?: string;
-    input: any;
-    output: any;
+    input: unknown;
+    output: unknown;
     timestamp: string;
     reasoning?: string;
     parent_step_id?: string;
@@ -116,7 +116,7 @@ export type SoTTrigger = "Manual" | { HighBudgetGig: { threshold: number } } | "
 export type SoTOutcome = "AllCriteriaPassed" | "MaxRoundsReached" | "BudgetExhausted" | "Timeout" | { Error: string };
 
 export type SoTEventPayload =
-    | { type: "SessionStart"; data: { session_id: string; config: any; trigger: SoTTrigger } }
+    | { type: "SessionStart"; data: { session_id: string; config: unknown; trigger: SoTTrigger } }
     | { type: "RoleStart"; data: { session_id: string; role: string; round: number } }
     | { type: "RoleOutput"; data: { session_id: string; role: string; round: number; content: string; token_count: number } }
     | { type: "Score"; data: { session_id: string; round: number; scores: [string, number][]; all_passed: boolean } }

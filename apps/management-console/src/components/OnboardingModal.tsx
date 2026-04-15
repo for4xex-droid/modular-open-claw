@@ -50,9 +50,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             onClose();
             // Force reload to apply BootMode::Normal changes and trigger system load
             window.location.reload();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to save onboarding settings", error);
-            setErrorMsg(error.message || "Failed to initialize AI startup. Is your LLM running?");
+            setErrorMsg(error instanceof Error ? error.message : "Failed to initialize AI startup. Is your LLM running?");
         } finally {
             setIsSaving(false);
         }

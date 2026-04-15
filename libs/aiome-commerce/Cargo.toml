@@ -31,6 +31,10 @@ schemars = { workspace = true }
 dashmap = "5.5"
 url = "2.5"
 subtle = "2.5"
+async-stripe-webhook = { version = "1.0.0-rc.5", features = ["full"] }
+async-stripe-core = { version = "1.0.0-rc.5", features = ["full"] }
+async-stripe-checkout = { version = "1.0.0-rc.5", features = ["full"] }
+async-stripe-billing = { version = "1.0.0-rc.5", features = ["full"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

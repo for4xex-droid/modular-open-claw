@@ -21,10 +21,16 @@ ignore = [
     "RUSTSEC-2026-0096",
     
     # -----------------------------------------------------------------
-    # Legacy Ignores from deeper dependencies:
+    # Serenity (tokio-tungstenite v0.21.0 -> rustls v0.22) & Legacy CVEs:
+    # These cannot be patched because serenity 0.12.x pins
+    # tokio-tungstenite 0.21 -> rustls 0.22 -> rustls-webpki 0.102.x.
+    # Monitor serenity v0.13+ for resolution.
     # -----------------------------------------------------------------
-    "RUSTSEC-2024-0421",
-    "RUSTSEC-2023-0071",
-    "RUSTSEC-2026-0049",
-    "RUSTSEC-2023-0080"
+    "RUSTSEC-2026-0098", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
+    "RUSTSEC-2026-0099", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
+    "RUSTSEC-2026-0097", # rand (legacy crate, pinned by serenity -> rustls 0.22 tree)
+    "RUSTSEC-2024-0421", # idna 0.4.0 (pinned by serenity -> reqwest -> hyper-tls -> url)
+    "RUSTSEC-2023-0071", # rsa (pinned by serenity -> rustls 0.22 -> webpki)
+    "RUSTSEC-2026-0049", # rustls-webpki 0.102.x CRL matching (pinned by serenity)
+    "RUSTSEC-2023-0080"  # matrixmultiply (pinned by tauri -> image -> ndarray)
 ]

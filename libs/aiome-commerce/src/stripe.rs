@@ -8,7 +8,7 @@
 use aiome_core_contracts::commerce::CommerceEngine;
 use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
-use stripe::Webhook;
+use stripe_webhook::Webhook;
 use uuid::Uuid;
 
 /// Stripe Webhook イベントを処理する商用エンジン実装
@@ -185,6 +185,11 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
+        // NOTE: construct_event は strict な Event 型にデシリアライズするため、
+        // テスト環境の部分ペイロードではパースエラーを返す場合がある。
+        // ここでは HMAC 署名検証のみを目的とし、パース済み Event は意図的に破棄する。
+        // ペイロードのビジネスロジック処理は commerce_webhook.rs 側で
+        // serde_json::Value として柔軟にパースする。
         Webhook::construct_event(payload, sig_header, &self.webhook_secret)
             .map(|_| ())
             .map_err(|e| AiomeError::Infrastructure {
@@ -251,14 +256,14 @@ impl CommerceEngine for StripeCommerceEngine {
         // For now, we create a new one to verify the flow.
 
         let desc = format!("Agent Soul: {}", agent_id);
-        let mut create_customer = stripe::CreateCustomer::new();
-        create_customer.description = Some(&desc);
-        create_customer.metadata = Some(std::collections::HashMap::from([(
-            "agent_id".to_string(),
-            agent_id.to_string(),
-        )]));
+        let create_customer = stripe_core::customer::CreateCustomer::new()
+            .description(desc)
+            .metadata(std::collections::HashMap::from([(
+                "agent_id".to_string(),
+                agent_id.to_string(),
+            )]));
 
-        let customer = match stripe::Customer::create(&self.client, create_customer).await {
+        let customer = match create_customer.send(&self.client).await {
             Ok(c) => c,
             Err(e) => {
                 return Err(AiomeError::Infrastructure {
@@ -270,19 +275,22 @@ impl CommerceEngine for StripeCommerceEngine {
         let customer_id = customer.id;
         tracing::info!("✅ [Stripe] Created customer: {}", customer_id);
 
-        // Stripe Subscriptions API Call
-        let mut create_sub = stripe::CreateSubscription::new(customer_id);
         let plan_id_str = plan_id.to_string();
-        create_sub.items = Some(vec![stripe::CreateSubscriptionItems {
+        // Stripe Subscriptions API Call
+        let sub_item = stripe_billing::subscription::CreateSubscriptionItems {
             price: Some(plan_id_str),
             ..Default::default()
-        }]);
-        create_sub.metadata = Some(std::collections::HashMap::from([(
-            "agent_id".to_string(),
-            agent_id.to_string(),
-        )]));
+        };
 
-        match stripe::Subscription::create(&self.client, create_sub).await {
+        let create_sub = stripe_billing::subscription::CreateSubscription::new()
+            .customer(customer_id.to_string())
+            .items([sub_item])
+            .metadata(std::collections::HashMap::from([(
+                "agent_id".to_string(),
+                agent_id.to_string(),
+            )]));
+
+        match create_sub.send(&self.client).await {
             Ok(sub) => {
                 tracing::info!("✅ [Stripe] Subscription created: {}", sub.id);
                 Ok(sub.id.to_string())
