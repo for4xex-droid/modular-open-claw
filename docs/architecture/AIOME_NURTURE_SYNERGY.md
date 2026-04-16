@@ -2,7 +2,7 @@
 
 > **自動生成元**: `/docs-gen` ワークフロー  
 > **最終更新**: 2026-04-15  
-> **対象リポジトリ**: `aiome/` (OSS) + `ProjectーNurture/` (商用拡張)
+> **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
 
@@ -211,7 +211,7 @@ graph LR
         COMMERCE[aiome-commerce]
     end
 
-    subgraph "Project NURTURE (ProjectーNurture/)"
+    subgraph "Project NURTURE (Project-Nurture/)"
         CP[commerce-protocol]
         NC[nurture-core]
         NI[nurture-infra]

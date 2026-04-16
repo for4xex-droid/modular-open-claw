@@ -46,10 +46,10 @@ metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
 dotenvy = "0.15"
 sysinfo = "0.33"
-nurture-api = { path = "../../../ProjectーNurture/apps/nurture-api", optional = true }
-nurture-core = { path = "../../../ProjectーNurture/libs/nurture-core", optional = true }
-nurture-infra = { path = "../../../ProjectーNurture/libs/nurture-infra", optional = true }
-commerce-protocol = { path = "../../../ProjectーNurture/libs/commerce-protocol", optional = true }
+nurture-api = { path = "../../../Project-Nurture/apps/nurture-api", optional = true }
+nurture-core = { path = "../../../Project-Nurture/libs/nurture-core", optional = true }
+nurture-infra = { path = "../../../Project-Nurture/libs/nurture-infra", optional = true }
+commerce-protocol = { path = "../../../Project-Nurture/libs/commerce-protocol", optional = true }
 secrecy.workspace = true
 stripe.workspace = true
 once_cell.workspace = true
