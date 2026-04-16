@@ -1,4 +1,21 @@
 # 🌊 Aiome Ripple Map
+
+## Sprint B: Unicode Directory Remediation (ProjectーNurture → Project-Nurture)
+### 1. Cross-Repository Path Normalization
+- **変更内容**:
+    - `/Users/motista/Desktop/antigravity/ProjectーNurture` → `Project-Nurture` [RENAME]: カタカナ長音記号 (U+30FC) を ASCII ハイフン (U+002D) にリネーム。ツールチェイン互換性と docker-compose パス解決を正常化。
+    - `apps/api-server/Cargo.toml` [MODIFY]: `nurture-api`, `nurture-core`, `nurture-infra`, `commerce-protocol` の path 依存 4 箇所を更新。
+    - `docs/architecture/AIOME_NURTURE_SYNERGY.md` [MODIFY]: リポジトリパス参照を 2 箇所更新。
+    - `memory/2026-03-16.md` [MODIFY]: ログエントリのパス参照を更新。
+    - `Project-Nurture/docs/DEVELOPMENT_PROCESS.md` [MODIFY]: パス例・コマンド例 3 箇所を更新。
+    - `Project-Nurture/docs/ENVIRONMENT_SETUP_PLAN.md` [MODIFY]: ヘッダパスとディレクトリ構造 2 箇所を更新。
+    - `Project-Nurture/DEVELOPMENT_GUIDE.md` [MODIFY]: cd コマンドと Cargo.toml 例 2 箇所を更新。
+- **波及効果**:
+    - `docker-compose.nurture.yml` の `context: ../Project-Nurture` がリネームにより自動解決し、Docker/Podman ビルドが正常動作する前提条件が確立。
+    - `cargo check --workspace` (aiome) および `cargo test --workspace` (Project-Nurture) で全テスト GREEN を確認済み。
+    - Cargo のビルドキャッシュ（`target/` 約 22GB）は `CARGO_MANIFEST_DIR` 絶対パス変更により無効化されるが、次回ビルドで自動再生成。
+    - Git リモート (`origin: Project-Nurture.git`) とローカルディレクトリ名が一致し、clone/push/pull の整合性が回復。
+
 ## Phase 1+2: Hardening Podman Infrastructure Integration
 ### 1. Rootless Podman Full Support
 - **変更内容**:

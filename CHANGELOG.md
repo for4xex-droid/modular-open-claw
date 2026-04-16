@@ -1,4 +1,5 @@
-## [Unreleased] - 2026-04-15
+## [Unreleased] - 2026-04-16
+  - **Infrastructure (Directory Rename)**: `ProjectーNurture`（カタカナ長音記号 U+30FC）を `Project-Nurture`（ASCII ハイフン U+002D）にリネーム。Cargo.toml path deps (4箇所)、ドキュメント (6ファイル) を同期更新。`docker-compose.nurture.yml` の既存 `context: ../Project-Nurture` 参照がリネームにより正常化。
   - **Type Safety**: TypeScript 側の `any` 型を 12 箇所安全に削除・置換し、型厳密性を強化（Tier A: `catch (err: unknown)` 化 8箇所, Tier B: `types.ts` 手書き定義の `unknown` 化 4箇所）。
   - **Infrastructure (Phase 1 & 2 Podman Integration)**: Aiome インフラのコンテナランタイムを Docker から `Podman (rootless)` および `podman-compose` へ完全対応させました。
     - コンテナランタイム検出ロジックを `shared::container_runtime::detect_runtime()` (SSOT) として新設し、一元化。自動検出(`podman`優先、`docker`フォールバック)に加え、`CONTAINER_RUNTIME`環境変数による明示的なオーバーライドに対応。
