@@ -31,6 +31,7 @@ impl DbInitializer for UniversalJobQueue {
             })?;
 
         sqlx::migrate!("migrations/sqlite")
+            .set_ignore_missing(true)
             .run(pool)
             .await
             .map_err(|e| AiomeError::Infrastructure {

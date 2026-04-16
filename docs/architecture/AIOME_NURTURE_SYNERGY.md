@@ -240,13 +240,15 @@ graph LR
 
 ### 具体的な依存ポイント（Rust `use` 文レベル）
 
+> **Note (v0.9.x DD-2)**: `aiome_core::contracts::FederatedKarma` は現在 `KarmaEntry` に統合されています。
+
 | NURTURE 側ファイル | 使用する Aiome シンボル |
 |-------------------|---------------------|
 | `economy/bridge.rs` | `aiome_core::commerce::CommerceEngine`, `aiome_core::error::AiomeError`, `aiome_core::traits::JobQueue` |
-| `economy/karma_forge.rs` | `aiome_core::contracts::FederatedKarma`, `aiome_core::traits::JobQueue` |
-| `economy/karma_immune_filter.rs` | `aiome_core::contracts::{FederatedKarma, ImmuneRule}` |
-| `sidecar/clone_manager.rs` | `aiome_core::contracts::FederatedKarma`, `aiome_core::traits::JobQueue` |
-| `mock_job_queue.rs` | `infrastructure::job_queue::SqliteJobQueue`, `aiome_core::contracts::*` |
+| `economy/karma_forge.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
+| `economy/karma_immune_filter.rs` | `aiome_core::contracts::KarmaEntry` |
+| `sidecar/clone_manager.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
+| `mock_job_queue.rs` | `infrastructure::job_queue::UniversalJobQueue`, `aiome_core::contracts::*` |
 
 ---
 

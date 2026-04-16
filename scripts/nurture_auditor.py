@@ -196,8 +196,16 @@ def generate_audit_report(root_dir, output_file):
             
     print(f"✅ Deep Scan Complete. Report created at: {output_file}")
 
+import sys
 
 if __name__ == '__main__':
-    project_root = Path(__file__).parent.parent
-    output_path = project_root / 'docs' / 'architecture' / 'deep_scan_matrix.md'
+    if len(sys.argv) > 1:
+        project_root = Path(sys.argv[1]).resolve()
+        output_path = project_root / 'deep_scan_matrix.md'
+    else:
+        project_root = Path(__file__).parent.parent
+        output_path = project_root / 'docs' / 'architecture' / 'deep_scan_matrix.md'
+    
+    # Ensure parents exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     generate_audit_report(project_root, output_path)
