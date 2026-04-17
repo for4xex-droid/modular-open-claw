@@ -179,7 +179,8 @@ pub async fn stripe_webhook(
                     Ok(asset_manifest) => {
                         let amount = object["amount_total"]
                             .as_i64()
-                            .unwrap_or(asset_manifest.price_coins as i64);
+                            .or_else(|| i64::try_from(asset_manifest.price_coins).ok())
+                            .unwrap_or(0);
                         if amount > 0 {
                             if let Err(e) =
                                 aiome_commerce::splitter::RevenueSplitter::split_revenue(
@@ -229,8 +230,14 @@ pub async fn stripe_webhook(
                 }
 
                 if charge_for_coin > 0 {
-                    pending_coin_charge =
-                        Some((agent_uuid, charge_for_coin as u64, event_id.to_string()));
+                    if let Ok(safe_charge) = u64::try_from(charge_for_coin) {
+                        pending_coin_charge = Some((agent_uuid, safe_charge, event_id.to_string()));
+                    } else {
+                        warn!(
+                            "⚠️ [StripeWebhook] Coin charge amount {} overflow, skipping.",
+                            charge_for_coin
+                        );
+                    }
                 }
             }
             _ => {

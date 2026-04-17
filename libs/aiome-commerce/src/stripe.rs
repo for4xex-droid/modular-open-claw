@@ -194,14 +194,12 @@ impl CommerceEngine for StripeCommerceEngine {
             }
         }
 
-        if amount > i64::MAX as u64 {
-            return Err(AiomeError::Infrastructure {
-                reason: "Amount too large for DB schema".into(),
-            });
-        }
-
+        // ガードチェックの代わりに安全なキャストで直接変換
+        let safe_amount = i64::try_from(amount).map_err(|_| AiomeError::Infrastructure {
+            reason: format!("Escrow amount {} exceeds i64 maximum", amount),
+        })?;
         let escrow_id = format!("escrow_{}", Uuid::new_v4());
-        let order_id = format!("ord_{}", Uuid::new_v4()); // Dummy order_id for now
+        let order_id = format!("ord_{}", Uuid::new_v4());
 
         let result = sqlx::query(
             "INSERT INTO escrows (id, payer_id, order_id, amount, status) VALUES (?, ?, ?, ?, 'Locked')",
@@ -209,7 +207,7 @@ impl CommerceEngine for StripeCommerceEngine {
         .bind(&escrow_id)
         .bind(agent_id.to_string())
         .bind(&order_id)
-        .bind(amount as i64)
+        .bind(safe_amount)
         .execute(&self.pool)
         .await;
 
@@ -275,7 +273,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 Ok(())
             }
             Ok(_) => {
-                if escrow_id == "escrow_mock" {
+                if self.is_mock {
                     return Ok(());
                 }
                 Err(AiomeError::Infrastructure {
@@ -294,12 +292,12 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError> {
-        if let (Some(url), Some(secret), Some(client)) = (
+        if let (Some(_url), Some(_secret), Some(_client)) = (
             &self.nurture_url,
             &self.nurture_secret,
             &self.nurture_client,
         ) {
-            // Future implementation for Nurture refund API
+            // Future implementation: forward to Nurture refund API
         }
 
         let result = sqlx::query(
@@ -315,7 +313,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 Ok(())
             }
             Ok(_) => {
-                if escrow_id == "escrow_mock" {
+                if self.is_mock {
                     return Ok(());
                 }
                 Err(AiomeError::Infrastructure {
@@ -332,7 +330,6 @@ impl CommerceEngine for StripeCommerceEngine {
             }
         }
     }
-
     async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
         Ok(())
     }
