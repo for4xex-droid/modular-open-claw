@@ -83,11 +83,6 @@ pub mod tool_call_router;
 pub use app_state::AppState;
 pub use router::build_app;
 
-#[cfg(feature = "nurture")]
-use commerce_protocol;
-#[cfg(feature = "nurture")]
-use nurture_api;
-
 use aiome_core::expression::tts_worker::TtsWorker;
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
@@ -105,16 +100,11 @@ async fn main() -> anyhow::Result<()> {
     let static_path = Box::leak(static_path.into_boxed_str());
     let job_queue = state.job_queue.get_inner().clone();
 
-    #[cfg(feature = "nurture")]
-    let nurture_state = boot_ctx.nurture_state;
-
     // === 🏗️ STAGE 7/7: Network ===
     let app = build_app(
         state.clone(),
         cors_layer,
         static_path,
-        #[cfg(feature = "nurture")]
-        nurture_state,
         plugin_registry,
         metrics_handle,
     );

@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-15  
+> **最終更新**: 2026-04-17  
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -67,8 +67,8 @@ graph TB
         end
 
         subgraph "Apps"
-            API["api-server (108 endpoints)"]
-            MGMT["Management Console (57 screens)"]
+            API["api-server (125 endpoints)"]
+            MGMT["Management Console (60 screens)"]
             PROXY["key-proxy (AbyssVault/WP)"]
             TAURI["Tauri Desktop (計画)"]
         end
@@ -376,6 +376,77 @@ sequenceDiagram
     Soul-->>Soul: "いつもありがとう！☕️"
 ```
 
+### 5.4 Stripe Checkout 完了 → コインチャージ → DLQ フォールバック
+
+```mermaid
+sequenceDiagram
+    participant Stripe as Stripe Webhook
+    participant API as api-server (Aiome)
+    participant DB as Database (Aiome)
+    participant NAPI as nurture-api (Nurture)
+    participant Ledger as EconomyLedger
+    participant DLQ as outbox_dead_letters
+
+    Stripe->>API: POST /api/v1/commerce/webhook (checkout.session.completed)
+    API->>API: verify_signature(stripe-signature)
+    API->>DB: INSERT stripe_webhook_events (冪等性ガード)
+    alt 重複イベント
+        DB-->>API: UNIQUE violation → 200 OK (skip)
+    else 新規イベント
+        DB-->>API: 1 row inserted
+        API->>DB: RevenueSplitter.split_revenue() (15% platform fee)
+        API->>DB: grant_license_with_tx(agent_id, asset_id)
+        API->>DB: tx.commit()
+        note over API: pending_coin_charge = (agent_id, amount, event_id)
+
+        loop 指数バックオフリトライ (最大3回: 1s → 5s → 25s)
+            API->>NAPI: POST /internal/coin-charge {actor_id, amount, idempotency_key=event_id}
+            NAPI->>NAPI: currency="coin" チェック / amount>0 チェック
+            NAPI->>NAPI: idempotency_key 重複チェック
+            NAPI->>Ledger: record_entry(tx_id=UUID_v5(event_id))
+            Ledger-->>NAPI: OK
+            NAPI-->>API: 200 OK → break
+        end
+
+        alt 3回全失敗
+            API->>API: error! "DLQ payload backup: {payload}"
+            API->>DLQ: INSERT outbox_dead_letters (id, event_type, payload, error_reason)
+            note over API,DLQ: ログ先行出力でデータ消失ゼロを保証
+        end
+    end
+    API-->>Stripe: 200 OK
+```
+
+### 5.5 S2S マーケットプレイスアップロード (CSAM → 登録)
+
+```mermaid
+sequenceDiagram
+    participant API as api-server (Aiome)
+    participant NAPI as nurture-api /internal/upload
+    participant Auth as internal_auth_middleware (ct_eq)
+    participant CSAM as CsamPipeline
+    participant Market as SQLiteMarketplace
+
+    API->>NAPI: POST /internal/upload {creator_id, kind, name, price_coins, content}
+    NAPI->>Auth: verify Bearer NURTURE_INTERNAL_SECRET
+    Auth-->>NAPI: 401 Unauthorized (不一致) / pass (一致)
+
+    NAPI->>NAPI: name.trim().is_empty()? → 400 Bad Request
+    NAPI->>NAPI: description.trim().is_empty()? → 400 Bad Request
+    NAPI->>NAPI: kind 文字列 → CommodityKind マッピング (未知→400)
+
+    NAPI->>CSAM: run_all(item_uuid, content_val)
+    alt CSAM 違反
+        CSAM-->>NAPI: ScanVerdict::Rejected { reason, layer }
+        NAPI-->>API: 422 Unprocessable Entity "CSAM violation: {reason}"
+    else Safe
+        CSAM-->>NAPI: ScanVerdict::Safe
+        NAPI->>Market: create_item(ItemDescriptor)
+        Market-->>NAPI: OK
+        NAPI-->>API: 201 Created { item_id: UUID }
+    end
+```
+
 ---
 
 ## 6. 主要データ構造（クラス図）
@@ -405,32 +476,49 @@ classDiagram
         +Uuid id
         +ActorId buyer
         +ActorId seller
-        +PriceTag price
-        +initiate() Transaction~Initiated~
+        +ItemDescriptor item
+        +u64 amount_coins
+        +u64 creator_points_earned
+        +DateTime~Utc~ initiated_at
+        +Option~DateTime~Utc~~ settled_at
+        +Option~u64~ debit_account_version
+        +new(buyer, seller, item, creator_points_rate) Transaction~Initiated~
         +authorize() Transaction~Authorized~
         +settle() Transaction~Settled~
+        +cancel() Transaction~Cancelled~
+        +fail() Transaction~Failed~
+        +refund() Transaction~Refunded~
     }
 
     class CommodityKind {
         <<enum>>
-        AvatarFull
-        AvatarPart
-        VoiceCore
-        LoraAdapter
-        Skill
-        EasterEgg
+        VrmAvatar
+        ClothingPart
+        Accessory
+        WasmSkill
+        KnowledgePack
+        Expression
+        VoiceModel
+        KarmaPackage
     }
 
     class ItemDescriptor {
+        +Uuid id
         +CommodityKind kind
         +String name
         +String description
+        +PriceTag price
+        +ActorId creator_id
+        +SaleMode sale_mode
+        +bool drm_enabled
+        +DateTime~Utc~ created_at
+        +Value metadata
     }
 
     class PriceTag {
         <<enum>>
-        Coin(u64)
-        Points(u64)
+        Fixed(u64)
+        Negotiable \{ min: u64, max: u64 \}
         Free
     }
 
@@ -439,42 +527,65 @@ classDiagram
         +ActorId seller
         +ItemDescriptor item
         +PriceTag price
-        +SaleMode mode
         +OfferStatus status
+        +SaleMode sale_mode
+        +Option~u32~ stock
+        +DateTime~Utc~ listed_at
+        +Option~DateTime~Utc~~ expires_at
+    }
+
+    class OfferStatus {
+        <<enum>>
+        Draft
+        Active
+        Suspended
+        SoldOut
+        Expired
     }
 
     class SaleMode {
         <<enum>>
-        FullAvatar
-        Parts
+        Instant
+        Subscription \{ interval_days: u32, price_coins: u64 \}
     }
 
     class EconomicActor {
         +ActorId id
         +ActorKind kind
-        +ReputationScore reputation
+        +String display_name
+        +DateTime~Utc~ created_at
     }
 
     class ActorKind {
         <<enum>>
-        Agent
+        AiAgent
+        HumanOwner
         Creator
         Merchant
+        System
     }
 
     class ReputationScore {
-        +f64 score
-        +TrustLevel level
-        +u64 total_transactions
+        +ActorId actor_id
+        +u64 total_sales
+        +u64 total_revenue_coins
+        +f64 rating_sum
+        +u64 rating_count
+        +TrustLevel trust_level
+        +u32 violation_count
+        +apply_penalty(severity: u32)
+        +fee_multiplier() f64
     }
 
-    Transaction --> PriceTag
+    Transaction --> ItemDescriptor
     Transaction --> EconomicActor
     Offer --> ItemDescriptor
     Offer --> SaleMode
+    Offer --> OfferStatus
     ItemDescriptor --> CommodityKind
+    ItemDescriptor --> PriceTag
+    ItemDescriptor --> SaleMode
     EconomicActor --> ActorKind
-    EconomicActor --> ReputationScore
 ```
 
 ### Aiome OSS — 経済インターフェース（接合点）
@@ -483,29 +594,50 @@ classDiagram
 classDiagram
     class CommerceEngine {
         <<trait / aiome-contracts>>
-        +get_balance(agent_id) Result~EconomicContext~
-        +process_purchase(agent_id, request) Result
-        +create_subscription(request) Result
-        +cancel_subscription(request) Result
+        +get_balance(agent_id: Uuid) Result~u64~
+        +validate_activity(agent_id, activity_type, amount) Result~()~
+        +execute_autonomous_purchase(agent_id, item_id, metadata) Result~String~
+        +get_daily_spend(agent_id: Uuid) Result~u64~
+        +get_daily_limit(agent_id: Uuid) Result~u64~
+        +escrow_create(agent_id, amount) Result~String~
+        +escrow_release(escrow_id, recipient_id) Result~()~
+        +escrow_refund(escrow_id) Result~()~
+        +stake(agent_id, amount) Result~()~
+        +slash(agent_id, amount, reason) Result~()~
+        +register_license(agent_id, asset_id, license_type) Result~String~
+        +verify_signature(payload, sig_header) Result~()~
+        +process_webhook(event_id, event_type, payload) Result~()~
+        +create_subscription(agent_id, plan_id) Result~String~
+        +cancel_subscription(subscription_id) Result~()~
+        +get_subscription_status(agent_id) Result~SubscriptionStatus~
+        +transfer(from_id, to_id, amount) Result~String~
+        +deduct_generation_cost(agent_id, amount, generation_type) Result~()~
     }
 
     class GiftEngine {
         <<trait / aiome-contracts>>
-        +evaluate_policy(context) Result
-        +send_gift(request) Result
+        +send_gift_code(recipient_email, amount_usd, reason) Result~String~
+        +validate_gift_policy(agent_id, amount_usd) Result~()~
+        +get_policy_context(agent_id) Result~GiftPolicyContext~
     }
 
     class AiomePlugin {
         <<trait / aiome-contracts>>
-        +name() String
-        +version() String
-        +register_routes(router) Router
+        +name() str
+        +version() str
+        +routes() Option~OpaqueRouter~
+        +registered_tools() Vec~String~
+        +required_env_vars() Vec~String~
+        +commerce_engine() Option~Arc~CommerceEngine~~
     }
 
     class LlmProvider {
         <<trait / aiome-contracts>>
-        +generate(request) Result~LlmResponse~
-        +stream(request) Result~Stream~
+        +complete(prompt, system) Result~LlmResponse~
+        +complete_with_cache(request) Result~LlmResponse~
+        +stream_complete(prompt, system, tx) Result~()~
+        +test_connection() Result~()~
+        +name() str
     }
 
     class NurtureCommerceBridge {

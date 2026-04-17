@@ -60,13 +60,6 @@ use tower_http::timeout::TimeoutLayer;
 use tracing::{debug, error, info, warn};
 use utoipa::OpenApi;
 
-#[cfg(test)]
-#[cfg(test)]
-#[cfg(feature = "nurture")]
-use commerce_protocol;
-#[cfg(feature = "nurture")]
-use nurture_api;
-
 use aiome_core::expression::tts_worker::TtsWorker;
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
@@ -77,8 +70,6 @@ pub struct BootContext {
     pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
     pub cancel_token: tokio_util::sync::CancellationToken,
     pub cors_layer: tower_http::cors::CorsLayer,
-    #[cfg(feature = "nurture")]
-    pub nurture_state: nurture_api::NurtureState,
 }
 
 pub async fn boot_sequence() -> anyhow::Result<BootContext> {
@@ -381,9 +372,18 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
         let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
+        let nurture_url = std::env::var("NURTURE_API_URL").ok();
+        let nurture_secret = std::env::var("NURTURE_INTERNAL_SECRET").ok();
+
         Some(
-            aiome_commerce::CommerceEngineFactory::create(stripe_key, webhook_secret, sqlite_pool)
-                .await?,
+            aiome_commerce::CommerceEngineFactory::create(
+                stripe_key,
+                webhook_secret,
+                sqlite_pool,
+                nurture_url,
+                nurture_secret,
+            )
+            .await?,
         )
     };
 
@@ -1210,16 +1210,11 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         layer
     };
 
-    #[cfg(feature = "nurture")]
-    let nurture_state = commerce_protocol::CommerceState::new();
-
     Ok(BootContext {
         state,
         plugin_registry,
         metrics_handle,
         cancel_token,
         cors_layer,
-        #[cfg(feature = "nurture")]
-        nurture_state,
     })
 }

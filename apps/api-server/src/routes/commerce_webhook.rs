@@ -147,6 +147,8 @@ pub async fn stripe_webhook(
         }
     }
 
+    let mut pending_coin_charge = None;
+
     // 6. トランザクション処理 (ライセンス付与等)
     if event_type == "checkout.session.completed" {
         let object = &event_val["data"]["object"];
@@ -155,10 +157,6 @@ pub async fn stripe_webhook(
 
         match (agent_id_str, asset_id_str) {
             (Some(a), Some(asset)) => {
-                // NOTE: UUID パース失敗で 400 を返す場合、冪等性テーブルには既に INSERT 済み。
-                // リトライ時は重複としてスキップされるが、Stripe は同一 event_id を再送する
-                // ため、元データの metadata 修正後に再処理される保証はない。
-                // 運用上は Stripe Dashboard からの手動再送で対処する想定。
                 let agent_uuid = uuid::Uuid::parse_str(a).map_err(|e| {
                     warn!("⚠️ [StripeWebhook] Invalid agent_id UUID '{}': {}", a, e);
                     AppError::bad_request("Invalid agent_id in event metadata")
@@ -177,7 +175,7 @@ pub async fn stripe_webhook(
                 );
 
                 // 6a. 収益分配 (Revenue Split)
-                match state.registry.get_asset(asset_uuid).await {
+                let charge_for_coin = match state.registry.get_asset(asset_uuid).await {
                     Ok(asset_manifest) => {
                         let amount = object["amount_total"]
                             .as_i64()
@@ -201,6 +199,7 @@ pub async fn stripe_webhook(
                             }
                             info!("💸 [StripeWebhook] Revenue split completed: tx_id={}, amount={}, creator={}", event_id, amount, asset_manifest.creator_id);
                         }
+                        amount
                     }
                     Err(e) => {
                         error!(
@@ -214,7 +213,7 @@ pub async fn stripe_webhook(
                             "Failed to retrieve asset for revenue split",
                         ));
                     }
-                }
+                };
 
                 // 6b. ライセンス付与
                 if let Err(e) = state
@@ -228,9 +227,13 @@ pub async fn stripe_webhook(
                     error!("❌ [StripeWebhook] Failed to grant license: {}", e);
                     return Err(AppError::internal("License grant failed"));
                 }
+
+                if charge_for_coin > 0 {
+                    pending_coin_charge =
+                        Some((agent_uuid, charge_for_coin as u64, event_id.to_string()));
+                }
             }
             _ => {
-                // 支払い完了イベントなのに metadata が欠落 — サイレント失敗を防止
                 error!(
                     "❌ [StripeWebhook] checkout.session.completed event {} missing agent_id/asset_id metadata",
                     event_id
@@ -250,6 +253,110 @@ pub async fn stripe_webhook(
     if let Err(e) = tx.commit().await {
         error!("❌ [StripeWebhook] Failed to commit transaction: {}", e);
         return Err(AppError::internal("Transaction commit failed"));
+    }
+
+    // 6c. Nurture へのコインチャージ転送 (結果整合性保証)
+    if let Some((agent_uuid, amount, ev_id)) = pending_coin_charge {
+        let http_client = state.http_client.clone();
+        let dlq_pool = db_pool.clone();
+        let nurture_url = std::env::var("NURTURE_API_URL").ok();
+        let nurture_secret = std::env::var("NURTURE_INTERNAL_SECRET").ok();
+
+        if let (Some(url), Some(secret)) = (nurture_url, nurture_secret) {
+            tokio::spawn(async move {
+                let req_url = format!("{}/internal/coin-charge", url);
+                let payload = serde_json::json!({
+                    "actor_id": agent_uuid,
+                    "amount": amount,
+                    "currency": "coin",
+                    "stripe_event_id": ev_id,
+                    "idempotency_key": ev_id
+                });
+
+                let mut retry_count = 0;
+                let mut delay = std::time::Duration::from_secs(1);
+                loop {
+                    match http_client
+                        .post(&req_url)
+                        .header("Authorization", format!("Bearer {}", secret))
+                        .json(&payload)
+                        .send()
+                        .await
+                    {
+                        Ok(res) if res.status().is_success() => {
+                            info!(
+                                "🪙 [StripeWebhook] Coin charge succeeded for {}",
+                                agent_uuid
+                            );
+                            break;
+                        }
+                        Ok(res) => {
+                            error!(
+                                "❌ [StripeWebhook] Coin charge HTTP failed: {}",
+                                res.status()
+                            );
+                        }
+                        Err(e) => {
+                            error!("❌ [StripeWebhook] Coin charge network error: {}", e);
+                        }
+                    }
+
+                    retry_count += 1;
+                    if retry_count >= 3 {
+                        error!("🚨 [StripeWebhook] Webhook DLQ fallback: Failed to charge {} coins for {}. Event: {}", amount, agent_uuid, ev_id);
+
+                        // DLQ: INSERT into outbox_dead_letters table
+                        // ペイロードを先にログ出力（DBが使えなくても情報を保護）
+                        let dlq_payload = serde_json::to_string(&payload).unwrap_or_default();
+                        error!("🔒 [StripeWebhook] DLQ payload backup: {}", dlq_payload);
+
+                        let q_insert = format!(
+                            "INSERT INTO outbox_dead_letters (id, event_type, payload, error_reason) VALUES ({}, {}, {}, {})",
+                            dlq_pool.ph(0), dlq_pool.ph(1), dlq_pool.ph(2), dlq_pool.ph(3)
+                        );
+                        let dlq_id = uuid::Uuid::new_v4().to_string();
+
+                        let result = match &dlq_pool {
+                            infrastructure::db::DatabasePool::Sqlite(pool) => {
+                                sqlx::query(&q_insert)
+                                    .bind(&dlq_id)
+                                    .bind("coin_charge_failed")
+                                    .bind(&dlq_payload)
+                                    .bind("Max retries exceeded")
+                                    .execute(pool)
+                                    .await
+                                    .map(|_| ())
+                            }
+                            infrastructure::db::DatabasePool::Postgres(pool) => {
+                                sqlx::query(&q_insert)
+                                    .bind(&dlq_id)
+                                    .bind("coin_charge_failed")
+                                    .bind(&dlq_payload)
+                                    .bind("Max retries exceeded")
+                                    .execute(pool)
+                                    .await
+                                    .map(|_| ())
+                            }
+                        };
+
+                        if let Err(e) = result {
+                            error!("🔥 [StripeWebhook] CRITICAL: Failed to write to dead letters queue: {}", e);
+                        } else {
+                            info!("📦 [StripeWebhook] Saved failed coin charge to outbox_dead_letters.");
+                        }
+                        break;
+                    }
+                    tokio::time::sleep(delay).await;
+                    delay *= 5; // Exponential backoff: 1s, 5s, 25s
+                }
+            });
+        } else {
+            // S-4: Nurture 接続情報が未設定の場合のサイレント破棄を防止
+            error!(
+                "🚨 [StripeWebhook] NURTURE_API_URL or NURTURE_INTERNAL_SECRET not set! Coin charge for {} ({} coins, event={}) will NOT be delivered.",
+                agent_uuid, amount, ev_id
+            );
+        }
     }
 
     Ok(StatusCode::OK)

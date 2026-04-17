@@ -1,4 +1,20 @@
+## [Unreleased] - 2026-04-18
+  - **Economic Integration Hardening (Sprint C-D / Tier 1-4)**: Aiome–Project-Nurture 間の経済統合を本番グレードにハードニング。
+    - **[Tier 1] Stripe Webhook DLQ**: `commerce_webhook.rs` において、3回リトライ失敗後に `outbox_dead_letters` テーブルへペイロードを永続化する Dead Letter Queue を実装。DB 挿入前にペイロードをログ先行出力するバックアップ機構を追加し、データ消失ゼロを保証。
+    - **[Tier 1] サイレント破棄防止**: `NURTURE_API_URL` / `NURTURE_INTERNAL_SECRET` が未設定の場合、コインチャージが静かに消えるのを防止するため `error!` ログで agent / amount / event_id を明示出力するよう修正 (S-4)。
+    - **[Tier 2] 冪等性トランザクション**: `charge_coins` の `reserve_key → record_entry → save_response` アトミックパターンを確立し、失敗時に TTL 切れで自動再試行可能な設計へ移行。
+    - **[Tier 2] tx_id 追跡性**: `stripe_event_id` を Namespace UUID v5 (`Uuid::new_v5(NAMESPACE_OID, ...)`) に変換し Ledger に記録。イベント→台帳エントリの決定論的なトレースを確立。
+    - **[Tier 3] マーケットプレイス API**: Nurture `/internal/upload` エンドポイントを実装し、CSAM スキャン → CommodityKind マッピング → `create_item` の安全な書き込みフローを確立。`UploadResponse { item_id }` 専用構造体を定義し API 契約の型安全性を確保。
+    - **[Tier 4] Escrow 完全実装**: `NurtureCommerceBridge` に `escrow_create` / `escrow_release` を実装。DB トランザクション内で残高引き落とし → escrow レコード作成の原子性を保証。`WHERE balance >= ?` による TOCTOU 競合防止も実装。
+    - **整数算術安全性**: `sqlite.rs` 全域の `u64 as i64` / `u32 as i32` 暗黙キャストを `i64::try_from()` / `i32::try_from()` に置換し、サイレントオーバーフローを完全排除 (Subscription `price_coins` / `interval_days` 含む)。
+    - **入力バリデーション強化**: `charge_coins` / `create_escrow` に `amount == 0` 早期リジェクト (400) を追加 (S-1/S-3)。`upload_handler` に `name` / `description` 空文字列ガードを追加 (S-2)。`currency` フィールドに `"coin"` のみ許可するバリデーションを追加 (R-3)。
+    - **エラー応答修正**: エラー時に偽データ `balance: 0` を返していた問題を `StatusCode::INTERNAL_SERVER_ERROR.into_response()` に統一 (R-4)。
+
 ## [Unreleased] - 2026-04-16
+  - **Project Nurture Sprint B-5 (Integer Arithmetic)**: `conversion_rate`, `burn_rate`, `system_fee_rate`, `creator_points_rate` を `f64` 浮動小数点から `u32` の Basis Points (bps) 整数表現へ完全移行し、経済計算の丸め誤差リスク（Rounding Errors）を物理的に排除しました。
+    - `nurture_points` テーブルの SQLite マイグレーション (`20260416000000_bps_migration.sql`) を実行し、`REAL` 型から `BIGINT` (1.0 = 10000) へデータをロスレス変換。
+    - `settlement.rs` および `transaction.rs` の精算ロジックについて `amount * bps / 10000` の整数算術へリファクタリング。
+    - ASTインパクト解析により特定された本番13ファイル（テスト含む）全域への TDD 変更適用を完了し、全ての Cargo Test が GREEN (< 0.5s) で通過することを確認しました。
   - **Infrastructure (Observability)**: Project-Nurture 内の主要パス (`clone_manager`, `bridge.rs` 等) に存在したサイレントエラー握り潰し (`let _ =`) 5箇所を `if let Err(e) = ... { tracing::warn! }` に置換。冪等性予約やプロセス破棄時の障害可視性を回復。
   - **Infrastructure (Directory Rename)**: `ProjectーNurture`（カタカナ長音記号 U+30FC）を `Project-Nurture`（ASCII ハイフン U+002D）にリネーム。Cargo.toml path deps (4箇所)、ドキュメント (6ファイル) を同期更新。`docker-compose.nurture.yml` の既存 `context: ../Project-Nurture` 参照がリネームにより正常化。
   - **Type Safety**: TypeScript 側の `any` 型を 12 箇所安全に削除・置換し、型厳密性を強化（Tier A: `catch (err: unknown)` 化 8箇所, Tier B: `types.ts` 手書き定義の `unknown` 化 4箇所）。

@@ -18,7 +18,7 @@ pub(crate) async fn build_system_instructions(
     summary: Option<&str>,
     ai_name: Option<String>,
     _knowledge_str: Option<&str>,
-    _economic_context: Option<EconomicContext>,
+    economic_context: Option<EconomicContext>,
     soul_snapshot: Option<SoulSnapshot>,
     self_repair_hint: Option<String>,
 ) -> String {
@@ -42,12 +42,34 @@ pub(crate) async fn build_system_instructions(
         .await
         .unwrap_or_default();
 
+    let owned_assets = state
+        .registry
+        .list_assets_by_type(
+            infrastructure::registry::AssetType::McpServer,
+            Some(state.system_agent_id),
+            "owned",
+        )
+        .await
+        .unwrap_or_default();
+
+    let owned_asset_ids: std::collections::HashSet<_> =
+        owned_assets.into_iter().map(|a| a.id).collect();
+
     for mcp in mcp_servers {
+        let ownership_mark = if owned_asset_ids.contains(&mcp.id) {
+            "[ライセンス保有 - 利用可能]".to_string()
+        } else if mcp.price_coins > 0 {
+            format!("[未保有 - {}コインで購入可能]", mcp.price_coins)
+        } else {
+            "[無料]".to_string()
+        };
+
         if !skill_list.is_empty() {
             skill_list.push('\n');
         }
         skill_list.push_str(&format!(
-            "- {}: {}",
+            "- {} {}: {}",
+            ownership_mark,
             mcp.name,
             mcp.description
                 .split('.')
@@ -55,6 +77,20 @@ pub(crate) async fn build_system_instructions(
                 .unwrap_or(&mcp.description)
         ));
     }
+
+    let economy_prompt = if let Some(ctx) = economic_context {
+        format!(
+            "\n[経済状態]\n残高: {} コイン\n今日の支出: {} / {} コイン (日次上限)\n\
+             あなたは Aiome エコノミーに参加しています。自己の保有資産(ライセンス)を確認・活用でき、\n\
+             獲得したコインで新しいスキル（LoRA、MCP ツールなど）を購入したり、\n\
+             ギグ経済プラットフォーム（Marketplace / Gig Market）を通じて他の AI へタスクを発注できます。\n\
+             また、自身が SkillForge で構築した WASM スキルを出品して収益を獲得することも可能です。\n\
+             残高が不足している場合は、自らのスキルを利用して稼ぐことを検討してください。\n",
+            ctx.balance, ctx.spent_today, ctx.daily_limit
+        )
+    } else {
+        String::new()
+    };
 
     let resolver = &state.config.get_inner().resolver;
     let soul_md = safe_truncate(&read_app_data_file(resolver, "SOUL.md").await, 20000);
@@ -95,9 +131,10 @@ pub(crate) async fn build_system_instructions(
     };
 
     format!(
-        "# IDENTITY: \n{}{}{}{}{}\n\
+        "# IDENTITY: \n{}{}{}{}{}{}\n\
         [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}",
         name_prompt,
+        economy_prompt,
         soul_md,
         evolving_soul_md,
         soul_dynamic,
@@ -337,5 +374,32 @@ mod tests {
         // It should cache the empty string
         let cached = state.project_rules_cache.get(&sub_dir).await;
         assert_eq!(cached, Some("".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_build_system_instructions_economic_context_inclusion() {
+        let (state, _) = setup_test_state().await;
+        let ec = aiome_core::commerce::EconomicContext {
+            balance: 100,
+            spent_today: 10,
+            daily_limit: 50,
+        };
+
+        let instructions = build_system_instructions(
+            &state,
+            "karma",
+            None,
+            Some("Aiome".to_string()),
+            None,
+            Some(ec),
+            None,
+            None,
+        )
+        .await;
+
+        assert!(instructions.contains("[経済状態]"));
+        assert!(instructions.contains("残高: 100 コイン"));
+        assert!(instructions.contains("今日の支出: 10 / 50 コイン"));
+        assert!(instructions.contains("SkillForge"));
     }
 }

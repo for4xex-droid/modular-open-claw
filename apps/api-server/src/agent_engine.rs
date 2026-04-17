@@ -78,16 +78,7 @@ impl AgentEngine {
         }
 
         // 3. Prepare Context
-        let soul_hash = {
-            use std::hash::{Hash, Hasher};
-            let resolver = &state.config.get_inner().resolver;
-            let soul = crate::system_instructions::read_app_data_file(resolver, "SOUL.md").await;
-            let evolving_soul =
-                crate::system_instructions::read_app_data_file(resolver, "EVOLVING_SOUL.md").await;
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            format!("{}{}", soul, evolving_soul).hash(&mut hasher);
-            format!("{:x}", hasher.finish())
-        };
+        let soul_hash = state.get_system_soul_hash().await;
 
         let karma_result = state
             .job_queue
@@ -118,13 +109,29 @@ impl AgentEngine {
             .flatten();
         let soul_snapshot = state.soul_store.get_inner().get_snapshot().await;
 
+        let mut economic_context = None;
+        let system_id = state.system_agent_id;
+        if let Some(engine) = state.commerce_engine.as_opt() {
+            if let (Ok(balance), Ok(spent), Ok(limit)) = (
+                engine.get_balance(system_id).await,
+                engine.get_daily_spend(system_id).await,
+                engine.get_daily_limit(system_id).await,
+            ) {
+                economic_context = Some(aiome_core::commerce::EconomicContext {
+                    balance,
+                    spent_today: spent,
+                    daily_limit: limit,
+                });
+            }
+        }
+
         let instructions = crate::system_instructions::build_system_instructions(
             state,
             &karma_str,
             summary.as_deref(),
             ai_name,
             None,
-            None,
+            economic_context,
             soul_snapshot,
             None,
         )

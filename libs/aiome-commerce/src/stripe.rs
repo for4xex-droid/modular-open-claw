@@ -17,24 +17,71 @@ pub struct StripeCommerceEngine {
     webhook_secret: String,
     pool: sqlx::SqlitePool,
     is_mock: bool,
+    nurture_client: Option<reqwest::Client>,
+    nurture_url: Option<String>,
+    nurture_secret: Option<String>,
 }
 
 impl StripeCommerceEngine {
     /// 新規 Stripe エンジンを初期化する
-    pub fn new(api_key: String, webhook_secret: String, pool: sqlx::SqlitePool) -> Self {
+    pub fn new(
+        api_key: String,
+        webhook_secret: String,
+        pool: sqlx::SqlitePool,
+        nurture_url: Option<String>,
+        nurture_secret: Option<String>,
+    ) -> Self {
         let is_mock = api_key.starts_with("sk_test_mock") || webhook_secret == "whsec_test";
+        let nurture_client = nurture_url.as_ref().map(|_| reqwest::Client::new());
         Self {
             client: stripe::Client::new(api_key),
             webhook_secret,
             pool,
             is_mock,
+            nurture_client,
+            nurture_url,
+            nurture_secret,
         }
     }
 }
 
+#[derive(serde::Deserialize)]
+struct BalanceRes {
+    balance: u64,
+}
+
+#[derive(serde::Deserialize)]
+struct DailyStatsRes {
+    spent_today: u64,
+    daily_limit: u64,
+}
+
 #[async_trait]
 impl CommerceEngine for StripeCommerceEngine {
-    async fn get_balance(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+    async fn get_balance(&self, agent_id: Uuid) -> Result<u64, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/balance/{}", url, agent_id);
+            let res = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            if res.status().is_success() {
+                let body: BalanceRes =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body.balance);
+            }
+        }
         Ok(0)
     }
 
@@ -56,15 +103,97 @@ impl CommerceEngine for StripeCommerceEngine {
         Ok("tx_mock".into())
     }
 
-    async fn get_daily_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+    async fn get_daily_spend(&self, agent_id: Uuid) -> Result<u64, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/daily-stats/{}", url, agent_id);
+            let res = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            if res.status().is_success() {
+                let body: DailyStatsRes =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body.spent_today);
+            }
+        }
         Ok(0)
     }
 
-    async fn get_daily_limit(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+    async fn get_daily_limit(&self, agent_id: Uuid) -> Result<u64, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/daily-stats/{}", url, agent_id);
+            let res = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            if res.status().is_success() {
+                let body: DailyStatsRes =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body.daily_limit);
+            }
+        }
         Ok(100)
     }
 
     async fn escrow_create(&self, agent_id: Uuid, amount: u64) -> Result<String, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/escrow-create", url);
+            let payload = serde_json::json!({
+                "actor_id": agent_id,
+                "amount": amount
+            });
+            let res = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            if res.status().is_success() {
+                #[derive(serde::Deserialize)]
+                struct EscrowRes {
+                    escrow_id: String,
+                }
+                let body: EscrowRes = res.json().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                return Ok(body.escrow_id);
+            } else {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Escrow create HTTP failed: {}", res.status()),
+                });
+            }
+        }
+
         if amount > i64::MAX as u64 {
             return Err(AiomeError::Infrastructure {
                 reason: "Amount too large for DB schema".into(),
@@ -103,6 +232,35 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/escrow-release", url);
+            let payload = serde_json::json!({
+                "escrow_id": escrow_id,
+                "recipient_id": recipient_id
+            });
+            let res = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            if res.status().is_success() {
+                return Ok(());
+            } else {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Escrow release HTTP failed: {}", res.status()),
+                });
+            }
+        }
+
         let result = sqlx::query(
             "UPDATE escrows SET status = 'Released', recipient_id = ? WHERE id = ? AND status = 'Locked'",
         )
@@ -136,6 +294,14 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            // Future implementation for Nurture refund API
+        }
+
         let result = sqlx::query(
             "UPDATE escrows SET status = 'Refunded' WHERE id = ? AND status = 'Locked'",
         )
@@ -371,7 +537,7 @@ mod tests {
         .await
         .unwrap(); // allow-anti-pattern
 
-        StripeCommerceEngine::new("sk_test_mock".into(), "whsec_test".into(), pool)
+        StripeCommerceEngine::new("sk_test_mock".into(), "whsec_test".into(), pool, None, None)
     }
 
     #[tokio::test]

@@ -17,6 +17,8 @@ impl CommerceEngineFactory {
         api_key: Option<String>,
         webhook_secret: String,
         pool: sqlx::SqlitePool,
+        nurture_url: Option<String>,
+        nurture_secret: Option<String>,
     ) -> Result<Arc<dyn CommerceEngine>> {
         if let Some(key) = api_key {
             // If we have a key, we always use the Stripe engine
@@ -24,6 +26,8 @@ impl CommerceEngineFactory {
                 key,
                 webhook_secret,
                 pool,
+                nurture_url,
+                nurture_secret,
             )))
         } else {
             #[cfg(debug_assertions)]
@@ -53,7 +57,8 @@ mod tests {
         let api_key = "sk_test_mock_123".to_string();
         let webhook_secret = "whsec_mock".to_string();
 
-        let engine = CommerceEngineFactory::create(Some(api_key), webhook_secret, pool).await;
+        let engine =
+            CommerceEngineFactory::create(Some(api_key), webhook_secret, pool, None, None).await;
 
         assert!(engine.is_ok());
     }
@@ -65,7 +70,7 @@ mod tests {
             .await
             .unwrap(); // allow-anti-pattern
 
-        let engine = CommerceEngineFactory::create(None, "".to_string(), pool).await;
+        let engine = CommerceEngineFactory::create(None, "".to_string(), pool, None, None).await;
 
         #[cfg(debug_assertions)]
         {

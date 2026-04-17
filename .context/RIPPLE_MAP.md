@@ -16,6 +16,17 @@
     - Cargo のビルドキャッシュ（`target/` 約 22GB）は `CARGO_MANIFEST_DIR` 絶対パス変更により無効化されるが、次回ビルドで自動再生成。
     - Git リモート (`origin: Project-Nurture.git`) とローカルディレクトリ名が一致し、clone/push/pull の整合性が回復。
 
+### 2. Sprint B-5 (Integer Arithmetic Migration)
+- **変更内容**:
+    - `libs/nurture-infra/migrations/20260416000000_bps_migration.sql` [NEW]: `conversion_rate` などを `REAL` (f64) から `INTEGER` (u32, basis points) へ型変換しデータを移行・再構築する破壊的マイグレーション。
+    - `libs/nurture-core/src/policy.rs` [MODIFY]: `creator_points_rate`, `system_fee_rate`, `burn_rate` を `u32` へ型変更。
+    - `libs/nurture-core/src/points.rs` [MODIFY]: `conversion_rate` を `u32` へ型変更。
+    - `libs/nurture-infra/src/economy/settlement.rs` & `ledger.rs` [MODIFY]: 浮動小数点計算 (`amount * rate`) を整数算術 (`amount * bps / 10000`) へリファクタリング。
+    - `libs/commerce-protocol/src/transaction.rs` & `interceptor.rs` [MODIFY]: トランザクション時のポイント計算を bps へ移行、テストデータを `1000` などの整数リテラルへ修正。
+- **波及効果**:
+    - 経済計算（Nurture Economy）における「丸め誤差」のリスクが完全に払拭され、トランザクション時の正確性が保証された。
+    - リファクタリングによる AST インパクト範囲内の全テストスイートが GREEN で通過し、システムの堅牢性が強化された。
+
 ## Phase 1+2: Hardening Podman Infrastructure Integration
 ### 1. Rootless Podman Full Support
 - **変更内容**:

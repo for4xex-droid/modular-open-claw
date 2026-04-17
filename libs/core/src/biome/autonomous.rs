@@ -127,14 +127,24 @@ impl AutonomousBiomeEngine {
 
                         if has_gratitude && rounds % 10 == 0 {
                             // Rate limit: Every 10 rounds of high karma dialogue
-                            info!("🎁 [AutonomousBiome] Karma Threshold met. Triggering autonomous gift for {}", email);
-                            let _ = ge
-                                .send_gift_code(
-                                    email,
-                                    1.0,
-                                    "Aiome Autonomous Gratitude (Phase 7.2)",
-                                )
-                                .await;
+                            let amount_usd = 1.0;
+                            let agent_id = queue.get_system_agent_id().await.unwrap_or_default();
+
+                            match ge.validate_gift_policy(agent_id, amount_usd).await {
+                                Ok(_) => {
+                                    info!("🎁 [AutonomousBiome] Karma Threshold met. Triggering autonomous gift for {}", email);
+                                    let _ = ge
+                                        .send_gift_code(
+                                            email,
+                                            amount_usd,
+                                            "Aiome Autonomous Gratitude (Phase 7.2)",
+                                        )
+                                        .await;
+                                }
+                                Err(e) => {
+                                    warn!("⚠️ [AutonomousBiome] Gift policy validation failed: {}. Skipping autonomous gift.", e);
+                                }
+                            }
                         }
                     }
                 }

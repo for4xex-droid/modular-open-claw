@@ -9,6 +9,7 @@ use crate::AppState;
 use aiome_core_contracts::gig::{
     AcceptanceCriteria, GigBid, GigDeliverable, GigIntent, VerificationResult,
 };
+use aiome_core_contracts::traits::KarmaRegistry;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -17,6 +18,9 @@ use axum::{
 };
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// Gig 検証の合格スコアしきい値
+const GIG_VERIFICATION_PASS_THRESHOLD: f32 = 0.8;
 
 /// [POST] /api/v1/gig/publish
 #[utoipa::path(
@@ -224,5 +228,35 @@ pub async fn verify(
             })?;
 
     let result = engine.verify_and_settle(order_id).await?;
+
+    // A-5: Record gig verification resilience to Karma
+    let success = result.score >= GIG_VERIFICATION_PASS_THRESHOLD;
+    let karma_lesson = if success {
+        format!(
+            "Gig verification successful (Score: {:.2}). ROI optimized.",
+            result.score
+        )
+    } else {
+        format!("Gig verification failed (Score: {:.2}). Need to reconsider delivery quality or specifications.", result.score)
+    };
+
+    let karma_type = if success { "POSITIVE" } else { "NEGATIVE" };
+    let soul_hash = state.get_system_soul_hash().await;
+    let _ = state
+        .job_queue
+        .get_inner()
+        .store_karma(
+            &order_id.to_string(), // job_id
+            "GigEngine",           // skill_id
+            &karma_lesson,         // lesson
+            karma_type,            // karma_type
+            &soul_hash,            // soul_hash
+            Some("commerce"),      // domain
+            Some("gig"),           // subtopic
+            None,                  // clone_origin_id
+            true,                  // is_private
+        )
+        .await;
+
     Ok(Json(result))
 }

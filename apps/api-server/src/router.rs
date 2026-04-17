@@ -30,7 +30,6 @@ pub fn build_app(
     state: AppState,
     cors_layer: CorsLayer,
     static_path: &str,
-    #[cfg(feature = "nurture")] nurture_state: nurture_api::NurtureState,
     plugin_registry: crate::plugin_loader::PluginRegistry,
     metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 ) -> Router {
@@ -482,11 +481,6 @@ pub fn build_app(
 
     // 1. Create the base authenticated router (WITHOUT global limit yet)
     let mut authed_router = internal_router.merge(streaming_router);
-
-    #[cfg(feature = "nurture")]
-    {
-        authed_router = authed_router.merge(nurture_api::routes::nurture_routes(nurture_state));
-    }
 
     let authed_router = plugin_registry.merge_routes(authed_router).route_layer(
         axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware),
