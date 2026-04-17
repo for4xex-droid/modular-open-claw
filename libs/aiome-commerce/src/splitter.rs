@@ -21,7 +21,19 @@ impl RevenueSplitter {
         creator_id: Uuid,
         platform_fee_pct: f64,
     ) -> Result<(), AiomeError> {
-        let platform_amount = (total_amount as f64 * platform_fee_pct).round() as i64;
+        // 入力バリデーション: 0.0〜1.0 の範囲 + NaN/Infinity 防御
+        if !(0.0..=1.0).contains(&platform_fee_pct) {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "platform_fee_pct must be between 0.0 and 1.0, got {}",
+                    platform_fee_pct
+                ),
+            });
+        }
+        // f64 パーセンテージを bps 整数に変換 (0.15 → 1500 bps)
+        // 浮動小数点金額計算を完全に排除; validated range guarantees 0..=10000
+        let fee_bps = (platform_fee_pct * 10000.0).round() as i64;
+        let platform_amount = total_amount.saturating_mul(fee_bps) / 10000;
         let creator_amount = total_amount - platform_amount;
 
         // クリエイターへの分配

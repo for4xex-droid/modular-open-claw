@@ -72,7 +72,12 @@ impl GigEngine for UniversalGigEngine {
             intent.requester_id.to_string(),
             intent.description,
             criteria_json,
-            intent.max_budget_coins as i64,
+            i64::try_from(intent.max_budget_coins).map_err(|_| AiomeError::Infrastructure {
+                reason: format!(
+                    "max_budget_coins {} exceeds i64 max",
+                    intent.max_budget_coins
+                ),
+            })?,
             intent.category.to_string(),
             intent.deadline
         )
@@ -95,9 +100,15 @@ impl GigEngine for UniversalGigEngine {
             bid.id.to_string(),
             bid.intent_id.to_string(),
             bid.bidder_id.to_string(),
-            bid.price_coins as i64,
-            bid.est_duration_sec as i64,
-            bid.deposit_amount as i64
+            i64::try_from(bid.price_coins).map_err(|_| AiomeError::Infrastructure {
+                reason: format!("price_coins {} exceeds i64 max", bid.price_coins),
+            })?,
+            i64::try_from(bid.est_duration_sec).map_err(|_| AiomeError::Infrastructure {
+                reason: format!("est_duration_sec {} exceeds i64 max", bid.est_duration_sec),
+            })?,
+            i64::try_from(bid.deposit_amount).map_err(|_| AiomeError::Infrastructure {
+                reason: format!("deposit_amount {} exceeds i64 max", bid.deposit_amount),
+            })?
         )
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Bid database insertion failed: {}", e),
@@ -203,7 +214,12 @@ impl GigEngine for UniversalGigEngine {
         // 3. Create Escrow in Commerce Engine
         let escrow_id = self
             .commerce_engine
-            .escrow_create(requester_id, price as u64)
+            .escrow_create(
+                requester_id,
+                u64::try_from(price).map_err(|_| AiomeError::Infrastructure {
+                    reason: format!("Bid price {} is negative or overflows u64", price),
+                })?,
+            )
             .await?;
 
         // 4. Record Escrow in DB
@@ -672,7 +688,7 @@ impl GigEngine for UniversalGigEngine {
                 sqlx::query(&q_log)
                     .bind(Uuid::new_v4().to_string())
                     .bind(&order_id_str)
-                    .bind(passed as i32)
+                    .bind(i32::from(passed))
                     .bind(overall_score)
                     .bind(&detail)
                     .execute(&mut **itx)
@@ -693,7 +709,7 @@ impl GigEngine for UniversalGigEngine {
                 sqlx::query(&q_log)
                     .bind(Uuid::new_v4().to_string())
                     .bind(&order_id_str)
-                    .bind(passed as i32)
+                    .bind(i32::from(passed))
                     .bind(overall_score)
                     .bind(&detail)
                     .execute(&mut **itx)

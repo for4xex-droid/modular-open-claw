@@ -272,14 +272,9 @@ impl CommerceEngine for StripeCommerceEngine {
                 tracing::info!("🔓 [StripeCommerce] Released Escrow: {}", escrow_id);
                 Ok(())
             }
-            Ok(_) => {
-                if self.is_mock {
-                    return Ok(());
-                }
-                Err(AiomeError::Infrastructure {
-                    reason: "Escrow not found or not locked".into(),
-                })
-            }
+            Ok(_) => Err(AiomeError::Infrastructure {
+                reason: "Escrow not found or not locked".into(),
+            }),
             Err(e) => {
                 if self.is_mock {
                     return Ok(());
@@ -312,14 +307,9 @@ impl CommerceEngine for StripeCommerceEngine {
                 tracing::info!("💸 [StripeCommerce] Refunded Escrow: {}", escrow_id);
                 Ok(())
             }
-            Ok(_) => {
-                if self.is_mock {
-                    return Ok(());
-                }
-                Err(AiomeError::Infrastructure {
-                    reason: "Escrow not found or not locked".into(),
-                })
-            }
+            Ok(_) => Err(AiomeError::Infrastructure {
+                reason: "Escrow not found or not locked".into(),
+            }),
             Err(e) => {
                 if self.is_mock {
                     return Ok(());

@@ -211,7 +211,7 @@ impl GiftEngine for TremendousGiftEngine {
         Ok(aiome_core_contracts::commerce::GiftPolicyContext {
             max_amount_usd: 5.0,
             daily_limit_reached,
-            daily_sent_count: count as u32,
+            daily_sent_count: u32::try_from(count).unwrap_or(u32::MAX),
             daily_sent_total_usd: total,
         })
     }
