@@ -316,7 +316,7 @@ pub async fn list_messages(
                 content: row.get::<String, _>("content"),
                 karma_root_cid: row.get::<String, _>("karma_root_cid"),
                 signature: row.get::<String, _>("signature"),
-                lamport_clock: row.get::<i64, _>("lamport_clock") as u64,
+                lamport_clock: u64::try_from(row.get::<i64, _>("lamport_clock")).unwrap_or(0),
                 timestamp: "".to_string(), // Not in DB or not needed for UI yet
                 encryption: row.get::<String, _>("encryption"),
             };
@@ -479,7 +479,7 @@ pub async fn send_message(
         Ok(r) if r.status().is_success() => {
             // Store a copy in local history
             if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(msg.lamport_clock as i64).bind(&msg.encryption)
+                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(i64::try_from(msg.lamport_clock).unwrap_or(0)).bind(&msg.encryption)
                 .execute(state.job_queue.get_pool().get_sqlite_pool_or_err()?).await {
                 error!("🚨 [Biome] Failed to store sent message in local history: {}", e);
             }
@@ -490,7 +490,7 @@ pub async fn send_message(
             // Hub unavailable or failed: Fallback to local
             warn!("⚠️ [Biome] Hub relay failed. Saving message locally as fallback.");
             if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(msg.lamport_clock as i64).bind(&msg.encryption)
+                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(i64::try_from(msg.lamport_clock).unwrap_or(0)).bind(&msg.encryption)
                 .execute(state.job_queue.get_pool().get_sqlite_pool_or_err()?).await {
                 error!("🚨 [Biome] Failed to store sent message locally (fallback): {}", e);
             }
