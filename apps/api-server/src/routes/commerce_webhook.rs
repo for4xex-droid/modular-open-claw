@@ -259,8 +259,8 @@ pub async fn stripe_webhook(
     if let Some((agent_uuid, amount, ev_id)) = pending_coin_charge {
         let http_client = state.http_client.clone();
         let dlq_pool = db_pool.clone();
-        let nurture_url = std::env::var("NURTURE_API_URL").ok();
-        let nurture_secret = std::env::var("NURTURE_INTERNAL_SECRET").ok();
+        let nurture_url = state.nurture_url.clone();
+        let nurture_secret = state.nurture_internal_secret.clone();
 
         if let (Some(url), Some(secret)) = (nurture_url, nurture_secret) {
             tokio::spawn(async move {

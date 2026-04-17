@@ -9,6 +9,8 @@
     - **整数算術安全性**: `sqlite.rs` 全域の `u64 as i64` / `u32 as i32` 暗黙キャストを `i64::try_from()` / `i32::try_from()` に置換し、サイレントオーバーフローを完全排除 (Subscription `price_coins` / `interval_days` 含む)。
     - **入力バリデーション強化**: `charge_coins` / `create_escrow` に `amount == 0` 早期リジェクト (400) を追加 (S-1/S-3)。`upload_handler` に `name` / `description` 空文字列ガードを追加 (S-2)。`currency` フィールドに `"coin"` のみ許可するバリデーションを追加 (R-3)。
     - **エラー応答修正**: エラー時に偽データ `balance: 0` を返していた問題を `StatusCode::INTERNAL_SERVER_ERROR.into_response()` に統一 (R-4)。
+    - **Stripe Customer UPSERT**: `registry.rs` に `stripe_customers` インライン DDL を追加し、Stripeサブスクリプション作成時の重複作成を防止する UPSERT ロジックを実装。
+    - **Hot-path syscal 排除**: Nurture 接続情報 (`NURTURE_API_URL` 等) の `std::env::var` 取得を `AppState` 構造体へ移行し、Webhook フローのシステムコールとTOCTOU競合を排除。
 
 ## [Unreleased] - 2026-04-16
   - **Project Nurture Sprint B-5 (Integer Arithmetic)**: `conversion_rate`, `burn_rate`, `system_fee_rate`, `creator_points_rate` を `f64` 浮動小数点から `u32` の Basis Points (bps) 整数表現へ完全移行し、経済計算の丸め誤差リスク（Rounding Errors）を物理的に排除しました。

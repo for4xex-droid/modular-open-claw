@@ -496,6 +496,31 @@ mod tests {
         )
         .unwrap(); // allow-anti-pattern
 
+        crate::sql_exec!(
+            &db_pool,
+            r#"
+            CREATE TABLE outbox_dead_letters (
+                id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                error_reason TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            "#
+        )
+        .unwrap(); // allow-anti-pattern
+
+        crate::sql_exec!(
+            &db_pool,
+            r#"
+            CREATE TABLE stripe_customers (
+                agent_id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL
+            )
+            "#
+        )
+        .unwrap(); // allow-anti-pattern
+
         db_pool
     }
 
@@ -681,5 +706,31 @@ mod tests {
             .await
             .unwrap(); // allow-anti-pattern
         assert_eq!(assets.len(), 1, "Non-MCP assets should not be cleared");
+    }
+
+    #[tokio::test]
+    async fn test_ensure_tables_creates_dlq_and_customers() {
+        let pool = setup_db_for_registry().await;
+
+        let sqlite_pool = match pool {
+            DatabasePool::Sqlite(p) => p,
+            _ => panic!("Test needs sqlite pool"),
+        };
+
+        let dlq_count: (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='outbox_dead_letters'",
+        )
+        .fetch_one(&sqlite_pool)
+        .await
+        .unwrap();
+        assert_eq!(dlq_count.0, 1, "DLQ table outbox_dead_letters should exist");
+
+        let customers_count: (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='stripe_customers'",
+        )
+        .fetch_one(&sqlite_pool)
+        .await
+        .unwrap();
+        assert_eq!(customers_count.0, 1, "Stripe customers table should exist");
     }
 }

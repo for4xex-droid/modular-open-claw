@@ -98,6 +98,8 @@ pub struct AppState {
     pub rate_limiter: Component<AgentRateLimiter>,
     pub slo_engine: Component<Arc<SloEngine>>,
     pub api_server_secret: Component<Arc<secrecy::SecretString>>,
+    pub nurture_url: Option<String>,
+    pub nurture_internal_secret: Option<String>,
     pub federation_secret: Component<Arc<secrecy::SecretString>>,
     pub config: Component<Arc<AiomeConfig>>,
     pub gift_engine: Component<Arc<dyn GiftEngine>>,

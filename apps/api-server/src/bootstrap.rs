@@ -1109,6 +1109,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .build(),
         )),
         eval_logger: Component::new(eval_logger),
+        nurture_url: std::env::var("NURTURE_API_URL").ok(),
+        nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

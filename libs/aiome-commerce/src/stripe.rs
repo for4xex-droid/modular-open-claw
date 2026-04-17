@@ -418,28 +418,54 @@ impl CommerceEngine for StripeCommerceEngine {
         }
 
         // P0-1: Create or Get Stripe Customer
-        // TODO: In production, check soul_store/DB if customer_id already exists for this agent_id. // allow-anti-pattern
-        // For now, we create a new one to verify the flow.
+        // Retrieve existing customer from registry table stripe_customers
+        let existing_customer: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
 
-        let desc = format!("Agent Soul: {}", agent_id);
-        let create_customer = stripe_core::customer::CreateCustomer::new()
-            .description(desc)
-            .metadata(std::collections::HashMap::from([(
-                "agent_id".to_string(),
-                agent_id.to_string(),
-            )]));
+        let customer_id = if let Some(row) = existing_customer {
+            tracing::info!("✅ [Stripe] Found existing customer: {}", row.0);
+            row.0
+                .parse::<stripe_core::CustomerId>()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+        } else {
+            let desc = format!("Agent Soul: {}", agent_id);
+            let create_customer = stripe_core::customer::CreateCustomer::new()
+                .description(desc)
+                .metadata(std::collections::HashMap::from([(
+                    "agent_id".to_string(),
+                    agent_id.to_string(),
+                )]));
 
-        let customer = match create_customer.send(&self.client).await {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(AiomeError::Infrastructure {
-                    reason: format!("Stripe Customer creation failed: {}", e),
-                })
-            }
+            let customer = match create_customer.send(&self.client).await {
+                Ok(c) => c,
+                Err(e) => {
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!("Stripe Customer creation failed: {}", e),
+                    })
+                }
+            };
+
+            // Save to DB
+            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
+                .bind(agent_id.to_string())
+                .bind(customer.id.to_string())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to save customer: {}", e),
+                })?;
+
+            tracing::info!("✅ [Stripe] Created new customer: {}", customer.id);
+            customer.id
         };
-
-        let customer_id = customer.id;
-        tracing::info!("✅ [Stripe] Created customer: {}", customer_id);
 
         let plan_id_str = plan_id.to_string();
         // Stripe Subscriptions API Call
