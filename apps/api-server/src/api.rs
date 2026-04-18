@@ -54,6 +54,8 @@ use utoipa::OpenApi;
         crate::routes::expression::generate_expression,
         crate::routes::expression::list_expressions,
         crate::routes::expression::toggle_auto_expression,
+        // A2UI
+        crate::routes::a2ui::submit_a2ui_action,
         // Commerce
         crate::routes::commerce::get_balance,
         crate::routes::commerce::execute_purchase,

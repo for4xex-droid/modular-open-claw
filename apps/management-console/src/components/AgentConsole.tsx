@@ -11,6 +11,7 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
+import ErrorBoundary from './common/ErrorBoundary';
 import { A2uiRenderer } from './A2uiRenderer';
 
 export interface AgentConsoleProps {
@@ -179,7 +180,11 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             whiteSpace: 'pre-wrap'
                         }}>
                             {m.content && <div>{m.content}</div>}
-                            {m.a2uiEnvelope && <A2uiRenderer envelope={m.a2uiEnvelope} />}
+                            {m.a2uiEnvelope && (
+                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem'}}>A2UI render failed — invalid surface data</div>}>
+                                    <A2uiRenderer envelope={m.a2uiEnvelope} />
+                                </ErrorBoundary>
+                            )}
                         </div>
 
                         {m.role === 'assistant' && !m.isError && i === history.length - 1 && (relevantKarmaData?.entries?.length ?? 0) > 0 && (

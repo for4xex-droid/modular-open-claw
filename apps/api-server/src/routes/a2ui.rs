@@ -1,0 +1,106 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
+use crate::auth::Authenticated;
+use crate::error::AppError;
+use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::{JobStatus, TaskRegistry};
+use axum::{extract::State, Json};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct A2uiActionRequest {
+    pub surface_id: String,
+    pub action: String,
+    /// オプションのペイロード（フォーム入力値など将来用）
+    pub payload: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct A2uiActionResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/a2ui/action",
+    request_body = A2uiActionRequest,
+    responses(
+        (status = 200, description = "Action executed successfully", body = A2uiActionResponse),
+        (status = 400, description = "Invalid action or parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden (BOLA violation)"),
+        (status = 429, description = "Too many requests")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn submit_a2ui_action(
+    State(state): State<crate::AppState>,
+    auth: Authenticated,
+    Json(req): Json<A2uiActionRequest>,
+) -> Result<Json<A2uiActionResponse>, AppError> {
+    // 1. action のホワイトリスト検証
+    let valid_prefixes = ["approve_job:", "run_skill:", "cancel_job:"];
+    if !valid_prefixes
+        .iter()
+        .any(|prefix| req.action.starts_with(prefix))
+    {
+        return Err(AppError::bad_request("Unauthorized action prefix"));
+    }
+
+    // 2. Extracted Target ID validation (P-8 パッチ)
+    let parts: Vec<&str> = req.action.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Err(AppError::bad_request("Malformed action string"));
+    }
+    let target_id = parts[1];
+
+    // Validate UUID format
+    let target_uuid = match uuid::Uuid::parse_str(target_id) {
+        Ok(u) => u,
+        Err(_) => return Err(AppError::bad_request("Invalid target UUID format")),
+    };
+
+    // 3. Action Dispatching
+    match parts[0] {
+        "approve_job" => {
+            state
+                .job_queue
+                .get_inner()
+                .update_job_status(target_id, JobStatus::Pending)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to approve job {}: {}", target_id, e);
+                    AppError::internal("Failed to update job status")
+                })?;
+        }
+        "cancel_job" => {
+            state
+                .job_queue
+                .get_inner()
+                .update_job_status(target_id, JobStatus::Failed)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to cancel job {}: {}", target_id, e);
+                    AppError::internal("Failed to update job status")
+                })?;
+        }
+        "run_skill" => {
+            // Future extension: run_skill with specific target
+            return Err(AppError::bad_request(
+                "run_skill is not fully implemented via A2UI yet",
+            ));
+        }
+        _ => unreachable!(),
+    }
+
+    Ok(Json(A2uiActionResponse {
+        success: true,
+        message: format!("Action {} dispatched successfully", req.action),
+    }))
+}

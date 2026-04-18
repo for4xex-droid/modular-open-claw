@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
+pub mod a2ui;
 pub mod agent;
 pub mod artifacts;
 pub mod auth;

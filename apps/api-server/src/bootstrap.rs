@@ -1109,7 +1109,33 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .build(),
         )),
         eval_logger: Component::new(eval_logger),
-        a2ui_catalog: Component::new(Arc::new(infrastructure::a2ui::AiomeCatalog::default())),
+        a2ui_catalog: {
+            let mut catalog = infrastructure::a2ui::AiomeCatalog::default();
+            catalog.register_component(
+                "text",
+                serde_json::json!({"content": "string", "markdown": "boolean"}),
+            );
+            catalog.register_component("button", serde_json::json!({"label": "string", "action": "string (whitelist: approve_job:<uuid>, run_skill:<name>, cancel_job:<uuid>)", "variant": "string (optional)"}));
+            catalog.register_component("list", serde_json::json!({"ordered": "boolean"}));
+            catalog.register_component(
+                "form",
+                serde_json::json!({"action": "string", "submitLabel": "string"}),
+            );
+            catalog.register_component(
+                "input",
+                serde_json::json!({"name": "string", "label": "string", "type": "string"}),
+            );
+            catalog.register_component("taskApproval", serde_json::json!({"title": "string", "description": "string", "riskLevel": "string"}));
+            catalog.register_component(
+                "taskResult",
+                serde_json::json!({"success": "boolean", "message": "string"}),
+            );
+            catalog.register_component(
+                "treasureItem",
+                serde_json::json!({"name": "string", "value": "number", "currency": "string"}),
+            );
+            Component::new(Arc::new(catalog))
+        },
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
     };

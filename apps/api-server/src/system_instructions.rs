@@ -135,7 +135,17 @@ pub(crate) async fn build_system_instructions(
         if let Some(catalog) = state.a2ui_catalog.as_opt() {
             let schema_str = catalog.to_prompt_schema();
             if !schema_str.is_empty() {
-                a2ui_prompt = format!("\n[a2ui_catalog]\n以下のJSON Schemaに従って動的UI(A2UI)を生成できます。\nユーザーにUIを提供したい場合は、レスポンス内にこのSchemaに適合するJSONを必ず単一行(compact JSON)で出力してください:\n{}\n", schema_str);
+                a2ui_prompt = format!(
+                    "\n[a2ui_catalog]\n\
+                    以下のJSON Schemaに従って動的UI(A2UI)を生成できます。\n\
+                    ユーザーにインタラクティブなUIを提供したい場合は、レスポンス内にこのSchemaに適合するJSONを必ず単一行(compact JSON)で出力してください。\n\
+                    \n\
+                    出力例 (タスク承認を求める場合):\n\
+                    {{\"type\":\"createSurface\",\"surface\":{{\"id\":\"task-approve-001\",\"version\":\"0.9\",\"source\":\"agent\",\"components\":[{{\"type\":\"taskApproval\",\"props\":{{\"title\":\"システム再起動\",\"description\":\"再起動を実行しますか？\",\"riskLevel\":\"high\"}},\"children\":[{{\"type\":\"button\",\"props\":{{\"label\":\"承認する\",\"action\":\"approve_job:1234-abcd\"}},\"children\":[]}}]}}]}}}}\n\
+                    \n\
+                    スキーマ定義:\n{}\n",
+                    schema_str
+                );
             }
         }
     }

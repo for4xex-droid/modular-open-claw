@@ -766,6 +766,43 @@ async fn test_rate_limiting_per_agent() {
 
 #[serial]
 #[tokio::test]
+async fn test_a2ui_action_integration() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // Enqueue a job to have something to approve
+    state
+        .job_queue
+        .enqueue("Testing", "A2UI", "standard", None, None, None, 1)
+        .await
+        .unwrap();
+    let jobs = state.job_queue.fetch_recent_jobs(1).await.unwrap();
+    let target_id = jobs[0].id.clone();
+
+    // 1. Submit approve action
+    let resp = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_123",
+            "action": format!("approve_job:{}", target_id)
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    // Verify job status changed to pending
+    let job = state
+        .job_queue
+        .fetch_job(&target_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(job.status, aiome_core_contracts::traits::JobStatus::Pending);
+}
+
+#[serial]
+#[tokio::test]
 async fn test_expression_generation_plan_limits() {
     let (server, state, _tmp) = create_test_server().await;
     let bearer =

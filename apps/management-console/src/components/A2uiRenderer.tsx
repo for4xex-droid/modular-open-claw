@@ -4,8 +4,11 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { A2uiEnvelope, A2uiComponent, A2uiSurface } from '../types';
+import { useTokenHealth } from '../hooks/useTokenHealth';
+import { API_BASE } from '../config';
+import { authenticatedFetch } from '../lib/auth';
 
 interface A2uiRendererProps {
     envelope: A2uiEnvelope;
@@ -17,7 +20,7 @@ interface A2uiRendererProps {
  * React JSX は文字列をデフォルトでエスケープするため、XSS 安全性を維持。
  * dangerouslySetInnerHTML は使用禁止。
  */
-const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }) => {
+const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action: string) => void }> = ({ component, onAction }) => {
     const content = component.props?.content;
 
     switch (component.type) {
@@ -46,7 +49,11 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }
                         cursor: 'pointer',
                         transition: `all var(--speed-fast)`,
                     }}
-                    onClick={() => console.log('[A2UI] Action:', component.props?.action)}
+                    onClick={() => {
+                        if (typeof component.props?.action === 'string') {
+                            onAction(component.props.action);
+                        }
+                    }}
                 >
                     {typeof component.props?.label === 'string' ? component.props.label : 'Action'}
                 </button>
@@ -64,7 +71,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }
                     color: 'var(--text-primary)',
                 }}>
                     {component.children.map((child, i) => (
-                        <li key={i}><ComponentRenderer component={child} /></li>
+                        <li key={i}><ComponentRenderer component={child} onAction={onAction} /></li>
                     ))}
                 </ul>
             );
@@ -79,7 +86,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }
                     maxWidth: '28rem',
                 }}>
                     {component.children.map((child, i) => (
-                        <ComponentRenderer key={i} component={child} />
+                        <ComponentRenderer key={i} component={child} onAction={onAction} />
                     ))}
                 </div>
             );
@@ -102,6 +109,49 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }
                     }}
                 />
             );
+        case 'taskApproval':
+            return (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    padding: '1rem',
+                    background: 'var(--bg-glass-light)',
+                    border: '1px solid var(--border-glass-bright)',
+                    borderRadius: 'var(--radius-md)',
+                    borderLeft: component.props?.riskLevel === 'high' ? '3px solid var(--accent-rose)' : '3px solid var(--accent-amber)',
+                    margin: '0.5rem 0',
+                }}>
+                    {component.props?.title && <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{component.props.title as string}</h4>}
+                    {component.props?.description && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{component.props.description as string}</p>}
+                    {component.children && component.children.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            {component.children.map((child, i) => <ComponentRenderer key={i} component={child} onAction={onAction} />)}
+                        </div>
+                    )}
+                </div>
+            );
+        case 'taskResult':
+            return (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem',
+                    background: component.props?.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+                    border: '1px solid',
+                    borderColor: component.props?.success ? 'var(--accent-emerald-30)' : 'var(--accent-rose-30)',
+                    borderRadius: 'var(--radius-sm)',
+                    margin: '0.5rem 0',
+                }}>
+                    <span style={{ color: component.props?.success ? 'var(--accent-emerald)' : 'var(--accent-rose)', fontSize: '1.25rem' }}>
+                        {component.props?.success ? '✓' : '✗'}
+                    </span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                        {component.props?.message as string || (component.props?.success ? 'Success' : 'Failed')}
+                    </span>
+                </div>
+            );
         default:
             return (
                 <div style={{
@@ -122,12 +172,12 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent }> = ({ component }
     }
 };
 
-const SurfaceRenderer: React.FC<{ surface: A2uiSurface }> = ({ surface }) => {
+const SurfaceRenderer: React.FC<{ surface: A2uiSurface, onAction: (action: string) => void }> = ({ surface, onAction }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {surface.components.map((comp, i) => (
-                    <ComponentRenderer key={i} component={comp} />
+                    <ComponentRenderer key={i} component={comp} onAction={onAction} />
                 ))}
             </div>
         </div>
@@ -135,6 +185,36 @@ const SurfaceRenderer: React.FC<{ surface: A2uiSurface }> = ({ surface }) => {
 };
 
 export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
+    const { checkHealth } = useTokenHealth();
+    const [submittingData, setSubmittingData] = useState(false);
+
+    const handleAction = async (action: string, surfaceId: string) => {
+        if (submittingData) return;
+        setSubmittingData(true);
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/a2ui/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ surface_id: surfaceId, action })
+            });
+
+            if (res.status === 401) {
+                checkHealth();
+            }
+
+            if (!res.ok) {
+                console.error('[A2UI] Action failed:', await res.text());
+                return;
+            }
+
+            console.log('[A2UI] Action Success:', action);
+        } catch (e) {
+            console.error('[A2UI] Network error during action:', e);
+        } finally {
+            setSubmittingData(false);
+        }
+    };
+
     if (envelope.type === 'createSurface') {
         // Runtime guard: discriminated unions don't guarantee shape at runtime
         const surface = envelope.surface;
@@ -205,7 +285,7 @@ export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
                             : `ID: ${surfaceId}`}
                     </span>
                 </div>
-                <SurfaceRenderer surface={surface} />
+                <SurfaceRenderer surface={surface} onAction={(action) => handleAction(action, surfaceId)} />
             </div>
         );
     }

@@ -240,7 +240,11 @@ pub fn build_app(
             get(routes::jobs::get_diagnosis_handler),
         )
         .route("/api/v1/soul/status", get(routes::soul::get_soul_status))
-        .route("/api/v1/soul/init", post(routes::soul::init_soul));
+        .route("/api/v1/soul/init", post(routes::soul::init_soul))
+        .route(
+            "/api/v1/a2ui/action",
+            post(routes::a2ui::submit_a2ui_action),
+        );
 
     #[cfg(debug_assertions)]
     let internal_router = internal_router

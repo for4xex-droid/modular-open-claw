@@ -153,7 +153,20 @@ export const useAgentChat = (): UseAgentChatReturn => {
                                         accumulatedText = "";
                                         setStreamingText("");
                                     }
-                                    setHistory(prev => [...prev, { role: "assistant", content: "", a2uiEnvelope: envelope }]);
+                                    setHistory(prev => {
+                                        const newHistory = [...prev, { role: "assistant", content: "", a2uiEnvelope: envelope }];
+                                        const MAX_SURFACES = 20;
+                                        let a2uiCount = 0;
+                                        for (let i = newHistory.length - 1; i >= 0; i--) {
+                                            if (newHistory[i].a2uiEnvelope) {
+                                                a2uiCount++;
+                                                if (a2uiCount > MAX_SURFACES) {
+                                                    newHistory[i] = { ...newHistory[i], content: "[A2UI Surface Expired]", a2uiEnvelope: undefined };
+                                                }
+                                            }
+                                        }
+                                        return newHistory;
+                                    });
                                 } else {
                                     console.warn('[A2UI] Rejected malformed envelope:', envelope?.type);
                                 }

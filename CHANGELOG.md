@@ -18,6 +18,9 @@
     - **SSE イベントハンドラ** (`useAgentChat.ts`): `a2ui` イベント受信時の `accumulatedText` フラッシュ + Runtime 型ガード (`isValidShape`)。`return` によるストリーム切断バグを Reflexion で発見・修正。
     - **[Chaos] Deep Recursion DoS 防御**: `A2uiValidator` に対する100階層以上の極悪再帰（Stack Overflow）攻撃をシミュレート（Experiment 9）。`MAX_COMPONENT_DEPTH` で適切に遮断される安全性を実験証明。
     - **[RedTeam] SSRF/XSS フィルタバイパスパッチ**: `verify_props_urls` での `starts_with("javascript:")` 判定において、ホワイトスペースや制御文字（`\n`, `\t`）を前置したスキームバイパスの脆弱性を特定。判定前に `replace()` で全空白・制御文字を剝がすパッチを適用し、ゼロデイ級の脆弱性を防護。
+    - **A2UI Action Endpoint** (`a2ui.rs`): `POST /api/v1/a2ui/action` エンドポイントを実装し、A2UI Surface 上の Action Button からの安全なジョブ承認 / キャンセルなどのバックエンド連携を確立。
+    - **Surface State GC** (`useAgentChat.ts`): `MAX_SURFACES = 20` に基づく FIFO GC（ガベージコレクション）をチャット履歴更新ロジックに統合。フロントエンドでの DOM 過多によるメモリリークを予防。
+    - **Token Health Check** (`A2uiRenderer.tsx`): API実行で 401 が返却された際に即座に `useTokenHealth.checkHealth()` をコールして認証リフレッシュフローをトリガーするよう修正。
 
 ### 2026-04-16
   - **Project Nurture Sprint B-5 (Integer Arithmetic)**: `conversion_rate`, `burn_rate`, `system_fee_rate`, `creator_points_rate` を `f64` 浮動小数点から `u32` の Basis Points (bps) 整数表現へ完全移行し、経済計算の丸め誤差リスク（Rounding Errors）を物理的に排除しました。
