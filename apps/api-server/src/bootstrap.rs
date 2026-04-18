@@ -1109,6 +1109,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .build(),
         )),
         eval_logger: Component::new(eval_logger),
+        a2ui_catalog: Component::new(Arc::new(infrastructure::a2ui::AiomeCatalog::default())),
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
     };

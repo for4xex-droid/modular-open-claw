@@ -11,6 +11,7 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
+import { A2uiRenderer } from './A2uiRenderer';
 
 export interface AgentConsoleProps {
     sessionSavedChars?: number;
@@ -177,7 +178,8 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             boxShadow: 'var(--shadow-shallow)',
                             whiteSpace: 'pre-wrap'
                         }}>
-                            {m.content}
+                            {m.content && <div>{m.content}</div>}
+                            {m.a2uiEnvelope && <A2uiRenderer envelope={m.a2uiEnvelope} />}
                         </div>
 
                         {m.role === 'assistant' && !m.isError && i === history.length - 1 && (relevantKarmaData?.entries?.length ?? 0) > 0 && (

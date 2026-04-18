@@ -105,6 +105,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 82 | **Internal Error Leakage** | **Database SQL details exposed via API (CWE-209)** | 🔴 High | **Defensive Error Masking (`tracing` isolation) (Phase 3-A Reflexion)** |
 | 83 | **Webhook Replay / Parse Error** | **Malicious payload or duplicate Stripe event** | 🔴 High | **Parse-What-You-Need Resiliency & Idempotency Check** |
 | 84 | **Frontend Type Panic** | **Catching unpredictable exceptions without guards** | 🟡 Mid | **Tier A/B Strict `unknown` typing & `instanceof Error` checks** |
+| 85 | **Deep Recursion DoS** | **A2UI Validator Stack Overflow** | 🔴 High | **`MAX_COMPONENT_DEPTH` & `MaxDepthExceeded` (Chaos Exp 9)** |
+| 86 | **URL Scheme Parse Bypass (SSRF)** | **Whitespace/Control Chars injected before `javascript:` scheme** | 🔴 High | **Total stripping of Ascii Whitespace/Control before validation (Red Team)** |
 
 ## 3. Defense Architecture
 
@@ -190,7 +192,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-04-16*
+*Last Mutated: 2026-04-18*
 *Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)

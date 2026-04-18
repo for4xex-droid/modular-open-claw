@@ -695,6 +695,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             )
                 as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>)
         },
+        a2ui_catalog: Default::default(),
         nurture_url: None,
         nurture_internal_secret: None,
     };

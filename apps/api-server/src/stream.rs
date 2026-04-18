@@ -252,7 +252,63 @@ pub async fn trigger_agent_chat_stream(
 
                     if !is_tool_call_mode {
                         buffer.push_str(&chunk);
-                        if let Some(idx) = buffer.find("[CallSkill") {
+                        if let Some(idx) = buffer.find("{\"type\":") {
+                            let text = buffer[..idx].to_string();
+                            if !text.is_empty() {
+                                yield Ok(Event::default().event("text").data(&text));
+                            }
+                            buffer = buffer[idx..].to_string();
+
+                            let mut iter = serde_json::Deserializer::from_str(&buffer).into_iter::<infrastructure::a2ui::A2uiEnvelope>();
+                            match iter.next() {
+                                Some(Ok(envelope)) => {
+                                    if let Err(ve) = infrastructure::a2ui::A2uiValidator::verify_a2ui_surface(&envelope) {
+                                        tracing::warn!("🛡️ [A2UI] Validation failed: {:?}", ve);
+                                        let offset = iter.byte_offset();
+                                        yield Ok(Event::default().event("text").data(&buffer[..offset]));
+                                        buffer = buffer[offset..].to_string();
+                                    } else {
+                                        match serde_json::to_string(&envelope) {
+                                            Ok(compact_json) => {
+                                                yield Ok(Event::default().event("a2ui").data(compact_json));
+                                            }
+                                            Err(e) => {
+                                                tracing::warn!("🛡️ [A2UI] Re-serialization failed: {}", e);
+                                                let offset = iter.byte_offset();
+                                                yield Ok(Event::default().event("text").data(&buffer[..offset]));
+                                            }
+                                        }
+                                        buffer = buffer[iter.byte_offset()..].to_string();
+                                    }
+                                    continue;
+                                },
+                                Some(Err(e)) if e.is_eof() => {
+                                    // Wait for more chunks (partial JSON)
+                                },
+                                Some(Err(e)) => {
+                                    // Invalid JSON structure — advance past the current `{` to the next one.
+                                    // This prevents O(n²) char-by-char removal on adversarial payloads.
+                                    tracing::warn!("🛡️ [A2UI] Invalid JSON: {}", e);
+                                    if buffer.len() > 1 {
+                                        if let Some(next_brace) = buffer[1..].find('{') {
+                                            // Emit text before the next `{`, then retry from there
+                                            let flush_end = next_brace + 1;
+                                            yield Ok(Event::default().event("text").data(&buffer[..flush_end]));
+                                            buffer = buffer[flush_end..].to_string();
+                                        } else {
+                                            // No more `{` in buffer — flush everything as text
+                                            yield Ok(Event::default().event("text").data(&buffer));
+                                            buffer.clear();
+                                        }
+                                    } else {
+                                        yield Ok(Event::default().event("text").data(&buffer));
+                                        buffer.clear();
+                                    }
+                                    continue;
+                                },
+                                None => {}
+                            }
+                        } else if let Some(idx) = buffer.find("[CallSkill") {
                             let text = buffer[..idx].to_string();
                             if !text.is_empty() {
                                 yield Ok(Event::default().event("text").data(&text));

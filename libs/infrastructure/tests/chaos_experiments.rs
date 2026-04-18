@@ -362,3 +362,48 @@ async fn chaos_sequential_full_abstention() {
         result.err()
     );
 }
+
+// ============================================================
+//  Experiment 9: A2uiValidator + 巨大再帰ツリー (Stack Overflow 回避)
+// ============================================================
+/// 仮説: LLM が MAX_COMPONENT_DEPTH を超える極端に深い再帰の
+///       A2UI 表面を出力した場合、A2uiValidator は panic や
+///       Stack Overflow を起こさず、エラーを返す
+#[tokio::test]
+async fn chaos_a2ui_deep_recursion_rejection() {
+    use infrastructure::a2ui::{A2uiEnvelope, A2uiValidator, Component, Surface};
+
+    // ── Fault Injection: MAX_COMPONENT_DEPTH を遥かに超える 100 階層のコンポーネントツリーを作成 ──
+    fn make_deep_component(depth: u8) -> Component {
+        if depth == 0 {
+            Component {
+                r#type: "text".into(),
+                props: serde_json::json!({}),
+                children: vec![],
+            }
+        } else {
+            Component {
+                r#type: "form".into(),
+                props: serde_json::json!({}),
+                children: vec![make_deep_component(depth - 1)],
+            }
+        }
+    }
+
+    let surface = Surface {
+        id: "chaos_surface".into(),
+        version: "v0.9".into(),
+        source: "agent".into(),
+        components: vec![make_deep_component(100)],
+    };
+
+    let envelope = A2uiEnvelope::CreateSurface { surface };
+
+    // ── Verification: panic は起きず、しっかり Err で弾かれる ──
+    let result = A2uiValidator::verify_a2ui_surface(&envelope);
+    assert!(
+        result.is_err(),
+        "Deeply nested A2UI surface MUST be rejected by the validator to prevent Stack Overflow"
+    );
+    // ── Learning: 深甚な階層はバリデーションレベルで遮断され安全である ──
+}

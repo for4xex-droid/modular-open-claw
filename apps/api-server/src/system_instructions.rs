@@ -130,9 +130,19 @@ pub(crate) async fn build_system_instructions(
         "".to_string()
     };
 
+    let mut a2ui_prompt = String::new();
+    if state.is_feature_enabled("a2ui_generative_ui").await {
+        if let Some(catalog) = state.a2ui_catalog.as_opt() {
+            let schema_str = catalog.to_prompt_schema();
+            if !schema_str.is_empty() {
+                a2ui_prompt = format!("\n[a2ui_catalog]\n以下のJSON Schemaに従って動的UI(A2UI)を生成できます。\nユーザーにUIを提供したい場合は、レスポンス内にこのSchemaに適合するJSONを必ず単一行(compact JSON)で出力してください:\n{}\n", schema_str);
+            }
+        }
+    }
+
     format!(
         "# IDENTITY: \n{}{}{}{}{}{}\n\
-        [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}",
+        [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}{}",
         name_prompt,
         economy_prompt,
         soul_md,
@@ -144,7 +154,8 @@ pub(crate) async fn build_system_instructions(
         project_rules,
         karma_str,
         summary.unwrap_or("なし"),
-        agents_md
+        agents_md,
+        a2ui_prompt
     )
 }
 
@@ -401,5 +412,52 @@ mod tests {
         assert!(instructions.contains("残高: 100 コイン"));
         assert!(instructions.contains("今日の支出: 10 / 50 コイン"));
         assert!(instructions.contains("SkillForge"));
+    }
+
+    #[tokio::test]
+    async fn test_build_system_instructions_a2ui_inclusion() {
+        let (mut state, _) = setup_test_state().await;
+
+        // Register dummy component into catalog to test schema generation
+        let mut catalog = infrastructure::a2ui::AiomeCatalog::default();
+        catalog.register_component(
+            "form",
+            serde_json::json!({"type": "object", "properties": {"query": {"type": "string"}}}),
+        );
+        state.a2ui_catalog = crate::app_state::Component::new(std::sync::Arc::new(catalog));
+
+        // Test with feature off
+        let instr_off =
+            build_system_instructions(&state, "karma", None, None, None, None, None, None).await;
+
+        assert!(
+            !instr_off.contains("a2ui_catalog"),
+            "A2UI catalog should be hidden when flag is off"
+        );
+
+        // Turn feature on
+        state
+            .job_queue
+            .update_setting(
+                "feature_flag.a2ui_generative_ui",
+                "true",
+                "feature_flags",
+                false,
+            )
+            .await
+            .unwrap();
+
+        // Test with feature on
+        let instr_on =
+            build_system_instructions(&state, "karma", None, None, None, None, None, None).await;
+
+        assert!(
+            instr_on.contains("a2ui_catalog"),
+            "A2UI catalog should be present when flag is on"
+        );
+        assert!(
+            instr_on.contains("form"),
+            "Catalog content should be included"
+        );
     }
 }

@@ -135,6 +135,31 @@ export const useAgentChat = (): UseAgentChatReturn => {
                             setStatus(`EXECUTING: ${data}`);
                         } else if (currentEvent === 'error') {
                             setHistory(prev => [...prev, { role: "assistant", content: `🚨 Error: ${data}`, isError: true }]);
+                        } else if (currentEvent === 'task_awaiting_input') {
+                            setStatus("AWAITING INPUT");
+                        } else if (currentEvent === 'a2ui') {
+                            try {
+                                const envelope = JSON.parse(data);
+                                // Runtime shape-check: TypeScript types don't exist at runtime.
+                                const validTypes = ['createSurface', 'updateComponents', 'deleteSurface'];
+                                const isValidShape = envelope
+                                    && typeof envelope.type === 'string'
+                                    && validTypes.includes(envelope.type)
+                                    && (envelope.type !== 'createSurface' || (envelope.surface && typeof envelope.surface.id === 'string'));
+
+                                if (isValidShape) {
+                                    if (accumulatedText.trim().length > 0) {
+                                        setHistory(prev => [...prev, { role: "assistant", content: accumulatedText }]);
+                                        accumulatedText = "";
+                                        setStreamingText("");
+                                    }
+                                    setHistory(prev => [...prev, { role: "assistant", content: "", a2uiEnvelope: envelope }]);
+                                } else {
+                                    console.warn('[A2UI] Rejected malformed envelope:', envelope?.type);
+                                }
+                            } catch (e) {
+                                console.error("Failed to parse A2UI JSON:", e);
+                            }
                         } else if (currentEvent === 'done') {
                             setStatus("IDLE");
                         } else if (currentEvent === 'karma') {

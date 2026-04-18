@@ -11,6 +11,7 @@
 | `boundary_verifier` | LLM を介さない O(1) のシェルコマンド境界検証（不変条件強制）を提供。 | **Phase 47 完了** |
 | `cortex_synth` | ドキュメント群からタスクに応じた高品質なJSONLデータセット（ShareGPT形式）を自律生成する教師データ蒸留エンジン。 | **実装完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **実装完了 (Phase 8.2)** |
+| `a2ui` | LLM出力からリアクティブUIを動的にストリーミング生成する基盤（Generative UI）。型安全な `schema`、`A2uiValidator` による XSS/SSRF および深再帰(DoS)防御を提供。 | **Phase 0 完了** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
@@ -70,4 +71,4 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-11 (Asia/Tokyo) - Phase 8.7 TrendSonar Hardening*
+*最終更新: 2026-04-18 (Asia/Tokyo) - Phase 0 A2UI Hardening*

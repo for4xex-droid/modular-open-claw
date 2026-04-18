@@ -70,6 +70,7 @@ export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
     isError?: boolean;
+    a2uiEnvelope?: A2uiEnvelope;
 }
 
 export interface TreasureItem {
@@ -127,3 +128,25 @@ export type SoTEventPayload =
 export interface SoTEvent {
     event: SoTEventPayload;
 }
+
+// --- A2UI Types ---
+// These MUST match the Rust serde output from infrastructure::a2ui::schema exactly.
+// Rust struct Surface { id, version, source, components }
+// Rust enum A2uiEnvelope uses #[serde(tag = "type")] with camelCase renames.
+export interface A2uiComponent {
+    type: string;
+    props: Record<string, unknown>;
+    children: A2uiComponent[];
+}
+
+export interface A2uiSurface {
+    id: string;
+    version: string;
+    source: string;
+    components: A2uiComponent[];
+}
+
+export type A2uiEnvelope =
+    | { type: "createSurface"; surface: A2uiSurface }
+    | { type: "updateComponents"; surfaceId: string; components: A2uiComponent[] }
+    | { type: "deleteSurface"; surfaceId: string };

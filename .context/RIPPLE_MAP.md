@@ -1,5 +1,19 @@
 # 🌊 Aiome Ripple Map
 
+## Sprint F: A2UI Generative Interface (Phase 0)
+### 1. SSE Stream → Frontend Rendering Pipeline
+- **変更内容**:
+    - `apps/api-server/src/stream.rs` [MODIFY]: `{"type":` 検出 → `serde_json::Deserializer::into_iter()` → `A2uiValidator::verify_a2ui_surface()` → SSE `a2ui` イベントエミッションの完全なパイプラインを追加。O(n) 不正JSONスキップ戦略によるDoS耐性。
+    - `apps/management-console/src/components/A2uiRenderer.tsx` [NEW]: Phase 0 コンポーネント (text, button, list, form, input) の再帰的レンダラー。tokens.css 完全準拠。null-safe ガード。
+    - `apps/management-console/src/types.ts` [MODIFY]: `A2uiEnvelope`, `A2uiSurface`, `A2uiComponent` 型定義追加。Rust `schema.rs` serde 出力と完全一致。
+    - `apps/management-console/src/hooks/useAgentChat.ts` [MODIFY]: `a2ui` SSE イベントハンドラ追加。`isValidShape` ランタイム型ガード。`accumulatedText` フラッシュアーキテクチャ。
+    - `apps/management-console/src/components/AgentConsole.tsx` [MODIFY]: `A2uiRenderer` import と条件付きレンダリング統合。
+- **波及効果**:
+    - `stream.rs` の `buffer.find("{\"type\":")` はツール呼び出し検出 (`[CallSkill`) と同一バッファを共有するため、A2UI JSON とツール呼び出しが混在するストリームでの優先度は `{"type":` > `[CallSkill` の順。
+    - `A2uiValidator` (validator.rs) の `ALLOWED_COMPONENT_TYPES` ホワイトリストに新しいコンポーネントを追加する場合、`A2uiRenderer.tsx` の switch ケースも同時に更新する必要がある。
+    - `tokens.css` のデザイントークン名を変更する場合、`A2uiRenderer.tsx` のインラインスタイル内の `var(--*)` 参照を同時に更新する必要がある。
+    - Phase 1 でインタラクション（onClick → API コールバック）を実装する際は、`useAgentChat.ts` に逆方向のイベント送信メカニズムを追加する必要がある。
+
 ## Sprint B: Unicode Directory Remediation (ProjectーNurture → Project-Nurture)
 ### 1. Cross-Repository Path Normalization
 - **変更内容**:

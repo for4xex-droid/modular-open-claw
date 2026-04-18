@@ -154,6 +154,8 @@ pub struct AppState {
     pub feature_flags_cache: Component<Arc<moka::future::Cache<String, bool>>>,
     // --- Phase 3-D ---
     pub eval_logger: Component<Arc<infrastructure::llm::evaluation_logger::EvaluationLogger>>,
+    // --- Phase A2UI ---
+    pub a2ui_catalog: Component<Arc<infrastructure::a2ui::AiomeCatalog>>,
 }
 
 impl AppState {

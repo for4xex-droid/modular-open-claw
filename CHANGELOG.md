@@ -11,8 +11,15 @@
     - **エラー応答修正**: エラー時に偽データ `balance: 0` を返していた問題を `StatusCode::INTERNAL_SERVER_ERROR.into_response()` に統一 (R-4)。
     - **Stripe Customer UPSERT**: `registry.rs` に `stripe_customers` インライン DDL を追加し、Stripeサブスクリプション作成時の重複作成を防止する UPSERT ロジックを実装。
     - **Hot-path syscal 排除**: Nurture 接続情報 (`NURTURE_API_URL` 等) の `std::env::var` 取得を `AppState` 構造体へ移行し、Webhook フローのシステムコールとTOCTOU競合を排除。
+  - **A2UI Generative Interface (Phase 0)**: LLM 出力からリアクティブ UI コンポーネントを動的にストリーミング描画する A2UI v0.9 プロトコルを統合。
+    - **SSE Stream Parser** (`stream.rs`): `serde_json::Deserializer::into_iter()` ストリーミングパーサーを実装し、`A2uiValidator` による XSS/SSRF/DoS バリデーションを統合。O(n) 不正 JSON スキップ戦略により DoS 耐性を確保。
+    - **Frontend Renderer** (`A2uiRenderer.tsx`): Phase 0 コンポーネント (text, button, list, form, input) を再帰的レンダリング。Golden Rule U-001/U-002 準拠 (Tailwind 禁止・tokens.css 全参照)。Runtime null-safe ガードを実装。
+    - **型定義同期** (`types.ts`): `A2uiEnvelope`, `A2uiSurface`, `A2uiComponent` を Rust serde 出力 (`#[serde(tag = "type")]`, `#[serde(rename = "surfaceId")]`) と完全一致。
+    - **SSE イベントハンドラ** (`useAgentChat.ts`): `a2ui` イベント受信時の `accumulatedText` フラッシュ + Runtime 型ガード (`isValidShape`)。`return` によるストリーム切断バグを Reflexion で発見・修正。
+    - **[Chaos] Deep Recursion DoS 防御**: `A2uiValidator` に対する100階層以上の極悪再帰（Stack Overflow）攻撃をシミュレート（Experiment 9）。`MAX_COMPONENT_DEPTH` で適切に遮断される安全性を実験証明。
+    - **[RedTeam] SSRF/XSS フィルタバイパスパッチ**: `verify_props_urls` での `starts_with("javascript:")` 判定において、ホワイトスペースや制御文字（`\n`, `\t`）を前置したスキームバイパスの脆弱性を特定。判定前に `replace()` で全空白・制御文字を剝がすパッチを適用し、ゼロデイ級の脆弱性を防護。
 
-## [Unreleased] - 2026-04-16
+### 2026-04-16
   - **Project Nurture Sprint B-5 (Integer Arithmetic)**: `conversion_rate`, `burn_rate`, `system_fee_rate`, `creator_points_rate` を `f64` 浮動小数点から `u32` の Basis Points (bps) 整数表現へ完全移行し、経済計算の丸め誤差リスク（Rounding Errors）を物理的に排除しました。
     - `nurture_points` テーブルの SQLite マイグレーション (`20260416000000_bps_migration.sql`) を実行し、`REAL` 型から `BIGINT` (1.0 = 10000) へデータをロスレス変換。
     - `settlement.rs` および `transaction.rs` の精算ロジックについて `amount * bps / 10000` の整数算術へリファクタリング。

@@ -30,6 +30,7 @@
 //! `core` で定義されたトレイトの具体実装を提供する。
 #![allow(missing_docs)]
 
+pub mod a2ui;
 pub mod aiome_log;
 pub use aiome_core::error::AiomeError;
 /// 成果物の永続化・管理
