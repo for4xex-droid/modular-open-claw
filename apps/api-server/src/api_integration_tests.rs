@@ -799,8 +799,55 @@ async fn test_a2ui_action_integration() {
         .unwrap()
         .unwrap();
     assert_eq!(job.status, aiome_core_contracts::traits::JobStatus::Pending);
-}
 
+    // 2. Submit cancel action on the same job
+    let resp = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_123",
+            "action": format!("cancel_job:{}", target_id)
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    // Verify job status changed to Cancelled (not Failed)
+    let job = state
+        .job_queue
+        .fetch_job(&target_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        job.status,
+        aiome_core_contracts::traits::JobStatus::Cancelled
+    );
+
+    // 3. Invalid UUID format → 400
+    let resp = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_456",
+            "action": "approve_job:not-a-valid-uuid"
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+
+    // 4. Invalid action prefix → 400
+    let resp = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_789",
+            "action": format!("delete_job:{}", target_id)
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+}
 #[serial]
 #[tokio::test]
 async fn test_expression_generation_plan_limits() {

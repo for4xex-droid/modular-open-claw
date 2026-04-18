@@ -20,7 +20,7 @@ interface A2uiRendererProps {
  * React JSX は文字列をデフォルトでエスケープするため、XSS 安全性を維持。
  * dangerouslySetInnerHTML は使用禁止。
  */
-const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action: string) => void }> = ({ component, onAction }) => {
+const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action: string) => void, isSubmitting?: boolean }> = ({ component, onAction, isSubmitting = false }) => {
     const content = component.props?.content;
 
     switch (component.type) {
@@ -46,16 +46,18 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                         border: '1px solid var(--border-glass-bright)',
                         borderRadius: 'var(--radius-sm)',
                         color: 'var(--text-primary)',
-                        cursor: 'pointer',
+                        cursor: isSubmitting ? 'wait' : 'pointer',
                         transition: `all var(--speed-fast)`,
+                        opacity: isSubmitting ? 0.6 : 1,
                     }}
+                    disabled={isSubmitting}
                     onClick={() => {
                         if (typeof component.props?.action === 'string') {
                             onAction(component.props.action);
                         }
                     }}
                 >
-                    {typeof component.props?.label === 'string' ? component.props.label : 'Action'}
+                    {isSubmitting ? '処理中…' : (typeof component.props?.label === 'string' ? component.props.label : 'Action')}
                 </button>
             );
         case 'list':
@@ -71,7 +73,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     color: 'var(--text-primary)',
                 }}>
                     {component.children.map((child, i) => (
-                        <li key={i}><ComponentRenderer component={child} onAction={onAction} /></li>
+                        <li key={i}><ComponentRenderer component={child} onAction={onAction} isSubmitting={isSubmitting} /></li>
                     ))}
                 </ul>
             );
@@ -86,7 +88,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     maxWidth: '28rem',
                 }}>
                     {component.children.map((child, i) => (
-                        <ComponentRenderer key={i} component={child} onAction={onAction} />
+                        <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />
                     ))}
                 </div>
             );
@@ -126,7 +128,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     {component.props?.description && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{component.props.description as string}</p>}
                     {component.children && component.children.length > 0 && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            {component.children.map((child, i) => <ComponentRenderer key={i} component={child} onAction={onAction} />)}
+                            {component.children.map((child, i) => <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />)}
                         </div>
                     )}
                 </div>
@@ -138,9 +140,9 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.75rem',
-                    background: component.props?.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+                    background: component.props?.success ? 'var(--accent-emerald-10)' : 'var(--accent-rose-10)',
                     border: '1px solid',
-                    borderColor: component.props?.success ? 'var(--accent-emerald-30)' : 'var(--accent-rose-30)',
+                    borderColor: component.props?.success ? 'var(--accent-emerald-20)' : 'var(--accent-rose-30)',
                     borderRadius: 'var(--radius-sm)',
                     margin: '0.5rem 0',
                 }}>
@@ -172,12 +174,12 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
     }
 };
 
-const SurfaceRenderer: React.FC<{ surface: A2uiSurface, onAction: (action: string) => void }> = ({ surface, onAction }) => {
+const SurfaceRenderer: React.FC<{ surface: A2uiSurface, onAction: (action: string) => void, isSubmitting: boolean }> = ({ surface, onAction, isSubmitting }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {surface.components.map((comp, i) => (
-                    <ComponentRenderer key={i} component={comp} onAction={onAction} />
+                    <ComponentRenderer key={i} component={comp} onAction={onAction} isSubmitting={isSubmitting} />
                 ))}
             </div>
         </div>
@@ -285,7 +287,7 @@ export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
                             : `ID: ${surfaceId}`}
                     </span>
                 </div>
-                <SurfaceRenderer surface={surface} onAction={(action) => handleAction(action, surfaceId)} />
+                <SurfaceRenderer surface={surface} onAction={(action) => handleAction(action, surfaceId)} isSubmitting={submittingData} />
             </div>
         );
     }

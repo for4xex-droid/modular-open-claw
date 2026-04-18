@@ -7,7 +7,6 @@
 
 use crate::auth::Authenticated;
 use crate::error::AppError;
-use aiome_core::error::AiomeError;
 use aiome_core_contracts::traits::{JobStatus, TaskRegistry};
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
@@ -41,10 +40,15 @@ pub struct A2uiActionResponse {
 )]
 pub async fn submit_a2ui_action(
     State(state): State<crate::AppState>,
-    auth: Authenticated,
+    _auth: Authenticated,
     Json(req): Json<A2uiActionRequest>,
 ) -> Result<Json<A2uiActionResponse>, AppError> {
-    // 1. action のホワイトリスト検証
+    // 1. 入力長制限 (DoS 防止)
+    if req.surface_id.len() > 256 || req.action.len() > 512 {
+        return Err(AppError::bad_request("Input exceeds maximum length"));
+    }
+
+    // 2. action のホワイトリスト検証
     let valid_prefixes = ["approve_job:", "run_skill:", "cancel_job:"];
     if !valid_prefixes
         .iter()
@@ -53,7 +57,7 @@ pub async fn submit_a2ui_action(
         return Err(AppError::bad_request("Unauthorized action prefix"));
     }
 
-    // 2. Extracted Target ID validation (P-8 パッチ)
+    // 3. Extracted Target ID validation (P-8 パッチ)
     let parts: Vec<&str> = req.action.splitn(2, ':').collect();
     if parts.len() != 2 {
         return Err(AppError::bad_request("Malformed action string"));
@@ -61,12 +65,12 @@ pub async fn submit_a2ui_action(
     let target_id = parts[1];
 
     // Validate UUID format
-    let target_uuid = match uuid::Uuid::parse_str(target_id) {
-        Ok(u) => u,
-        Err(_) => return Err(AppError::bad_request("Invalid target UUID format")),
-    };
+    // UUID 形式の構造検証のみ。値自体は文字列として使用する。
+    if uuid::Uuid::parse_str(target_id).is_err() {
+        return Err(AppError::bad_request("Invalid target UUID format"));
+    }
 
-    // 3. Action Dispatching
+    // 4. Action Dispatching
     match parts[0] {
         "approve_job" => {
             state
@@ -83,7 +87,7 @@ pub async fn submit_a2ui_action(
             state
                 .job_queue
                 .get_inner()
-                .update_job_status(target_id, JobStatus::Failed)
+                .update_job_status(target_id, JobStatus::Cancelled)
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to cancel job {}: {}", target_id, e);
@@ -96,7 +100,9 @@ pub async fn submit_a2ui_action(
                 "run_skill is not fully implemented via A2UI yet",
             ));
         }
-        _ => unreachable!(),
+        _ => {
+            return Err(AppError::bad_request("Unknown action type"));
+        }
     }
 
     Ok(Json(A2uiActionResponse {
