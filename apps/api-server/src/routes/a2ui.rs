@@ -48,6 +48,14 @@ pub async fn submit_a2ui_action(
         return Err(AppError::bad_request("Input exceeds maximum length"));
     }
 
+    // 1b. payload サイズ制限 (メモリ枯渇防止: 4KB)
+    if let Some(ref payload) = req.payload {
+        let payload_size = serde_json::to_string(payload).map(|s| s.len()).unwrap_or(0);
+        if payload_size > 4096 {
+            return Err(AppError::bad_request("Payload exceeds 4KB size limit"));
+        }
+    }
+
     // 2. action のホワイトリスト検証
     let valid_prefixes = ["approve_job:", "run_skill:", "cancel_job:"];
     if !valid_prefixes
@@ -107,6 +115,6 @@ pub async fn submit_a2ui_action(
 
     Ok(Json(A2uiActionResponse {
         success: true,
-        message: format!("Action {} dispatched successfully", req.action),
+        message: format!("Action {} dispatched successfully", parts[0]),
     }))
 }
