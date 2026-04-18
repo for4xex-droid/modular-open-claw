@@ -154,7 +154,7 @@ export const useAgentChat = (): UseAgentChatReturn => {
                                         setStreamingText("");
                                     }
                                     setHistory(prev => {
-                                        const newHistory = [...prev, { role: "assistant", content: "", a2uiEnvelope: envelope }];
+                                        const newHistory: ChatMessage[] = [...prev, { role: "assistant" as const, content: "", a2uiEnvelope: envelope }];
                                         const MAX_SURFACES = 20;
                                         let a2uiCount = 0;
                                         for (let i = newHistory.length - 1; i >= 0; i--) {

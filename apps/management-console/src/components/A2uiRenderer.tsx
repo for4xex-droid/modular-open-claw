@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { A2uiEnvelope, A2uiComponent, A2uiSurface } from '../types';
 import { useTokenHealth } from '../hooks/useTokenHealth';
 import { API_BASE } from '../config';
@@ -72,7 +72,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     fontSize: '0.875rem',
                     color: 'var(--text-primary)',
                 }}>
-                    {component.children.map((child, i) => (
+                    {(component.children ?? []).map((child, i) => (
                         <li key={i}><ComponentRenderer component={child} onAction={onAction} isSubmitting={isSubmitting} /></li>
                     ))}
                 </ul>
@@ -87,7 +87,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     width: '100%',
                     maxWidth: '28rem',
                 }}>
-                    {component.children.map((child, i) => (
+                    {(component.children ?? []).map((child, i) => (
                         <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />
                     ))}
                 </div>
@@ -124,8 +124,8 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     borderLeft: component.props?.riskLevel === 'high' ? '3px solid var(--accent-rose)' : '3px solid var(--accent-amber)',
                     margin: '0.5rem 0',
                 }}>
-                    {component.props?.title && <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{component.props.title as string}</h4>}
-                    {component.props?.description && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{component.props.description as string}</p>}
+                    {component.props?.title ? <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{String(component.props.title)}</h4> : null}
+                    {component.props?.description ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{String(component.props.description)}</p> : null}
                     {component.children && component.children.length > 0 && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                             {component.children.map((child, i) => <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />)}
@@ -150,7 +150,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                         {component.props?.success ? '✓' : '✗'}
                     </span>
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                        {component.props?.message as string || (component.props?.success ? 'Success' : 'Failed')}
+                        {component.props?.message ? String(component.props.message) : (component.props?.success ? 'Success' : 'Failed')}
                     </span>
                 </div>
             );
@@ -190,7 +190,7 @@ export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
     const { checkHealth } = useTokenHealth();
     const [submittingData, setSubmittingData] = useState(false);
 
-    const handleAction = async (action: string, surfaceId: string) => {
+    const handleAction = useCallback(async (action: string, surfaceId: string) => {
         if (submittingData) return;
         setSubmittingData(true);
         try {
@@ -215,7 +215,7 @@ export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
         } finally {
             setSubmittingData(false);
         }
-    };
+    }, [submittingData, checkHealth]);
 
     if (envelope.type === 'createSurface') {
         // Runtime guard: discriminated unions don't guarantee shape at runtime
