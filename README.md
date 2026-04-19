@@ -22,8 +22,8 @@
 
 ---
 
-[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=COMING_SOON)
-*(Click to watch the 90-second YouTube Tutorial)*
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](#)
+*(Coming Soon)*
 
 ---
 
@@ -45,6 +45,9 @@ cd aiome
 docker compose -f docker-compose.quickstart.yml up -d
 ```
 起動したらブラウザで管理UI（ポート `1420`）にアクセスできます。
+
+> **💡 Podman ユーザーへの注意事項**:
+> Podman rootless 環境では `host.docker.internal` がデフォルトで解決されない場合があります。ローカルの Ollama に接続できない場合は、`docker-compose.quickstart.yml` の `OLLAMA_HOST` を `http://host.containers.internal:11434` に変更するか、Ollama をコンテナ内（上記 compose ファイル通り）にお使いください。
 
 ### オプション B: ソースからビルドする
 

@@ -1,4 +1,4 @@
-# ADR-030: Cell-Based Architecture (CBA) への移行と実装戦略
+# ADR-037: Cell-Based Architecture (CBA) への移行と実装戦略
 
 ## Status
 Accepted

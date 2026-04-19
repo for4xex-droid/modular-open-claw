@@ -48,9 +48,12 @@ services:
       - API_SERVER_SECRET=${API_SERVER_SECRET}
       - FEDERATION_SECRET=${FEDERATION_SECRET}
       - TIMESFM_AUTH_TOKEN=${TIMESFM_AUTH_TOKEN}
-      - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3020
+      - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3025
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - NURTURE_API_URL=http://nurture-api:3020
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     depends_on:
       - key-proxy
       - samsara-hub
@@ -129,7 +132,7 @@ services:
     # RT3-7 FIX: No host port binding. Only accessible via Docker internal network.
     # Previous: ports: - "127.0.0.1:3020:3020"
     expose:
-      - "3020"
+      - "3025"
     deploy:
       resources:
         limits:

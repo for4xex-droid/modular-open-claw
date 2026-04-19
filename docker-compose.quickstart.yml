@@ -1,5 +1,9 @@
-services:
+# WARNING: This docker-compose file is intended specifically for local quickstart and
+# zero-configuration demonstration purposes. It omits critical container security options
+# (like IPC_LOCK, read-only rootfs) to maximize startup speed and compatibility.
+# For any production-facing or remote deployments, you MUST use `docker-compose.production.yml`.
 
+services:
   ollama:
     image: ollama/ollama
     container_name: aiome-ollama

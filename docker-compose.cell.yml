@@ -11,6 +11,11 @@ services:
     user: "1001:1001"
     deploy: { resources: { limits: { memory: 256M } } }
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9999/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   api-server:
     build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: api-server } }
@@ -34,6 +39,11 @@ services:
     restart: always
     ports: ["${API_PORT:-3015}:3015"]
     extra_hosts: ["host.docker.internal:host-gateway"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3015/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   samsara-hub:
     build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: samsara-hub } }

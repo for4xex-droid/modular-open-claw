@@ -1,4 +1,6 @@
-## [Unreleased] - 2026-04-20
+## [Unreleased]
+
+## [0.2.0-beta] - 2026-04-20
   - **Cell-Based Architecture Stage 0 (ADR-030)**: セルベースド・アーキテクチャの基盤実装を完了。
     - **CELL_ID Namespacing**: `AppDataResolver` に `CELL_ID` 環境変数に基づくパス名前空間化を実装。全28呼び出し元が透過的にセルスコープへ自動収束。
     - **パストラバーサル防御**: `is_safe_cell_id()` ホワイトリスト方式バリデーション（英数字・ハイフン・アンダースコアのみ、最大64文字）を追加。不正 CELL_ID 時の `tracing::warn!` によるセキュリティイベント可視化。
@@ -1030,7 +1032,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System prompt now dynamically injects AI name from DB settings.
 - `build_system_instructions()` prioritizes `SOUL.md` content over hardcoded identity.
 
-## [0.1.0] - 2026-03-20
+## [0.0.1] - 2026-03-20
 
 ### Added
 - **Full OSS Strategy**: Pivoted from Open-Core to a Full Open Source foundation under the Elastic License 2.0 (ELv2).

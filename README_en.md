@@ -22,8 +22,8 @@
 
 ---
 
-[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=COMING_SOON)
-*(Click to watch the 90-second YouTube Tutorial)*
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](#)
+*(Coming Soon)*
 
 ---
 
@@ -45,6 +45,9 @@ cd aiome
 docker compose -f docker-compose.quickstart.yml up -d
 ```
 Once started, access the Management UI via your browser at port `1420`.
+
+> **💡 Note for Podman Users**:
+> In Podman rootless environments, `host.docker.internal` might not resolve by default. If you cannot connect to your local Ollama instance, please change `OLLAMA_HOST` in `docker-compose.quickstart.yml` to `http://host.containers.internal:11434`, or run Ollama within the container runtime (as configured in the default compose file).
 
 ### Option B: Build from Source
 

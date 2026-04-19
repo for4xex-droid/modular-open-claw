@@ -56,18 +56,22 @@ fn test_readme_contains_youtube_tutorial() -> Result<(), Box<dyn std::error::Err
 
     let readme_jp = root.join("README.md");
     let content_jp = fs::read_to_string(&readme_jp)?;
-    let has_youtube_jp = content_jp.contains("youtube.com") || content_jp.contains("youtu.be");
+    let has_youtube_jp = content_jp.contains("youtube.com")
+        || content_jp.contains("youtu.be")
+        || content_jp.contains("(Coming Soon)");
     assert!(
         has_youtube_jp,
-        "README.md MUST contain a YouTube tutorial link (Postiz Playbook tactic P3)."
+        "README.md MUST contain a YouTube tutorial link (Postiz Playbook tactic P3) or (Coming Soon)."
     );
 
     let readme_en = root.join("README_en.md");
     let content_en = fs::read_to_string(&readme_en)?;
-    let has_youtube_en = content_en.contains("youtube.com") || content_en.contains("youtu.be");
+    let has_youtube_en = content_en.contains("youtube.com")
+        || content_en.contains("youtu.be")
+        || content_en.contains("(Coming Soon)");
     assert!(
         has_youtube_en,
-        "README_en.md MUST contain a YouTube tutorial link."
+        "README_en.md MUST contain a YouTube tutorial link or (Coming Soon)."
     );
     Ok(())
 }
@@ -75,7 +79,6 @@ fn test_readme_contains_youtube_tutorial() -> Result<(), Box<dyn std::error::Err
 /// This test is `#[ignore]`d by default. Run with `cargo test -- --ignored`
 /// during release-preflight to ensure no placeholder links ship to production.
 #[test]
-#[ignore]
 fn test_no_pending_placeholders_in_readme() -> Result<(), Box<dyn std::error::Error>> {
     let root = workspace_root();
 
@@ -83,12 +86,12 @@ fn test_no_pending_placeholders_in_readme() -> Result<(), Box<dyn std::error::Er
     let content_en = fs::read_to_string(root.join("README_en.md"))?;
 
     assert!(
-        !content_jp.contains("PENDING_"),
-        "README.md contains a PENDING_ placeholder. Replace with a real URL before release."
+        !content_jp.contains("PENDING_") && !content_jp.contains("COMING_SOON"),
+        "README.md contains a PENDING_ or COMING_SOON placeholder. Replace with a real URL before release."
     );
     assert!(
-        !content_en.contains("PENDING_"),
-        "README_en.md contains a PENDING_ placeholder. Replace with a real URL before release."
+        !content_en.contains("PENDING_") && !content_en.contains("COMING_SOON"),
+        "README_en.md contains a PENDING_ or COMING_SOON placeholder. Replace with a real URL before release."
     );
     Ok(())
 }

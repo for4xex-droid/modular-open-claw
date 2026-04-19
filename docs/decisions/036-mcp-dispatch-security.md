@@ -1,4 +1,4 @@
-# ADR-026: MCP Dispatch and Security Centralization
+# ADR-036: MCP Dispatch and Security Centralization
 
 ## Status
 Accepted
