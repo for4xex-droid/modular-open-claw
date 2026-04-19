@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-17  
+> **最終更新**: 2026-04-19  
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -100,6 +100,8 @@ graph TB
             DRM["DrmEngine"]
             CSAM_N["CsamPipeline (3層防壁)"]
             STRIPE["StripeWebhookHandler"]
+            IDEMPOTENCY["IdempotencyStore (48h TTL)"]
+            ESCROW_TTL["EscrowTTL (24h 自動返金)"]
             SANDBOX["PythonExecutor"]
             SIDECAR["SidecarLauncher"]
             VRAM["VramArbiter"]
@@ -643,6 +645,15 @@ classDiagram
     class NurtureCommerceBridge {
         CommerceEngine を実装
         +aiome 台帳と nurture 台帳を橋渡し
+        +process_expired_escrows() 障害分離パターン
+    }
+
+    class IdempotencyStore {
+        <<trait>>
+        +reserve_key(key, ttl) Result~bool~
+        +save_response(key, response) Result~()~
+        +get_response(key) Result~Option~
+        +delete_key(key) Result~()~
     }
 
     class NurturePlugin {
@@ -655,6 +666,7 @@ classDiagram
 
     note for CommerceEngine "Aiome OSS 側で定義\nNURTURE側で実装"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"
+    note for IdempotencyStore "Sprint D: Webhook 冪等性 (48h TTL)"
 ```
 
 ---

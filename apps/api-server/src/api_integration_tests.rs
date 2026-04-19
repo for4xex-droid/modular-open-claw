@@ -847,6 +847,34 @@ async fn test_a2ui_action_integration() {
         .await;
 
     assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+
+    // 5. Rate Limiting → 429
+    // Tests 1-4 above already consumed 4 rate-limit tokens (limit=5 in test state).
+    // The auth middleware checks rate limit BEFORE the handler runs, so even
+    // requests that return 400 consume tokens. One more valid request should pass,
+    // then the next must be rejected with 429.
+    let resp = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_rl",
+            "action": format!("approve_job:{}", target_id)
+        }))
+        .await;
+    // 5th request (token #5) — still within limit
+    assert!(resp.status_code() != StatusCode::TOO_MANY_REQUESTS);
+
+    // 6th request → must be rate-limited (429)
+    let resp_rl = server
+        .post("/api/v1/a2ui/action")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "surface_id": "surf_rl",
+            "action": format!("approve_job:{}", target_id)
+        }))
+        .await;
+
+    assert_eq!(resp_rl.status_code(), StatusCode::TOO_MANY_REQUESTS);
 }
 #[serial]
 #[tokio::test]
@@ -2240,7 +2268,7 @@ async fn test_subscription_lifecycle() {
     let cancel_resp = server
         .post("/api/v1/commerce/subscription/cancel")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
-        .json(&json!({"subscription_id": "sub_mock_123"}))
+        .json(&json!({"agent_id": "00000000-0000-0000-0000-000000000001", "subscription_id": "sub_mock_123"}))
         .await;
 
     assert_eq!(cancel_resp.status_code(), StatusCode::OK);

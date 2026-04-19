@@ -23,6 +23,9 @@ const ALLOWED_COMPONENT_TYPES: &[&str] = &[
 /// ネストされた children の再帰深度上限（StackOverflow 防止）
 const MAX_COMPONENT_DEPTH: u8 = 16;
 
+/// 同一階層の children 要素数上限（広域 DoS 防止）
+const MAX_CHILDREN_COUNT: usize = 64;
+
 /// props JSON Value の再帰走査深度上限
 const MAX_PROPS_DEPTH: u8 = 32;
 
@@ -109,6 +112,15 @@ impl A2uiValidator {
                 reason: format!(
                     "A2UI component nesting too deep (max={}): possible DoS attack",
                     MAX_COMPONENT_DEPTH
+                ),
+            });
+        }
+
+        if component.children.len() > MAX_CHILDREN_COUNT {
+            return Err(AiomeError::SecurityViolation {
+                reason: format!(
+                    "A2UI component children count exceeded (max={}): possible wide DoS attack",
+                    MAX_CHILDREN_COUNT
                 ),
             });
         }
@@ -438,6 +450,36 @@ mod tests {
         assert!(
             result.is_err(),
             "Red-Team bypass via whitespace/control-chars MUST be blocked"
+        );
+    }
+
+    #[test]
+    fn test_validator_blocks_wide_dos_attack() {
+        let mut children = Vec::new();
+        for _ in 0..65 {
+            children.push(Component {
+                r#type: "text".to_string(),
+                props: serde_json::Value::Null,
+                children: vec![],
+            });
+        }
+        let envelope = A2uiEnvelope::CreateSurface {
+            surface: Surface {
+                id: "wide-test".to_string(),
+                version: "0.9".to_string(),
+                source: "test".to_string(),
+                components: vec![Component {
+                    r#type: "list".to_string(),
+                    props: serde_json::Value::Null,
+                    children,
+                }],
+            },
+        };
+
+        let result = A2uiValidator::verify_a2ui_surface(&envelope);
+        assert!(
+            result.is_err(),
+            "Validator must block components with more than 64 children to prevent wide DoS"
         );
     }
 }

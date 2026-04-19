@@ -407,3 +407,86 @@ async fn chaos_a2ui_deep_recursion_rejection() {
     );
     // ── Learning: 深甚な階層はバリデーションレベルで遮断され安全である ──
 }
+
+// ============================================================
+//  Experiment 10: AgentRateLimiter 並列ストレステスト
+// ============================================================
+/// 仮説: 同一 agent_id に対して limit+1 回のリクエストを同時送信しても
+///       RateLimiter はスレッドセーフに動作し、正確に limit 回だけ許可する
+#[tokio::test]
+async fn chaos_rate_limiter_concurrent_burst() {
+    use infrastructure::rate_limiter::AgentRateLimiter;
+    use uuid::Uuid;
+
+    let limiter = AgentRateLimiter::new(5); // 5 requests per minute
+    let agent_id = Uuid::new_v4();
+
+    // ── Fault Injection: 10 リクエストを同時送信（limit の 2 倍） ──
+    let handles: Vec<_> = (0..10)
+        .map(|_| {
+            let l = limiter.clone();
+            tokio::spawn(async move { l.check(agent_id).is_ok() })
+        })
+        .collect();
+
+    let mut ok_count = 0;
+    let mut err_count = 0;
+    for h in handles {
+        if h.await.expect("Task panicked") {
+            ok_count += 1;
+        } else {
+            err_count += 1;
+        }
+    }
+
+    // ── Verification: 正確に 5 回だけ許可され、残りは拒否される ──
+    assert_eq!(
+        ok_count, 5,
+        "Exactly 5 requests should be allowed under concurrent burst, got {}",
+        ok_count
+    );
+    assert_eq!(
+        err_count, 5,
+        "Exactly 5 requests should be rejected, got {}",
+        err_count
+    );
+
+    // ── Learning: DashMap ベースの governor は並列アクセスでも正確にカウントする ──
+}
+
+// ============================================================
+//  Experiment 11: A2UI 複合攻撃（ホワイトリスト通過 + SSRF ペイロード）
+// ============================================================
+/// 仮説: ホワイトリストに含まれる treasureItem タイプに SSRF ペイロードを
+///       仕込んだ場合でも、props URL 検証で正しくブロックされる
+#[tokio::test]
+async fn chaos_a2ui_whitelisted_type_with_ssrf_payload() {
+    use infrastructure::a2ui::{A2uiEnvelope, A2uiValidator, Component, Surface};
+
+    // ── Fault Injection: ホワイトリスト内タイプに SSRF payload を混入 ──
+    let surface = Surface {
+        id: "chaos_treasure".into(),
+        version: "v0.9".into(),
+        source: "agent".into(),
+        components: vec![Component {
+            r#type: "treasureItem".into(), // ホワイトリスト通過
+            props: serde_json::json!({
+                "title": "Free Coins!",
+                "action_url": "file:///etc/shadow",      // SSRF 攻撃
+                "image": "data:text/html,<script>x</script>" // XSS via data: URI 攻撃
+            }),
+            children: vec![],
+        }],
+    };
+
+    let envelope = A2uiEnvelope::CreateSurface { surface };
+
+    // ── Verification: タイプは通過するが props で遮断される ──
+    let result = A2uiValidator::verify_a2ui_surface(&envelope);
+    assert!(
+        result.is_err(),
+        "treasureItem with SSRF payload MUST be blocked by props URL validation"
+    );
+
+    // ── Learning: ホワイトリスト通過と props 検証は独立した多層防御 ──
+}

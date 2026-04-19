@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-18T17:49:51.294118
+> Generated at: 2026-04-19T21:24:16.887816
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FeatureToggle, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, PromptStatsView, React, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
+- A2uiRenderer, AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, ComponentRenderer, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FeatureToggle, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, PromptStatsView, React, SYNAPSES, SecretUpdater, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SurfaceRenderer, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**
@@ -45,6 +45,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/synergy/test/federation`
 - `/api/synergy/test/security`
 - `/api/system/evolution`
+- `/api/v1/a2ui/action`
 - `/api/v1/audit/diagnostics`
 - `/api/v1/audit/ledger`
 - `/api/v1/audit/prompt-stats`
@@ -122,7 +123,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/wiki`
 - `/wiki/:id`
 **Key Structs**
-- AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, BootstrapStatusResponse, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, FactoryResetResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, InitSoulRequest, InitSoulResponse, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, ModelStatusResponse, MonologueEntry, MonologueQuery, MonologueResponse, OllamaDetectionResponse, PluginRegistry, PromptStatsResponse, PublishListingRequest, PullModelRequest, PurchaseRequest, PurchaseResponse, QueryReq, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
+- A2uiActionRequest, A2uiActionResponse, AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, BootstrapStatusResponse, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, FactoryResetResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, InitSoulRequest, InitSoulResponse, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, ModelStatusResponse, MonologueEntry, MonologueQuery, MonologueResponse, OllamaDetectionResponse, PluginRegistry, PromptStatsResponse, PublishListingRequest, PullModelRequest, PurchaseRequest, PurchaseResponse, QueryReq, SendBiomeRequest, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
 
 ### `aiome-node`
 **REST / Websocket Routes**

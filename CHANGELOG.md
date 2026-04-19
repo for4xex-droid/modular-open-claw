@@ -1,3 +1,10 @@
+## [Unreleased] - 2026-04-19
+  - **Sprint D Reflexion — Commerce IDOR & Escrow Hardening**:
+    - **IDOR 修正 (OWASP A01:2021)**: `cancel_subscription` エンドポイントに `agent_id` を必須化し、RBAC 所有権チェック + eKYC 検証ガードを追加。他エージェントのサブスクリプション操作を完全遮断。
+    - **Escrow 障害分離**: `process_expired_escrows` を単一バッチトランザクションから個別トランザクションへリファクタリング。1件の refund 失敗が他の正常な refund をブロックする問題を排除。TOCTOU 再チェック (`still_pending`) を追加。
+    - **コンテナ強化**: `docker-compose.nurture.yml` で `nurture-api` に `user: "1001:1001"` を統一し、production.yml と同等のセキュリティポスチャを確立。
+    - **Uuid::nil() アーキテクチャ注記**: `deduct_generation_cost` の SystemFee sink として使用する nil UUID が auth.rs の nil ガードと衝突しない理由をコード内に明示。
+
 ## [Unreleased] - 2026-04-18
   - **Economic Integration Hardening (Sprint C-D / Tier 1-4)**: Aiome–Project-Nurture 間の経済統合を本番グレードにハードニング。
     - **[Tier 1] Stripe Webhook DLQ**: `commerce_webhook.rs` において、3回リトライ失敗後に `outbox_dead_letters` テーブルへペイロードを永続化する Dead Letter Queue を実装。DB 挿入前にペイロードをログ先行出力するバックアップ機構を追加し、データ消失ゼロを保証。
@@ -21,6 +28,19 @@
     - **A2UI Action Endpoint** (`a2ui.rs`): `POST /api/v1/a2ui/action` エンドポイントを実装し、A2UI Surface 上の Action Button からの安全なジョブ承認 / キャンセルなどのバックエンド連携を確立。
     - **Surface State GC** (`useAgentChat.ts`): `MAX_SURFACES = 20` に基づく FIFO GC（ガベージコレクション）をチャット履歴更新ロジックに統合。フロントエンドでの DOM 過多によるメモリリークを予防。
     - **Token Health Check** (`A2uiRenderer.tsx`): API実行で 401 が返却された際に即座に `useTokenHealth.checkHealth()` をコールして認証リフレッシュフローをトリガーするよう修正。
+    - **TreasureBox 委譲** (`A2uiRenderer.tsx`): `treasureItem` コンポーネントタイプを `TreasureBox` にレンダリング委譲し、重複実装を排除。
+  - **Nurture Launch Hardening**: 本番デプロイに向けた `docker-compose.nurture.yml` の安全性基盤を確立。
+    - **環境変数注入**: `ALLOWED_ORIGINS`, `JWT_PRIVATE_KEY_B64`, `VAULT_SECRET`, `STRIPE_WEBHOOK_SECRET`, `NURTURE_INTERNAL_SECRET` の 5 変数を `api-server-pro` に追加。未設定時の Webhook 署名検証スキップおよび S2S 認証失敗リスクを排除。
+    - **Healthcheck 追加**: `api-server-pro` と `nurture-api` に `curl` ベースの healthcheck を追加し、`depends_on.condition: service_healthy` による起動順序保証を確立。
+    - **management-console サービス追加**: SPA 用 Dockerfile (node→nginx) を正しく参照し、ポートマッピング `3000:80` で公開。
+    - **Nginx DNS Alias**: `api-server-pro` に network alias `api-server` を追加。nginx.conf の `proxy_pass http://api-server:3015` との名前不一致 (全 API 502 障害) を解消。
+    - **i18n キー補完**: `nav.cortex`, `nav.skillVault`, `page.cortex`, `page.causalTrace` を en.json / ja.json に追加し、UI ラベルのキー文字列表示バグを修正。
+    - **i18n 完全同期 (TDD)**: 過去の未定義キー 24 件（`agent.*`, `auth.*`, `common.*`, `settings.*`, `diagnostics.*`, `promptStats.*`）を `en.json` と `ja.json` に追加し、386 キーの完全同期を達成。
+    - **A2UI Rate Limit TDD**: `test_a2ui_action_integration` にレートリミット検証 (429 TOO_MANY_REQUESTS) を追加。有効な UUID を使用し、auth middleware 層でのトークン消費を正確にカウント。
+    - **データ永続化**: `api-server-pro` に `./data/api:/app/data` ボリュームマウントを追加し、コンテナ再起動時の SQLite データ消失を防止。
+    - **セキュリティ硬化**: `api-server-pro` と `nurture-api` に `security_opt: no-new-privileges` と rootless user (`1001:1001`) を追加し、production.yml と同等のセキュリティポスチャを確立。
+    - **Healthcheck パス修正**: `nurture-api` の healthcheck を `/api/v1/health` → `/health` に修正し、起動デッドロックを防止。
+    - **Production Compose 修復 (TDD)**: `docker-compose.production.yml` に欠落していた `ALLOWED_ORIGINS` を追加。また、`api-server` の healthcheck パスを `/api/health` に修正。
 
 ### 2026-04-16
   - **Project Nurture Sprint B-5 (Integer Arithmetic)**: `conversion_rate`, `burn_rate`, `system_fee_rate`, `creator_points_rate` を `f64` 浮動小数点から `u32` の Basis Points (bps) 整数表現へ完全移行し、経済計算の丸め誤差リスク（Rounding Errors）を物理的に排除しました。

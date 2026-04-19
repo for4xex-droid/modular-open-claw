@@ -17,6 +17,8 @@
     "voiceStore": "ボイスストア",
     "immuneSystem": "免疫システム",
     "agentConsole": "エージェントコンソール",
+    "cortex": "Cortex Wiki",
+    "skillVault": "スキル保管庫",
     "loraAutotuner": "LoRA オートチューナー",
     "promptStats": "LLM コスト・遅延統計",
     "settings": "設定"
@@ -29,6 +31,7 @@
     "resonanceMap": "共鳴マップ",
     "immuneSystem": "免疫システム",
     "agentConsole": "エージェントコンソール",
+    "cortex": "Cortex Wiki",
     "skillVault": "ニューラルスキル保管庫",
     "artifactVault": "アーティファクト保管庫",
     "audit": "システム監査ログ",
@@ -36,6 +39,7 @@
     "biomeLab": "バイオーム共創ラボ",
     "voiceStore": "クリエイターボイスストア",
     "loraAutotuner": "LoRA オートチューナー",
+    "causalTrace": "因果推論トレース",
     "promptStats": "LLM オブザーバビリティ",
     "settings": "システム設定"
   },
@@ -90,7 +94,8 @@
     "gateway": "Aiome セキュアゲートウェイ v1.0.2",
     "errorInvalidKey": "シークレットキーが無効です。開発環境では \"mock_valid_token_dev\" を使用してください。",
     "errorServer": "サーバーエラー ({{status}})。API サーバーが起動しているか確認してください。",
-    "errorConnection": "API サーバーに接続できません。\"cargo run --bin api-server\" が起動しているか確認してください。"
+    "errorConnection": "API サーバーに接続できません。\"cargo run --bin api-server\" が起動しているか確認してください。",
+    "errorTimeout": "接続がタイムアウトしました"
   },
   "demo": {
     "title": "自律 AI エコノミーデモ",
@@ -197,7 +202,12 @@
     "selectManually": "（手動入力または選択...）",
     "current": "現在",
     "refresh": "更新",
-    "urlRequired": "URL は必須です"
+    "urlRequired": "URL は必須です",
+    "apiUrl": "API URL",
+    "ollamaPlaceholder": "http://localhost:11434",
+    "securityInfrastructure": "セキュリティ基盤",
+    "serverRestartRequired": "サーバーの再起動が必要です",
+    "testLlmConnection": "LLM接続テスト"
   },
   "onboarding": {
     "welcome": "Aiomeへようこそ",
@@ -275,7 +285,20 @@
     "thinking": "思考中...",
     "clearHistory": "履歴をクリア",
     "systemPrompt": "システムプロンプト",
-    "conversationCleared": "会話をクリアしました。"
+    "conversationCleared": "会話をクリアしました。",
+    "chatPlaceholder": "メッセージを送信...",
+    "helpfulLesson": "役に立った",
+    "issueCommands": "Aiomeに直接コマンドを発行できます。",
+    "knowledgeAccessed": "知識にアクセスしました",
+    "notHelpfulLesson": "役に立たなかった",
+    "outOfDomain": "ドメイン外",
+    "promptEnhancement": "プロンプト拡張",
+    "roleAiome": "Aiome",
+    "roleUser": "ユーザー",
+    "streaming": "考え中...",
+    "synapticMemory": "シナプス記憶",
+    "toNewline": "Shift + Enter で改行",
+    "voice": "音声"
   },
   "immune": {
     "title": "センチネル免疫システム",
@@ -321,7 +344,9 @@
     "title": "監査 & 免疫台帳",
     "syncing": "台帳をブロックチェーン状態と同期中...",
     "noRootCause": "根本原因は特定されていません",
-    "unknown": "不明"
+    "unknown": "不明",
+    "tabDiagnostics": "診断",
+    "tabLedger": "台帳"
   },
   "expression": {
     "currentInsight": "現在のインサイト（内部状態）",
@@ -457,6 +482,11 @@
     "calls": "呼び出し回数",
     "latency": "レイテンシ",
     "cost": "コスト",
-    "cache": "キャッシュ率"
+    "cache": "キャッシュ率",
+    "costComparison": "コスト比較"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "refresh": "更新"
   }
 }

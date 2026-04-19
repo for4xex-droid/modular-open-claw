@@ -17,6 +17,8 @@
     "voiceStore": "Voice Store",
     "immuneSystem": "Immune System",
     "agentConsole": "Agent Console",
+    "cortex": "Cortex Wiki",
+    "skillVault": "Skill Vault",
     "loraAutotuner": "LoRA Autotuner",
     "promptStats": "LLM Provider Stats",
     "settings": "Settings"
@@ -29,6 +31,7 @@
     "resonanceMap": "Resonance Map",
     "immuneSystem": "Immune System",
     "agentConsole": "Agent Console",
+    "cortex": "Cortex Wiki",
     "skillVault": "Neural Skill Vault",
     "artifactVault": "Artifact Vault",
     "audit": "System Audit Log",
@@ -36,6 +39,7 @@
     "biomeLab": "Biome Collaborative Lab",
     "voiceStore": "Creator Voice Store",
     "loraAutotuner": "LoRA Autotuner",
+    "causalTrace": "Causal Reasoning Trace",
     "promptStats": "LLM Observability",
     "settings": "System Settings"
   },
@@ -90,7 +94,8 @@
     "gateway": "Aiome Secure Gateway v1.0.2",
     "errorInvalidKey": "Invalid Secret Key. Use \"mock_valid_token_dev\" in development mode.",
     "errorServer": "Server Error ({{status}}). Please ensure the API Server is running.",
-    "errorConnection": "Failed to connect to API Server. Please ensure \"cargo run --bin api-server\" is running."
+    "errorConnection": "Failed to connect to API Server. Please ensure \"cargo run --bin api-server\" is running.",
+    "errorTimeout": "Connection timed out"
   },
   "demo": {
     "title": "Autonomous AI Economy Demo",
@@ -197,7 +202,12 @@
     "selectManually": "(Enter manually or select...)",
     "current": "Current",
     "refresh": "Refresh",
-    "urlRequired": "URL is required"
+    "urlRequired": "URL is required",
+    "apiUrl": "API URL",
+    "ollamaPlaceholder": "http://localhost:11434",
+    "securityInfrastructure": "Security Infrastructure",
+    "serverRestartRequired": "Server restart required",
+    "testLlmConnection": "Test LLM Connection"
   },
   "onboarding": {
     "welcome": "Welcome to Aiome",
@@ -275,7 +285,20 @@
     "thinking": "Thinking...",
     "clearHistory": "Clear History",
     "systemPrompt": "System Prompt",
-    "conversationCleared": "Conversation cleared."
+    "conversationCleared": "Conversation cleared.",
+    "chatPlaceholder": "Send a message...",
+    "helpfulLesson": "Helpful",
+    "issueCommands": "You can issue commands directly to Aiome.",
+    "knowledgeAccessed": "Knowledge Accessed",
+    "notHelpfulLesson": "Not Helpful",
+    "outOfDomain": "Out of Domain",
+    "promptEnhancement": "Prompt Enhancement",
+    "roleAiome": "Aiome",
+    "roleUser": "User",
+    "streaming": "Thinking...",
+    "synapticMemory": "Synaptic Memory",
+    "toNewline": "Shift + Enter for newline",
+    "voice": "Voice"
   },
   "immune": {
     "title": "Sentinel Immune System",
@@ -321,7 +344,9 @@
     "title": "Audit & Immunity Ledger",
     "syncing": "Syncing Ledger with Blockchain State...",
     "noRootCause": "No root cause identified",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "tabDiagnostics": "Diagnostics",
+    "tabLedger": "Ledger"
   },
   "expression": {
     "currentInsight": "Current Insight (Internal State)",
@@ -457,6 +482,11 @@
     "calls": "Calls",
     "latency": "Latency",
     "cost": "Cost",
-    "cache": "Cache Hit"
+    "cache": "Cache Hit",
+    "costComparison": "Cost Comparison"
+  },
+  "common": {
+    "loading": "Loading...",
+    "refresh": "Refresh"
   }
 }

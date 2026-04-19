@@ -9,6 +9,7 @@ import { A2uiEnvelope, A2uiComponent, A2uiSurface } from '../types';
 import { useTokenHealth } from '../hooks/useTokenHealth';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { TreasureBox } from './TreasureBox';
 
 interface A2uiRendererProps {
     envelope: A2uiEnvelope;
@@ -152,6 +153,12 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                         {component.props?.message ? String(component.props.message) : (component.props?.success ? 'Success' : 'Failed')}
                     </span>
+                </div>
+            );
+        case 'treasureItem':
+            return (
+                <div style={{ margin: '0.5rem 0', width: '100%', maxWidth: '28rem' }}>
+                    <TreasureBox />
                 </div>
             );
         default:

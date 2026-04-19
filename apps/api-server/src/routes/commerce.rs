@@ -153,6 +153,8 @@ pub struct SubscriptionResponse {
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct CancelSubscriptionRequest {
+    #[schema(value_type = String)]
+    pub agent_id: Uuid,
     pub subscription_id: String,
 }
 
@@ -196,9 +198,26 @@ pub async fn create_subscription(
 /// [POST] /api/v1/commerce/subscription/cancel
 pub async fn cancel_subscription(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     Json(req): Json<CancelSubscriptionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // SEC-2: RBAC ownership check — prevent IDOR attacks (Reflexion C-1 fix)
+    if req.agent_id != auth.agent_id {
+        return Err(AppError::forbidden(
+            "Unauthorized cancellation request for this agent",
+        ));
+    }
+
+    if !auth.ekyc_verified {
+        tracing::warn!(
+            "🛡️ [Commerce] Blocked unverified subscription cancellation from agent: {}",
+            req.agent_id
+        );
+        return Err(AppError::forbidden(
+            "eKYC verification is required to cancel subscriptions",
+        ));
+    }
+
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),

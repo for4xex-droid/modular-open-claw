@@ -1020,6 +1020,53 @@
         ]
       }
     },
+    "/api/v1/a2ui/action": {
+      "post": {
+        "tags": [
+          "crate::routes::a2ui"
+        ],
+        "operationId": "submit_a2ui_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/A2uiActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Action executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/A2uiActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid action or parameters"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden (BOLA violation)"
+          },
+          "429": {
+            "description": "Too many requests"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/audit/diagnostics": {
       "get": {
         "tags": [
@@ -2934,6 +2981,39 @@
   },
   "components": {
     "schemas": {
+      "A2uiActionRequest": {
+        "type": "object",
+        "required": [
+          "surface_id",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "payload": {
+            "description": "オプションのペイロード（フォーム入力値など将来用）"
+          },
+          "surface_id": {
+            "type": "string"
+          }
+        }
+      },
+      "A2uiActionResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "AcceptanceCriteria": {
         "oneOf": [
           {

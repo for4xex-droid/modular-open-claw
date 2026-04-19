@@ -420,7 +420,7 @@ function App() {
           {isVisible("cortex") && (
             <NavItem
               icon={<Library size={20} />}
-              label="Cortex Wiki"
+              label={t('nav.cortex')}
               active={activeTab === "cortex"}
               onClick={() => setActiveTab("cortex")}
             />
@@ -472,7 +472,7 @@ function App() {
             />
           </div>
           <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-            AIOME v1.0.2
+            AIOME {import.meta.env.VITE_APP_VERSION || "v1.0.2"}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
             <button
@@ -526,7 +526,7 @@ function App() {
             {activeTab === "graph" && t('page.resonanceMap')}
             {activeTab === "immune" && t('page.immuneSystem')}
             {activeTab === "agent" && t('page.agentConsole')}
-            {activeTab === "cortex" && "Cortex Wiki"}
+            {activeTab === "cortex" && t('page.cortex')}
             {activeTab === "vault" && t('page.skillVault')}
             {activeTab === "artifacts" && t('page.artifactVault')}
             {activeTab === "audit" && t('page.audit')}
