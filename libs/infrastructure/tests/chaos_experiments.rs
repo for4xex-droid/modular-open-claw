@@ -560,3 +560,69 @@ async fn chaos_oracle_multi_judge_all_failing() {
         panic!("Expected 'All Oracle providers failed' error");
     }
 }
+
+// ============================================================
+//  Experiment 14: ExpressionEngine + EmptyResponse (LLM Chaos)
+// ============================================================
+/// 仮説: ExpressionEngine の generate が LLM から空レスポンスを受け取っても
+///       panic せず、デフォルト感情 "reflective" のフォールバック Expression を生成する
+#[tokio::test]
+async fn chaos_expression_empty_response() {
+    use aiome_core::expression::engine::ExpressionEngine;
+
+    // ── Fault Injection: LLM が空応答を返す ──
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::EmptyResponse,
+    });
+
+    // ── Verification: panic せずに Expression が生成される ──
+    let result = ExpressionEngine::generate(&[], "Be ethical.", chaos_llm.as_ref()).await;
+
+    assert!(
+        result.is_ok(),
+        "ExpressionEngine MUST NOT panic or Err on empty LLM response"
+    );
+
+    // ── Learning: 空レスポンス時の安全なフォールバック ──
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
+    assert_eq!(expression.content, "");
+    assert_eq!(
+        expression.emotion, "reflective",
+        "Must fallback to reflective emotion"
+    );
+}
+
+// ============================================================
+//  Experiment 15: ExpressionEngine + Malformed Pattern
+// ============================================================
+/// 仮説: LLM が 'EMOTION: xxx' フォーマットを無視して自由記述テキスト(Malformed JSON)を
+///       返しても、パースロジックは panic せずコンテンツを保持した上で
+///       感情を "reflective" に縮退させる
+#[tokio::test]
+async fn chaos_expression_malformed_format() {
+    use aiome_core::expression::engine::ExpressionEngine;
+
+    // ── Fault Injection: LLM がフォーマットを無視したテキストを返す ──
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::MalformedJson, // '{invalid json///' を返す
+    });
+
+    let result = ExpressionEngine::generate(&[], "Be ethical.", chaos_llm.as_ref()).await;
+
+    assert!(
+        result.is_ok(),
+        "ExpressionEngine MUST NOT panic on malformed text"
+    );
+
+    // ── Learning: フォーマット違反時はコンテンツをそのまま保持し感情をフォールバック ──
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
+    assert_eq!(expression.content, "{invalid json///"); // パースに失敗したコンテンツを維持する
+    assert_eq!(
+        expression.emotion, "reflective",
+        "Must fallback to default emotion safely"
+    );
+}
