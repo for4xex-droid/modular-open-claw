@@ -439,7 +439,12 @@ impl LoraMarketplace for UniversalLoraMarketplace {
             escrow_id.clone()
         ) {
             // Rollback everything
-            let _ = self.commerce_engine.escrow_refund(&escrow_id).await;
+            if let Err(refund_err) = self.commerce_engine.escrow_refund(&escrow_id).await {
+                tracing::error!(
+                    "🚨 [LoraMarketplace] CRITICAL: Escrow refund failed for {}. User funds may be locked! Error: {}",
+                    escrow_id, refund_err
+                );
+            }
             let q_revert = format!(
                 "UPDATE lora_listings SET status = 'Open' WHERE id = {}",
                 self.pool.ph(0)
@@ -786,7 +791,7 @@ mod tests {
         async fn create_subscription(&self, _: Uuid, _: &str) -> Result<String, AiomeError> {
             Ok("sub_mock".into())
         }
-        async fn cancel_subscription(&self, _: &str) -> Result<(), AiomeError> {
+        async fn cancel_subscription(&self, _: Uuid, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn get_subscription_status(

@@ -560,7 +560,13 @@ impl LoraEngine for LoraTrainingService {
                         e
                     );
                     if let Some(jq) = &service_clone.job_queue {
-                        let _ = jq.fail_job(&j_id, &e.to_string()).await;
+                        if let Err(fail_err) = jq.fail_job(&j_id, &e.to_string()).await {
+                            tracing::error!(
+                                "🚨 [LoraTraining] Failed to record job failure for {}: {}",
+                                j_id,
+                                fail_err
+                            );
+                        }
                     }
                 }
             }

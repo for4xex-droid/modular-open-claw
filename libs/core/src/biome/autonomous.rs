@@ -133,13 +133,16 @@ impl AutonomousBiomeEngine {
                             match ge.validate_gift_policy(agent_id, amount_usd).await {
                                 Ok(_) => {
                                     info!("🎁 [AutonomousBiome] Karma Threshold met. Triggering autonomous gift for {}", email);
-                                    let _ = ge
+                                    if let Err(e) = ge
                                         .send_gift_code(
                                             email,
                                             amount_usd,
                                             "Aiome Autonomous Gratitude (Phase 7.2)",
                                         )
-                                        .await;
+                                        .await
+                                    {
+                                        error!("🚨 [AutonomousBiome] Autonomous gift delivery failed (${:.2}): {}", amount_usd, e);
+                                    }
                                 }
                                 Err(e) => {
                                     warn!("⚠️ [AutonomousBiome] Gift policy validation failed: {}. Skipping autonomous gift.", e);

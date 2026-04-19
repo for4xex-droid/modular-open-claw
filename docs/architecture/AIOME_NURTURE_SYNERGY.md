@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-19  
+> **最終更新**: 2026-04-20
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -610,7 +610,7 @@ classDiagram
         +verify_signature(payload, sig_header) Result~()~
         +process_webhook(event_id, event_type, payload) Result~()~
         +create_subscription(agent_id, plan_id) Result~String~
-        +cancel_subscription(subscription_id) Result~()~
+        +cancel_subscription(agent_id, subscription_id) Result~()~
         +get_subscription_status(agent_id) Result~SubscriptionStatus~
         +transfer(from_id, to_id, amount) Result~String~
         +deduct_generation_cost(agent_id, amount, generation_type) Result~()~
@@ -777,6 +777,7 @@ gantt
 |---------|----------|---------------|
 | `aiome-contracts` | 16 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
+| `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
 | `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger` |
 | `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |

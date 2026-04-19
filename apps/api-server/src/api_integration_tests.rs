@@ -191,6 +191,7 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
 
     async fn cancel_subscription(
         &self,
+        _agent_id: uuid::Uuid,
         _subscription_id: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
@@ -1704,7 +1705,9 @@ async fn test_inochi2d_upload() {
         .multipart(multipart)
         .await;
 
-    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let status = resp.status_code();
+    println!("Inochi2D Upload Response: {:?}", resp.text());
+    assert_eq!(status, axum::http::StatusCode::OK);
 }
 
 #[serial]

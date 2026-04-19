@@ -224,7 +224,9 @@ pub async fn cancel_subscription(
         }
     })?;
 
-    engine.cancel_subscription(&req.subscription_id).await?;
+    engine
+        .cancel_subscription(req.agent_id, &req.subscription_id)
+        .await?;
     Ok(StatusCode::OK)
 }
 

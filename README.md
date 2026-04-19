@@ -22,7 +22,7 @@
 
 ---
 
-[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=PENDING_TUTORIAL)
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=COMING_SOON)
 *(Click to watch the 90-second YouTube Tutorial)*
 
 ---
@@ -70,6 +70,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 以下のすべての Capability がプラグインではなく、OS に最初から組み込まれています。
 
 - 🛡️ **Trust Layer**: SHA-256 で保護された監査チェーンと、O(1)の境界検証。高リスクなツール呼び出し時にユーザー介入を求める「Governed Execution（統治型実行）」層を新たに統合。
+- 🦠 **Cell-Based Architecture (CBA)**: `CELL_ID` によるデータの物理的パス隔離とシークレット分離を備えた堅牢なサンドボックス基盤。パストラバーサル防御やShellインジェクション防御を完備。
 - 🧠 **Soul Engine**: エージェントの人格、記憶、そして「感情と進化」を統制するミドルウェア。
 - ⚖️ **Governed Execution Layer**: 実行環境の厳格なポリシー適用と、高リスク操作に対する人間介入の強制フロー。
 - 📚 **Cortex Knowledge Base**: 単なるRAGを超え、LLMが複数文書から概念を抽出し、相互にリンクされたWiki記事としてナレッジを自律的に自己再構築する知識エンジン。「表示レベル制御（Progressive Disclosure）」と「クエリのFile-Back（自己増殖）」機構を備える。
@@ -114,6 +115,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
 6. **Precomputed Relational Intelligence**: エージェントによる自律コード改修時の未知のカスケードエラーやパスエイリアス乖離を完全に防ぐ、超高速な静的 AST 物理依存スキャナと影響範囲クエリエマージェンシー機構の標準搭載
 7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
+8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクションの多層防御。
 
 ---
 

@@ -15,6 +15,7 @@ use axum::{
     Json,
 };
 use serde::Serialize;
+use sha2::Digest;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -112,14 +113,33 @@ pub async fn send_gift(
         "reason": &req.reason,
     });
 
-    let _ = sqlx::query(
+    // Merkle チェーン: prev_hash || record_id || new_data の SHA-256
+    let prev_hash: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS')"
+    )
+    .fetch_one(state.job_queue.get_pool().get_sqlite_pool_or_err()?)
+    .await
+    .unwrap_or_else(|_| "GENESIS".to_string());
+
+    let audit_data_str = audit_data.to_string();
+    let hash_input = format!(
+        "{}gift_transactionsSEND{}{}",
+        prev_hash, order_id, audit_data_str
+    );
+    let current_hash = format!("{:x}", sha2::Sha256::digest(hash_input.as_bytes()));
+
+    if let Err(e) = sqlx::query(
         "INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash)
-         VALUES ('gift_transactions', 'SEND', ?, ?, COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS'), hex(randomblob(16)))"
+         VALUES ('gift_transactions', 'SEND', ?, ?, ?, ?)"
     )
     .bind(&order_id)
-    .bind(audit_data.to_string())
+    .bind(&audit_data_str)
+    .bind(&prev_hash)
+    .bind(&current_hash)
     .execute(state.job_queue.get_pool().get_sqlite_pool_or_err()?)
-    .await;
+    .await {
+        tracing::error!("🚨 [Gift] Audit trail write failed: {}. Gift was sent but audit record is missing!", e);
+    }
 
     Ok((
         StatusCode::CREATED,

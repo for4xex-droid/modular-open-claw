@@ -231,6 +231,13 @@ impl Oracle {
         context: &aiome_core_contracts::contracts::ReviewContext,
         config: aiome_core_contracts::contracts::ReviewConfig,
     ) -> Result<aiome_core_contracts::contracts::MultiReviewResult, AiomeError> {
+        // PP-1: 1MB Guardrail Pre-Check to prevent OOM
+        if content.len() > 1024 * 1024 {
+            return Err(AiomeError::SecurityViolation {
+                reason: "Review payload exceeds 1MB limit".to_string(),
+            });
+        }
+
         // Phase B: SoT (Society of Thought) が有効な場合はそちらに委譲する
         if let Some(sot_config) = config.sot_config {
             if sot_config.enabled {
@@ -259,8 +266,11 @@ impl Oracle {
                     .run_session(&task_desc, trigger, sot_config, budget)
                     .await;
 
-                // ブリッジ終了を待つ必要はないが、クリーンアップのために handle は落とす
-                drop(bridge_handle);
+                // イベントがブロードキャスト経由でフラッシュされるまでの猶予を付与
+                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+                // ブリッジを確実にキャンセルしてタスクリーク（ゴルーチンリーク）を防ぐ
+                bridge_handle.abort();
 
                 let (_session_id, outcome, scores) = result?;
 

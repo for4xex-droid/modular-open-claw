@@ -1,4 +1,16 @@
-## [Unreleased] - 2026-04-19
+## [Unreleased] - 2026-04-20
+  - **Cell-Based Architecture Stage 0 (ADR-030)**: セルベースド・アーキテクチャの基盤実装を完了。
+    - **CELL_ID Namespacing**: `AppDataResolver` に `CELL_ID` 環境変数に基づくパス名前空間化を実装。全28呼び出し元が透過的にセルスコープへ自動収束。
+    - **パストラバーサル防御**: `is_safe_cell_id()` ホワイトリスト方式バリデーション（英数字・ハイフン・アンダースコアのみ、最大64文字）を追加。不正 CELL_ID 時の `tracing::warn!` によるセキュリティイベント可視化。
+    - **Shell インジェクション防御**: `backup.sh` に正規表現ガードを追加し、CELL_ID 経由の Shell インジェクションを遮断。
+    - **Docker Compose CBA テンプレート**: `docker-compose.cell.yml` / `shared.yml` の構成最適化。`JWT_PRIVATE_KEY_B64` 注入によるセル固有の認証分離。TimesFM ポート競合解消 (3020→3025)。
+    - **バックアップ完全化**: `backup.sh` を CELL_ID 単位のバックアップ・リストアに対応させ、Nurture 等の全サブディレクトリを包含。
+  - **Security Hardening (Merkle Chain & Error Handling)**: Aiome 全域の監査・永続化パスのゼロリスク検証を完遂。
+    - **Merkle Chain 監査**: `audit_logger.rs` および `gift.rs` の乱数ベースの署名 (`randomblob`) を廃止し、`SHA-256` に基づく暗号論的なハッシュチェーン (`prev_hash || table_name || operation || record_id || new_data`) へ完全移行。データベース非依存で改ざん耐성을確保。
+    - **Silent Error Masking 排除**: `stream.rs`, `lora_training.rs`, `voice.rs`, `soul_adapter.rs`, `task_orchestrator/mod.rs` に散在していた `let _ =` (エラーの握り潰し) を全て除去し、`tracing::error!` と `tracing::warn!` による明示的な異常可視化を強制。
+    - **Inochi2D Upload Pipeline Fix**: INX アバターモデルアップロード時の Buffer Flush 漏れに伴う 0 バイト書き込み・マジックバイト判定エラー (HTTP 400) を修正。
+  - **Step 0 (Economic Infrastructure Hardening)**:
+    - **IDOR 防止 (cancel_subscription)**: `CommerceEngine::cancel_subscription` trait シグネチャに `agent_id: Uuid` を追加。`MockCommerceEngine`, `StripeCommerceEngine`, `NurtureCommerceBridge`, API routes, 全テストモック (api_integration_tests, lora_marketplace) を同期更新。
   - **Sprint D Reflexion — Commerce IDOR & Escrow Hardening**:
     - **IDOR 修正 (OWASP A01:2021)**: `cancel_subscription` エンドポイントに `agent_id` を必須化し、RBAC 所有権チェック + eKYC 検証ガードを追加。他エージェントのサブスクリプション操作を完全遮断。
     - **Escrow 障害分離**: `process_expired_escrows` を単一バッチトランザクションから個別トランザクションへリファクタリング。1件の refund 失敗が他の正常な refund をブロックする問題を排除。TOCTOU 再チェック (`still_pending`) を追加。

@@ -157,7 +157,9 @@ pub async fn upload_voice_handler(
         .await?;
 
     // 6. 成功時にディスク使用量を記録
-    let _ = state.disk_quota.record_usage(agent_id, size as u64).await;
+    if let Err(e) = state.disk_quota.record_usage(agent_id, size as u64).await {
+        tracing::warn!("⚠️ [DiskQuota] Failed to record usage: {:?}", e);
+    }
 
     Ok((
         StatusCode::OK,

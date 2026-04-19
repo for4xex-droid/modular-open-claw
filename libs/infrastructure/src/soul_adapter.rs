@@ -103,11 +103,13 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                         signature: None,
                         input_constraints: None,
                     };
-                    let _ = self.job_queue.store_immune_rule(&rule).await;
+                    if let Err(e) = self.job_queue.store_immune_rule(&rule).await {
+                        tracing::error!("🚨 [SoulAdapter] Failed to persist immune rule: {:?}", e);
+                    }
                 }
                 DefenseAction::Warn => {
                     // Record in Evolution Chronicle as a security alert
-                    let _ = self
+                    if let Err(e) = self
                         .job_queue
                         .record_evolution_event(
                             0, // System level
@@ -119,14 +121,20 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                             None,
                             None,
                         )
-                        .await;
+                        .await
+                    {
+                        tracing::error!(
+                            "🚨 [SoulAdapter] Failed to record security alert (Warn): {:?}",
+                            e
+                        );
+                    }
                 }
                 DefenseAction::Hesitate(secs) => {
                     // Inject latency to thwart rapid automated attacks
                     tokio::time::sleep(tokio::time::Duration::from_secs_f64(*secs)).await;
                 }
                 DefenseAction::RequireEscrow => {
-                    let _ = self
+                    if let Err(e) = self
                         .job_queue
                         .record_evolution_event(
                             0,
@@ -138,10 +146,13 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                             None,
                             None,
                         )
-                        .await;
+                        .await
+                    {
+                        tracing::error!("🚨 [SoulAdapter] Failed to record security alert (RequireEscrow): {:?}", e);
+                    }
                 }
                 DefenseAction::Deflect => {
-                    let _ = self
+                    if let Err(e) = self
                         .job_queue
                         .record_evolution_event(
                             0,
@@ -153,10 +164,16 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                             None,
                             None,
                         )
-                        .await;
+                        .await
+                    {
+                        tracing::error!(
+                            "🚨 [SoulAdapter] Failed to record security alert (Deflect): {:?}",
+                            e
+                        );
+                    }
                 }
                 DefenseAction::Custom(reason) => {
-                    let _ = self
+                    if let Err(e) = self
                         .job_queue
                         .record_evolution_event(
                             0,
@@ -169,7 +186,13 @@ impl SoulDomainAdapter for CoreDomainAdapter {
                             None,
                             None,
                         )
-                        .await;
+                        .await
+                    {
+                        tracing::error!(
+                            "🚨 [SoulAdapter] Failed to record security alert (Custom): {:?}",
+                            e
+                        );
+                    }
                 }
             }
             Ok(())

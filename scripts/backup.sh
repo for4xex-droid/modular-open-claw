@@ -6,11 +6,17 @@
 set -euo pipefail
 
 # ---- Configuration ----
-BACKUP_DIR="${AIOME_BACKUP_DIR:-./backups}"
-DATA_DIR="${AIOME_DATA_DIR:-./data}"
+CELL_ID="${CELL_ID:-cell-0}"
+# 🛡️ CELL_ID バリデーション (パストラバーサル・シェルインジェクション防止)
+if [[ ! "$CELL_ID" =~ ^[a-zA-Z0-9_-]{1,64}$ ]]; then
+    echo "ERROR: CELL_ID '$CELL_ID' contains invalid characters. Only [a-zA-Z0-9_-] allowed."
+    exit 1
+fi
+BACKUP_DIR="${AIOME_BACKUP_DIR:-./backups/${CELL_ID}}"
+DATA_DIR="${AIOME_DATA_DIR:-./data/${CELL_ID}}"
 MAX_BACKUPS="${AIOME_MAX_BACKUPS:-7}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-TAR_FILE="$BACKUP_DIR/aiome_backup_$TIMESTAMP.tar.gz"
+TAR_FILE="$BACKUP_DIR/${CELL_ID}_backup_$TIMESTAMP.tar.gz"
 CHECKSUM_FILE="$TAR_FILE.sha256"
 
 # Container runtime (Podman-first, Docker fallback)
@@ -21,8 +27,8 @@ else
 fi
 
 # Check required directories
-if [ ! -d "$DATA_DIR/api" ]; then
-    echo "ERROR: Data directory '$DATA_DIR/api' not found. Are you running this from the project root?"
+if [ ! -d "$DATA_DIR" ]; then
+    echo "ERROR: Data directory '$DATA_DIR' not found. Are you running this from the project root?"
     exit 1
 fi
 
@@ -34,13 +40,14 @@ command_backup() {
     # 1. Create Tarball of the data/api directory
     # Excludes temp files if any (we exclude journal/WAL files to avoid mid-transaction corruption,
     # but for SQLite it's safest to run this while API is stopped, or rely on .backup command)
-    echo "Compressing $DATA_DIR/api -> $TAR_FILE"
+    echo "Compressing $DATA_DIR -> $TAR_FILE"
     
     # Optional: if you want perfect SQLite backup without stopping container,
     # you could do: sqlite3 data/api/aiome.db ".backup 'data/api/aiome.db.bak'"
     # and then archive the .bak file. Here we just archive the directory.
     
-    tar -czf "$TAR_FILE" -C "$DATA_DIR" api/
+    # 🛡️ O-1: セル内の全サブディレクトリ (api, hub, nurture) をバックアップ
+    tar -czf "$TAR_FILE" -C "$(dirname "$DATA_DIR")" "$(basename "$DATA_DIR")/"
     
     # 2. Checksum
     echo "Verifying Hash..."
@@ -52,8 +59,8 @@ command_backup() {
     
     # 3. Rotate old backups
     echo "Cleaning up old backups (Keeping last $MAX_BACKUPS)..."
-    ls -tp "$BACKUP_DIR"/aiome_backup_*.tar.gz | grep -v '/$' | tail -n +$((MAX_BACKUPS + 1)) | xargs -I {} rm -- {} 2>/dev/null || true
-    ls -tp "$BACKUP_DIR"/aiome_backup_*.tar.gz.sha256 | grep -v '/$' | tail -n +$((MAX_BACKUPS + 1)) | xargs -I {} rm -- {} 2>/dev/null || true
+    ls -tp "$BACKUP_DIR"/${CELL_ID}_backup_*.tar.gz | grep -v '/$' | tail -n +$((MAX_BACKUPS + 1)) | xargs -I {} rm -- {} 2>/dev/null || true
+    ls -tp "$BACKUP_DIR"/${CELL_ID}_backup_*.tar.gz.sha256 | grep -v '/$' | tail -n +$((MAX_BACKUPS + 1)) | xargs -I {} rm -- {} 2>/dev/null || true
     
     echo "✅ Backup Completed: $TAR_FILE"
 }
@@ -70,7 +77,7 @@ command_restore() {
         exit 1
     fi
     
-    echo "⚠️  WARNING: Restoring will OVERWRITE current data in '$DATA_DIR/api'."
+    echo "⚠️  WARNING: Restoring will OVERWRITE current data in '$DATA_DIR'."
     read -p "Are you sure you want to continue? [y/N]: " confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
         echo "Restore cancelled."
@@ -79,16 +86,17 @@ command_restore() {
     # COMPOSE_CMD is set at the top of this script
 
     echo "🛑 Stopping services ($COMPOSE_CMD)..."
-    $COMPOSE_CMD -f docker-compose.production.yml stop api-server || true
+    $COMPOSE_CMD -f docker-compose.cell.yml stop api-server || true
     
-    echo "🗑️  Clearing current api data..."
-    rm -rf "$DATA_DIR/api"
+    echo "🗑️  Clearing current cell data..."
+    rm -rf "$DATA_DIR"
+    mkdir -p "$DATA_DIR"
     
     echo "📦 Extracting backup..."
-    tar -xzf "$RESTORE_FILE" -C "$DATA_DIR"
+    tar -xzf "$RESTORE_FILE" -C "$(dirname "$DATA_DIR")"
     
     echo "✅ Restore Completed! Restart your services using:"
-    echo "$COMPOSE_CMD -f docker-compose.production.yml up -d api-server"
+    echo "$COMPOSE_CMD -f docker-compose.cell.yml up -d api-server"
 }
 
 case "${1:-}" in

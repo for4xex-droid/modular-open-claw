@@ -107,6 +107,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 84 | **Frontend Type Panic** | **Catching unpredictable exceptions without guards** | 🟡 Mid | **Tier A/B Strict `unknown` typing & `instanceof Error` checks** |
 | 85 | **Deep Recursion DoS** | **A2UI Validator Stack Overflow** | 🔴 High | **`MAX_COMPONENT_DEPTH` & `MaxDepthExceeded` (Chaos Exp 9)** |
 | 86 | **URL Scheme Parse Bypass (SSRF)** | **Whitespace/Control Chars injected before `javascript:` scheme** | 🔴 High | **Total stripping of Ascii Whitespace/Control before validation (Red Team)** |
+| 87 | **Cell Path Traversal & Shell Injection** | **Exploiting unsanitized cell namespaces (CELL_ID)** | 🔴 High | **Cell-Based Architecture (CBA Stage 0) + `is_safe_cell_id` + Shell Guards** |
 
 ## 3. Defense Architecture
 
@@ -181,6 +182,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Zero-Panic Infrastructure Policy (AADP v5)**: Implemented strict AST and RegEx-based Anti-Pattern enforcement (`pattern-enforcer.sh`). All unauthorized `unwrap()`, `expect()`, and `panic!()` invocations are completely eradicated across production code and integration tests to ensure deterministic stability. Known safe test unwraps are rigorously annotated with `// allow-anti-pattern`.
 - **Resilient Webhook Parsing**: Applies the "Parse-What-You-Need" pattern for Stripe webhooks, isolating standard deserialization panics. Enforces early idempotency rejection to prevent duplicate or tampered replay attacks on financial transactions.
 - **Frontend Type Hardening**: Eradicates the use of `any` types in global Catch blocks across the Management Console and deeply nested Trajectory records. Enforces TypeScript's safe `err: unknown` pattern with explicit `instanceof Error` boundaries, mathematically neutralizing runtime TypeErrors caused by unhandled upstream panics.
+- **Cell-Based Architecture (CBA) Namespacing (Stage 0)**: Implements the 1-process=1-cell invariant. `AppDataResolver` strictly validates the `CELL_ID` environment variable using `is_safe_cell_id` (alphanumeric, max 64 chars) to prevent path traversal risks. Additionally, infrastructure scripts (e.g. `backup.sh`) are fortified with robust regex guards to neutralize any shell injection vectors before reaching OS execution.
 
 ## 5. Comparison with Traditional Systems
 
@@ -192,8 +194,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-04-18*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 27 — Architecture Audit & Hardening)*
+*Last Mutated: 2026-04-20*
+*Managed by: Aiome Sovereign Task Force (Ref: CBA Stage 0 Integration)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 

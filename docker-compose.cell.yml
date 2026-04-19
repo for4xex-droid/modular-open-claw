@@ -1,0 +1,73 @@
+# Usage: CELL_ID=user-abc docker compose -f docker-compose.cell.yml up
+services:
+  key-proxy:
+    build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: key-proxy } }
+    environment:
+      - KEY_PROXY_PORT=9999
+      - VAULT_SECRET=${VAULT_SECRET}
+      - CELL_ID=${CELL_ID:-cell-0}
+    cap_add: [IPC_LOCK]
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    deploy: { resources: { limits: { memory: 256M } } }
+    restart: always
+
+  api-server:
+    build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: api-server } }
+    environment:
+      - CELL_ID=${CELL_ID:-cell-0}
+      - KEY_PROXY_URL=http://key-proxy:9999
+      - VAULT_SECRET=${VAULT_SECRET}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - SAMSARA_HUB_REST=http://samsara-hub:3016
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - RURI_EMBED_URL=${RURI_EMBED_URL:-http://ruri-embed-server:8100}
+      - VAULT_PATH=/app/data/vault
+      - NURTURE_API_URL=http://nurture-api:3020
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+    depends_on: [key-proxy, samsara-hub]
+    volumes:
+      - ./data/${CELL_ID:-cell-0}/api:/app/data
+    deploy: { resources: { limits: { memory: 2G } } }
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    restart: always
+    ports: ["${API_PORT:-3015}:3015"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  samsara-hub:
+    build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: samsara-hub } }
+    environment:
+      - CELL_ID=${CELL_ID:-cell-0}
+      - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+      - FEDERATION_SECRET=${FEDERATION_SECRET}
+    volumes:
+      - ./data/${CELL_ID:-cell-0}/hub:/app/data
+    deploy: { resources: { limits: { memory: 1G } } }
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    restart: always
+
+  # === Nurture Economy Sidecar (R4-G1-1) ===
+  nurture-api:
+    build:
+      context: ../Project-Nurture
+      dockerfile: Dockerfile
+    environment:
+      - CELL_ID=${CELL_ID:-cell-0}
+      - DATABASE_URL=sqlite:///app/data/nurture.db
+      - AIOME_API_URL=http://api-server:3015
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      - NURTURE_BIND_ADDR=0.0.0.0
+    volumes:
+      - ./data/${CELL_ID:-cell-0}/nurture:/app/data
+    depends_on: [api-server]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3020/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    deploy: { resources: { limits: { memory: 1G } } }
+    restart: always

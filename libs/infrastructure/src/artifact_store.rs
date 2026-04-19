@@ -179,7 +179,13 @@ impl ArtifactStore for UniversalArtifactStore {
 
         let artifacts_base = current_base_dir.join("artifacts");
         if !artifacts_base.exists() {
-            let _ = std::fs::create_dir_all(&artifacts_base);
+            if let Err(e) = std::fs::create_dir_all(&artifacts_base) {
+                tracing::error!(
+                    "❌ [ArtifactStore] Failed to create artifacts directory {:?}: {}",
+                    artifacts_base,
+                    e
+                );
+            }
         }
 
         let relative_dir = Path::new("artifacts").join(&dir_name);
@@ -315,9 +321,16 @@ impl ArtifactStore for UniversalArtifactStore {
                 "category": cat_str,
                 "is_protected": req.is_protected,
             });
-            let _ = logger
+            if let Err(e) = logger
                 .log_event("ARTIFACT_CREATE", &req.created_by, &details)
-                .await;
+                .await
+            {
+                tracing::error!(
+                    "❌ [ArtifactStore] Audit log for ARTIFACT_CREATE failed: {}. Artifact ID: {}",
+                    e,
+                    id
+                );
+            }
         }
 
         // Phase 1 Step C: Enqueue CSAM async scan
@@ -469,9 +482,16 @@ impl ArtifactStore for UniversalArtifactStore {
                 "filename": filename,
                 "protected": meta.dir_path.contains("vault") || meta.dir_path.contains(".abyss_vault"),
             });
-            let _ = logger
+            if let Err(e) = logger
                 .log_event("ARTIFACT_READ", &meta.created_by, &details)
-                .await;
+                .await
+            {
+                tracing::error!(
+                    "❌ [ArtifactStore] Audit log for ARTIFACT_READ failed: {}. Artifact ID: {}",
+                    e,
+                    id
+                );
+            }
         }
 
         std::fs::read(full_path).map_err(|e| AiomeError::Infrastructure {

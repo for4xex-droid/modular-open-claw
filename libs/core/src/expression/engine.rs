@@ -134,6 +134,18 @@ impl ExpressionEngine {
             reason: "Failed to read audio bytes".into(),
         })?;
 
+        // PP-1: 50MB Guardrail — prevent OOM from malicious/corrupt TTS endpoint
+        const MAX_AUDIO_BYTES: usize = 50 * 1024 * 1024;
+        if audio_bytes.len() > MAX_AUDIO_BYTES {
+            return Err(AiomeError::SecurityViolation {
+                reason: format!(
+                    "TTS audio response too large: {} bytes (max {})",
+                    audio_bytes.len(),
+                    MAX_AUDIO_BYTES
+                ),
+            });
+        }
+
         // Approximate duration: ~75ms per character (generic heuristic)
         let duration_ms = (text.chars().count() as u64) * 75;
 
@@ -178,6 +190,18 @@ impl ExpressionEngine {
         let audio_bytes = resp.bytes().await.map_err(|_| AiomeError::Infrastructure {
             reason: "Failed to read audio bytes from XTTS".into(),
         })?;
+
+        // PP-1: 50MB Guardrail — prevent OOM from malicious/corrupt XTTS endpoint
+        const MAX_AUDIO_BYTES: usize = 50 * 1024 * 1024;
+        if audio_bytes.len() > MAX_AUDIO_BYTES {
+            return Err(AiomeError::SecurityViolation {
+                reason: format!(
+                    "XTTS audio response too large: {} bytes (max {})",
+                    audio_bytes.len(),
+                    MAX_AUDIO_BYTES
+                ),
+            });
+        }
 
         // Approximate duration: ~75ms per character (generic heuristic)
         let duration_ms = (text.chars().count() as u64) * 85; // XTTS tends to be slightly slower than OpenAI tts-1

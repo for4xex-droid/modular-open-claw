@@ -100,6 +100,11 @@ pub async fn upload_inochi2d_handler(
         }
     }
 
+    file.flush()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+    drop(file);
+
     let body = tokio::fs::read(&temp_path)
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;

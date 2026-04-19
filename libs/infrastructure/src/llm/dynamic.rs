@@ -906,7 +906,13 @@ impl EmbeddingProvider for BackgroundLlmProvider {
                 );
                 match ruri.embed(text, is_query).await {
                     Ok(vec) => Ok(vec),
-                    Err(_) => self.gemini_embed_fallback(text, is_query).await,
+                    Err(e) => {
+                        tracing::warn!(
+                            "⚠️ [Embedding] Ruri embed failed, falling back to Gemini: {}",
+                            e
+                        );
+                        self.gemini_embed_fallback(text, is_query).await
+                    }
                 }
             }
             "gemini" => self.gemini_embed_fallback(text, is_query).await,

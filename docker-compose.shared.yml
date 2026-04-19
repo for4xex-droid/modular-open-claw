@@ -1,0 +1,14 @@
+# 全セルで共有する推論サービス
+services:
+  ruri-embed-server:
+    image: ruri-embed-server:latest
+    restart: always
+    ports: ["127.0.0.1:8100:8100"]
+    deploy: { resources: { limits: { memory: 2G } } }
+
+  timesfm-sidecar:
+    build: { context: ./apps/timesfm-sidecar }
+    restart: always
+    expose: ["3025"]
+    deploy: { resources: { limits: { memory: 4G } } }
+    read_only: true

@@ -22,7 +22,7 @@
 
 ---
 
-[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=PENDING_TUTORIAL)
+[![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](https://youtube.com/watch?v=COMING_SOON)
 *(Click to watch the 90-second YouTube Tutorial)*
 
 ---
@@ -70,6 +70,7 @@ This is not merely an experiment. It is the result of agents proactively designi
 All of the following capabilities are built directly into the OS, not left as plugins:
 
 - 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Includes a "Governed Execution" layer that mandates user intervention for high-risk tool calls.
+- 🦠 **Cell-Based Architecture (CBA)**: A robust multi-tenant foundation providing physical path isolation and secret separation via `CELL_ID`. Equipped with multi-layered defenses against path traversal and shell injection vulnerabilities.
 - ⚖️ **Governed Execution Layer**: Atomic security gating for multi-step plans and a semantic elicitation workflow for human-in-the-loop safety.
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
 - 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. Featuring Progressive Disclosure and Query File-Back, the LLM extracts concepts from multiple documents, self-reconstructs its knowledge as an interconnected web, and compounds knowledge through self-querying.
@@ -114,6 +115,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 5. **GlassWorm Shield**: Comprehensive deployment of an ultra-fast sanitizer to prevent stealth attacks and LLM poisoning using invisible Unicode characters.
 6. **Precomputed Relational Intelligence**: An ultra-fast, static AST physical dependency scanner and blast-radius query emergency protocol natively built-in, completely preventing unknown cascade errors and path alias drift during autonomous code refactoring by agents.
 7. **Automated Chaos Engineering**: Natively built fault-injection framework running steady-state resilience tests (e.g., simulating LLM timeouts and malformed responses) to mathematically guarantee graceful degradation against unpredictable AI failures.
+8. **Cell-Based Architecture (CBA)**: Physical path isolation governed by the 1-process=1-cell invariant. Implements multi-layered defense against path traversal and shell injection via `AppDataResolver` and shell guards.
 
 ---
 

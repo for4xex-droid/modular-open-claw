@@ -73,7 +73,12 @@ impl TtsWorker {
                             file_path, e
                         );
                         expr.tts_status = TtsStatus::Failed;
-                        let _ = queue.store_expression(&expr).await;
+                        if let Err(e) = queue.store_expression(&expr).await {
+                            error!(
+                                "🚨 [TtsWorker] Failed to persist TTS failure status for {}: {:?}",
+                                expr.id, e
+                            );
+                        }
                         continue;
                     }
 
@@ -105,7 +110,12 @@ impl TtsWorker {
                         expr.id, e
                     );
                     expr.tts_status = TtsStatus::Failed;
-                    let _ = queue.store_expression(&expr).await;
+                    if let Err(e) = queue.store_expression(&expr).await {
+                        error!(
+                            "🚨 [TtsWorker] Failed to persist TTS failure status for {}: {:?}",
+                            expr.id, e
+                        );
+                    }
                 }
             }
         }

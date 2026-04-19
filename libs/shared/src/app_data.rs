@@ -6,6 +6,7 @@
  */
 
 use std::path::{Path, PathBuf};
+use tracing::warn;
 
 /// Aiome のアプリケーションデータを統合管理・解決する構造体。
 /// 環境（Dev / Prod / Tauri）に応じて適切な物理パスを返します。
@@ -22,7 +23,25 @@ impl Default for AppDataResolver {
 
 impl AppDataResolver {
     /// 新規作成。内部的に環境変数をチェックしてルートパスを決定します。
+    ///
+    /// `CELL_ID` 環境変数が設定されている場合、ルートパスの末尾にセル名前空間を追加します。
+    /// パストラバーサル防止のため、`CELL_ID` は英数字・ハイフン・アンダースコアのみ許可されます。
     pub fn new() -> Self {
+        let cell_id = std::env::var("CELL_ID")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .filter(|v| {
+                if Self::is_safe_cell_id(v) {
+                    true
+                } else {
+                    warn!(
+                        "⚠️ CELL_ID '{}' contains invalid characters and was ignored. \
+                         Only [a-zA-Z0-9_-] (max 64 chars) are allowed.",
+                        v
+                    );
+                    false
+                }
+            });
         let is_dev = std::env::var("AIOME_DEV_MODE")
             .map(|v| v == "1")
             .unwrap_or(false);
@@ -31,6 +50,9 @@ impl AppDataResolver {
             // 開発モード: カレントディレクトリの workspace を使用
             let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             path.push("workspace");
+            if let Some(ref id) = cell_id {
+                path.push(id);
+            }
             path
         } else {
             // 本番モード: OS標準のデータディレクトリ
@@ -38,17 +60,33 @@ impl AppDataResolver {
             dirs::data_local_dir()
                 .map(|mut p| {
                     p.push("com.aiome.nexus");
+                    if let Some(ref id) = cell_id {
+                        p.push(id);
+                    }
                     p
                 })
                 .unwrap_or_else(|| {
                     // フォールバック: ホームディレクトリの .aiome
                     let mut p = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
                     p.push(".aiome");
+                    if let Some(ref id) = cell_id {
+                        p.push(id);
+                    }
                     p
                 })
         };
 
         Self { root }
+    }
+
+    /// `CELL_ID` がパストラバーサルを含まない安全な値かを検証します。
+    /// 英数字・ハイフン・アンダースコアのみ許可。最大64文字。
+    fn is_safe_cell_id(id: &str) -> bool {
+        !id.is_empty()
+            && id.len() <= 64
+            && id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     }
 
     /// ルートパスを取得します。
@@ -94,9 +132,15 @@ mod tests {
     use serial_test::serial;
     use std::env;
 
+    /// テスト前に CELL_ID をクリアするヘルパー。
+    fn clean_cell_id() {
+        env::remove_var("CELL_ID");
+    }
+
     #[test]
     #[serial]
     fn test_resolve_root_dev() {
+        clean_cell_id();
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         assert!(resolver.root().to_string_lossy().contains("workspace"));
@@ -105,6 +149,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_root_prod() {
+        clean_cell_id();
         env::remove_var("AIOME_DEV_MODE");
         let resolver = AppDataResolver::new();
         #[cfg(target_os = "macos")]
@@ -117,6 +162,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_path_resolution() {
+        clean_cell_id();
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         let path = resolver.db_path();
@@ -129,10 +175,75 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_url_resolution() {
+        clean_cell_id();
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         let url = resolver.db_url();
         assert!(url.starts_with("sqlite://"));
         assert!(url.contains("aiome.db"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_cell_id_namespacing() {
+        env::set_var("AIOME_DEV_MODE", "1");
+        env::set_var("CELL_ID", "test-cell-42");
+        let resolver = AppDataResolver::new();
+
+        // root に CELL_ID が含まれること
+        let root_str = resolver.root().to_string_lossy().to_string();
+        assert!(root_str.contains("test-cell-42"));
+
+        // db_path もセルスコープ内に収束すること
+        let db_str = resolver.db_path().to_string_lossy().to_string();
+        assert!(db_str.contains("test-cell-42"));
+        assert!(db_str.ends_with("test-cell-42/aiome.db"));
+
+        // db_url もセルスコープを含むこと
+        let url = resolver.db_url();
+        assert!(url.contains("test-cell-42/aiome.db"));
+
+        // artifacts_dir もセルスコープ内であること
+        let art_str = resolver.artifacts_dir().to_string_lossy().to_string();
+        assert!(art_str.contains("test-cell-42"));
+        assert!(art_str.ends_with("test-cell-42/artifacts"));
+
+        clean_cell_id();
+    }
+
+    #[test]
+    #[serial]
+    fn test_cell_id_absent_preserves_compat() {
+        env::set_var("AIOME_DEV_MODE", "1");
+        clean_cell_id();
+        let resolver = AppDataResolver::new();
+        let path_str = resolver.root().to_string_lossy().to_string();
+        assert!(!path_str.contains("cell-0"));
+        assert!(path_str.ends_with("workspace"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_cell_id_rejects_traversal() {
+        env::set_var("AIOME_DEV_MODE", "1");
+        env::set_var("CELL_ID", "../../etc");
+        let resolver = AppDataResolver::new();
+        let path_str = resolver.root().to_string_lossy().to_string();
+        // パストラバーサルを含む CELL_ID は無視されるべき
+        assert!(!path_str.contains("etc"));
+        assert!(path_str.ends_with("workspace"));
+        clean_cell_id();
+    }
+
+    #[test]
+    fn test_is_safe_cell_id() {
+        assert!(AppDataResolver::is_safe_cell_id("cell-0"));
+        assert!(AppDataResolver::is_safe_cell_id("user_abc_123"));
+        assert!(AppDataResolver::is_safe_cell_id("a"));
+        assert!(!AppDataResolver::is_safe_cell_id(""));
+        assert!(!AppDataResolver::is_safe_cell_id("../../etc"));
+        assert!(!AppDataResolver::is_safe_cell_id("cell/0"));
+        assert!(!AppDataResolver::is_safe_cell_id("cell 0"));
+        assert!(!AppDataResolver::is_safe_cell_id(&"a".repeat(65)));
     }
 }

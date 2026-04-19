@@ -175,7 +175,11 @@ impl CommerceEngine for MockCommerceEngine {
         Ok(format!("sub_{}", Uuid::new_v4()))
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), AiomeError> {
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        _subscription_id: &str,
+    ) -> Result<(), AiomeError> {
         Ok(())
     }
 
@@ -273,7 +277,7 @@ mod tests {
         let status = engine.get_subscription_status(agent_id).await.unwrap(); // allow-anti-pattern
         assert_eq!(status, aiome_core::commerce::SubscriptionStatus::Active);
 
-        engine.cancel_subscription(&sub_id).await.unwrap(); // allow-anti-pattern
+        engine.cancel_subscription(agent_id, &sub_id).await.unwrap(); // allow-anti-pattern
     }
 
     #[tokio::test]

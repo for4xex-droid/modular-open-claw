@@ -480,7 +480,11 @@ impl CommerceEngine for StripeCommerceEngine {
         }
     }
 
-    async fn cancel_subscription(&self, _subscription_id: &str) -> Result<(), AiomeError> {
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        _subscription_id: &str,
+    ) -> Result<(), AiomeError> {
         // Mock mode for tests
         if self.is_mock {
             return Ok(());

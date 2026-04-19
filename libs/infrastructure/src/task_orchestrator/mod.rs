@@ -888,7 +888,9 @@ impl TaskDispatcher {
                                 );
 
                                 // Gap 3: Persist the reason to the DB before setting status to AwaitingInput
-                                let _ = self.job_queue.fail_job(&job.id, &reason).await;
+                                if let Err(e) = self.job_queue.fail_job(&job.id, &reason).await {
+                                    tracing::error!("🚨 [TaskOrchestrator] Failed to record job failure for {}: {}", job.id, e);
+                                }
 
                                 self.job_queue
                                     .update_job_status(

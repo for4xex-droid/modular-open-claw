@@ -1,5 +1,20 @@
 # 🌊 Aiome Ripple Map
 
+## CBA Stage 0: Cell-Based Architecture Foundation (ADR-030)
+### 1. CELL_ID Namespacing & Path Isolation
+- **変更内容**:
+    - `libs/shared/src/app_data.rs` [MODIFY]: `AppDataResolver::new()` に `CELL_ID` 環境変数による名前空間分離を実装。`is_safe_cell_id()` ホワイトリスト検証（英数字・ハイフン・アンダースコア、最大64文字）と `tracing::warn!` 不正入力ログを追加。
+    - `scripts/backup.sh` [MODIFY]: CELL_ID の Shell バリデーション（正規表現ガード）を追加。バックアップ対象を `api/`, `hub/`, `nurture/` 全セルサブディレクトリに拡大。
+    - `docker-compose.cell.yml` [MODIFY]: セル固有の `JWT_PRIVATE_KEY_B64` 環境変数を `api-server` に注入。
+    - `docker-compose.shared.yml` [MODIFY]: TimesFM ポートを 3020→3025 に変更（Nurture API との衝突解消）。
+    - `.env.example` [MODIFY]: `CELL_ID` セクション追加、`TIMESFM_SIDECAR_URL` ポートを 3025 に統一。
+    - `docs/decisions/ADR-030-cell-based-architecture.md` [ADD]: CBA 設計決定記録。
+- **波及効果**:
+    - `AppDataResolver::new()` は **28箇所** から呼び出されている（`bootstrap.rs`, `SecurityConfig`, `PathSandbox`, `user_learner.rs`, `generative_engine.rs`, `lora_training.rs`, `heartbeat_wakeup.rs`, `cortex.rs` 他）。CBA 不変条件「1プロセス=1セル」により、全呼び出し元が透過的にセルスコープへ自動収束するため、各モジュールへの個別修正は不要。
+    - `CELL_ID` 未設定時はデフォルト動作（`cell-0` 相当）するため、既存のシングルセル環境への破壊的影響はゼロ。
+    - `backup.sh` のリストア操作は新しいディレクトリ構造に依存するため、旧形式のバックアップ tar は手動マイグレーションが必要。
+    - TimesFM ポート変更により `TIMESFM_SIDECAR_URL` を手動で設定しているユーザーは `.env` 更新が必要。
+
 ## Sprint F: A2UI Generative Interface (Phase 0)
 ### 1. SSE Stream → Frontend Rendering Pipeline
 - **変更内容**:
