@@ -626,3 +626,89 @@ async fn chaos_expression_malformed_format() {
         "Must fallback to default emotion safely"
     );
 }
+
+// ============================================================
+//  Experiment 16: UserLearner + MalformedJson
+// ============================================================
+/// 仮説: UserLearner が LLM から意図しない文字列 (Malformed JSON) を受け取っても
+///       既存のプロファイルを破壊せず、panic せずに更新をスキップ (Ok(false)) する
+#[tokio::test]
+async fn chaos_user_learner_malformed_json() {
+    use infrastructure::user_learner::{UserLearner, UserProfile};
+    use tokio::sync::Semaphore;
+
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::MalformedJson,
+    });
+
+    let semaphore = Arc::new(Semaphore::new(1));
+    let learner = UserLearner::new(chaos_llm, semaphore, UserProfile::default(), None);
+
+    let result = learner.learn_from_session("hello").await;
+
+    assert!(
+        result.is_ok(),
+        "UserLearner MUST NOT panic on malformed JSON"
+    );
+    assert!(
+        !result.unwrap(),
+        "UserLearner should return false when parsing fails"
+    );
+}
+
+// ============================================================
+//  Experiment 17: UserLearner + EmptyResponse
+// ============================================================
+/// 仮説: UserLearner が LLM から空応答を受けた場合も安全にスキップする
+#[tokio::test]
+async fn chaos_user_learner_empty_response() {
+    use infrastructure::user_learner::{UserLearner, UserProfile};
+    use tokio::sync::Semaphore;
+
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::EmptyResponse,
+    });
+
+    let semaphore = Arc::new(Semaphore::new(1));
+    let learner = UserLearner::new(chaos_llm, semaphore, UserProfile::default(), None);
+
+    let result = learner.learn_from_session("hello").await;
+
+    assert!(
+        result.is_ok(),
+        "UserLearner MUST NOT panic on empty response"
+    );
+    assert!(!result.unwrap(), "UserLearner should return false");
+}
+
+// ============================================================
+//  Experiment 18: UserLearner + GiantOutput
+// ============================================================
+/// 仮説: UserLearner に GiantOutput (1MB) が渡された場合でもメモリ枯渇やパニックを
+///       起こさず、非対応フォーマットとして破棄される
+#[tokio::test]
+async fn chaos_user_learner_giant_output() {
+    use infrastructure::user_learner::{UserLearner, UserProfile};
+    use tokio::sync::Semaphore;
+
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::GiantOutput(1024 * 1024), // 1MB Output
+    });
+
+    let semaphore = Arc::new(Semaphore::new(1));
+    let learner = UserLearner::new(chaos_llm, semaphore, UserProfile::default(), None);
+
+    let result = learner.learn_from_session("hello").await;
+
+    assert!(result.is_ok(), "UserLearner MUST NOT panic on GiantOutput");
+    assert!(
+        !result.unwrap(),
+        "UserLearner should return false (rejected)"
+    );
+}
