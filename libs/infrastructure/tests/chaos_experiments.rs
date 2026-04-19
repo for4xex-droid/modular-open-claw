@@ -490,3 +490,73 @@ async fn chaos_a2ui_whitelisted_type_with_ssrf_payload() {
 
     // ── Learning: ホワイトリスト通過と props 検証は独立した多層防御 ──
 }
+
+// ============================================================
+//  Experiment 12: Oracle + Malformed JSON
+// ============================================================
+/// 仮説: Oracle の評価で LLM が不正な JSON (Malformed JSON) を返した場合、
+///       panic せずに Error(AiomeError::Infrastructure) として安全に伝搬する
+#[tokio::test]
+async fn chaos_oracle_malformed_json() {
+    use infrastructure::oracle::Oracle;
+
+    // ── Fault Injection: LLM が不正JSONを返す ──
+    let inner = Arc::new(MockLlm::ok("fallback"));
+    let chaos_llm = Arc::new(ChaosLlmProvider {
+        inner,
+        mode: ChaosMode::MalformedJson,
+    });
+
+    let oracle = Oracle::new(chaos_llm, "Be ethical.".to_string());
+
+    // ── Verification: panic せずに Err が返る ──
+    let result = oracle
+        .evaluate(7, "AI Ethics", "Formal", 1000, 100, "[]")
+        .await;
+
+    assert!(
+        result.is_err(),
+        "Oracle MUST return Error on malformed JSON from LLM"
+    );
+
+    // ── Learning: Serde 失敗は AiomeError::Infrastructure にマッピングされる ──
+    if let Err(aiome_core::error::AiomeError::Infrastructure { reason }) = result {
+        assert!(reason.contains("Failed to parse Oracle JSON"));
+    } else {
+        panic!("Expected Infrastructure error for parsing failure");
+    }
+}
+
+// ============================================================
+//  Experiment 13: Oracle Multi-Judge + All Failures
+// ============================================================
+/// 仮説: マルチジャッジで全プロバイダーが Error などを起こした場合、
+///       panic せずに "All Oracle providers failed" というエラーを返す
+#[tokio::test]
+async fn chaos_oracle_multi_judge_all_failing() {
+    use infrastructure::oracle::Oracle;
+
+    let failure_llm = Arc::new(MockLlm::failing());
+    let oracle =
+        Oracle::new(failure_llm.clone(), "Be ethical.".to_string()).with_multi_providers(vec![
+            failure_llm.clone(),
+            failure_llm.clone(),
+            failure_llm.clone(),
+        ]);
+
+    let result = oracle
+        .evaluate_multi_judge(7, "AI Ethics", "Formal", 1000, 100, "[]")
+        .await;
+
+    assert!(
+        result.is_err(),
+        "Multi-judge MUST return Error when all providers fail"
+    );
+
+    // ── Learning: 全て失敗時は panic せず Fail-Safe 挙動 ──
+    if let Err(aiome_core::error::AiomeError::Infrastructure { reason }) = result {
+        assert!(reason.contains("All Oracle providers failed"));
+    } else {
+        panic!("Expected 'All Oracle providers failed' error");
+    }
+}
