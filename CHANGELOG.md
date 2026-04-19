@@ -4,8 +4,6 @@
     - **Escrow 障害分離**: `process_expired_escrows` を単一バッチトランザクションから個別トランザクションへリファクタリング。1件の refund 失敗が他の正常な refund をブロックする問題を排除。TOCTOU 再チェック (`still_pending`) を追加。
     - **コンテナ強化**: `docker-compose.nurture.yml` で `nurture-api` に `user: "1001:1001"` を統一し、production.yml と同等のセキュリティポスチャを確立。
     - **Uuid::nil() アーキテクチャ注記**: `deduct_generation_cost` の SystemFee sink として使用する nil UUID が auth.rs の nil ガードと衝突しない理由をコード内に明示。
-
-## [Unreleased] - 2026-04-18
   - **Economic Integration Hardening (Sprint C-D / Tier 1-4)**: Aiome–Project-Nurture 間の経済統合を本番グレードにハードニング。
     - **[Tier 1] Stripe Webhook DLQ**: `commerce_webhook.rs` において、3回リトライ失敗後に `outbox_dead_letters` テーブルへペイロードを永続化する Dead Letter Queue を実装。DB 挿入前にペイロードをログ先行出力するバックアップ機構を追加し、データ消失ゼロを保証。
     - **[Tier 1] サイレント破棄防止**: `NURTURE_API_URL` / `NURTURE_INTERNAL_SECRET` が未設定の場合、コインチャージが静かに消えるのを防止するため `error!` ログで agent / amount / event_id を明示出力するよう修正 (S-4)。
