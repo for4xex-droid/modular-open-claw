@@ -392,10 +392,20 @@ impl EvaluationOps for UniversalJobQueue {
             let q4 = format!("UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = {} WHERE id = 1", self.pool.now_fn());
             match &mut tx {
                 crate::db::DatabaseTransaction::Sqlite(t) => {
-                    let _ = sqlx::query(&q4).execute(&mut **t).await;
+                    if let Err(e) = sqlx::query(&q4).execute(&mut **t).await {
+                        tracing::warn!(
+                            "⚠️ [Evaluation] Failed to update agent_stats (SQLite): {:?}",
+                            e
+                        );
+                    }
                 }
                 crate::db::DatabaseTransaction::Postgres(t) => {
-                    let _ = sqlx::query(&q4).execute(&mut **t).await;
+                    if let Err(e) = sqlx::query(&q4).execute(&mut **t).await {
+                        tracing::warn!(
+                            "⚠️ [Evaluation] Failed to update agent_stats (Postgres): {:?}",
+                            e
+                        );
+                    }
                 }
             }
         }

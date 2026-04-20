@@ -481,7 +481,6 @@ impl UniversalSoulStore {
 }
 
 #[async_trait]
-#[async_trait]
 impl aiome_core_contracts::traits::SoulStore for UniversalSoulStore {
     async fn load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError> {
         if let Some(soul) = self.load_soul(id).await? {
