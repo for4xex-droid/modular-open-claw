@@ -516,9 +516,19 @@ impl ArtifactStore for UniversalArtifactStore {
         })?;
         if let Ok(full_dir) = sandbox.validate_path(&meta.dir_path) {
             for file in meta.files {
-                let _ = std::fs::remove_file(full_dir.join(&file.name));
+                if let Err(e) = std::fs::remove_file(full_dir.join(&file.name)) {
+                    warn!(
+                        "⚠️ [ArtifactStore] Failed to remove artifact file {:?}: {:?}",
+                        file.name, e
+                    );
+                }
             }
-            let _ = std::fs::remove_dir(full_dir);
+            if let Err(e) = std::fs::remove_dir(&full_dir) {
+                warn!(
+                    "⚠️ [ArtifactStore] Failed to remove artifact dir {:?}: {:?}",
+                    full_dir, e
+                );
+            }
         }
         sql_exec!(
             &self.pool,

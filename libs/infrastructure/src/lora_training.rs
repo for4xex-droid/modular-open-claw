@@ -283,12 +283,14 @@ impl LoraTrainingService {
                             }
                         }
                     }
-                    let _ = tx.send(aiome_core_contracts::events::CoreEvent::TaskProgress {
+                    if let Err(e) = tx.send(aiome_core_contracts::events::CoreEvent::TaskProgress {
                         job_id: j_id.clone(),
                         conductor_id: "LoraConductor".to_string(),
                         message: line.clone(),
                         percent,
-                    });
+                    }) {
+                        tracing::warn!("⚠️ [LoRA] Failed to send progress event: {:?}", e);
+                    }
                 }
                 tracing::info!("🎓 [LoRA:{}] {}", j_id, line);
             }
@@ -298,7 +300,9 @@ impl LoraTrainingService {
         let status_res: std::io::Result<std::process::ExitStatus> = tokio::select! {
             _ = cancel_token.cancelled() => {
                 tracing::warn!("🛑 [LoraTrainingService] Training job {} cancelled!", job_id);
-                let _ = child.kill().await;
+                if let Err(e) = child.kill().await {
+                    tracing::warn!("⚠️ [LoRA] Failed to kill training process on cancel: {:?}", e);
+                }
                 return Err(AiomeError::Infrastructure {
                     reason: "Training cancelled".to_string(),
                 });
@@ -307,7 +311,9 @@ impl LoraTrainingService {
                 match res {
                     Ok(r) => r,
                     Err(_) => {
-                        let _ = child.kill().await;
+                        if let Err(e) = child.kill().await {
+                            tracing::warn!("⚠️ [LoRA] Failed to kill training process on timeout: {:?}", e);
+                        }
                         return Err(AiomeError::Infrastructure {
                             reason: "Training timed out after 1 hour".to_string(),
                         });
@@ -317,7 +323,9 @@ impl LoraTrainingService {
         };
 
         // Ensure progress reader finishes
-        let _ = progress_task.await;
+        if let Err(e) = progress_task.await {
+            tracing::warn!("⚠️ [LoRA] Progress reader task panicked: {:?}", e);
+        }
 
         let status = status_res.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Training script failed to execute: {}", e),
@@ -372,7 +380,9 @@ impl LoraTrainingService {
 
             let status_res = tokio::select! {
                 _ = cancel_token.cancelled() => {
-                    let _ = child.kill().await;
+                    if let Err(e) = child.kill().await {
+                        tracing::warn!("⚠️ [LoRA] Failed to kill ollama process on cancel: {:?}", e);
+                    }
                     return Err(AiomeError::Infrastructure {
                         reason: "Model registration cancelled".to_string(),
                     });
@@ -381,7 +391,9 @@ impl LoraTrainingService {
                     match res {
                         Ok(r) => r,
                         Err(_) => {
-                            let _ = child.kill().await;
+                            if let Err(e) = child.kill().await {
+                                tracing::warn!("⚠️ [LoRA] Failed to kill ollama process on timeout: {:?}", e);
+                            }
                             return Err(AiomeError::Infrastructure {
                                 reason: "Model registration timed out after 15 minutes".to_string(),
                             });
@@ -443,9 +455,16 @@ impl LoraEngine for LoraTrainingService {
 
         // Ensure newly enqueued job status transitions to InProgress
         if let Some(jq) = &self.job_queue {
-            let _ = jq
+            if let Err(e) = jq
                 .update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::InProgress)
-                .await;
+                .await
+            {
+                tracing::warn!(
+                    "⚠️ [LoRA] Failed to update job {} to InProgress: {:?}",
+                    job_id,
+                    e
+                );
+            }
         }
 
         let cancel_token = CancellationToken::new();
@@ -545,12 +564,19 @@ impl LoraEngine for LoraTrainingService {
                         }
                     }
                     if let Some(jq) = &service_clone.job_queue {
-                        let _ = jq
+                        if let Err(e) = jq
                             .update_job_status(
                                 &j_id,
                                 aiome_core_contracts::traits::JobStatus::Completed,
                             )
-                            .await;
+                            .await
+                        {
+                            tracing::warn!(
+                                "⚠️ [LoRA] Failed to mark job {} as Completed: {:?}",
+                                j_id,
+                                e
+                            );
+                        }
                     }
                 }
                 Err(e) => {

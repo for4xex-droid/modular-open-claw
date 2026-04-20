@@ -133,7 +133,9 @@ JSONフォーマット:
                         if let Some(md) = update.markdown_content {
                             // バックアップと保存
                             let backup_path = format!("{}.bak", user_path);
-                            let _ = fs::copy(&user_path, &backup_path);
+                            if let Err(e) = fs::copy(&user_path, &backup_path) {
+                                warn!("⚠️ [UserLearner] Failed to backup USER.md: {:?}", e);
+                            }
                             fs::write(&user_path, md)?;
                             info!("✅ [UserLearner] USER.md and structured profile updated.");
                         }
@@ -145,7 +147,12 @@ JSONフォーマット:
                             && !reply.contains('{')
                         {
                             let backup_path = format!("{}.bak", user_path);
-                            let _ = fs::copy(&user_path, &backup_path);
+                            if let Err(e) = fs::copy(&user_path, &backup_path) {
+                                warn!(
+                                    "⚠️ [UserLearner] Failed to backup USER.md (legacy): {:?}",
+                                    e
+                                );
+                            }
                             fs::write(&user_path, reply)?;
                             info!("✅ [UserLearner] USER.md updated (legacy fallback).");
                             return Ok(true);
@@ -180,7 +187,9 @@ impl AgentHook for UserLearner {
         }
         summary.push_str(&format!("Assistant: {}\n", response.content));
 
-        let _ = self.learn_from_session(&summary).await;
+        if let Err(e) = self.learn_from_session(&summary).await {
+            warn!("⚠️ [UserLearner] on_post_execute learning failed: {:?}", e);
+        }
         Ok(())
     }
 }

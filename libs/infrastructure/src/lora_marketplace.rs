@@ -416,7 +416,9 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                     "UPDATE lora_listings SET status = 'Open' WHERE id = {}",
                     self.pool.ph(0)
                 );
-                let _ = sql_exec!(&self.pool, &q_revert, listing_id.to_string());
+                if let Err(e) = sql_exec!(&self.pool, &q_revert, listing_id.to_string()) {
+                    tracing::error!("🚨 [LoraMarketplace] CRITICAL: Failed to revert listing {} to Open after escrow failure: {:?}", listing_id, e);
+                }
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Failed to create escrow: {}", e),
                 });
@@ -449,7 +451,9 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                 "UPDATE lora_listings SET status = 'Open' WHERE id = {}",
                 self.pool.ph(0)
             );
-            let _ = sql_exec!(&self.pool, &q_revert, listing_id.to_string());
+            if let Err(e) = sql_exec!(&self.pool, &q_revert, listing_id.to_string()) {
+                tracing::error!("🚨 [LoraMarketplace] CRITICAL: Failed to revert listing {} to Open after purchase insertion failure: {:?}", listing_id, e);
+            }
 
             return Err(AiomeError::Infrastructure {
                 reason: format!("Purchase insertion failed: {}", e),
@@ -615,8 +619,19 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                     "UPDATE lora_listings SET status = 'Sold' WHERE id = {}",
                     self.pool.ph(0)
                 );
-                let _ = sql_exec!(&self.pool, &q_rollback_p, purchase_id_str.clone());
-                let _ = sql_exec!(&self.pool, &q_rollback_l, listing_id);
+                if let Err(e) = sql_exec!(&self.pool, &q_rollback_p, purchase_id_str.clone()) {
+                    tracing::error!(
+                        "🚨 [LoraMarketplace] CRITICAL: Purchase rollback failed for {}: {:?}",
+                        purchase_id_str,
+                        e
+                    );
+                }
+                if let Err(e) = sql_exec!(&self.pool, &q_rollback_l, listing_id) {
+                    tracing::error!(
+                        "🚨 [LoraMarketplace] CRITICAL: Listing rollback failed: {:?}",
+                        e
+                    );
+                }
                 return Err(refund_err);
             }
 
@@ -670,7 +685,9 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                 "UPDATE lora_purchases SET status = 'Escrowed' WHERE id = {}",
                 self.pool.ph(0)
             );
-            let _ = sql_exec!(&self.pool, &q_rollback, purchase_id_str.clone());
+            if let Err(e) = sql_exec!(&self.pool, &q_rollback, purchase_id_str.clone()) {
+                tracing::error!("🚨 [LoraMarketplace] CRITICAL: Escrow release rollback failed for purchase {}: {:?}", purchase_id_str, e);
+            }
             return Err(release_err);
         }
 
