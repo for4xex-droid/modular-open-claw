@@ -182,7 +182,9 @@ impl TaskDispatcher {
                         },
                         _ => continue,
                     };
-                    let _ = ctx.send(core_ev);
+                    if let Err(e) = ctx.send(core_ev) {
+                        warn!("Failed to send core event: {:?}", e);
+                    }
                 }
             });
         }
@@ -311,14 +313,17 @@ impl TaskDispatcher {
                                         info!("🚀 [AgenticFinance] GIG Intent published successfully: {}", intent_id);
 
                                         // 4. Progress Broadcast (will be bridge-mapped to global event line)
-                                        let _ = p_tx
+                                        if let Err(e) = p_tx
                                             .send(TaskEvent::GigPublished {
                                                 job_id: j_id.to_string(),
                                                 intent_id: intent_id.to_string(),
                                                 description,
                                                 budget,
                                             })
-                                            .await;
+                                            .await
+                                        {
+                                            warn!("Failed to send GigPublished event: {:?}", e);
+                                        }
                                     }
                                     Err(e) => error!(
                                         "❌ [AgenticFinance] Failed to publish GIG intent: {:?}",
@@ -445,10 +450,12 @@ impl TaskDispatcher {
                         let conductor_id = conductor.conductor_name().to_string();
 
                         // Send Spawned event
-                        let _ = self.event_tx.send(TaskEvent::Spawned {
+                        if let Err(e) = self.event_tx.send(TaskEvent::Spawned {
                             job_id: job_id.clone(),
                             conductor_id: conductor_id.clone(),
-                        });
+                        }) {
+                            warn!("Failed to send Spawned event: {:?}", e);
+                        }
 
                         // Set up progress channel
                         let (progress_tx, mut progress_rx) = mpsc::channel(32);
@@ -458,7 +465,9 @@ impl TaskDispatcher {
                         // Spawn a listener for progress updates
                         tokio::spawn(async move {
                             while let Some(event) = progress_rx.recv().await {
-                                let _ = event_tx_clone.send(event);
+                                if let Err(e) = event_tx_clone.send(event) {
+                                    warn!("Failed to forward progress event: {:?}", e);
+                                }
                             }
                         });
 
@@ -495,7 +504,7 @@ impl TaskDispatcher {
                                             if let Ok(dag) = InvariantDag::from_json(&dag_json) {
                                                 if let Err(e) = dag.verify_chain() {
                                                     error!("🛡️ [InvariantDag] TAMPER DETECTED for job {}: {}", parent_id, e);
-                                                    let _ = job_queue_clone
+                                                    if let Err(e_db) = job_queue_clone
                                                         .fail_job(
                                                             &job_id,
                                                             &format!(
@@ -503,7 +512,13 @@ impl TaskDispatcher {
                                                                 e
                                                             ),
                                                         )
-                                                        .await;
+                                                        .await
+                                                    {
+                                                        warn!(
+                                                            "Failed to update job status: {}",
+                                                            e_db
+                                                        );
+                                                    }
                                                     if let Err(e) = progress_tx
                                                         .send(TaskEvent::Failed {
                                                             job_id: job_id.clone(),
@@ -839,10 +854,13 @@ impl TaskDispatcher {
                 "🚨 Plan for goal {} REJECTED by ConstitutionalValidator: {:?}",
                 job.id, e
             );
-            let _ = self
+            if let Err(e_db) = self
                 .job_queue
                 .fail_job(&job.id, &format!("Constitutional Violation: {}", e))
-                .await;
+                .await
+            {
+                warn!("Failed to mark job as failed: {}", e_db);
+            }
             return Err(e);
         }
         info!(
@@ -864,7 +882,9 @@ impl TaskDispatcher {
                 info!("⚠️ [AdaptiveImmuneSystem] Immune check BYPASSED for job {} due to user approval.", job.id);
                 bypass_immune_check = true;
                 // Clear the bypass marker for a one-time use
-                let _ = self.job_queue.store_execution_log(&job.id, "").await;
+                if let Err(e) = self.job_queue.store_execution_log(&job.id, "").await {
+                    warn!("Failed to clear execution log: {:?}", e);
+                }
             }
         }
 
@@ -900,10 +920,12 @@ impl TaskDispatcher {
                                     .await?;
 
                                 // Notify elicitation event
-                                let _ = self.event_tx.send(TaskEvent::AwaitingInput {
+                                if let Err(e_tx) = self.event_tx.send(TaskEvent::AwaitingInput {
                                     job_id: job.id.clone(),
                                     reason,
-                                });
+                                }) {
+                                    warn!("Failed to send AwaitingInput event: {:?}", e_tx);
+                                }
                                 return Ok(()); // Stop planning/dispatching for this goal completely
                             } else {
                                 info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
@@ -968,10 +990,13 @@ impl TaskDispatcher {
 
         // Phase 48: Store DAG to system_state for audit
         let dag_json = dag.to_json();
-        let _ = self
+        if let Err(e) = self
             .job_queue
             .store_system_state(&format!("invariant_dag_{}", job.id), &dag_json)
-            .await;
+            .await
+        {
+            warn!("Failed to store invariant dag to system state: {:?}", e);
+        }
 
         // 3. Complete the Goal job
         self.job_queue
@@ -979,10 +1004,12 @@ impl TaskDispatcher {
             .await?;
 
         // Notify via event
-        let _ = self.event_tx.send(TaskEvent::Completed {
+        if let Err(e) = self.event_tx.send(TaskEvent::Completed {
             job_id: job.id,
             result: "Goal planned successfully".to_string(),
-        });
+        }) {
+            warn!("Failed to send target goal completed event: {:?}", e);
+        }
 
         Ok(())
     }
