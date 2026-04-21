@@ -40,8 +40,8 @@ LABEL org.opencontainers.image.authors="motivationstudio,LLC" \
     security.no-docker-socket="true"
 
 # 1. Create a non-privileged service user
-RUN groupadd -g 10001 aiome && \
-    useradd -u 10001 -g aiome -m -s /bin/false aiome
+RUN groupadd -g 1001 aiome && \
+    useradd -u 1001 -g aiome -m -s /bin/false aiome
 
 # 2. Hardening: Install only necessary CA certs, runtime libraries, and gVisor (runsc)
 # fff-mcp: High-performance file search MCP server (MIT, github.com/dmtrKovalenko/fff.nvim)
