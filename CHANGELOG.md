@@ -1,4 +1,49 @@
 ## [Unreleased]
+  - **Quality Gate History API & Frontend Integration (Reflexion x3)**:
+    - **`GET /api/v1/quality-gate/history` エンドポイント新設**: `QualityGateStore` から過去の品質ゲート評価履歴を `limit` パラメータ付きで取得する認証済み API を実装。System Agent 専用アクセス制御（403 Forbidden）、API レイヤーでの `limit.min(100)` 二重クランプ（Defense-in-Depth）、OpenAPI ドキュメント完全統合を含む。
+    - **`SeoPulseView.tsx` 履歴統合**: `authenticatedFetch` を用いた安全な履歴取得フローを確立。SSE ライブイベントと DB 履歴データの `job_id` / `id` による一意な突合（Deduplication）と時間順マージを実装。`safeTimeString` ヘルパーによる無効日付ガード、`Array.isArray` レスポンス型安全チェックを追加。
+    - **[Reflexion] 致命的認証バグ修正**: `localStorage.getItem('apiome_agent_token')` という3重の誤り（キー名不一致 + ストレージ API 不一致 + `authenticatedFetch` 未使用）を発見・修正。修正前は履歴フェッチが完全にデッドコードだった。
+    - **[Reflexion Pass 4] SSE conductor フィールド伝搬**: `CoreEvent::QualityGate` および `TaskEvent::QualityGate` に `conductor: String` フィールドを追加し、6ファイル（`events.rs`, `mod.rs`, `geo_audit.rs`, `seo_content.rs`, `stream.rs`）にまたがるデータ契約の完全一致を達成。DB 履歴とライブ SSE イベントの両方で評価実行元（`GeoAuditConductor` / `SeoContentConductor`）が正しく特定可能に。
+  - **GEO Intelligence Integration (Generative Engine Optimization)**:
+    - **`GeoAuditConductor` の実装**: 単独での GEO (Generative Engine Optimization) 監査を自動化する自律タスクコンダクターを新設。厳密な入力バリデーションおよびスコア `GEO_CITABILITY_THRESHOLD` による品質ゲートを設け、閾値未満の場合はハードエラー（Hard-Fail）を返す設計を確立。
+    - **`SeoContentConductor` の GEO 統合 (Graceful Degradation)**: SEO 特化型のコンテンツ生成パイプラインに `GeoAuditConductor` をシームレスに統合。スタンドアロン監査とは異なり、SEO 記事生成フロー内では GEO サービスが一時的にダウンした場合でもソフトフォールバック（Graceful Degradation）し、コンテンツ自体は生成成功として扱う非対称設計（Asymmetric Design）を導入。
+    - **WordPress 自動配信パイプライン完了**: SEO コンテンツの生成完了後に、自動で WordPress へデプロイする一貫したパブリッシングパイプラインを確立。
+    - **Reflexion x3 品質保証**: AI 自身による「鬼のレビュアー」ワークフロー (Reflexion) を3反復させ、SEO/GEO 関連モジュールの堅牢性を極限まで強化。また、テストコード内における `unwrap()` / `expect()` 等のパニック要因を `// allow-anti-pattern` コメントによって明示的に隔離し、プロダクションコードの静的防弾水準を引き上げ。
+  - **GBrain R3 Native Integration (Phase 1)**:
+    - **Typed Links Extraction**: `CortexCompiler::run_compilation_cycle` において、`cortex_wiki_articles` 間の相互リンク関係を再構築する `update_backlinks` を拡張し、`update_backlinks_and_typed_links` へとアップグレード。記事本体からマッチしたキーワード（`extends`, `depends_on`, `contradicts`, `references`）を +/- 100文字のコンテキスト窓（Context Window）から抽出し、リンクの意味的な型（Typed Link）と証拠テキスト（Evidence Text）をO(n^2)でバッチ解析して `cortex_typed_links` データベースへ永続化するロジックを実装。
+    - **Backlink-Boosted Knowledge Retrieval**: 検索時の推論品質を向上するため、`from cortex_query.rs` (Cortex Query Engine) に**Backlink Boost**アルゴリズムを導入。検索コンテキストとして選択されたソース記事群の**総被リンク数**（incoming backlinks）を算出・合計し、一件につき `+0.05` （最大 `+0.2` のハードリミット）のブースト補正をLLMの計算した初期 Confidence Score に加算してハイブリッドランキング (Hybrid Ranking) を実現。
+    - **Database Test Helper Consolidation**: `cortex_mock::setup_db_pool()` を `test_utils.rs` に新設。`tests/`, `cortex_compiler_tests.rs`, `cortex_synth_tests.rs`, `cortex_projector_tests.rs` に散在していたインラインDBスキーマ初期化ロジックを1つのSSOTに集約し、`cortex_typed_links` スキーマおよび `audit_ledger_global` トラッキングトリガーを安全に共有。
+    - **Schema Migrations**: `cortex_typed_links` を SQLite および PostgreSQL のマイグレーション層へ追加。
+
+  - **Infrastructure Hardening (Perfect Plan verification / TDD)**:
+    - **MCP env_clear() 隔離**: `client.rs` および `lora_training.rs` においてプロセス起動時に `env_clear()` を適用し、親プロセスからのシークレット漏洩を無効化。`PATH` や `HOME` 等の必須変数のみ `MCP_SAFE_ENV_VARS` ホワイトリストを通じて安全に再注入する防御機構を実装 (`test_mcp_client_env_isolation` テスト追加)。
+    - **BastionGuard / ZombieKiller env_clear() 隔離 (Defense-in-depth)**: `security.rs` および `security_zombie.rs` のプロセス実行基盤に `env_clear()` を適用し、サンドボックス (`sandbox-exec`) に依存せずともAPIキーやシークレットが子プロセスへ漏洩することを二重に防御する設計を確立 (`test_build_safe_command_args_env_clear`, `test_env_clear_prevents_secret_leak` にて証明)。
+    - **PROCESS_SAFE_ENV_VARS SSOT 定数**: `security.rs` に `PROCESS_SAFE_ENV_VARS` (6変数: PATH, HOME, LANG, TMPDIR, PYTHONPATH, VIRTUAL_ENV) を単一の真実源として定義。BastionGuard, ZombieKiller, LoRA health_check, Ollama CLI, SLM CLI の5経路全てがこの定数を参照するように統一。MCP クライアントは MCP 固有の拡張変数を含む `MCP_SAFE_ENV_VARS` (15変数) を使用するため意図的に分離。
+    - **LoRA/SLM CLI env_clear() 拡張 (Reflexion R2)**: `lora_training.rs` の `ollama create` および `slm_bridge.rs` の `CliSlmBackend::run_command` にも `env_clear()` + `PROCESS_SAFE_ENV_VARS` 再注入を適用し、外部バイナリ経由のシークレット漏洩経路を完全に閉塞。
+    - **CSP 強化**: `management-console/index.html` の `script-src` から `'unsafe-inline'` と `'unsafe-eval'` を除去。`style-src` の `unsafe-inline` は Framer Motion 要件のため意図的に維持し、影響を最小化。
+
+  - **Environment Variable Scrub Unification (Reflexion x2)**:
+    - **`scrub_env` 全面統一**: ワークスペース全域に散在していた 28 箇所の `std::env::remove_var` を `shared::security::scrub_env()` に一元化。api-server (bootstrap.rs: 12箇所, watchtower.rs: 2箇所), shadow-worker (2箇所), samsara-hub (1箇所), napi-bridge (3箇所), config.rs (5箇所), sqlite_vault_backend.rs (1箇所), key-proxy (前回統合済み) の全てで統一。
+    - **shadow-worker 依存追加**: `shared` クレートを Cargo.toml に追加し、`scrub_env` へのアクセスを確保。
+    - **unsafe スコープ最小化**: `sqlite_vault_backend.rs` の `#[allow(unsafe_code)]` 関数属性を削除。unsafe は `scrub_env` 内部の1箇所のみに集約。
+    - **本番パスの生 `remove_var` ゼロ達成**: テストコード以外の全 `remove_var` を排除し、Rust 2024 Edition での `unsafe fn` 昇格に完全対応。
+
+  - **DB Secret Protection Reflexion (Step 2 Hardening)**:
+    - **透過的復号の一元化 (FATAL Fix)**: `do_get_setting` で `is_secret` フラグを同時取得し、`true` の場合にストレージ層で自動復号する設計へ全面改修。散在的な `decrypt_setting()` 呼び出し（`dynamic.rs` 3箇所）を全削除し、全呼び出し元が変更なしに正しく動作する「忘れ得ない設計」を達成。
+    - **暗号化失敗のサイレントフォールバック排除 (FATAL Fix)**: `settings.rs` (api-server) で暗号化失敗時に平文を DB に保存していた致命的欠陥を修正。`map_err()?` でエラー返却に変更し、暗号化できないシークレットの保存を物理的に阻止。
+    - **Postgres 互換性確保**: `CAST(is_secret AS INTEGER)` により SQLite/PostgreSQL 間の型マッピング不整合を解消。
+    - **二重クローン修正**: `get_cached_master_key` の冗長な `.map(|k| k.clone())` を除去。
+    - **バックアップ監査強化**: AES-256-GCM 暗号文の最小ペイロード要件 (56 hex chars) を検証する正規表現に改善。
+    - **暗号化テスト追加**: `encrypt_setting` / `decrypt_setting` の roundtrip、nonce uniqueness、invalid hex、tampered ciphertext の 4 テストを追加 (計 6 テスト全通過)。
+    - **Settings 一覧 API の暗号文マスク (Reflexion Pass 2)**: `do_get_all_settings` がシークレットの暗号化 hex 値を生のままフロントエンドに返却していた情報漏洩リスクを修正。`is_secret=true` の値を `"••••••••"` プレースホルダーに置換し、暗号文がネットワークに出ない設計を達成。
+
+  - **MCP Infrastructure Security Hardening (Reflexion x3)**:
+    - **CVE-2026-40933 引数インジェクション防御**: `FORBIDDEN_MCP_ARG_FLAGS` による禁止フラグ検証を `npx`/`uvx` 限定で実装。完全一致・`--flag=value` 形式・`-fVALUE` 形式の3パターンを網羅。偽陽性防止ガード (`!starts_with("--")`) 付き。
+    - **IPv4-mapped IPv6 SSRF バイパス閉塞**: `normalize_ip()` を導入し、`::ffff:127.0.0.1` や `::ffff:169.254.169.254` 等の dual-stack アドレスによる SSRF 防御迂回を完全排除。
+    - **リンクローカル IP ブロック**: `is_private_ip` に IPv4 link-local (`169.254.0.0/16` — クラウドメタデータサービス) および IPv6 link-local (`fe80::/10`) のチェックを追加。
+    - **グローバル HTTP クライアント統一**: `McpHttpClient` が `reqwest::Client::new()` を使用していた KI 違反を修正し、`aiome_core::http::get_http_client()` に統一。
+    - **`MCP_ALLOW_LOCALHOST` ロジック修正**: `is_err()` による判定を `eq_ignore_ascii_case("true")` に修正し、`"false"` 設定時のバイパスを閉塞。
+    - **設定ファイルパーミッション検証**: `mcp_servers.json` の Unix パーミッション (world/group-writable 検知) を本番ビルドで強制。
 
 ## [0.2.0-beta] - 2026-04-20
   - **Cell-Based Architecture Stage 0 (ADR-030)**: セルベースド・アーキテクチャの基盤実装を完了。

@@ -52,27 +52,7 @@ impl LlmProvider for MockLlmProvider {
 }
 
 async fn setup_db_pool() -> Result<DatabasePool, Box<dyn std::error::Error>> {
-    let pool = DatabasePool::new_sqlite("sqlite::memory:").await?;
-    let sqlite_pool = pool.get_sqlite_pool_or_err()?;
-
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            content_md TEXT NOT NULL,
-            concepts TEXT DEFAULT '[]',
-            backlinks TEXT DEFAULT '[]',
-            source_refs TEXT DEFAULT '[]',
-            content_hash TEXT NOT NULL,
-            version INTEGER DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )",
-    )
-    .execute(sqlite_pool)
-    .await?;
-
-    Ok(pool)
+    crate::test_utils::cortex_mock::setup_db_pool().await
 }
 
 #[tokio::test]

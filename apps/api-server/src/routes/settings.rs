@@ -188,9 +188,20 @@ pub async fn update_setting(
         error!("Failed to append audit log for settings update: {}", e);
     }
 
+    let value_to_store = if is_secret {
+        infrastructure::security::crypto::encrypt_setting(&payload.value).map_err(|e| {
+            error!("🚨 Failed to encrypt setting {}: {:?}", payload.key, e);
+            aiome_core::error::AiomeError::SecurityViolation {
+                reason: format!("Cannot store secret '{}': encryption failed", payload.key),
+            }
+        })?
+    } else {
+        payload.value.clone()
+    };
+
     state
         .job_queue
-        .update_setting(&payload.key, &payload.value, &payload.category, is_secret)
+        .update_setting(&payload.key, &value_to_store, &payload.category, is_secret)
         .await?;
 
     // Phase 2-D: Synchronize Feature Flag Cache

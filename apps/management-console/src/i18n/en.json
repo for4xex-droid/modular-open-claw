@@ -485,6 +485,9 @@
     "cache": "Cache Hit",
     "costComparison": "Cost Comparison"
   },
+  "seoPulse": {
+    "noEvents": "No recent audits..."
+  },
   "common": {
     "loading": "Loading...",
     "refresh": "Refresh"

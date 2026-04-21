@@ -9,8 +9,28 @@ use crate::mcp::client::McpProcessManager;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
+
+#[cfg(unix)]
+fn validate_config_permissions(path: &Path) -> Result<()> {
+    use std::os::unix::fs::MetadataExt;
+    let meta = std::fs::metadata(path)?;
+    let mode = meta.mode();
+    // Check if world or group writable
+    if mode & 0o022 != 0 {
+        return Err(anyhow::anyhow!(
+            "🚨 [SECURITY] MCP config file {} is world/group-writable (mode: {:o}). Fix with: chmod 600 {}",
+            path.display(), mode, path.display()
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn validate_config_permissions(_path: &Path) -> Result<()> {
+    Ok(())
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -89,6 +109,13 @@ pub async fn discover_and_connect(
         let _ = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config)?);
     }
 
+    // [Gate: Config Integrity]
+    #[cfg(not(debug_assertions))]
+    if let Err(e) = validate_config_permissions(&config_path) {
+        error!("{}", e);
+        return Err(e);
+    }
+
     let content = std::fs::read_to_string(&config_path)?;
     let discovery: McpDiscoveryFile = serde_json::from_str(&content)?;
 
@@ -103,14 +130,23 @@ pub async fn discover_and_connect(
                 let mut resolved_env = HashMap::new();
                 for (k, v) in config.env {
                     let resolved = if let Some(var_name) = v.strip_prefix('$') {
-                        std::env::var(var_name).unwrap_or_default()
+                        // Environment variable resolution should only allow safe alphanumeric names
+                        if var_name
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+                        {
+                            std::env::var(var_name).unwrap_or_default()
+                        } else {
+                            warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
+                            "".to_string()
+                        }
                     } else {
                         v
                     };
-                    // 🛡️ [GlassWorm Shield] Sanitize NUL, newline, and invisible characters
+                    // 🛡️ [GlassWorm Shield] Sanitize NUL, CR, LF, and invisible characters
                     let mut safe_val =
                         shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
-                    safe_val = safe_val.replace(['\0', '\n'], "");
+                    safe_val = safe_val.replace(['\0', '\r', '\n'], "");
                     resolved_env.insert(k, safe_val);
                 }
 
@@ -142,24 +178,39 @@ pub async fn discover_and_connect(
                 let mut resolved_headers = HashMap::new();
                 for (k, v) in config.headers {
                     let resolved = if let Some(var_name) = v.strip_prefix('$') {
-                        std::env::var(var_name).unwrap_or_default()
+                        if var_name
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+                        {
+                            std::env::var(var_name).unwrap_or_default()
+                        } else {
+                            warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
+                            "".to_string()
+                        }
                     } else if v.contains("$") {
                         // rudimentary inline replace for "Bearer $TOKEN"
                         let mut replaced = v.clone();
                         if let Some(idx) = v.find('$') {
                             let end_idx = v[idx..].find(' ').map(|i| idx + i).unwrap_or(v.len());
                             let var_name = &v[idx + 1..end_idx];
-                            let var_val = std::env::var(var_name).unwrap_or_default();
-                            replaced.replace_range(idx..end_idx, &var_val);
+                            if var_name
+                                .chars()
+                                .all(|c| c.is_ascii_alphanumeric() || c == '_')
+                            {
+                                let var_val = std::env::var(var_name).unwrap_or_default();
+                                replaced.replace_range(idx..end_idx, &var_val);
+                            } else {
+                                warn!("🚨 [SECURITY] Skipping invalid inline environment variable name in MCP config: {}", var_name);
+                            }
                         }
                         replaced
                     } else {
                         v
                     };
-                    // 🛡️ [GlassWorm Shield]
+                    // 🛡️ [GlassWorm Shield] Sanitize NUL, CR, LF to prevent CRLF header injection
                     let mut safe_val =
                         shared::guardrails::strip_invisible_unicode(&resolved).into_owned();
-                    safe_val = safe_val.replace(['\0', '\n'], "");
+                    safe_val = safe_val.replace(['\0', '\r', '\n'], "");
                     resolved_headers.insert(k, safe_val);
                 }
 

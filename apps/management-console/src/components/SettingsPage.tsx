@@ -91,7 +91,7 @@ const SettingsPage: React.FC = () => {
                 body: JSON.stringify({ service, url, model })
             });
             if (res.status === 404) {
-                setTestResults(prev => ({ ...prev, [service]: { success: false, message: t('settings.testDisabledInProd', 'Connection testing is disabled in production to protect against SSRF reconnaissance.'), loading: false } }));
+                setTestResults(prev => ({ ...prev, [service]: { success: false, message: t('settings.testDisabledInProd', { defaultValue: 'Connection testing is disabled in production to protect against SSRF reconnaissance.' }) as string, loading: false } }));
                 return;
             }
             const data = await res.json();

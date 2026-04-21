@@ -16,7 +16,7 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input' | 'quality_gate';
     data: AgentStats | Karma | SoTEvent | unknown;
 };
 
@@ -103,12 +103,18 @@ export const SystemVitalityProvider: React.FC<{ children: ReactNode }> = ({ chil
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input'
+                            'immune_alert', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input', 'quality_gate'
                         ];
 
                         if (validEvents.includes(msg.event)) {
                             try {
                                 const data = msg.data ? JSON.parse(msg.data) : null;
+                                if (msg.event === 'quality_gate' && data) {
+                                    if (typeof data.score !== 'number' || typeof data.passed !== 'boolean') {
+                                        console.warn('Invalid quality_gate payload:', data);
+                                        return;
+                                    }
+                                }
                                 addEvent(msg.event as VitalityEvent['type'], data);
                             } catch (err) {
                                 console.error(`Error parsing SSE event ${msg.event}:`, err);

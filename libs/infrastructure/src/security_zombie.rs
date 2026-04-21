@@ -127,8 +127,19 @@ pub async fn run_with_timeout(
         )));
     }
 
-    let mut child = Command::new(program)
-        .args(args)
+    let mut cmd_obj = tokio::process::Command::new(program);
+    cmd_obj.args(args);
+    cmd_obj.kill_on_drop(true);
+
+    // Step 4-A: Defense-in-depth: Clear environment variables
+    cmd_obj.env_clear();
+    // Re-inject essential system variables (SSOT: PROCESS_SAFE_ENV_VARS)
+    for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
+        if let Ok(val) = std::env::var(var_name) {
+            cmd_obj.env(var_name, val);
+        }
+    }
+    let mut child = cmd_obj
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
@@ -265,5 +276,35 @@ mod tests {
             }
             other => panic!("Expected SpawnFailed, got: {:?}", other),
         }
+    }
+
+    #[tokio::test]
+    async fn test_env_clear_prevents_secret_leak() {
+        std::env::set_var("ZOMBIE_SECRET_TEST", "super-secret-zombie-123");
+
+        let result = run_with_timeout(
+            "python3",
+            &["-c", "import os; print(dict(os.environ))"],
+            Duration::from_secs(5),
+        )
+        .await;
+
+        std::env::remove_var("ZOMBIE_SECRET_TEST");
+
+        assert!(result.is_ok(), "Python command failed: {:?}", result.err());
+        let output = result.unwrap(); // allow-anti-pattern
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !stdout.contains("super-secret-zombie-123"),
+            "Secret leaked to child process! Stdout: {}",
+            stdout
+        );
+
+        assert!(
+            stdout.contains("'PATH'"),
+            "PATH must be re-injected for processes to function correctly. Stdout: {}",
+            stdout
+        );
     }
 }

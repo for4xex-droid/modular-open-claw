@@ -30,6 +30,16 @@ pub struct BootstrapStatusResponse {
     pub soul_exists: bool,
     /// 不足している設定項目
     pub missing_items: Vec<String>,
+    /// サイドカーモニタリングステータス
+    #[serde(default)]
+    pub sidecar_status: Vec<SidecarHealth>,
+}
+
+/// サイドカーのヘルス状態
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct SidecarHealth {
+    pub name: String,
+    pub status: String,
 }
 
 /// GET /api/v1/bootstrap/status
@@ -57,6 +67,11 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
 
     let diagnosis = BootstrapDetector::diagnose(root, Some(api_secret_set), Some(llm_configured));
 
+    let mut sidecar_status = Vec::new();
+    let geo_url = std::env::var("GEO_OPTIMIZER_URL").unwrap_or_default();
+    sidecar_status
+        .push(check_sidecar_health("geo-optimizer", &geo_url, state.http_client.get_inner()).await);
+
     Json(BootstrapStatusResponse {
         mode: match diagnosis.mode {
             BootMode::Normal => "normal".to_string(),
@@ -67,7 +82,39 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
         api_secret_set: diagnosis.api_secret_set,
         soul_exists: diagnosis.soul_exists,
         missing_items: diagnosis.missing_items,
+        sidecar_status,
     })
+}
+
+async fn check_sidecar_health(name: &str, url: &str, client: &reqwest::Client) -> SidecarHealth {
+    if url.is_empty() {
+        return SidecarHealth {
+            name: name.to_string(),
+            status: "not_configured".to_string(),
+        };
+    }
+
+    let health_url = if url.ends_with("/health") {
+        url.to_string()
+    } else {
+        format!("{}/health", url.trim_end_matches('/'))
+    };
+
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        client.get(&health_url).send(),
+    )
+    .await
+    {
+        Ok(Ok(res)) if res.status().is_success() => SidecarHealth {
+            name: name.to_string(),
+            status: "ok".to_string(),
+        },
+        _ => SidecarHealth {
+            name: name.to_string(),
+            status: "unreachable".to_string(),
+        },
+    }
 }
 
 /// Ollama 自動検出の結果
@@ -221,10 +268,17 @@ mod tests {
             api_secret_set: false,
             soul_exists: false,
             missing_items: vec!["LLM provider".to_string()],
+            sidecar_status: vec![SidecarHealth {
+                name: "geo-optimizer".to_string(),
+                status: "ok".to_string(),
+            }],
         };
         let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
         assert!(json.contains("\"mode\":\"setup\""));
         assert!(json.contains("\"missing_items\":[\"LLM provider\"]"));
+        assert!(
+            json.contains("\"sidecar_status\":[{\"name\":\"geo-optimizer\",\"status\":\"ok\"}]")
+        );
     }
 
     #[test]

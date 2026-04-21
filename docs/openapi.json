@@ -2404,6 +2404,53 @@
         ]
       }
     },
+    "/api/v1/quality-gate/history": {
+      "get": {
+        "tags": [
+          "crate::routes::quality_gate"
+        ],
+        "operationId": "get_quality_gate_history",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items to fetch (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent quality gate history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QualityGateEntry"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - System agent only"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/settings": {
       "get": {
         "tags": [
@@ -4417,6 +4464,38 @@
           "Completed",
           "Refunded"
         ]
+      },
+      "QualityGateEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "score",
+          "passed",
+          "conductor",
+          "created_at"
+        ],
+        "properties": {
+          "conductor": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "QuarantinedAsset": {
         "type": "object",

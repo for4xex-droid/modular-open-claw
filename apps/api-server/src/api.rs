@@ -80,6 +80,7 @@ use utoipa::OpenApi;
         crate::routes::general::get_quarantined_assets,
         crate::routes::general::release_quarantined_asset,
         crate::routes::general::get_trends,
+        crate::routes::quality_gate::get_quality_gate_history,
         // Gig Economy
         crate::routes::gig::publish_intent,
         crate::routes::gig::submit_bid,
@@ -148,6 +149,7 @@ use utoipa::OpenApi;
             crate::routes::general::TrendsResponse,
             aiome_core_contracts::traits::TrendItem,
             crate::routes::ekyc::EkycSessionResponse,
+            infrastructure::quality_gate_store::QualityGateEntry,
             // Gig Economy
             aiome_core_contracts::gig::GigIntent,
             aiome_core_contracts::gig::GigBid,

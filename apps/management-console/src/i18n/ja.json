@@ -485,6 +485,9 @@
     "cache": "キャッシュ率",
     "costComparison": "コスト比較"
   },
+  "seoPulse": {
+    "noEvents": "最近の監査はありません..."
+  },
   "common": {
     "loading": "読み込み中...",
     "refresh": "更新"

@@ -12,6 +12,7 @@
 pub const ALLOWED_MCP_COMMANDS: &[&str] = &[
     "npx", "node", "python3", "python", "uvx",
     "fff-mcp", // Binary command — skips package-prefix validation
+    "geo-mcp",
 ];
 
 /// Allowed npm/uvx package prefixes for MCP endpoints.
@@ -20,4 +21,15 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@stripe/",
     "@appsyogi/",
     "@secops/",
+];
+
+/// Forbidden argument flags for MCP endpoints to prevent command injection.
+pub const FORBIDDEN_MCP_ARG_FLAGS: &[&str] = &[
+    "-c",
+    "--eval",
+    "-e",
+    "--exec",
+    "--shell-cmd",
+    "--pre",
+    "--post",
 ];

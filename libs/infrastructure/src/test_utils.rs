@@ -602,3 +602,163 @@ pub mod mock_soul_store {
         }
     }
 }
+
+#[cfg(any(test, debug_assertions))]
+pub mod cortex_mock {
+    use crate::db::DatabasePool;
+
+    pub async fn setup_db_pool() -> Result<DatabasePool, Box<dyn std::error::Error>> {
+        let pool = DatabasePool::new_sqlite("sqlite::memory:").await?;
+        let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+
+        // 1. Audit Ledger
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS audit_ledger_global (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                new_data TEXT,
+                prev_hash TEXT,
+                current_hash TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 2. Wiki Articles
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content_md TEXT NOT NULL,
+                concepts TEXT DEFAULT '[]',
+                backlinks TEXT DEFAULT '[]',
+                source_refs TEXT DEFAULT '[]',
+                content_hash TEXT NOT NULL,
+                version INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 3. Cortex Documents
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS cortex_documents (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                source_url TEXT,
+                content_md TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                tags TEXT DEFAULT '[]',
+                summary TEXT,
+                wiki_article_refs TEXT DEFAULT '[]',
+                ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                compiled BOOLEAN DEFAULT 0
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 4. Concept Index
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS cortex_concept_index (
+                concept TEXT PRIMARY KEY,
+                article_ids TEXT DEFAULT '[]',
+                document_ids TEXT DEFAULT '[]',
+                summary TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 5. Activity Log (matches production migration 20260405000001)
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS cortex_activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                detail_json TEXT DEFAULT '{}',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 6. Typed Links
+        sqlx::query(
+            "
+            CREATE TABLE IF NOT EXISTS cortex_typed_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_article_id TEXT NOT NULL,
+                target_article_id TEXT NOT NULL,
+                link_type TEXT NOT NULL DEFAULT 'references',
+                confidence REAL DEFAULT 1.0,
+                evidence_text TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_article_id) REFERENCES cortex_wiki_articles(id),
+                FOREIGN KEY (target_article_id) REFERENCES cortex_wiki_articles(id),
+                UNIQUE(source_article_id, target_article_id, link_type)
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        // 7. FTS5 Setup
+        sqlx::query(
+            "
+            CREATE VIRTUAL TABLE IF NOT EXISTS cortex_concept_fts USING fts5(
+                concept,
+                summary,
+                article_ids UNINDEXED,
+                document_ids UNINDEXED,
+                content='cortex_concept_index',
+                content_rowid='rowid'
+            )
+        ",
+        )
+        .execute(sqlite_pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE TRIGGER IF NOT EXISTS cortex_concept_fts_ai AFTER INSERT ON cortex_concept_index BEGIN
+                INSERT INTO cortex_concept_fts(rowid, concept, summary, article_ids, document_ids)
+                VALUES (new.rowid, new.concept, new.summary, new.article_ids, new.document_ids);
+            END;"
+        ).execute(sqlite_pool).await?;
+
+        sqlx::query(
+            "CREATE TRIGGER IF NOT EXISTS cortex_concept_fts_au AFTER UPDATE ON cortex_concept_index BEGIN
+                INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept, summary, article_ids, document_ids)
+                VALUES ('delete', old.rowid, old.concept, old.summary, old.article_ids, old.document_ids);
+                INSERT INTO cortex_concept_fts(rowid, concept, summary, article_ids, document_ids)
+                VALUES (new.rowid, new.concept, new.summary, new.article_ids, new.document_ids);
+            END;"
+        ).execute(sqlite_pool).await?;
+
+        sqlx::query(
+            "CREATE TRIGGER IF NOT EXISTS cortex_concept_fts_ad AFTER DELETE ON cortex_concept_index BEGIN
+                INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept, summary, article_ids, document_ids)
+                VALUES ('delete', old.rowid, old.concept, old.summary, old.article_ids, old.document_ids);
+            END;"
+        ).execute(sqlite_pool).await?;
+
+        Ok(pool)
+    }
+}

@@ -364,19 +364,25 @@ impl LoraTrainingService {
         );
 
         if std::env::var("AIOME_SKIP_OLLAMA").is_err() {
-            let mut child = tokio::process::Command::new("ollama")
-                .arg("create")
+            let mut cmd = tokio::process::Command::new("ollama");
+            cmd.arg("create")
                 .arg(&target_model_name)
                 .arg("-f")
                 .arg(&modelfile_path)
-                .kill_on_drop(true)
-                .spawn()
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!(
-                        "Failed to spawn 'ollama create'. Is Ollama installed? {}",
-                        e
-                    ),
-                })?;
+                .kill_on_drop(true);
+            // Defense-in-depth: Prevent secret leakage to ollama CLI (SSOT: PROCESS_SAFE_ENV_VARS)
+            cmd.env_clear();
+            for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
+                if let Ok(val) = std::env::var(var_name) {
+                    cmd.env(var_name, val);
+                }
+            }
+            let mut child = cmd.spawn().map_err(|e| AiomeError::Infrastructure {
+                reason: format!(
+                    "Failed to spawn 'ollama create'. Is Ollama installed? {}",
+                    e
+                ),
+            })?;
 
             let status_res = tokio::select! {
                 _ = cancel_token.cancelled() => {
@@ -637,13 +643,19 @@ impl LoraEngine for LoraTrainingService {
             return Ok(false);
         }
 
-        // Check if mlx-lm is installed (simple check)
-        let output = tokio::process::Command::new("python3")
-            .arg("-c")
+        let mut cmd = tokio::process::Command::new("python3");
+        cmd.arg("-c")
             .arg("import mlx_lm; print('ready')")
-            .env_clear() // Clean environment for security
-            .output()
-            .await;
+            .env_clear(); // Clean environment for security
+
+        // (P-3b) Re-inject essential vars (SSOT: PROCESS_SAFE_ENV_VARS)
+        for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
+            if let Ok(val) = std::env::var(var_name) {
+                cmd.env(var_name, val);
+            }
+        }
+
+        let output = cmd.output().await;
 
         match output {
             Ok(out) if out.status.success() => {

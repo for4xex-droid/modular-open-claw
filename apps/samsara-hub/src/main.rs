@@ -132,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     });
     let secret = secrecy::SecretString::from(secret_val);
-    std::env::remove_var("FEDERATION_SECRET");
+    shared::security::scrub_env("FEDERATION_SECRET");
     let port = std::env::var("PORT").unwrap_or_else(|_| "3016".to_string());
     // Initialize Unified Database Pool
     let pool = if db_url.starts_with("postgres://") || db_url.starts_with("postgresql://") {
@@ -156,10 +156,13 @@ async fn main() -> anyhow::Result<()> {
         secret,
         auth_manager: {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
-                Ok(key_b64) => Arc::new(
-                    shared::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                        .map_err(|e| anyhow::anyhow!("JWT initialize failed: {}", e))?,
-                ),
+                Ok(key_b64) => {
+                    shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
+                    Arc::new(
+                        shared::auth::JwtAuthManager::from_private_key_b64(&key_b64)
+                            .map_err(|e| anyhow::anyhow!("JWT initialize failed: {}", e))?,
+                    )
+                }
                 #[cfg(debug_assertions)]
                 Err(_) => {
                     warn!("⚠️ [SamsaraHub] JWT key not set, using MockAuthManager (dev only)");

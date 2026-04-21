@@ -5,7 +5,18 @@
  * Licensed under the Business Source License 1.1.
  */
 //! Aiome共有ライブラリ — 設定、ヘルス、セキュリティ等の横断的機能を提供
-#![forbid(unsafe_code)]
+//!
+//! # Unsafe Code Policy
+//!
+//! 本クレートは `#![deny(unsafe_code)]` で保護されている。
+//! `#[allow(unsafe_code)]` の使用は [`security::scrub_env`] の1関数のみに限定し、
+//! 新規追加にはコードレビューでの承認を必須とすること。
+//!
+//! `#![forbid(unsafe_code)]` を使用しない理由:
+//! `std::env::remove_var` が Rust 2024 Edition で `unsafe fn` に昇格したため、
+//! シークレット消去ヘルパー (`scrub_env`) が unsafe を必要とする。
+//! `forbid` は子モジュールからのオーバーライドが不可能 (E0453) なため `deny` を使用。
+#![deny(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![warn(missing_docs)]
 
@@ -42,7 +53,7 @@ pub mod os_utils;
 pub mod output_validator;
 /// サンドボックス環境機能
 pub mod sandbox;
-/// ネットワークセキュリティポリシー
+/// ネットワークセキュリティポリシー + シークレット消去
 pub mod security;
 /// 安全な文字列操作・文字列表現ユーティリティ
 pub mod strings;

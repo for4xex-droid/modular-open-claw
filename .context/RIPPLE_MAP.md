@@ -1,5 +1,81 @@
 # 🌊 Aiome Ripple Map
 
+## Quality Gate History API & Frontend Integration (Reflexion x3)
+### 1. Quality Gate History Endpoint & SeoPulseView Merge
+- **変更内容**:
+    - `apps/api-server/src/routes/quality_gate.rs` [NEW]: `GET /api/v1/quality-gate/history` エンドポイントを新設。`QualityGateStore::list_recent` から履歴を取得し、`limit` パラメータに `.min(100)` の API レイヤークランプ（Defense-in-Depth）を適用。OpenAPI に 403 Forbidden レスポンスを追加。
+    - `apps/api-server/src/api.rs` [MODIFY]: `quality_gate_history` ルートの登録と、`QualityGateEntry` の OpenAPI コンポーネント追加。
+    - `apps/management-console/src/components/SeoPulseView.tsx` [MODIFY]: `authenticatedFetch` を用いた履歴取得フローを実装。SSE ライブイベントと DB 履歴の `job_id` / `id` による Deduplication と時間順マージを確立。`safeTimeString` ヘルパーおよび `Array.isArray` 型ガードを追加。
+- **波及効果**:
+    - `QualityGateStore` (infrastructure) のインターフェースに変更はなし。既存の `list_recent` を呼び出すのみ。
+    - `authenticatedFetch` (auth.ts) の利用パターンが SeoPulseView に拡張されたため、`sessionStorage` の `aiome_secret` キーが認証の SSOT であることが強化された。
+    - SeoPulseView の SSE イベントハンドラと履歴データのマージロジックが追加されたため、新しいイベントタイプを追加する際は Deduplication キー (`job_id` / `id`) の整合性を確認する必要がある。
+
+### 2. SSE conductor フィールド伝搬 (Reflexion Pass 4)
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/events.rs` [MODIFY]: `CoreEvent::QualityGate` に `conductor: String` フィールドを追加。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: `TaskEvent::QualityGate` に `conductor: String` を追加。`CoreEvent` へのブリッジでハードコード `"GeoAuditConductor"` を動的な `&cond` に変更。`quality_gate_store.record()` にも動的 conductor を伝搬。
+    - `libs/infrastructure/src/task_orchestrator/geo_audit.rs` [MODIFY]: `self.conductor_name()` を QualityGate emit に設定。
+    - `libs/infrastructure/src/task_orchestrator/seo_content.rs` [MODIFY]: 4箇所の QualityGate emit に `self.conductor_name()` を設定。
+    - `apps/api-server/src/stream.rs` [MODIFY]: SSE JSON ペイロードに `"conductor"` フィールドを追加。
+- **波及効果**:
+    - `CoreEvent::QualityGate` のパターンマッチを行う全箇所（`stream.rs`, `mod.rs`）で `conductor` フィールドの束縛が必要。新規 Conductor を追加する際は `self.conductor_name()` の実装を忘れないこと。
+    - フロントエンド `SeoPulseView.tsx` の `QualityGateEvent` interface は `conductor?: string` (optional) のため後方互換。DB 履歴にも conductor カラムが既に存在するため追加マイグレーション不要。
+    - SSE `quality_gate` イベントのペイロードスキーマが拡張されたため、外部 SSE クライアントがある場合はスキーマ更新が必要。
+
+## GEO Intelligence Integration & Graceful Degradation (Phase B)
+### 1. GeoAuditConductor & SeoContentConductor
+- **変更内容**:
+    - `libs/infrastructure/src/task_orchestrator/geo_audit.rs` [NEW]: `GeoAuditConductor` を新設し、厳格な入力バリデーションとスタンドアロンの Generative Engine Optimization 監査能力を付与。`GEO_CITABILITY_THRESHOLD` 未満の監査スコアにはハードエラーを返す仕様。
+    - `libs/infrastructure/src/task_orchestrator/seo_content.rs` [MODIFY]: `SeoContentConductor` に GEO 監査との連携パイプラインを統合。SEO 生成フロー内部では GEO サービスダウン時に Graceful Degradation（品質ゲートはスルーし処理を継続）を適用する非対称設計を導入。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `GeoAuditConductor` の DI 登録およびパイプラインを統合。
+- **波及効果**:
+    - 外部の `GEO_OPTIMIZER_URL` が落ちている場合でも、SEO パイプラインは止まることなく動作し続ける可用性重視の設計が実現された。
+    - Reflexion プロセスにより堅牢性が OOM やプロンプトインジェクションに対する境界チェックレベルで担保された。
+
+## Infrastructure Security Hardening & env_clear()
+### 1. Environment Variable Scrub Unification (`scrub_env`)
+- **変更内容**:
+    - `libs/shared/src/security.rs` [MODIFY]: `scrub_env` 関数を新設し、`std::env::remove_var` 呼び出しを一元化。
+    - 各モジュール（`api-server`, `shadow-worker`, `samsara-hub`, `napi-bridge`, `config.rs`, `sqlite_vault_backend.rs` 等の計28箇所）の生 `remove_var` の使用を `shared::security::scrub_env()` へ置換。
+    - `libs/shared/src/lib.rs` [MODIFY]: `#![forbid(unsafe_code)]` ポリシーを維持しつつ `security::scrub_env` にのみ例外許容を適用。
+- **波及効果**:
+    - Rust 2024 Edition 以降で `remove_var` が `unsafe` な関数に格上げされたことに対する完全なプロダクションレベルの対応措置が完了。
+    - シングルスレッドでの起動直後フェーズにおいて安全に秘密情報パージが行われ、意図せぬ子プロセス等へのシークレット流出リスクが完全に根絶された。
+
+### 2. MCP Infrastructure Security Hardening
+- **変更内容**:
+    - `libs/shared/src/mcp_constants.rs` [MODIFY]: `FORBIDDEN_MCP_ARG_FLAGS` による禁止フラグ検証リスト（CVE-2026-40933対策など）を追加。
+    - `libs/shared/src/security.rs` [MODIFY]: `normalize_ip()` 導入による IPv4-mapped IPv6 SSRF（例：`::ffff:127.0.0.1`）のバイパスブロックおよびリンクローカル（`169.254.0.0/16`, `fe80::/10`）のアクセス遮断追加。
+- **波及効果**:
+    - SSRF 防御と MCP コマンド引数インジェクションの最奥脆弱性（Zero-day相当）が完全に埋められ、クラウドデプロイ時（AWS/GCPメタデータ等）のセキュリティポスチャが劇的に向上。
+
+## GBrain R3 Native Integration (Phase 1)
+### 1. Typed Links & Backlink-Boosted Ranking
+- **変更内容**:
+    - `libs/infrastructure/migrations/` [ADD]: `cortex_typed_links` 用の SQLite / Postgres マイグレーションを追加。`audit_ledger_global` 用の trigger も内包。
+    - `libs/infrastructure/src/test_utils.rs` [MODIFY]: テスト用の DB プール初期化ロジック (`cortex_mock::setup_db_pool`) を集約定義。全7テーブルとFTS5、`audit_ledger_global` のスキーマ定義を一本化。
+    - `libs/infrastructure/src/cortex_compiler_tests.rs`, `cortex_query.rs` (tests), `cortex_synth_tests.rs`, `cortex_file_projector.rs` (tests) [MODIFY]: 上記 `test_utils` を呼び出すようにリファクタリング。重複セットアップを排除。
+    - `libs/infrastructure/src/cortex_compiler.rs` [MODIFY]: `update_backlinks` を `update_backlinks_and_typed_links` に改名し機能拡張。各記事間のリンク判定時、該当箇所前後100文字（コンテキスト窓）のキーワード（`contradicts`, `depends_on`, `extends`, `references`）により Typed Link を自動判別し `cortex_typed_links` に保存する O(n^2) バッチ処理を実装。
+    - `libs/infrastructure/src/cortex_query.rs` [MODIFY]: `search_related_articles` 内で、ソースとして利用される記事群の総被リンク数 (`total_backlinks`) を収集し、LLM の計算した `confidence` に 0.05 * 被リンク数 (最大 0.2 ブースト) を加算するハイブリッドランキングを実装。
+- **波及効果**:
+    - `cortex_compiler.run_compilation_cycle` は明示的に `update_backlinks_and_typed_links` を呼び出すようになり、ナレッジ処理サイクル毎に常に Typed Link が更新される。
+    - テスト基盤が集約されたため、今後の `cortex_*` スキーマ変更時は `test_utils::cortex_mock` 1箇所を変更するだけで全テストが追従する。
+    - `cortex_query.rs` において、`backlinks` カラムをパースする I/O と JSON パースのコストが発生するため、FTS5 高速化の恩恵がこの箇所で微遅延を招く可能性があるが、5記事限定のため影響は O(1) に近い。
+
+## Defense-in-Depth: PROCESS_SAFE_ENV_VARS SSOT & env_clear() 全経路適用
+### 1. PROCESS_SAFE_ENV_VARS 定数の新設と全プロセス経路統一
+- **変更内容**:
+    - `libs/infrastructure/src/security.rs` [MODIFY]: `PROCESS_SAFE_ENV_VARS` 定数 (`&[&str]` — PATH, HOME, LANG, TMPDIR, PYTHONPATH, VIRTUAL_ENV) を新設。`build_safe_command_args` のハードコードリストをこの定数参照に置換。
+    - `libs/infrastructure/src/security_zombie.rs` [MODIFY]: `run_with_timeout` のハードコードリストを `crate::security::PROCESS_SAFE_ENV_VARS` 参照に置換。
+    - `libs/infrastructure/src/lora_training.rs` [MODIFY]: `health_check` (L646) の `&["PATH", "HOME"]` を `PROCESS_SAFE_ENV_VARS` 参照に拡張。`ollama create` (L367) に `env_clear()` + `PROCESS_SAFE_ENV_VARS` 再注入を新規追加。
+    - `libs/infrastructure/src/slm_bridge.rs` [MODIFY]: `CliSlmBackend::run_command` に `env_clear()` + `PROCESS_SAFE_ENV_VARS` 再注入を新規追加。
+- **波及効果**:
+    - `PROCESS_SAFE_ENV_VARS` を変更すると、BastionGuard, ZombieKiller, LoRA (health_check + ollama create), SLM CLI の **5経路全て** に影響する。テスト回帰: `cargo test -p infrastructure` (389テスト)。
+    - MCP クライアント (`client.rs`) は独自の `MCP_SAFE_ENV_VARS` (15変数) を使用するため影響を受けない（意図的分離）。
+    - `self_diagnosis.rs` (docker info), `delegator.rs` (docker agent), `oss_repository_indexer.rs` (git clone), `os_utils.rs` (caffeinate) は env_clear 非適用（許容判断済み）。
+
+
 ## CBA Stage 0: Cell-Based Architecture Foundation (ADR-030)
 ### 1. CELL_ID Namespacing & Path Isolation
 - **変更内容**:

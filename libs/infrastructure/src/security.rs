@@ -129,6 +129,21 @@ impl SecurityConfig {
 pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
     once_cell::sync::Lazy::new(SecurityConfig::load_or_default);
 
+/// Defense-in-depth: env_clear() 後に再注入する必須環境変数の SSOT ホワイトリスト。
+///
+/// BastionGuard (`build_safe_command_args`) および ZombieKiller (`run_with_timeout`)
+/// の両方がこの定数を参照する。MCP クライアント側は MCP 固有の拡張変数を含む
+/// `MCP_SAFE_ENV_VARS` を使用するため意図的に分離。
+pub const PROCESS_SAFE_ENV_VARS: &[&str] = &[
+    "PATH",
+    "HOME",
+    "LANG",
+    "TMPDIR",
+    // Python venv 互換性: mlx-lm / pip 等がパッケージ解決に使用
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+];
+
 /// Phase 2: Runtime Enforcement (The Bastion Guard)
 ///
 /// エージェントが実行しようとする「アクション」を監視し、
@@ -495,6 +510,16 @@ impl BastionGuard {
         actual_args.extend(args);
 
         let mut cmd = tokio::process::Command::new(actual_prog);
+
+        // Step 4-B: Defense-in-depth: Clear environment variables
+        cmd.env_clear();
+        // Re-inject essential system variables (SSOT: PROCESS_SAFE_ENV_VARS)
+        for var_name in PROCESS_SAFE_ENV_VARS {
+            if let Ok(val) = std::env::var(var_name) {
+                cmd.env(var_name, val);
+            }
+        }
+
         cmd.args(actual_args);
         Ok(cmd)
     }
@@ -636,6 +661,40 @@ mod tests {
         // システム内部用ガードは許可 (Manifestをバイパス)
         let guard_internal = BastionGuard::new_internal(manifest);
         assert!(guard_internal.safe_exec("ls").await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_build_safe_command_args_env_clear() {
+        std::env::set_var("BASTION_SECRET_TEST", "super-secret-bastion-123");
+
+        let manifest = PermissionManifest::default();
+        let guard = BastionGuard::new_internal(manifest);
+
+        let mut cmd = guard
+            .build_safe_command_args(
+                "python3",
+                vec!["-c".into(), "import os; print(dict(os.environ))".into()],
+                SandboxProfile::Default,
+            )
+            .expect("Failed to build command args");
+
+        let output = cmd.output().await.expect("Failed to run command");
+
+        std::env::remove_var("BASTION_SECRET_TEST");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !stdout.contains("super-secret-bastion-123"),
+            "Secret leaked to sandboxed child process! Stdout: {}",
+            stdout
+        );
+
+        assert!(
+            stdout.contains("'PATH'"),
+            "PATH must be re-injected for processes to function correctly. Stdout: {}",
+            stdout
+        );
     }
 
     #[tokio::test]

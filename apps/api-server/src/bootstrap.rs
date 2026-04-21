@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-#![forbid(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]
@@ -111,6 +110,29 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             std::process::exit(1);
         });
     }
+
+    // === Secret Pre-load (Step 0 / Step 1-0 / Step 1-1) ===
+    let stripe_key_raw = std::env::var("STRIPE_API_KEY").ok();
+    shared::security::scrub_env("STRIPE_API_KEY");
+
+    let nurture_secret_raw = std::env::var("NURTURE_INTERNAL_SECRET").ok();
+    shared::security::scrub_env("NURTURE_INTERNAL_SECRET");
+
+    // trend_sonar fallback vars
+    let env_search_key = std::env::var("SEARCH_API_KEY").ok();
+    shared::security::scrub_env("SEARCH_API_KEY");
+
+    let env_x_token = std::env::var("X_BEARER_TOKEN").ok();
+    shared::security::scrub_env("X_BEARER_TOKEN");
+
+    let wp_api_token_raw = std::env::var("WP_API_TOKEN").unwrap_or_default();
+    shared::security::scrub_env("WP_API_TOKEN");
+
+    let tts_openai_api_key_raw = std::env::var("TTS_OPENAI_API_KEY").ok();
+    shared::security::scrub_env("TTS_OPENAI_API_KEY");
+
+    let a2a_node_token_raw = std::env::var("A2A_NODE_TOKEN").ok();
+    shared::security::scrub_env("A2A_NODE_TOKEN");
 
     let db_url = std::env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
 
@@ -365,15 +387,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     ));
 
     let commerce_engine = {
-        let stripe_key = std::env::var("STRIPE_API_KEY").ok().map(|key| {
-            std::env::remove_var("STRIPE_API_KEY");
-            key
-        });
+        let stripe_key = stripe_key_raw.clone();
         let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+        shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
+
         let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
         let nurture_url = std::env::var("NURTURE_API_URL").ok();
-        let nurture_secret = std::env::var("NURTURE_INTERNAL_SECRET").ok();
+        let nurture_secret = nurture_secret_raw.clone();
 
         Some(
             aiome_commerce::CommerceEngineFactory::create(
@@ -407,8 +428,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let api_server_secret = Arc::new(secrecy::SecretString::from(api_server_secret_raw.clone()));
     let federation_secret = federation_secret_raw.map(|s| Arc::new(secrecy::SecretString::from(s)));
 
-    std::env::remove_var("API_SERVER_SECRET");
-    std::env::remove_var("FEDERATION_SECRET");
+    shared::security::scrub_env("API_SERVER_SECRET");
+    shared::security::scrub_env("FEDERATION_SECRET");
 
     // Soul (Sense Foundation)
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
@@ -584,10 +605,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
     let ekyc_engine = {
         use secrecy::ExposeSecret;
-        let stripe_key = std::env::var("STRIPE_API_KEY").ok().map(|key| {
-            std::env::remove_var("STRIPE_API_KEY");
-            secrecy::SecretString::from(key)
-        });
+        let stripe_key = stripe_key_raw
+            .clone()
+            .map(|key| secrecy::SecretString::from(key));
 
         if let Some(key) = stripe_key {
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
@@ -616,7 +636,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let auth_manager = {
         match std::env::var("JWT_PRIVATE_KEY_B64") {
             Ok(key_b64) => {
-                std::env::remove_var("JWT_PRIVATE_KEY_B64");
+                shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
                 info!("🔑 [Auth] Loading JWT private key from environment");
                 Arc::new(
                     infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
@@ -739,7 +759,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
                 );
             } else if let Ok(wp_url) = std::env::var("WP_API_URL") {
-                let wp_token = std::env::var("WP_API_TOKEN").unwrap_or_default();
+                let wp_token = wp_api_token_raw.clone();
                 publishers.push(Box::new(
                     infrastructure::publisher::wordpress::WordPressAdapter::new_direct(
                         wp_url, wp_token,
@@ -772,6 +792,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         publishers
     }));
 
+    let quality_gate_store = Arc::new(
+        infrastructure::quality_gate_store::SqliteQualityGateStore::new(
+            job_queue.get_pool().clone(),
+        ),
+    ) as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
+
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
         std::time::Duration::from_millis(100),
@@ -786,6 +812,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         Some(Arc::new(
             infrastructure::immune_system::AdaptiveImmuneSystem::new(bg_provider.clone()),
         )),
+        Some(quality_gate_store.clone()),
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
@@ -822,10 +849,30 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     );
     task_dispatcher.register_conductor(generic_conductor);
 
+    // Register GeoAuditConductor for standalone GEO audits
+    let geo_url = std::env::var("GEO_OPTIMIZER_URL")
+        .unwrap_or_else(|_| "http://geo-optimizer:8080".to_string());
+    let geo_threshold = std::env::var("GEO_CITABILITY_THRESHOLD")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()
+        .unwrap_or(60);
+
+    let geo_conductor = Arc::new(
+        infrastructure::task_orchestrator::geo_audit::GeoAuditConductor::new(
+            geo_url.clone(),
+            geo_threshold,
+        ),
+    );
+    task_dispatcher.register_conductor(geo_conductor);
+
     // Register dedicated SeoContentConductor for autonomous SEO lifecycle
     let seo_conductor = Arc::new(
         infrastructure::task_orchestrator::seo_content::SeoContentConductor::new(
             bg_provider.clone(),
+            publish_pipeline.clone(),
+            std::env::var("GEO_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true",
+            geo_url,
+            geo_threshold,
         ),
     );
     task_dispatcher.register_conductor(seo_conductor);
@@ -850,8 +897,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string()); // allow-anti-pattern
         let resolver = shared::app_data::AppDataResolver::new();
         let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
-        let auth_token = std::env::var("A2A_NODE_TOKEN")
-            .unwrap_or_else(|_| "placeholder_for_phase51".to_string());
+        let auth_token = a2a_node_token_raw.unwrap_or_else(|| {
+            tracing::warn!("⚠️ [api-server] A2A_NODE_TOKEN not set! Insecure A2A communication.");
+            "placeholder_for_phase51".to_string()
+        });
         let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
             endpoint_url,
             connect_timeout: std::time::Duration::from_secs(5),
@@ -965,37 +1014,39 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         },
         tts_provider: {
             let tts_type = std::env::var("TTS_PROVIDER").unwrap_or_else(|_| "mock".to_string());
-            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> =
-                match tts_type.as_str() {
-                    "openai" => {
-                        use secrecy::ExposeSecret;
-                        let key = std::env::var("TTS_OPENAI_API_KEY").unwrap_or_else(|_| {
-                            config
-                                .openai_api_key
-                                .as_ref()
-                                .map(|s| s.expose_secret().to_string())
-                                .unwrap_or_default()
-                        });
-                        let model = std::env::var("TTS_OPENAI_MODEL")
-                            .unwrap_or_else(|_| "tts-1".to_string());
-                        Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
+            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> = match tts_type
+                .as_str()
+            {
+                "openai" => {
+                    use secrecy::ExposeSecret;
+                    let key = tts_openai_api_key_raw.unwrap_or_else(|| {
+                        tracing::warn!("⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail");
+                        config
+                            .openai_api_key
+                            .as_ref()
+                            .map(|s| s.expose_secret().to_string())
+                            .unwrap_or_default()
+                    });
+                    let model =
+                        std::env::var("TTS_OPENAI_MODEL").unwrap_or_else(|_| "tts-1".to_string());
+                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
+                }
+                "xtts" => {
+                    let endpoint = std::env::var("XTTS_ENDPOINT")
+                        .unwrap_or_else(|_| "http://localhost:18020".to_string()); // allow-anti-pattern
+                    Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                }
+                _ => {
+                    #[cfg(debug_assertions)]
+                    {
+                        Arc::new(infrastructure::tts::MockTtsProvider::default())
                     }
-                    "xtts" => {
-                        let endpoint = std::env::var("XTTS_ENDPOINT")
-                            .unwrap_or_else(|_| "http://localhost:18020".to_string()); // allow-anti-pattern
-                        Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                    #[cfg(not(debug_assertions))]
+                    {
+                        Arc::new(infrastructure::tts::DisabledTtsProvider::default())
                     }
-                    _ => {
-                        #[cfg(debug_assertions)]
-                        {
-                            Arc::new(infrastructure::tts::MockTtsProvider::default())
-                        }
-                        #[cfg(not(debug_assertions))]
-                        {
-                            Arc::new(infrastructure::tts::DisabledTtsProvider::default())
-                        }
-                    }
-                };
+                }
+            };
             Component::new(provider)
         },
         news_service: {
@@ -1035,7 +1086,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 "comfyui" => {
                     let base_url = std::env::var("COMFYUI_URL")
                         .unwrap_or_else(|_| "http://localhost:8188".to_string()); // allow-anti-pattern
-                    std::env::remove_var("COMFYUI_URL");
+                    shared::security::scrub_env("COMFYUI_URL");
                     Arc::new(
                         infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
                             base_url,
@@ -1045,7 +1096,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 }
                 "falai" => {
                     let api_key = std::env::var("FAL_KEY").unwrap_or_default();
-                    std::env::remove_var("FAL_KEY");
+                    shared::security::scrub_env("FAL_KEY");
                     Arc::new(
                         infrastructure::generative_engine::FalAiGenerativeEngine::new(
                             secrecy::SecretString::from(api_key),
@@ -1136,8 +1187,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             );
             Component::new(Arc::new(catalog))
         },
+        quality_gate_store: Component::new(quality_gate_store.clone()),
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
-        nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
+        nurture_internal_secret: nurture_secret_raw.clone(),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

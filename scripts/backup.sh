@@ -49,6 +49,22 @@ command_backup() {
     # 🛡️ O-1: セル内の全サブディレクトリ (api, hub, nurture) をバックアップ
     tar -czf "$TAR_FILE" -C "$(dirname "$DATA_DIR")" "$(basename "$DATA_DIR")/"
     
+    # 1.5 Database Encryption Audit Check (Step 2)
+    echo "Verifying Database Encryption Status..."
+    if command -v sqlite3 >/dev/null 2>&1; then
+        DB_PATH="$DATA_DIR/api/aiome.db"
+        if [ -f "$DB_PATH" ]; then
+            sqlite3 "$DB_PATH" "SELECT value FROM system_settings WHERE is_secret=1;" | while read -r secret_val; do
+                # 暗号化された値はhex(AES-256-GCM [nonce(12B)||ciphertext||tag(16B)])であることを確認
+                # 最小 56 hex chars (28 bytes = 12 nonce + 16 tag, 空平文の場合)
+                if [[ ! "$secret_val" =~ ^[0-9a-f]{56,}$ ]]; then
+                    echo "🚨 CRITICAL WARNING: Found potentially unencrypted secret in backup ($DB_PATH)!"
+                    echo "   Key value length: ${#secret_val} chars (expected >= 56 hex chars)"
+                fi
+            done || true
+        fi
+    fi
+    
     # 2. Checksum
     echo "Verifying Hash..."
     if command -v shasum >/dev/null 2>&1; then

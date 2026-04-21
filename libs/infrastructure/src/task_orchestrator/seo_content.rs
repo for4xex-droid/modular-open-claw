@@ -13,13 +13,31 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::info;
 
+use crate::publisher::PublishPipeline;
+
 pub struct SeoContentConductor {
     llm: Arc<dyn LlmProvider>,
+    publish_pipeline: Arc<PublishPipeline>,
+    geo_enabled: bool,
+    geo_url: String,
+    geo_threshold: u32,
 }
 
 impl SeoContentConductor {
-    pub fn new(llm: Arc<dyn LlmProvider>) -> Self {
-        Self { llm }
+    pub fn new(
+        llm: Arc<dyn LlmProvider>,
+        publish_pipeline: Arc<PublishPipeline>,
+        geo_enabled: bool,
+        geo_url: String,
+        geo_threshold: u32,
+    ) -> Self {
+        Self {
+            llm,
+            publish_pipeline,
+            geo_enabled,
+            geo_url,
+            geo_threshold,
+        }
     }
 }
 
@@ -75,23 +93,135 @@ impl TaskConductor for SeoContentConductor {
 
         let response = self.llm.complete(&prompt, Some(system_prompt)).await?;
 
-        if let Err(e) = progress_tx
+        let mut final_content = response.content;
+        let mut geo_passed = true;
+
+        if self.geo_enabled {
+            let _ = progress_tx
+                .send(TaskEvent::Progress {
+                    job_id: job.id.clone(),
+                    conductor_id: self.conductor_name().to_string(),
+                    message: "Running Generative Engine Optimization (GEO) audit...".to_string(),
+                    percent: Some(80),
+                })
+                .await;
+
+            let payload = serde_json::json!({
+                "content": final_content,
+                "topic": job.topic
+            });
+
+            // SEC: Use global SSRF-protected HTTP client with per-request timeout
+            let client = aiome_core::http::get_http_client();
+            match client
+                .post(&self.geo_url)
+                .timeout(std::time::Duration::from_secs(30))
+                .json(&payload)
+                .send()
+                .await
+            {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.json::<serde_json::Value>().await {
+                        Ok(geo_result) => {
+                            let score = (geo_result["score"].as_u64().unwrap_or(0)).min(100) as u32;
+                            geo_passed = score >= self.geo_threshold;
+
+                            if let Some(optimized) = geo_result["optimized_content"].as_str() {
+                                final_content = optimized.to_string();
+                            }
+
+                            let _ = progress_tx
+                                .send(TaskEvent::QualityGate {
+                                    job_id: job.id.clone(),
+                                    score,
+                                    passed: geo_passed,
+                                    conductor: self.conductor_name().to_string(),
+                                })
+                                .await;
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "GEO Optimizer returned invalid JSON (graceful degradation): {}",
+                                e
+                            );
+                            let _ = progress_tx
+                                .send(TaskEvent::QualityGate {
+                                    job_id: job.id.clone(),
+                                    score: 0,
+                                    passed: true, // graceful degradation: don't block on parse error
+                                    conductor: self.conductor_name().to_string(),
+                                })
+                                .await;
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("GEO Optimizer audit failed (graceful degradation): {}", e);
+                    // Emit QualityGate with score 0 + passed=true to signal unavailability
+                    let _ = progress_tx
+                        .send(TaskEvent::QualityGate {
+                            job_id: job.id.clone(),
+                            score: 0,
+                            passed: true, // graceful degradation: publish despite GEO unavailability
+                            conductor: self.conductor_name().to_string(),
+                        })
+                        .await;
+                }
+                Ok(resp) => {
+                    tracing::warn!(
+                        "GEO Optimizer returned error status (graceful degradation): {}",
+                        resp.status()
+                    );
+                    let _ = progress_tx
+                        .send(TaskEvent::QualityGate {
+                            job_id: job.id.clone(),
+                            score: 0,
+                            passed: true, // graceful degradation: publish despite GEO error
+                            conductor: self.conductor_name().to_string(),
+                        })
+                        .await;
+                }
+            }
+        }
+
+        if !geo_passed {
+            let _ = progress_tx.send(TaskEvent::AwaitingInput {
+                job_id: job.id.clone(),
+                reason: "GEO Score below threshold. Content requires correction to improve citability.".to_string(),
+            }).await;
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "GEO optimization failed to meet the threshold of {}. \
+                     Watchtower will now trigger an autonomous re-generation cycle.",
+                    self.geo_threshold
+                ),
+            });
+        }
+
+        if self.geo_enabled {
+            // [R5] PublishPipeline's first caller: Autonomous SEO publishing if GEO passed
+            let publish_meta = serde_json::json!({ "topic": job.topic });
+            if let Err(e) = self
+                .publish_pipeline
+                .run_job("wordpress", &final_content, &[], &publish_meta)
+                .await
+            {
+                tracing::warn!("Failed to publish SEO content: {}", e);
+            } else {
+                tracing::info!("SEO content published successfully to wordpress.");
+            }
+        }
+
+        let _ = progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "SEO Content Generation complete.".to_string(),
                 percent: Some(100),
             })
-            .await
-        {
-            tracing::warn!(
-                "Failed to send completion event for SEO job {}: {}",
-                job.id,
-                e
-            );
-        }
+            .await;
 
-        Ok((response.content, None))
+        Ok((final_content, None))
     }
 }
 
@@ -147,7 +277,14 @@ mod tests {
     #[tokio::test]
     async fn test_seo_content_conductor_categories() {
         let provider = Arc::new(CapturingProvider::new());
-        let conductor = SeoContentConductor::new(provider);
+        let publish_pipeline = Arc::new(crate::publisher::PublishPipeline::new(vec![]));
+        let conductor = SeoContentConductor::new(
+            provider,
+            publish_pipeline,
+            false,
+            "http://localhost:8080".to_string(),
+            60,
+        );
         assert_eq!(
             conductor.capable_categories(),
             vec!["seo_content".to_string()]
@@ -158,7 +295,14 @@ mod tests {
     #[tokio::test]
     async fn test_seo_content_conductor_conduct() {
         let provider = Arc::new(CapturingProvider::new());
-        let conductor = SeoContentConductor::new(provider);
+        let publish_pipeline = Arc::new(crate::publisher::PublishPipeline::new(vec![]));
+        let conductor = SeoContentConductor::new(
+            provider,
+            publish_pipeline,
+            false,
+            "http://localhost:8080".to_string(),
+            60,
+        );
 
         let (tx, mut rx) = mpsc::channel(10);
         let mut job = Job::default();
@@ -190,7 +334,14 @@ mod tests {
     #[tokio::test]
     async fn test_seo_content_conductor_injects_system_prompt() {
         let provider = Arc::new(CapturingProvider::new());
-        let conductor = SeoContentConductor::new(provider.clone());
+        let publish_pipeline = Arc::new(crate::publisher::PublishPipeline::new(vec![]));
+        let conductor = SeoContentConductor::new(
+            provider.clone(),
+            publish_pipeline,
+            false,
+            "http://localhost:8080".to_string(),
+            60,
+        );
 
         let (tx, _rx) = mpsc::channel(10);
         let mut job = Job::default();
@@ -226,7 +377,14 @@ mod tests {
     #[tokio::test]
     async fn test_seo_content_conductor_empty_topic() {
         let provider = Arc::new(CapturingProvider::new());
-        let conductor = SeoContentConductor::new(provider);
+        let publish_pipeline = Arc::new(crate::publisher::PublishPipeline::new(vec![]));
+        let conductor = SeoContentConductor::new(
+            provider,
+            publish_pipeline,
+            false,
+            "http://localhost:8080".to_string(),
+            60,
+        );
 
         let (tx, _rx) = mpsc::channel(10);
 
@@ -271,7 +429,14 @@ mod tests {
     #[tokio::test]
     async fn test_seo_content_conductor_llm_failure() {
         let provider = Arc::new(FailingProvider);
-        let conductor = SeoContentConductor::new(provider);
+        let publish_pipeline = Arc::new(crate::publisher::PublishPipeline::new(vec![]));
+        let conductor = SeoContentConductor::new(
+            provider,
+            publish_pipeline,
+            false,
+            "http://localhost:8080".to_string(),
+            60,
+        );
 
         let (tx, _rx) = mpsc::channel(10);
         let mut job = Job::default();

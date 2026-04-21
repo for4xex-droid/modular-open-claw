@@ -44,15 +44,35 @@ pub trait SettingsOps {
 impl SettingsOps for UniversalJobQueue {
     async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
         let q = format!(
-            "SELECT value FROM system_settings WHERE key = {}",
+            "SELECT value, CAST(is_secret AS INTEGER) FROM system_settings WHERE key = {}",
             self.pool.ph(0)
         );
-        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q, key)
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Get setting failed for key '{}': {}", key, e),
-            })?
-            .map(|r| r.0);
-        Ok(opt)
+
+        let opt: Option<(String, i32)> =
+            crate::sql_fetch_optional!(&self.pool, (String, i32), &q, key).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Get setting failed for key '{}': {}", key, e),
+                }
+            })?;
+
+        match opt {
+            Some((value, is_secret)) if is_secret != 0 => {
+                // Transparent decryption for secret values (§CISO-1)
+                match crate::security::crypto::decrypt_setting(&value) {
+                    Ok(plaintext) => Ok(Some(plaintext)),
+                    Err(_) => {
+                        // Fallback: value may be a legacy unencrypted secret
+                        tracing::warn!(
+                            "⚠️ [Settings] Failed to decrypt secret '{}' — treating as plaintext (legacy migration)",
+                            key
+                        );
+                        Ok(Some(value))
+                    }
+                }
+            }
+            Some((value, _)) => Ok(Some(value)),
+            None => Ok(None),
+        }
     }
 
     async fn do_set_setting(
@@ -87,12 +107,20 @@ impl SettingsOps for UniversalJobQueue {
                         }
                     })?;
                     rows.into_iter()
-                        .map(|row| aiome_core::contracts::SystemSetting {
-                            key: row.get("key"),
-                            value: row.get("value"),
-                            category: row.get("category"),
-                            is_secret: row.get::<i32, _>("is_secret") != 0,
-                            updated_at: row.get("updated_at"),
+                        .map(|row| {
+                            let is_secret = row.get::<i32, _>("is_secret") != 0;
+                            aiome_core::contracts::SystemSetting {
+                                key: row.get("key"),
+                                // Never expose ciphertext to the frontend (§CISO-2)
+                                value: if is_secret {
+                                    "••••••••".to_string()
+                                } else {
+                                    row.get("value")
+                                },
+                                category: row.get("category"),
+                                is_secret,
+                                updated_at: row.get("updated_at"),
+                            }
                         })
                         .collect()
                 }
@@ -103,12 +131,20 @@ impl SettingsOps for UniversalJobQueue {
                         }
                     })?;
                     rows.into_iter()
-                        .map(|row| aiome_core::contracts::SystemSetting {
-                            key: row.get("key"),
-                            value: row.get("value"),
-                            category: row.get("category"),
-                            is_secret: row.get::<bool, _>("is_secret"),
-                            updated_at: row.get("updated_at"),
+                        .map(|row| {
+                            let is_secret = row.get::<bool, _>("is_secret");
+                            aiome_core::contracts::SystemSetting {
+                                key: row.get("key"),
+                                // Never expose ciphertext to the frontend (§CISO-2)
+                                value: if is_secret {
+                                    "••••••••".to_string()
+                                } else {
+                                    row.get("value")
+                                },
+                                category: row.get("category"),
+                                is_secret,
+                                updated_at: row.get("updated_at"),
+                            }
                         })
                         .collect()
                 }

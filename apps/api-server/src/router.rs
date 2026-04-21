@@ -90,6 +90,10 @@ pub fn build_app(
         )
         .route("/api/v1/logs", get(routes::general::get_logs))
         .route(
+            "/api/v1/quality-gate/history",
+            get(routes::quality_gate::get_quality_gate_history),
+        )
+        .route(
             "/api/v1/gift/send/:agent_id",
             axum::routing::post(routes::gift::send_gift).route_layer(
                 tower::ServiceBuilder::new()

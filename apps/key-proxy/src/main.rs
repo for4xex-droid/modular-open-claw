@@ -127,19 +127,10 @@ async fn main() -> anyhow::Result<()> {
     let wp_api_token = env::var("WP_API_TOKEN").ok();
 
     // Self-Wipe: Remove from environment immediately
-    #[allow(unsafe_code)]
-    fn wipe_env(key: &str) {
-        // SAFETY: This is called during the single-threaded initialization phase.
-        // Rust 1.66+ made env::set_var/remove_var unsafe due to potential thread-safety
-        // issues if called concurrently with other threads reading the environment.
-        // Since this is the main setup before any other threads are spawned, it is safe.
-        unsafe {
-            env::remove_var(key);
-        }
-    }
-    wipe_env("GEMINI_API_KEY");
-    wipe_env("VAULT_SECRET");
-    wipe_env("WP_API_TOKEN");
+    // key-proxy では shared::security::scrub_env を使用して一元化
+    shared::security::scrub_env("GEMINI_API_KEY");
+    shared::security::scrub_env("VAULT_SECRET");
+    shared::security::scrub_env("WP_API_TOKEN");
     info!("🧹 [KeyProxy] Environment wiped. Keys are now only in memory.");
 
     let mut quotas = HashMap::new();
@@ -176,6 +167,7 @@ async fn main() -> anyhow::Result<()> {
             match std::env::var("JWT_PRIVATE_KEY_B64") {
                 Ok(key_b64) => {
                     info!("🔑 [KeyProxy] Loading JWT private key from environment");
+                    shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
                     Arc::new(
                         infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
                             .expect("Invalid JWT_PRIVATE_KEY_B64"), // allow-anti-pattern

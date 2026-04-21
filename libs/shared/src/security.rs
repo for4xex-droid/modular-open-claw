@@ -164,6 +164,31 @@ pub enum AuditAction {
     ExternalSkillBlocked,
 }
 
+/// 環境変数を安全に消去する (§CISO-1)
+///
+/// `forbid(unsafe_code)` な crate からも呼び出し可能。
+/// 起動時の初期化フェーズ (tokio ランタイム起動前) でのみ使用すること。
+///
+/// # Why unsafe?
+///
+/// `std::env::remove_var` は Rust 2024 Edition で `unsafe fn` に昇格。
+/// マルチスレッド環境での環境変数操作がスレッドセーフでないため。
+/// 本関数は起動直後の単一スレッドフェーズで呼ばれることを前提とする。
+///
+/// # Note
+///
+/// 本クレート唯一の `#[allow(unsafe_code)]` 例外。
+/// 新規追加にはコードレビューでの承認を必須とすること。
+#[allow(unsafe_code)]
+pub fn scrub_env(key: &str) {
+    #[allow(deprecated)]
+    // SAFETY: 起動時の単一スレッドフェーズでのみ呼び出される。
+    // tokio ランタイム起動前に全シークレット変数を消去する設計。
+    unsafe {
+        std::env::remove_var(key);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,5 +267,31 @@ mod tests {
         assert!(policy.validate_tool("external_api_client").is_err());
         policy.register_tool("external_api_client");
         assert!(policy.validate_tool("external_api_client").is_ok());
+    }
+
+    #[test]
+    fn test_scrub_env_removes_variable() {
+        // Arrange: テスト用の一意なキーを設定
+        let test_key = "TEST_SCRUB_ENV_KEY_12345";
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::set_var(test_key, "super_secret_value");
+        }
+        assert_eq!(std::env::var(test_key).unwrap(), "super_secret_value");
+
+        // Act: scrub_env で消去
+        crate::security::scrub_env(test_key);
+
+        // Assert: 環境変数が消えていること
+        assert!(
+            std::env::var(test_key).is_err(),
+            "Environment variable should be removed after scrub_env"
+        );
+    }
+
+    #[test]
+    fn test_scrub_env_nonexistent_key_does_not_panic() {
+        // 存在しないキーに対して呼んでもパニックしないこと
+        crate::security::scrub_env("ABSOLUTELY_NONEXISTENT_KEY_999");
     }
 }

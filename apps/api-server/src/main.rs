@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]

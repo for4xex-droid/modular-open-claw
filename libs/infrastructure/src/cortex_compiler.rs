@@ -480,7 +480,7 @@ impl CortexCompiler {
             }
         }
 
-        if let Err(e) = self.update_backlinks().await {
+        if let Err(e) = self.update_backlinks_and_typed_links().await {
             tracing::error!("Failed to update backlinks: {}", e);
         }
         let issues = self.lint_wiki().await.unwrap_or_default();
@@ -649,7 +649,7 @@ Source Texts:
         Ok(())
     }
 
-    pub async fn update_backlinks(&self) -> Result<(), AiomeError> {
+    pub async fn update_backlinks_and_typed_links(&self) -> Result<(), AiomeError> {
         let pool = self.pool.get_sqlite_pool_or_err()?;
         // Fetch all articles
         let articles_res = sqlx::query("SELECT id, title, content_md FROM cortex_wiki_articles")
@@ -678,6 +678,12 @@ Source Texts:
             title_to_id.insert(title.to_lowercase(), (id, title));
         }
 
+        let link_types: &[(&str, &[&str])] = &[
+            ("contradicts", &["contradict", "disagree", "conflict"]),
+            ("depends_on", &["depend", "require", "rely"]),
+            ("extends", &["extend", "build upon", "expand"]),
+        ];
+
         // For each article, check which other titles appear in its content
         for row in &articles {
             let id = row.try_get::<String, _>("id").unwrap_or_default();
@@ -687,19 +693,64 @@ Source Texts:
                 continue;
             }
 
+            let current_title = row.try_get::<String, _>("title").unwrap_or_default();
+            let current_title_lower = current_title.to_lowercase();
             let mut matched_backlinks = Vec::new();
-            for (target_title_lower, (_, target_title_orig)) in &title_to_id {
-                let current_title = row.try_get::<String, _>("title").unwrap_or_default();
-                // To avoid "rust" matching "frustration", we do a naive boundary check
-                // by checking if the found substring is completely isolated,
-                // but since it's markdown, `contains` is acceptable for a V1 Wiki,
-                // especially for Multi-word titles. We will at least check that the target
-                // is longer than 3 characters if it's a single word, to reduce false positives.
-                if *target_title_lower != current_title.to_lowercase() {
-                    let is_short_single_word =
-                        !target_title_lower.contains(' ') && target_title_lower.len() <= 3;
-                    if !is_short_single_word && content_md_lower.contains(target_title_lower) {
-                        matched_backlinks.push(target_title_orig.clone());
+
+            for (target_title_lower, (target_id, target_title_orig)) in &title_to_id {
+                if *target_title_lower == current_title_lower {
+                    continue;
+                }
+
+                let is_short_single_word =
+                    !target_title_lower.contains(' ') && target_title_lower.len() <= 3;
+                if is_short_single_word {
+                    continue;
+                }
+
+                if let Some(pos) = content_md_lower.find(target_title_lower) {
+                    matched_backlinks.push(target_title_orig.clone());
+
+                    // GBrain R3: Typed Link Extraction (Context Window)
+                    let start = pos.saturating_sub(100);
+                    let mut safe_start = start;
+                    while safe_start > 0 && !content_md_lower.is_char_boundary(safe_start) {
+                        safe_start -= 1;
+                    }
+
+                    let target_len = target_title_lower.len();
+                    let end = std::cmp::min(pos + target_len + 100, content_md_lower.len());
+                    let mut safe_end = end;
+                    while safe_end < content_md_lower.len()
+                        && !content_md_lower.is_char_boundary(safe_end)
+                    {
+                        safe_end += 1;
+                    }
+
+                    let context_window = &content_md_lower[safe_start..safe_end];
+
+                    let mut derived_link_type = "references";
+                    for (l_type, keywords) in link_types {
+                        if keywords.iter().any(|k: &&str| context_window.contains(*k)) {
+                            derived_link_type = l_type;
+                            break;
+                        }
+                    }
+
+                    let evidence = context_window.to_string(); // Save lowered context as evidence to avoid byte slicing issues
+
+                    if let Err(e) = sqlx::query(
+                        "INSERT INTO cortex_typed_links (source_article_id, target_article_id, link_type, evidence_text)
+                         VALUES ($1, $2, $3, $4)
+                         ON CONFLICT(source_article_id, target_article_id, link_type) DO UPDATE SET evidence_text = excluded.evidence_text"
+                    )
+                    .bind(&id)
+                    .bind(target_id)
+                    .bind(derived_link_type)
+                    .bind(evidence)
+                    .execute(pool)
+                    .await {
+                        tracing::warn!(source = %id, target = %target_id, link_type = %derived_link_type, "Failed to upsert typed link: {}", e);
                     }
                 }
             }
@@ -707,11 +758,15 @@ Source Texts:
             let backlinks_json =
                 serde_json::to_string(&matched_backlinks).unwrap_or_else(|_| "[]".to_string());
 
-            let _ = sqlx::query("UPDATE cortex_wiki_articles SET backlinks = ? WHERE id = ?")
-                .bind(&backlinks_json)
-                .bind(&id)
-                .execute(pool)
-                .await;
+            if let Err(e) =
+                sqlx::query("UPDATE cortex_wiki_articles SET backlinks = ? WHERE id = ?")
+                    .bind(&backlinks_json)
+                    .bind(&id)
+                    .execute(pool)
+                    .await
+            {
+                tracing::warn!(article_id = %id, "Failed to update backlinks: {}", e);
+            }
         }
 
         Ok(())

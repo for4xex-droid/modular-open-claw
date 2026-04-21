@@ -30,6 +30,7 @@ services:
       - VAULT_PATH=/app/data/vault
       - NURTURE_API_URL=http://nurture-api:3020
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      - MCP_ALLOW_LOCALHOST=${MCP_ALLOW_LOCALHOST:-false}
     depends_on: [key-proxy, samsara-hub]
     volumes:
       - ./data/${CELL_ID:-cell-0}/api:/app/data
@@ -57,6 +58,20 @@ services:
     security_opt: ["no-new-privileges:true"]
     user: "1001:1001"
     restart: always
+
+  geo-optimizer:
+    build:
+      context: apps/geo-optimizer
+      dockerfile: Dockerfile
+    deploy: { resources: { limits: { memory: 1G } } }
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/openapi.json || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # === Nurture Economy Sidecar (R4-G1-1) ===
   nurture-api:

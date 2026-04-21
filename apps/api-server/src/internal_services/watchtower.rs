@@ -19,7 +19,10 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     info!("👁️ [Watchtower] Initializing Unified Watchtower Service...");
 
     let discord_token = std::env::var("DISCORD_TOKEN").ok();
+    shared::security::scrub_env("DISCORD_TOKEN");
+
     let telegram_token = std::env::var("TELEGRAM_TOKEN").ok();
+    shared::security::scrub_env("TELEGRAM_TOKEN");
 
     let (command_tx, mut command_rx) = mpsc::channel::<ControlCommand>(100);
     let mut bridges: Vec<Arc<dyn ChannelBridge>> = Vec::new();

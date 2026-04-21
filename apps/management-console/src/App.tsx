@@ -31,6 +31,7 @@ const BiotopeView = React.lazy(() => import("./components/BiotopeView"));
 const Timeline = React.lazy(() => import("./components/Timeline"));
 const ImmuneSystem = React.lazy(() => import("./components/ImmuneSystem"));
 const AgentConsole = React.lazy(() => import("./components/AgentConsole"));
+const SeoPulseView = React.lazy(() => import("./components/SeoPulseView"));
 const SkillVault = React.lazy(() => import("./components/SkillVault"));
 const ArtifactVault = React.lazy(() => import("./components/ArtifactVault"));
 const DiagnosticsHistory = React.lazy(() => import("./components/DiagnosticsHistory"));
@@ -154,6 +155,16 @@ function App() {
                 `${d.saved_chars} chars saved (≈${Math.round(d.saved_chars / 4)} tokens)`,
                 'var(--accent-emerald)', <Zap size={16} />);
         }
+        break;
+      }
+      case 'quality_gate': {
+        const d = data as { job_id: string; score: number; passed: boolean };
+        addEvent(
+          t('event.qualityGate', { defaultValue: 'Quality Gate' }) as string,
+          `Score: ${d.score} - ${d.passed ? 'PASSED' : 'FAILED'} (${d.job_id.substring(0, 8)})`,
+          d.passed ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+          <Activity size={16} />
+        );
         break;
       }
       default:
@@ -560,7 +571,12 @@ function App() {
               {activeTab === "karma" && <Timeline />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
-              {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
+              {activeTab === "agent" && (
+                <>
+                  <AgentConsole sessionSavedChars={sessionSavedChars} />
+                  <SeoPulseView />
+                </>
+              )}
               {activeTab === "cortex" && <CortexView />}
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}

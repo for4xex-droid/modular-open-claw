@@ -94,6 +94,13 @@ pub enum CoreEvent {
     SoTProgress {
         event: crate::contracts::SoTEvent,
     },
+    /// GEO Optimizer Quality Gate result
+    QualityGate {
+        job_id: String,
+        score: u32,
+        passed: bool,
+        conductor: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

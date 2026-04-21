@@ -133,6 +133,7 @@ pub mod output_filter;
 pub mod polar_quant;
 /// 成果物のSNS自動投稿
 pub mod publisher;
+pub mod quality_gate_store;
 /// エージェント別のレート制限 (G-2)
 pub mod rate_limiter;
 /// デジタルアセットのレジストリ・所有権管理モジュール

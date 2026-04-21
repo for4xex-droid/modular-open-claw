@@ -53,73 +53,9 @@ impl LlmProvider for MockLlmProvider {
 }
 
 async fn setup_db_pool() -> DatabasePool {
-    let pool = DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
-    let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
-    // Run migrations
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS cortex_documents (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            source_url TEXT,
-            content_md TEXT NOT NULL,
-            content_hash TEXT NOT NULL,
-            source_type TEXT NOT NULL,
-            tags TEXT DEFAULT '[]',
-            summary TEXT,
-            wiki_article_refs TEXT DEFAULT '[]',
-            ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            compiled BOOLEAN DEFAULT 0
-        )",
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            content_md TEXT NOT NULL,
-            concepts TEXT DEFAULT '[]',
-            backlinks TEXT DEFAULT '[]',
-            source_refs TEXT DEFAULT '[]',
-            content_hash TEXT NOT NULL,
-            version INTEGER DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )",
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS cortex_concept_index (
-            concept TEXT PRIMARY KEY,
-            article_ids TEXT DEFAULT '[]',
-            document_ids TEXT DEFAULT '[]',
-            summary TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )",
-    )
-    .execute(sqlite_pool)
-    .await
-    .unwrap();
-
-    // [PATCH-4, PATCH-9] FTS5 setup for tests
-    sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS cortex_concept_fts USING fts5(concept, content=cortex_concept_index, content_rowid=rowid);")
-        .execute(sqlite_pool)
+    crate::test_utils::cortex_mock::setup_db_pool()
         .await
-        .unwrap();
-
-    sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_insert AFTER INSERT ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
-        .execute(sqlite_pool).await.unwrap();
-    sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_update AFTER UPDATE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
-        .execute(sqlite_pool).await.unwrap();
-    sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_delete AFTER DELETE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); END;")
-        .execute(sqlite_pool).await.unwrap();
-
-    pool
+        .unwrap()
 }
 
 #[tokio::test]
@@ -184,7 +120,7 @@ async fn test_run_compilation_cycle() {
 }
 
 #[tokio::test]
-async fn test_update_backlinks() {
+async fn test_update_backlinks_and_typed_links() {
     let pool = setup_db_pool().await;
     let provider = Arc::new(MockLlmProvider {
         json_response: "[]".to_string(),
@@ -196,9 +132,13 @@ async fn test_update_backlinks() {
     // A mentions B
     sqlx::query("INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) VALUES ('art1', 'Topic A', 'This talks about Topic B and stuff.', 'hash1')").execute(sqlite_pool).await.unwrap();
     sqlx::query("INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) VALUES ('art2', 'Topic B', 'This is B.', 'hash2')").execute(sqlite_pool).await.unwrap();
+    // C: "extends Topic B" and "contradict Topic A" are spaced >200 chars apart
+    // so the ±100 char context window around each match does NOT overlap,
+    // ensuring each typed link gets the correct keyword classification.
+    sqlx::query("INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) VALUES ('art3', 'Topic C', 'This module extends Topic B by adding more features.                                                                                                                                              It also might contradict Topic A in some edge cases.', 'hash3')").execute(sqlite_pool).await.unwrap();
 
     // Call update backlinks explicitly or via cycle
-    compiler.update_backlinks().await.unwrap();
+    compiler.update_backlinks_and_typed_links().await.unwrap();
 
     let row = sqlx::query("SELECT backlinks FROM cortex_wiki_articles WHERE id = 'art1'")
         .fetch_one(sqlite_pool)
@@ -210,6 +150,39 @@ async fn test_update_backlinks() {
         backlinks_json.contains("Topic B"),
         "art1 should have backlink to Topic B"
     );
+
+    // Check typed links for C -> B and C -> A
+    #[derive(sqlx::FromRow)]
+    struct TypedLinkRow {
+        source: String,
+        target: String,
+        link_type: String,
+    }
+
+    let links: Vec<TypedLinkRow> = sqlx::query_as::<_, TypedLinkRow>(
+        "SELECT source_article_id as source, target_article_id as target, link_type FROM cortex_typed_links ORDER BY source, target"
+    )
+    .fetch_all(sqlite_pool)
+    .await
+    .unwrap();
+
+    let a_b = links
+        .iter()
+        .find(|l| l.source == "art1" && l.target == "art2")
+        .expect("A -> B exists");
+    assert_eq!(a_b.link_type, "references");
+
+    let c_a = links
+        .iter()
+        .find(|l| l.source == "art3" && l.target == "art1")
+        .expect("C -> A exists");
+    assert_eq!(c_a.link_type, "contradicts");
+
+    let c_b = links
+        .iter()
+        .find(|l| l.source == "art3" && l.target == "art2")
+        .expect("C -> B exists");
+    assert_eq!(c_b.link_type, "extends");
 }
 
 #[tokio::test]

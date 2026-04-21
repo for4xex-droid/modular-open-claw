@@ -186,22 +186,31 @@ impl CortexQueryEngine {
         let mut source_articles = Vec::new();
         let mut context_text = String::new();
 
+        let mut total_backlinks = 0usize;
+
         for art_id in &article_ids_vec {
-            let row_opt =
-                sqlx::query("SELECT title, content_md FROM cortex_wiki_articles WHERE id = ?")
-                    .bind(art_id)
-                    .fetch_optional(sqlite_pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+            let row_opt = sqlx::query(
+                "SELECT title, content_md, backlinks FROM cortex_wiki_articles WHERE id = ?",
+            )
+            .bind(art_id)
+            .fetch_optional(sqlite_pool)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if let Some(row) = row_opt {
                 use sqlx::Row;
-                let title = row.try_get::<String, &str>("title").unwrap_or_default();
-                let content = row
-                    .try_get::<String, &str>("content_md")
-                    .unwrap_or_default();
+                let title = row.try_get::<String, _>("title").unwrap_or_default();
+                let content = row.try_get::<String, _>("content_md").unwrap_or_default();
+                let backlinks_json = row
+                    .try_get::<String, _>("backlinks")
+                    .unwrap_or_else(|_| "[]".to_string());
+
+                if let Ok(backlinks) = serde_json::from_str::<Vec<String>>(&backlinks_json) {
+                    total_backlinks += backlinks.len();
+                }
+
                 source_articles.push(title.clone());
                 context_text.push_str(&format!("\n### [Article: {}]\n{}\n", title, content));
             }
@@ -234,12 +243,13 @@ impl CortexQueryEngine {
             .as_str()
             .unwrap_or("Error")
             .to_string();
-        let confidence = parsed_ans["confidence"].as_f64().unwrap_or(0.0);
+        let mut confidence = parsed_ans["confidence"].as_f64().unwrap_or(0.0);
 
         let mut final_answer_md =
             shared::guardrails::strip_invisible_unicode(&answer_md).into_owned();
 
-        // [File-Back]
+        // [File-Back] — uses RAW LLM confidence intentionally to prevent
+        // backlink boost from inflating low-quality answers into the knowledge base.
         let mut filed_back = false;
         if options.file_back && confidence >= 0.7 && !final_answer_md.is_empty() {
             let doc_id = uuid::Uuid::new_v4().to_string();
@@ -262,10 +272,21 @@ impl CortexQueryEngine {
             match res {
                 Ok(_) => filed_back = true,
                 Err(e) => {
-                    println!("Failed to file-back query document: {:?}", e);
-                    tracing::warn!("Failed to file-back query document: {:?}", e);
+                    tracing::warn!(doc_id = %doc_id, "Failed to file-back query document: {:?}", e);
                 }
             }
+        }
+
+        // GBrain R3: Backlink-Boosted Ranking
+        // Applied AFTER file-back to prevent low-quality answers from polluting the knowledge base.
+        if total_backlinks > 0 {
+            let boost = (total_backlinks as f64 * 0.05).min(0.2);
+            confidence = (confidence + boost).min(1.0);
+            tracing::info!(
+                boost = boost,
+                backlinks = total_backlinks,
+                "Applied backlink boost to confidence"
+            );
         }
 
         // [Activity Log]
@@ -380,68 +401,9 @@ mod tests {
     }
 
     async fn setup_db_pool() -> DatabasePool {
-        let pool = DatabasePool::new_sqlite("sqlite::memory:").await.unwrap(); // allow-anti-pattern
-        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content_md TEXT NOT NULL,
-                concepts TEXT DEFAULT '[]',
-                backlinks TEXT DEFAULT '[]',
-                source_refs TEXT DEFAULT '[]',
-                content_hash TEXT NOT NULL,
-                version INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .unwrap(); // allow-anti-pattern
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_concept_index (
-                concept TEXT PRIMARY KEY,
-                article_ids TEXT DEFAULT '[]',
-                document_ids TEXT DEFAULT '[]',
-                summary TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .unwrap(); // allow-anti-pattern
-
-        // [PATCH-6] cortex_activity_log definition
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_activity_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_type TEXT NOT NULL,
-                summary TEXT NOT NULL,
-                detail_json TEXT DEFAULT '{}',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .unwrap(); // allow-anti-pattern
-
-        // [PATCH-4, PATCH-9] FTS5 setup for tests
-        sqlx::query("CREATE VIRTUAL TABLE IF NOT EXISTS cortex_concept_fts USING fts5(concept, content=cortex_concept_index, content_rowid=rowid);")
-            .execute(sqlite_pool)
+        crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .unwrap(); // allow-anti-pattern
-
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_insert AFTER INSERT ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
-            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_update AFTER UPDATE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); INSERT INTO cortex_concept_fts(rowid, concept) VALUES (new.rowid, new.concept); END;")
-            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
-        sqlx::query("CREATE TRIGGER IF NOT EXISTS cortex_fts_delete AFTER DELETE ON cortex_concept_index BEGIN INSERT INTO cortex_concept_fts(cortex_concept_fts, rowid, concept) VALUES('delete', old.rowid, old.concept); END;")
-            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
-
-        pool
+            .unwrap()
     }
 
     /// Seed test data into DB for richer tests

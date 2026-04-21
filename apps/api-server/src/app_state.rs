@@ -156,6 +156,8 @@ pub struct AppState {
     pub eval_logger: Component<Arc<infrastructure::llm::evaluation_logger::EvaluationLogger>>,
     // --- Phase A2UI ---
     pub a2ui_catalog: Component<Arc<infrastructure::a2ui::AiomeCatalog>>,
+    pub quality_gate_store:
+        Component<Arc<dyn infrastructure::quality_gate_store::QualityGateStore>>,
 }
 
 impl AppState {

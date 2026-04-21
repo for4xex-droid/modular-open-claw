@@ -607,6 +607,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 Some(Arc::new(
                     infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone()),
                 )), // immune_system
+                None, // quality_gate_store
             );
 
             // Register conductors for integration tests
@@ -621,6 +622,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             let seo_conductor = Arc::new(
                 infrastructure::task_orchestrator::seo_content::SeoContentConductor::new(
                     provider.clone(),
+                    Arc::new(infrastructure::publisher::PublishPipeline::new(vec![])),
+                    false,
+                    "http://localhost:8080".to_string(),
+                    60,
                 ),
             );
             dispatcher.register_conductor(seo_conductor);
@@ -699,6 +704,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         a2ui_catalog: Default::default(),
         nurture_url: None,
         nurture_internal_secret: None,
+        quality_gate_store: Component::default(),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

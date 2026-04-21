@@ -74,6 +74,8 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 
 - 🛡️ **Trust Layer**: SHA-256 で保護された監査チェーンと、O(1)の境界検証。高リスクなツール呼び出し時にユーザー介入を求める「Governed Execution（統治型実行）」層を新たに統合。
 - 🦠 **Cell-Based Architecture (CBA)**: `CELL_ID` によるデータの物理的パス隔離とシークレット分離を備えた堅牢なサンドボックス基盤。パストラバーサル防御やShellインジェクション防御を完備。
+- 🕸️ **GEO Intelligence**: Generative Engine Optimization (GEO) 監査エンジンを搭載。Graceful Degradation（ソフトフォールバック）対応の非対称設計により、インフラ障害時や外部モジュール切断状態でもSEO・パブリッシングパイプラインの品質と継続稼働を自律的に維持する。
+- 🔐 **Zero-Trust Hardening**: Rust 2024 Edition 準拠の環境変数クリア (`scrub_env`) 完全一元化によるシークレットパージ。加えて、IPv4-mapped IPv6 や Link-local アドレス完全遮断による高度な SSRF 防御網を備える。
 - 🧠 **Soul Engine**: エージェントの人格、記憶、そして「感情と進化」を統制するミドルウェア。
 - ⚖️ **Governed Execution Layer**: 実行環境の厳格なポリシー適用と、高リスク操作に対する人間介入の強制フロー。
 - 📚 **Cortex Knowledge Base**: 単なるRAGを超え、LLMが複数文書から概念を抽出し、相互にリンクされたWiki記事としてナレッジを自律的に自己再構築する知識エンジン。「表示レベル制御（Progressive Disclosure）」と「クエリのFile-Back（自己増殖）」機構を備える。

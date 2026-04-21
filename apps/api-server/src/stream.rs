@@ -631,6 +631,15 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("task_awaiting_input").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::QualityGate { job_id, score, passed, conductor } => {
+                            let data = serde_json::json!({
+                                "job_id": job_id,
+                                "score": score,
+                                "passed": passed,
+                                "conductor": conductor,
+                            });
+                            yield Ok(Event::default().event("quality_gate").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

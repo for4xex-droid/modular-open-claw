@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import ast
 from pathlib import Path
 from datetime import datetime
 
@@ -46,6 +47,36 @@ def analyze_rust_file(file_path):
             edges.append({"from": name, "to": i.strip(), "kind": "impl"})
             
         return {"structs": structs, "traits": traits, "routes": routes, "edges": edges}
+
+def analyze_py_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        tree = ast.parse(content)
+    except Exception:
+        return {"routes": [], "functions": [], "edges": []}
+
+    routes = []
+    functions = []
+    edges = []
+    name = Path(file_path).name
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            functions.append(node.name)
+            for decorator in node.decorator_list:
+                if isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute):
+                    if decorator.func.attr in ('get', 'post', 'put', 'delete', 'patch', 'route'):
+                        if decorator.args and isinstance(decorator.args[0], ast.Constant):
+                            routes.append(str(decorator.args[0].value))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                edges.append({"from": name, "to": alias.name, "kind": "py_import"})
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                edges.append({"from": name, "to": node.module, "kind": "py_import"})
+
+    return {"routes": routes, "functions": functions, "edges": edges}
 
 def analyze_ts_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -118,9 +149,9 @@ def generate_audit_report(root_dir, output_file):
         for app_dir in apps_dir.iterdir():
             if app_dir.is_dir():
                 app_name = app_dir.name
-                app_data = {"structs": [], "traits": [], "routes": [], "components": []}
+                app_data = {"structs": [], "traits": [], "routes": [], "components": [], "functions": []}
                 
-                for path in find_source_files(app_dir, ['.rs', '.tsx', '.css']):
+                for path in find_source_files(app_dir, ['.rs', '.tsx', '.css', '.py']):
                     ext = path.suffix
                     if ext == '.rs':
                         res = analyze_rust_file(path)
@@ -135,12 +166,18 @@ def generate_audit_report(root_dir, output_file):
                     elif ext == '.css':
                         res = analyze_css_file(path)
                         impact_edges.extend(res["edges"])
+                    elif ext == '.py':
+                        res = analyze_py_file(path)
+                        app_data["routes"].extend(res.get("routes", []))
+                        app_data["functions"].extend(res.get("functions", []))
+                        impact_edges.extend(res.get("edges", []))
 
                 # Deduplicate
                 app_data["structs"] = sorted(list(set(app_data["structs"])))
                 app_data["traits"] = sorted(list(set(app_data["traits"])))
                 app_data["routes"] = sorted(list(set(app_data["routes"])))
                 app_data["components"] = sorted(list(set(app_data["components"])))
+                app_data["functions"] = sorted(list(set(app_data["functions"])))
                 report["apps"][app_name] = app_data
 
     # Write Markdown Report
@@ -162,6 +199,9 @@ def generate_audit_report(root_dir, output_file):
             if data['structs']:
                 f.write("**Key Structs**\n")
                 f.write(f"- {', '.join(data['structs'])}\n")
+            if data.get('functions'):
+                f.write("**Python Functions**\n")
+                f.write(f"- {', '.join(data['functions'])}\n")
             f.write("\n")
 
         f.write("## 📚 LIBS (Core Domain & Infrastructure)\n")

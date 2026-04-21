@@ -23,7 +23,6 @@ use once_cell::sync::OnceCell;
 #[derive(Debug)]
 pub struct UniversalVaultBackend {
     pool: DatabasePool,
-    master_key: OnceCell<MlockedVec>,
     /// デコード済み DEK の LRU キャッシュ (メモリ保護付き)
     cache: Mutex<LruCache<Uuid, MlockedVec>>,
 }
@@ -33,7 +32,6 @@ impl UniversalVaultBackend {
     pub fn new(pool: DatabasePool) -> Self {
         Self {
             pool,
-            master_key: OnceCell::new(),
             cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())), // allow-anti-pattern
         }
     }
@@ -41,20 +39,25 @@ impl UniversalVaultBackend {
     /// テスト用: Master Key を直接注入して作成する。
     #[cfg(test)]
     pub fn new_with_master_key(pool: DatabasePool, master_key_bytes: Vec<u8>) -> Self {
-        let cell = OnceCell::new();
-        let _ = cell.set(MlockedVec::new(master_key_bytes));
+        let _ = GLOBAL_MASTER_KEY.set(MlockedVec::new(master_key_bytes));
         Self {
             pool,
-            master_key: cell,
             cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).unwrap())), // allow-anti-pattern
         }
     }
 
     /// キャッシュされた Master Key を取得
     fn get_cached_master_key(&self) -> Result<MlockedVec, AiomeError> {
-        let key = self.master_key.get_or_try_init(get_master_key)?;
-        Ok(key.clone())
+        get_global_master_key()
     }
+}
+
+pub(crate) static GLOBAL_MASTER_KEY: OnceCell<MlockedVec> = OnceCell::new();
+
+/// Globally retrieve the cached master key (useful for setting encryption)
+pub fn get_global_master_key() -> Result<MlockedVec, AiomeError> {
+    let key = GLOBAL_MASTER_KEY.get_or_try_init(get_master_key)?;
+    Ok(key.clone())
 }
 
 /// Master Key 導出 (§CISO-1)
@@ -62,6 +65,7 @@ fn get_master_key() -> Result<MlockedVec, AiomeError> {
     let key_hex = std::env::var("VAULT_MASTER_KEY").map_err(|_| AiomeError::SecurityViolation {
         reason: "VAULT_MASTER_KEY environment variable is not set".into(),
     })?;
+    shared::security::scrub_env("VAULT_MASTER_KEY");
     let key = hex::decode(&key_hex).map_err(|_| AiomeError::SecurityViolation {
         reason: "VAULT_MASTER_KEY is not valid hex".into(),
     })?;

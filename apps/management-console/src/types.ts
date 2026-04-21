@@ -14,6 +14,12 @@ export interface AgentStats {
     fatigue: number;
 }
 
+export interface SidecarHealth {
+    name: string;
+    status: string;
+}
+
+
 export interface VitalityUIEvent {
     id: number;
     title: string;
@@ -23,7 +29,7 @@ export interface VitalityUIEvent {
 }
 
 export interface VitalityRawEvent {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'plugin_event' | 'proactive_talk' | 'token_saved' | 'task_awaiting_input';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'skill_execution' | 'plugin_event' | 'proactive_talk' | 'token_saved' | 'task_awaiting_input' | 'quality_gate';
     data: unknown;
 }
 

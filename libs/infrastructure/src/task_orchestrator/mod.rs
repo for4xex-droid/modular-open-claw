@@ -27,6 +27,7 @@ use tracing::{debug, error, info, warn};
 const MAX_GIG_BUDGET: u64 = 5000;
 
 pub mod csam;
+pub mod geo_audit;
 pub mod llm_conductor;
 pub mod planner;
 pub mod seo_content;
@@ -67,6 +68,12 @@ pub enum TaskEvent {
         intent_id: String,
         description: String,
         budget: u64,
+    },
+    QualityGate {
+        job_id: String,
+        score: u32,
+        passed: bool,
+        conductor: String,
     },
 }
 
@@ -110,6 +117,7 @@ pub struct TaskDispatcher {
     gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
     diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
     immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
+    quality_gate_store: Option<Arc<dyn crate::quality_gate_store::QualityGateStore>>,
 }
 
 impl TaskDispatcher {
@@ -126,10 +134,12 @@ impl TaskDispatcher {
         gig_engine: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>,
         diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
         immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
+        quality_gate_store: Option<Arc<dyn crate::quality_gate_store::QualityGateStore>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
         let mut rx = event_tx.subscribe();
+        let qgs_for_event = quality_gate_store.clone();
         if let Some(ctx) = core_event_tx.clone() {
             tokio::spawn(async move {
                 while let Ok(event) = rx.recv().await {
@@ -180,6 +190,35 @@ impl TaskDispatcher {
                             description,
                             budget,
                         },
+                        TaskEvent::QualityGate {
+                            job_id,
+                            score,
+                            passed,
+                            conductor,
+                        } => {
+                            if let Some(ref store) = qgs_for_event {
+                                let store_clone = store.clone();
+                                let j_id = job_id.clone();
+                                let cond = conductor.clone();
+                                tokio::spawn(async move {
+                                    if let Err(e) =
+                                        store_clone.record(&j_id, score as i32, passed, &cond).await
+                                    {
+                                        tracing::warn!(
+                                            "Failed to record quality gate history for {}: {}",
+                                            j_id,
+                                            e
+                                        );
+                                    }
+                                });
+                            }
+                            aiome_core_contracts::events::CoreEvent::QualityGate {
+                                job_id,
+                                score,
+                                passed,
+                                conductor,
+                            }
+                        }
                         _ => continue,
                     };
                     if let Err(e) = ctx.send(core_ev) {
@@ -204,6 +243,7 @@ impl TaskDispatcher {
             gig_engine,
             diagnostics,
             immune_system,
+            quality_gate_store,
         }
     }
 
@@ -241,6 +281,11 @@ impl TaskDispatcher {
                         "💰 [AgenticFinance] GIG Intent detected for job {}. Verifying security...",
                         j_id
                     );
+
+                    if dirs["geo_blocked"].as_bool().unwrap_or(false) {
+                        tracing::warn!("⚠️ [AgenticFinance] GEO Quality Gate failed. Blocking GIG intent for job {}.", j_id);
+                        return;
+                    }
 
                     // 1. Immutable Depth Check (System-provided)
                     let depth = dirs["gig_depth"].as_u64().unwrap_or(0);
@@ -1077,6 +1122,7 @@ mod tests {
             None, // gig_engine
             None, // diagnostics
             None, // immune_system
+            None, // quality_gate_store
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1159,6 +1205,7 @@ mod tests {
         let mut dispatcher = TaskDispatcher::new(
             job_queue.clone(),
             Duration::from_millis(10),
+            None,
             None,
             None,
             None,
@@ -1288,6 +1335,7 @@ mod tests {
             Some(mock_gig.clone()),
             None,
             None,
+            None,
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1333,6 +1381,7 @@ mod tests {
             None,
             None,
             Some(mock_gig.clone()),
+            None,
             None,
             None,
         );
@@ -1446,6 +1495,7 @@ mod tests {
             None,
             Some(diag_engine),
             None,
+            None, // quality_gate_store
         );
         dispatcher.register_conductor(Arc::new(FailingConductor));
         let _handle = tokio::spawn(async move {
@@ -1511,6 +1561,7 @@ mod tests {
             Duration::from_millis(10),
             None,
             Some(tool_discovery),
+            None,
             None,
             None,
             None,
@@ -1649,6 +1700,7 @@ mod tests {
             None,
             None,
             Some(immune_system),
+            None, // quality_gate_store
         );
         let mut rx = dispatcher.subscribe_events();
         dispatcher.register_conductor(Arc::new(TestConductor));

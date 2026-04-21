@@ -338,45 +338,12 @@ mod tests {
     async fn test_projector_creates_root_dir() {
         let tmp_dir = std::env::temp_dir().join(format!("cortex_test_{}", uuid::Uuid::new_v4()));
 
-        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+        let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB"); // allow-anti-pattern
-
+            .expect("Should create in-memory DB");
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool"); // allow-anti-pattern
-
-        // Create required tables
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_concept_index (
-                concept TEXT PRIMARY KEY,
-                article_ids TEXT DEFAULT '[]',
-                document_ids TEXT DEFAULT '[]',
-                summary TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .expect("Should create concept_index table"); // allow-anti-pattern
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content_md TEXT NOT NULL,
-                concepts TEXT DEFAULT '[]',
-                backlinks TEXT DEFAULT '[]',
-                source_refs TEXT DEFAULT '[]',
-                content_hash TEXT NOT NULL,
-                version INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .expect("Should create wiki_articles table"); // allow-anti-pattern
+            .expect("Should get sqlite pool");
 
         // Seed test data
         sqlx::query(
@@ -424,43 +391,12 @@ mod tests {
     async fn test_projector_skips_unchanged_articles() {
         let tmp_dir = std::env::temp_dir().join(format!("cortex_skip_{}", uuid::Uuid::new_v4()));
 
-        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+        let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB"); // allow-anti-pattern
+            .expect("Should create in-memory DB");
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool"); // allow-anti-pattern
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_concept_index (
-                concept TEXT PRIMARY KEY,
-                article_ids TEXT DEFAULT '[]',
-                document_ids TEXT DEFAULT '[]',
-                summary TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .expect("Should create concept_index table"); // allow-anti-pattern
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS cortex_wiki_articles (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content_md TEXT NOT NULL,
-                concepts TEXT DEFAULT '[]',
-                backlinks TEXT DEFAULT '[]',
-                source_refs TEXT DEFAULT '[]',
-                content_hash TEXT NOT NULL,
-                version INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(sqlite_pool)
-        .await
-        .expect("Should create wiki_articles table"); // allow-anti-pattern
+            .expect("Should get sqlite pool");
 
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)

@@ -20,6 +20,7 @@ use tracing::info;
 
 pub struct ShadowWorkerService {
     auth_token: String,
+    gemini_api_key: Option<String>,
 }
 
 #[tonic::async_trait]
@@ -46,6 +47,7 @@ impl DockerConductor for ShadowWorkerService {
         let (tx, rx) = mpsc::channel(4);
         let job_id = req.job_id.clone();
         let prompt_b64 = req.prompt_b64.clone();
+        let gemini_key = self.gemini_api_key.clone();
 
         tokio::spawn(async move {
             info!("Executing task for job: {}", job_id);
@@ -109,8 +111,8 @@ impl DockerConductor for ShadowWorkerService {
                 .await;
 
             // Use GEMINI_API_KEY if exists, else fallback to Ollama
-            let llm_res = match env::var("GEMINI_API_KEY") {
-                Ok(key) if !key.is_empty() => {
+            let llm_res = match gemini_key {
+                Some(key) if !key.is_empty() => {
                     let provider = GeminiProvider::new(
                         aiome_core::http::get_http_client().clone(),
                         key,
@@ -177,8 +179,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let auth_token =
         env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required"); // allow-anti-pattern
+    shared::security::scrub_env("A2A_AUTH_TOKEN");
 
-    let worker = ShadowWorkerService { auth_token };
+    let gemini_api_key = env::var("GEMINI_API_KEY").ok();
+    shared::security::scrub_env("GEMINI_API_KEY");
+
+    let worker = ShadowWorkerService {
+        auth_token,
+        gemini_api_key,
+    };
 
     // Setup health check server (Threat #38 mitigation)
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();

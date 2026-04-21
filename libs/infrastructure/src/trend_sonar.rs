@@ -135,8 +135,7 @@ pub async fn build_active_trend_sonar(
     let search_api_key = jq
         .get_setting_value("search_api_key")
         .await
-        .unwrap_or_default()
-        .or_else(|| std::env::var("SEARCH_API_KEY").ok());
+        .unwrap_or_default();
 
     if let Some(api_key) = search_api_key {
         if !api_key.is_empty() {
@@ -149,8 +148,7 @@ pub async fn build_active_trend_sonar(
     let x_token = jq
         .get_setting_value("x_bearer_token")
         .await
-        .unwrap_or_default()
-        .or_else(|| std::env::var("X_BEARER_TOKEN").ok());
+        .unwrap_or_default();
 
     if let Some(x_token) = x_token {
         if !x_token.is_empty() {

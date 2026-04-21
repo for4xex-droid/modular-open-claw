@@ -137,7 +137,7 @@ impl AiomeConfig {
             env::var("KEY_PROXY_URL").unwrap_or_else(|_| DEFAULT_KEY_PROXY_URL.to_string());
 
         let vault_secret = env::var("VAULT_SECRET").ok().map(|secret| {
-            env::remove_var("VAULT_SECRET"); // 安全のため環境変数から削除
+            crate::security::scrub_env("VAULT_SECRET");
             SecretString::from(secret)
         });
 
@@ -160,17 +160,17 @@ impl AiomeConfig {
 
         // Load and immediately remove sensitive API keys
         let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|key| {
-            env::remove_var("GEMINI_API_KEY");
+            crate::security::scrub_env("GEMINI_API_KEY");
             SecretString::from(key)
         });
 
         let openai_api_key = env::var("OPENAI_API_KEY").ok().map(|key| {
-            env::remove_var("OPENAI_API_KEY");
+            crate::security::scrub_env("OPENAI_API_KEY");
             SecretString::from(key)
         });
 
         let anthropic_api_key = env::var("ANTHROPIC_API_KEY").ok().map(|key| {
-            env::remove_var("ANTHROPIC_API_KEY");
+            crate::security::scrub_env("ANTHROPIC_API_KEY");
             SecretString::from(key)
         });
 
@@ -190,7 +190,7 @@ impl AiomeConfig {
             abyss_vault_path,
             vault_path,
             tremendous_api_key: env::var("TREMENDOUS_API_KEY").ok().map(|key| {
-                env::remove_var("TREMENDOUS_API_KEY");
+                crate::security::scrub_env("TREMENDOUS_API_KEY");
                 SecretString::from(key)
             }),
             master_email: env::var("MASTER_EMAIL").ok(),

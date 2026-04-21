@@ -70,7 +70,7 @@ pub async fn get_llm_provider(
             match provider_type.as_str() {
                 "gemini" => {
                     let api_key = if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-                        std::env::remove_var("GEMINI_API_KEY");
+                        shared::security::scrub_env("GEMINI_API_KEY");
                         key
                     } else {
                         db.get_setting_value("llm_api_key")
@@ -85,7 +85,7 @@ pub async fn get_llm_provider(
                 }
                 "openai" => {
                     let api_key = if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-                        std::env::remove_var("OPENAI_API_KEY");
+                        shared::security::scrub_env("OPENAI_API_KEY");
                         key
                     } else {
                         db.get_setting_value("llm_api_key")
@@ -100,7 +100,7 @@ pub async fn get_llm_provider(
                 }
                 "claude" => {
                     let api_key = if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-                        std::env::remove_var("ANTHROPIC_API_KEY");
+                        shared::security::scrub_env("ANTHROPIC_API_KEY");
                         key
                     } else {
                         db.get_setting_value("llm_api_key")

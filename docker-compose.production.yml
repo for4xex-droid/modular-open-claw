@@ -54,6 +54,8 @@ services:
       - NURTURE_API_URL=http://nurture-api:3020
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - GEO_OPTIMIZER_URL=http://geo-optimizer:8080
+      - GEO_ENABLED=${GEO_ENABLED:-true}
     depends_on:
       - key-proxy
       - samsara-hub
@@ -143,3 +145,17 @@ services:
       - /root/.cache:size=2G
     security_opt:
       - no-new-privileges:true
+
+  geo-optimizer:
+    build:
+      context: apps/geo-optimizer
+      dockerfile: Dockerfile
+    deploy: { resources: { limits: { memory: 1G } } }
+    security_opt: ["no-new-privileges:true"]
+    user: "1001:1001"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/openapi.json || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
