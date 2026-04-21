@@ -233,7 +233,8 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 **SeoPulseView**
 - Integrated as a standalone route (`seo-pulse` tab) with `React.lazy()` dynamic import
 - Bundle: Explicitly split via `manualChunks` in `vite.config.ts` for optimal loading
-- Icon: Uses dedicated icon (distinct from other nav items)
+- Visibility: `intermediate` tier and above (hidden from beginners)
+- Icon: Currently shares `Activity` icon with Causal/Audit tabs (tech debt: assign unique icon)
 
 ---
 
