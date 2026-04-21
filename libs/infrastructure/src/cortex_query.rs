@@ -120,7 +120,6 @@ impl CortexQueryEngine {
                 })?;
 
         // 3 & 4. Search in SQLite cortex_concept_index using LIKE and fetch articles
-
         //   Current LIKE '%keyword%' performs a full table scan (O(n)).
         let mut all_article_ids = std::collections::HashSet::new();
         for kw in keywords {
