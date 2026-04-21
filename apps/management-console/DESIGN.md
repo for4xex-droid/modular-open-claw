@@ -23,6 +23,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Primary Background** — `var(--bg-primary)` (#05070a): Root background color for dynamic panels.
 - **Dark Obsidian** — `var(--bg-dark-obsidian)` (#05070a): The deepest canvas. Near-black with a cool blue undertone. Used for the root background.
 - **Sidebar** — `var(--bg-dark-sidebar)` (rgba(10, 12, 18, 0.95)): Translucent dark panel for the navigation sidebar. The 0.95 opacity allows subtle bleed-through.
+- **SeoPulseView** — Integrated as a standalone route, explicitly split via `manualChunks` in Vite to reduce massive bundle overhead.
 - **Glass Heavy** — `var(--bg-glass-heavy)` (rgba(16, 20, 28, 0.8)): Primary glass surface for cards, panels, and containers. Heavy enough to read over, transparent enough to feel layered.
 - **Glass Light** — `var(--bg-glass-light)` (rgba(255, 255, 255, 0.03)): Ultra-subtle hover state background. A whisper of white on dark surfaces.
 - **Deep Glass** — `var(--bg-deep-glass)` (rgba(10, 10, 15, 0.9)): Deep, nearly opaque glass for modals and overlays.

@@ -69,6 +69,7 @@ graph TB
         subgraph "Apps"
             API["api-server (125 endpoints)"]
             MGMT["Management Console (60 screens)"]
+            SEOPULSE["SeoPulseView"]
             PROXY["key-proxy (AbyssVault/WP)"]
             TAURI["Tauri Desktop (計画)"]
         end
@@ -104,6 +105,7 @@ graph TB
             ESCROW_TTL["EscrowTTL (24h 自動返金)"]
             SANDBOX["PythonExecutor"]
             SIDECAR["SidecarLauncher"]
+            TIMESFM["timesfm-sidecar /health"]
             VRAM["VramArbiter"]
             CLONE["CloneManager"]
             P2P_SAFE["P2PSanitizer"]
