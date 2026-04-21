@@ -173,6 +173,8 @@ graph TB
     SIDECAR --> VRAM
     CLONE --> SIDECAR
     P2P_SAFE --> SAMSARA
+    API -->|health check| TIMESFM
+    SEOPULSE --> API
 
     %% 将来統合
     TAURI -.-> PET

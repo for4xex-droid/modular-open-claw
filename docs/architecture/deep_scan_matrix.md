@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-21T22:51:56.371021
+> Generated at: 2026-04-21T23:15:40.295432
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -148,21 +148,25 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `geo-optimizer`
 **REST / Websocket Routes**
+- `/audit`
 - `/health`
 **Key Structs**
 - AuditRequest
 **Python Functions**
-- health_check, test_health_endpoint
+- audit, health_check, test_health_endpoint
 
 ### `shadow-worker`
 **Key Structs**
 - ShadowWorkerService
 
 ### `timesfm-sidecar`
+**REST / Websocket Routes**
+- `/forecast`
+- `/health`
 **Key Structs**
 - ForecastRequest, ForecastResponse
 **Python Functions**
-- __init__, get_api_key, validate_series
+- __init__, forecast, get_api_key, health, lifespan, validate_series
 
 ### `key-proxy`
 **REST / Websocket Routes**
