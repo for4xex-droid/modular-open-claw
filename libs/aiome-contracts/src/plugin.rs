@@ -32,4 +32,9 @@ pub trait AiomePlugin: Send + Sync {
 
     /// 経済エンジン・インターフェースを返す
     fn commerce_engine(&self) -> Option<Arc<dyn CommerceEngine>>;
+
+    /// エージェント実行フックを返す
+    fn agent_hooks(&self) -> Vec<Arc<dyn crate::security::AgentHook>> {
+        vec![]
+    }
 }

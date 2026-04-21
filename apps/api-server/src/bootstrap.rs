@@ -309,6 +309,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         100,
     );
     hook_manager.add_hook(Arc::new(behavior_monitor));
+    // NOTE: Plugin agent hooks are registered here.
+    // Plugins MUST be registered via `plugin_registry.register()` BEFORE this point
+    // for their hooks to be included. Currently Nurture connects OOP via API,
+    // so this will be empty until in-process plugin loading is implemented.
+    for hook in plugin_registry.get_agent_hooks() {
+        hook_manager.add_hook(hook);
+    }
     let hook_manager = Arc::new(hook_manager);
 
     // === 🏗️ STAGE 3/7: Engine ===
@@ -811,6 +818,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             infrastructure::immune_system::AdaptiveImmuneSystem::new(bg_provider.clone()),
         )),
         Some(quality_gate_store.clone()),
+        Some(hook_manager.clone()),
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {

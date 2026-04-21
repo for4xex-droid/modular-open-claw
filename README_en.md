@@ -72,7 +72,7 @@ This is not merely an experiment. It is the result of agents proactively designi
 
 All of the following capabilities are built directly into the OS, not left as plugins:
 
-- 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Includes a "Governed Execution" layer that mandates user intervention for high-risk tool calls.
+- 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Includes a "Governed Execution" layer that mandates user intervention for high-risk tool calls, and introduces a new Formal Verification/Theorem Proving layer powered by OxiLean.
 - 🦠 **Cell-Based Architecture (CBA)**: A robust multi-tenant foundation providing physical path isolation and secret separation via `CELL_ID`. Equipped with multi-layered defenses against path traversal and shell injection vulnerabilities.
 - 🕸️ **GEO Intelligence**: Generative Engine Optimization (GEO) audit engine. Built with an asymmetric Graceful Degradation design to autonomously maintain SEO and publishing pipelines even during infrastructure outages.
 - 🔐 **Zero-Trust Hardening**: Rust 2024 Edition compliant centralized secret purging via `scrub_env`, fortified by comprehensive SSRF defense mechanisms that strictly block IPv4-mapped IPv6 and Link-local addresses.
@@ -144,7 +144,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 | **Core Engine** | Rust | High-speed, memory-safe, and robust security foundation |
 | **Formal Verification** | TLA+ / TLC / Rust TypeState | Mathematical verification of state transitions using TLA+ and model checkers |
 | **Storage** | SQLite | Self-contained operations via a low-dependency embedded database |
-| **Expansion** | WebAssembly (WASM) | Secure skill execution environment under strict network constraints |
+| **Expansion** | WebAssembly / OxiLean | Secure skill execution environment and formal verification under strict network constraints |
 
 ---
 

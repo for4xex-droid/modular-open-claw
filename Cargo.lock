@@ -7166,6 +7166,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxilean-kernel"
+version = "0.1.0"
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9625,6 +9629,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "hex",
+ "oxilean-kernel",
  "reqwest 0.12.28",
  "serde_json",
  "sha2",

@@ -88,4 +88,14 @@ pub trait AgentHook: Send + Sync + std::fmt::Debug {
         request: &crate::llm::LlmRequest,
         response: &crate::llm::LlmResponse,
     ) -> Result<(), crate::error::AiomeError>;
+
+    /// ジョブ完了時に実行されるフック。
+    /// 報酬付与やエスクロー解除等の事後処理に使用される。
+    async fn on_job_completed(
+        &self,
+        _job_id: &str,
+        _status: &str,
+    ) -> Result<(), crate::error::AiomeError> {
+        Ok(())
+    }
 }

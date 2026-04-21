@@ -72,7 +72,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 
 以下のすべての Capability がプラグインではなく、OS に最初から組み込まれています。
 
-- 🛡️ **Trust Layer**: SHA-256 で保護された監査チェーンと、O(1)の境界検証。高リスクなツール呼び出し時にユーザー介入を求める「Governed Execution（統治型実行）」層を新たに統合。
+- 🛡️ **Trust Layer**: SHA-256 で保護された監査チェーンと、O(1)の境界検証。高リスクなツール呼び出し時にユーザー介入を求める「Governed Execution（統治型実行）」層や、OxiLeanによる定理証明/形式検証レイヤーを新たに統合。
 - 🦠 **Cell-Based Architecture (CBA)**: `CELL_ID` によるデータの物理的パス隔離とシークレット分離を備えた堅牢なサンドボックス基盤。パストラバーサル防御やShellインジェクション防御を完備。
 - 🕸️ **GEO Intelligence**: Generative Engine Optimization (GEO) 監査エンジンを搭載。Graceful Degradation（ソフトフォールバック）対応の非対称設計により、インフラ障害時や外部モジュール切断状態でもSEO・パブリッシングパイプラインの品質と継続稼働を自律的に維持する。
 - 🔐 **Zero-Trust Hardening**: Rust 2024 Edition 準拠の環境変数クリア (`scrub_env`) 完全一元化によるシークレットパージ。加えて、IPv4-mapped IPv6 や Link-local アドレス完全遮断による高度な SSRF 防御網を備える。
@@ -144,7 +144,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 | **Core Engine** | Rust | 高速・メモリ安全かつ堅牢なセキュリティ基盤 |
 | **Formal Verification** | TLA+ / TLC / Rust TypeState | 状態遷移のTLA+仕様化とモデルチェッカーによる数学的検証 |
 | **Storage** | SQLite | 依存の少ない組み込みDBによる自己完結型運用 |
-| **Expansion** | WebAssembly (WASM) | ネットワーク制限下での安全なスキル実行環境 |
+| **Expansion** | WebAssembly / OxiLean | ネットワーク制限下での安全なスキル実行環境と形式検証定理証明 |
 
 ---
 

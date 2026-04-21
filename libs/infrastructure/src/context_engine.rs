@@ -29,6 +29,18 @@ pub struct ContextBudget {
     /// ツール実行出力の最大文字数（OutputFilter適用後）
     #[serde(default = "default_tool_output_chars")]
     pub max_tool_output_chars: usize,
+
+    /// 記憶キュレーション: 重要度下限閾値（0.0〜1.0）
+    #[serde(default = "default_curation_threshold")]
+    pub memory_curation_threshold: f64,
+
+    /// 記憶キュレーション: 最大保持エントリ数
+    #[serde(default = "default_max_curated_entries")]
+    pub max_curated_entries: usize,
+
+    /// 適応ウィンドウ: 直近N日のデータを考慮
+    #[serde(default = "default_adaptation_window_days")]
+    pub adaptation_window_days: u32,
 }
 
 fn default_cortex_chars() -> usize {
@@ -37,6 +49,18 @@ fn default_cortex_chars() -> usize {
 
 fn default_tool_output_chars() -> usize {
     4000
+}
+
+fn default_curation_threshold() -> f64 {
+    0.3
+}
+
+fn default_max_curated_entries() -> usize {
+    100
+}
+
+fn default_adaptation_window_days() -> u32 {
+    30
 }
 
 impl Default for ContextBudget {
@@ -50,6 +74,9 @@ impl Default for ContextBudget {
             max_project_rules_chars: 3000,
             max_cortex_chars: default_cortex_chars(),
             max_tool_output_chars: default_tool_output_chars(),
+            memory_curation_threshold: default_curation_threshold(),
+            max_curated_entries: default_max_curated_entries(),
+            adaptation_window_days: default_adaptation_window_days(),
         }
     }
 }
@@ -310,14 +337,25 @@ impl ContextEngine {
             .fetch_relevant_karma_by_category("RAG Context", category, limit)
             .await?;
 
-        let mood = Self::calculate_mood_summary(&facts.entries);
+        let budget = ContextBudget::default();
+        let filtered_entries: Vec<_> = facts
+            .entries
+            .into_iter()
+            .filter(|entry| {
+                if let Some(valence) = entry.somatic_valence {
+                    valence.abs() >= budget.memory_curation_threshold
+                } else {
+                    true
+                }
+            })
+            .take(budget.max_curated_entries)
+            .collect();
+
+        let mood = Self::calculate_mood_summary(&filtered_entries);
         let safe_summary = summary.map(|s| sanitize_for_prompt(&s));
 
-        // Get budget
-        let budget = ContextBudget::default();
-
         let mut fact_block = String::new();
-        for entry in facts.entries {
+        for entry in filtered_entries {
             let safe_lesson = sanitize_for_prompt(&entry.lesson);
             let line = format!("- {}", safe_lesson);
             if !fact_block.is_empty() && fact_block.len() + line.len() + 1 > budget.max_karma_chars
@@ -341,10 +379,10 @@ impl ContextEngine {
             .collect::<Vec<_>>()
             .join("\n");
 
-        let final_history = if history_text.len() > 4000 {
+        let final_history = if history_text.len() > budget.max_history_chars {
             format!(
                 "{}... (truncated)",
-                shared::strings::truncate_bytes_safely(&history_text, 4000)
+                shared::strings::truncate_bytes_safely(&history_text, budget.max_history_chars)
             )
         } else {
             history_text
@@ -391,12 +429,26 @@ impl ContextEngine {
         // limit を多くして取得し、バジェットに収まるようにトリミング
         let karma = self
             .job_queue
-            .fetch_relevant_karma_by_category("Context Search", category, 10)
+            .fetch_relevant_karma_by_category("Context Search", category, 100)
             .await?;
-        let mood = Self::calculate_mood_summary(&karma.entries);
+
+        let filtered_entries: Vec<_> = karma
+            .entries
+            .into_iter()
+            .filter(|entry| {
+                if let Some(valence) = entry.somatic_valence {
+                    valence.abs() >= budget.memory_curation_threshold
+                } else {
+                    true
+                }
+            })
+            .take(budget.max_curated_entries)
+            .collect();
+
+        let mood = Self::calculate_mood_summary(&filtered_entries);
 
         let mut karma_text = String::new();
-        for entry in karma.entries {
+        for entry in filtered_entries {
             let safe_lesson = sanitize_for_prompt(&entry.lesson);
             let line = format!("- {}\n", safe_lesson);
             if karma_text.len() + line.len() > budget.max_karma_chars {
@@ -415,9 +467,10 @@ impl ContextEngine {
 
             // RT-8: メッセージ単位での切り詰め (1メッセージが巨大すぎる場合の保護)
             let safe_content = if content.len() > budget.max_history_chars {
-                &content[..budget.max_history_chars]
+                shared::strings::truncate_bytes_safely(content, budget.max_history_chars)
+                    .into_owned()
             } else {
-                content
+                content.to_string()
             };
 
             let line = format!("{}: {}\n", role, safe_content);

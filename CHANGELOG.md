@@ -1,4 +1,16 @@
 ## [Unreleased]
+  - **OxiLean Formal Verification Integration (Phase 0-1, TDD + Reflexion x4)**:
+    - **`vendor/oxilean-kernel` 導入**: OxiLean (CiC 定理証明器) の kernel クレートを `vendor/` にコピー・隔離。`Cargo.toml` の `workspace.exclude` で Aiome ワークスペースからの分離を確保。`version.workspace = true` 等の上流ワークスペース参照を実値にハードコード書き換え。
+    - **`ProofVerifier` gRPC サービス新設**: `a2a_internal.proto` に `ProofVerifier` サービス（`VerifyProof` RPC）を追加。`aiome-contracts` と `aiome-core-contracts` の proto ファイルを同期。
+    - **`OxiLeanProofService` 実装 (shadow-worker)**: 4重防御アーキテクチャ — (1) `A2A_AUTH_TOKEN` による認証チェック、(2) `Semaphore` による CPU 占有防止、(3) `tokio::time::timeout` による実行時間制限（デフォルト10秒）、(4) `catch_unwind` + `AssertUnwindSafe` によるカーネルパニック安全復旧。環境変数 `OXILEAN_PROOF_TIMEOUT_SECS` / `OXILEAN_PROOF_SEMAPHORE_PERMITS` で構成可能。ログインジェクション防止のための入力サニタイズ実装。
+    - **8 テストケース (8/8 PASS)**: 正常証明成功、無認証拒否、不正トークン拒否、タイムアウトパス検証、セマフォ枯渇テスト、制御文字サニタイズ、`Environment` の `Send+Sync` 検証、構築テスト。
+  - **Agentic AI Adaptation Framework Integration (Reflexion x3, Score 96/100)**:
+    - **AgentHook Architecture**: `AiomePlugin` トレイトに `agent_hooks()` を追加し、プラグインベースのフック登録メカニズムを確立。`bootstrap.rs` にてプラグインレジストリ初期化直後に自動登録。
+    - **NurtureAgentHook (Project-Nurture Synergy)**: `NurturePlugin` に `NurtureAgentHook` を実装し、ジョブ完了時に `KarmaForge::cross_synthesize` による自動合成をトリガー。
+    - **HookManager ベストエフォート化**: `trigger_job_completed` を個別フック障害隔離型に変更。1フックの失敗がシステム全体を停止させない設計を確立（`tracing::warn!` による監査ログ記録）。
+    - **GAP-5 CognitiveSentinel**: シャノンエントロピー計算のビンインデックスに `clamp(0, bins-1)` を適用し、浮動小数点境界でのOOBパニックを根絶。4件の境界ユニットテスト追加。
+    - **GAP-3 ContextEngine UTF-8 安全化**: 履歴切り詰め処理の raw バイトスライス (`&str[..N]`) を `shared::strings::truncate_bytes_safely` に全置換。マルチバイト文字境界パニックを物理的に排除。マジックナンバー `4000` を `budget.max_history_chars` に置換。
+    - **GAP-1 SkillMaturity Display**: `SkillMaturity` に `Display` トレイトを実装。`Quarantined` 状態への明示的マッチングと、未知状態へのフォールバック処理を追加。昇格操作の安全性ドキュメントを付与。
   - **Infrastructure Gap Closure & Reflexion (TDD)**:
     - **`TIMESFM_SIDECAR_URL` ヘルスチェック追加**: `bootstrap.rs` の `bootstrap_status` エンドポイントに `timesfm-sidecar` のヘルスチェックを追加。`GEO_OPTIMIZER_URL` と同様の `check_sidecar_health` パターン（2秒タイムアウト、`not_configured`/`unreachable` フォールバック）を適用。シリアライゼーションテストも拡張。
     - **`nurture_auditor.py` Pydantic `BaseModel` クラス抽出**: `analyze_py_file` に `ast.ClassDef` 解析を追加。直接 import (`class Foo(BaseModel)`) とドット import (`class Foo(pydantic.BaseModel)`) の両パターンに対応する型安全な `isinstance` チェーンを実装。抽出結果は既存の `app_data["structs"]` に統合され、`deep_scan_matrix.md` の AST マトリクスに Python 型定義として出現。偽陽性防止テスト(`DatabaseBase` 排除)を含む3テストケースで検証済み。

@@ -1,0 +1,27 @@
+[package]
+name = "oxilean-kernel"
+version = "0.1.0"
+edition = "2021"
+authors = ["COOLJAPAN OU"]
+license = "Apache-2.0"
+repository = "https://github.com/cool-japan/oxilean"
+rust-version = "1.80"
+homepage = "https://github.com/cool-japan/oxilean"
+documentation = "https://docs.rs/oxilean-kernel"
+description = "OxiLean kernel - The trusted computing base for type checking"
+readme = "README.md"
+keywords = ["theorem-prover", "lean", "type-theory", "kernel", "dependent-types"]
+categories = ["science", "development-tools"]
+
+[lib]
+name = "oxilean_kernel"
+path = "src/lib.rs"
+
+[dependencies]
+# ZERO external dependencies - this is the TCB (Trusted Computing Base)
+
+[dev-dependencies]
+# Test-only dependencies are allowed
+
+[features]
+default = []

@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-21T23:22:15.224950
+> Generated at: 2026-04-22T22:44:06.404582
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -157,7 +157,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `shadow-worker`
 **Key Structs**
-- ShadowWorkerService
+- OxiLeanProofService, ShadowWorkerService
 
 ### `timesfm-sidecar`
 **REST / Websocket Routes**

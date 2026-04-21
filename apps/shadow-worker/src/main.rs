@@ -8,15 +8,20 @@ use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
 use aiome_core_contracts::a2a::internal::{
     ExecuteTaskRequest, TaskProgress,
     docker_conductor_server::{DockerConductor, DockerConductorServer},
+    proof_verifier_server::ProofVerifierServer,
 };
 use base64::{Engine as _, engine::general_purpose};
 use sha2::{Digest, Sha256};
 use std::env;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, transport::Server};
 use tracing::info;
+
+mod proof_service;
 
 pub struct ShadowWorkerService {
     auth_token: String,
@@ -184,15 +189,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gemini_api_key = env::var("GEMINI_API_KEY").ok();
     shared::security::scrub_env("GEMINI_API_KEY");
 
+    let proof_auth_token = auth_token.clone();
+
     let worker = ShadowWorkerService {
         auth_token,
         gemini_api_key,
     };
 
+    let proof_timeout_secs: u64 = env::var("OXILEAN_PROOF_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10);
+    let proof_semaphore_permits: usize = env::var("OXILEAN_PROOF_SEMAPHORE_PERMITS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+
+    let proof_service = proof_service::OxiLeanProofService::new(
+        proof_auth_token,
+        Duration::from_secs(proof_timeout_secs),
+        Arc::new(tokio::sync::Semaphore::new(proof_semaphore_permits)),
+    );
+
     // Setup health check server (Threat #38 mitigation)
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
     health_reporter
         .set_serving::<DockerConductorServer<ShadowWorkerService>>()
+        .await;
+    health_reporter
+        .set_serving::<ProofVerifierServer<proof_service::OxiLeanProofService>>()
         .await;
 
     info!("Shadow Worker listening on {}", addr);
@@ -200,6 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(health_service)
         .add_service(DockerConductorServer::new(worker))
+        .add_service(ProofVerifierServer::new(proof_service))
         .serve(addr)
         .await?;
 

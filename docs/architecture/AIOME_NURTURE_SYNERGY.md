@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-20
+> **最終更新**: 2026-04-22
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -55,6 +55,7 @@ graph TB
             AVATAR["AvatarEngine"]
             VISION["VisionProvider (計画)"]
             SKILL["SkillForge (WASM)"]
+            FORMAL["ProofVerifier (OxiLean)"]
             MCP_REG["RegistryManager (MCP)"]
             TREND["TrendSonar (X/Serp)"]
             EVAL["EvaluationLogger (Telemetry)"]
@@ -686,6 +687,7 @@ graph TB
         A3["PathSandbox — ファイルシステム隔離"]
         A4["IntentFirewall — MCP インテント検証"]
         A5["container_runtime — ランタイム検出 SSOT"]
+        A6["ProofVerifier — OxiLean形式検証/Sandbox"]
     end
 
     subgraph "Trust Zone B (NURTURE)"

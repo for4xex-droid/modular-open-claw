@@ -58,6 +58,10 @@ impl PluginRegistry {
             .collect()
     }
 
+    pub fn get_agent_hooks(&self) -> Vec<Arc<dyn aiome_core_contracts::security::AgentHook>> {
+        self.plugins.iter().flat_map(|p| p.agent_hooks()).collect()
+    }
+
     pub fn check_env_vars(&self) -> bool {
         let mut missing = false;
         for plugin in &self.plugins {

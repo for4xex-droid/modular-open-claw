@@ -110,6 +110,25 @@ pub struct SkillMetadata {
     pub permissions: crate::security::PermissionManifest,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SkillMaturity {
+    Quarantined, // dry-run未通過
+    Probation,   // 通過済みだが実績 < 5
+    Trusted,     // 実績 >= 5 & 成功率 > 80%
+    Veteran,     // 実績 >= 50 & 成功率 > 95%
+}
+
+impl std::fmt::Display for SkillMaturity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SkillMaturity::Quarantined => write!(f, "Quarantined"),
+            SkillMaturity::Probation => write!(f, "Probation"),
+            SkillMaturity::Trusted => write!(f, "Trusted"),
+            SkillMaturity::Veteran => write!(f, "Veteran"),
+        }
+    }
+}
+
 /// `WasmSkillManager` 構造体
 pub struct WasmSkillManager {
     skills_dir: PathBuf,
@@ -118,6 +137,7 @@ pub struct WasmSkillManager {
     memory_limit_bytes: u64,
     timeout: Duration,
     wasm_cache: std::sync::RwLock<HashMap<String, (Vec<u8>, SystemTime)>>,
+    db_pool: Option<crate::db::DatabasePool>,
 }
 
 impl WasmSkillManager {
@@ -138,7 +158,14 @@ impl WasmSkillManager {
             memory_limit_bytes: 10 * 1024 * 1024, // 10MB default
             timeout: Duration::from_millis(5000), // 5s default
             wasm_cache: std::sync::RwLock::new(HashMap::new()),
+            db_pool: None,
         })
+    }
+
+    /// DB 連携設定
+    pub fn with_database(mut self, pool: crate::db::DatabasePool) -> Self {
+        self.db_pool = Some(pool);
+        self
     }
 
     /// 隔離領域を設定する
@@ -152,6 +179,66 @@ impl WasmSkillManager {
         self.memory_limit_bytes = memory_bytes;
         self.timeout = timeout;
         self
+    }
+
+    pub async fn get_skill_maturity(
+        &self,
+        skill_name: &str,
+    ) -> Result<SkillMaturity, Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(pool) = &self.db_pool {
+            let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+            let row: Option<(String,)> =
+                sqlx::query_as("SELECT maturity FROM skill_maturity WHERE skill_name = ?")
+                    .bind(skill_name)
+                    .fetch_optional(sqlite_pool)
+                    .await?;
+            if let Some((maturity_str,)) = row {
+                return Ok(match maturity_str.as_str() {
+                    "Quarantined" => SkillMaturity::Quarantined,
+                    "Probation" => SkillMaturity::Probation,
+                    "Trusted" => SkillMaturity::Trusted,
+                    "Veteran" => SkillMaturity::Veteran,
+                    unknown => {
+                        tracing::warn!(
+                            "Unknown skill maturity '{}' for '{}', defaulting to Quarantined",
+                            unknown,
+                            skill_name
+                        );
+                        SkillMaturity::Quarantined
+                    }
+                });
+            }
+        }
+        Ok(SkillMaturity::Quarantined)
+    }
+
+    /// スキルの成熟度を更新する。
+    ///
+    /// # Safety
+    /// このメソッドは TypeState 階段を迂回せずに直接是正度を設定できる。
+    /// 呼び出し元は必ず成功率バリデーションを行った上で呼び出すこと。
+    pub async fn promote_skill_maturity(
+        &self,
+        skill_name: &str,
+        new_maturity: SkillMaturity,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(pool) = &self.db_pool {
+            let maturity_str = new_maturity.to_string();
+            let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+            sqlx::query(
+                "INSERT INTO skill_maturity (skill_name, maturity, promotion_count, last_promoted_at) 
+                 VALUES (?, ?, 1, datetime('now'))
+                 ON CONFLICT(skill_name) DO UPDATE SET 
+                    maturity=excluded.maturity,
+                    promotion_count=skill_maturity.promotion_count+1,
+                    last_promoted_at=datetime('now')"
+            )
+            .bind(skill_name)
+            .bind(&maturity_str)
+            .execute(sqlite_pool)
+            .await?;
+        }
+        Ok(())
     }
 
     /// スキルキャッシュをクリアし、最新のスキル一覧を再取得する

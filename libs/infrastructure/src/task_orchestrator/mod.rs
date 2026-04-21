@@ -118,6 +118,7 @@ pub struct TaskDispatcher {
     diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
     immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
     quality_gate_store: Option<Arc<dyn crate::quality_gate_store::QualityGateStore>>,
+    pub(crate) hook_manager: Option<Arc<crate::security::hook_manager::HookManager>>,
 }
 
 impl TaskDispatcher {
@@ -135,6 +136,7 @@ impl TaskDispatcher {
         diagnostics: Option<Arc<crate::diagnostics::AgentRxDiagnostics>>,
         immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
         quality_gate_store: Option<Arc<dyn crate::quality_gate_store::QualityGateStore>>,
+        hook_manager: Option<Arc<crate::security::hook_manager::HookManager>>,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(256);
 
@@ -244,6 +246,7 @@ impl TaskDispatcher {
             diagnostics,
             immune_system,
             quality_gate_store,
+            hook_manager,
         }
     }
 
@@ -532,6 +535,7 @@ impl TaskDispatcher {
                         let gig_engine_clone = self.gig_engine.clone();
                         let validator_clone = self.validator.clone();
                         let diagnostics_clone = self.diagnostics.clone();
+                        let hooks_clone = self.hook_manager.clone();
                         tokio::spawn(async move {
                             // Phase 48-D: Invariant-DAG Verification before execution
                             if let Some(directives_str) = &job.karma_directives {
@@ -602,7 +606,7 @@ impl TaskDispatcher {
                                 result = conductor_clone.conduct(job.clone(), progress_tx.clone()) => {
                                     match result {
                                         Ok((out, result_hash_opt)) => {
-                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>| async move {
+                                            let do_completion = |q: Arc<dyn JobQueue>, p_tx: mpsc::Sender<TaskEvent>, j_id: String, res_out: String, r_hash_opt: Option<String>, k_dirs: Option<String>, c_name: String, g_engine_opt: Option<Arc<dyn aiome_core_contracts::gig::GigEngine>>, validator_opt: Option<Arc<dyn aiome_core_contracts::traits::ConstitutionalValidator>>, hooks: Option<Arc<crate::security::hook_manager::HookManager>>| async move {
                                                 if let Err(e) = q.complete_job(&j_id, Some(&res_out)).await {
                                                     error!("Failed to mark job {} as completed in DB: {}", j_id, e);
                                                 }
@@ -614,6 +618,12 @@ impl TaskDispatcher {
                                                     .await
                                                 {
                                                     tracing::warn!("Failed to send completed event for {}: {}", j_id, e);
+                                                }
+
+                                                if let Some(hm) = &hooks {
+                                                    if let Err(e) = hm.trigger_job_completed(&j_id, "completed").await {
+                                                        tracing::warn!("Job completion hook failed for {}: {}", j_id, e);
+                                                    }
                                                 }
 
                                                 if let Some(result_hash) = r_hash_opt {
@@ -677,7 +687,7 @@ impl TaskDispatcher {
                                                         Ok(Ok(verdict)) => {
                                                             if verdict.should_evolve {
                                                                 info!("✅ Job {} passed Oracle review.", j_id);
-                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone()).await;
+                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone(), hooks_clone.clone()).await;
                                                             } else {
                                                                 let reason = verdict.reasoning.clone();
                                                                 warn!("❌ Job {} failed Oracle review: {}", j_id, reason);
@@ -712,7 +722,7 @@ impl TaskDispatcher {
                                                     }
                                                 });
                                             } else {
-                                                do_completion(job_queue_clone.clone(), progress_tx.clone(), job_id.clone(), out, result_hash_opt, karma_directives.clone(), conductor_clone.conductor_name().to_string(), gig_engine_clone, validator_clone.clone()).await;
+                                                do_completion(job_queue_clone.clone(), progress_tx.clone(), job_id.clone(), out, result_hash_opt, karma_directives.clone(), conductor_clone.conductor_name().to_string(), gig_engine_clone, validator_clone.clone(), hooks_clone.clone()).await;
                                             }
                                         }
                                         Err(e) => {
@@ -1123,6 +1133,7 @@ mod tests {
             None, // diagnostics
             None, // immune_system
             None, // quality_gate_store
+            None, // hook_manager
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1215,6 +1226,7 @@ mod tests {
             None,
             None,
             None,
+            None, // hook_manager
         );
         dispatcher.register_conductor(Arc::new(CancelTestConductor));
 
@@ -1336,6 +1348,7 @@ mod tests {
             None,
             None,
             None,
+            None, // hook_manager
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1384,6 +1397,7 @@ mod tests {
             None,
             None,
             None,
+            None, // hook_manager
         );
         dispatcher.register_conductor(Arc::new(TestConductor));
 
@@ -1496,6 +1510,7 @@ mod tests {
             Some(diag_engine),
             None,
             None, // quality_gate_store
+            None, // hook_manager
         );
         dispatcher.register_conductor(Arc::new(FailingConductor));
         let _handle = tokio::spawn(async move {
@@ -1569,6 +1584,7 @@ mod tests {
             None,
             None,
             None,
+            None, // hook_manager
         );
         // Register NO conductors so we fall into the else block.
 
@@ -1701,6 +1717,7 @@ mod tests {
             None,
             Some(immune_system),
             None, // quality_gate_store
+            None, // hook_manager
         );
         let mut rx = dispatcher.subscribe_events();
         dispatcher.register_conductor(Arc::new(TestConductor));

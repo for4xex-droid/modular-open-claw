@@ -608,6 +608,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                     infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone()),
                 )), // immune_system
                 None, // quality_gate_store
+                None, // hook_manager
             );
 
             // Register conductors for integration tests

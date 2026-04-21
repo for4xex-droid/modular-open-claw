@@ -47,6 +47,31 @@ impl HookManager {
         }
         Ok(())
     }
+
+    /// ジョブ完了時のフック通知（ベストエフォート）。
+    /// `on_pre_execute` と異なり、1つのフックの失敗が残りのフックをブロックしない。
+    pub async fn trigger_job_completed(
+        &self,
+        job_id: &str,
+        status: &str,
+    ) -> Result<(), AiomeError> {
+        let mut last_error: Option<AiomeError> = None;
+        for hook in &self.hooks {
+            if let Err(e) = hook.on_job_completed(job_id, status).await {
+                tracing::warn!(
+                    "⚠️ [HookManager] Hook {:?} failed on job_completed({}): {}",
+                    hook,
+                    job_id,
+                    e
+                );
+                last_error = Some(e);
+            }
+        }
+        match last_error {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -57,6 +82,7 @@ mod tests {
     #[derive(Debug)]
     struct MockHook {
         pre_called: std::sync::atomic::AtomicBool,
+        job_completed_called: std::sync::atomic::AtomicBool,
     }
 
     #[async_trait]
@@ -73,6 +99,11 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn on_job_completed(&self, _job_id: &str, _status: &str) -> Result<(), AiomeError> {
+            self.job_completed_called
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        }
     }
 
     #[tokio::test]
@@ -80,6 +111,7 @@ mod tests {
         let mut manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -101,5 +133,23 @@ mod tests {
             .await
             .expect("Hook should pass"); // allow-anti-pattern
         assert!(hook.pre_called.load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_executes_job_completed_hooks() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        manager
+            .trigger_job_completed("job-42", "completed")
+            .await
+            .expect("Hook should pass");
+        assert!(hook
+            .job_completed_called
+            .load(std::sync::atomic::Ordering::SeqCst));
     }
 }

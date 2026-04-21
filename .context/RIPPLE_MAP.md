@@ -1,5 +1,73 @@
 # 🌊 Aiome Ripple Map
 
+## OxiLean Formal Verification Integration (Phase 0-1)
+### 1. `vendor/oxilean-kernel` 導入 & Cargo.toml 隔離
+- **変更内容**:
+    - `vendor/oxilean-kernel/` [NEW]: OxiLean CiC kernel (Apache-2.0, 0-deps TCB) をコピー配置。
+    - `vendor/oxilean-kernel/Cargo.toml` [MODIFY]: `version.workspace = true` 等の上流参照を実値にハードコード。
+    - `Cargo.toml` (workspace root) [MODIFY]: `exclude = ["vendor/*"]` を追加。
+- **波及効果**:
+    - `vendor/oxilean-kernel` は Aiome ワークスペースの `member` ではない。`cargo check --workspace` の対象外。
+    - `shadow-worker/Cargo.toml` が `path = "../../vendor/oxilean-kernel"` で参照するため、shadow-worker のビルドグラフに含まれる。
+    - 上流 OxiLean のアップデート適用時は、`vendor/` のファイルを手動で更新し、`Cargo.toml` の workspace 参照解消を再実施する必要あり。
+
+### 2. `ProofVerifier` gRPC Service & Proto 拡張
+- **変更内容**:
+    - `libs/aiome-contracts/proto/a2a_internal.proto` [MODIFY]: `ProofVerifier` service、`ProofRequest`、`ProofResult` message を追加。
+    - `libs/aiome-core-contracts/proto/a2a_internal.proto` [MODIFY]: 上記と完全同期。
+- **波及効果**:
+    - `aiome-contracts` / `aiome-core-contracts` の `cargo build` で tonic codegen が `ProofVerifierServer` / `ProofVerifierClient` を自動生成。
+    - 既存 `DockerConductor` service には影響なし（proto3 の service 追加は後方互換）。
+    - `api-server` 側が将来 `ProofVerifierClient` を使用する場合、`aiome-contracts` への依存のみで利用可能。
+
+### 3. `OxiLeanProofService` (shadow-worker)
+- **変更内容**:
+    - `apps/shadow-worker/src/proof_service.rs` [NEW]: `OxiLeanProofService` struct + `ProofVerifier` trait impl。3重防御 (timeout + catch_unwind + semaphore)。4 テストケース。
+    - `apps/shadow-worker/src/main.rs` [MODIFY]: `mod proof_service` 追加。`ProofVerifierServer` を gRPC ルータに登録。`OXILEAN_PROOF_TIMEOUT_SECS` / `OXILEAN_PROOF_SEMAPHORE_PERMITS` 環境変数読み取り。
+    - `apps/shadow-worker/Cargo.toml` [MODIFY]: `oxilean-kernel` 依存追加。
+- **波及効果**:
+    - `api-server` の `AppState` に `proof_semaphore` フィールドを追加する場合、`api_integration_tests.rs` の `create_test_server()` (L489, L665) にもフィールド追加が必要。
+    - `Dockerfile.shadow-worker` の `COPY . .` は `.dockerignore` に `vendor/` が含まれないため、ビルドコンテキストに自動的に含まれる。
+
+## Agentic AI Adaptation Framework (Reflexion x3)
+### 1. AgentHook Architecture & NurtureAgentHook
+- **変更内容**:
+    - `libs/aiome-contracts/src/plugin.rs` [MODIFY]: `AiomePlugin` トレイトに `agent_hooks()` メソッドを追加（デフォルト実装あり: 空 Vec）。
+    - `apps/api-server/src/plugin_loader.rs` [MODIFY]: `PluginRegistry::get_agent_hooks()` を実装。全登録プラグインから `AgentHook` を収集。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: プラグインレジストリ初期化直後に `HookManager` へフック自動登録。
+    - `Project-Nurture/apps/nurture-api/src/plugin.rs` [MODIFY]: `NurtureAgentHook` を実装。ジョブ完了時に `KarmaForge::cross_synthesize` をトリガー。
+- **波及効果**:
+    - 新規プラグイン追加時: `agent_hooks()` をオーバーライドすれば自動的に `HookManager` に登録される。プラグインコード以外の変更は不要。
+    - `HookManager::trigger_job_completed` の呼び出し元を変更する場合は、ベストエフォート型の失敗分離設計を維持すること。
+
+### 2. HookManager ベストエフォート化
+- **変更内容**:
+    - `libs/infrastructure/src/security/hook_manager.rs` [MODIFY]: `trigger_job_completed` をショートサーキット型から個別障害分離型に変更。`tracing::warn!` で失敗フックを記録。
+- **波及効果**:
+    - `trigger_pre_execution` / `trigger_post_execution` には未適用。これらはセキュリティゲートとして失敗時にブロックする設計を維持。
+    - フック追加時に全フック成功を前提としたロジックを組まないこと。
+
+### 3. GAP-5 CognitiveSentinel エントロピー修正
+- **変更内容**:
+    - `libs/infrastructure/src/cognitive_sentinel.rs` [MODIFY]: `calculate_entropy` のビンインデックスに `clamp(0, bins-1)` を適用。診断ステップの論理順序を再配置。4件の境界テスト追加。
+- **波及効果**:
+    - `CognitiveSentinel` を呼び出す `HookChain` / `DreamState` は変更不要。戻り値の型に変更なし。
+    - `ContextBudget` のデフォルト値はエージェントの思考ログを分析し必要に応じて調整すること。
+
+### 4. GAP-3 ContextEngine UTF-8 安全化
+- **変更内容**:
+    - `libs/infrastructure/src/context_engine.rs` [MODIFY]: 履歴切り詰めの raw バイトスライスを `shared::strings::truncate_bytes_safely` に置換。マジックナンバー `4000` を `budget.max_history_chars` に置換。
+- **波及効果**:
+    - `fetch_budgeted_context` / `get_context_with_facts` の呼び出し元は変更不要。内部挙動のみ安全化。
+    - `ContextBudget::max_history_chars` のデフォルト値変更は `context_engine.rs` の `impl Default for ContextBudget` に影響。
+
+### 5. GAP-1 SkillMaturity Display & Quarantined 明示化
+- **変更内容**:
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: `SkillMaturity` に `Display` トレイト実装。`Quarantined` への明示的マッチブランチ追加。昇格メソッドの安全性ドキュメント付与。
+- **波及効果**:
+    - `WasmSkillManager` の DB 保存/読み込みは `Display` 出力を使用。新しい `SkillMaturity` バリアント追加時は `Display` と `FromStr`（該当する場合）の両方を同期すること。
+    - 昇格操作は呼び出し元で成功率バリデーションを必須とする（TypeState 直接操作のため）。
+
 ## Infrastructure Gap Closure (TDD + Reflexion x2)
 ### 1. TIMESFM Sidecar Health Check Integration
 - **変更内容**:
