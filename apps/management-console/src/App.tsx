@@ -227,7 +227,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'biome', 'causal', 'lora'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'biome', 'causal', 'lora', 'seo-pulse'];
     const advanced = [...intermediate, 'graph', 'audit', 'prompt-stats', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -366,6 +366,14 @@ function App() {
               label={t('nav.causalTrace')}
               active={activeTab === "causal"}
               onClick={() => setActiveTab("causal")}
+            />
+          )}
+          {isVisible("seo-pulse") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label={t('nav.seoPulse')}
+              active={activeTab === "seo-pulse"}
+              onClick={() => setActiveTab("seo-pulse")}
             />
           )}
           {isVisible("artifacts") && (
@@ -537,6 +545,7 @@ function App() {
             {activeTab === "graph" && t('page.resonanceMap')}
             {activeTab === "immune" && t('page.immuneSystem')}
             {activeTab === "agent" && t('page.agentConsole')}
+            {activeTab === "seo-pulse" && t('page.seoPulse')}
             {activeTab === "cortex" && t('page.cortex')}
             {activeTab === "vault" && t('page.skillVault')}
             {activeTab === "artifacts" && t('page.artifactVault')}
@@ -571,12 +580,8 @@ function App() {
               {activeTab === "karma" && <Timeline />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
-              {activeTab === "agent" && (
-                <>
-                  <AgentConsole sessionSavedChars={sessionSavedChars} />
-                  <SeoPulseView />
-                </>
-              )}
+              {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
+              {activeTab === "seo-pulse" && <SeoPulseView />}
               {activeTab === "cortex" && <CortexView />}
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}

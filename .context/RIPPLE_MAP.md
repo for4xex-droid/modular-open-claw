@@ -1,5 +1,37 @@
 # 🌊 Aiome Ripple Map
 
+## Infrastructure Gap Closure (TDD + Reflexion x2)
+### 1. TIMESFM Sidecar Health Check Integration
+- **変更内容**:
+    - `apps/api-server/src/routes/bootstrap.rs` [MODIFY]: `bootstrap_status` ハンドラに `TIMESFM_SIDECAR_URL` のヘルスチェックを追加。`check_sidecar_health("timesfm-sidecar", ...)` を `geo-optimizer` の直後に挿入。テストケースも `timesfm-sidecar` エントリを含むように拡張。
+- **波及効果**:
+    - フロントエンド `SeoPulseView.tsx` は既に `sidecar_status` 配列から名前ベースでフィルタリングしているため、新しい `timesfm-sidecar` エントリは自動的に利用可能。ただし `SeoPulseView` は `geo-optimizer` のみを `find()` しているため、TimesFM の表示を追加する場合は別途修正が必要。
+    - `.env.example` の `TIMESFM_SIDECAR_URL` (L205) は既に存在するため追加不要。
+
+### 2. nurture_auditor.py Pydantic BaseModel AST Extraction
+- **変更内容**:
+    - `scripts/nurture_auditor.py` [MODIFY]: `analyze_py_file` に `ast.ClassDef` 走査を追加。`isinstance(base, ast.Name) and base.id == 'BaseModel'`（直接 import）と `isinstance(base, ast.Attribute) and base.attr == 'BaseModel'`（ドット import）の2パターン対応。抽出されたクラスは `app_data["structs"]` に統合。
+- **波及効果**:
+    - `scripts/impact_query.py` の BFS 探索グラフにおいて、Python クラス（Pydantic モデル）がノードとして出現するようになる。これにより `impact_query.py AuditRequest` のようなクエリが可能に。
+    - `deep_scan_matrix.md` の `geo-optimizer` セクションに `AuditRequest` が `Key Structs` として出現。
+
+### 3. SeoPulseView Sidebar Routing Integration
+- **変更内容**:
+    - `apps/management-console/src/App.tsx` [MODIFY]: `intermediate` ビューモード配列に `'seo-pulse'` を追加。サイドバー NavItem、ヘッダータイトルマッピング（`t('page.seoPulse')`）、コンテンツルーティングを独立タブとして統合。`agent` タブ内の `<SeoPulseView />` ハードコード描画を廃止。
+    - `apps/management-console/src/i18n/en.json` [MODIFY]: `nav.seoPulse` ("SEO Pulse") と `page.seoPulse` ("SEO Pulse Dashboard") を追加。
+    - `apps/management-console/src/i18n/ja.json` [MODIFY]: `nav.seoPulse` ("SEO パルス") と `page.seoPulse` ("SEO パルスダッシュボード") を追加。
+- **波及効果**:
+    - `intermediate` モードのユーザーが `seo-pulse` タブにアクセス可能になる。`beginner` モードからは見えない。`advanced` モードからは `intermediate` を継承するため自動的にアクセス可能。
+    - `SeoPulseView` コンポーネントに props を追加する場合は、`App.tsx` L584 の `<SeoPulseView />` 呼び出しを同時更新する必要がある。
+
+### 4. Vite manualChunks Optimization
+- **変更内容**:
+    - `apps/management-console/vite.config.ts` [MODIFY]: `build.rollupOptions.output.manualChunks` を追加し、`vendor` / `ui` / `network` の3チャンクを定義。
+- **波及効果**:
+    - `index.js` のサイズが 1,307KB → 1,164KB に削減（11% 改善）。ただし `vis-network` (521KB) は `network` チャンクとして分離されたのみでサイズ自体は変わらない。
+    - Tauri デスクトップビルドでは全チャンクがバンドルされるため影響なし。Web デプロイ時のみ初期ロード時間が改善。
+
+
 ## Quality Gate History API & Frontend Integration (Reflexion x3)
 ### 1. Quality Gate History Endpoint & SeoPulseView Merge
 - **変更内容**:

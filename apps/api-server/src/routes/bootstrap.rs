@@ -72,6 +72,16 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
     sidecar_status
         .push(check_sidecar_health("geo-optimizer", &geo_url, state.http_client.get_inner()).await);
 
+    let timesfm_url = std::env::var("TIMESFM_SIDECAR_URL").unwrap_or_default();
+    sidecar_status.push(
+        check_sidecar_health(
+            "timesfm-sidecar",
+            &timesfm_url,
+            state.http_client.get_inner(),
+        )
+        .await,
+    );
+
     Json(BootstrapStatusResponse {
         mode: match diagnosis.mode {
             BootMode::Normal => "normal".to_string(),
@@ -268,17 +278,22 @@ mod tests {
             api_secret_set: false,
             soul_exists: false,
             missing_items: vec!["LLM provider".to_string()],
-            sidecar_status: vec![SidecarHealth {
-                name: "geo-optimizer".to_string(),
-                status: "ok".to_string(),
-            }],
+            sidecar_status: vec![
+                SidecarHealth {
+                    name: "geo-optimizer".to_string(),
+                    status: "ok".to_string(),
+                },
+                SidecarHealth {
+                    name: "timesfm-sidecar".to_string(),
+                    status: "ok".to_string(),
+                },
+            ],
         };
         let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
         assert!(json.contains("\"mode\":\"setup\""));
         assert!(json.contains("\"missing_items\":[\"LLM provider\"]"));
-        assert!(
-            json.contains("\"sidecar_status\":[{\"name\":\"geo-optimizer\",\"status\":\"ok\"}]")
-        );
+        assert!(json.contains("\"name\":\"geo-optimizer\",\"status\":\"ok\""));
+        assert!(json.contains("\"name\":\"timesfm-sidecar\",\"status\":\"ok\""));
     }
 
     #[test]

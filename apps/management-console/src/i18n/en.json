@@ -21,6 +21,7 @@
     "skillVault": "Skill Vault",
     "loraAutotuner": "LoRA Autotuner",
     "promptStats": "LLM Provider Stats",
+    "seoPulse": "SEO Pulse",
     "settings": "Settings"
   },
   "page": {
@@ -41,6 +42,7 @@
     "loraAutotuner": "LoRA Autotuner",
     "causalTrace": "Causal Reasoning Trace",
     "promptStats": "LLM Observability",
+    "seoPulse": "SEO Pulse Dashboard",
     "settings": "System Settings"
   },
   "status": {

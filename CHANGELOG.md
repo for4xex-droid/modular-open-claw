@@ -1,4 +1,9 @@
 ## [Unreleased]
+  - **Infrastructure Gap Closure & Reflexion (TDD)**:
+    - **`TIMESFM_SIDECAR_URL` ヘルスチェック追加**: `bootstrap.rs` の `bootstrap_status` エンドポイントに `timesfm-sidecar` のヘルスチェックを追加。`GEO_OPTIMIZER_URL` と同様の `check_sidecar_health` パターン（2秒タイムアウト、`not_configured`/`unreachable` フォールバック）を適用。シリアライゼーションテストも拡張。
+    - **`nurture_auditor.py` Pydantic `BaseModel` クラス抽出**: `analyze_py_file` に `ast.ClassDef` 解析を追加。直接 import (`class Foo(BaseModel)`) とドット import (`class Foo(pydantic.BaseModel)`) の両パターンに対応する型安全な `isinstance` チェーンを実装。抽出結果は既存の `app_data["structs"]` に統合され、`deep_scan_matrix.md` の AST マトリクスに Python 型定義として出現。偽陽性防止テスト(`DatabaseBase` 排除)を含む3テストケースで検証済み。
+    - **`SeoPulseView` サイドバールーティング統合**: `App.tsx` の `intermediate` ビューモード配列に `'seo-pulse'` を追加し、サイドバー NavItem、ヘッダータイトルマッピング、コンテンツルーティングを独立タブとして統合。従来の `AgentConsole` フラグメント内へのハードコード描画を廃止。i18n キー (`nav.seoPulse`, `page.seoPulse`) を `en.json` / `ja.json` 両方に追加。
+    - **Vite `manualChunks` チャンク最適化**: `vite.config.ts` に `rollupOptions.output.manualChunks` を追加し、`vendor` (react/react-dom)、`ui` (framer-motion/lucide-react)、`network` (vis-data/vis-network) の3チャンクに分離。`index.js` を 1,307KB → 1,164KB に 11% 削減。
   - **Quality Gate History API & Frontend Integration (Reflexion x3)**:
     - **`GET /api/v1/quality-gate/history` エンドポイント新設**: `QualityGateStore` から過去の品質ゲート評価履歴を `limit` パラメータ付きで取得する認証済み API を実装。System Agent 専用アクセス制御（403 Forbidden）、API レイヤーでの `limit.min(100)` 二重クランプ（Defense-in-Depth）、OpenAPI ドキュメント完全統合を含む。
     - **`SeoPulseView.tsx` 履歴統合**: `authenticatedFetch` を用いた安全な履歴取得フローを確立。SSE ライブイベントと DB 履歴データの `job_id` / `id` による一意な突合（Deduplication）と時間順マージを実装。`safeTimeString` ヘルパーによる無効日付ガード、`Array.isArray` レスポンス型安全チェックを追加。

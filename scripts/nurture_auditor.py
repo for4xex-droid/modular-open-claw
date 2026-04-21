@@ -54,10 +54,11 @@ def analyze_py_file(file_path):
             content = f.read()
         tree = ast.parse(content)
     except Exception:
-        return {"routes": [], "functions": [], "edges": []}
+        return {"routes": [], "functions": [], "classes": [], "edges": []}
 
     routes = []
     functions = []
+    classes = []
     edges = []
     name = Path(file_path).name
 
@@ -69,6 +70,16 @@ def analyze_py_file(file_path):
                     if decorator.func.attr in ('get', 'post', 'put', 'delete', 'patch', 'route'):
                         if decorator.args and isinstance(decorator.args[0], ast.Constant):
                             routes.append(str(decorator.args[0].value))
+        elif isinstance(node, ast.ClassDef):
+            for base in node.bases:
+                # Handle direct import: class Foo(BaseModel)
+                if isinstance(base, ast.Name) and base.id == 'BaseModel':
+                    classes.append(node.name)
+                    break
+                # Handle dotted import: class Foo(pydantic.BaseModel)
+                elif isinstance(base, ast.Attribute) and base.attr == 'BaseModel':
+                    classes.append(node.name)
+                    break
         elif isinstance(node, ast.Import):
             for alias in node.names:
                 edges.append({"from": name, "to": alias.name, "kind": "py_import"})
@@ -76,7 +87,7 @@ def analyze_py_file(file_path):
             if node.module:
                 edges.append({"from": name, "to": node.module, "kind": "py_import"})
 
-    return {"routes": routes, "functions": functions, "edges": edges}
+    return {"routes": routes, "functions": functions, "classes": classes, "edges": edges}
 
 def analyze_ts_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -170,6 +181,7 @@ def generate_audit_report(root_dir, output_file):
                         res = analyze_py_file(path)
                         app_data["routes"].extend(res.get("routes", []))
                         app_data["functions"].extend(res.get("functions", []))
+                        app_data["structs"].extend(res.get("classes", []))
                         impact_edges.extend(res.get("edges", []))
 
                 # Deduplicate

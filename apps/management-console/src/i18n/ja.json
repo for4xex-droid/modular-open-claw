@@ -21,6 +21,7 @@
     "skillVault": "スキル保管庫",
     "loraAutotuner": "LoRA オートチューナー",
     "promptStats": "LLM コスト・遅延統計",
+    "seoPulse": "SEO パルス",
     "settings": "設定"
   },
   "page": {
@@ -41,6 +42,7 @@
     "loraAutotuner": "LoRA オートチューナー",
     "causalTrace": "因果推論トレース",
     "promptStats": "LLM オブザーバビリティ",
+    "seoPulse": "SEO パルスダッシュボード",
     "settings": "システム設定"
   },
   "status": {
