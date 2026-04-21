@@ -605,9 +605,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
     let ekyc_engine = {
         use secrecy::ExposeSecret;
-        let stripe_key = stripe_key_raw
-            .clone()
-            .map(|key| secrecy::SecretString::from(key));
+        let stripe_key = stripe_key_raw.clone().map(secrecy::SecretString::from);
 
         if let Some(key) = stripe_key {
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(

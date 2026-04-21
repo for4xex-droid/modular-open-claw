@@ -97,7 +97,7 @@ impl McpClient {
                         lower == *flag
                             || lower
                                 .strip_prefix(flag)
-                                .map_or(false, |rest| rest.starts_with('='))
+                                .is_some_and(|rest| rest.starts_with('='))
                     } else {
                         // Short flags (-c, -e): match exact or -cVALUE
                         // Guard: exclude long flags (--env-file must NOT match -e)
