@@ -120,7 +120,7 @@ impl CortexQueryEngine {
                 })?;
 
         // 3 & 4. Search in SQLite cortex_concept_index using LIKE and fetch articles
-        // TODO(Phase-D): When article count exceeds ~10k, migrate to FTS5 for O(1) lookup. // allow-anti-pattern
+
         //   Current LIKE '%keyword%' performs a full table scan (O(n)).
         let mut all_article_ids = std::collections::HashSet::new();
         for kw in keywords {
