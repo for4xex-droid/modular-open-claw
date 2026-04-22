@@ -18,6 +18,7 @@ pub mod commerce;
 pub mod error;
 pub mod llm;
 pub mod plugin;
+pub mod proof;
 pub mod security;
 
 pub use commerce::*;

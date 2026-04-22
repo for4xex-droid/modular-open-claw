@@ -138,6 +138,21 @@ impl SecurityPolicy {
     }
 }
 
+/// 定数時間での suffix 比較（タイミング攻撃対策）
+/// トークンが期待するサフィックスで終わっているかを、長さに依存しない比較時間で検証する。
+pub fn constant_time_ends_with(token: &str, expected_suffix: &str) -> bool {
+    let token_bytes = token.as_bytes();
+    let expected_bytes = expected_suffix.as_bytes();
+
+    if token_bytes.len() < expected_bytes.len() {
+        return false;
+    }
+
+    let suffix_bytes = &token_bytes[token_bytes.len() - expected_bytes.len()..];
+    use subtle::ConstantTimeEq;
+    suffix_bytes.ct_eq(expected_bytes).into()
+}
+
 /// 監査ログのエントリ
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
@@ -293,5 +308,29 @@ mod tests {
     fn test_scrub_env_nonexistent_key_does_not_panic() {
         // 存在しないキーに対して呼んでもパニックしないこと
         crate::security::scrub_env("ABSOLUTELY_NONEXISTENT_KEY_999");
+    }
+
+    #[test]
+    fn test_constant_time_ends_with() {
+        assert!(crate::security::constant_time_ends_with(
+            "Bearer mysecrettoken123",
+            "mysecrettoken123"
+        ));
+        assert!(crate::security::constant_time_ends_with(
+            "mysecrettoken123",
+            "mysecrettoken123"
+        ));
+        assert!(!crate::security::constant_time_ends_with(
+            "Bearer wrongtoken",
+            "mysecrettoken123"
+        ));
+        assert!(!crate::security::constant_time_ends_with(
+            "short",
+            "mysecrettoken123"
+        ));
+        assert!(!crate::security::constant_time_ends_with(
+            "Bearer mysecrettoken12",
+            "mysecrettoken123"
+        ));
     }
 }

@@ -98,4 +98,14 @@ pub trait AgentHook: Send + Sync + std::fmt::Debug {
     ) -> Result<(), crate::error::AiomeError> {
         Ok(())
     }
+
+    /// 形式検証（OxiLean等）完了時に実行されるフック。
+    /// 証明力（Proof Power）のNurture側（KarmaForge等）への伝搬に使用される。
+    async fn on_proof_completed(
+        &self,
+        _skill_name: &str,
+        _is_valid: bool,
+    ) -> Result<(), crate::error::AiomeError> {
+        Ok(())
+    }
 }

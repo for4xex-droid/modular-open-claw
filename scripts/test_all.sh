@@ -38,6 +38,9 @@ echo "✅ Key-Proxy is ready (PID: $PROXY_PID)."
 echo "🧪 Running unit and documentation tests..."
 cargo test --workspace --lib --bins --no-fail-fast
 
+echo "🧪 Running OxiLean Kernel tests..."
+cargo test --manifest-path vendor/oxilean-kernel/Cargo.toml
+
 # 5. Run Integration Tests
 echo "🧪 Running Zero-Trust integration tests..."
 export KEY_PROXY_URL="http://127.0.0.1:9999"

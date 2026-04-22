@@ -36,13 +36,13 @@ impl DockerConductor for ShadowWorkerService {
         &self,
         request: Request<ExecuteTaskRequest>,
     ) -> Result<Response<Self::ExecuteTaskStream>, Status> {
-        // Token verification (Threat #36 mitigation)
+        // Token verification (Threat #36 mitigation & GAP-O Timing attack mitigation)
         let token = match request.metadata().get("authorization") {
             Some(t) => t.to_str().unwrap_or(""),
             None => return Err(Status::unauthenticated("Missing authorization metadata")),
         };
 
-        if !token.ends_with(&self.auth_token) {
+        if !shared::security::constant_time_ends_with(token, &self.auth_token) {
             return Err(Status::unauthenticated("Invalid auth token"));
         }
 

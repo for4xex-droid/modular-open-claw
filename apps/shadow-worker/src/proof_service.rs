@@ -51,7 +51,8 @@ fn verify_auth<T>(request: &Request<T>, expected_token: &str) -> Result<(), Stat
         .to_str()
         .map_err(|_| Status::unauthenticated("Invalid authorization encoding"))?;
 
-    if !token.ends_with(expected_token) {
+    // GAP-O: Timing side-channel attack mitigation
+    if !shared::security::constant_time_ends_with(token, expected_token) {
         return Err(Status::unauthenticated("Invalid auth token"));
     }
     Ok(())

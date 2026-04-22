@@ -41,3 +41,6 @@ jobs:
       
     - name: Run Model-Based Tests (Quarantine Protocol)
       run: cargo test -p infrastructure --test mbt_quarantine
+
+    - name: Run OxiLean Kernel Tests
+      run: cargo test --manifest-path vendor/oxilean-kernel/Cargo.toml
