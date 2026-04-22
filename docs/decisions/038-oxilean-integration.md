@@ -23,5 +23,5 @@ The OxiLean Kernel is our pure Rust solution. However, since the Proof Verificat
 
 ## Future Plans (Phase 2 & 3)
 - Implement `FormalProofGate` bridging inside `WasmSkillManager`.
-- Add `cargo test` explicitly in CI validation loop (currently bypassed as an excluded workspace memeber).
+- Add `cargo test` explicitly in CI validation loop (currently bypassed as an excluded workspace member).
 - Connect `cross_synthesize` stub to process proper Economic Ledger entries in Nurture API upon successful proofs.

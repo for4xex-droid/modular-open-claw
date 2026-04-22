@@ -10,16 +10,9 @@ This document lists the third-party software components used in the Aiome projec
 
 **License:** Apache License 2.0
 
-```text
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
+**Full License Text:** See [`vendor/oxilean-kernel/LICENSE`](vendor/oxilean-kernel/LICENSE)
 
-   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
-
-   1. Definitions.
-
-   ... (Standard Apache 2.0 text) ...
-```
-
-*Note: The OxiLean kernel is distributed under the Apache 2.0 License. It was heavily modified and ported to pure Rust to meet Aiome's stringent security and footprint requirements.*
+*Note: The OxiLean kernel is distributed under the Apache 2.0 License.
+It was heavily modified and ported to pure Rust to meet Aiome's stringent
+security and footprint requirements. The full license text is bundled with the
+source code as required by Apache 2.0 Section 4(c).*
