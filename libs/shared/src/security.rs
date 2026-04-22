@@ -139,10 +139,29 @@ impl SecurityPolicy {
 }
 
 /// 定数時間での suffix 比較（タイミング攻撃対策）
-/// トークンが期待するサフィックスで終わっているかを、長さに依存しない比較時間で検証する。
+///
+/// トークンが期待するサフィックスで終わっているかを、`subtle::ConstantTimeEq` で検証する。
+/// サフィックス部分のバイト比較は定数時間で実行される。
+///
+/// # Timing residual
+///
+/// 長さチェック (`token.len() < expected.len()`) は **非定数時間** であり、
+/// トークンが期待値より短いことを攻撃者に漏洩する可能性がある。
+/// ただし gRPC の `Bearer <token>` ヘッダ構造から token 長は推測可能であるため、
+/// 追加のリスクは実質ゼロと判断する。
+///
+/// # Edge cases
+///
+/// - `expected_suffix` が空の場合: セキュリティ上 **常に `false`** を返す（空トークン認可の防止）。
+/// - `token` が空で `expected_suffix` も空の場合: 同様に `false`。
 pub fn constant_time_ends_with(token: &str, expected_suffix: &str) -> bool {
     let token_bytes = token.as_bytes();
     let expected_bytes = expected_suffix.as_bytes();
+
+    // 空の expected_suffix は認可バイパスになるため無条件で拒否。
+    if expected_bytes.is_empty() {
+        return false;
+    }
 
     if token_bytes.len() < expected_bytes.len() {
         return false;
@@ -332,5 +351,19 @@ mod tests {
             "Bearer mysecrettoken12",
             "mysecrettoken123"
         ));
+    }
+
+    #[test]
+    fn test_constant_time_ends_with_edge_cases() {
+        // 空の expected_suffix は認可バイパスになるため常に false
+        assert!(!crate::security::constant_time_ends_with("anything", ""));
+        assert!(!crate::security::constant_time_ends_with("", ""));
+        // token 空 + 非空 suffix
+        assert!(!crate::security::constant_time_ends_with("", "a"));
+        // 完全一致
+        assert!(crate::security::constant_time_ends_with("abc", "abc"));
+        // 1文字
+        assert!(crate::security::constant_time_ends_with("abc", "c"));
+        assert!(!crate::security::constant_time_ends_with("abc", "b"));
     }
 }
