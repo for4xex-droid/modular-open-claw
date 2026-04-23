@@ -16,14 +16,14 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 /// スキルの並列実行と評価を行うアリーナ
-pub struct SkillArena {
+pub struct ArenaBattle {
     provider: Arc<dyn LlmProvider>,
     /// 淘汰から保護されるスキル名のセット (G-25)
     pub protected_skills: HashSet<String>,
 }
 
 #[cfg(any(test, debug_assertions))]
-impl Default for SkillArena {
+impl Default for ArenaBattle {
     fn default() -> Self {
         Self {
             provider: Arc::new(aiome_core::llm_provider::MockLlmProvider::default()),
@@ -32,7 +32,7 @@ impl Default for SkillArena {
     }
 }
 
-impl SkillArena {
+impl ArenaBattle {
     /// 新しいインスタンスを生成する
     pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
         Self {
@@ -199,8 +199,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_skill_arena_default_protection() {
-        let arena = SkillArena::default();
+    fn test_arena_battle_default_protection() {
+        let arena = ArenaBattle::default();
         assert!(arena.protected_skills.contains("essential_core"));
         assert!(arena.protected_skills.contains("immune_system"));
         assert!(arena.protected_skills.contains("skill_arena"));

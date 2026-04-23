@@ -23,6 +23,7 @@ http-body-util = "0.1.1"
 
 
 mdns-sd = "0.11"
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
 
 [dev-dependencies]
 aiome-core-contracts = { workspace = true }

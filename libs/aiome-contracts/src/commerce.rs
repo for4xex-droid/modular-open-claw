@@ -65,6 +65,7 @@ pub trait CommerceEngine: Send + Sync {
         &self,
         agent_id: Uuid,
         asset_id: Uuid,
+        transaction_id: &str,
         license_type: &str,
     ) -> Result<String, AiomeError>;
 

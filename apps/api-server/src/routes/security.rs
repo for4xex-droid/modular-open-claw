@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use axum::{routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;

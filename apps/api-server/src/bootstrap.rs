@@ -980,6 +980,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         circuit_breaker: Component::new(circuit_breaker),
         rate_limiter: Component::new(rate_limiter),
         slo_engine: Component::new(slo_engine),
+        skill_arena: Component::new(Arc::new(
+            infrastructure::skills::skill_arena::SkillArena::new()
+                .with_db_pool(job_queue.get_pool().clone()),
+        )),
         api_server_secret: Component::new(api_server_secret),
         federation_secret: Component(federation_secret),
         config: Component::new(config.clone()),

@@ -92,6 +92,8 @@ pub mod docker_conductor;
 /// アイドル時の自律思考管理
 pub mod dream_state;
 
+/// スキルの並列実行と評価
+pub mod arena_battle;
 pub mod forecast;
 #[cfg(feature = "grpc")]
 pub mod grpc;
@@ -146,8 +148,6 @@ pub mod score_tracker;
 /// ネットワークセキュリティポリシー
 pub mod security;
 pub mod security_zombie;
-/// スキルの並列実行と評価
-pub mod skill_arena;
 /// WASMスキルのロード・サンドボックス管理
 pub mod skills;
 pub mod slm_bridge;

@@ -178,6 +178,7 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         _agent_id: uuid::Uuid,
         _asset_id: uuid::Uuid,
         _license_type: &str,
+        _extra: &str,
     ) -> Result<String, aiome_core::error::AiomeError> {
         Ok("lic".into())
     }
@@ -717,6 +718,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         nurture_url: None,
         nurture_internal_secret: None,
         quality_gate_store: Component::default(),
+        skill_arena: Component::new(Arc::new(
+            infrastructure::skills::skill_arena::SkillArena::new(),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

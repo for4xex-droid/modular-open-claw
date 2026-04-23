@@ -97,6 +97,7 @@ pub struct AppState {
     pub circuit_breaker: Component<Arc<CircuitBreaker>>,
     pub rate_limiter: Component<AgentRateLimiter>,
     pub slo_engine: Component<Arc<SloEngine>>,
+    pub skill_arena: Component<Arc<infrastructure::skills::skill_arena::SkillArena>>,
     pub api_server_secret: Component<Arc<secrecy::SecretString>>,
     pub nurture_url: Option<String>,
     pub nurture_internal_secret: Option<String>,

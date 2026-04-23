@@ -102,7 +102,26 @@ impl ToolCallRouter for DefaultToolCallRouter {
         let state_rc = state.clone();
 
         tokio::spawn(async move {
+            let start_time = std::time::Instant::now();
             let _ = tx_clone.send(ToolExecutionEvent::Start(sn.clone())).await;
+
+            // === MoE Culling Check ===
+            if let Some(stats) = state_rc.skill_arena.get_stats(&sn).await {
+                let total = stats.success_count + stats.failure_count;
+                if total > 10 {
+                    let fail_rate = stats.failure_count as f64 / total as f64;
+                    if fail_rate > state_rc.skill_arena.culling_threshold {
+                        let msg = format!(
+                            "[MoE Culling] Skill `{}` rejected due to high failure rate ({:.1}%)",
+                            sn,
+                            fail_rate * 100.0
+                        );
+                        tracing::warn!("{}", msg);
+                        let _ = tx_clone.send(ToolExecutionEvent::Error(msg)).await;
+                        return;
+                    }
+                }
+            }
 
             // === Security Guardrail: Path Traversal Prevention ===
             if sn.contains('/') || sn.contains('\\') || sn.contains("..") {
@@ -244,34 +263,43 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     }
                 }
 
-                let out = if let Some(res) = mcp_result {
+                if let Some(res) = mcp_result {
                     res
                 } else {
                     crate::skill_handler::execute_wasm_skill(&sn, &actual_input, &state_rc, None, 0)
                         .await
-                };
-                let stats = state_rc
-                    .job_queue
-                    .get_agent_stats()
-                    .await
-                    .unwrap_or_default();
-                let status = if out.contains("Error:") {
-                    "failed"
-                } else {
-                    "success"
-                };
-                let _ = state_rc
-                    .job_queue
-                    .record_evolution_event(
-                        stats.level,
-                        "SkillExecution",
-                        &format!("Exec: {} -> {}", sn, status),
-                        Some(&sn),
-                        None,
-                    )
-                    .await;
-                out
+                }
             };
+
+            let is_error =
+                executor_output.contains("Error:") || executor_output.contains("failed:");
+            let status = if is_error { "failed" } else { "success" };
+
+            // === Evolution & MoE Feedback Loop ===
+            let stats = state_rc
+                .job_queue
+                .get_agent_stats()
+                .await
+                .unwrap_or_default();
+
+            let _ = state_rc
+                .job_queue
+                .record_evolution_event(
+                    stats.level,
+                    "SkillExecution",
+                    &format!("Exec: {} -> {}", sn, status),
+                    Some(&sn),
+                    None,
+                )
+                .await;
+
+            let latency = start_time.elapsed().as_millis() as u64;
+            let karma_delta = if is_error { -1.0 } else { 1.0 };
+            state_rc
+                .skill_arena
+                .record_outcome(&sn, !is_error, latency, karma_delta)
+                .await;
+            // =========================
 
             // === Post-Hook ===
             let post_verdict = state_rc

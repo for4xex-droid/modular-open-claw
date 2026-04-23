@@ -49,7 +49,7 @@
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |
-| `skill_arena` | スキルの並列実行と結果の評価、ランキング。 | 実装完了 |
+| `skill_arena` | スキルの並列実行と結果の評価、ランキング。**Phase 3**にてSQLite永続化と、MoE Routingのための実行前後の淘汰（Culling）フィードバックループを実装完了。 | **Phase 3 完了** |
 | `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
 | `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
 | `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。 | **Phase B 完了** |
@@ -71,7 +71,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-23 (Asia/Tokyo) - Phase 6 Integration*
+*最終更新: 2026-04-23 (Asia/Tokyo) - Phase 3 MoE Routing & SkillArena Integration*
 
 
 ## Phase 6 Integration Notes

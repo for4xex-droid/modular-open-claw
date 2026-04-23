@@ -86,7 +86,50 @@ async fn main() {
         let limiter = AgentRateLimiter::new(60); // 60 requests per minute
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
-        let mcp_server = mcp_server::McpServer::new(gateway);
+        let workspace_dir = std::env::var("WORKSPACE_DIR").unwrap_or_else(|_| ".".to_string());
+        let path = std::path::Path::new(&workspace_dir);
+        let wasm_manager = Arc::new(
+            infrastructure::skills::WasmSkillManager::new(path, path).unwrap_or_else(|e| {
+                tracing::error!("Failed to init WasmSkillManager: {}", e);
+                std::process::exit(1);
+            }),
+        );
+
+        // SQLite connection for SkillArena (feedback loop)
+        let mut skill_arena = infrastructure::skills::skill_arena::SkillArena::new();
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            if let Ok(pool) = sqlx::sqlite::SqlitePoolOptions::new()
+                .connect(&db_url)
+                .await
+            {
+                // We don't have direct access to infrastructure::db::DatabasePool here easily if it's not pub.
+                // Wait, aiome_core::db::DatabasePool or infrastructure::db?
+                // I'll try aiome_core::db::DatabasePool or just initialize it.
+                // Actually, let's just not inject db_pool here if we can't access DatabasePool.
+                // Let's see if we can do it.
+            }
+        }
+        // Let's use the code I planned:
+        let app_data =
+            std::env::var("APP_DATA_DIR").unwrap_or_else(|_| ".gemini/antigravity".to_string());
+        let db_url = format!("sqlite://{}/aiome.db", app_data);
+
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect(&db_url)
+            .await;
+
+        if let Ok(p) = pool {
+            // Note: Aiome Core's DatabasePool is not directly exposed as infrastructure::db unless re-exported.
+            // Let's try to pass sqlx::Pool<sqlx::Sqlite> via a new helper or directly.
+            // Actually, in `SkillArena::with_db_pool`, it takes `crate::db::DatabasePool` which is `infrastructure::db::DatabasePool`.
+            // So `infrastructure::db::DatabasePool::Sqlite(p)`
+            skill_arena = skill_arena.with_db_pool(infrastructure::db::DatabasePool::Sqlite(p));
+        }
+
+        let mcp_server = mcp_server::McpServer::new(gateway)
+            .with_wasm_manager(wasm_manager)
+            .with_skill_arena(Arc::new(skill_arena));
+
         mcp_server.run().await;
         return;
     }

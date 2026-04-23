@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useSystemVitality } from '../hooks/useSystemVitality';
 import { SoTEvent } from '../types';
 import { useTranslation } from '../i18n';
@@ -23,6 +23,7 @@ export const SoTProgressBar: React.FC = () => {
             events: SoTEvent[];
             abstentionCount: number;
             protocol: string | null;
+            outcome: string | null;
         } | null = null;
         
         const sotEvents = events
@@ -44,6 +45,7 @@ export const SoTProgressBar: React.FC = () => {
                             events: [se],
                             abstentionCount: 0,
                             protocol: null,
+                            outcome: null,
                         };
                     }
                     break;
@@ -64,6 +66,7 @@ export const SoTProgressBar: React.FC = () => {
                             events: [],
                             abstentionCount: 0,
                             protocol: null,
+                            outcome: null,
                         };
                     }
                     if (activeSession.id === data.session_id) {
@@ -86,6 +89,8 @@ export const SoTProgressBar: React.FC = () => {
                 case 'SessionEnd':
                     if (activeSession && activeSession.id === data.session_id) {
                         activeSession.status = 'ended';
+                        const rawOutcome = data.outcome;
+                        activeSession.outcome = typeof rawOutcome === 'string' ? rawOutcome : 'Error';
                     }
                     break;
             }
@@ -94,7 +99,18 @@ export const SoTProgressBar: React.FC = () => {
         return activeSession;
     }, [events]);
 
-    if (!currentSession || currentSession.status === 'ended') {
+    // Auto-dismiss: hide the bar 5 seconds after session ends
+    const [dismissed, setDismissed] = useState(false);
+    useEffect(() => {
+        if (currentSession?.status === 'ended') {
+            setDismissed(false);
+            const timer = setTimeout(() => setDismissed(true), 5000);
+            return () => clearTimeout(timer);
+        }
+        setDismissed(false);
+    }, [currentSession?.status, currentSession?.id]);
+
+    if (!currentSession || dismissed) {
         return null;
     }
 
@@ -207,6 +223,40 @@ export const SoTProgressBar: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {currentSession.status === 'ended' && currentSession.outcome && (() => {
+                const outcomeMap: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
+                    'AllCriteriaPassed': { icon: '✓', label: t('sot.completed'), color: 'var(--accent-emerald)', bg: 'var(--accent-emerald-10)', border: 'var(--accent-emerald-30)' },
+                    'ConvergedEarly': { icon: '✓', label: t('sot.convergedEarly'), color: 'var(--accent-emerald)', bg: 'var(--accent-emerald-10)', border: 'var(--accent-emerald-30)' },
+                    'MaxRoundsReached': { icon: '⏱', label: t('sot.maxRoundsReached'), color: 'var(--accent-amber)', bg: 'var(--accent-amber-10)', border: 'var(--accent-amber-30)' },
+                    'BudgetExhausted': { icon: '💰', label: t('sot.budgetExhausted'), color: 'var(--accent-amber)', bg: 'var(--accent-amber-10)', border: 'var(--accent-amber-30)' },
+                    'Timeout': { icon: '⏳', label: t('sot.timeout'), color: 'var(--accent-amber)', bg: 'var(--accent-amber-10)', border: 'var(--accent-amber-30)' },
+                    'SpectralDivergence': { icon: '⚠', label: t('sot.spectralDivergence'), color: 'var(--accent-rose)', bg: 'var(--accent-rose-10)', border: 'var(--accent-rose-30)' },
+                };
+                const cfg = outcomeMap[currentSession.outcome] ?? {
+                    icon: '●', label: currentSession.outcome, color: 'var(--text-muted)', bg: 'var(--bg-primary)', border: 'var(--border-glass)',
+                };
+                return (
+                    <div style={{
+                        marginTop: 'var(--space-sm)',
+                        paddingTop: 'var(--space-xs)',
+                        borderTop: '1px solid var(--border-glass)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-xs)',
+                    }}>
+                        <span style={{
+                            fontSize: '0.75rem',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: cfg.bg,
+                            color: cfg.color,
+                            border: `1px solid ${cfg.border}`,
+                            fontWeight: 600,
+                        }}>{cfg.icon} {cfg.label}</span>
+                    </div>
+                );
+            })()}
         </div>
     );
 };

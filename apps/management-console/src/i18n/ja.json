@@ -391,7 +391,12 @@
     "round": "ラウンド",
     "thinking": "が思考中...",
     "completed": "完了",
-    "latestScores": "最新のスコア"
+    "latestScores": "最新のスコア",
+    "convergedEarly": "早期収束（品質十分）",
+    "spectralDivergence": "スペクトル発散（思考不安定）",
+    "maxRoundsReached": "最大ラウンド到達",
+    "budgetExhausted": "予算消費完了",
+    "timeout": "タイムアウト"
   },
   "voice": {
     "walletBalance": "ウォレット残高",

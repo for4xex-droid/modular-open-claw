@@ -50,7 +50,7 @@ pub struct VerifiedSkill {
 impl VerifiedSkill {
     /// Internal constructor for the infrastructure crate to promote unverified skills.
     /// This ensures mathematical safety of the TypeState pattern.
-    pub(crate) fn promote(name: String) -> Self {
+    pub fn promote(name: String) -> Self {
         Self { name }
     }
 

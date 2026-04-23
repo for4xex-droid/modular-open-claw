@@ -404,6 +404,7 @@ impl CommerceEngine for StripeCommerceEngine {
         &self,
         _agent_id: Uuid,
         _asset_id: Uuid,
+        _transaction_id: &str,
         _license_type: &str,
     ) -> Result<String, AiomeError> {
         Ok("lic_mock".into())

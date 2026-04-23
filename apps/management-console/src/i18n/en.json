@@ -391,7 +391,12 @@
     "round": "Round",
     "thinking": "is thinking...",
     "completed": "completed",
-    "latestScores": "Latest Scores"
+    "latestScores": "Latest Scores",
+    "convergedEarly": "Converged Early (Quality Sufficient)",
+    "spectralDivergence": "Spectral Divergence (Instability Detected)",
+    "maxRoundsReached": "Max Rounds Reached",
+    "budgetExhausted": "Budget Exhausted",
+    "timeout": "Timeout"
   },
   "voice": {
     "walletBalance": "Wallet Balance",

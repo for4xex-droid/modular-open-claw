@@ -791,7 +791,13 @@ mod tests {
         async fn slash(&self, _: Uuid, _: u64, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn register_license(&self, _: Uuid, _: Uuid, _: &str) -> Result<String, AiomeError> {
+        async fn register_license(
+            &self,
+            _: Uuid,
+            _: Uuid,
+            _: &str,
+            _: &str,
+        ) -> Result<String, AiomeError> {
             Ok("lic_mock".into())
         }
         fn verify_signature(&self, _: &str, _: &str) -> Result<(), AiomeError> {

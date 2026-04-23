@@ -120,7 +120,7 @@ export interface AgentDiagnosis {
 
 export type SoTTrigger = "Manual" | { HighBudgetGig: { threshold: number } } | "SelfEvolution" | "ConstitutionalEscalation";
 
-export type SoTOutcome = "AllCriteriaPassed" | "MaxRoundsReached" | "BudgetExhausted" | "Timeout" | { Error: string };
+export type SoTOutcome = "AllCriteriaPassed" | "MaxRoundsReached" | "BudgetExhausted" | "Timeout" | "ConvergedEarly" | "SpectralDivergence" | { Error: string };
 
 export type SoTEventPayload =
     | { type: "SessionStart"; data: { session_id: string; config: unknown; trigger: SoTTrigger } }

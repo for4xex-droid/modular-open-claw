@@ -1,5 +1,11 @@
 ## [Unreleased]
 ### Added
+- **Phase 3: MoE Routing & SkillArena Hardening**:
+  - **SkillArena SQLite Integration**: `SkillArena::with_db_pool` を実装し、WASM スキルの実行履歴や淘汰データ（Karma, Fail Rate）をインメモリから SQLite/PostgreSQL ベースの永続ストレージへ移行し、プロセス再起動耐性を確立。
+  - **MoE Culling & Feedback Loop**: `mcp_server.rs` および `tool_call_router.rs` において、WASM スキル実行前後に `SkillArena` による淘汰（Culling）ロジックを統合。`record_usage` を用いて、失敗率に基づいた自律的なスキル選別（MoE Routing）を実現。
+  - **Security - Path Traversal Guard**: WASM スキル実行時のツール名解決 (`McpServer::handle_tool_call`) において、`..` や `/` などの不正文字列を遮断するバリデーションを導入し、サンドボックスエスケープを防止。
+  - **Stability - DB Pool DI Fix**: `bootstrap.rs` での `SkillArena` 初期化時に発生していた、特定のデータベースプール（SQLite等）へのダウンキャストの `expect` パニックを排除し、安全な `DatabasePool` 列挙型のまま DI する設計へ修正。
+  - **License Compliance**: `/license-check` ワークフローにより特定された5つの Rust ファイル (`quality_gate_store.rs`, `oxilean.rs`, `federation.rs`, `security.rs`, `forecast.rs`) に Apache 2.0 著作権ヘッダーを付与し、完全なライセンス・コンプライアンス（11/11 PASS）を達成。
 - **Phase 6: Sync & Security Hardening (P2P Smart Edge & OxiLean OXP)**:
   - **OxiLean Background Poller (api-server)**: `apps/api-server/src/internal_services/oxilean_poller.rs` に Tokio バックグラウンドタスクを新設し、UIからのリクエストをブロックせずに OxiLean Proof Power を定期取得（現状はシミュレーション）する仕組みを実装。`AppState` に `oxilean_power: Arc<AtomicU32>` を追加し、`GET /api/v1/security/oxilean/power` エンドポイントからの完全ゼロ遅延（`O(1)` メモリ読み取り）アクセスを達成。
   - **P2P Sync Edge Proxy (aiome-node)**: `apps/aiome-node/src/routes/federation.rs` に `POST /sync` を新設。エッジノードで重量級の `SamsaraEngine` をロードせず、コアの `samsara-hub` へと CRDT ペイロード (`FederationSyncRequest`) をプロキシするスマートエッジ設計を確立。

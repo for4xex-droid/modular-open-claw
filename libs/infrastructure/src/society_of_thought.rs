@@ -16,6 +16,10 @@ use tokio::sync::broadcast;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+/// ACT (Adaptive Computation Time) が発動するために必要な最低スコア。
+/// これ未満の場合、収束していてもまだ品質が不十分とみなし早期終了しない。
+const ACT_MIN_SCORE_GATE: f64 = 7.0;
+
 /// Society of Thought (SoT) Engine
 /// Evans et al. (2026) + Dochkina (2026) の知見を統合した熟議エンジン。
 ///
@@ -141,26 +145,6 @@ impl SoTEngine {
                 final_outcome = SoTOutcome::BudgetExhausted;
                 break;
             }
-
-            // P-10: Semantic Looping 脱出 (Temperature Boost)
-            if round > 1 {
-                let last_score = *score_history.last().unwrap_or(&0.0);
-                let penultimate_score = if score_history.len() > 1 {
-                    score_history[score_history.len() - 2]
-                } else {
-                    0.0
-                };
-                if (last_score - penultimate_score).abs() < 0.1 {
-                    current_temp = 0.9;
-                    info!(
-                        "🚀 [SoT] Stagnation detected. Boosting temperature to {}",
-                        current_temp
-                    );
-                } else {
-                    current_temp = 0.5;
-                }
-            }
-
             // ──────────────────────────────────────────────────────
             //  Dochkina (2026): プロトコル分岐
             // ──────────────────────────────────────────────────────
@@ -234,6 +218,48 @@ impl SoTEngine {
             if all_passed {
                 final_outcome = SoTOutcome::AllCriteriaPassed;
                 break;
+            }
+
+            // Phase 2: ACT (Adaptive Computation Time) & P-10 (Temperature Boost)
+            if round > 1 {
+                let current_score = score_history[score_history.len() - 1];
+                let prev_score = score_history[score_history.len() - 2];
+                let delta = (current_score - prev_score).abs();
+
+                // ACT: High score + convergence
+                if current_score > ACT_MIN_SCORE_GATE && delta < config.act_convergence_threshold {
+                    info!("🚀 [SoT] ACT: Early Convergence detected. Quality sufficient.");
+                    final_outcome = SoTOutcome::ConvergedEarly;
+                    break;
+                }
+
+                // P-10: Stagnation -> Boost temperature for next round
+                if delta < 0.1 {
+                    current_temp = 0.9;
+                    info!(
+                        "🚀 [SoT] Stagnation detected. Boosting temperature to {}",
+                        current_temp
+                    );
+                } else {
+                    current_temp = 0.5;
+                }
+            }
+
+            // Phase 2: Spectral Stability
+            if round >= 3 {
+                let len = score_history.len() as f64;
+                let mean = score_history.iter().sum::<f64>() / len;
+                let variance = score_history
+                    .iter()
+                    .map(|s| (s - mean).powi(2))
+                    .sum::<f64>()
+                    / len;
+                let std_dev = variance.max(0.0).sqrt(); // Protect against negative zero FP inaccuracy
+                if std_dev > config.spectral_divergence_threshold {
+                    warn!("⚠️ [SoT] Spectral Divergence detected. Standard deviation: {:.2} > threshold: {:.2}", std_dev, config.spectral_divergence_threshold);
+                    final_outcome = SoTOutcome::SpectralDivergence;
+                    break;
+                }
             }
 
             round += 1;
@@ -896,5 +922,128 @@ mod tests {
             engine.select_protocol(&config_auto),
             CoordinationProtocol::Coordinator
         );
+    }
+
+    #[derive(Debug)]
+    struct DynamicMockLlm {
+        responses: tokio::sync::Mutex<Vec<String>>,
+    }
+    impl DynamicMockLlm {
+        fn new(mut resp: Vec<String>) -> Self {
+            resp.reverse(); // so we can pop from the end
+            Self {
+                responses: tokio::sync::Mutex::new(resp),
+            }
+        }
+    }
+    #[async_trait]
+    impl LlmProvider for DynamicMockLlm {
+        fn name(&self) -> &str {
+            "dynamic-mock"
+        }
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _sys: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
+            let mut lock = self.responses.lock().await;
+            let content = lock
+                .pop()
+                .unwrap_or_else(|| "JSON: {\"Score\": 5.0}".to_string());
+            Ok(LlmResponse {
+                content,
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
+        }
+        async fn complete_with_cache(&self, _req: LlmRequest) -> Result<LlmResponse, AiomeError> {
+            self.complete("", None).await
+        }
+        async fn stream_complete(
+            &self,
+            _prompt: &str,
+            _sys: Option<&str>,
+        ) -> Result<
+            Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
+            AiomeError,
+        > {
+            Err(AiomeError::Infrastructure {
+                reason: "Not implemented".to_string(),
+            })
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    /// ACT (Adaptive Computation Time): スコアが高水準かつ変化量が閾値未満なら
+    /// ConvergedEarly で早期打ち切りされることを検証する。
+    #[tokio::test]
+    async fn test_sot_act_early_convergence() {
+        // num_thinkers=1 で簡略化: Round ごとに [Thinker応答, Critic応答] の2コール。
+        // Round 1 → Quality 8.5 (不合格、ACT未発動: round==1)
+        // Round 2 → Quality 8.51 (Δ=0.01 < threshold=0.05 → ConvergedEarly)
+        let mock = Arc::new(DynamicMockLlm::new(vec![
+            "Thinker R1".to_string(),
+            "JSON: {\"Quality\": 8.5}".to_string(),
+            "Thinker R2".to_string(),
+            "JSON: {\"Quality\": 8.51}".to_string(),
+        ]));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig {
+            enabled: true,
+            max_rounds: 5,
+            act_convergence_threshold: 0.05,
+            num_thinkers: 1,
+            scoring_criteria: vec![aiome_core_contracts::contracts::ScoringCriterion {
+                name: "Quality".to_string(),
+                min_score: 9.0, // AllCriteriaPassed を回避するために高めに設定
+                weight: 1.0,
+            }],
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("test", SoTTrigger::Manual, config, 1.0)
+            .await;
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
+        assert_eq!(outcome, SoTOutcome::ConvergedEarly);
+    }
+
+    /// Spectral Stability: スコア履歴の標準偏差が閾値を超えたとき
+    /// SpectralDivergence で強制終了されることを検証する。
+    #[tokio::test]
+    async fn test_sot_spectral_divergence() {
+        // Round 1: 5.0, Round 2: 9.5, Round 3: 2.0 → σ ≈ 3.07 > threshold 1.5
+        let mock = Arc::new(DynamicMockLlm::new(vec![
+            "Thinker R1".to_string(),
+            "JSON: {\"Quality\": 5.0}".to_string(),
+            "Thinker R2".to_string(),
+            "JSON: {\"Quality\": 9.5}".to_string(),
+            "Thinker R3".to_string(),
+            "JSON: {\"Quality\": 2.0}".to_string(),
+            "Thinker R4".to_string(),
+            "JSON: {\"Quality\": 8.0}".to_string(),
+        ]));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig {
+            enabled: true,
+            max_rounds: 5,
+            spectral_divergence_threshold: 1.5,
+            num_thinkers: 1,
+            scoring_criteria: vec![aiome_core_contracts::contracts::ScoringCriterion {
+                name: "Quality".to_string(),
+                min_score: 10.0,
+                weight: 1.0,
+            }],
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("test", SoTTrigger::Manual, config, 1.0)
+            .await;
+        let (_, outcome, _) = result.unwrap(); // allow-anti-pattern
+        assert_eq!(outcome, SoTOutcome::SpectralDivergence);
     }
 }

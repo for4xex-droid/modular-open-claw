@@ -161,6 +161,7 @@ impl CommerceEngine for MockCommerceEngine {
         &self,
         _agent_id: Uuid,
         asset_id: Uuid,
+        _transaction_id: &str,
         _license_type: &str,
     ) -> Result<String, AiomeError> {
         info!(

@@ -283,8 +283,13 @@ impl Oracle {
                 return Ok(aiome_core_contracts::contracts::MultiReviewResult {
                     overall_score: avg_score as f32,
                     decision: match outcome {
-                        aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed => {
+                        aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed
+                        | aiome_core_contracts::contracts::SoTOutcome::ConvergedEarly => {
                             aiome_core_contracts::contracts::ReviewDecision::Accept
+                        }
+                        aiome_core_contracts::contracts::SoTOutcome::SpectralDivergence => {
+                            tracing::warn!("⚠️ [Oracle] SoT Session ended with SpectralDivergence. Retry recommended.");
+                            aiome_core_contracts::contracts::ReviewDecision::Reject
                         }
                         _ => aiome_core_contracts::contracts::ReviewDecision::Reject,
                     },

@@ -644,6 +644,34 @@ mod tests {
             _ => panic!("Expected Ping message"),
         }
     }
+
+    #[test]
+    fn test_sot_outcome_serialization() {
+        let early = SoTOutcome::ConvergedEarly;
+        let early_json = serde_json::to_string(&early).unwrap();
+        assert_eq!(early_json, "\"ConvergedEarly\"");
+
+        let div = SoTOutcome::SpectralDivergence;
+        let div_json = serde_json::to_string(&div).unwrap();
+        assert_eq!(div_json, "\"SpectralDivergence\"");
+    }
+
+    #[test]
+    fn test_sot_config_deserialization_defaults() {
+        // Older JSON without act_convergence_threshold and spectral_divergence_threshold
+        let json = r#"{
+            "enabled": true,
+            "triggers": ["Manual"],
+            "max_rounds": 5,
+            "scoring_criteria": [],
+            "use_fast_model_for_debate": true,
+            "adversarial_personas": []
+        }"#;
+
+        let config: SoTConfig = serde_json::from_str(json).expect("Should deserialize old config");
+        assert_eq!(config.act_convergence_threshold, 0.05);
+        assert_eq!(config.spectral_divergence_threshold, 1.5);
+    }
 }
 // --- Phase 15: Agentic Foundation Expansion (ADR-023/024) ---
 
@@ -728,6 +756,12 @@ pub struct SoTConfig {
     /// 能力閾値に基づくプロトコル自動切替 (default: false)
     #[serde(default)]
     pub auto_protocol: bool,
+    /// ACT の早期終了閾値 (default: 0.05)
+    #[serde(default = "default_act_threshold")]
+    pub act_convergence_threshold: f64,
+    /// Spectral Stability の分散閾値 (default: 1.5)
+    #[serde(default = "default_spectral_threshold")]
+    pub spectral_divergence_threshold: f64,
 }
 
 fn default_num_thinkers() -> u8 {
@@ -735,6 +769,12 @@ fn default_num_thinkers() -> u8 {
 }
 fn default_true() -> bool {
     true
+}
+fn default_act_threshold() -> f64 {
+    0.05
+}
+fn default_spectral_threshold() -> f64 {
+    1.5
 }
 
 impl Default for SoTConfig {
@@ -761,6 +801,8 @@ impl Default for SoTConfig {
             num_thinkers: 3,
             allow_abstention: true,
             auto_protocol: false,
+            act_convergence_threshold: 0.05,
+            spectral_divergence_threshold: 1.5,
         }
     }
 }
@@ -773,6 +815,8 @@ pub enum SoTOutcome {
     BudgetExhausted,
     Timeout,
     Error(String),
+    ConvergedEarly,
+    SpectralDivergence,
 }
 
 /// SoT セッションイベント (P-8)
