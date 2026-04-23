@@ -215,6 +215,9 @@ mod tests {
             config: Component::new(Arc::new(config)),
             provider: Component::new(Arc::new(MockLlm)),
             hook_chain: Component::new(Arc::new(infrastructure::skills::hooks::HookChain::new())),
+            skill_arena: Component::new(Arc::new(
+                infrastructure::skills::skill_arena::SkillArena::new(),
+            )),
             ..Default::default()
         };
 

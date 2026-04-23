@@ -34,7 +34,9 @@ impl PolarCommerceEngine {
 #[async_trait]
 impl CommerceEngine for PolarCommerceEngine {
     async fn get_balance(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "get_balance not implemented for Polar API".into(),
+        })
     }
 
     async fn validate_activity(
@@ -43,7 +45,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _activity_type: &str,
         _amount: u64,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "validate_activity not implemented for Polar API".into(),
+        })
     }
 
     async fn execute_autonomous_purchase(
@@ -52,23 +56,33 @@ impl CommerceEngine for PolarCommerceEngine {
         _item_id: Uuid,
         _metadata: serde_json::Value,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "execute_autonomous_purchase not implemented for Polar API".into(),
+        })
     }
 
     async fn get_daily_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "get_daily_spend not implemented for Polar API".into(),
+        })
     }
 
     async fn get_daily_limit(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "get_daily_limit not implemented for Polar API".into(),
+        })
     }
 
     async fn escrow_create(&self, _agent_id: Uuid, _amount: u64) -> Result<String, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "escrow_create not implemented for Polar API".into(),
+        })
     }
 
     async fn list_escrows(&self, _agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "list_escrows not implemented for Polar API".into(),
+        })
     }
 
     async fn escrow_release(
@@ -76,19 +90,27 @@ impl CommerceEngine for PolarCommerceEngine {
         _escrow_id: &str,
         _recipient_id: Uuid,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "escrow_release not implemented for Polar API".into(),
+        })
     }
 
     async fn escrow_refund(&self, _escrow_id: &str) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "escrow_refund not implemented for Polar API".into(),
+        })
     }
 
     async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "stake not implemented for Polar API".into(),
+        })
     }
 
     async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "slash not implemented for Polar API".into(),
+        })
     }
 
     async fn register_license(
@@ -98,7 +120,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _transaction_id: &str,
         _license_type: &str,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "register_license not implemented for Polar API".into(),
+        })
     }
 
     fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
@@ -113,7 +137,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _event_type: &str,
         _payload: &serde_json::Value,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "process_webhook not implemented for Polar API".into(),
+        })
     }
 
     async fn create_subscription(
@@ -166,14 +192,18 @@ impl CommerceEngine for PolarCommerceEngine {
         _agent_id: Uuid,
         _subscription_id: &str,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "cancel_subscription not implemented for Polar API".into(),
+        })
     }
 
     async fn get_subscription_status(
         &self,
         _agent_id: Uuid,
     ) -> Result<SubscriptionStatus, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "get_subscription_status not implemented for Polar API".into(),
+        })
     }
 
     async fn transfer(
@@ -182,7 +212,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _to_id: Uuid,
         _amount: u64,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "transfer not implemented for Polar API".into(),
+        })
     }
 
     async fn deduct_generation_cost(
@@ -192,7 +224,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _amount: u64,
         _generation_type: &str,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "deduct_generation_cost not implemented for Polar API".into(),
+        })
     }
 }
 

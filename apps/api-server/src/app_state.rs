@@ -59,7 +59,7 @@ impl<T> Component<T> {
 impl<T> std::ops::Deref for Component<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
-        self.0.as_ref().unwrap_or_else(|| panic!("Component not initialized in AppState! Make sure to provide it in create_test_server or main."))
+        self.0.as_ref().unwrap_or_else(|| panic!("Component not initialized in AppState! Make sure to provide it in create_test_server or main. Type: {}", std::any::type_name::<T>()))
     }
 }
 
