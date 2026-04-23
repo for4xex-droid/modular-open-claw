@@ -1,5 +1,10 @@
 ## [Unreleased]
 ### Added
+- **Phase 6: Sync & Security Hardening (P2P Smart Edge & OxiLean OXP)**:
+  - **OxiLean Background Poller (api-server)**: `apps/api-server/src/internal_services/oxilean_poller.rs` に Tokio バックグラウンドタスクを新設し、UIからのリクエストをブロックせずに OxiLean Proof Power を定期取得（現状はシミュレーション）する仕組みを実装。`AppState` に `oxilean_power: Arc<AtomicU32>` を追加し、`GET /api/v1/security/oxilean/power` エンドポイントからの完全ゼロ遅延（`O(1)` メモリ読み取り）アクセスを達成。
+  - **P2P Sync Edge Proxy (aiome-node)**: `apps/aiome-node/src/routes/federation.rs` に `POST /sync` を新設。エッジノードで重量級の `SamsaraEngine` をロードせず、コアの `samsara-hub` へと CRDT ペイロード (`FederationSyncRequest`) をプロキシするスマートエッジ設計を確立。
+  - **Workspace Hardening**: `npm run generate-types` による OpenAPI スキーマ動機と、`cargo test --workspace` による全100件超のテストパス（リグレッション・ゼロ）を検証済み。
+
 - **Economic Hardening (Aiome x Nurture Synergy P0-P2)**:
   - **Provider-Aware Billing (P1 & P2)**: `apps/api-server/src/stream.rs` および `agent_engine.rs` に LLM 推論課金ロジック（`deduct_generation_cost`）を統合。`LlmProvider::name()` を用い、プロバイダー名に `ollama` または `local` が含まれる場合は使用料金をバイパス（無料化）し、クラウドLLMのリソース消費に対してのみ安全に課金（動的文字数ベース）する機構を追加。
   - **A2C Billing Signature Sync (P0)**: `CommerceEngine` トレイトの `deduct_generation_cost` メソッドに `asset_id: Option<Uuid>` を追加。推論実行時にクリエイターへの還元用（A2C）資産識別子を流通可能にし、`aiome-commerce/src/stripe.rs` にて Nurture の新規エンドポイント `/internal/deduct` への HTTP API コールバック実装を完了。

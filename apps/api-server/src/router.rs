@@ -52,6 +52,14 @@ pub fn build_app(
             get(routes::commerce::get_balance),
         )
         .route(
+            "/api/v1/commerce/escrow/history/:agent_id",
+            get(routes::commerce::list_escrows),
+        )
+        .route(
+            "/api/v1/commerce/escrow/:escrow_id/release",
+            post(routes::commerce::release_escrow),
+        )
+        .route(
             "/api/v1/commerce/purchase/:agent_id",
             axum::routing::post(routes::commerce::execute_purchase).route_layer(
                 tower::ServiceBuilder::new()
@@ -128,11 +136,7 @@ pub fn build_app(
             "/api/v1/audit/quarantine/:id/release",
             post(routes::general::release_quarantined_asset),
         )
-        // Bootstrap: Factory Reset (Phase 2B-4) — 認証必須 (System Admin)
-        .route(
-            "/api/v1/bootstrap/factory-reset",
-            post(routes::bootstrap::factory_reset),
-        )
+        // Bootstrap: Factory Reset moved to debug_assertions block
         .route("/api/v1/trends", get(routes::general::get_trends))
         .route(
             "/api/v1/gig/publish",
@@ -278,7 +282,15 @@ pub fn build_app(
             "/api/synergy/test/federation",
             post(routes::karma::trigger_federation_demo),
         )
-        .route("/api/v1/demo/start", post(routes::demo::start_demo));
+        .route("/api/v1/demo/start", post(routes::demo::start_demo))
+        .route(
+            "/api/v1/bootstrap/factory-reset",
+            post(routes::bootstrap::factory_reset),
+        )
+        .route(
+            "/api/v1/settings/test",
+            post(routes::settings::test_connection),
+        );
 
     let internal_router = internal_router
         .route(
@@ -398,10 +410,7 @@ pub fn build_app(
                 ),
         );
 
-    let internal_router = internal_router.route(
-        "/api/v1/settings/test",
-        post(routes::settings::test_connection),
-    );
+    // test_connection moved to debug_assertions block
 
     let internal_router = internal_router
         .route(
@@ -479,6 +488,8 @@ pub fn build_app(
             "/api/skills/mcp/config",
             axum::routing::put(routes::skill::update_mcp_config).get(routes::skill::get_mcp_config),
         )
+        .nest("/api/v1/forecast", routes::forecast::router())
+        .merge(routes::security::router())
         .layer(TimeoutLayer::new(Duration::from_secs(30)));
 
     let streaming_router = Router::new()

@@ -484,6 +484,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/a2ui/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["submit_a2ui_action"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/diagnostics": {
         parameters: {
             query?: never;
@@ -508,6 +524,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_audit_ledger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/prompt-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_audit_prompt_stats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -548,6 +580,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bootstrap/factory-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /api/v1/bootstrap/factory-reset
+         * @description Factory Reset を実行する。**System Admin 権限が必要**。
+         *     Phase 2B-4: Factory Reset
+         */
+        post: operations["factory_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/commerce/balance/{agent_id}": {
         parameters: {
             query?: never;
@@ -559,6 +612,40 @@ export interface paths {
         get: operations["get_balance"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/escrow/history/{agent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [GET] /api/v1/commerce/escrow/history/:agent_id */
+        get: operations["list_escrows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/escrow/{escrow_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** [POST] /api/v1/commerce/escrow/:escrow_id/release */
+        post: operations["release_escrow"];
         delete?: never;
         options?: never;
         head?: never;
@@ -726,6 +813,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/demo/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** デモの開始要請 */
+        post: operations["start_demo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ekyc/session": {
         parameters: {
             query?: never;
@@ -737,6 +841,22 @@ export interface paths {
         put?: never;
         /** EKYC 検証セッションを開始・URL取得 */
         post: operations["create_ekyc_session_handler"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forecast/predict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_forecast"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1086,6 +1206,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality-gate/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_quality_gate_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/oxilean/power": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_oxilean_power"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings": {
         parameters: {
             query?: never;
@@ -1309,6 +1461,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        A2uiActionRequest: {
+            action: string;
+            /** @description オプションのペイロード（フォーム入力値など将来用） */
+            payload?: unknown;
+            surface_id: string;
+        };
+        A2uiActionResponse: {
+            message: string;
+            success: boolean;
+        };
         /** @description 納品検収基準（The Immutable Gateway の審査エンジン） */
         AcceptanceCriteria: {
             /** @description JSONスキーマによる構造検証 */
@@ -1430,11 +1592,39 @@ export interface components {
             session_url: string;
             status: string;
         };
+        /** @description エスクローの記録 */
+        EscrowRecord: {
+            /** Format: int64 */
+            amount: number;
+            created_at: string;
+            id: string;
+            order_id: string;
+            payer_id: string;
+            status: string;
+        };
+        /** @description Factory Reset レスポンス */
+        FactoryResetResponse: {
+            /** @description 削除されたディレクトリ */
+            deleted_dirs: string[];
+            /** @description 削除されたファイル */
+            deleted_files: string[];
+            /** @description エラーメッセージ */
+            errors: string[];
+            /** @description 保持されたファイル */
+            preserved_files: string[];
+            /** @description 成功したか */
+            success: boolean;
+        };
         /**
          * @description 🛡️ AgentRx 失敗カテゴリ (Taxonomy)
          * @enum {string}
          */
         FailureCategory: "PlanAdherenceFailure" | "InventionOfNewInformation" | "InvalidInvocation" | "MisinterpretationOfOutput" | "IntentPlanMisalignment" | "UnderSpecifiedIntent" | "IntentNotSupported" | "GuardrailsTriggered" | "SystemFailure";
+        ForecastResponse: {
+            series_id: string;
+            timestamps: string[];
+            values: number[];
+        };
         GiftPolicyResponse: {
             daily_limit_reached: boolean;
             /** Format: double */
@@ -1676,14 +1866,29 @@ export interface components {
             recommended_model: string;
             setup_required: boolean;
         };
+        OxiLeanPowerResponse: {
+            /** Format: int32 */
+            power: number;
+            status: string;
+        };
+        PromptStatsResponse: {
+            period: string;
+            providers: components["schemas"]["ProviderEvalStat"][];
+        };
         ProviderEvalStat: {
+            /** Format: double */
             average_latency_ms: number;
+            /** Format: double */
             cache_hit_rate: number;
             model: string;
             provider: string;
+            /** Format: int64 */
             total_calls: number;
+            /** Format: double */
             total_cost_usd: number;
+            /** Format: int64 */
             total_tokens_in: number;
+            /** Format: int64 */
             total_tokens_out: number;
         };
         PublishListingRequest: {
@@ -1726,6 +1931,15 @@ export interface components {
          * @enum {string}
          */
         PurchaseStatus: "Escrowed" | "Completed" | "Refunded";
+        QualityGateEntry: {
+            conductor: string;
+            created_at: string;
+            id: string;
+            job_id: string;
+            passed: boolean;
+            /** Format: int64 */
+            score: number;
+        };
         /** @description 検疫済みアセットのレコード構造体 */
         QuarantinedAsset: {
             asset_name: string;
@@ -1740,6 +1954,9 @@ export interface components {
             disclosure_level?: string | null;
             file_back?: boolean | null;
             question: string;
+        };
+        ReleaseEscrowRequest: {
+            recipient_id: string;
         };
         /** @description リソースの使用状況 */
         ResourceStatus: {
@@ -2805,6 +3022,58 @@ export interface operations {
             };
         };
     };
+    submit_a2ui_action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["A2uiActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Action executed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["A2uiActionResponse"];
+                };
+            };
+            /** @description Invalid action or parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden (BOLA violation) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_diagnoses: {
         parameters: {
             query?: never;
@@ -2848,6 +3117,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLedgerResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_audit_prompt_stats: {
+        parameters: {
+            query: {
+                /** @description Statistics period (e.g., 7d) */
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fetch prompt evaluation stats */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptStatsResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -2928,6 +3227,33 @@ export interface operations {
             };
         };
     };
+    factory_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Factory reset complete */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactoryResetResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_balance: {
         parameters: {
             query?: never;
@@ -2948,6 +3274,68 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Unauthorized access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_escrows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique ID of the agent */
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of escrows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EscrowRecord"][];
+                };
+            };
+            /** @description Unauthorized access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    release_escrow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the escrow to release */
+                escrow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseEscrowRequest"];
+            };
+        };
+        responses: {
+            /** @description Escrow released successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unauthorized access */
             403: {
@@ -3197,6 +3585,33 @@ export interface operations {
             };
         };
     };
+    start_demo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Demo started */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     create_ekyc_session_handler: {
         parameters: {
             query?: never;
@@ -3221,6 +3636,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_forecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the TimesFM forecast */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastResponse"];
+                };
             };
         };
     };
@@ -3786,6 +4223,63 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_quality_gate_history: {
+        parameters: {
+            query?: {
+                /** @description Number of items to fetch (max 100) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent quality gate history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityGateEntry"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - System agent only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_oxilean_power: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the current OxiLean formal verification proof power */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OxiLeanPowerResponse"];
+                };
             };
         };
     };

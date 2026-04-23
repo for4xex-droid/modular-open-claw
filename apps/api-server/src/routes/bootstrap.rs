@@ -206,6 +206,7 @@ pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
 }
 
 /// Factory Reset レスポンス
+#[cfg(debug_assertions)]
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct FactoryResetResponse {
     /// 成功したか
@@ -224,6 +225,7 @@ pub struct FactoryResetResponse {
 ///
 /// Factory Reset を実行する。**System Admin 権限が必要**。
 /// Phase 2B-4: Factory Reset
+#[cfg(debug_assertions)]
 #[utoipa::path(
     post,
     path = "/api/v1/bootstrap/factory-reset",

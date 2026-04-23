@@ -45,6 +45,9 @@ pub trait CommerceEngine: Send + Sync {
     /// エスクロー（一時保留）決済を作成する
     async fn escrow_create(&self, agent_id: Uuid, amount: u64) -> Result<String, AiomeError>;
 
+    /// エスクロー履歴を取得する
+    async fn list_escrows(&self, agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError>;
+
     /// エスクローを解放し受注者に送金する
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError>;
 
@@ -108,6 +111,17 @@ pub trait CommerceEngine: Send + Sync {
         amount: u64,
         generation_type: &str,
     ) -> Result<(), AiomeError>;
+}
+
+/// エスクローの記録
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct EscrowRecord {
+    pub id: String,
+    pub payer_id: String,
+    pub order_id: String,
+    pub amount: i64,
+    pub status: String,
+    pub created_at: String,
 }
 
 /// サブスクリプションのステータス

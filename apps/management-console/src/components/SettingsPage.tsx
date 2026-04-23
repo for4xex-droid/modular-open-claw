@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
+import EscrowManagementView from './EscrowManagementView';
 
 interface SettingEntry {
     key: string;
@@ -325,6 +326,8 @@ const SettingsPage: React.FC = () => {
                         />
                     </div>
                 </section>
+
+                <EscrowManagementView />
 
                 <McpConfigManager />
 

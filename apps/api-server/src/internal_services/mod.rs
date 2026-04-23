@@ -9,13 +9,15 @@ pub mod dream;
 pub mod heartbeat;
 pub mod watchtower;
 
+pub mod oxilean_poller;
+
 use crate::AppState;
 use std::sync::Arc;
 use tracing::info;
 
 /// 内部バックグラウンドタスクを起動する。
 pub async fn spawn_all(state: AppState) {
-    info!("🚀 Spawning unified internal services (Watchtower & Heartbeat)...");
+    info!("🚀 Spawning unified internal services (Watchtower & Heartbeat & OxiLean)...");
 
     // 1. Watchtower Task (Discord/Telegram Bridge)
     let state_clone = state.clone();
@@ -38,6 +40,14 @@ pub async fn spawn_all(state: AppState) {
     tokio::spawn(async move {
         if let Err(e) = dream::run(state_clone).await {
             tracing::error!("❌ Internal Dream service failed: {:?}", e);
+        }
+    });
+
+    // 4. OxiLean Poller Task
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = oxilean_poller::run(state_clone).await {
+            tracing::error!("❌ Internal OxiLean Poller service failed: {:?}", e);
         }
     });
 }

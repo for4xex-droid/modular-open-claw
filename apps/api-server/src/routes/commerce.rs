@@ -249,3 +249,79 @@ pub async fn get_subscription_status(
     let status = engine.get_subscription_status(agent_id).await?;
     Ok(Json(status))
 }
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct ReleaseEscrowRequest {
+    #[schema(value_type = String)]
+    pub recipient_id: Uuid,
+}
+
+/// [GET] /api/v1/commerce/escrow/history/:agent_id
+#[utoipa::path(
+    get,
+    path = "/api/v1/commerce/escrow/history/{agent_id}",
+    responses(
+        (status = 200, description = "List of escrows", body = Vec<aiome_core_contracts::commerce::EscrowRecord>),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("agent_id" = String, Path, description = "The unique ID of the agent")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn list_escrows(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(agent_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    let escrows = engine.list_escrows(agent_id).await?;
+    Ok(Json(escrows))
+}
+
+/// [POST] /api/v1/commerce/escrow/:escrow_id/release
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/escrow/{escrow_id}/release",
+    request_body = ReleaseEscrowRequest,
+    responses(
+        (status = 200, description = "Escrow released successfully"),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("escrow_id" = String, Path, description = "The ID of the escrow to release")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn release_escrow(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(escrow_id): Path<String>,
+    Json(req): Json<ReleaseEscrowRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    // Escrow release typically might be done autonomously or via user approval.
+    // Ensure eKYC for payment dispersal.
+    if !auth.ekyc_verified {
+        return Err(AppError::forbidden(
+            "eKYC verification required to release escrow",
+        ));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    engine.escrow_release(&escrow_id, req.recipient_id).await?;
+    Ok(StatusCode::OK)
+}

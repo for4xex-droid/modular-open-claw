@@ -246,6 +246,14 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
     }
+
+    async fn list_escrows(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<Vec<aiome_core_contracts::commerce::EscrowRecord>, aiome_core::error::AiomeError>
+    {
+        Ok(vec![])
+    }
 }
 
 #[derive(Debug)]
@@ -472,6 +480,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let _ = disk_quota_mgr.init().await;
 
     let state = AppState {
+        oxilean_power: Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
         hook_manager: Default::default(),
         publish_pipeline: Default::default(),

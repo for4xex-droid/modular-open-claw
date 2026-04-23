@@ -8,7 +8,10 @@ use axum::routing::get;
 use axum::Router;
 
 pub mod agent_card;
+pub mod federation;
 
 pub fn well_known_routes() -> Router {
-    Router::new().route("/agent.json", get(agent_card::get_agent_card))
+    Router::new()
+        .route("/agent.json", get(agent_card::get_agent_card))
+        .nest("/api/v1/federation", federation::router())
 }

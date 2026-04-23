@@ -38,6 +38,14 @@ async fn test_docker_conductor_e2e_success_flow() {
         return;
     }
 
+    // Check if daemon is running
+    let info_output = std::process::Command::new(runtime).arg("info").output();
+
+    if info_output.is_err() || !info_output.unwrap().status.success() {
+        println!("Skipping E2E test as {} daemon is not running", runtime);
+        return;
+    }
+
     let config = GrpcClientConfig {
         endpoint_url: "http://127.0.0.1:0".to_string(), // Will be overridden // allow-anti-pattern
         connect_timeout: Duration::from_secs(10),

@@ -159,6 +159,7 @@ pub struct AppState {
     pub quality_gate_store:
         Component<Arc<dyn infrastructure::quality_gate_store::QualityGateStore>>,
     pub hook_manager: Component<Arc<infrastructure::security::hook_manager::HookManager>>,
+    pub oxilean_power: Arc<std::sync::atomic::AtomicU32>,
 }
 
 impl AppState {

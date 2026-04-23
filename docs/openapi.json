@@ -1237,6 +1237,36 @@
         ]
       }
     },
+    "/api/v1/bootstrap/factory-reset": {
+      "post": {
+        "tags": [
+          "crate::routes::bootstrap"
+        ],
+        "summary": "POST /api/v1/bootstrap/factory-reset",
+        "description": "Factory Reset を実行する。**System Admin 権限が必要**。\nPhase 2B-4: Factory Reset",
+        "operationId": "factory_reset",
+        "responses": {
+          "200": {
+            "description": "Factory reset complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactoryResetResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      }
+    },
     "/api/v1/commerce/balance/{agent_id}": {
       "get": {
         "tags": [
@@ -1263,6 +1293,92 @@
                 "schema": {}
               }
             }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/commerce/escrow/history/{agent_id}": {
+      "get": {
+        "tags": [
+          "crate::routes::commerce"
+        ],
+        "summary": "[GET] /api/v1/commerce/escrow/history/:agent_id",
+        "operationId": "list_escrows",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of escrows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EscrowRecord"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized access"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/commerce/escrow/{escrow_id}/release": {
+      "post": {
+        "tags": [
+          "crate::routes::commerce"
+        ],
+        "summary": "[POST] /api/v1/commerce/escrow/:escrow_id/release",
+        "operationId": "release_escrow",
+        "parameters": [
+          {
+            "name": "escrow_id",
+            "in": "path",
+            "description": "The ID of the escrow to release",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseEscrowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Escrow released successfully"
           },
           "403": {
             "description": "Unauthorized access"
@@ -1664,6 +1780,36 @@
             "jwt": []
           }
         ]
+      }
+    },
+    "/api/v1/forecast/predict": {
+      "get": {
+        "tags": [
+          "Forecast"
+        ],
+        "operationId": "get_forecast",
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the TimesFM forecast",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/gift/policy/{agent_id}": {
@@ -2449,6 +2595,26 @@
             "api_key": []
           }
         ]
+      }
+    },
+    "/api/v1/security/oxilean/power": {
+      "get": {
+        "tags": [
+          "Security"
+        ],
+        "operationId": "get_oxilean_power",
+        "responses": {
+          "200": {
+            "description": "Returns the current OxiLean formal verification proof power",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OxiLeanPowerResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/settings": {
@@ -3525,6 +3691,84 @@
           }
         }
       },
+      "EscrowRecord": {
+        "type": "object",
+        "description": "エスクローの記録",
+        "required": [
+          "id",
+          "payer_id",
+          "order_id",
+          "amount",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "payer_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "FactoryResetResponse": {
+        "type": "object",
+        "description": "Factory Reset レスポンス",
+        "required": [
+          "success",
+          "deleted_files",
+          "deleted_dirs",
+          "preserved_files",
+          "errors"
+        ],
+        "properties": {
+          "deleted_dirs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "削除されたディレクトリ"
+          },
+          "deleted_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "削除されたファイル"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "エラーメッセージ"
+          },
+          "preserved_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "保持されたファイル"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "成功したか"
+          }
+        }
+      },
       "FailureCategory": {
         "type": "string",
         "description": "🛡️ AgentRx 失敗カテゴリ (Taxonomy)",
@@ -3539,6 +3783,32 @@
           "GuardrailsTriggered",
           "SystemFailure"
         ]
+      },
+      "ForecastResponse": {
+        "type": "object",
+        "required": [
+          "series_id",
+          "values",
+          "timestamps"
+        ],
+        "properties": {
+          "series_id": {
+            "type": "string"
+          },
+          "timestamps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
       },
       "GiftPolicyResponse": {
         "type": "object",
@@ -4305,6 +4575,23 @@
           }
         }
       },
+      "OxiLeanPowerResponse": {
+        "type": "object",
+        "required": [
+          "power",
+          "status"
+        ],
+        "properties": {
+          "power": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "PromptStatsResponse": {
         "type": "object",
         "required": [
@@ -4551,6 +4838,17 @@
             ]
           },
           "question": {
+            "type": "string"
+          }
+        }
+      },
+      "ReleaseEscrowRequest": {
+        "type": "object",
+        "required": [
+          "recipient_id"
+        ],
+        "properties": {
+          "recipient_id": {
             "type": "string"
           }
         }

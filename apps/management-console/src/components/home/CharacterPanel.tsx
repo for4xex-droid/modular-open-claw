@@ -11,6 +11,7 @@ import InxRenderer from '../../lib/inx/InxRenderer';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
+import { ProofPowerIndicator } from '../common/ProofPowerIndicator';
 import { EkycStatusBadge } from '../character/EkycStatusBadge';
 import { SoulStatusBadge } from '../character/SoulStatusBadge';
 
@@ -22,6 +23,7 @@ interface CharacterPanelProps {
     avatarState: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
     mode: 'vrm' | 'inx' | 'glb' | 'off' | 'lite';
     sessionSavedChars?: number;
+    proofPower?: number;
 }
 
 const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode, sessionSavedChars }) => {
@@ -125,7 +127,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             </div>
 
             {sessionSavedChars !== undefined && (
-                <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                    <ProofPowerIndicator variant="compact" />
+                    <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
+                </div>
             )}
         </div>
     );

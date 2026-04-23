@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::{CommerceEngine, EscrowRecord};
 use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use stripe_webhook::Webhook;
@@ -233,6 +233,34 @@ impl CommerceEngine for StripeCommerceEngine {
                 }
             }
         }
+    }
+
+    async fn list_escrows(&self, agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
+        use sqlx::Row;
+
+        let rows = sqlx::query(
+            "SELECT id, payer_id, order_id, amount, status, created_at FROM escrows WHERE payer_id = ? ORDER BY created_at DESC"
+        )
+        .bind(agent_id.to_string())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to fetch escrows: {}", e),
+        })?;
+
+        let records = rows
+            .into_iter()
+            .map(|row| EscrowRecord {
+                id: row.try_get("id").unwrap_or_default(),
+                payer_id: row.try_get("payer_id").unwrap_or_default(),
+                order_id: row.try_get("order_id").unwrap_or_default(),
+                amount: row.try_get("amount").unwrap_or_default(),
+                status: row.try_get("status").unwrap_or_default(),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+            })
+            .collect();
+
+        Ok(records)
     }
 
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {

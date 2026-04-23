@@ -15,7 +15,6 @@ use utoipa::OpenApi;
         crate::routes::general::get_wiki_content,
         crate::routes::settings::get_settings,
         crate::routes::settings::update_setting,
-        crate::routes::settings::test_connection,
         crate::routes::settings::get_ollama_models,
         crate::routes::skill::list_skills,
         crate::routes::skill::import_skill,
@@ -59,6 +58,8 @@ use utoipa::OpenApi;
         // Commerce
         crate::routes::commerce::get_balance,
         crate::routes::commerce::execute_purchase,
+        crate::routes::commerce::list_escrows,
+        crate::routes::commerce::release_escrow,
         // Gift
         crate::routes::gift::send_gift,
         crate::routes::gift::get_gift_policy,
@@ -112,7 +113,11 @@ use utoipa::OpenApi;
         crate::routes::lora_market::my_listings,
         // Soul
         crate::routes::soul::init_soul,
-        crate::routes::soul::get_soul_status
+        crate::routes::soul::get_soul_status,
+        // Security
+        crate::routes::security::get_oxilean_power,
+        // Forecast
+        crate::routes::forecast::get_forecast
     ),
     components(
         schemas(
@@ -120,6 +125,9 @@ use utoipa::OpenApi;
             crate::routes::settings::UpdateSettingsRequest,
             crate::routes::settings::TestConnectionRequest,
             crate::routes::settings::TestConnectionResponse,
+            crate::routes::bootstrap::FactoryResetResponse,
+            crate::routes::commerce::ReleaseEscrowRequest,
+            aiome_core_contracts::commerce::EscrowRecord,
             crate::routes::skill::SkillSummary,
             crate::routes::skill::ImportRequest,
             crate::routes::skill::McpSpawnRequest,
@@ -189,7 +197,11 @@ use utoipa::OpenApi;
             // Soul
             crate::routes::soul::SoulStatusResponse,
             crate::routes::soul::InitSoulResponse,
-            crate::routes::soul::InitSoulRequest
+            crate::routes::soul::InitSoulRequest,
+            // Security
+            crate::routes::security::OxiLeanPowerResponse,
+            // Forecast
+            crate::routes::forecast::ForecastResponse
         )
     ),
     info(
@@ -209,6 +221,8 @@ pub struct ApiDoc;
     crate::routes::karma::trigger_security_demo,
     crate::routes::karma::trigger_federation_demo,
     crate::routes::demo::start_demo,
+    crate::routes::settings::test_connection,
+    crate::routes::bootstrap::factory_reset,
 ))]
 pub struct DemoApiDoc;
 

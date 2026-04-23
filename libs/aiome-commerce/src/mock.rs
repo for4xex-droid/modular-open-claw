@@ -7,6 +7,7 @@
 
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::commerce::EscrowRecord;
 use async_trait::async_trait;
 use tracing::info;
 use uuid::Uuid;
@@ -92,6 +93,25 @@ impl CommerceEngine for MockCommerceEngine {
                 reason: "Insufficient funds for escrow".into(),
             })
         }
+    }
+
+    async fn list_escrows(&self, agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
+        let mut records = Vec::new();
+        for entry in self.escrows.iter() {
+            let escrow_id = entry.key();
+            let (sender_id, amount) = entry.value();
+            if sender_id == &agent_id {
+                records.push(EscrowRecord {
+                    id: escrow_id.clone(),
+                    payer_id: sender_id.to_string(),
+                    order_id: "mock_order".to_string(),
+                    amount: *amount as i64,
+                    status: "Locked".to_string(),
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                });
+            }
+        }
+        Ok(records)
     }
 
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {

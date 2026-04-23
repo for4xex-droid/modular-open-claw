@@ -1,13 +1,13 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-23T14:31:59.483615
+> Generated at: 2026-04-23T16:45:46.670184
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
 ## 📦 APPS (Endpoints & Services)
 ### `management-console`
 **React Components**
-- A2uiRenderer, AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, ComponentRenderer, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, ExpressionPipeline, FeatureToggle, FilterButton, FlowCard, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, PromptStatsView, React, SYNAPSES, SecretUpdater, SeoPulseView, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SurfaceRenderer, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
+- A2uiRenderer, AVATAR_ASSETS, AgentConsole, AiomeAvatar, ArtifactVault, AuthOverlay, AvatarCharacterContext, AvatarCharacterProvider, AvatarViewerModal, BiomeDialogueView, BiotopeView, Bomb, CausalVisualizer, CharacterBillboard, CharacterPanel, ComponentRenderer, CortexView, DEMO_STEPS_META, DemoView, DiagnosticsHistory, DioramaView, EkycStatusBadge, EscrowManagementView, ExpressionPipeline, FeatureToggle, FilterButton, FlowCard, ForecastView, GlbRenderer, GraphView, HomePage, ImmuneSystem, InxRenderer, LanguageContext, LoraTrainingView, MAX_RETRIES, McpConfigManager, MiniTabBar, ModelSetupStep, MotionComponent, OllamaModelSelector, OnboardingModal, OriginManager, PAGE_SIZE, PromptStatsView, ProofPowerIndicator, React, SYNAPSES, SecretUpdater, SeoPulseView, SettingInput, SettingsPage, SkillCard, SkillVault, SoTProgressBar, SoulStatusBadge, StoryFlow, SurfaceRenderer, SystemBirth, SystemVitalityContext, SystemVitalityProvider, TaskApprovalOverlay, Timeline, TokenSavingsIndicator, TreasureBox, TrendView, VoiceStore, VrmRenderer
 
 ### `api-server`
 **REST / Websocket Routes**
@@ -59,6 +59,8 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/bootstrap/factory-reset`
 - `/api/v1/bootstrap/status`
 - `/api/v1/commerce/balance/:agent_id`
+- `/api/v1/commerce/escrow/:escrow_id/release`
+- `/api/v1/commerce/escrow/history/:agent_id`
 - `/api/v1/commerce/purchase/:agent_id`
 - `/api/v1/commerce/subscription/:agent_id`
 - `/api/v1/commerce/subscription/cancel`
@@ -117,6 +119,8 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/ingest`
 - `/ingest/text`
 - `/messages`
+- `/oxilean/power`
+- `/predict`
 - `/query`
 - `/sse`
 - `/suggestions`
@@ -124,13 +128,15 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/wiki`
 - `/wiki/:id`
 **Key Structs**
-- A2uiActionRequest, A2uiActionResponse, AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, BootstrapStatusResponse, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, FactoryResetResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, HistoryParams, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, InitSoulRequest, InitSoulResponse, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, ModelStatusResponse, MonologueEntry, MonologueQuery, MonologueResponse, OllamaDetectionResponse, PluginRegistry, PromptStatsResponse, PublishListingRequest, PullModelRequest, PurchaseRequest, PurchaseResponse, QueryReq, SendBiomeRequest, SidecarHealth, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
+- A2uiActionRequest, A2uiActionResponse, AddMemberRequest, AgentChatRequest, AgentEngine, ApiDoc, AppError, AppState, AuditLedgerResponse, Authenticated, AuthenticatedUser, AuthorizeRequest, AutoToggle, AutonomousDemo, AvatarAssetRequest, AvatarVerificationResult, BootContext, BootstrapStatusResponse, CallToolResult, CancelSubscriptionRequest, ChatMessage, CommerceBalanceResponse, Component, CreateGuildRequest, CreateSubscriptionRequest, DbLoggerLayer, DefaultToolCallRouter, DemoApiDoc, DiagnosisResponse, EkycSessionResponse, FactoryResetResponse, ForecastQuery, ForecastResponse, GiftPolicyResponse, GiftResponse, GraphData, GraphEdge, GraphNode, HistoryParams, IdentityResponse, ImportRequest, ImportSkillRequest, IngestResp, IngestTextReq, IngestUrlReq, InitSoulRequest, InitSoulResponse, Inochi2dUploadResponse, JobReviewPayload, JsonRpcError, JsonRpcRequest, JsonRpcResponse, KarmaBridge, KarmaFeedbackRequest, ListArtifactsParams, ListParams, ListToolsResult, ListVoiceAssetsQuery, ListingQueryParams, LogEntry, LogEntryResponse, LoraJobStatusResponse, LoraTrainRequest, LoraTrainResponse, McpClient, McpDiscoveryFile, McpHttpClient, McpProcessManager, McpServerConfig, McpSpawnRequest, McpTool, MessageQuery, ModelStatusResponse, MonologueEntry, MonologueQuery, MonologueResponse, OllamaDetectionResponse, OxiLeanPowerResponse, PluginRegistry, PromptStatsResponse, PublishListingRequest, PullModelRequest, PurchaseRequest, PurchaseResponse, QueryReq, ReleaseEscrowRequest, SendBiomeRequest, SidecarHealth, SkillSummary, SoulStatusResponse, StartAutonomousRequest, SubscriptionResponse, SynthReq, SynthesizeQuery, SynthesizeRequest, TestConnectionRequest, TestConnectionResponse, TokenRequest, TokenResponse, TrendsResponse, UpdateSettingsRequest, WikiArticleSummary
 
 ### `aiome-node`
 **REST / Websocket Routes**
 - `/agent.json`
+- `/handshake`
+- `/sync`
 **Key Structs**
-- JsonRpcError, JsonRpcRequest, JsonRpcResponse, McpServer
+- FederationHandshake, HandshakeResponse, JsonRpcError, JsonRpcRequest, JsonRpcResponse, McpServer
 
 ### `samsara-hub`
 **REST / Websocket Routes**
@@ -215,7 +221,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 **Traits (Interfaces)**
 - AgentHook, AiomePlugin, CommerceEngine, EmbeddingProvider, FormalProofGate, GiftEngine, LlmProvider, RuntimeJail, X402Negotiator
 **Domain Structs**
-- BudgetExhaustedError, EconomicContext, GiftPolicyContext, GiftRequest, LlmMessage, LlmRequest, LlmResponse, NativeModelConfig, PaymentProof, PermissionManifest, TrellisGenerateRequest, TrellisGenerateResponse
+- BudgetExhaustedError, EconomicContext, EscrowRecord, GiftPolicyContext, GiftRequest, LlmMessage, LlmRequest, LlmResponse, NativeModelConfig, PaymentProof, PermissionManifest, TrellisGenerateRequest, TrellisGenerateResponse
 
 ### `soul`
 **Traits (Interfaces)**

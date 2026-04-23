@@ -71,4 +71,13 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-20 (Asia/Tokyo) - CBA Stage 0 Integration*
+*最終更新: 2026-04-23 (Asia/Tokyo) - Phase 6 Integration*
+
+
+## Phase 6 Integration Notes
+
+### OxiLean Power Polling
+- `api-server` introduces `oxilean_poller` as a background Tokio task. It periodically checks the security verification score from `shadow-worker` and stores it in `AppState` as an `AtomicU32`. This ensures O(1) instantaneous reads for the UI without gRPC latency.
+
+### P2P Sync Edge Proxy
+- `aiome-node` acts as a Smart Edge Gateway. Its `/api/v1/federation/sync` endpoint accepts incoming CRDT payloads from peer nodes, verifies signatures, and proxies the payload to the core `samsara-hub` for actual CRDT merging. This prevents the edge node from loading heavy dependency graphs.

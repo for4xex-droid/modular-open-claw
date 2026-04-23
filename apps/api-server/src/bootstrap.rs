@@ -942,6 +942,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     );
 
     let state = AppState {
+        oxilean_power: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
         hook_manager: Component::new(hook_manager.clone()),
         health_monitor: Component::new(health_monitor),

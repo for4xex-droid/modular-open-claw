@@ -11,11 +11,13 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
+import { ProofPowerIndicator } from './common/ProofPowerIndicator';
 import ErrorBoundary from './common/ErrorBoundary';
 import { A2uiRenderer } from './A2uiRenderer';
 
 export interface AgentConsoleProps {
     sessionSavedChars?: number;
+    proofPower?: number;
 }
 
 const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) => {
@@ -86,6 +88,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
                         {t('agent.voice')}: {autoTts ? 'ON' : 'OFF'}
                     </button>
+                    <ProofPowerIndicator variant="compact" />
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>3.5B MODEL</div>
                 </div>

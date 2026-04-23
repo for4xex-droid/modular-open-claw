@@ -276,6 +276,7 @@ pub async fn update_setting(
     Ok(Json(serde_json::json!({"status": "ok"})))
 }
 
+#[cfg(debug_assertions)]
 #[utoipa::path(
     post,
     path = "/api/v1/settings/test",

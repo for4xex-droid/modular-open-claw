@@ -829,6 +829,12 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn list_escrows(
+            &self,
+            _agent_id: Uuid,
+        ) -> Result<Vec<aiome_core_contracts::commerce::EscrowRecord>, AiomeError> {
+            Ok(vec![])
+        }
     }
 
     async fn setup_marketplace(tmp: &tempfile::TempDir) -> (UniversalLoraMarketplace, PathBuf) {
