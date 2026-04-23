@@ -28,9 +28,20 @@ ignore = [
     # -----------------------------------------------------------------
     "RUSTSEC-2026-0098", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
     "RUSTSEC-2026-0099", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
+    "RUSTSEC-2026-0104", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
     "RUSTSEC-2026-0097", # rand (legacy crate, pinned by serenity -> rustls 0.22 tree)
     "RUSTSEC-2024-0421", # idna 0.4.0 (pinned by serenity -> reqwest -> hyper-tls -> url)
     "RUSTSEC-2023-0071", # rsa (pinned by serenity -> rustls 0.22 -> webpki)
     "RUSTSEC-2026-0049", # rustls-webpki 0.102.x CRL matching (pinned by serenity)
-    "RUSTSEC-2023-0080"  # matrixmultiply (pinned by tauri -> image -> ndarray)
+    "RUSTSEC-2023-0080", # matrixmultiply (pinned by tauri -> image -> ndarray)
+    
+    # -----------------------------------------------------------------
+    # Tauri & UI dependencies:
+    # Downstream dependencies of tauri (glib, unic-* crates) that cannot be patched.
+    # -----------------------------------------------------------------
+    "RUSTSEC-2024-0429", # glib (pinned by tauri -> webkit2gtk -> glib)
+    "RUSTSEC-2025-0075", # unic-char-range (pinned by tauri -> unic-ucd-ident)
+    "RUSTSEC-2025-0080", # unic-common (pinned by tauri -> unic-ucd-version)
+    "RUSTSEC-2025-0098", # unic-ucd-version (pinned by tauri -> unic-ucd-ident)
+    "RUSTSEC-2025-0100"  # unic-ucd-ident (pinned by tauri -> urlpattern)
 ]
