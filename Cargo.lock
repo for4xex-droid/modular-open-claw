@@ -4645,6 +4645,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmac-sha256"
+version = "1.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec9d92d097f4749b64e8cc33d924d9f40a2d4eb91402b458014b781f5733d60f"
+
+[[package]]
 name = "home"
 version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5622,6 +5628,15 @@ dependencies = [
  "futures-util",
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "js_option"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68421373957a1593a767013698dbf206e2b221eefe97a44d98d18672ff38423c"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -6861,6 +6876,8 @@ dependencies = [
  "dashmap 6.1.0",
  "ed25519-dalek",
  "gltf",
+ "hmac-sha256",
+ "http 1.4.0",
  "infrastructure",
  "nix 0.29.0",
  "nurture-core",
@@ -6871,6 +6888,7 @@ dependencies = [
  "sha2",
  "shared",
  "sqlx",
+ "svix",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -10275,6 +10293,37 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "svix"
+version = "1.92.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d38e4595b25dedd14af5f51be152dbb015c5778208df6d0ee0fef3ef10d12e3"
+dependencies = [
+ "base64 0.13.1",
+ "hmac-sha256",
+ "http 0.2.12",
+ "http 1.4.0",
+ "http-body-util",
+ "hyper 1.9.0",
+ "hyper-rustls 0.27.9",
+ "hyper-util",
+ "itertools 0.14.0",
+ "js_option",
+ "percent-encoding",
+ "rand 0.9.4",
+ "rustls 0.23.38",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "thiserror 2.0.18",
+ "time",
+ "tokio",
+ "tower-service",
+ "tracing",
+ "url",
+ "uuid 1.23.0",
+]
 
 [[package]]
 name = "swift-rs"

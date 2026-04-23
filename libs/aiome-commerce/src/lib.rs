@@ -12,6 +12,7 @@ pub mod factory;
 pub mod gift;
 pub mod gig;
 pub mod mock;
+pub mod polar;
 pub mod splitter;
 pub mod stripe;
 pub mod syndicate;
@@ -21,6 +22,7 @@ pub mod wallet;
 pub use crate::ekyc::StripeEkycEngine;
 pub use crate::factory::CommerceEngineFactory;
 pub use crate::gig::UniversalGigEngine;
+pub use crate::polar::PolarCommerceEngine;
 pub use crate::stripe::StripeCommerceEngine;
 pub use crate::syndicate::UniversalSyndicateStore;
 

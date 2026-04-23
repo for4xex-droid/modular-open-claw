@@ -395,18 +395,43 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let commerce_engine = {
         let stripe_key = stripe_key_raw.clone();
-        let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+        let polar_key = std::env::var("POLAR_API_KEY").ok();
+        let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+        let polar_webhook_secret = std::env::var("POLAR_WEBHOOK_SECRET").unwrap_or_default();
         shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
+        shared::security::scrub_env("POLAR_WEBHOOK_SECRET");
 
         let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
 
         let nurture_url = std::env::var("NURTURE_API_URL").ok();
         let nurture_secret = nurture_secret_raw.clone();
 
+        let config = if let Some(key) = stripe_key {
+            aiome_commerce::factory::CommerceConfig {
+                provider: aiome_commerce::factory::ProviderType::Stripe,
+                api_key: Some(key),
+                webhook_secret: stripe_webhook_secret,
+                base_url: None,
+            }
+        } else if let Some(key) = polar_key {
+            aiome_commerce::factory::CommerceConfig {
+                provider: aiome_commerce::factory::ProviderType::Polar,
+                api_key: Some(key),
+                webhook_secret: polar_webhook_secret,
+                base_url: std::env::var("POLAR_BASE_URL").ok(),
+            }
+        } else {
+            aiome_commerce::factory::CommerceConfig {
+                provider: aiome_commerce::factory::ProviderType::Mock,
+                api_key: None,
+                webhook_secret: "".to_string(),
+                base_url: None,
+            }
+        };
+
         Some(
             aiome_commerce::CommerceEngineFactory::create(
-                stripe_key,
-                webhook_secret,
+                config,
                 sqlite_pool,
                 nurture_url,
                 nurture_secret,

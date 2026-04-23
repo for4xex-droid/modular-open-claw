@@ -8,36 +8,69 @@ use aiome_core_contracts::commerce::CommerceEngine;
 use anyhow::Result;
 use std::sync::Arc;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProviderType {
+    Stripe,
+    Polar,
+    Mock,
+}
+
+#[derive(Debug, Clone)]
+pub struct CommerceConfig {
+    pub provider: ProviderType,
+    pub api_key: Option<String>,
+    pub webhook_secret: String,
+    pub base_url: Option<String>,
+}
+
 pub struct CommerceEngineFactory;
 
 impl CommerceEngineFactory {
     /// Dynamically creates the correct CommerceEngine instance depending on the
-    /// provided API key and the build environment (debug vs release).
+    /// provided config and the build environment (debug vs release).
     pub async fn create(
-        api_key: Option<String>,
-        webhook_secret: String,
+        config: CommerceConfig,
         pool: sqlx::SqlitePool,
         nurture_url: Option<String>,
         nurture_secret: Option<String>,
     ) -> Result<Arc<dyn CommerceEngine>> {
-        if let Some(key) = api_key {
-            // If we have a key, we always use the Stripe engine
-            Ok(Arc::new(crate::stripe::StripeCommerceEngine::new(
-                key,
-                webhook_secret,
-                pool,
-                nurture_url,
-                nurture_secret,
-            )))
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                tracing::warn!("⚠️ [CommerceFactory] STRIPE_API_KEY not set. Using MockCommerceEngine for local/OSS economy.");
-                Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
+        match config.provider {
+            ProviderType::Stripe => {
+                let key = config.api_key.ok_or_else(|| {
+                    anyhow::anyhow!("STRIPE_API_KEY must be set for Stripe provider")
+                })?;
+                Ok(Arc::new(crate::stripe::StripeCommerceEngine::new(
+                    key,
+                    config.webhook_secret,
+                    pool,
+                    nurture_url,
+                    nurture_secret,
+                )))
             }
-            #[cfg(not(debug_assertions))]
-            {
-                Err(anyhow::anyhow!("STRIPE_API_KEY must be set in production"))
+            ProviderType::Polar => {
+                let key = config.api_key.ok_or_else(|| {
+                    anyhow::anyhow!("POLAR_API_KEY must be set for Polar provider")
+                })?;
+                Ok(Arc::new(crate::polar::PolarCommerceEngine::new(
+                    key,
+                    config.webhook_secret,
+                    config.base_url,
+                )))
+            }
+            ProviderType::Mock => {
+                #[cfg(debug_assertions)]
+                {
+                    tracing::warn!(
+                        "⚠️ [CommerceFactory] Using MockCommerceEngine for local/OSS economy."
+                    );
+                    Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    Err(anyhow::anyhow!(
+                        "Mock provider is not allowed in production"
+                    ))
+                }
             }
         }
     }
@@ -48,29 +81,58 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     #[tokio::test]
-    async fn test_commerce_factory_real_stripe_when_key_present() {
+    async fn test_commerce_factory_real_stripe() {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
             .unwrap(); // allow-anti-pattern
 
-        let api_key = "sk_test_mock_123".to_string();
-        let webhook_secret = "whsec_mock".to_string();
+        let config = CommerceConfig {
+            provider: ProviderType::Stripe,
+            api_key: Some("sk_test_mock_123".to_string()),
+            webhook_secret: "whsec_mock".to_string(),
+            base_url: None,
+        };
 
-        let engine =
-            CommerceEngineFactory::create(Some(api_key), webhook_secret, pool, None, None).await;
+        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
 
         assert!(engine.is_ok());
     }
 
     #[tokio::test]
-    async fn test_commerce_factory_mock_when_no_key_in_debug() {
+    async fn test_commerce_factory_real_polar() {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
             .unwrap(); // allow-anti-pattern
 
-        let engine = CommerceEngineFactory::create(None, "".to_string(), pool, None, None).await;
+        let config = CommerceConfig {
+            provider: ProviderType::Polar,
+            api_key: Some("polar_test_mock_123".to_string()),
+            webhook_secret: "whsec_mock".to_string(),
+            base_url: None,
+        };
+
+        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
+
+        assert!(engine.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_commerce_factory_mock() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap(); // allow-anti-pattern
+
+        let config = CommerceConfig {
+            provider: ProviderType::Mock,
+            api_key: None,
+            webhook_secret: "".to_string(),
+            base_url: None,
+        };
+
+        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
 
         #[cfg(debug_assertions)]
         {
@@ -82,12 +144,7 @@ mod tests {
 
         #[cfg(not(debug_assertions))]
         {
-            assert!(engine.is_err(), "Should fail in release mode if no API key");
-            if let Err(e) = engine {
-                assert!(e
-                    .to_string()
-                    .contains("STRIPE_API_KEY must be set in production"));
-            }
+            assert!(engine.is_err(), "Should fail in release mode for mock");
         }
     }
 }
