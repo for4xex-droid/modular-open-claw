@@ -618,7 +618,7 @@ classDiagram
         +cancel_subscription(agent_id, subscription_id) Result~()~
         +get_subscription_status(agent_id) Result~SubscriptionStatus~
         +transfer(from_id, to_id, amount) Result~String~
-        +deduct_generation_cost(agent_id, amount, generation_type) Result~()~
+        +deduct_generation_cost(agent_id, asset_id, amount, generation_type) Result~()~
     }
 
     class GiftEngine {

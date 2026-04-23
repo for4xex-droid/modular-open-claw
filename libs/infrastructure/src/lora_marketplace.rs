@@ -820,7 +820,13 @@ mod tests {
         async fn transfer(&self, _: Uuid, _: Uuid, _: u64) -> Result<String, AiomeError> {
             Ok("tx_mock".into())
         }
-        async fn deduct_generation_cost(&self, _: Uuid, _: u64, _: &str) -> Result<(), AiomeError> {
+        async fn deduct_generation_cost(
+            &self,
+            _: Uuid,
+            _: Option<Uuid>,
+            _: u64,
+            _: &str,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
     }

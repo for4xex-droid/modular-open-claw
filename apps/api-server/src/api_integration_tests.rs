@@ -110,6 +110,7 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     async fn deduct_generation_cost(
         &self,
         _agent_id: uuid::Uuid,
+        _asset_id: Option<uuid::Uuid>,
         _amount: u64,
         _generation_type: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
@@ -472,6 +473,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let state = AppState {
         hook_chain: Default::default(),
+        hook_manager: Default::default(),
         publish_pipeline: Default::default(),
         a2a_client: Component::new(Arc::new(
             infrastructure::grpc::mock_a2a_client::MockA2aClient::new(),

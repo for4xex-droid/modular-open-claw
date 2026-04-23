@@ -249,6 +249,40 @@ impl AgentEngine {
             );
         }
 
+        // P1 & P2: Provider-Aware Generation Cost Deduction for Autonomous Mode
+        // Guard: Only bill if LLM actually generated a real reply (not the initial placeholder "...").
+        if final_reply != "..." && !final_reply.is_empty() {
+            if let Some(engine) = state.commerce_engine.as_opt() {
+                let provider_name = provider.name().to_lowercase();
+                if !provider_name.contains("ollama") && !provider_name.contains("local") {
+                    let agent_id_for_billing = state.system_agent_id;
+                    let cost = std::cmp::max(1, final_reply.len() as u64 / 100);
+
+                    if let Err(e) = engine
+                        .deduct_generation_cost(
+                            agent_id_for_billing,
+                            None,
+                            cost,
+                            "autonomous_inference",
+                        )
+                        .await
+                    {
+                        error!(
+                            "🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}",
+                            agent_id_for_billing, e
+                        );
+                    } else {
+                        tracing::info!("💳 [Billing] Deducted {} coins for autonomous_inference (Provider: {})", cost, provider_name);
+                    }
+                } else {
+                    tracing::debug!(
+                        "🆓 [Billing Bypass] Local model ({}) used. No cost deducted.",
+                        provider.name()
+                    );
+                }
+            }
+        }
+
         // Notify Watchtower bridges
         let _ = state
             .event_sender

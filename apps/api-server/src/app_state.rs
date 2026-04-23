@@ -158,6 +158,7 @@ pub struct AppState {
     pub a2ui_catalog: Component<Arc<infrastructure::a2ui::AiomeCatalog>>,
     pub quality_gate_store:
         Component<Arc<dyn infrastructure::quality_gate_store::QualityGateStore>>,
+    pub hook_manager: Component<Arc<infrastructure::security::hook_manager::HookManager>>,
 }
 
 impl AppState {

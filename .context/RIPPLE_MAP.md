@@ -1,5 +1,23 @@
 # 🌊 Aiome Ripple Map
 
+## Economic Hardening & SettlementProtocol Enforcement (A2C Synergy)
+### 1. Nurture `/internal/deduct` API & S2S Authentication
+- **変更内容**:
+    - `Project-Nurture/apps/nurture-api/src/routes/internal.rs` [NEW]: `deduct_cost` および `release_escrow` エンドポイントの実装。Defense-in-Depth (DiD) ベースの入出力バリデーションと HTTP 400/500 の分離。
+    - `Project-Nurture/apps/nurture-api/src/main.rs` [MODIFY]: `NURTURE_INTERNAL_SECRET` を検証する `internal_auth_middleware` を全体の `/internal` スコープにレイヤー適用。
+    - `aiome/libs/aiome-commerce/src/stripe.rs` [MODIFY]: 直叩きの `reqwest::Client` を廃止し、グローバル構成された `aiome_core::http::get_http_client()` へ移行 (SSRF 防御と Connection Pooling)。10秒のタイムアウト付与。
+- **波及効果**:
+    - Aiome 側の LLM 生成 (StripeCommerceEngine) から Nurture の決済インフラへ、安全かつタイムアウト制御された HTTP リクエストが飛ぶようになった。内部ポートを直接公開しなくて済む。
+
+### 2. A2C (Asset-to-Creator) 分配の強制化
+- **変更内容**:
+    - `aiome/libs/aiome-contracts/src/traits.rs` [MODIFY]: `CommerceEngine::deduct_generation_cost` メソッドのシグネチャに `asset_id` を追加。
+    - `Project-Nurture/libs/nurture-infra/src/economy/bridge.rs` [MODIFY]: `deduct_generation_cost` 内での直接的な Wallet 上書きを廃止。`asset_id` 指定の有無に応じて `SettlementProtocol::settle()` のトランザクションへ流し込み、System Fee・Creator Return・Burn の3重バッチ分配を強制する設計に移行。
+    - `Project-Nurture/libs/nurture-infra/src/economy/bridge.rs` [MODIFY]: `creator_points_earned` が定価ベースで算出されていたバグを修正。動的課金額 (推論コスト) ベースに乗算されるように修正。
+- **波及効果**:
+    - Aiome エージェントが Nurture 上の Asset を利用して生成した推論コストが、正しく Asset 制作者へのポイント還元として分配されるようになった。
+    - O(1) でのトランザクションがアトミックに実行され、楽観ロックにより二重引き落としが完全にブロックされる。
+
 ## OxiLean Formal Verification Integration (Phase 0-1)
 ### 1. `vendor/oxilean-kernel` 導入 & Cargo.toml 隔離
 - **変更内容**:

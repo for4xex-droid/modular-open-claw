@@ -104,6 +104,7 @@ pub trait CommerceEngine: Send + Sync {
     async fn deduct_generation_cost(
         &self,
         agent_id: Uuid,
+        asset_id: Option<Uuid>,
         amount: u64,
         generation_type: &str,
     ) -> Result<(), AiomeError>;

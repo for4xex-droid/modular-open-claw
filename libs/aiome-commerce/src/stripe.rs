@@ -32,7 +32,9 @@ impl StripeCommerceEngine {
         nurture_secret: Option<String>,
     ) -> Self {
         let is_mock = api_key.starts_with("sk_test_mock") || webhook_secret == "whsec_test";
-        let nurture_client = nurture_url.as_ref().map(|_| reqwest::Client::new());
+        let nurture_client = nurture_url
+            .as_ref()
+            .map(|_| aiome_core::http::get_http_client().clone());
         Self {
             client: stripe::Client::new(api_key),
             webhook_secret,
@@ -68,6 +70,7 @@ impl CommerceEngine for StripeCommerceEngine {
             let res = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -113,6 +116,7 @@ impl CommerceEngine for StripeCommerceEngine {
             let res = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -140,6 +144,7 @@ impl CommerceEngine for StripeCommerceEngine {
             let res = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -172,6 +177,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 .post(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
                 .json(&payload)
+                .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -244,6 +250,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 .post(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
                 .json(&payload)
+                .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
                 .map_err(|e| AiomeError::Infrastructure {
@@ -515,19 +522,71 @@ impl CommerceEngine for StripeCommerceEngine {
     async fn deduct_generation_cost(
         &self,
         agent_id: Uuid,
+        asset_id: Option<Uuid>,
         amount: u64,
         generation_type: &str,
     ) -> Result<(), AiomeError> {
-        // [SECURITY: Fail-Closed is unlocked]
-        // Currently we do not have an agent_balances table in the default schema.
-        // We log the deduction and return Ok to unlock GenerativeEngine.
-        tracing::info!(
-            "💸 [StripeCommerceEngine] Deducted {} units from Agent {} for generation type '{}'.",
-            amount,
-            agent_id,
-            generation_type
-        );
-        Ok(())
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let endpoint = format!("{}/internal/deduct", url);
+            let payload = serde_json::json!({
+                "actor_id": agent_id,
+                "asset_id": asset_id,
+                "amount": amount,
+                "generation_type": generation_type
+            });
+
+            match client
+                .post(&endpoint)
+                .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10))
+                .json(&payload)
+                .send()
+                .await
+            {
+                Ok(res) if res.status().is_success() => {
+                    tracing::info!(
+                        "💸 [StripeCommerceEngine] Deducted {} units from Agent {} for generation type '{}'.",
+                        amount,
+                        agent_id,
+                        generation_type
+                    );
+                    Ok(())
+                }
+                Ok(res) => {
+                    let status = res.status();
+                    let text = res.text().await.unwrap_or_default();
+                    tracing::error!(
+                        "🚨 [StripeCommerceEngine] Failed to deduct generation cost from Nurture -> {}: {}",
+                        status,
+                        text
+                    );
+                    Err(AiomeError::Infrastructure {
+                        reason: format!("Nurture API rejected deduction: {}", text),
+                    })
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "💥 [StripeCommerceEngine] HTTP error contacting Nurture: {}",
+                        e
+                    );
+                    Err(AiomeError::Infrastructure {
+                        reason: format!("HTTP error: {}", e),
+                    })
+                }
+            }
+        } else {
+            // Unconfigured Nurture - mock the deduction
+            tracing::info!(
+                "💸 [StripeCommerceEngine/Unconfigured] Mock deducted {} units from Agent {}.",
+                amount,
+                agent_id
+            );
+            Ok(())
+        }
     }
 }
 
@@ -694,11 +753,10 @@ mod tests {
         let engine = get_test_engine().await;
         let agent_id = Uuid::new_v4();
 
+        // Testing the mock fallback or network error behavior
         let result = engine
-            .deduct_generation_cost(agent_id, 10, "image_gen")
+            .deduct_generation_cost(agent_id, None, 10, "image_gen")
             .await;
-
-        // GREEN: It's unlocked now, so it should return Ok
         assert!(result.is_ok(), "Should unlock GenerativeEngine billing");
     }
 

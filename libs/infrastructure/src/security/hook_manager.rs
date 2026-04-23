@@ -72,6 +72,31 @@ impl HookManager {
             None => Ok(()),
         }
     }
+
+    /// OxiLean等の形式検証完了時のフック通知（ベストエフォート）。
+    /// Nurture側のKarmaForge等へ証明力を伝搬するために使用される。
+    pub async fn trigger_proof_completed(
+        &self,
+        skill_name: &str,
+        is_valid: bool,
+    ) -> Result<(), AiomeError> {
+        let mut last_error: Option<AiomeError> = None;
+        for hook in &self.hooks {
+            if let Err(e) = hook.on_proof_completed(skill_name, is_valid).await {
+                tracing::warn!(
+                    "⚠️ [HookManager] Hook {:?} failed on proof_completed({}): {}",
+                    hook,
+                    skill_name,
+                    e
+                );
+                last_error = Some(e);
+            }
+        }
+        match last_error {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -83,6 +108,7 @@ mod tests {
     struct MockHook {
         pre_called: std::sync::atomic::AtomicBool,
         job_completed_called: std::sync::atomic::AtomicBool,
+        proof_completed_called: std::sync::atomic::AtomicBool,
     }
 
     #[async_trait]
@@ -104,6 +130,15 @@ mod tests {
                 .store(true, std::sync::atomic::Ordering::SeqCst);
             Ok(())
         }
+        async fn on_proof_completed(
+            &self,
+            _skill_name: &str,
+            _is_valid: bool,
+        ) -> Result<(), AiomeError> {
+            self.proof_completed_called
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        }
     }
 
     #[tokio::test]
@@ -112,6 +147,7 @@ mod tests {
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -141,6 +177,7 @@ mod tests {
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -150,6 +187,25 @@ mod tests {
             .expect("Hook should pass");
         assert!(hook
             .job_completed_called
+            .load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_executes_proof_completed_hooks() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        manager
+            .trigger_proof_completed("test_skill", true)
+            .await
+            .expect("Hook should pass");
+        assert!(hook
+            .proof_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));
     }
 }

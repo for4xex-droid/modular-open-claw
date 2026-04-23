@@ -1,5 +1,12 @@
 ## [Unreleased]
-  - **OxiLean Formal Verification Integration (Phase 0-1, TDD + Reflexion x4)**:
+### Added
+- **Economic Hardening (Aiome x Nurture Synergy P0-P2)**:
+  - **Provider-Aware Billing (P1 & P2)**: `apps/api-server/src/stream.rs` および `agent_engine.rs` に LLM 推論課金ロジック（`deduct_generation_cost`）を統合。`LlmProvider::name()` を用い、プロバイダー名に `ollama` または `local` が含まれる場合は使用料金をバイパス（無料化）し、クラウドLLMのリソース消費に対してのみ安全に課金（動的文字数ベース）する機構を追加。
+  - **A2C Billing Signature Sync (P0)**: `CommerceEngine` トレイトの `deduct_generation_cost` メソッドに `asset_id: Option<Uuid>` を追加。推論実行時にクリエイターへの還元用（A2C）資産識別子を流通可能にし、`aiome-commerce/src/stripe.rs` にて Nurture の新規エンドポイント `/internal/deduct` への HTTP API コールバック実装を完了。
+  - **Mock Data Alignment (P0)**: API Integration Tests、`app_state.rs`、`lora_marketplace.rs` 内で使用されるすべての `MockCommerceEngine` 群を新シグネチャに完全準拠させ、テストの整合性を保証。
+
+### Changed
+- **OxiLean Formal Verification Integration (Phase 0-1, TDD + Reflexion x4)**:
     - **`vendor/oxilean-kernel` 導入**: OxiLean (CiC 定理証明器) の kernel クレートを `vendor/` にコピー・隔離。`Cargo.toml` の `workspace.exclude` で Aiome ワークスペースからの分離を確保。`version.workspace = true` 等の上流ワークスペース参照を実値にハードコード書き換え。
     - **`ProofVerifier` gRPC サービス新設**: `a2a_internal.proto` に `ProofVerifier` サービス（`VerifyProof` RPC）を追加。`aiome-contracts` と `aiome-core-contracts` の proto ファイルを同期。
     - **`OxiLeanProofService` 実装 (shadow-worker)**: 4重防御アーキテクチャ — (1) `A2A_AUTH_TOKEN` による認証チェック、(2) `Semaphore` による CPU 占有防止、(3) `tokio::time::timeout` による実行時間制限（デフォルト10秒）、(4) `catch_unwind` + `AssertUnwindSafe` によるカーネルパニック安全復旧。環境変数 `OXILEAN_PROOF_TIMEOUT_SECS` / `OXILEAN_PROOF_SEMAPHORE_PERMITS` で構成可能。ログインジェクション防止のための入力サニタイズ実装。

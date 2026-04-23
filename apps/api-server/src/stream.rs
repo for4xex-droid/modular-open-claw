@@ -422,6 +422,27 @@ pub async fn trigger_agent_chat_stream(
         if let Err(e) = state.job_queue.store_chat_message(&channel_id, "assistant", &full_reply_for_storage).await {
             tracing::error!("🚨 [Chat] Failed to persist assistant message: {:?}", e);
         }
+
+        // P1 & P2: Provider-Aware Generation Cost Deduction
+        // Guard: Only bill if the LLM actually generated output.
+        if !full_reply_for_storage.is_empty() {
+            if let Some(engine) = state.commerce_engine.as_opt() {
+                let provider_name = provider.name().to_lowercase();
+                if !provider_name.contains("ollama") && !provider_name.contains("local") {
+                    let agent_id_for_billing = state.job_queue.get_system_agent_id().await.unwrap_or(uuid::Uuid::nil());
+                    let cost = std::cmp::max(1, full_reply_for_storage.len() as u64 / 100);
+
+                    if let Err(e) = engine.deduct_generation_cost(agent_id_for_billing, None, cost, "text_generation").await {
+                        tracing::error!("🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}", agent_id_for_billing, e);
+                    } else {
+                        tracing::info!("💳 [Billing] Deducted {} coins for text_generation inference (Provider: {})", cost, provider_name);
+                    }
+                } else {
+                    tracing::debug!("🆓 [Billing Bypass] Local model ({}) used. No cost deducted.", provider.name());
+                }
+            }
+        }
+
         let ce = state.context_engine.clone();
         let cid = channel_id.clone();
         tokio::spawn(async move {

@@ -215,6 +215,7 @@ impl CommerceEngine for MockCommerceEngine {
     async fn deduct_generation_cost(
         &self,
         agent_id: Uuid,
+        _asset_id: Option<Uuid>,
         amount: u64,
         generation_type: &str,
     ) -> Result<(), AiomeError> {
@@ -334,7 +335,7 @@ mod tests {
 
         // 50コイン天引きする (GenerativeEngine使用時などを想定)
         engine
-            .deduct_generation_cost(agent_id, 50, "image_generation")
+            .deduct_generation_cost(agent_id, None, 50, "image_generation")
             .await
             .unwrap(); // allow-anti-pattern
 
@@ -343,7 +344,7 @@ mod tests {
 
         // 残高不足エラーの確認
         let result = engine
-            .deduct_generation_cost(agent_id, 2000, "video_generation")
+            .deduct_generation_cost(agent_id, None, 2000, "video_generation")
             .await;
         assert!(result.is_err());
     }

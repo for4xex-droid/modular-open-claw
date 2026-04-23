@@ -943,6 +943,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let state = AppState {
         hook_chain: Default::default(),
+        hook_manager: Component::new(hook_manager.clone()),
         health_monitor: Component::new(health_monitor),
         job_queue: Component::new(job_queue.clone()),
         wasm_skill_manager: Component::new(wasm_skill_manager),

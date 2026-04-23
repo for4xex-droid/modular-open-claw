@@ -1,0 +1,36 @@
+# Gitleaks configuration for Aiome
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+
+title = "Aiome Gitleaks Config"
+
+[extend]
+# Use the default ruleset (detects 160+ secret patterns)
+useDefault = true
+
+[[rules]]
+id = "nurture-internal-secret"
+description = "Nurture Internal S2S Secret"
+regex = '''NURTURE_INTERNAL_SECRET\s*=\s*["']?[A-Za-z0-9+/=_\-]{16,}["']?'''
+tags = ["nurture", "s2s", "secret"]
+
+[[rules]]
+id = "aiome-api-server-secret"
+description = "Aiome API Server Secret"
+regex = '''API_SERVER_SECRET\s*=\s*["']?[A-Za-z0-9+/=_\-]{16,}["']?'''
+tags = ["aiome", "api", "secret"]
+
+[allowlist]
+# .env.example は意図的にプレースホルダーを含むため除外
+paths = [
+    '''.env\.example$''',
+    '''\.env\.example$''',
+]
+# テスト用のダミー値パターンは除外
+regexes = [
+    '''your[-_].*[-_]here''',
+    '''<YOUR_.*>''',
+    '''REPLACE_ME''',
+    '''dummy[-_]secret''',
+    '''test[-_]secret''',
+    '''example[-_]key''',
+]

@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-22T22:52:56.692906
+> Generated at: 2026-04-23T14:31:59.483615
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -213,7 +213,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 
 ### `aiome-contracts`
 **Traits (Interfaces)**
-- AgentHook, AiomePlugin, CommerceEngine, EmbeddingProvider, GiftEngine, LlmProvider, RuntimeJail, X402Negotiator
+- AgentHook, AiomePlugin, CommerceEngine, EmbeddingProvider, FormalProofGate, GiftEngine, LlmProvider, RuntimeJail, X402Negotiator
 **Domain Structs**
 - BudgetExhaustedError, EconomicContext, GiftPolicyContext, GiftRequest, LlmMessage, LlmRequest, LlmResponse, NativeModelConfig, PaymentProof, PermissionManifest, TrellisGenerateRequest, TrellisGenerateResponse
 

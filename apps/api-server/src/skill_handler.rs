@@ -216,6 +216,11 @@ pub async fn execute_wasm_skill(
 
     let result_str = match unverified.verify(&state.wasm_skill_manager).await {
         Ok(v) => {
+            // ✅ A2C & KarmaForge Synergy: OxiLean verification passed
+            if let Some(hm) = state.hook_manager.as_opt() {
+                let _ = hm.trigger_proof_completed(skill_name, true).await;
+            }
+
             match state
                 .wasm_skill_manager
                 .call_skill(&v, "call", skill_input, None)
@@ -241,6 +246,11 @@ pub async fn execute_wasm_skill(
             }
         }
         Err(e) => {
+            // ❌ A2C & KarmaForge Synergy: OxiLean verification failed
+            if let Some(hm) = state.hook_manager.as_opt() {
+                let _ = hm.trigger_proof_completed(skill_name, false).await;
+            }
+
             step.is_critical_failure = true;
             step.output = serde_json::json!({ "error": format!("Verification failed: {}", e) });
             step.failure_category =
