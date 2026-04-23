@@ -11,6 +11,8 @@
     "generate-types": "openapi-typescript ../../docs/openapi.json -o src/types/generated.ts",
     "audit": "npm audit",
     "lint": "tsc --noEmit",
+    "lint:design": "npx @google/design.md lint DESIGN.md",
+    "sync:tokens": "npx tsx scripts/runSync.ts",
     "test": "jest --testPathIgnorePatterns=e2e/",
     "rebuild": "npm rebuild"
   },
@@ -32,6 +34,7 @@
     "vis-network": "^10.0.2"
   },
   "devDependencies": {
+    "@google/design.md": "latest",
     "@playwright/test": "^1.58.2",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -48,6 +51,7 @@
     "openapi-typescript": "^7.13.0",
     "ts-jest": "^29.4.9",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "yaml": "^2.8.3"
   }
 }

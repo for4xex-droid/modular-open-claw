@@ -1,3 +1,125 @@
+---
+colors:
+  bg-primary: "#0b0b0f"
+  bg-secondary: "#0f0f18"
+  bg-tertiary: "#161625"
+  bg-dark-sidebar: "rgba(11, 11, 15, 0.85)"
+  bg-glass-heavy: "rgba(16, 20, 28, 0.8)"
+  bg-glass-light: "rgba(255, 255, 255, 0.03)"
+  accent-emerald: "#10b981"
+  accent-amber: "#f59e0b"
+  accent-fuchsia: "#d946ef"
+  accent-fuchsia-rgb: "217, 70, 239"
+  accent-cyan-glass: "rgba(0, 242, 255, 0.08)"
+  accent-purple-glass: "rgba(188, 140, 255, 0.08)"
+  bg-deep-glass: "rgba(10, 10, 15, 0.9)"
+  white-01: "rgba(255, 255, 255, 0.01)"
+  white-02: "rgba(255, 255, 255, 0.02)"
+  white-03: "rgba(255, 255, 255, 0.03)"
+  white-04: "rgba(255, 255, 255, 0.04)"
+  white-05: "rgba(255, 255, 255, 0.05)"
+  white-06: "rgba(255, 255, 255, 0.06)"
+  white-08: "rgba(255, 255, 255, 0.08)"
+  white-10: "rgba(255, 255, 255, 0.1)"
+  white-15: "rgba(255, 255, 255, 0.15)"
+  white-20: "rgba(255, 255, 255, 0.2)"
+  white-30: "rgba(255, 255, 255, 0.3)"
+  white-40: "rgba(255, 255, 255, 0.4)"
+  white-50: "rgba(255, 255, 255, 0.5)"
+  white-60: "rgba(255, 255, 255, 0.6)"
+  white-70: "rgba(255, 255, 255, 0.7)"
+  white-80: "rgba(255, 255, 255, 0.8)"
+  white-90: "rgba(255, 255, 255, 0.9)"
+  black-05: "rgba(0, 0, 0, 0.05)"
+  black-10: "rgba(0, 0, 0, 0.1)"
+  black-20: "rgba(0, 0, 0, 0.2)"
+  black-30: "rgba(0, 0, 0, 0.3)"
+  black-40: "rgba(0, 0, 0, 0.4)"
+  black-50: "rgba(0, 0, 0, 0.5)"
+  black-60: "rgba(0, 0, 0, 0.6)"
+  black-70: "rgba(0, 0, 0, 0.7)"
+  black-85: "rgba(0, 0, 0, 0.85)"
+  black-90: "rgba(0, 0, 0, 0.9)"
+  black-100: "#000000"
+  white-100: "#ffffff"
+  accent-cyan: "#00f2ff"
+  accent-cyan-rgb: "0, 242, 255"
+  accent-cyan-70: "rgba(0, 242, 255, 0.7)"
+  accent-cyan-50: "rgba(0, 242, 255, 0.5)"
+  accent-cyan-30: "rgba(0, 242, 255, 0.3)"
+  accent-cyan-20: "rgba(0, 242, 255, 0.2)"
+  accent-cyan-15: "rgba(0, 242, 255, 0.15)"
+  accent-cyan-10: "rgba(0, 242, 255, 0.1)"
+  accent-cyan-05: "rgba(0, 242, 255, 0.05)"
+  accent-purple: "#bc8cff"
+  accent-purple-rgb: "188, 140, 255"
+  accent-purple-50: "rgba(188, 140, 255, 0.5)"
+  accent-purple-30: "rgba(188, 140, 255, 0.3)"
+  accent-purple-20: "rgba(188, 140, 255, 0.2)"
+  accent-purple-10: "rgba(188, 140, 255, 0.1)"
+  accent-purple-05: "rgba(188, 140, 255, 0.05)"
+  accent-rose: "#ff4d94"
+  accent-rose-rgb: "255, 77, 148"
+  accent-rose-50: "rgba(255, 77, 148, 0.5)"
+  accent-rose-30: "rgba(255, 77, 148, 0.3)"
+  accent-rose-20: "rgba(255, 77, 148, 0.2)"
+  accent-rose-10: "rgba(255, 77, 148, 0.1)"
+  accent-rose-05: "rgba(255, 77, 148, 0.05)"
+  accent-emerald-10: "rgba(16, 185, 129, 0.1)"
+  accent-emerald-20: "rgba(16, 185, 129, 0.2)"
+  accent-amber-05: "rgba(245, 158, 11, 0.05)"
+  accent-amber-10: "rgba(245, 158, 11, 0.1)"
+  accent-amber-20: "rgba(245, 158, 11, 0.2)"
+  accent-amber-30: "rgba(245, 158, 11, 0.3)"
+  accent-amber-80: "rgba(245, 158, 11, 0.8)"
+  chart-1: "var(--accent-purple)"
+  chart-2: "var(--accent-cyan)"
+  chart-3: "var(--accent-emerald)"
+  chart-4: "var(--accent-amber)"
+  chart-5: "var(--accent-rose)"
+  text-primary: "#f0f2f5"
+  text-secondary: "#94a3b8"
+  text-muted: "#64748b"
+  text-inverse: "#000"
+  bg-inverse: "#fff"
+  border-glass: "rgba(255, 255, 255, 0.08)"
+  border-glass-bright: "rgba(255, 255, 255, 0.15)"
+  glow-cyan: "0 0 25px rgba(0, 242, 255, 0.25)"
+  glow-purple: "0 0 25px rgba(188, 140, 255, 0.25)"
+  glow-rose: "0 0 25px rgba(255, 77, 148, 0.25)"
+  shadow-deep: "0 20px 50px var(--black-50)"
+  speed-fast: "0.15s"
+  speed-normal: "0.3s"
+  speed-slow: "0.8s"
+  speed-genesis: "2s"
+spacing:
+  space-xs: "0.5rem"
+  space-sm: "1rem"
+  space-md: "1.5rem"
+  space-lg: "2rem"
+  space-xl: "3rem"
+  layout-sidebar-width: "280px"
+  layout-main-padding: "var(--space-xl)"
+  layout-panel-gap: "var(--space-md)"
+  layout-right-panel-width: "320px"
+rounded:
+  radius-sm: "8px"
+  radius-md: "12px"
+  radius-lg: "20px"
+  radius-xl: "28px"
+typography:
+  font-display: "'Outfit', 'Artemis Inter', system-ui, sans-serif"
+  font-main: "'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif"
+  font-mono: "'JetBrains Mono', 'Fira Code', monospace"
+motion:
+  timing-soft: "cubic-bezier(0.16, 1, 0.3, 1)"
+  timing-bouncy: "cubic-bezier(0.34, 1.56, 0.64, 1)"
+  timing-linear: "linear"
+  speed-fast: "0.2s"
+  speed-base: "0.4s"
+  speed-slow: "0.7s"
+---
+
 # Aiome Management Console — Design System
 
 Aiome's Management Console is a dark-mode-native command center for an autonomous AI operating system. The visual language draws from deep space aesthetics: an obsidian-black canvas (`var(--bg-dark-obsidian)`, #05070a) where information surfaces through layers of frosted glass and cyan-purple luminescence. Every panel breathes with subtle neural-flow animations, holographic sweeps on hover, and floating micro-interactions that make the interface feel alive — like piloting a spacecraft's bridge.
@@ -179,64 +301,6 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 ### TreasureBox (Marketplace Card Grid)
 
-> ⚠️ **Tech Debt Notice**: `TreasureBox.css` (279 lines) was converted from Tailwind and contains residual Tailwind-mapping comments (`/* p-6 */`, `/* text-sm */` etc.) and raw `#ffffff` usage. Future refactoring should replace `#ffffff` → `var(--text-primary)` and raw rgba colors → design tokens.
-
-**Container** (`.artemis-treasure-box`)
-- Background: `rgba(255, 255, 255, 0.05)` — ⚠️ Should use `var(--bg-glass-light)` or new token. Note: also references `var(--card-bg-light)` which is **undefined everywhere** (ghost variable, immediately overridden)
-- Backdrop-filter: `blur(24px)`
-- Border: `1px solid rgba(255, 255, 255, 0.1)`
-- Radius: `var(--radius-lg)` (20px)
-- Shadow: `var(--shadow-deep)`
-- Used in: HomePage, BiotopeView
-
-**Item Card** (`.artemis-treasure-item`)
-- Background: `rgba(255, 255, 255, 0.05)`
-- Border: `1px solid rgba(255, 255, 255, 0.1)`
-- Radius: `var(--radius-md)` (12px)
-- Hover: bg → `rgba(255, 255, 255, 0.1)`, border → indigo tint `rgba(99, 102, 241, 0.3)`
-- Transition: `all 0.3s cubic-bezier(0.4, 0, 0.2, 1)`
-
-**Item Label** (`.artemis-treasure-label`)
-- Background: `rgba(99, 102, 241, 0.1)` — indigo tint
-- Border: `1px solid rgba(99, 102, 241, 0.2)`
-- Font: 0.625rem weight 500, uppercase, `letter-spacing: 0.05em`
-- Color: `rgba(165, 180, 252, 1)` — light indigo
-
-**Resonance Overlay Badge**
-- Background: `var(--accent-purple)`
-- Text: `#ffffff` — ⚠️ Should use `var(--text-primary)`
-- Radius: 9999px (full pill)
-- Shadow: `0 10px 15px -3px rgba(99, 102, 241, 0.5)` — indigo glow
-
-### Navigation
-
-**Sidebar**
-- Width: `var(--layout-sidebar-width)` (280px)
-- Background: `var(--bg-dark-sidebar)`
-- Backdrop-filter: `blur(40px)`
-- Border-right: `1px solid var(--border-glass)`
-- Shadow: `10px 0 30px rgba(0, 0, 0, 0.4)` (right-cast shadow)
-- Padding: `var(--space-lg) var(--space-md)`
-
-**Brand Mark**
-- Font: `var(--font-display)`, 1.6rem, weight 800
-- Fill: `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` with background-clip
-- Glow: `filter: drop-shadow(0 0 10px rgba(var(--accent-cyan-rgb), 0.2))`
-
-**Nav Group Label**
-- Font: 0.75rem, uppercase, `letter-spacing: 0.2em`, `var(--text-muted)`
-
-**Active Nav Indicator**
-- Left bar: 4px wide, `var(--accent-cyan)`, `border-radius: 4px`
-- Glow: `var(--glow-cyan)` — `0 0 25px rgba(0, 242, 255, 0.25)`
-
-**SeoPulseView**
-- Integrated as a standalone route (`seo-pulse` tab) with `React.lazy()` dynamic import
-- Bundle: Explicitly split via `manualChunks` in `vite.config.ts` for optimal loading
-- Visibility: `intermediate` tier and above (hidden from beginners)
-- Icon: Currently shares `Activity` icon with Causal/Audit tabs (tech debt: assign unique icon)
-
----
 
 ## Animation & Motion
 
@@ -360,9 +424,6 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **WebGL / three.js / react-three-fiber**: `color` props on `<spotLight>`, `<pointLight>`, `<fog>`, `<meshStandardMaterial>`, and `<Sparkles>` require raw HEX strings (`"#00f2ff"`). CSS custom properties do not work in WebGL context. This does NOT violate U-002.
 - **Lucide icon `color` prop**: React icon components accept string colors. Prefer `var(--accent-cyan)` when possible, but raw HEX is tolerable for icons rendered outside CSS context.
 
-> ⚠️ **Legacy Disclosure**: The current codebase has ~30+ inline HEX hardcodes in TSX components (especially `AgentConsole.tsx`, `CausalVisualizer.tsx`, `DemoView.tsx`, `LoraTrainingView.tsx`). These are **existing tech debt**, not permission to add more. New code MUST follow the Don't rules above.
-
----
 
 ## Quick Color Reference
 - Primary CTA: `var(--accent-cyan)` (#00f2ff)

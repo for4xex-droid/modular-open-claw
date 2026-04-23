@@ -1,17 +1,8 @@
 /* 
  * Aiome Design System - Animations & Transitions
  * Micro-animations and transitions to make the UI feel alive.
+ * Note: Timing and speed variables are provided by tokens.css
  */
-
-/* Transitions and Timing */
-:root {
-    --timing-soft: cubic-bezier(0.16, 1, 0.3, 1);
-    --timing-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --timing-linear: linear;
-    --speed-fast: 0.2s;
-    --speed-base: 0.4s;
-    --speed-slow: 0.7s;
-}
 
 /* Base Keyframes */
 @keyframes fadeIn {

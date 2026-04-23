@@ -1,5 +1,11 @@
 ## [Unreleased]
 ### Added
+- **Design System SSOT & Token Synchronization (Rule 10 Enforcement)**:
+  - **DESIGN.md YAML Frontmatter**: 廃止された `docs/DESIGN.md` をポインタに置換し、`apps/management-console/DESIGN.md` を唯一の真実（SSOT）として再定義。色やスペーシングを YAML Frontmatter として統合。
+  - **`syncDesignTokens.ts`**: 標準仕様に完全準拠した `yaml` パッケージを用いたパーサーを実装。CRLF、重複キー、コメントなどのエッジケースを堅牢に処理し、`DESIGN.md` から `tokens.css` を自動生成する機構を構築。
+  - **Cross-Repo Sync (`runSync.ts`)**: `process.env.NURTURE_UI_DIR` を利用し、Aiome だけでなく Project-Nurture の UI にも同一の `tokens.css` を安全かつ自律的に同期。
+  - **CI/CD ガードレール**: `scripts/docs-sync-check.sh` に `check_design_sync()` を追加し、CSSが変更された際に `DESIGN.md` の更新を強制するルールを CI に統合。
+
 - **Phase 3: MoE Routing & SkillArena Hardening**:
   - **SkillArena SQLite Integration**: `SkillArena::with_db_pool` を実装し、WASM スキルの実行履歴や淘汰データ（Karma, Fail Rate）をインメモリから SQLite/PostgreSQL ベースの永続ストレージへ移行し、プロセス再起動耐性を確立。
   - **MoE Culling & Feedback Loop**: `mcp_server.rs` および `tool_call_router.rs` において、WASM スキル実行前後に `SkillArena` による淘汰（Culling）ロジックを統合。`record_usage` を用いて、失敗率に基づいた自律的なスキル選別（MoE Routing）を実現。

@@ -253,6 +253,36 @@ check_infra_module_doc() {
 }
 
 # ──────────────────────────────────────
+# Check 7: DESIGN.md 同期
+# tokens.css や animations.css が変更された場合、
+# DESIGN.md も変更されるべき (AGENTS.md Rule 10)
+# ──────────────────────────────────────
+check_design_sync() {
+  info "Check 7: DESIGN.md 同期チェック"
+
+  local css_changed
+  css_changed=$(git diff HEAD~1 --name-only --diff-filter=ACMR 2>/dev/null \
+    | grep -E '(tokens|animations)\.css$' || true)
+
+  if [[ -z "$css_changed" ]]; then
+    pass "デザイントークン(CSS)の変更なし — スキップ"
+    return
+  fi
+
+  local design_doc_changed
+  design_doc_changed=$(git diff HEAD~1 --name-only 2>/dev/null \
+    | grep 'DESIGN\.md$' || true)
+
+  if [[ -z "$design_doc_changed" ]]; then
+    warn "tokens.css または animations.css が変更されていますが DESIGN.md が更新されていません"
+    echo "    変更ファイル: $(echo "$css_changed" | tr '\n' ' ')"
+  else
+    pass "DESIGN.md が更新されています"
+  fi
+}
+
+
+# ──────────────────────────────────────
 # Main
 # ──────────────────────────────────────
 main() {
@@ -285,6 +315,8 @@ main() {
   check_security_doc_sync
   echo ""
   check_infra_module_doc
+  echo ""
+  check_design_sync
 
   echo ""
   echo "──────────────────────────────────────"
