@@ -250,10 +250,17 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
 
     async fn list_escrows(
         &self,
-        _agent_id: uuid::Uuid,
+        agent_id: uuid::Uuid,
     ) -> Result<Vec<aiome_core_contracts::commerce::EscrowRecord>, aiome_core::error::AiomeError>
     {
-        Ok(vec![])
+        Ok(vec![aiome_core_contracts::commerce::EscrowRecord {
+            id: "valid_escrow_123".to_string(),
+            payer_id: agent_id.to_string(),
+            order_id: "order_123".to_string(),
+            amount: 1000,
+            status: "Pending".to_string(),
+            created_at: "2026-04-23T00:00:00Z".to_string(),
+        }])
     }
 }
 
@@ -2957,4 +2964,36 @@ async fn test_auth_full_oauth_workflow() {
         .await
         .expect("Token must be validly signed");
     assert_eq!(claim.roles, vec!["user".to_string()]);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_commerce_release_escrow_idor() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    let bearer =
+        "Bearer mock_valid_token_ekyc_test_user:00000000-0000-0000-0000-000000000001".to_string();
+
+    // Attempt to release an escrow we OWN
+    let valid_payload = serde_json::json!({
+        "recipient_id": uuid::Uuid::new_v4().to_string()
+    });
+
+    let res_valid = server
+        .post("/api/v1/commerce/escrow/valid_escrow_123/release")
+        .add_header(axum::http::header::AUTHORIZATION, bearer.clone())
+        .json(&valid_payload)
+        .await;
+
+    assert_eq!(res_valid.status_code(), reqwest::StatusCode::OK);
+
+    // Attempt to release an escrow we DO NOT OWN
+    let res_invalid = server
+        .post("/api/v1/commerce/escrow/other_users_escrow_456/release")
+        .add_header(axum::http::header::AUTHORIZATION, bearer)
+        .json(&valid_payload)
+        .await;
+
+    // This should fail due to IDOR protection
+    assert_eq!(res_invalid.status_code(), reqwest::StatusCode::FORBIDDEN);
 }

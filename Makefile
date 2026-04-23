@@ -23,7 +23,7 @@ test:
 
 audit:
 	@echo "🔒 Checking dependencies for vulnerabilities..."
-	cargo audit --ignore RUSTSEC-2024-0421 --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0049 --ignore RUSTSEC-2023-0080
+	cargo audit
 
 pattern:
 	@echo "🛑 Enforcing Anti-Patterns (Strict Mode)..."

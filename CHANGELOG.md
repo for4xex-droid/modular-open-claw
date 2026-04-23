@@ -22,6 +22,11 @@
   - **A2C Billing Signature Sync (P0)**: `CommerceEngine` トレイトの `deduct_generation_cost` メソッドに `asset_id: Option<Uuid>` を追加。推論実行時にクリエイターへの還元用（A2C）資産識別子を流通可能にし、`aiome-commerce/src/stripe.rs` にて Nurture の新規エンドポイント `/internal/deduct` への HTTP API コールバック実装を完了。
   - **Mock Data Alignment (P0)**: API Integration Tests、`app_state.rs`、`lora_marketplace.rs` 内で使用されるすべての `MockCommerceEngine` 群を新シグネチャに完全準拠させ、テストの整合性を保証。
 
+- **Infrastructure Security Hardening (P0/P1 Mitigations)**:
+  - **SQL Injection Prevention (core_ops.rs)**: Replaced dynamic string formatting of days in `do_purge_old_jobs` with safe DB placeholders and `chrono` RFC3339 timestamps.
+  - **Panic Risk Mitigation (swarm.rs)**: Added strict length validation for base64 decoded node private keys before performing slice copies to eliminate runtime panic vulnerabilities.
+  - **Commerce IDOR Fix (commerce.rs)**: Implemented strict ownership verification via `engine.list_escrows(auth.agent_id)` in the `release_escrow` route, preventing unauthorized users from releasing other agents' escrows. Backed by rigorous TDD RED/GREEN verification in `api_integration_tests.rs`.
+
 ### Changed
 - **OxiLean Formal Verification Integration (Phase 0-1, TDD + Reflexion x4)**:
     - **`vendor/oxilean-kernel` 導入**: OxiLean (CiC 定理証明器) の kernel クレートを `vendor/` にコピー・隔離。`Cargo.toml` の `workspace.exclude` で Aiome ワークスペースからの分離を確保。`version.workspace = true` 等の上流ワークスペース参照を実値にハードコード書き換え。

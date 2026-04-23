@@ -392,11 +392,14 @@ impl CoreOps for UniversalJobQueue {
     }
 
     async fn do_purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError> {
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < datetime('now', '-{} days')", days),
-            crate::db::DatabasePool::Postgres(_) => format!("DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < NOW() - INTERVAL '{} days'", days),
-        };
-        sql_exec!(&self.pool, &q)
+        let cutoff = chrono::Utc::now() - chrono::Duration::days(days);
+        let cutoff_str = cutoff.to_rfc3339();
+
+        let q = format!(
+            "DELETE FROM jobs WHERE status IN ('Completed', 'Failed') AND created_at < {}",
+            self.pool.ph(0)
+        );
+        sql_exec!(&self.pool, &q, cutoff_str)
     }
 
     async fn do_fetch_recent_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {

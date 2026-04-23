@@ -2168,24 +2168,38 @@ pub fn build_app(state: Arc<HubState>) -> Router {
 
     // Add defaults
     let defaults = [
-        "http://localhost:3000", // allow-anti-pattern
-        "http://127.0.0.1:3000", // allow-anti-pattern
-        "http://localhost:3015", // allow-anti-pattern
-        "http://localhost:3016", // allow-anti-pattern
-        "http://localhost:1420", // allow-anti-pattern
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3015",
+        "http://localhost:3016",
+        "http://localhost:1420",
     ];
-    for d in defaults {
-        if let Ok(parsed) = d.parse() {
-            allowed_origins.push(parsed);
+
+    let add_defaults = |origins: &mut Vec<_>| {
+        for d in defaults {
+            if let Ok(parsed) = d.parse() {
+                origins.push(parsed);
+            }
         }
-    }
+    };
 
     if !origins_env.is_empty() {
+        // Production: Use ONLY the explicitly configured origins
         for extra in origins_env.split(',') {
             if let Ok(parsed) = extra.trim().parse() {
                 allowed_origins.push(parsed);
             }
         }
+    } else if cfg!(debug_assertions) {
+        // Debug build without explicit config: Use localhost defaults
+        add_defaults(&mut allowed_origins);
+    } else {
+        // Release build without explicit config: Fail-safe with localhost + warning
+        tracing::warn!(
+            "⚠️ ALLOWED_ORIGINS is not set in production build. \
+             Falling back to localhost defaults. Set ALLOWED_ORIGINS for production use."
+        );
+        add_defaults(&mut allowed_origins);
     }
 
     let cors = CorsLayer::new()
@@ -2219,10 +2233,16 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|err| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {}", err),
-                    )
+                    let error_id = uuid::Uuid::new_v4().to_string();
+                    tracing::error!("Samsara Hub Error [Error ID: {}]: {}", error_id, err);
+
+                    let msg = if cfg!(not(debug_assertions)) {
+                        format!("An internal service error occurred. Error ID: {}", error_id)
+                    } else {
+                        format!("Unhandled internal error: {}", err)
+                    };
+
+                    (StatusCode::INTERNAL_SERVER_ERROR, msg)
                 }))
                 .layer(BufferLayer::new(2048))
                 .layer(RateLimitLayer::new(600, Duration::from_secs(60))), // High frequency for Biome

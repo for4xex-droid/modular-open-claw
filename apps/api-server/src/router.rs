@@ -639,7 +639,16 @@ pub fn build_app(
         .layer(
             tower::ServiceBuilder::new()
                 .layer(axum::error_handling::HandleErrorLayer::new(|err: tower::BoxError| async move {
-                    (StatusCode::INTERNAL_SERVER_ERROR, format!("Security Layer Error: {}", err))
+                    let error_id = uuid::Uuid::new_v4().to_string();
+                    tracing::error!("Security Layer Error [Error ID: {}]: {}", error_id, err);
+
+                    let msg = if cfg!(not(debug_assertions)) {
+                        format!("An internal service error occurred. Error ID: {}", error_id)
+                    } else {
+                        format!("Security Layer Error: {}", err)
+                    };
+
+                    (StatusCode::INTERNAL_SERVER_ERROR, msg)
                 }))
                 .buffer(1024)
                 .rate_limit(50, std::time::Duration::from_secs(1))

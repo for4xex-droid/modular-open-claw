@@ -322,6 +322,15 @@ pub async fn release_escrow(
         }
     })?;
 
+    // Ownership check (IDOR mitigation)
+    let escrows = engine.list_escrows(auth.agent_id).await?;
+    let owns_escrow = escrows.iter().any(|e| e.id == escrow_id);
+    if !owns_escrow {
+        return Err(AppError::forbidden(
+            "You do not have permission to release this escrow",
+        ));
+    }
+
     engine.escrow_release(&escrow_id, req.recipient_id).await?;
     Ok(StatusCode::OK)
 }

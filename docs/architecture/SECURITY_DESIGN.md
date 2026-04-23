@@ -108,6 +108,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 85 | **Deep Recursion DoS** | **A2UI Validator Stack Overflow** | 🔴 High | **`MAX_COMPONENT_DEPTH` & `MaxDepthExceeded` (Chaos Exp 9)** |
 | 86 | **URL Scheme Parse Bypass (SSRF)** | **Whitespace/Control Chars injected before `javascript:` scheme** | 🔴 High | **Total stripping of Ascii Whitespace/Control before validation (Red Team)** |
 | 87 | **Cell Path Traversal & Shell Injection** | **Exploiting unsanitized cell namespaces (CELL_ID)** | 🔴 High | **Cell-Based Architecture (CBA Stage 0) + `is_safe_cell_id` + Shell Guards** |
+| 88 | **Commerce IDOR** | **Unauthorized release of another user's escrow** | 🔴 High | **Strict ownership validation (`list_escrows` context filter) (P1 Mitigation)** |
+| 89 | **SQL Injection via String Format** | **Execution of arbitrary SQL via format! macros in core ops** | 🔴 High | **Forced parameterized DB queries and RFC3339 timestamps (P1 Mitigation)** |
 
 ## 3. Defense Architecture
 
@@ -224,4 +226,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-04-23 (Phase 3 MoE & Security Updates)*
+*最終更新: 2026-04-24 (P0/P1 Mitigations & Security Updates)*

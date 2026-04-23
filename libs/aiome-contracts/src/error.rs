@@ -208,47 +208,23 @@ impl axum::response::IntoResponse for AiomeError {
             ),
         };
 
-        // CWE-209: Prevent Information Leakage in production
-        #[cfg(not(debug_assertions))]
-        if status.is_server_error() {
-            let error_id = uuid::Uuid::new_v4().to_string();
-            // Log the actual detailed error in server logs
-            tracing::error!(
-                "Internal Server Error [Error ID: {}]: {}",
-                error_id,
-                error_message
-            );
-            // Replace user-facing message with safe generic response
-            error_message = format!(
-                "An internal service error occurred. Please contact support with Error ID: {}",
-                error_id
-            );
-        }
+        let raw_variant = format!("{:?}", self)
+            .split('(')
+            .next()
+            .unwrap_or("Unknown")
+            .split('{')
+            .next()
+            .unwrap_or("Unknown")
+            .trim()
+            .to_string();
 
-        // Get variant name as code using Debug output hack (standard pattern for simple enums)
-        let code = {
-            let raw = format!("{:?}", self);
-            let variant = raw
-                .split('(')
-                .next()
-                .unwrap_or("Unknown")
-                .split('{')
-                .next()
-                .unwrap_or("Unknown")
-                .trim()
-                .to_string();
-
-            // CWE-209 (P-2): リリースビルドでは内部バリアント名を隠蔽し、
-            // サーバーエラー(5xx)の場合は "InternalError" に統一する
-            #[cfg(not(debug_assertions))]
-            if status.is_server_error() {
-                "InternalError".to_string()
-            } else {
-                variant
-            }
-            #[cfg(debug_assertions)]
-            variant
-        };
+        let mask_internals = cfg!(not(debug_assertions));
+        let (error_message, code) = sanitize_aiome_error_details(
+            &raw_variant,
+            error_message,
+            status.is_server_error(),
+            mask_internals,
+        );
 
         let body = Json(serde_json::json!({
             "error": error_message,
@@ -256,5 +232,115 @@ impl axum::response::IntoResponse for AiomeError {
         }));
 
         (status, body).into_response()
+    }
+}
+
+#[cfg(feature = "axum")]
+/// 内部エラーメッセージを安全にサニタイズする。
+///
+/// `mask_internals` が `true` の場合（本番ビルド）、内部エラーの詳細を UUID に置き換え、
+/// 詳細はサーバーログにのみ記録する（CWE-209 防止）。
+/// `false` の場合（デバッグビルド）、開発効率のためエラー詳細をそのまま返す。
+pub fn sanitize_aiome_error_details(
+    raw_variant: &str,
+    raw_message: String,
+    is_internal: bool,
+    mask_internals: bool,
+) -> (String, String) {
+    let mut message = raw_message;
+    let mut code = raw_variant.to_string();
+
+    if is_internal && mask_internals {
+        let error_id = uuid::Uuid::new_v4().to_string();
+        // Log the actual detailed error in server logs
+        tracing::error!(
+            "Internal Server Error [Error ID: {}]: {}",
+            error_id,
+            message
+        );
+        // Replace user-facing message with safe generic response
+        message = format!(
+            "An internal service error occurred. Please contact support with Error ID: {}",
+            error_id
+        );
+        code = "InternalError".to_string();
+    }
+
+    (message, code)
+}
+
+#[cfg(all(test, feature = "axum"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_internal_error_masked_when_flag_true() {
+        let (msg, code) = sanitize_aiome_error_details(
+            "Infrastructure",
+            "Infrastructure error: DB exhausted".to_string(),
+            true,
+            true,
+        );
+
+        assert!(
+            !msg.contains("DB exhausted"),
+            "Leaked internal info: {}",
+            msg
+        );
+        assert!(msg.contains("Error ID:"), "Missing reference ID: {}", msg);
+        assert_eq!(code, "InternalError");
+    }
+
+    #[test]
+    fn test_internal_error_exposed_when_flag_false() {
+        let (msg, code) = sanitize_aiome_error_details(
+            "Infrastructure",
+            "Infrastructure error: DB exhausted".to_string(),
+            true,
+            false,
+        );
+
+        assert!(
+            msg.contains("DB exhausted"),
+            "Should expose in debug: {}",
+            msg
+        );
+        assert_eq!(code, "Infrastructure");
+    }
+
+    #[test]
+    fn test_client_error_never_masked() {
+        let (msg, code) = sanitize_aiome_error_details(
+            "Validation",
+            "Validation error: Invalid input".to_string(),
+            false,
+            true,
+        );
+
+        assert!(
+            msg.contains("Invalid input"),
+            "Client error should not be masked: {}",
+            msg
+        );
+        assert_eq!(code, "Validation");
+    }
+
+    #[test]
+    fn test_remote_service_error_masked_in_production() {
+        let (msg, code) = sanitize_aiome_error_details(
+            "RemoteServiceError",
+            "Remote service error (https://api.stripe.com/v1/charges): 503 Service Unavailable"
+                .to_string(),
+            true,
+            true,
+        );
+
+        assert!(
+            !msg.contains("stripe"),
+            "External service detail leaked: {}",
+            msg
+        );
+        assert!(!msg.contains("503"), "External status code leaked: {}", msg);
+        assert_eq!(code, "InternalError");
     }
 }

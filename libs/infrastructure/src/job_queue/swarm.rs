@@ -224,6 +224,11 @@ impl SwarmOps for UniversalJobQueue {
                     .map_err(|_| AiomeError::Infrastructure {
                         reason: "Corrupt node key".to_string(),
                     })?;
+            if priv_bytes.len() != 32 {
+                return Err(AiomeError::Infrastructure {
+                    reason: "Corrupt node key (invalid length)".to_string(),
+                });
+            }
             let mut key_arr = [0u8; 32];
             key_arr.copy_from_slice(&priv_bytes);
             let signing_key = SigningKey::from_bytes(&key_arr);
