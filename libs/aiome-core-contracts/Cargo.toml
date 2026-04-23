@@ -31,6 +31,9 @@ futures = { workspace = true }
 axum = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4.3"
 
 [build-dependencies]
 tonic-build = { workspace = true }

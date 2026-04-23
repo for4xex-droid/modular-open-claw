@@ -118,6 +118,7 @@ dependencies = [
  "async-stripe-core",
  "async-stripe-webhook",
  "async-trait",
+ "base64 0.22.1",
  "chrono",
  "dashmap 5.5.3",
  "hex",
@@ -225,11 +226,14 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "futures",
+ "hex",
+ "hmac",
  "prost 0.13.5",
  "rand 0.8.5",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "sha2",
  "strum",
  "strum_macros",
  "thiserror 1.0.69",
@@ -6799,6 +6803,7 @@ version = "0.1.0"
 dependencies = [
  "aiome-contracts",
  "aiome-core",
+ "aiome-core-contracts",
  "anyhow",
  "async-trait",
  "axum 0.7.9",
@@ -6844,6 +6849,7 @@ dependencies = [
 name = "nurture-infra"
 version = "0.1.0"
 dependencies = [
+ "aiome-contracts",
  "aiome-core",
  "async-stripe 0.41.0",
  "async-trait",

@@ -20,6 +20,7 @@ pub struct StripeCommerceEngine {
     nurture_client: Option<reqwest::Client>,
     nurture_url: Option<String>,
     nurture_secret: Option<String>,
+    oxp_score_provider: Option<std::sync::Arc<std::sync::atomic::AtomicU32>>,
 }
 
 impl StripeCommerceEngine {
@@ -43,7 +44,37 @@ impl StripeCommerceEngine {
             nurture_client,
             nurture_url,
             nurture_secret,
+            oxp_score_provider: None,
         }
+    }
+
+    /// OXPスコアプロバイダを注入する
+    pub fn with_oxp_score_provider(
+        mut self,
+        provider: std::sync::Arc<std::sync::atomic::AtomicU32>,
+    ) -> Self {
+        self.oxp_score_provider = Some(provider);
+        self
+    }
+
+    /// X-OxiLean-Proof-Certificate ヘッダを生成する
+    fn generate_oxp_header(&self) -> Option<String> {
+        let secret = self.nurture_secret.as_ref()?;
+        let oxp = self
+            .oxp_score_provider
+            .as_ref()
+            .map(|p| p.load(std::sync::atomic::Ordering::Relaxed))
+            .unwrap_or(0);
+        let ts = chrono::Utc::now().to_rfc3339();
+        let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate(
+            "aiome-edge-node".to_string(), // subject_id
+            oxp,
+            ts,
+            secret,
+        );
+        let cert_json = serde_json::to_string(&cert).ok()?;
+        use base64::Engine;
+        Some(base64::engine::general_purpose::STANDARD.encode(cert_json))
     }
 }
 
@@ -173,16 +204,19 @@ impl CommerceEngine for StripeCommerceEngine {
                 "actor_id": agent_id,
                 "amount": amount
             });
-            let res = client
+            let mut req = client
                 .post(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
                 .json(&payload)
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if res.status().is_success() {
                 #[derive(serde::Deserialize)]
@@ -274,16 +308,19 @@ impl CommerceEngine for StripeCommerceEngine {
                 "escrow_id": escrow_id,
                 "recipient_id": recipient_id
             });
-            let res = client
+            let mut req = client
                 .post(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
                 .json(&payload)
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if res.status().is_success() {
                 return Ok(());
@@ -567,14 +604,17 @@ impl CommerceEngine for StripeCommerceEngine {
                 "generation_type": generation_type
             });
 
-            match client
+            let mut req = client
                 .post(&endpoint)
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10))
-                .json(&payload)
-                .send()
-                .await
-            {
+                .json(&payload);
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            match req.send().await {
                 Ok(res) if res.status().is_success() => {
                     tracing::info!(
                         "💸 [StripeCommerceEngine] Deducted {} units from Agent {} for generation type '{}'.",

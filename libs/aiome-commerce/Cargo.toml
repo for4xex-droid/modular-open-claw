@@ -35,6 +35,7 @@ async-stripe-webhook = { version = "1.0.0-rc.5", features = ["full"] }
 async-stripe-core = { version = "1.0.0-rc.5", features = ["full"] }
 async-stripe-checkout = { version = "1.0.0-rc.5", features = ["full"] }
 async-stripe-billing = { version = "1.0.0-rc.5", features = ["full"] }
+base64.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
