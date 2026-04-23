@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-23T22:11:18.762381
+> Generated at: 2026-04-23T23:02:00.949014
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -209,7 +209,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 **Traits (Interfaces)**
 - X402Negotiator
 **Domain Structs**
-- CommerceEngineFactory, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, RevenueSplitter, StripeCommerceEngine, StripeEkycEngine, TremendousGiftEngine, UniversalEkycSessionStore, UniversalGigEngine, UniversalSyndicateStore, X402Client
+- CommerceConfig, CommerceEngineFactory, MockCommerceEngine, MockEkycEngine, MockEkycSessionStore, PolarCommerceEngine, RevenueSplitter, StripeCommerceEngine, StripeEkycEngine, TremendousGiftEngine, UniversalEkycSessionStore, UniversalGigEngine, UniversalSyndicateStore, X402Client
 
 ### `aiome-core-contracts`
 **Traits (Interfaces)**

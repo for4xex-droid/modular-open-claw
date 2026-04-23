@@ -251,6 +251,71 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Commerce Integration Section */}
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <Shield size={24} color="var(--accent-emerald)" />
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Commerce & Economic Base</h3>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div>
+                            <label style={labelStyle}>Active Commerce Provider</label>
+                            <select
+                                value={getSetting('commerce_provider') || 'mock'}
+                                onChange={(e) => update_setting_handler(e.target.value, 'commerce_provider', 'commerce')}
+                                style={selectStyle}
+                            >
+                                <option value="mock" style={{ background: 'var(--bg-primary)' }}>Mock (Local Only)</option>
+                                <option value="stripe" style={{ background: 'var(--bg-primary)' }}>Stripe (Global MoR)</option>
+                                <option value="polar" style={{ background: 'var(--bg-primary)' }}>Polar (MoR & P2P)</option>
+                            </select>
+                        </div>
+
+                        {getSetting('commerce_provider') === 'stripe' && (
+                            <>
+                                <SettingInput 
+                                    label="Stripe API Key" 
+                                    value={getSetting('stripe_api_key')}
+                                    placeholder="sk_live_..."
+                                    onBlur={(v) => updateSetting('stripe_api_key', v, 'commerce')}
+                                    saving={saving === 'stripe_api_key'}
+                                    isPassword
+                                />
+                                <SettingInput 
+                                    label="Stripe Webhook Secret" 
+                                    value={getSetting('stripe_webhook_secret')}
+                                    placeholder="whsec_..."
+                                    onBlur={(v) => updateSetting('stripe_webhook_secret', v, 'commerce')}
+                                    saving={saving === 'stripe_webhook_secret'}
+                                    isPassword
+                                />
+                            </>
+                        )}
+
+                        {getSetting('commerce_provider') === 'polar' && (
+                            <>
+                                <SettingInput 
+                                    label="Polar API Key" 
+                                    value={getSetting('polar_api_key')}
+                                    placeholder="polar_at_..."
+                                    onBlur={(v) => updateSetting('polar_api_key', v, 'commerce')}
+                                    saving={saving === 'polar_api_key'}
+                                    isPassword
+                                />
+                                <SettingInput 
+                                    label="Polar Webhook Secret" 
+                                    value={getSetting('polar_webhook_secret')}
+                                    placeholder="whsec_..."
+                                    onBlur={(v) => updateSetting('polar_webhook_secret', v, 'commerce')}
+                                    saving={saving === 'polar_webhook_secret'}
+                                    isPassword
+                                />
+                            </>
+                        )}
+                    </div>
+                </section>
+
                 {/* Channel Bridges Section */}
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>

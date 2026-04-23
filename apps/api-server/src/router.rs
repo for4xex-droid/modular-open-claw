@@ -544,6 +544,10 @@ pub fn build_app(
         .route(
             "/api/v1/commerce/webhook",
             axum::routing::post(routes::commerce_webhook::stripe_webhook),
+        )
+        .route(
+            "/api/v1/commerce/webhook/polar",
+            axum::routing::post(routes::commerce_webhook::polar_webhook),
         );
 
     #[cfg(debug_assertions)]

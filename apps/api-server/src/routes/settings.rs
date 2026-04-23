@@ -93,6 +93,11 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "view_mode",
     "x_bearer_token",
     "search_api_key",
+    "commerce_provider",
+    "stripe_api_key",
+    "stripe_webhook_secret",
+    "polar_api_key",
+    "polar_webhook_secret",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -106,6 +111,7 @@ pub const ALLOWED_CATEGORIES: &[&str] = &[
     "ui",
     "integrations",
     "feature_flags",
+    "commerce",
 ];
 
 pub const SECRETS: &[&str] = &[
@@ -120,6 +126,10 @@ pub const SECRETS: &[&str] = &[
     "gemini_api_key",
     "x_bearer_token",
     "search_api_key",
+    "stripe_api_key",
+    "stripe_webhook_secret",
+    "polar_api_key",
+    "polar_webhook_secret",
 ];
 
 #[utoipa::path(
