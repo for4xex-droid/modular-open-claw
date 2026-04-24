@@ -1,6 +1,6 @@
 # 📡 Aiome Deep Scan AST Matrix
 
-> Generated at: 2026-04-24T02:24:02.849303
+> Generated at: 2026-04-24T19:03:07.363214
 
 This file contains the AST-extracted structural matrix of the codebase. Use it to cross-reference against Project NURTURE requirements without hitting LLM context limits.
 
@@ -52,6 +52,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/audit/quarantine`
 - `/api/v1/audit/quarantine/:id/release`
 - `/api/v1/auth/authorize`
+- `/api/v1/auth/delete`
 - `/api/v1/auth/token`
 - `/api/v1/avatar/inochi2d/:filename`
 - `/api/v1/avatar/inochi2d/upload`

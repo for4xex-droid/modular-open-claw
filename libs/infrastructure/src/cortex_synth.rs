@@ -82,10 +82,12 @@ impl CortexSynthesizer {
                 let title = row.try_get::<String, _>("title").unwrap_or_default();
                 let content = row.try_get::<String, _>("content_md").unwrap_or_default();
                 let content: String = content.chars().take(8000).collect();
+                let sanitized = shared::guardrails::sanitize_for_prompt(&content);
+                let scrubbed = shared::guardrails::mask_pii(&sanitized);
 
                 let prompt = format!(
                     "Generate instruction-response pairs based on this article. Return ONLY a JSON array of objects with 'instruction', 'response', and 'quality_score' (0.0 to 1.0).\n<ARTICLE title=\"{}\">\n{}\n</ARTICLE>",
-                    title, shared::guardrails::sanitize_for_prompt(&content)
+                    title, scrubbed
                 );
 
                 let res_timeout = tokio::time::timeout(

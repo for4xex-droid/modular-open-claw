@@ -98,6 +98,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "stripe_webhook_secret",
     "polar_api_key",
     "polar_webhook_secret",
+    "lora_opt_out",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[

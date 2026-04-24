@@ -163,7 +163,7 @@ pub async fn trigger_agent_chat_stream(
         let channel_id = payload.channel_id.unwrap_or_else(|| "default_console".to_string());
 
         // Phase 3-B: Persist user message
-        if let Err(e) = state.job_queue.store_chat_message(&channel_id, "user", &payload.prompt).await {
+        if let Err(e) = state.job_queue.store_chat_message(&channel_id, "user", &payload.prompt, None).await {
             tracing::error!("🚨 [Chat] Failed to persist user message: {:?}", e);
         }
 
@@ -175,7 +175,12 @@ pub async fn trigger_agent_chat_stream(
         // Combine DB history and current request history
         for msg in db_history {
             let role = msg["role"].as_str().unwrap_or("user");
-            let content = msg["content"].as_str().unwrap_or("");
+            let mut content = msg["content"].as_str().unwrap_or("").to_string();
+            if let Some(meta) = msg.get("metadata") {
+                if let Some(r) = meta.get("reasoning").and_then(|v| v.as_str()) {
+                    content = format!("<thinking>\n{}\n</thinking>\n{}", r, content);
+                }
+            }
             let prefix = if role == "user" { "USER: " } else { "AI: " };
             current_history.push(format!("{}{}", prefix, content));
         }
@@ -246,6 +251,7 @@ pub async fn trigger_agent_chat_stream(
                 let mut buffer = String::new();
                 let mut full_reply = String::new();
                 let mut is_tool_call_mode = false;
+                let mut in_thinking = false;
 
                 while let Some(chunk_res) = llm_stream.next().await {
                     let chunk: String = chunk_res.unwrap_or_default();
@@ -254,6 +260,27 @@ pub async fn trigger_agent_chat_stream(
 
                     if !is_tool_call_mode {
                         buffer.push_str(&chunk);
+
+                        // --- Thinking Tag Suppression ---
+                        if in_thinking {
+                            if let Some(idx) = buffer.find("</thinking>") {
+                                in_thinking = false;
+                                buffer = buffer[idx + 11..].to_string();
+                            } else {
+                                continue;
+                            }
+                        } else if let Some(idx) = buffer.find("<thinking>") {
+                            let text = buffer[..idx].to_string();
+                            if !text.is_empty() {
+                                yield Ok(Event::default().event("text").data(&text));
+                            }
+                            in_thinking = true;
+                            buffer = buffer[idx..].to_string();
+                            continue;
+                        } else if buffer.ends_with('<') || buffer.ends_with("<t") || buffer.ends_with("<th") || buffer.ends_with("<thi") || buffer.ends_with("<thin") || buffer.ends_with("<think") || buffer.ends_with("<thinki") || buffer.ends_with("<thinkin") || buffer.ends_with("<thinking") {
+                            continue;
+                        }
+                        // --------------------------------
                         if let Some(idx) = buffer.find("{\"type\":") {
                             let text = buffer[..idx].to_string();
                             if !text.is_empty() {
@@ -419,7 +446,12 @@ pub async fn trigger_agent_chat_stream(
             }
         }
         // Phase 3-D: Persist assistant message and maintain context
-        if let Err(e) = state.job_queue.store_chat_message(&channel_id, "assistant", &full_reply_for_storage).await {
+        let (clean_reply, reasoning) = crate::agent_engine::extract_thinking_process(&full_reply_for_storage);
+        let mut meta = None;
+        if let Some(r) = reasoning {
+            meta = Some(serde_json::json!({ "reasoning": r }));
+        }
+        if let Err(e) = state.job_queue.store_chat_message(&channel_id, "assistant", &clean_reply, meta).await {
             tracing::error!("🚨 [Chat] Failed to persist assistant message: {:?}", e);
         }
 

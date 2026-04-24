@@ -180,7 +180,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
     // 2. Persist
     if let Err(e) = state
         .job_queue
-        .store_chat_message(&channel_id, "user", &payload.prompt)
+        .store_chat_message(&channel_id, "user", &payload.prompt, None)
         .await
     {
         error!("❌ [WatchtowerWS] Failed to persist user message: {:?}", e);
@@ -253,7 +253,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
             let reply = resp.content.trim().to_string();
             if let Err(e) = state
                 .job_queue
-                .store_chat_message(&channel_id, "assistant", &reply)
+                .store_chat_message(&channel_id, "assistant", &reply, None)
                 .await
             {
                 error!(

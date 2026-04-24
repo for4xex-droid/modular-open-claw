@@ -378,6 +378,7 @@ pub trait ChatStore: Send + Sync + std::fmt::Debug {
         channel_id: &str,
         role: &str,
         content: &str,
+        metadata: Option<serde_json::Value>,
     ) -> Result<(), AiomeError>;
     async fn get_chat_memory_summary(
         &self,

@@ -84,7 +84,7 @@ pub async fn karma_ingest(session_id: String, message_json: String) -> Result<()
     let role = msg.get("role").and_then(|r| r.as_str()).unwrap_or("user");
     let content = msg.get("content").and_then(|c| c.as_str()).unwrap_or("");
 
-    db.store_chat_message(&session_id, role, content)
+    db.store_chat_message(&session_id, role, content, None)
         .await
         .map_err(map_err)?;
     Ok(())

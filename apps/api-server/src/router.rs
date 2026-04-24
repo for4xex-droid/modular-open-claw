@@ -424,6 +424,18 @@ pub fn build_app(
                     .rate_limit(1, std::time::Duration::from_secs(5)), // 1 session per 5s
             ),
         )
+        // GDPR Right to be Forgotten (A-1)
+        .route(
+            "/api/v1/auth/delete",
+            axum::routing::delete(routes::auth::delete_account_handler).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(10)), // 1 deletion per 10s (irreversible)
+            ),
+        )
         .route(
             "/api/v1/ekyc/status",
             get(routes::avatar::get_ekyc_status_handler),

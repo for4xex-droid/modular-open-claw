@@ -1,5 +1,38 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 5: RTBF & Cognitive Observability Hardening
+### 1. RTBF `forget_actor` Atomic Purging
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/security.rs` [MODIFY]: `SecurityOps` トレイトに `forget_actor` を追加し、`UniversalJobQueue` に実装。`ekyc_sessions`、`jobs`、`guild_members` に加え、`chat_history`, `chat_memory_summaries`, `security_audit` に対する完全なアトミックパージを実装。誤ったスキーマ参照（`cortex_chat_history`）を修正し、`audit_ledger_global` への操作ログ記録を追加して完全な RTBF コンプライアンスを達成。
+- **波及効果**:
+    - Aiome のインフラストラクチャにおける GDPR (RTBF) コンプライアンスが達成された。
+
+### 2. Cognitive Observability (Thinking Extraction)
+- **変更内容**:
+    - `apps/api-server/src/agent_engine.rs` [MODIFY]: `extract_thinking_process` ヘルパーを新設し、`<thinking>...</thinking>` ブロックを抽出。複数のタグや未閉鎖タグの安全なパースに対応。
+    - `apps/api-server/src/stream.rs` [MODIFY]: `Event::text` ストリームから思考プロセスをブロック（UI 非表示）しつつ、DBの `metadata` カラムに記録。
+    - `libs/infrastructure/src/context_engine.rs` [MODIFY]: 履歴再構築時に `metadata.thinking` をパースし、RAG用システムプロンプトに復元注入。
+- **波及効果**:
+    - UI を汚すことなくエージェントの思考プロセスを監査・追跡可能になった。
+
+## Phase 5: Compliance & eKYC Hardening (GDPR / RTBF)
+### 1. GDPR "Right to be Forgotten" (RTBF) Pipeline
+- **変更内容**:
+    - `aiome/apps/api-server/src/routes/auth.rs` [MODIFY]: `delete_account_handler` を実装し、PII（`cortex_chat_history`, `system_settings`）をアトミックトランザクションでハードデリート。
+    - `aiome/apps/api-server/src/routes/auth.rs` [MODIFY]: `OxiLeanProofCertificate` を使って Nurture API (`/internal/forget/:actor_id`) へ削除要求をセキュアにカスケード。
+    - `aiome/apps/api-server/src/router.rs` [MODIFY]: 欠落していたルーティングを修正し `rate_limit(1, 10s)` を適用してブルートフォース保護を追加。
+- **波のアフェクト（波及効果）**:
+    - Aiome 側でのアカウント削除が Project-Nurture 側にも連動し、法的要件である GDPR RTBF を 100% 満たすアーキテクチャが完成した。
+    - 不可逆操作に対するレートリミット保護によりシステムの耐久性が向上。
+
+### 2. eKYC Enforcement Layer
+- **変更内容**:
+    - `Project-Nurture/libs/nurture-core/src/ekyc.rs` [NEW]: `EkycVerifier` および関連構造体を実装。
+    - `Project-Nurture/libs/nurture-infra/src/ekyc/store.rs` [NEW]: `SQLiteEkycStore` を実装し、DB ステータスと連動する検証ロジックを確立。
+    - `Project-Nurture/apps/nurture-api/src/routes/escrow.rs`, `upload.rs` [MODIFY]: CSAM フィルタリングの最上位層として eKYC 状態チェックを統合。未認証アカウントによるクリティカルアクションをブロック。
+    - `Project-Nurture/libs/nurture-infra/src/test_utils/mock_ekyc.rs` [NEW]: `MockEkycStore` を実装し、`#[cfg(any(test, debug_assertions))]` ガードによる厳密な分離を適用。
+- **波のアフェクト（波及効果）**:
+    - Project-Nurture のエスクローやアップロード経路に AML (Anti-Money Laundering) ポリシーが適用され、不正な資金洗浄やスパム生成をシステムレベルで遮断する防御壁が機能するようになった。
 ## Economic Hardening & SettlementProtocol Enforcement (A2C Synergy)
 ### 1. Nurture `/internal/deduct` API & S2S Authentication
 - **変更内容**:

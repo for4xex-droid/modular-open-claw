@@ -463,7 +463,13 @@ mod tests {
         ) -> Result<Vec<serde_json::Value>, AiomeError> {
             Ok(vec![])
         }
-        async fn store_chat_message(&self, _: &str, _: &str, _: &str) -> Result<(), AiomeError> {
+        async fn store_chat_message(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: Option<serde_json::Value>,
+        ) -> Result<(), AiomeError> {
             Ok(())
         }
         async fn get_chat_memory_summary(

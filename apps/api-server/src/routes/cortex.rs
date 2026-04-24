@@ -319,6 +319,21 @@ pub async fn synth_dataset_handler(
     _auth: crate::auth::Authenticated,
     Json(req): Json<SynthReq>,
 ) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+    let opt_out = state
+        .job_queue
+        .get_setting_value("lora_opt_out")
+        .await
+        .unwrap_or(Some("false".to_string()))
+        .unwrap_or_else(|| "false".to_string());
+
+    if opt_out == "true" {
+        tracing::warn!("Synth dataset generation aborted due to user Opt-out policy.");
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "User has opted out of AI training (LoRA/Distillation)".to_string(),
+        }
+        .into());
+    }
+
     // Phase D: Synth -> LoRA integration
     let provider = state.provider.get_inner().clone();
     let pool = state.job_queue.get_pool().clone();

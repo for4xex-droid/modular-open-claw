@@ -11,6 +11,7 @@ use axum::{
     extract::{Query, State},
     response::Json,
 };
+use infrastructure::job_queue::SecurityOps;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -109,4 +110,102 @@ pub async fn token_handler(
         expires_in: 3600,
         refresh_token: None,
     }))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/v1/auth/delete",
+    responses(
+        (status = 200, description = "Account deleted successfully"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn delete_account_handler(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+) -> Result<Json<serde_json::Value>, AppError> {
+    tracing::warn!("🗑️ Account deletion requested for agent: {}", auth.agent_id);
+
+    // 1. Send Forget request to Nurture
+    let client = aiome_core::http::get_http_client();
+    let nurture_url = match state.job_queue.get_setting_value("nurture_url").await {
+        Ok(Some(url)) if !url.is_empty() => url,
+        _ => {
+            tracing::warn!(
+                "nurture_url setting is not configured; Nurture PII scrub will be skipped"
+            );
+            String::new()
+        }
+    };
+
+    let mut nurture_notified = false;
+
+    if !nurture_url.is_empty() {
+        let secret = std::env::var("API_SERVER_SECRET").map_err(|_| {
+            tracing::error!("API_SERVER_SECRET is not set; cannot sign OxiLean certificate for account deletion");
+            AppError::internal("Server misconfiguration: signing secret unavailable")
+        })?;
+
+        // Create an OxiLean Certificate for internal request
+        let ts = chrono::Utc::now().to_rfc3339();
+        let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate(
+            "aiome_system".to_string(),
+            1000,
+            ts,
+            &secret,
+        );
+        let cert_json = serde_json::to_string(&cert).map_err(|e| {
+            tracing::error!("Failed to serialize OxiLean certificate: {}", e);
+            AppError::internal("Certificate serialization failed")
+        })?;
+        let cert_b64 =
+            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, cert_json);
+
+        let delete_url = format!(
+            "{}/internal/forget/{}",
+            nurture_url.trim_end_matches('/'),
+            auth.agent_id
+        );
+        match client
+            .post(&delete_url)
+            .header("x-oxilean-proof-certificate", cert_b64)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                nurture_notified = true;
+            }
+            Ok(resp) => {
+                tracing::error!(
+                    "Nurture returned error on account deletion: {}",
+                    resp.status()
+                );
+            }
+            Err(e) => {
+                tracing::error!("Failed to notify Nurture of account deletion: {}", e);
+            }
+        }
+    }
+
+    // 2. Delete data from Aiome database (cortex_chat_history, settings, etc)
+    state
+        .job_queue
+        .forget_actor(auth.agent_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to scrub PII data: {}", e);
+            AppError::internal("Failed to scrub PII data")
+        })?;
+
+    tracing::info!(
+        "✅ Account data successfully purged for agent: {} (nurture_notified: {})",
+        auth.agent_id,
+        nurture_notified
+    );
+    Ok(Json(serde_json::json!({
+        "status": "deleted",
+        "nurture_pii_scrubbed": nurture_notified
+    })))
 }

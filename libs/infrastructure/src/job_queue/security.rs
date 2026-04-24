@@ -21,6 +21,7 @@ pub trait SecurityOps {
         &self,
         agent_id: Option<Uuid>,
     ) -> Result<u32, AiomeError>;
+    async fn forget_actor(&self, agent_id: Uuid) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
@@ -87,6 +88,155 @@ impl SecurityOps for UniversalJobQueue {
                     .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
 
                 self.do_get_security_request_count(agent_id).await
+            }
+        }
+    }
+
+    async fn forget_actor(&self, agent_id: Uuid) -> Result<(), AiomeError> {
+        let agent_id_str = agent_id.to_string();
+
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+                sqlx::query("DELETE FROM ekyc_sessions WHERE user_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("ekyc_sessions: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM jobs WHERE agent_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("jobs: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM guild_members WHERE agent_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("guild_members: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM chat_history WHERE channel_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("chat_history: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM chat_memory_summaries WHERE channel_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("chat_memory_summaries: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM system_settings WHERE category = 'identity'")
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("system_settings: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM security_audit WHERE agent_id = ?")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("security_audit: {}", e),
+                    })?;
+
+                let record_id = uuid::Uuid::new_v4().to_string();
+                sqlx::query("INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) VALUES ('SYSTEM', 'FORGET_ACTOR', ?, ?, 'FORGET', 'FORGET')")
+                    .bind(&record_id)
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: format!("audit_ledger_global: {}", e) })?;
+
+                tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                Ok(())
+            }
+            DatabasePool::Postgres(p) => {
+                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+                sqlx::query("DELETE FROM ekyc_sessions WHERE user_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("ekyc_sessions: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM jobs WHERE agent_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("jobs: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM guild_members WHERE agent_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("guild_members: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM chat_history WHERE channel_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("chat_history: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM chat_memory_summaries WHERE channel_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("chat_memory_summaries: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM system_settings WHERE category = 'identity'")
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("system_settings: {}", e),
+                    })?;
+
+                sqlx::query("DELETE FROM security_audit WHERE agent_id = $1")
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("security_audit: {}", e),
+                    })?;
+
+                let record_id = uuid::Uuid::new_v4().to_string();
+                sqlx::query("INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) VALUES ('SYSTEM', 'FORGET_ACTOR', $1, $2, 'FORGET', 'FORGET')")
+                    .bind(&record_id)
+                    .bind(&agent_id_str)
+                    .execute(&mut *tx).await.map_err(|e| AiomeError::Infrastructure { reason: format!("audit_ledger_global: {}", e) })?;
+
+                tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+                Ok(())
             }
         }
     }

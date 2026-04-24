@@ -351,8 +351,9 @@ impl ChatStore for UniversalJobQueue {
         channel_id: &str,
         role: &str,
         content: &str,
+        metadata: Option<serde_json::Value>,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_insert_chat_message(channel_id, role, content)).await
+        Box::pin(self.do_insert_chat_message(channel_id, role, content, metadata)).await
     }
     async fn get_chat_memory_summary(
         &self,

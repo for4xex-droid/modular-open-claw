@@ -74,6 +74,8 @@ use utoipa::OpenApi;
         crate::routes::artifacts::get_artifact_edges_handler,
         // EKYC
         crate::routes::ekyc::create_ekyc_session_handler,
+        // Auth / Right to be forgotten
+        crate::routes::auth::delete_account_handler,
         // Audit & Trends (Phase 8.6)
         crate::routes::general::get_audit_ledger,
         crate::routes::general::get_audit_prompt_stats,

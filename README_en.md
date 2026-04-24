@@ -121,6 +121,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 6. **Precomputed Relational Intelligence**: An ultra-fast, static AST physical dependency scanner and blast-radius query emergency protocol natively built-in, completely preventing unknown cascade errors and path alias drift during autonomous code refactoring by agents.
 7. **Automated Chaos Engineering**: Natively built fault-injection framework running steady-state resilience tests (e.g., simulating LLM timeouts and malformed responses) to mathematically guarantee graceful degradation against unpredictable AI failures.
 8. **Cell-Based Architecture (CBA)**: Physical path isolation governed by the 1-process=1-cell invariant. Implements multi-layered defense against path traversal and shell injection via `AppDataResolver` and shell guards.
+9. **GDPR/RTBF Compliance**: Guarantees complete physical data purge (via `forget_actor`) across up to 7 tables in a single atomic transaction, coupled with secure downstream deletion propagation (Zero-Trust Sync).
 
 ---
 

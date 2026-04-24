@@ -239,7 +239,15 @@ impl ContextEngine {
                 let to_compress = &all_recent[..compress_count];
                 let recent_context = to_compress
                     .iter()
-                    .map(|m| format!("{}: {}", m["role"], m["content"]))
+                    .map(|m| {
+                        let mut content = m["content"].as_str().unwrap_or("").to_string();
+                        if let Some(meta) = m.get("metadata") {
+                            if let Some(r) = meta.get("reasoning").and_then(|v| v.as_str()) {
+                                content = format!("<thinking>\n{}\n</thinking>\n{}", r, content);
+                            }
+                        }
+                        format!("{}: {}", m["role"], content)
+                    })
                     .collect::<Vec<_>>()
                     .join("\n");
 
@@ -251,6 +259,14 @@ impl ContextEngine {
 
                 match self.provider.complete(&prompt, system).await {
                     Ok(resp) => {
+                        let original_chars = recent_context.len();
+                        let new_chars = resp.content.trim().len();
+                        let ratio = if new_chars > 0 {
+                            original_chars as f64 / new_chars as f64
+                        } else {
+                            0.0
+                        };
+
                         self.job_queue
                             .update_chat_memory_summary(
                                 channel_id,
@@ -275,9 +291,9 @@ impl ContextEngine {
                             }
                         }
 
-                        info!(
-                            "✅ [ContextEngine] Context compressed successfully for {}",
-                            channel_id
+                        warn!(
+                            "🧠 [ContextEngine] Context compression (NOT deletion): {} chars summarized to {} chars (ratio: {:.2}x) for {}",
+                            original_chars, new_chars, ratio, channel_id
                         );
                     }
                     Err(e) => {
@@ -375,7 +391,15 @@ impl ContextEngine {
         // 3. トークン制限管理 (文字数 * 0.5 程度の概算)
         let history_text = history
             .iter()
-            .map(|m| format!("{}: {}", m["role"], m["content"]))
+            .map(|m| {
+                let mut content = m["content"].as_str().unwrap_or("").to_string();
+                if let Some(meta) = m.get("metadata") {
+                    if let Some(r) = meta.get("reasoning").and_then(|v| v.as_str()) {
+                        content = format!("<thinking>\n{}\n</thinking>\n{}", r, content);
+                    }
+                }
+                format!("{}: {}", m["role"], content)
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -463,14 +487,20 @@ impl ContextEngine {
         // 直近のメッセージから順にバジェットに詰め込む
         for m in history.iter().rev() {
             let role = m["role"].as_str().unwrap_or("user");
-            let content = m["content"].as_str().unwrap_or("");
+            let mut content = m["content"].as_str().unwrap_or("").to_string();
+
+            if let Some(meta) = m.get("metadata") {
+                if let Some(r) = meta.get("reasoning").and_then(|v| v.as_str()) {
+                    content = format!("<thinking>\n{}\n</thinking>\n{}", r, content);
+                }
+            }
 
             // RT-8: メッセージ単位での切り詰め (1メッセージが巨大すぎる場合の保護)
             let safe_content = if content.len() > budget.max_history_chars {
-                shared::strings::truncate_bytes_safely(content, budget.max_history_chars)
+                shared::strings::truncate_bytes_safely(&content, budget.max_history_chars)
                     .into_owned()
             } else {
-                content.to_string()
+                content
             };
 
             let line = format!("{}: {}\n", role, safe_content);
@@ -665,7 +695,7 @@ pub mod tests {
 
         // Add history message (2000 chars)
         job_queue
-            .store_chat_message(channel_id, "user", &huge_content)
+            .store_chat_message(channel_id, "user", &huge_content, None)
             .await
             .unwrap(); // allow-anti-pattern
 
@@ -706,5 +736,50 @@ pub mod tests {
 
         let mood = ContextEngine::calculate_mood_summary(&[entry_nan, entry_inf, entry_ok]);
         assert_eq!(mood, "Extremely Positive"); // NaN/Inf は除外され、1.0 だけが残るはず
+    }
+
+    #[tokio::test]
+    async fn test_maintain_context_compression_ratio_logging() {
+        // Arrange
+        let provider = Arc::new(crate::job_queue::tests::MockLlmProvider {
+            json_response: "Compressed summary".into(),
+        });
+        let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
+        let job_queue = Arc::new(job_queue);
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+
+        let channel_id = "test_compression_channel";
+
+        // Add some messages to exceed the threshold
+        for i in 0..10 {
+            job_queue
+                .store_chat_message(
+                    channel_id,
+                    "user",
+                    &format!("Message {}", i).repeat(100),
+                    None,
+                )
+                .await
+                .unwrap(); // allow-anti-pattern
+        }
+
+        // Act
+        // Threshold is set to 1000 so it triggers compression
+        let result = engine.maintain_context(channel_id, 1000).await;
+
+        // Assert
+        assert!(result.is_ok(), "maintain_context should succeed");
+
+        // Ensure the summary was updated
+        let (summary, _) = job_queue
+            .get_chat_memory_summary(channel_id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            summary, "Compressed summary",
+            "Summary should be updated with LLM response"
+        );
     }
 }

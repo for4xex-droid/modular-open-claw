@@ -1,5 +1,23 @@
 ## [Unreleased]
+
+### Fixed
+- **Reflexion Phase 3**: Fixed a critical bug in `extract_thinking_process` where multiple `<thinking>` tags caused early termination and metadata leakage.
+- **Reflexion Phase 3**: Fixed a critical RTBF bug in `forget_actor` where incorrect table schemas (`cortex_chat_history`) prevented atomic deletion. `forget_actor` now correctly purges `chat_history`, `chat_memory_summaries`, `security_audit` by `agent_id`, and safely logs the operation to `audit_ledger_global`.
+
 ### Added
+
+### Changed
+- **Infrastructure**: Refactored `store_chat_message` calls across `api-server` and `napi-bridge` to fully utilize the new `Option<serde_json::Value>` metadata parameter.
+
+### Added
+- **Phase 5: Compliance & eKYC Hardening (GDPR / RTBF)**:
+  - **GDPR "Right to be Forgotten" (RTBF)**: `apps/api-server/src/routes/auth.rs` に `delete_account_handler` (`DELETE /api/v1/auth/delete`) を実装。ローカルの PII データ（`cortex_chat_history`, `system_settings` の `identity` カテゴリ）をアトミックなトランザクション (`pool.begin()/commit()`) を用いてハードデリートする機能を構築。
+  - **Zero-Trust Nurture Synchronization**: アカウント削除時に `OxiLeanProofCertificate` による HMAC 署名を生成し、Project-Nurture の `/internal/forget/:actor_id` へ PII 削除要求を安全に伝播。`API_SERVER_SECRET` 未設定時の早期リターンおよび `nurture_url` 未設定時のフォールバック（スキップ）を実装し、秘密鍵漏洩と誤送信リスクを排除。
+  - **Rate Limiting & Routing Fix (Reflexion v3)**: 致命的なルーティング未配線バグを発見・修正し、`router.rs` へエンドポイントを正規配線。不可逆操作の保護として `rate_limit(1, 10s)` レートリミットを導入。
+  - **eKYC Enforcement (Nurture Integration)**: Project-Nurture 側に `EkycVerifier` と `SQLiteEkycStore` を実装。CSAM スキャンの上位層として eKYC ステータスを検証し、未検証アカウントからのアップロード（Upload）やエスクロー作成をブロックする AML (Anti-Money Laundering) 境界防御を確立。
+  - **Strict SQL Security**: PII 削除処理における `session_id = ?` の完全一致化（`LIKE` の排除）により、部分一致による DoS リスクと過剰削除を防止。
+  - **Mock Isolation & Build Hygiene**: テスト用の `MockEkycStore` に対し `#[cfg(any(test, debug_assertions))]` ガードを適用し、本番リリースへのスタブ混入を防止。`unwrap()` / `expect()` を完全に排除した型安全なエラーハンドリング（`Result` 化）を達成し、テストスイートの 100% GREEN を確保。
+
 - **Design System SSOT & Token Synchronization (Rule 10 Enforcement)**:
   - **DESIGN.md YAML Frontmatter**: 廃止された `docs/DESIGN.md` をポインタに置換し、`apps/management-console/DESIGN.md` を唯一の真実（SSOT）として再定義。色やスペーシングを YAML Frontmatter として統合。
   - **`syncDesignTokens.ts`**: 標準仕様に完全準拠した `yaml` パッケージを用いたパーサーを実装。CRLF、重複キー、コメントなどのエッジケースを堅牢に処理し、`DESIGN.md` から `tokens.css` を自動生成する機構を構築。
@@ -1149,3 +1167,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *Initial Release*
 - **Security Hardening (Phase 8)**: Eliminated production SSRF and unauthenticated background job risks by isolating /api/v1/settings/test and /api/v1/demo/start endpoints behind standard config runtime guards and compilation assertions, tested and pushed.
+
+### Security & Compliance (Phase 5)
+- **Privacy (GDPR)**: Implemented Right to be Forgotten (RTBF) API (`/api/v1/auth/delete`) which scrubs chat history and propagates secure deletion webhook requests to the Nurture economy server.

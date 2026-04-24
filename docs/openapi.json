@@ -1237,6 +1237,30 @@
         ]
       }
     },
+    "/api/v1/auth/delete": {
+      "delete": {
+        "tags": [
+          "crate::routes::auth"
+        ],
+        "operationId": "delete_account_handler",
+        "responses": {
+          "200": {
+            "description": "Account deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/bootstrap/factory-reset": {
       "post": {
         "tags": [

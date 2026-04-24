@@ -19,6 +19,7 @@ pub trait WatchtowerOps {
         channel_id: &str,
         role: &str,
         content: &str,
+        metadata: Option<serde_json::Value>,
     ) -> Result<(), AiomeError>;
     async fn do_fetch_chat_history(
         &self,
@@ -74,14 +75,17 @@ impl WatchtowerOps for UniversalJobQueue {
         channel_id: &str,
         role: &str,
         content: &str,
+        metadata: Option<serde_json::Value>,
     ) -> Result<(), AiomeError> {
+        let meta_str = metadata.map(|m| m.to_string());
         let q = format!(
-            "INSERT INTO chat_history (channel_id, role, content) VALUES ({0}, {1}, {2})",
+            "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES ({0}, {1}, {2}, {3})",
             self.pool.ph(0),
             self.pool.ph(1),
-            self.pool.ph(2)
+            self.pool.ph(2),
+            self.pool.ph(3)
         );
-        sql_exec!(&self.pool, &q, channel_id, role, content).map_err(|e| {
+        sql_exec!(&self.pool, &q, channel_id, role, content, meta_str).map_err(|e| {
             AiomeError::Infrastructure {
                 reason: format!("Failed to insert chat history: {}", e),
             }
@@ -94,7 +98,7 @@ impl WatchtowerOps for UniversalJobQueue {
         channel_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let q = format!("SELECT id, role, content FROM chat_history WHERE channel_id = {0} AND is_distilled = 0 ORDER BY id DESC LIMIT {1}", self.pool.ph(0), self.pool.ph(1));
+        let q = format!("SELECT id, role, content, metadata FROM chat_history WHERE channel_id = {0} AND is_distilled = 0 ORDER BY id DESC LIMIT {1}", self.pool.ph(0), self.pool.ph(1));
         let mut messages = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
@@ -107,7 +111,10 @@ impl WatchtowerOps for UniversalJobQueue {
                         reason: e.to_string(),
                     })?;
                 for row in rows {
-                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content") }));
+                    let meta_str: Option<String> = row.try_get("metadata").ok().flatten();
+                    let metadata: Option<serde_json::Value> =
+                        meta_str.and_then(|s| serde_json::from_str(&s).ok());
+                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content"), "metadata": metadata }));
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
@@ -120,7 +127,10 @@ impl WatchtowerOps for UniversalJobQueue {
                         reason: e.to_string(),
                     })?;
                 for row in rows {
-                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content") }));
+                    let meta_str: Option<String> = row.try_get("metadata").ok().flatten();
+                    let metadata: Option<serde_json::Value> =
+                        meta_str.and_then(|s| serde_json::from_str(&s).ok());
+                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content"), "metadata": metadata }));
                 }
             }
         }

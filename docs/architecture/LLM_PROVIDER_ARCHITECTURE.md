@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.3
-**Last Updated:** 2026-04-10
+**Version:** 1.4
+**Last Updated:** 2026-04-24
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -256,10 +256,14 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 - **Asynchronous & Non-blocking**: `tokio::spawn` を介してバックグラウンドでロギングタスクを実行するため、リアルタイムの推論性能（Time to First Token）に一切の遅延（ブロック）を与えません。
 - **Prompt Stats API**: 管理ダッシュボードやテレメトリーツールに向け、抽出用エンドポイント `GET /api/v1/audit/prompt-stats` を備え、コスト監視におけるBOLA（越権アクセス）を防ぐ厳格な `system_agent_id` 検証を実施しています。
 
+### 3.12 Cognitive Observability & Guardrails (Phase 3 Reflexion)
+`extract_thinking_process` は、LLM が出力する推論プロセス（`<thinking>` タグ）と最終応答を分離し、ユーザーに見せるべきでないメタデータのUI漏洩を物理的に防ぎます。
+- **Defense-in-Depth Parsing**: LLMの幻覚による入れ子（ネスト）や未閉鎖の `<thinking>` タグに対しても、O(N)の堅牢な反復パースを実行し、最終的に残骸を完全除去する多層防御を構築しています。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-04-12 (Phase 3-A / Observability Telemetry)*
+*最終更新: 2026-04-24 (Phase 3 Reflexion / UI Leakage Defense)*
 
 ---
 

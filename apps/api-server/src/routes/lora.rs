@@ -46,6 +46,20 @@ pub async fn train_lora_handler(
         req.base_model, req.dataset_id
     );
 
+    let opt_out = state
+        .job_queue
+        .get_setting_value("lora_opt_out")
+        .await
+        .unwrap_or(Some("false".to_string()))
+        .unwrap_or_else(|| "false".to_string());
+
+    if opt_out == "true" {
+        tracing::warn!("LoRA training aborted due to user Opt-out policy.");
+        return Err(AppError::forbidden(
+            "User has opted out of AI training (LoRA/Distillation)",
+        ));
+    }
+
     let mut params = req.params;
     params["agent_id"] = serde_json::json!(_auth.agent_id.to_string());
 

@@ -150,7 +150,7 @@ pub(crate) async fn build_system_instructions(
         }
     }
 
-    format!(
+    let final_prompt = format!(
         "# IDENTITY: \n{}{}{}{}{}{}\n\
         [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}{}",
         name_prompt,
@@ -166,7 +166,21 @@ pub(crate) async fn build_system_instructions(
         summary.unwrap_or("なし"),
         agents_md,
         a2ui_prompt
-    )
+    );
+
+    tracing::debug!(
+        "⚙️ [SystemPrompt] Total size: {} chars (soul: {}, user: {}, rules: {}, skills: {}, karma: {}, agents: {}, a2ui: {})",
+        final_prompt.len(),
+        soul_md.len() + evolving_soul_md.len() + soul_dynamic.len(),
+        user_md.len(),
+        project_rules.len(),
+        skill_list.len(),
+        karma_str.len(),
+        agents_md.len(),
+        a2ui_prompt.len()
+    );
+
+    final_prompt
 }
 
 pub(crate) async fn resolve_project_rules(state: &crate::AppState) -> String {

@@ -21,6 +21,43 @@ use tracing::{error, info, warn};
 pub(crate) use crate::system_instructions::*;
 pub(crate) use crate::tool_call_processor::*;
 
+pub fn extract_thinking_process(content: &str) -> (String, Option<String>) {
+    let mut cleaned_content = String::new();
+    let mut thinking_parts = Vec::new();
+    let mut remaining = content;
+
+    while let Some(start_idx) = remaining.find("<thinking>") {
+        cleaned_content.push_str(&remaining[..start_idx]);
+        let after_start = &remaining[start_idx + 10..];
+
+        if let Some(end_idx) = after_start.find("</thinking>") {
+            thinking_parts.push(after_start[..end_idx].trim().to_string());
+            remaining = &after_start[end_idx + 11..];
+        } else {
+            // Unclosed thinking tag
+            thinking_parts.push(after_start.trim().to_string());
+            remaining = "";
+            break;
+        }
+    }
+    cleaned_content.push_str(remaining);
+
+    // Defense-in-depth: Ensure no stray tags leak to the UI.
+    let cleaned_content = cleaned_content
+        .replace("<thinking>", "")
+        .replace("</thinking>", "")
+        .trim()
+        .to_string();
+
+    let final_thinking = if thinking_parts.is_empty() {
+        None
+    } else {
+        Some(thinking_parts.join("\n---\n"))
+    };
+
+    (cleaned_content, final_thinking)
+}
+
 /// エージェントとの対話ロジックを管理するエンジン。
 /// HTTPハンドラと内部サービスの双方から利用される。
 pub struct AgentEngine;
@@ -71,7 +108,7 @@ impl AgentEngine {
         if let Err(e) = state
             .job_queue
             .get_inner()
-            .store_chat_message(&actual_channel_id, "user", prompt)
+            .store_chat_message(&actual_channel_id, "user", prompt, None)
             .await
         {
             error!("❌ [AgentEngine] Failed to store user message: {:?}", e);
@@ -182,14 +219,20 @@ impl AgentEngine {
             .await
             {
                 Ok(Ok(resp)) => {
-                    let reply = resp.content.trim().to_string();
+                    let mut reply = resp.content.trim().to_string();
+                    let (clean_reply, reasoning) = extract_thinking_process(&reply);
+                    let mut meta = None;
+                    if let Some(r) = reasoning {
+                        meta = Some(serde_json::json!({ "reasoning": r }));
+                    }
+                    reply = clean_reply;
                     final_reply = reply.clone();
                     // Phase B-2 Enhancement: Store assistant response BEFORE tool execution
                     // This ensures the audit trail reflects the intent even if execution crashes.
                     if let Err(e) = state
                         .job_queue
                         .get_inner()
-                        .store_chat_message(&actual_channel_id, "assistant", &reply)
+                        .store_chat_message(&actual_channel_id, "assistant", &reply, meta)
                         .await
                     {
                         error!("❌ Failed to store intent response: {:?}", e);
@@ -212,7 +255,7 @@ impl AgentEngine {
                         if let Err(e) = state
                             .job_queue
                             .get_inner()
-                            .store_chat_message(&actual_channel_id, "system", &sys_msg)
+                            .store_chat_message(&actual_channel_id, "system", &sys_msg, None)
                             .await
                         {
                             error!("❌ Failed to store intermediate tool outputs: {:?}", e);
@@ -237,17 +280,7 @@ impl AgentEngine {
         }
 
         // 5. Finalize
-        if let Err(e) = state
-            .job_queue
-            .get_inner()
-            .store_chat_message(&actual_channel_id, "assistant", &final_reply)
-            .await
-        {
-            error!(
-                "❌ [AgentEngine] Failed to store final assistant response: {:?}",
-                e
-            );
-        }
+        // Note: The final assistant response is already stored at line 204 to ensure audit trailing before tools.
 
         // P1 & P2: Provider-Aware Generation Cost Deduction for Autonomous Mode
         // Guard: Only bill if LLM actually generated a real reply (not the initial placeholder "...").
