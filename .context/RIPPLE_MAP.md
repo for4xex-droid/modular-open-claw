@@ -1,5 +1,16 @@
 # 🌊 Aiome Ripple Map
 
+## Phase RLM: Recursive Language Model Integration
+### 1. RlmClient & CortexQueryEngine Deep Query Extension
+- **変更内容**:
+    - `libs/aiome-contracts/src/rlm.rs` [NEW]: `RlmProvider` および `RlmConfig` トレイトを追加し、RLM サイドカーへの通信契約を定義。
+    - `libs/infrastructure/src/llm/rlm_client.rs` [NEW]: `CostCircuitBreaker` による予算制約（Budget Limit）保護を備えた `RlmClient` 実装を追加。
+    - `libs/infrastructure/src/cortex_query.rs` [MODIFY]: `CortexQueryEngine` に `rlm_provider` 注入ポイントを追加し、標準検索で回答できない複雑なクエリに対して再帰的推論を行う `deep_query` メソッドを実装。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `RlmClient` をインスタンス化し、`AppState` および `CortexQueryEngine` へ DI として注入。
+- **波及効果**:
+    - Aiome のインフラストラクチャにおける複雑な論理推論機能（Recursive Reasoning）が完全に統合され、システムは Nurture 側の予算や意図を逸脱することなく、自律的にディープクエリへフォールバックできるようになった。
+    - 影響範囲は `aiome` 側に閉じられており、`Project-Nurture` リポジトリに変更を波及させることなく強力なリーズニングレイヤーを実現した。
+
 ## Phase 5: RTBF & Cognitive Observability Hardening
 ### 1. RTBF `forget_actor` Atomic Purging
 - **変更内容**:

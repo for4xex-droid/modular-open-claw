@@ -26,8 +26,8 @@ Golden Ruleへの準拠を徹底させます。
 LLM 空レスポンス、LLM タイムアウト、Circuit Breaker 強制 Open の3つは最低限実行すること。
 
 ### Phase 5: 試練 (Red-Team) 🛡️
-ワークフロー `/red-team` を実行し、`sentinel` スキャンと攻撃シミュレーションを行ってください。
+ワークフロー `/red-team` を実行し、AST構造マップ → Taint Analysis → `gitleaks` + `cargo audit` セキュリティスキャンと攻撃シミュレーションを行ってください。
 いかなる脆弱性も許してはいけません。
 
 ## 完了条件
-Phase 5まで全てのチェックをクリアし、Sentinelがオールグリーンであること。
+Phase 5まで全てのチェックをクリアし、`gitleaks` + `cargo audit` がオールグリーンであること。

@@ -1,0 +1,48 @@
+/Users/motista/Desktop/antigravity/aiome/CODE_OF_CONDUCT.md:55: 3. **Temporary Ban**: A temporary ban. (一時的な禁止)
+/Users/motista/Desktop/antigravity/aiome/PITCH_DECK.md:53: - **プレシード/シード調達**: $XXX,XXX 〜 $X,XXX,XXX
+/Users/motista/Desktop/antigravity/aiome/EVOLVING_SOUL.md:52: - **UI/UX 設計の教訓**: 絶対配置（position: fixed/absolute）のオーバーレイや要素を他のコンテンツと位置合わせする際は、各コンポーネントに PX 数値をハードコードせず、必ず `tokens.css` などのルートに CSS Custom Properties (`--layout-xxx`) として一元管理します。コンポーネント側は `calc()` と `var()` を組み合わせて使用し、レイアウト変更時は変数のみを修正して全体が自動追従の設計にしています。（DioramaView や BiotopeView の教訓）
+/Users/motista/Desktop/antigravity/aiome/EVOLVING_SOUL.md:97: 絶対配置（position: fixed/absolute）のオーバーレイや要素を他のコンテンツと位置合わせする際は、各コンポーネントに PX 数値をハードコードせず、必ず `tokens.css` などのルートに CSS Custom Properties (`--layout-xxx`) として一元管理します。コンポーネント側は `calc()` と `var()` を組み合わせて使用し、レイアウト変更時は変数のみを修正して全体が自動追従の設計にしています。（DioramaView や BiotopeView の教訓）これは私の「誠実さ」です。
+/Users/motista/Desktop/antigravity/aiome/.gemini/antigravity/brain/4580f903-e3df-4554-afff-21e7423972c6/tdd_batch_summary.md:8: 3. **FormalProofGate**: Created Phase 2 stub interface in `aiome-contracts/src/proof.rs`.
+/Users/motista/Desktop/antigravity/aiome/tools/ruri-embed-server/.venv/lib/python3.14/site-packages/huggingface_hub/templates/modelcard_template.md:81: <!-- This should link to a Dataset Card, perhaps with a short stub of information on what the training data is all about as well as documentation related to data pre-processing or additional filtering. -->
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/038-oxilean-integration.md:27: - Connect `cross_synthesize` stub to process proper Economic Ledger entries in Nurture API upon successful proofs.
+/Users/motista/Desktop/antigravity/aiome/docs/guides/INCIDENT_RUNBOOK.md:25: 1. アプリケーションログにて `Internal Server Error [Error ID: xxxx]` が異常発生していないかをチェック。
+/Users/motista/Desktop/antigravity/aiome/docs/guides/CHANNEL_SETUP_GUIDE.md:73: 1. Telegram の検索バーで、作成した Bot のユーザー名（`@xxxxx_bot`）を検索します。
+/Users/motista/Desktop/antigravity/aiome/libs/shared/src/file_validator.rs:128: malicious_bytes.extend_from_slice(b"<?php echo 'hack'; ?>");
+/Users/motista/Desktop/antigravity/aiome/libs/soul/src/predictive.rs:32: pub local_plasticity: f64, // High acc -> low plastic (stubborn), Low acc -> high plastic (flexible)
+/Users/motista/Desktop/antigravity/aiome/libs/soul/src/predictive.rs:52: // Accurate prediction means less plasticity (more stubborn)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/lora_training.rs:960: "Health check should pass in test environment (STUB mode)"
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/oss_repository_indexer.rs:26: "🧹 [OssKnowledgeSession] Cleaned up temporary repository: {:?}",
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator/csam.rs:113: async fn test_csam_conductor_conducts_stub() {
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator/geo_audit.rs:148: async fn test_geo_audit_conductor_conduct_failure_stub() {
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/channel_bridge/discord.rs:90: // Help inference by explicitly specifying the error type or using a temporary variable
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:32: echo "=== Open TODOs/FIXMEs ===" && grep -rn "TODO\|FIXME\|HACK\|TEMPORARY" --include="*.rs" | wc -l
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/stripe.design.md:106: - **ss01 everywhere**: The `"ss01"` stylistic set is non-negotiable. It modifies specific glyphs (likely alternate `a`, `g`, `l` forms) to create a more geometric, contemporary feel across all sohne-var text.
+/Users/motista/Desktop/antigravity/aiome/.agent/skills/docs-ui-ux-golden-rules.md:64: 色・隙間・角丸・レイアウト幅の生値（`#00f2ff`, `12px`, `280px`）のハードコード禁止。すべて `var(--xxx)` で参照。
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:400: - Always reference CSS custom properties via `var(--xxx)` — this is the #1 rule (Golden Rule U-002)
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:476: "test_hack1".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:478: vec!["-c".into(), "echo hack".into()],
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:486: "test_hack2".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:496: "test_hack3".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:511: "test_hack4".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:529: "test_hack5".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/mcp/client.rs:547: "test_hack6".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/aiome-node/src/main.rs:34: // MVP: Using a stub implementation for the GigEngine/Validator to satisfy the Gateway
+/Users/motista/Desktop/antigravity/aiome/apps/aiome-node/src/main.rs:67: reason: "Not yet implemented for MVP node stub".to_string(),
+/Users/motista/Desktop/antigravity/aiome/apps/shadow-worker/src/proof_service.rs:90: // Phase 1-2 stub: initialise kernel Environment to confirm TCB loads.
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/bench_support/types.rs:30: /// Stub for CPU affinity pinning (platform-specific in production).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/bench_support/types.rs:43: /// Always succeeds in this stub (real impl would call `sched_setaffinity`).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/bench_support/types.rs:1462: /// A minimal profiler that measures CPU instructions and cache misses (stub).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/context/types.rs:1003: /// Execute a function with a temporary local declaration.
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/abstract_interp/types.rs:1026: /// A stub abstract interpreter that runs for a fixed number of steps.
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/abstract_interp/types.rs:1055: /// Return a summary (stub: always converges in 1 iteration).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/abstract_interp/types.rs:1056: pub fn run_stub(&mut self) -> InterpretationSummary {
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/abstract_interp/functions.rs:605: let summary = interp.run_stub();
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/type_erasure/types.rs:393: /// A simple code generator for erased expressions (stub).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/type_erasure/types.rs:1072: /// Normalize an expression to weak head normal form (stub).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/no_std_compat/types.rs:455: /// A linear-scan register allocator stub (used by the erased code-gen backend).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/no_std_compat/types.rs:549: /// A minimal stub for an object file representation.
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/no_std_compat/types.rs:621: /// Represents a handle to shared memory (stub for no_std builds).
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/src/check/types.rs:67: /// Create a new temporary scope backed by `env`.
+/Users/motista/Desktop/antigravity/Project-Nurture/EVOLVING_SOUL.md:52: - **UI/UX 設計の教訓**: 絶対配置（position: fixed/absolute）のオーバーレイや要素を他のコンテンツと位置合わせする際は、各コンポーネントに PX 数値をハードコードせず、必ず `tokens.css` などのルートに CSS Custom Properties (`--layout-xxx`) として一元管理します。コンポーネント側は `calc()` と `var()` を組み合わせて使用し、レイアウト変更時は変数のみを修正して全体が自動追従の設計にしています。（DioramaView や BiotopeView の教訓）
+/Users/motista/Desktop/antigravity/Project-Nurture/EVOLVING_SOUL.md:97: 絶対配置（position: fixed/absolute）のオーバーレイや要素を他のコンテンツと位置合わせする際は、各コンポーネントに PX 数値をハードコードせず、必ず `tokens.css` などのルートに CSS Custom Properties (`--layout-xxx`) として一元管理します。コンポーネント側は `calc()` と `var()` を組み合わせて使用し、レイアウト変更時は変数のみを修正して全体が自動追従の設計にしています。（DioramaView や BiotopeView の教訓）これは私の「誠実さ」です。
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/plugin.rs:179: // Test Phase 2 stub behavior

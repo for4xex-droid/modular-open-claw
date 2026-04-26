@@ -12,7 +12,7 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "libs/aiome-contracts", "libs/aiome-core-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node",
-    "libs/aiome-commerce",
+    "libs/aiome-commerce", "scripts/clippy_test",
 ]
 exclude = ["vendor/*"]
 resolver = "2"
@@ -71,6 +71,7 @@ dotenvy = "0.15"
 tonic = "0.12"
 prost = "0.13"
 tonic-build = "0.12"
+tiktoken-rs = "0.5.8"
 [workspace.lints.clippy]
 unwrap_used = "warn"
 

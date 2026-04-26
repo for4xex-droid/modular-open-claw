@@ -62,19 +62,17 @@ pub fn get_global_master_key() -> Result<MlockedVec, AiomeError> {
 
 /// Master Key 導出 (§CISO-1)
 fn get_master_key() -> Result<MlockedVec, AiomeError> {
-    let key_hex = std::env::var("VAULT_MASTER_KEY").map_err(|_| AiomeError::SecurityViolation {
-        reason: "VAULT_MASTER_KEY environment variable is not set".into(),
-    })?;
-    shared::security::scrub_env("VAULT_MASTER_KEY");
-    let key = hex::decode(&key_hex).map_err(|_| AiomeError::SecurityViolation {
-        reason: "VAULT_MASTER_KEY is not valid hex".into(),
-    })?;
-    if key.len() != 32 {
-        return Err(AiomeError::SecurityViolation {
-            reason: "VAULT_MASTER_KEY must be 32 bytes (64 hex chars)".into(),
-        });
-    }
-    Ok(MlockedVec::new(key))
+    let password =
+        std::env::var("VAULT_MASTER_PASSWORD").map_err(|_| AiomeError::SecurityViolation {
+            reason: "VAULT_MASTER_PASSWORD environment variable is not set".into(),
+        })?;
+    shared::security::scrub_env("VAULT_MASTER_PASSWORD");
+
+    // Salt は固定値を使用するか、コンフィグから読み込む。ここではハードコードの System Salt を使用
+    let salt = b"aiome-system-vault-salt-v1-xchacha";
+    let key = crate::security::crypto::derive_master_key_argon2id(&password, salt)?;
+
+    Ok(MlockedVec::new(key.to_vec()))
 }
 
 #[async_trait]
@@ -117,7 +115,7 @@ impl VaultBackend for UniversalVaultBackend {
         })?;
 
         let decrypted =
-            crate::security::crypto::decrypt_aes256gcm(&encrypted, &master.to_zeroizing())?;
+            crate::security::crypto::decrypt_xchacha20poly1305(&encrypted, &master.to_zeroizing())?;
 
         // 3. キャッシュに保存
         let mlocked_key = MlockedVec::new(decrypted);
@@ -132,7 +130,8 @@ impl VaultBackend for UniversalVaultBackend {
 
     async fn store_dek(&self, asset_id: Uuid, dek: &[u8]) -> Result<(), AiomeError> {
         let master = self.get_cached_master_key()?;
-        let encrypted = crate::security::crypto::encrypt_aes256gcm(dek, &master.to_zeroizing())?;
+        let encrypted =
+            crate::security::crypto::encrypt_xchacha20poly1305(dek, &master.to_zeroizing())?;
 
         let q = self
             .pool

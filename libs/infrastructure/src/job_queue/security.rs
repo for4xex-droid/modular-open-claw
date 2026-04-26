@@ -7,6 +7,7 @@
 use super::UniversalJobQueue;
 use crate::db::DatabasePool;
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::contracts::SystemEvent;
 use async_trait::async_trait;
 use sqlx::Row;
 use uuid::Uuid;
@@ -165,6 +166,10 @@ impl SecurityOps for UniversalJobQueue {
                 tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
+
+                // ブロードキャスト
+                let _ = self.event_bus.send(SystemEvent::ActorForgotten(agent_id));
+
                 Ok(())
             }
             DatabasePool::Postgres(p) => {
@@ -236,6 +241,10 @@ impl SecurityOps for UniversalJobQueue {
                 tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
+
+                // ブロードキャスト
+                let _ = self.event_bus.send(SystemEvent::ActorForgotten(agent_id));
+
                 Ok(())
             }
         }

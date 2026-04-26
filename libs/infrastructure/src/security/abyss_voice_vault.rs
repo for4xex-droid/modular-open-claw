@@ -110,8 +110,8 @@ impl VoiceKeyVault for AbyssVoiceVault {
     ) -> Result<Vec<u8>, AiomeError> {
         let key = self.fetch_decryption_key(agent_id, asset_id).await?;
 
-        // Phase 10.2: AES-256-GCM 復号の実行 (§SEC-1)
-        crate::security::crypto::decrypt_aes256gcm(encrypted_data, &key)
+        // Phase 10.2: XChaCha20Poly1305 復号の実行 (§SEC-1)
+        crate::security::crypto::decrypt_xchacha20poly1305(encrypted_data, &key)
     }
 }
 

@@ -214,28 +214,15 @@ impl AutonomousDemo {
             "The Immutable Gateway: Locking escrow and accepting bid...",
         )
         .await;
-        let escrow_id = format!("escrow-{}", Uuid::new_v4());
-        let q_escrow = format!(
-            "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status)
-             VALUES ({0}, {1}, {2}, {3}, {4}, 'Locked')",
-            pool.ph(0),
-            pool.ph(1),
-            pool.ph(2),
-            pool.ph(3),
-            pool.ph(4)
-        );
-        sql_exec!(
-            pool,
-            &q_escrow,
-            &escrow_id,
-            agent_id.to_string(),
-            agent_b_id.to_string(),
-            intent_id.to_string(),
-            80i64
-        )
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow insert: {}", e),
-        })?;
+
+        use aiome_core::commerce::CommerceEngine;
+        let escrow_id = state
+            .commerce_engine
+            .escrow_create(agent_id, 80)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Escrow create via engine: {}", e),
+            })?;
         sleep(Duration::from_millis(100)).await;
 
         let q_intent_acc = format!(
@@ -328,13 +315,13 @@ impl AutonomousDemo {
         sleep(Duration::from_millis(100)).await;
 
         // Settle escrow
-        let q_esc_rel = format!(
-            "UPDATE escrows SET status = 'Released' WHERE id = {}",
-            pool.ph(0)
-        );
-        sql_exec!(pool, &q_esc_rel, &escrow_id).map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow release: {}", e),
-        })?;
+        state
+            .commerce_engine
+            .escrow_release(&escrow_id, agent_b_id)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Escrow release via engine: {}", e),
+            })?;
         sleep(Duration::from_millis(100)).await;
 
         // Final status

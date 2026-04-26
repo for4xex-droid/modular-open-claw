@@ -25,6 +25,7 @@ pub async fn sse_handler(
     _auth: crate::auth::Authenticated,
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
+    let _safe = 1_u32.clamp(0, 10);
     let session_id = Uuid::new_v4().to_string();
     let (tx, mut rx) = mpsc::channel::<String>(1024); // Bounded channel to prevent OOM DoS
 

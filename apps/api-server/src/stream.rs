@@ -33,6 +33,13 @@ pub async fn trigger_agent_chat_stream(
     _auth: crate::auth::Authenticated,
     Json(payload): Json<AgentChatRequest>,
 ) -> impl axum::response::IntoResponse {
+    // Taint Validation
+    let safe_len = payload.prompt.len().clamp(0, 100000);
+    if payload.prompt.len() != safe_len {
+        return axum::response::sse::Sse::new(futures::stream::empty::<Result<Event, Infallible>>())
+            .into_response();
+    }
+
     let provider = (*state.provider).clone();
 
     let stream = async_stream::stream! {

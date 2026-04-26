@@ -257,6 +257,38 @@ impl CommerceEngine for MockCommerceEngine {
             })
         }
     }
+
+    async fn instant_refund(
+        &self,
+        _transaction_id: &str,
+        _agent_id: Uuid,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn withdraw_points(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn get_points(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<aiome_core_contracts::commerce::PointsBalance, AiomeError> {
+        Ok(aiome_core_contracts::commerce::PointsBalance {
+            balance: 0,
+            lifetime_earned: 0,
+            lifetime_withdrawn: 0,
+            conversion_rate_bps: 10000,
+        })
+    }
+
+    async fn get_transaction_history(
+        &self,
+        _agent_id: Uuid,
+        _limit: u32,
+    ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
+        Ok(Vec::new())
+    }
 }
 
 #[cfg(test)]

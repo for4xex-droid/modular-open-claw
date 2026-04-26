@@ -161,6 +161,8 @@ pub struct AppState {
         Component<Arc<dyn infrastructure::quality_gate_store::QualityGateStore>>,
     pub hook_manager: Component<Arc<infrastructure::security::hook_manager::HookManager>>,
     pub oxilean_power: Arc<std::sync::atomic::AtomicU32>,
+    // --- Phase RLM ---
+    pub rlm_client: Component<Arc<dyn aiome_core_contracts::rlm::RlmProvider>>,
 }
 
 impl AppState {

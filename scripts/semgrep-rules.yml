@@ -1,0 +1,12 @@
+rules:
+  - id: rust-taint-poc-simple
+    languages:
+      - rust
+    severity: ERROR
+    message: "Untrusted input reached a critical sink."
+    mode: taint
+    pattern-sources:
+      # どんな関数の引数でも Source とみなしてみる
+      - pattern: $X
+    pattern-sinks:
+      - pattern: std::fs::write(...)

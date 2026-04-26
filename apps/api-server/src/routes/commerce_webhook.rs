@@ -30,6 +30,11 @@ pub async fn stripe_webhook(
     headers: HeaderMap,
     body: String,
 ) -> Result<impl IntoResponse, AppError> {
+    let safe_len = body.len().clamp(0, 1048576);
+    if body.len() != safe_len {
+        return Err(AppError::bad_request("Payload too large"));
+    }
+
     info!("🔗 [StripeWebhook] Received webhook request.");
 
     // 1. Stripe-Signature ヘッダーの取得
@@ -378,6 +383,7 @@ pub async fn stripe_webhook(
         (status = 400, description = "Bad request / Invalid signature")
     )
 )]
+// auth-exempt: Polar 署名検証
 pub async fn polar_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,

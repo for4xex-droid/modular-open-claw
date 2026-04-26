@@ -303,6 +303,37 @@ impl CommerceEngine for PolarCommerceEngine {
             reason: "deduct_generation_cost not implemented for Polar API".into(),
         })
     }
+
+    async fn instant_refund(
+        &self,
+        _transaction_id: &str,
+        _agent_id: Uuid,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn withdraw_points(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn get_points(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<aiome_core_contracts::commerce::PointsBalance, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "get_points not implemented for Polar API".into(),
+        })
+    }
+
+    async fn get_transaction_history(
+        &self,
+        _agent_id: Uuid,
+        _limit: u32,
+    ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "get_transaction_history not implemented for Polar API".into(),
+        })
+    }
 }
 
 #[cfg(test)]

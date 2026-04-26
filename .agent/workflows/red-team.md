@@ -1,5 +1,5 @@
 ---
-description: 攻撃者視点（Red Team）による容赦ないセキュリティ・堅牢性レビュー
+description: 攻撃者視点（Red Team）による容赦ないセキュリティ・堅牢性レビュー。AST構造マップとTaint Analysis駆動。
 ---
 
 # /red-team - 悪魔の弁護人
@@ -11,15 +11,37 @@ description: 攻撃者視点（Red Team）による容赦ないセキュリテ�
 
 **Sequential Thinking** を使用して、攻撃と防御のシミュレーションを行ってください。
 
-### Phase 1: 攻撃シミュレーション (Attack) 😈
-対象コードに対し、悪意あるハッカーまたは「破壊的なユーザー」になりきって攻撃を試みてください。
-
-**Tool実行: Sentinel Scan**
-まず、自動脆弱性スキャナ `sentinel` を実行し、既知の脆弱性とSecret漏洩がないか確認します。
-
+### Phase 0: 構造マップ注入 (AST Deep Structure Map) 📡
+// turbo
+コードを「読む」前に、まずAST構造マップを生成し、攻撃対象の「地図」を手に入れる。
 ```bash
-# Sentinel Security Scan
-sentinel scan .
+python3 scripts/nurture_auditor.py
+```
+
+生成された `docs/architecture/deep_scan_matrix.md` と `.context/impact_graph.json` を読み込み、以下を把握する：
+- 全APIエンドポイント（Source = 外部入力の侵入口）の一覧
+- 全構造体・トレイトの依存グラフ（Propagator = データの伝播経路）
+
+### Phase 1: Taint Analysis (Source → Sink 追跡) 🎯
+// turbo
+自動化されたTaint Scannerを実行し、汚染経路（Source → Sink）を特定する。
+```bash
+python3 scripts/taint_scanner.py
+```
+実行後、`docs/architecture/taint_analysis_report.md` を確認して Unsanitized Routes を特定する。
+
+上記で特定された Source と Sink のペアについて、データが**サニタイズ（バリデーション）なしに到達可能か**を論理的に検証する。以下の「汚染方程式」を適用：
+- Source（入力）が変数に入る → その変数がサニタイズなしに関数間を移動 → Sink（危険関数）に到達 = **脆弱性**
+- サニタイズ関数の例: `.parse::<T>()`, `.validate()`, `.clamp()`, `is_verified()`, Rust型制約
+
+### Phase 2: 攻撃シミュレーション (Attack) 😈
+Phase 1 で特定された Taint ルートに対し、具体的な攻撃シナリオを立案する。
+
+**Tool実行: Security Scan**
+// turbo
+自動セキュリティスキャナを実行し、既知の脆弱性とSecret漏洩がないか確認する。
+```bash
+echo "=== Secret Scan ===" && gitleaks detect -v 2>&1 | tail -5 && echo "=== Dependency Audit ===" && cargo audit 2>&1 | tail -10
 ```
 ※ 出力されたALERTやWarningは必ず修正対象に含めてください。
 
@@ -28,14 +50,16 @@ sentinel scan .
 - **Race Condition**: 並行処理でタイミングをずらしたら整合性が壊れないか？
 - **Resource Exhaustion**: 無限ループやメモリリークを引き起こせるか？
 - **Security Check**: SQLインジェクション、XSS、権限昇格の隙はないか？
+- **Taint Route Exploitation**: Phase 1で特定した未サニタイズルートに悪意ある入力を流したら？
 
-### Phase 2: 防御壁の確認 (Defense Check) 🛡️
+### Phase 3: 防御壁の確認 (Defense Check) 🛡️
 攻撃に対して、現在のコードが耐えられるか検証します。
 
 - `unwrap()`, `expect()`, `panic!()` でクラッシュしないか？
 - `Result` は適切にハンドリングされているか？
 - 型システムで不正状態（Illegal State）をコンパイル時に弾けているか？
+- 全 Source → Sink ルートにサニタイズ層が挟まれているか？
 
-### Phase 3: 改善提案 (Patch) 🩹
+### Phase 4: 改善提案 (Patch) 🩹
 発見された脆弱性を塞ぐための具体的な修正コードを提示します。
 「ただ動くコード」ではなく「壊れないコード」に修正してください。

@@ -647,6 +647,11 @@ classDiagram
         +name() str
     }
 
+    class RlmProvider {
+        <<trait / aiome-contracts>>
+        +deep_complete(prompt, config) Result~RlmResponse~
+    }
+
     class NurtureCommerceBridge {
         CommerceEngine を実装
         +aiome 台帳と nurture 台帳を橋渡し
@@ -781,7 +786,7 @@ gantt
 
 | クレート | シンボル数 | 代表的なシンボル |
 |---------|----------|---------------|
-| `aiome-contracts` | 16 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
+| `aiome-contracts` | 17 | `LlmProvider`, `RlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
 | `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
 | `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger` |

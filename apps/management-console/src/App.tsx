@@ -45,6 +45,7 @@ const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
+const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
@@ -227,7 +228,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'biome', 'causal', 'lora', 'seo-pulse'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'nurture', 'biome', 'causal', 'lora', 'seo-pulse'];
     const advanced = [...intermediate, 'graph', 'audit', 'prompt-stats', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -416,6 +417,14 @@ function App() {
               onClick={() => setActiveTab("store")}
             />
           )}
+          {isVisible("nurture") && (
+            <NavItem
+              icon={<Activity size={20} />}
+              label={t('nav.nurtureEconomy', { defaultValue: 'Economy' }) as string}
+              active={activeTab === "nurture"}
+              onClick={() => setActiveTab("nurture")}
+            />
+          )}
         </nav>
 
         <nav className="nav-group">
@@ -554,6 +563,7 @@ function App() {
             {activeTab === "expressions" && t('page.expressions')}
             {activeTab === "biome" && t('page.biomeLab')}
             {activeTab === "store" && t('page.voiceStore')}
+            {activeTab === "nurture" && (t('page.nurtureEconomy', { defaultValue: 'Nurture Economy' }) as string)}
             {activeTab === "causal" && t('page.causalTrace')}
             {activeTab === "lora" && t('page.loraAutotuner')}
             {activeTab === "settings" && t('page.settings')}
@@ -590,6 +600,7 @@ function App() {
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}
+              {activeTab === "nurture" && <NurtureDashboard />}
               {activeTab === "causal" && <CausalVisualizer />}
               {activeTab === "lora" && <LoraTrainingView />}
               {activeTab === "settings" && <SettingsPage />}

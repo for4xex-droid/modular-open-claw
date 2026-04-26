@@ -11,18 +11,20 @@ description: 最高レベルのコードスキャンを実行。ASTマトリク�
 
 ## 実行手順
 
-### Step 1: AST抽出スクリプトの実行
+### Step 1: ディープスキャンの実行
 // turbo
+セグメント化されたディープスキャンと AST Taint Analysis を一括実行します。
 ```bash
-python3 scripts/nurture_auditor.py
+bash scripts/deep-scan.sh
 ```
 
-### Step 2: 監査マトリクスの読み込み
+### Step 2: 監査マトリクスとTaintレポートの読み込み
 自動生成されたマニフェストを読み込みます。
 
 ```bash
-cat docs/architecture/deep_scan_matrix.md
-# または file_view_tool 等で読み込み
+# cat docs/architecture/deep_scan_matrix.md
+# cat docs/architecture/taint_analysis_report.md
+# ツール (view_file) で読み込み
 ```
 
 ### Step 3: レポート生成

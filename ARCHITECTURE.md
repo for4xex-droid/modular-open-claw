@@ -56,6 +56,7 @@ graph TD
     api-server --> infrastructure
     samsara-hub --> aiome-core
     samsara-hub --> shared
+    samsara-hub --> infrastructure
     key-proxy --> aiome-core
     key-proxy --> shared
     key-proxy --> infrastructure
@@ -118,4 +119,4 @@ API_SERVER_SECRET, NURTURE_INTERNAL_SECRET, NURTURE_API_URL, ALLOWED_ORIGINS, FE
 ```
 
 ---
-*Last Auto-Generated: 2026-04-24 UTC*
+*Last Auto-Generated: 2026-04-26 UTC*

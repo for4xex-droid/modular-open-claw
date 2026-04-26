@@ -19,6 +19,11 @@ TS_IMPORT_SYMBOL_PATTERN = re.compile(r'import\s+(.*?)\s+from')
 CSS_DEF_PATTERN = re.compile(r'(--[a-zA-Z0-9_-]+)\s*:')
 CSS_USE_PATTERN = re.compile(r'var\s*\(\s*(--[a-zA-Z0-9_-]+)\s*\)')
 
+# Fully Qualified Path references in code body (not use statements)
+RUST_FQP_PATTERN = re.compile(
+    r'((?:nurture_\w+|commerce_protocol|aiome_\w+)::\w+(?:::\w+)*)'
+)
+
 def find_source_files(base_dir, extensions):
     """Recursively yield paths, strictly skipping ignored directories at the root level using os.walk."""
     ignored_dirs = {'node_modules', 'target', '.git', '.context', 'dist', 'build'}
@@ -46,6 +51,22 @@ def analyze_rust_file(file_path):
         for i in RUST_IMPL_PATTERN.findall(content):
             edges.append({"from": name, "to": i.strip(), "kind": "impl"})
             
+        # FQP: use 文以外の完全修飾パス参照を抽出
+        for line in content.splitlines():
+            stripped = line.strip()
+            # 除外: use文 (既に抽出済み)
+            if stripped.startswith('use ') or stripped.startswith('pub use '):
+                continue
+            # 除外: コメント / doc comment
+            if stripped.startswith('//') or stripped.startswith('///') or stripped.startswith('*'):
+                continue
+            # 除外: format!/println!/tracing マクロ内 (文字列リテラル誤検出防止)
+            if 'format!' in stripped or 'println!' in stripped or 'tracing' in stripped:
+                continue
+            for m in RUST_FQP_PATTERN.finditer(line):
+                fqp = m.group(1)
+                edges.append({"from": name, "to": fqp, "kind": "fqp_ref"})
+                
         return {"structs": structs, "traits": traits, "routes": routes, "edges": edges}
 
 def analyze_py_file(file_path):

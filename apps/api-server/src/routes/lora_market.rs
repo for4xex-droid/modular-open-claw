@@ -303,3 +303,6 @@ pub async fn my_listings(
     let listings = marketplace.list_listings(filter).await?;
     Ok(Json(listings))
 }
+pub fn dummy() {
+    let _ = 1_u32.clamp(0, 10);
+}

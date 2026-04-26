@@ -38,17 +38,6 @@ impl ProportionsChecker {
             LegalStatus::General
         }
     }
-
-    /// VRM JSON データからの簡易抽出 (Mock)
-    pub fn check_vrm_data(json_data: &str) -> LegalStatus {
-        // TODO: 実際の VRM 解析 (gltf-rs 等) を使用して正確なボーン位置を特定 // allow-anti-pattern
-        // 現時点では JSON 内の特定の拡張フィールドを想定
-        if json_data.contains("chibi") || json_data.contains("head_ratio_low") {
-            LegalStatus::Restricted
-        } else {
-            LegalStatus::General
-        }
-    }
 }
 
 #[cfg(test)]

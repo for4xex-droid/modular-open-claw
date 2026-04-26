@@ -63,6 +63,8 @@ struct FederatedKarmaRecord {
     somatic_valence: Option<f64>,
 }
 
+#[cfg(test)]
+mod hub_auth_tests;
 mod hub_discovery_tests;
 mod mdns_listener;
 
@@ -148,8 +150,12 @@ async fn main() -> anyhow::Result<()> {
     // Create broadcast channel for real-time rule/karma notification
     let (tx, _) = broadcast::channel(100);
     let agent_registry = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
-    let _mdns_daemon = mdns_listener::start_mdns_listener(agent_registry.clone())
-        .map_err(|e| anyhow::anyhow!("mDNS listener failed to start: {}", e))?;
+    let token = CancellationToken::new();
+    let supervisor = infrastructure::supervisor::TaskSupervisor::new(10, 300);
+
+    let _mdns_daemon =
+        mdns_listener::start_mdns_listener(agent_registry.clone(), &supervisor, token.clone())
+            .map_err(|e| anyhow::anyhow!("mDNS listener failed to start: {}", e))?;
 
     let state = Arc::new(HubState {
         pool: pool.clone(),
@@ -181,29 +187,62 @@ async fn main() -> anyhow::Result<()> {
         agent_registry,
     });
 
-    let token = CancellationToken::new();
-
     // Spawn the Approval Worker to process quarantine
-    tokio::spawn(approval_worker(pool, token.clone()));
+    struct ApprovalWorkerTask {
+        pool: shared::db::DatabasePool,
+    }
+    impl infrastructure::supervisor::SupervisedTask for ApprovalWorkerTask {
+        fn name(&self) -> &'static str {
+            "ApprovalWorker"
+        }
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let pool = self.pool.clone();
+            Box::pin(async move {
+                // If approval_worker fails, we panic and restart
+                approval_worker(pool, ct).await;
+            })
+        }
+    }
+    supervisor.spawn_supervised(ApprovalWorkerTask { pool: pool.clone() }, token.clone());
 
     let state_bg = state.clone();
-    let token_bg = token.clone();
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
-        loop {
-            tokio::select! {
-                _ = interval.tick() => {
-                    info!("♻️ [HubMaintenance] Running Maintenance...");
-                    if let Some(sq) = state_bg.pool.get_sqlite_pool() {
-                         let _ = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(sq).await;
+    struct MaintenanceTask {
+        state_bg: Arc<HubState>,
+    }
+    impl infrastructure::supervisor::SupervisedTask for MaintenanceTask {
+        fn name(&self) -> &'static str {
+            "HubMaintenance"
+        }
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let state_bg = self.state_bg.clone();
+            Box::pin(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+                loop {
+                    tokio::select! {
+                        _ = interval.tick() => {
+                            info!("♻️ [HubMaintenance] Running Maintenance...");
+                            if let Some(sq) = state_bg.pool.get_sqlite_pool() {
+                                 if let Err(e) = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(sq).await {
+                                     tracing::error!("🚨 [HubMaintenance] SQLite checkpoint failed: {}", e);
+                                     panic!("HubMaintenance crashed");
+                                 }
+                            }
+                        }
+                        _ = ct.cancelled() => break,
                     }
                 }
-                _ = token_bg.cancelled() => break,
-            }
+            })
         }
-    });
+    }
+    supervisor.spawn_supervised(MaintenanceTask { state_bg }, token.clone());
 
-    let app = build_app(state);
+    let app = build_app(state.clone());
 
     let addr = format!("127.0.0.1:{}", port);
     info!("🏔️ Samsara Hub (The Validator) listening on {}", addr);
@@ -212,6 +251,10 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(token))
         .await?;
+
+    info!("🛑 [samsara-hub] Closing database connections gracefully...");
+    state.pool.close().await;
+    info!("✅ [samsara-hub] Shutdown complete.");
 
     Ok(())
 }
@@ -2037,8 +2080,18 @@ async fn auth_middleware(
     if auth_header.starts_with("Bearer ") {
         let token = auth_header.trim_start_matches("Bearer ");
         if let Ok(claims) = state.auth_manager.validate_token(token).await {
-            if claims.agent_id != uuid::Uuid::nil() {
+            // RBAC Enforcement: Hub operations require System, Admin, or Federated roles.
+            if claims.roles.iter().any(|r| {
+                matches!(
+                    r,
+                    shared::auth::Role::Admin
+                        | shared::auth::Role::System
+                        | shared::auth::Role::Federated
+                )
+            }) {
                 authenticated = true;
+            } else {
+                warn!("⛔ [Hub] Access denied for roles: {:?}", claims.roles);
             }
         }
     }

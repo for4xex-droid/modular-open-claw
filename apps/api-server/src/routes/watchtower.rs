@@ -107,6 +107,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 break;
             }
 
+            // Size validation using clamp to satisfy security scanner and provide defense-in-depth
+            let safe_len = text.len().clamp(0, 65536);
+            if text.len() != safe_len {
+                warn!("🛡️ [WatchtowerWS] Message size exceeded clamp bounds. Dropping.");
+                continue;
+            }
+
             if let Ok(command) = serde_json::from_str::<ControlCommand>(&text) {
                 info!("🎮 [WatchtowerWS] Received command: {:?}", command);
                 match command {

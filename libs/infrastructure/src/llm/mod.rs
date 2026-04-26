@@ -18,6 +18,7 @@ pub mod native_embedding;
 
 /// `proxy` モジュール
 pub mod proxy;
+pub mod rlm_client;
 /// `semantic_cache` モジュール
 pub mod semantic_cache;
 pub mod utils;

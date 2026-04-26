@@ -10,7 +10,7 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        crate::routes::general::get_logs,
+        crate::routes::audit::get_logs,
         crate::routes::general::list_wiki_files,
         crate::routes::general::get_wiki_content,
         crate::routes::settings::get_settings,
@@ -57,6 +57,10 @@ use utoipa::OpenApi;
         crate::routes::a2ui::submit_a2ui_action,
         // Commerce
         crate::routes::commerce::get_balance,
+        crate::routes::commerce::get_points,
+        crate::routes::commerce::get_transaction_history,
+        crate::routes::commerce::withdraw_points,
+        crate::routes::commerce::transfer,
         crate::routes::commerce::execute_purchase,
         crate::routes::commerce::list_escrows,
         crate::routes::commerce::release_escrow,
@@ -77,11 +81,11 @@ use utoipa::OpenApi;
         // Auth / Right to be forgotten
         crate::routes::auth::delete_account_handler,
         // Audit & Trends (Phase 8.6)
-        crate::routes::general::get_audit_ledger,
-        crate::routes::general::get_audit_prompt_stats,
-        crate::routes::general::get_diagnoses,
-        crate::routes::general::get_quarantined_assets,
-        crate::routes::general::release_quarantined_asset,
+        crate::routes::audit::get_audit_ledger,
+        crate::routes::audit::get_audit_prompt_stats,
+        crate::routes::audit::get_diagnoses,
+        crate::routes::audit::get_quarantined_assets,
+        crate::routes::audit::release_quarantined_asset,
         crate::routes::general::get_trends,
         crate::routes::quality_gate::get_quality_gate_history,
         // Gig Economy
@@ -147,6 +151,10 @@ use utoipa::OpenApi;
             crate::routes::expression::ListParams,
             crate::routes::expression::AutoToggle,
             crate::routes::commerce::PurchaseRequest,
+            aiome_core_contracts::commerce::PointsBalance,
+            aiome_core_contracts::commerce::TransactionRecord,
+            crate::routes::commerce::WithdrawRequest,
+            crate::routes::commerce::TransferRequest,
             aiome_core_contracts::commerce::GiftRequest,
             crate::routes::gift::GiftResponse,
             crate::routes::gift::GiftPolicyResponse,

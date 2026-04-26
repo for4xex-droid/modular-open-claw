@@ -1256,3 +1256,25 @@ async fn test_elicitation_status_transition_red() {
     ));
     assert_eq!(job.status.as_str(), "AwaitingInput");
 }
+
+#[tokio::test]
+async fn test_forget_actor_broadcasts_system_event() {
+    use crate::job_queue::security::SecurityOps;
+    use aiome_core_contracts::contracts::SystemEvent;
+
+    let (jq, _tmp) = create_test_queue().await;
+    let agent_id = uuid::Uuid::new_v4();
+
+    let mut rx = jq.event_bus.subscribe();
+
+    jq.forget_actor(agent_id).await.unwrap();
+
+    // イベントを受信できるか確認
+    let event = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx.recv())
+        .await
+        .expect("Should not timeout")
+        .expect("Should receive event");
+
+    let SystemEvent::ActorForgotten(id) = event;
+    assert_eq!(id, agent_id);
+}

@@ -582,6 +582,13 @@ pub enum SamsaraEvent {
     },
 }
 
+/// システム全体にブロードキャストされるイベント群 (Event-Driven Architecture)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SystemEvent {
+    /// エージェントが物理的に「忘れられた」時（RTBF: Right to be Forgotten の実行）
+    ActorForgotten(uuid::Uuid),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

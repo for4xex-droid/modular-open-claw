@@ -30,7 +30,14 @@ mod tests {
         let agent_registry =
             std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
 
-        let _listener = crate::mdns_listener::start_mdns_listener(agent_registry.clone()).unwrap();
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+        let supervisor = infrastructure::supervisor::TaskSupervisor::new(10, 300);
+        let _listener = crate::mdns_listener::start_mdns_listener(
+            agent_registry.clone(),
+            &supervisor,
+            cancel_token.clone(),
+        )
+        .unwrap();
 
         let state = std::sync::Arc::new(crate::HubState {
             pool: db_pool,

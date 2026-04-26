@@ -112,6 +112,48 @@ pub trait CommerceEngine: Send + Sync {
         amount: u64,
         generation_type: &str,
     ) -> Result<(), AiomeError>;
+
+    /// 即時決済（Instant Purchase）を返金する（Karma連動のトラスト閾値付き）
+    async fn instant_refund(&self, transaction_id: &str, actor_id: Uuid) -> Result<(), AiomeError>;
+
+    /// クリエイターポイントをコインまたは法定通貨として出金する
+    async fn withdraw_points(
+        &self,
+        actor_id: Uuid,
+        points_to_withdraw: u64,
+    ) -> Result<(), AiomeError>;
+
+    /// Karmaポイントの残高を取得する
+    async fn get_points(&self, agent_id: Uuid) -> Result<PointsBalance, AiomeError>;
+
+    /// トランザクション履歴を取得する
+    async fn get_transaction_history(
+        &self,
+        agent_id: Uuid,
+        limit: u32,
+    ) -> Result<Vec<TransactionRecord>, AiomeError>;
+}
+
+/// クリエイターのポイント（Karma）残高
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct PointsBalance {
+    pub balance: u64,
+    pub lifetime_earned: u64,
+    pub lifetime_withdrawn: u64,
+    pub conversion_rate_bps: u32,
+}
+
+/// トランザクション履歴のレコード
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct TransactionRecord {
+    pub id: String,
+    pub transaction_id: String,
+    pub debit_account: String,
+    pub credit_account: String,
+    pub coin_amount: u64,
+    pub points_amount: u64,
+    pub entry_type: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// エスクローの記録

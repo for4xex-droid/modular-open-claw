@@ -260,6 +260,12 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 `extract_thinking_process` は、LLM が出力する推論プロセス（`<thinking>` タグ）と最終応答を分離し、ユーザーに見せるべきでないメタデータのUI漏洩を物理的に防ぎます。
 - **Defense-in-Depth Parsing**: LLMの幻覚による入れ子（ネスト）や未閉鎖の `<thinking>` タグに対しても、O(N)の堅牢な反復パースを実行し、最終的に残骸を完全除去する多層防御を構築しています。
 
+### 3.13 RLM (Recursive Language Model) Integration (Phase 4 実装)
+`RlmProvider` は標準の LLM（`DynamicLlmProvider`）では解決できない複雑な論理や深い推論が要求されるタスクに対して、再帰的な推論を行う RLM サイドカー（Deep Reasoning）へのフォールバックルーティングを提供します。
+- **Deep Query Router**: `CortexQueryEngine` と連携し、複雑度に応じて自律的に RLM へのクエリを発行します。
+- **Defense-in-Depth**: `RlmClient` において `max_depth`、`max_budget_usd` の厳密な境界値検証、128KB 以上のプロンプト遮断、および 1KB エラーレスポンス切り捨てによる DoS 防止層（SSRF 防御）を備えています。
+- **Cost Circuit Breaker**: RLM の反復推論による予算超過を防止するため、厳格な `Budget Limit` チェックとコスト追跡を行います。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*

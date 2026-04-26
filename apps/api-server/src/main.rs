@@ -60,6 +60,8 @@ mod api;
 #[cfg(test)]
 mod api_integration_tests;
 mod app_state;
+#[cfg(test)]
+mod audit_auth_tests;
 mod auth;
 mod autonomous_demo;
 pub mod bootstrap;

@@ -37,6 +37,13 @@ pub async fn ingest_url_handler(
     _auth: crate::auth::Authenticated,
     Json(req): Json<IngestUrlReq>,
 ) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+    let safe_len = req.url.len().clamp(0, 8192);
+    if req.url.len() != safe_len {
+        return Err(aiome_core::error::AiomeError::Validation {
+            reason: "URL too long".into(),
+        });
+    }
+
     let ingester = state.cortex_ingester.get_inner();
     let doc = ingester.ingest_url(&req.url).await?;
 

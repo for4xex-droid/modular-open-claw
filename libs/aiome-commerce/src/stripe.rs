@@ -202,7 +202,8 @@ impl CommerceEngine for StripeCommerceEngine {
             let req_url = format!("{}/internal/escrow-create", url);
             let payload = serde_json::json!({
                 "actor_id": agent_id,
-                "amount": amount
+                "amount": amount,
+                "idempotency_key": Uuid::new_v4().to_string()
             });
             let mut req = client
                 .post(&req_url)
@@ -270,6 +271,34 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     async fn list_escrows(&self, agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/escrow-list/{}", url, agent_id);
+            let mut req = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
+            if res.status().is_success() {
+                let records: Vec<EscrowRecord> =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to parse escrow list: {}", e),
+                    })?;
+                return Ok(records);
+            }
+        }
+
         use sqlx::Row;
 
         let rows = sqlx::query(
@@ -306,7 +335,8 @@ impl CommerceEngine for StripeCommerceEngine {
             let req_url = format!("{}/internal/escrow-release", url);
             let payload = serde_json::json!({
                 "escrow_id": escrow_id,
-                "recipient_id": recipient_id
+                "recipient_id": recipient_id,
+                "idempotency_key": Uuid::new_v4().to_string()
             });
             let mut req = client
                 .post(&req_url)
@@ -359,12 +389,37 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError> {
-        if let (Some(_url), Some(_secret), Some(_client)) = (
+        if let (Some(url), Some(secret), Some(client)) = (
             &self.nurture_url,
             &self.nurture_secret,
             &self.nurture_client,
         ) {
-            // Future implementation: forward to Nurture refund API
+            let req_url = format!("{}/internal/escrow-refund", url);
+            let payload = serde_json::json!({
+                "escrow_id": escrow_id,
+                "idempotency_key": Uuid::new_v4().to_string()
+            });
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
+            if res.status().is_success() {
+                return Ok(());
+            } else {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Escrow refund HTTP failed: {}", res.status()),
+                });
+            }
         }
 
         let result = sqlx::query(
@@ -602,7 +657,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 "actor_id": agent_id,
                 "asset_id": asset_id,
                 "amount": amount,
-                "generation_type": generation_type
+                "generation_type": generation_type,
+                "idempotency_key": Uuid::new_v4().to_string()
             });
 
             let mut req = client
@@ -656,6 +712,37 @@ impl CommerceEngine for StripeCommerceEngine {
             );
             Ok(())
         }
+    }
+
+    async fn instant_refund(
+        &self,
+        _transaction_id: &str,
+        _agent_id: Uuid,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn withdraw_points(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn get_points(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<aiome_core_contracts::commerce::PointsBalance, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "get_points not implemented for Stripe API".into(),
+        })
+    }
+
+    async fn get_transaction_history(
+        &self,
+        _agent_id: Uuid,
+        _limit: u32,
+    ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "get_transaction_history not implemented for Stripe API".into(),
+        })
     }
 }
 

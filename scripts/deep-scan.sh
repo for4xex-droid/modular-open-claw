@@ -291,6 +291,16 @@ main() {
   cross_cutting_checks
 
   echo ""
+  echo "╔══════════════════════════════════════════╗"
+  echo "║   🛡️  Phase 3: AST Taint Analysis        ║"
+  echo "╚══════════════════════════════════════════╝"
+  if [[ "$CI_MODE" == true ]]; then
+    python3 scripts/taint_scanner.py --ci || ERROR_COUNT=$((ERROR_COUNT + 1))
+  else
+    python3 scripts/taint_scanner.py || true
+  fi
+
+  echo ""
   echo "══════════════════════════════════════════"
   echo "📊 ディープスキャン完了"
   echo "   🔴 Errors:   $ERROR_COUNT"

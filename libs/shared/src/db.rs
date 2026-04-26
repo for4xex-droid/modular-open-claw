@@ -143,6 +143,14 @@ impl DatabasePool {
         }
     }
 
+    /// Gracefully close the database pool, waiting for connections to be returned
+    pub async fn close(&self) {
+        match self {
+            Self::Sqlite(pool) => pool.close().await,
+            Self::Postgres(pool) => pool.close().await,
+        }
+    }
+
     /// Returns the N-th placeholder for the current database type
     pub fn ph(&self, idx: usize) -> String {
         match self {

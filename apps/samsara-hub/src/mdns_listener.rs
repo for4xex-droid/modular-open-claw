@@ -51,39 +51,76 @@ pub async fn update_registry(registry: &AgentRegistry, did: String, ip: String, 
     );
 }
 
-pub fn start_mdns_listener(registry: AgentRegistry) -> Result<ServiceDaemon, String> {
+pub fn start_mdns_listener(
+    registry: AgentRegistry,
+    supervisor: &infrastructure::supervisor::TaskSupervisor,
+    cancel_token: tokio_util::sync::CancellationToken,
+) -> Result<ServiceDaemon, String> {
     let mdns = ServiceDaemon::new().map_err(|e| e.to_string())?;
-    let service_type = "_aiome._tcp.local.";
 
-    let receiver = mdns.browse(service_type).map_err(|e| e.to_string())?;
+    struct MdnsListenerTask {
+        registry: AgentRegistry,
+        mdns: ServiceDaemon,
+    }
 
-    let registry_clone = registry.clone();
-    tokio::spawn(async move {
-        while let Ok(event) = receiver.recv_async().await {
-            match event {
-                ServiceEvent::ServiceResolved(info) => {
-                    let did = info
-                        .get_property_val_str("did")
-                        .unwrap_or("unknown_did")
-                        .to_string();
-                    let ip = info
-                        .get_addresses()
-                        .iter()
-                        .next()
-                        .map(|ip| ip.to_string())
-                        .unwrap_or_default();
-                    let port = info.get_port();
-
-                    tracing::info!("🔍 [mDNS] Discovered Agent (DID: {}): {}:{}", did, ip, port);
-                    update_registry(&registry_clone, did, ip, port).await;
-                }
-                ServiceEvent::ServiceRemoved(_, full_name) => {
-                    tracing::info!("🔌 [mDNS] Service removed: {}", full_name);
-                }
-                _ => {}
-            }
+    impl infrastructure::supervisor::SupervisedTask for MdnsListenerTask {
+        fn name(&self) -> &'static str {
+            "MdnsListener"
         }
-    });
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let registry = self.registry.clone();
+            let mdns = self.mdns.clone();
+            Box::pin(async move {
+                let receiver = match mdns.browse("_aiome._tcp.local.") {
+                    Ok(r) => r,
+                    Err(e) => {
+                        tracing::error!("🚨 [mDNS] Failed to browse: {}", e);
+                        panic!("mDNS browse failed");
+                    }
+                };
+
+                loop {
+                    tokio::select! {
+                        _ = ct.cancelled() => break,
+                        res = receiver.recv_async() => {
+                            match res {
+                                Ok(event) => {
+                                    match event {
+                                        ServiceEvent::ServiceResolved(info) => {
+                                            let did = info.get_property_val_str("did").unwrap_or("unknown_did").to_string();
+                                            let ip = info.get_addresses().iter().next().map(|ip| ip.to_string()).unwrap_or_default();
+                                            let port = info.get_port();
+                                            tracing::info!("🔍 [mDNS] Discovered Agent (DID: {}): {}:{}", did, ip, port);
+                                            update_registry(&registry, did, ip, port).await;
+                                        }
+                                        ServiceEvent::ServiceRemoved(_, full_name) => {
+                                            tracing::info!("🔌 [mDNS] Service removed: {}", full_name);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::error!("🚨 [mDNS] Receiver failed: {}", e);
+                                    panic!("MdnsListener receiver failed");
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+        }
+    }
+
+    supervisor.spawn_supervised(
+        MdnsListenerTask {
+            registry,
+            mdns: mdns.clone(),
+        },
+        cancel_token,
+    );
 
     Ok(mdns)
 }

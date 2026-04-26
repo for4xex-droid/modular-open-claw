@@ -19,10 +19,12 @@ pub mod error;
 pub mod llm;
 pub mod plugin;
 pub mod proof;
+pub mod rlm;
 pub mod security;
 
 pub use commerce::*;
 pub use error::*;
 pub use llm::*;
 pub use plugin::*;
+pub use rlm::*;
 pub use security::*;

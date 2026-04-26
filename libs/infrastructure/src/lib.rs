@@ -41,6 +41,7 @@ pub mod audit_logger;
 pub mod auth;
 /// 安全なワークスペース環境スキャン（Phase F）
 pub mod auto_profile;
+pub mod blob_storage;
 /// Capabilities and extensions registry
 pub mod capability_registry;
 /// 外部チャットプラットフォームとの通信ブリッジ
@@ -160,6 +161,8 @@ pub mod soul_adapter;
 pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
+/// Let It Crash / Supervision Tree (Phase 1.5)
+pub mod supervisor;
 
 pub mod task_orchestrator;
 pub mod trajectory_graph;

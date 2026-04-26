@@ -41,6 +41,14 @@ pub async fn upload_inochi2d_handler(
     axum::extract::Extension(user): axum::extract::Extension<AuthenticatedUser>,
     mut multipart: axum::extract::Multipart,
 ) -> Result<Json<Inochi2dUploadResponse>, AppError> {
+    let safe_id = user.0.sub.trim();
+    if !safe_id
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err(AppError::bad_request("Invalid user ID format"));
+    }
+
     // F-03: Acquire upload semaphore permit to prevent OOM/DoS from large concurrent uploads
     let _permit = state.upload_semaphore.try_acquire().map_err(|e| {
         crate::error::AppError(aiome_core::error::AiomeError::ResourceBusy {

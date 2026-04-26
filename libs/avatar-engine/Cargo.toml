@@ -16,6 +16,7 @@ aiome-core-contracts = { path = "../aiome-core-contracts" }
 async-trait = "0.1"
 rubato = "0.16"
 anyhow = "1.0"
+gltf = { version = "1.4.1", features = ["extensions", "extras"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }

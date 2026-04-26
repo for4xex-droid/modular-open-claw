@@ -544,16 +544,42 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     ));
 
     let crystallizer_task = crystallizer.clone();
-    tokio::spawn(async move {
-        info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
-        let mut interval = tokio::time::interval(Duration::from_secs(300)); // Every 5 minutes
-        loop {
-            interval.tick().await;
-            if let Err(e) = crystallizer_task.run_distillation_cycle().await {
-                error!("🚨 [MemoryCrystallizer] Distillation error: {}", e);
-            }
+    let supervisor = infrastructure::supervisor::TaskSupervisor::new(10, 300);
+    struct MemoryCrystallizerTask {
+        crystallizer: Arc<MemoryCrystallizer>,
+    }
+    impl infrastructure::supervisor::SupervisedTask for MemoryCrystallizerTask {
+        fn name(&self) -> &'static str {
+            "MemoryCrystallizer"
         }
-    });
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let crystallizer = self.crystallizer.clone();
+            Box::pin(async move {
+                info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
+                let mut interval = tokio::time::interval(Duration::from_secs(300)); // Every 5 minutes
+                loop {
+                    tokio::select! {
+                        _ = ct.cancelled() => break,
+                        _ = interval.tick() => {
+                            if let Err(e) = crystallizer.run_distillation_cycle().await {
+                                tracing::error!("🚨 [MemoryCrystallizer] Distillation error: {}", e);
+                                panic!("MemoryCrystallizer crashed");
+                            }
+                        }
+                    }
+                }
+            })
+        }
+    }
+    supervisor.spawn_supervised(
+        MemoryCrystallizerTask {
+            crystallizer: crystallizer_task,
+        },
+        cancel_token.clone(),
+    );
 
     let soul_mutator = Arc::new(infrastructure::soul_mutator::SoulMutator::new(
         provider.clone(),
@@ -694,12 +720,42 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     {
         let mcp_manager = mcp_manager.clone();
         let registry = registry.clone();
-        tokio::spawn(async move {
-            info!("🔍 [MCP Discovery] Starting automated server discovery...");
-            if let Err(e) = mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
-                error!("🚨 [MCP Discovery] Failed during initial discovery: {}", e);
+        let supervisor = infrastructure::supervisor::TaskSupervisor::new(5, 60);
+        struct McpDiscoveryTask {
+            mcp_manager: Arc<mcp::client::McpProcessManager>,
+            registry: Arc<infrastructure::registry::RegistryManager>,
+        }
+        impl infrastructure::supervisor::SupervisedTask for McpDiscoveryTask {
+            fn name(&self) -> &'static str {
+                "McpDiscovery"
             }
-        });
+            fn run(
+                &self,
+                _ct: tokio_util::sync::CancellationToken,
+            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+                let mcp_manager = self.mcp_manager.clone();
+                let registry = self.registry.clone();
+                Box::pin(async move {
+                    info!("🔍 [MCP Discovery] Starting automated server discovery...");
+                    if let Err(e) =
+                        mcp::discovery::discover_and_connect(&mcp_manager, &registry).await
+                    {
+                        tracing::error!(
+                            "🚨 [MCP Discovery] Failed during initial discovery: {}",
+                            e
+                        );
+                        panic!("MCP Discovery crashed");
+                    }
+                })
+            }
+        }
+        supervisor.spawn_supervised(
+            McpDiscoveryTask {
+                mcp_manager,
+                registry,
+            },
+            cancel_token.clone(),
+        );
     }
 
     let voice_drm = Arc::new(
@@ -966,6 +1022,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         ),
     );
 
+    // [Phase RLM] Initialize RlmClient
+    let rlm_url =
+        std::env::var("RLM_API_URL").unwrap_or_else(|_| "http://localhost:3026".to_string()); // allow-anti-pattern
+    let rlm_client_arc = Arc::new(infrastructure::llm::rlm_client::RlmClient::new(
+        rlm_url,
+        job_queue.clone(),
+    )) as Arc<dyn aiome_core_contracts::rlm::RlmProvider>;
+
     let state = AppState {
         oxilean_power: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
@@ -1173,7 +1237,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             infrastructure::cortex_query::CortexQueryEngine::new(
                 router_provider.clone(),
                 job_queue.get_pool().clone(),
-            ),
+            )
+            .with_rlm_provider(rlm_client_arc.clone()),
         )),
         lora_marketplace: {
             let vault_root = config.resolver.resolve("vault");
@@ -1227,11 +1292,19 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         quality_gate_store: Component::new(quality_gate_store.clone()),
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: nurture_secret_raw.clone(),
+        rlm_client: Component::new(rlm_client_arc),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===
     // [Step 1.8.5] Spawn Unified Internal Services (Watchtower & Heartbeat)
     internal_services::spawn_all(state.clone()).await;
+
+    // [Step 1.8.6] Spawn BlobStorageAdapter (Event-Driven Physical Asset Purging)
+    let blob_adapter = Arc::new(infrastructure::blob_storage::BlobStorageAdapter::new(
+        resolver.root().to_path_buf(),
+    ));
+    let blob_rx = job_queue.event_bus.subscribe();
+    blob_adapter.start_event_listener(blob_rx).await;
 
     // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)
     let tts_worker_jq = state.job_queue.get_inner().clone();

@@ -52,6 +52,22 @@ pub fn build_app(
             get(routes::commerce::get_balance),
         )
         .route(
+            "/api/v1/commerce/points/:agent_id",
+            get(routes::commerce::get_points),
+        )
+        .route(
+            "/api/v1/commerce/history/:agent_id",
+            get(routes::commerce::get_transaction_history),
+        )
+        .route(
+            "/api/v1/commerce/withdraw",
+            post(routes::commerce::withdraw_points),
+        )
+        .route(
+            "/api/v1/commerce/transfer",
+            post(routes::commerce::transfer),
+        )
+        .route(
             "/api/v1/commerce/escrow/history/:agent_id",
             get(routes::commerce::list_escrows),
         )
@@ -96,7 +112,13 @@ pub fn build_app(
             "/api/v1/commerce/subscription/:agent_id",
             axum::routing::get(routes::commerce::get_subscription_status),
         )
-        .route("/api/v1/logs", get(routes::general::get_logs))
+        .route(
+            "/api/v1/logs",
+            get(routes::audit::get_logs).route_layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                auth::admin_only_middleware,
+            )),
+        )
         .route(
             "/api/v1/quality-gate/history",
             get(routes::quality_gate::get_quality_gate_history),
@@ -116,25 +138,21 @@ pub fn build_app(
             "/api/v1/gift/policy/:agent_id",
             get(routes::gift::get_gift_policy),
         )
-        .route(
-            "/api/v1/audit/ledger",
-            get(routes::general::get_audit_ledger),
-        )
-        .route(
-            "/api/v1/audit/prompt-stats",
-            get(routes::general::get_audit_prompt_stats),
-        )
-        .route(
-            "/api/v1/audit/diagnostics",
-            get(routes::general::get_diagnoses),
-        )
-        .route(
-            "/api/v1/audit/quarantine",
-            get(routes::general::get_quarantined_assets),
-        )
-        .route(
-            "/api/v1/audit/quarantine/:id/release",
-            post(routes::general::release_quarantined_asset),
+        .nest(
+            "/api/v1/audit",
+            Router::new()
+                .route("/ledger", get(routes::audit::get_audit_ledger))
+                .route("/prompt-stats", get(routes::audit::get_audit_prompt_stats))
+                .route("/diagnostics", get(routes::audit::get_diagnoses))
+                .route("/quarantine", get(routes::audit::get_quarantined_assets))
+                .route(
+                    "/quarantine/:id/release",
+                    post(routes::audit::release_quarantined_asset),
+                )
+                .route_layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::admin_only_middleware,
+                )),
         )
         // Bootstrap: Factory Reset moved to debug_assertions block
         .route("/api/v1/trends", get(routes::general::get_trends))

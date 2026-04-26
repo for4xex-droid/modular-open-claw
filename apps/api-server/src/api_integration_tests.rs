@@ -262,6 +262,43 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
             created_at: "2026-04-23T00:00:00Z".to_string(),
         }])
     }
+
+    async fn instant_refund(
+        &self,
+        _transaction_id: &str,
+        _agent_id: uuid::Uuid,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn withdraw_points(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn get_points(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<aiome_core_contracts::commerce::PointsBalance, aiome_core::error::AiomeError> {
+        Ok(aiome_core_contracts::commerce::PointsBalance {
+            balance: 0,
+            lifetime_earned: 0,
+            lifetime_withdrawn: 0,
+            conversion_rate_bps: 10000,
+        })
+    }
+
+    async fn get_transaction_history(
+        &self,
+        _agent_id: uuid::Uuid,
+        _limit: u32,
+    ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, aiome_core::error::AiomeError>
+    {
+        Ok(vec![])
+    }
 }
 
 #[derive(Debug)]
@@ -377,6 +414,22 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     .await
     .expect("Failed to create test DB pool");
 
+    // G-Log Fix: Ensure app_logs table exists for integration tests
+    let sqlite_pool = pool
+        .get_sqlite_pool()
+        .expect("SQLite pool required for tests");
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS app_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            level TEXT NOT NULL,
+            target TEXT NOT NULL,
+            message TEXT NOT NULL
+        )",
+    )
+    .execute(sqlite_pool)
+    .await;
+
     let ts = std::sync::Arc::new(
         infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
@@ -450,10 +503,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
         job_queue.get_pool().clone(),
     ));
-    std::env::set_var(
-        "VAULT_MASTER_KEY",
-        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-    );
+    std::env::set_var("VAULT_MASTER_PASSWORD", "test_master_password_for_vault");
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
@@ -728,6 +778,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         skill_arena: Component::new(Arc::new(
             infrastructure::skills::skill_arena::SkillArena::new(),
         )),
+        rlm_client: Component::default(),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -950,7 +1001,7 @@ async fn test_settings_unauthorized() {
 #[tokio::test]
 async fn test_get_prompt_stats() {
     let (server, state, _tmp) = create_test_server().await;
-    let bearer = test_bearer();
+    let bearer = format!("Bearer mock_valid_token_admin:{}", uuid::Uuid::new_v4());
 
     // Arrange: Insert seed data
     let db_pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
@@ -1312,7 +1363,10 @@ async fn test_diagnostics_api() {
 
     let resp = server
         .get("/api/v1/audit/diagnostics")
-        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer mock_valid_token_admin:{}", uuid::Uuid::new_v4()),
+        )
         .await;
 
     if resp.status_code() != StatusCode::OK {
@@ -1605,7 +1659,7 @@ async fn test_synergy_demo_routes_visibility() {
 async fn test_quarantine_audit_api() {
     let (server, state, _tmp) = create_test_server().await;
     let system_id = state.system_agent_id;
-    let system_auth = format!("Bearer mock_valid_token_sysadmin:{}", system_id);
+    let system_auth = format!("Bearer mock_valid_token_system:{}", system_id);
 
     // 1. System Agent access: Expect 200 OK
     let resp = server
@@ -1632,7 +1686,7 @@ async fn test_quarantine_audit_api() {
 async fn test_quarantine_release_api() {
     let (server, state, _tmp) = create_test_server().await;
     let system_id = state.system_agent_id;
-    let system_auth = format!("Bearer mock_valid_token_sysadmin:{}", system_id);
+    let system_auth = format!("Bearer mock_valid_token_system:{}", system_id);
 
     let asset_id = uuid::Uuid::new_v4().to_string();
 
@@ -2179,7 +2233,7 @@ async fn test_treasure_get_recommendations() {
         .issue_token(shared::auth::AiomeCustomClaims {
             sub: "test_user".to_string(),
             iss: "aiome-test".to_string(),
-            roles: vec!["user".into()],
+            roles: vec![shared::auth::Role::User],
             ekyc_verified: true,
             agent_id,
             exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
@@ -2963,7 +3017,7 @@ async fn test_auth_full_oauth_workflow() {
         .validate_token(access_token)
         .await
         .expect("Token must be validly signed");
-    assert_eq!(claim.roles, vec!["user".to_string()]);
+    assert_eq!(claim.roles, vec![shared::auth::Role::Agent]);
 }
 
 #[serial]

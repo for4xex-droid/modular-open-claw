@@ -134,7 +134,57 @@ class TestNurtureAuditorRegex(unittest.TestCase):
                 self.assertFalse(any("BadHook" in e["to"] for e in edges), "Graph should exclude node_modules")
                 self.assertFalse(any("FakeStruct" in e["to"] for e in edges), "Graph should exclude target")
 
-if __name__ == '__main__':
-    from pathlib import Path
-    unittest.main()
+from pathlib import Path
+import nurture_auditor
 
+class TestAuditorPatch10(unittest.TestCase):
+    def test_fqp_regex_definition(self):
+        """RUST_FQP_PATTERN が定義されており、正しく動作するかテスト"""
+        self.assertTrue(hasattr(nurture_auditor, 'RUST_FQP_PATTERN'), "RUST_FQP_PATTERN が定義されていません")
+        pat = getattr(nurture_auditor, 'RUST_FQP_PATTERN')
+        
+        # True positives
+        m1 = pat.search("pub commerce_engine: Arc<nurture_infra::economy::bridge::NurtureCommerceBridge>,")
+        self.assertIsNotNone(m1)
+        self.assertEqual(m1.group(1), "nurture_infra::economy::bridge::NurtureCommerceBridge")
+        
+        m2 = pat.search("commerce_protocol::offer::SaleMode::Instant")
+        self.assertIsNotNone(m2)
+        self.assertEqual(m2.group(1), "commerce_protocol::offer::SaleMode::Instant")
+
+    def test_analyze_rust_file_fqp(self):
+        """Rustファイルから fqp_ref が正しく抽出されるかテスト"""
+        dummy_path = Path("dummy_state_for_test.rs")
+        with open(dummy_path, "w", encoding="utf-8") as f:
+            f.write("use std::sync::Arc;\n")
+            f.write("pub commerce_engine: Arc<nurture_infra::economy::bridge::NurtureCommerceBridge>,\n")
+            f.write("// nurture_infra::economy::ledger::SQLiteEconomyLedger\n")
+            f.write("/// nurture_infra::drm::license\n")
+            f.write("pub use nurture_core::policy::EconomyPolicy;\n")
+            f.write('tracing::info!("nurture_infra::storage::AssetStorage");\n')
+        
+        try:
+            res = nurture_auditor.analyze_rust_file(str(dummy_path))
+            edges = res.get("edges", [])
+            
+            # fqp_ref の検証
+            fqp_edges = [e for e in edges if e.get("kind") == "fqp_ref"]
+            self.assertGreater(len(fqp_edges), 0, "fqp_ref エッジが抽出されていません")
+            self.assertEqual(fqp_edges[0]["to"], "nurture_infra::economy::bridge::NurtureCommerceBridge")
+            
+            # コメントや文字列からの誤検出がないか
+            targets = [e["to"] for e in fqp_edges]
+            self.assertNotIn("nurture_infra::economy::ledger::SQLiteEconomyLedger", targets)
+            self.assertNotIn("nurture_infra::drm::license", targets)
+            self.assertNotIn("nurture_infra::storage::AssetStorage", targets)
+            
+            # use / pub use は正しく use として抽出されるか
+            use_edges = [e for e in edges if e.get("kind") == "use"]
+            self.assertTrue(any(e["to"] == "nurture_core::policy::EconomyPolicy" for e in use_edges))
+            
+        finally:
+            if dummy_path.exists():
+                dummy_path.unlink()
+
+if __name__ == '__main__':
+    unittest.main()

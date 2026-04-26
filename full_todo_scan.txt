@@ -1,0 +1,371 @@
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:101: ### 3. GAP-5 CognitiveSentinel エントロピー修正
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:108: ### 4. GAP-3 ContextEngine UTF-8 安全化
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:115: ### 5. GAP-1 SkillMaturity Display & Quarantined 明示化
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:122: ## Infrastructure Gap Closure (TDD + Reflexion x2)
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:534: - `apps/api-server/src/bootstrap.rs`: `PublishPipeline` インスタンス化処理において `WP_API_URL` および `WP_API_TOKEN` をフォールバック付きで解決し、本番CMSと静的に繋ぐ仕組みを実装。Abyss Vault化は「将来フェーズへのTODO」としてマーク済。
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:1021: ### 🛡️ Phase 17 Enhancement: Gaps G-1 & G-2 Remediation
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:1023: - `health.rs` / `general.rs`: `ResourceStatus` に `llm_circuit_breaker` を追加し、ヘルスチェック API でサーキットブレーカーの状態を公開 (Gap G-1)。
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:1024: - `rate_limiter.rs` / `auth.rs`: `governor` によるエージェント別レート制限の実装と認証ミドルウェアへの統合 (Gap G-2)。
+/Users/motista/Desktop/antigravity/aiome/.context/RIPPLE_MAP.md:1050: ### 🛡️ Phase 20.1: Gig API & Gap Remediation
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/019-vault-backend-hsm-strategy.md:13: `AbyssVoiceVault` は現在、**全ての復号鍵をインメモリ `HashMap` にリストアして保持**しています（L25 FIXME）。
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/013-intent-advertisement-agentsense.md:17: 5. **Security**: All endpoints are protected by Ed25519 JWT `auth_middleware`. Path-based rate limiting (Gap G-2) is applied to prevent abuse.
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/022-nurture-aesthetic-system.md:27: context_weight[i] × identity_gap[i]     // 自己像とのギャップ
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/022-nurture-aesthetic-system.md:61: AI は現在の装着アセットの合成ベクトルと自己像（Self-Model）のコサイン類似度やユークリッド距離を計算し、これを `identity_gap` と定式化する。計算量は極めて軽量に抑えられる。
+/Users/motista/Desktop/antigravity/aiome/docs/decisions/036-mcp-dispatch-security.md:7: As we integrate high-performance CLI tools like `fff.nvim` running as MCP servers, we discovered critical architectural gaps in how `api-server` handled MCP tool execution (detailed in perfect_plan_fff_integration verification):
+/Users/motista/Desktop/antigravity/aiome/docs/architecture/SYSTEM_PANORAMA.md:485: 2. **Perspective 3** → Map threat coverage gaps
+/Users/motista/Desktop/antigravity/aiome/docs/architecture/LAYOUT_ARCHITECTURE.md:22: --layout-panel-gap: var(--space-md);              /* 1.5rem */
+/Users/motista/Desktop/antigravity/aiome/docs/architecture/LAYOUT_ARCHITECTURE.md:33: | `--layout-panel-gap` | `BiotopeView.tsx` (grid) | Biotope画面グリッドのギャップ |
+/Users/motista/Desktop/antigravity/aiome/docs/architecture/LAYOUT_ARCHITECTURE.md:55: rightOffset = calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))
+/Users/motista/Desktop/antigravity/aiome/libs/core/src/llm_provider/live_session.rs:38: // GAP-7: バックグラウンドでのセッション維持・クリーンアップ
+/Users/motista/Desktop/antigravity/aiome/libs/core/src/llm_provider/live_session.rs:82: // セットアップメッセージの送信 (GAP-2)
+/Users/motista/Desktop/antigravity/aiome/libs/core/src/llm_provider/live_session.rs:135: // GAP-7: セッションの登録
+/Users/motista/Desktop/antigravity/aiome/libs/core/src/llm_provider/live_session.rs:165: // 音声データの送信ロジック (GAP-4)
+/Users/motista/Desktop/antigravity/aiome/libs/shared/src/csam/image_hash.rs:64: // TODO: 将来的にデータベースや外部API (PhotoDNA) と連携 // allow-anti-pattern
+/Users/motista/Desktop/antigravity/aiome/libs/shared/src/csam/proportions.rs:44: // TODO: 実際の VRM 解析 (gltf-rs 等) を使用して正確なボーン位置を特定 // allow-anti-pattern
+/Users/motista/Desktop/antigravity/aiome/libs/aiome-core-contracts/src/traits.rs:934: /// 音声データを送信 (GAP-4)
+/Users/motista/Desktop/antigravity/aiome/libs/aiome-core-contracts/src/traits.rs:936: /// テキストを送信 (GAP-4)
+/Users/motista/Desktop/antigravity/aiome/libs/aiome-core-contracts/src/traits.rs:938: /// イベントを受信 (GAP-4)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/trend_sonar.rs:254: reason: format!("Failed to parse SERP gap response: {}", e),
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/trend_sonar.rs:464: async fn test_serp_analysis_adapter_fetches_seo_gaps() {
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/trend_sonar.rs:471: // Assert: In RED phase this will fail because the method returns Err. We expect Ok with parsed gaps.
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/trend_sonar.rs:474: // We expect structured SEO intent gaps as trends
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/society_of_thought.rs:347: "{}Task: {}\nCurrent draft from previous round: {}\nImprove based on the feedback and fill gaps.",
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/hierarchical_router_tests.rs:40: // TODO: Add route tests with MockLLM once skeleton is in lib.rs
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:222: // Gap S: Ensure aiome-internal network exists (idempotent)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:233: // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:255: // Detached Container Execution (gRPC Server) - Gap I, J, L, N, R, S
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:328: // 3.5 Gap C: gRPC Health Check
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:358: let mut is_completed = false; // Gap G
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:425: "Shadow Worker stream terminated unexpectedly before completion (Gap G)"
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs:451: // Gap K: Clean up container after success
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/samsara_engine.rs:54: // Extract max 30 recent experiences to avoid LLM context overflow without cloning the whole buffer (GAP-2)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/samsara_engine.rs:60: // Incorporate distillation system prompt (GAP-3)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/samsara_engine.rs:199: // GAP-4 Design Intent Clarification:
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/samsara_engine.rs:228: // GAP-2: Narrative Self LLM generation (Step 6 completion)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator/mod.rs:965: // Gap 3: Persist the reason to the DB before setting status to AwaitingInput
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/llm/cost_breaker.rs:175: /// セッション単位のコスト制限を確認 (GAP-6)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/llm/dynamic.rs:1025: // Gap #4 Fix: Inject cost_usd / token logic here
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/grpc/a2a_grpc_client.rs:111: // Set Authorization Header (Gap A fix)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/grpc/a2a_grpc_client.rs:171: // Assert Gap A (Authorization header)
+/Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/intent/affiliate_adapter.rs:85: // For now, it returns an empty vector, satisfying the trait without raw TODOs.
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/overhaul.md:61: 2. **Deferred Work**: If there were minor cleanup tasks or out-of-scope refactors you noticed, DO NOT leave `TODO` comments. Instead, append them to `.context/RIPPLE_MAP.md` under a "Deferred Overhauls" section.
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/ship.md:17: - **Code Quality**: `cargo check`, `npm run lint`, Unit/E2E テストがALL GREEN。不要な `console.log` やTODOの残存なし。
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:32: echo "=== Open TODOs/FIXMEs ===" && grep -rn "TODO\|FIXME\|HACK\|TEMPORARY" --include="*.rs" | wc -l
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:53: - `TODO/FIXME` の残存数（技術的負債の指標）
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:58: | 5/5 | フェーズ進捗 > 80%, deep-scan エラー = 0, TODO < 10 |
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:59: | 4/5 | フェーズ進捗 > 60%, deep-scan エラー = 0, TODO < 30 |
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:108: - 技術的負債の蓄積率（`TODO/FIXME` の増減トレンド）
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/biz-value.md:164: ## 🚨 最大のリスク (Critical Gaps)
+/Users/motista/Desktop/antigravity/aiome/.agent/workflows/deep-scan.md:32: 2. **Project NURTURE 要件に対する「不足機能（Gaps）」の特定**
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/vercel.design.md:192: - Notable gap: jumps from 16px to 32px — no 20px or 24px in primary scale
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/stripe.design.md:215: - **Precision spacing**: Unlike the vast emptiness of minimalist systems, Stripe uses measured, purposeful whitespace. Every gap is a deliberate typographic choice.
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/supabase.design.md:180: - **Border-defined space**: Instead of whitespace + shadows for separation, Supabase uses thin borders on dark backgrounds — separation through line, not gap.
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/framer.design.md:138: - **Component gaps**: 8px–20px between related elements
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/raycast.design.md:152: - **Component gaps**: 8px–16px between related elements
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/raycast.design.md:162: - **Vertical rhythm**: Consistent 24px–32px gaps between elements within sections
+/Users/motista/Desktop/antigravity/aiome/.agent/design-catalog/spotify.design.md:162: - **Dark compression**: Spotify packs content densely — playlist grids, track lists, and navigation are all tightly spaced. The dark background provides visual rest between elements without needing large gaps.
+/Users/motista/Desktop/antigravity/aiome/.agent/skills/css-architecture.md:17: --layout-panel-gap: 1.5rem;
+/Users/motista/Desktop/antigravity/aiome/.agent/skills/css-architecture.md:44: const rightOffset = "calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))";
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:103: layout-panel-gap: "var(--space-md)"
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:345: | `var(--space-xs)` | 0.5rem (8px) | Tight gaps, inline spacing, badge padding |
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:346: | `var(--space-sm)` | 1rem (16px) | Standard gap, list spacing |
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:349: | `var(--space-xl)` | 3rem (48px) | Page-level outer padding, sidebar vertical gap |
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/DESIGN.md:361: | `var(--layout-panel-gap)` | var(--space-md) = 1.5rem | Gap between panels |
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/App.tsx:258: display: 'flex', alignItems: 'center', gap: '1rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/App.tsx:496: <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/App.tsx:562: <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:116: <div className="glass-panel" style={{ padding: '2rem', minHeight: '80vh', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:127: display: 'flex', alignItems: 'center', gap: '8px',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:144: display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem 1.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:166: display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '1rem 1.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:180: <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 400px', gap: '2rem', flex: 1 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:186: <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:198: <div key={num} style={{ display: 'flex', gap: '1rem', opacity: currentStep === 0 || isActive || isPast ? 1 : 0.4, transition: 'all 0.3s' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:227: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:232: <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DemoView.tsx:265: <div style={{ height: '120px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/TaskApprovalOverlay.tsx:117: gap: 'var(--space-sm)',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:120: <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'var(--accent-rose-10)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose-30)', borderRadius: 'var(--radius-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:125: <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', alignItems: 'start' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:129: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:134: <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:148: <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:162: <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:174: <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:191: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:196: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:256: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:261: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:321: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:326: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:343: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:347: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:358: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:363: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:435: <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:438: display: 'flex', alignItems: 'center', gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:448: <div style={{ display: 'flex', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:503: <div style={{ display: 'flex', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:584: <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:656: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:661: <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:686: display: 'flex', alignItems: 'center', gap: '0.5rem'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:703: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:707: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:798: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SettingsPage.tsx:816: gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/PromptStatsView.tsx:48: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/PromptStatsView.tsx:52: <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/PromptStatsView.tsx:152: gap: var(--space-sm);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/PromptStatsView.tsx:183: gap: var(--space-sm);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/EscrowManagementView.tsx:73: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/EscrowManagementView.tsx:77: <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/EscrowManagementView.tsx:111: <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/EscrowManagementView.tsx:135: style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/EscrowManagementView.tsx:154: gap: var(--space-md);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/CausalVisualizer.tsx:140: <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/CausalVisualizer.tsx:144: <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/CausalVisualizer.tsx:205: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-rose)', marginBottom: '0.75rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/CausalVisualizer.tsx:245: <h5 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/CausalVisualizer.tsx:278: <div style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/GraphView.tsx:143: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/GraphView.tsx:147: <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/GraphView.tsx:148: <div style={{ display: 'flex', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/GraphView.tsx:161: <div style={{ position: 'absolute', right: '1.5rem', bottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/Timeline.tsx:57: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/Timeline.tsx:88: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/Timeline.tsx:99: style={{ display: 'flex', gap: '1.5rem', paddingLeft: '0.5rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/Timeline.tsx:122: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/Timeline.tsx:154: <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:70: <div className="skill-vault ani-fade" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 'var(--space-md)', height: 'calc(100vh - 180px)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:72: <div className="main-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:75: <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:83: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:94: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', overflow: 'hidden' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:95: <div className="main-panel" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:109: <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem', paddingBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:138: display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:170: <div style={{ display: 'flex', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:193: <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:203: <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:209: style={{ flex: 1, padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: 0.5, cursor: 'not-allowed' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SkillVault.tsx:215: <button className="primary-button" style={{ flex: 1, padding: '0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--accent-cyan-glass)', color: 'var(--accent-cyan)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:115: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:116: <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:142: <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:179: <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:251: style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:266: <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:296: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/OnboardingModal.tsx:319: <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SoTProgressBar.tsx:136: <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SoTProgressBar.tsx:143: <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SoTProgressBar.tsx:180: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SoTProgressBar.tsx:208: <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SoTProgressBar.tsx:246: gap: 'var(--space-xs)',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:166: <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:170: <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:198: <div style={{ display: 'flex', gap: 'var(--space-sm)', flex: 1, maxWidth: '600px' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:207: gap: '0.75rem'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:232: display: 'flex', alignItems: 'center', gap: '0.5rem'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:249: <div style={{ background: 'var(--bg-glass-light)', border: `1px solid ${editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)'}`, borderRadius: 'var(--radius-lg)', padding: '1.5rem', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'flex-end' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:292: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:314: <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:328: <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:356: <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:408: <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:422: <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ImmuneSystem.tsx:476: gap: 1rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:158: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:177: <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:192: gap: "1rem"
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:209: gap: "1.5rem"
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:224: <div style={{ background: "var(--accent-cyan-10)", color: "var(--accent-cyan)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:233: <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:247: <div style={{ display: "flex", gap: "0.5rem" }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:250: style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:256: style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/VoiceStore.tsx:274: <div style={{ marginTop: "1rem", fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:157: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:188: gap: 0.2rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:201: gap: 0.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:212: gap: 1rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:231: gap: 0.3rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:244: gap: 0.3rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:253: gap: 1rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:278: gap: 0.8rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:292: gap: 0.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:305: gap: 1.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:320: gap: 0.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/DiagnosticsHistory.tsx:341: gap: 1.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:128: <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', color: 'var(--accent-purple)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:143: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:145: <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:161: <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:174: <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:199: <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:242: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:253: <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:258: <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/LoraTrainingView.tsx:315: gap: var(--space-md);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:38: <div className="biotope-view" style={{ display: 'grid', gridTemplateColumns: '1fr var(--layout-right-panel-width)', gap: 'var(--layout-panel-gap)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:48: <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', zIndex: 10 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:90: <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', marginTop: 'auto', pointerEvents: 'none' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:99: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:145: <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:154: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:182: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', color: event.color, fontWeight: 700 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiotopeView.tsx:206: <div className="font-display" style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/SystemBirth.tsx:105: style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:72: gap: '0.25rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:86: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:120: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:131: <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:142: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:186: <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:187: <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/A2uiRenderer.tsx:275: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ModelSetupStep.tsx:36: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ModelSetupStep.tsx:62: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ModelSetupStep.tsx:88: <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ModelSetupStep.tsx:109: <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:132: <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:136: <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:137: <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:140: <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:155: gap: 'var(--space-md)',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:184: <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.42rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:212: <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:216: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:252: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:263: style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:272: <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:275: <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:296: gap: var(--space-lg);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/BiomeDialogueView.tsx:308: gap: var(--space-md);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:53: <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:66: <div style={{ fontSize: '0.7rem', color: isTyping ? 'var(--accent-cyan)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:72: <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:83: gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:98: <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', background: 'var(--black-20)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:124: <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--white-50)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:147: <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--accent-amber-80)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:168: gap: '0.5rem'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:194: <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem', opacity: 0.6 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:218: style={{ alignSelf: 'flex-start', maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:298: <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:299: <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AgentConsole.tsx:303: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:129: <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:329: gap: 0.8rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:346: gap: 0.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:369: gap: var(--space-md);
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:396: gap: 0.4rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:414: gap: 1rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:420: gap: 0.3rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:427: gap: 0.4rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:447: gap: 2px;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:516: gap: 0.8rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:536: gap: 1rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:555: gap: 1.5rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:561: gap: 0.4rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ArtifactVault.tsx:586: gap: 0.4rem;
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:110: <div className="expression-pipeline" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:112: <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:114: <h2 style={{ fontSize: '2rem', fontWeight: 800, background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:121: <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', padding: '0.5rem', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(10px)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:126: display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:140: style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', opacity: isGenerating ? 0.5 : 1 }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:149: <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:160: <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:161: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.1em' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:171: <div style={{ paddingTop: '1rem', display: 'flex', alignItems: 'center', gap: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:172: <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:176: <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:189: style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: '1rem' }}
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:208: <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:209: <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:214: <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:226: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:232: <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:242: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ExpressionPipeline.tsx:243: <div style={{ display: 'flex', gap: '0.15rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ErrorBoundary.tsx:81: <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ErrorBoundary.tsx:86: border: 'none', color: 'var(--bg-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/ErrorBoundary.tsx:97: border: '1px solid var(--white-10)', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AuthOverlay.tsx:171: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/AuthOverlay.tsx:203: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/FlowCard.tsx:74: gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/FlowCard.tsx:126: <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem', opacity: 0.5 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:171: <h2 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:179: <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:192: gap: '0.3rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:206: gap: '0.3rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:245: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:258: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:298: gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:338: <div style={{ position: 'relative', display: 'flex', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/StoryFlow.tsx:406: <span className="font-mono" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/CharacterPanel.tsx:57: gap: '1.5rem'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/CharacterPanel.tsx:117: <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/CharacterPanel.tsx:130: <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/HomePage.tsx:66: gap: '2px',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/HomePage.tsx:208: gap: '1rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/HomePage.tsx:214: <div style={{ flex: '0 0 320px', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'auto' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/HomePage.tsx:235: gap: '0.25rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/home/HomePage.tsx:253: gap: '0.4rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:40: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', height: '100%' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:42: <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:57: <div style={{ padding: '1rem', background: 'var(--accent-rose-10)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose-30)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:63: <div style={{ flex: 1, background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:71: <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', gap: '4px', paddingTop: '1rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/ForecastView.tsx:75: <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/TrendView.tsx:40: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', height: '100%' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/TrendView.tsx:42: <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/TrendView.tsx:63: <div style={{ padding: '0.75rem', background: 'var(--accent-amber-10)', color: 'var(--accent-amber)', border: '1px solid var(--accent-amber-30)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/TrendView.tsx:64: <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/TrendView.tsx:73: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', overflowY: 'auto', flex: 1 }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:79: <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) minmax(250px, 1fr) minmax(400px, 2fr)', gap: 'var(--layout-panel-gap)', height: 'calc(100vh - 100px)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:81: <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', padding: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:87: <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', overflowY: 'auto', padding: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:100: <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:152: <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap', marginBottom: 'var(--space-md)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/cortex/CortexView.tsx:194: <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/character/SoulStatusBadge.tsx:22: <span style={{ background: 'var(--accent-cyan-glass)', color: 'var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/character/SoulStatusBadge.tsx:25: <span style={{ background: 'var(--accent-emerald-10)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/character/SoulStatusBadge.tsx:28: <span style={{ background: 'var(--accent-purple-glass)', color: 'var(--accent-purple)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/diorama/DioramaView.tsx:31: ? "calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))"
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:36: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:54: gap: '6px'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:81: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:92: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-emerald)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:97: <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/TokenSavingsIndicator.tsx:104: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:55: gap: '0.75rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:73: gap: '6px'
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:99: gap: '0.5rem',
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:110: <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-blue)' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:115: <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/common/ProofPowerIndicator.tsx:122: <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/logging.rs:69: // SEC-4: Secret Masking (Expert 4 Gap)
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/bootstrap.rs:739: None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入 // allow-anti-pattern
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/api_integration_tests.rs:2422: // NOTE: This will fail until the SQLite CHECK constraint migration (Gap 10) is applied, or it might pass if AwaitingInput is already in the old check constraint.
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/heartbeat.rs:25: None, // Phase 4C TODO: Add ForecastProvider (TimesFM) if needed // allow-anti-pattern
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/jobs.rs:218: // Gap 11: Race condition prevention
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/jobs.rs:226: // Gap 8: Persist bypass marker in execution_log so the immune system knows it was overridden
+/Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/jobs.rs:292: // Gap 4 & 6: Fetch recent jobs and filter for AwaitingInput
+/Users/motista/Desktop/antigravity/aiome/apps/shadow-worker/src/main.rs:39: // Token verification (Threat #36 mitigation & GAP-O Timing attack mitigation)
+/Users/motista/Desktop/antigravity/aiome/apps/shadow-worker/src/proof_service.rs:54: // GAP-O: Timing side-channel attack mitigation
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/TODO.md:1: # oxilean-kernel — TODO
+/Users/motista/Desktop/antigravity/aiome/vendor/oxilean-kernel/TODO.md:132: ## ✅ Additional Features (beyond original TODO)
+/Users/motista/Desktop/antigravity/Project-Nurture/libs/nurture-infra/src/economy/bridge.rs:207: // TODO(N-FIX): EconomyPolicy から取得するよう実装する
+/Users/motista/Desktop/antigravity/Project-Nurture/libs/nurture-infra/src/csam/mod.rs:191: // TODO: Microsoft PhotoDNA API 承認取得後に本実装。
+/Users/motista/Desktop/antigravity/Project-Nurture/.agent/skills/css-architecture.md:17: --layout-panel-gap: 1.5rem;
+/Users/motista/Desktop/antigravity/Project-Nurture/.agent/skills/css-architecture.md:44: const rightOffset = "calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))";
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/plugin.rs:36: // TODO(Sprint-C): marketplace_upload — CSAM + DRM 検査パイプライン実装後に復帰
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/plugin.rs:88: // Phase 2 TODO (GAP-N): 実際のKarmaエントリを渡す。現在は空VecのためNo-Op（スキャフォールディング）
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/plugin.rs:108: // Phase 2 TODO (N2-C): KarmaForge に証明力シードを渡して合成プロセスをトリガー
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/plugin.rs:141: // TODO: Pass event_sender and job_queue to state if needed in future
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-api/src/mcp_tools/gift.rs:39: // TODO: Phase 3 で本実装。以下は暫定エラー。
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-ui/src/App.tsx:108: <div style={{ marginTop: '15px', display: 'flex', gap: '15px', fontSize: '12px' }}>
+/Users/motista/Desktop/antigravity/Project-Nurture/apps/nurture-ui/src/App.tsx:119: <div style={{ marginTop: '15px', display: 'flex', gap: '15px', fontSize: '12px' }}>

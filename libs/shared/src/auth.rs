@@ -11,6 +11,38 @@ use ed25519_dalek::pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+/// User roles for RBAC in Aiome
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    /// Node owner with full privileges
+    Admin,
+    /// Standard authorized user
+    User,
+    /// Internal system services/workers
+    System,
+    /// Local AI agents
+    Agent,
+    /// External nodes over P2P Federation
+    Federated,
+}
+
+/// Permissions for ABAC (Attribute-Based Access Control)
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Permission {
+    /// Permission to execute MCP tools
+    CanExecuteMcp,
+    /// Permission to modify system settings
+    CanManageSettings,
+    /// Permission to read audit logs and quarantine data
+    CanReadAudit,
+    /// Permission to write to persistent memory/knowledge
+    CanWriteMemory,
+    /// Permission to accept Gig offers via Karma Federation
+    CanAcceptFederatedGig,
+}
+
 /// JWT Custom Claims definition for Aiome internal token validation.
 /// Based on OAuth 2.1 / OIDC specs.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -28,7 +60,7 @@ pub struct AiomeCustomClaims {
 
     /// User roles for RBAC
     #[serde(default)]
-    pub roles: Vec<String>,
+    pub roles: Vec<Role>,
 
     /// Expiration time (unix timestamp)
     pub exp: usize,
@@ -40,6 +72,23 @@ pub struct AiomeCustomClaims {
     /// Issuer identifier
     #[serde(default)]
     pub iss: String,
+}
+
+impl AiomeCustomClaims {
+    /// Check if the user has a specific permission based on their roles
+    pub fn has_permission(&self, perm: Permission) -> bool {
+        self.roles.iter().any(|role| match (role, perm) {
+            (Role::Admin, _) => true, // Admin has all perms
+            (Role::User, Permission::CanExecuteMcp) => true,
+            (Role::User, Permission::CanWriteMemory) => true,
+            (Role::System, Permission::CanReadAudit) => true,
+            (Role::System, Permission::CanWriteMemory) => true,
+            (Role::Agent, Permission::CanExecuteMcp) => true,
+            (Role::Agent, Permission::CanWriteMemory) => true,
+            (Role::Federated, Permission::CanAcceptFederatedGig) => true,
+            _ => false,
+        })
+    }
 }
 
 /// 認証マネージャの基盤トレイト
@@ -182,11 +231,18 @@ impl AuthManager for MockAuthManager {
                 uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap_or_default()
             };
 
+            let role = match clean_sub.as_str() {
+                "system" | "dev_system" => Role::System,
+                "admin" => Role::Admin,
+                "node" | "federation" => Role::Federated,
+                _ => Role::Agent,
+            };
+
             Ok(AiomeCustomClaims {
                 sub: clean_sub,
                 ekyc_verified,
                 agent_id,
-                roles: vec!["user".to_string()],
+                roles: vec![role],
                 exp: 9999999999,
                 iat: 1600000000,
                 iss: "mock_issuer".to_string(),
@@ -196,7 +252,7 @@ impl AuthManager for MockAuthManager {
                 sub: "dev".to_string(),
                 ekyc_verified: true,
                 agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(), // allow-anti-pattern
-                roles: vec!["user".to_string()],
+                roles: vec![Role::Admin],
                 exp: 9999999999,
                 iat: 1600000000,
                 iss: "mock_issuer".to_string(),
@@ -232,7 +288,7 @@ mod tests {
             serde_json::from_str(json_str).expect("Valid test claims JSON"); // allow-anti-pattern
         assert_eq!(claims.sub, "user_001");
         assert!(claims.ekyc_verified);
-        assert_eq!(claims.roles, vec!["admin"]);
+        assert_eq!(claims.roles, vec![Role::Admin]);
         assert_eq!(claims.exp, 1700000000);
     }
 
@@ -256,7 +312,7 @@ mod tests {
             sub: "user_p1".to_string(),
             ekyc_verified: true,
             agent_id: uuid::Uuid::new_v4(),
-            roles: vec!["admin".to_string()],
+            roles: vec![Role::Admin],
             exp: 9999999999,
             iat: 1600000000,
             iss: "aiome".to_string(),
@@ -267,5 +323,44 @@ mod tests {
         let verified_claims = manager2.validate_token(&token).await.unwrap(); // allow-anti-pattern
         assert_eq!(verified_claims.sub, claims.sub);
         assert_eq!(verified_claims.agent_id, claims.agent_id);
+    }
+
+    #[test]
+    fn test_rbac_permission_logic() {
+        let admin_claims = AiomeCustomClaims {
+            sub: "admin".to_string(),
+            ekyc_verified: true,
+            agent_id: uuid::Uuid::nil(),
+            roles: vec![Role::Admin],
+            exp: 0,
+            iat: 0,
+            iss: "".to_string(),
+        };
+        assert!(admin_claims.has_permission(Permission::CanManageSettings));
+        assert!(admin_claims.has_permission(Permission::CanExecuteMcp));
+
+        let agent_claims = AiomeCustomClaims {
+            sub: "agent-1".to_string(),
+            ekyc_verified: false,
+            agent_id: uuid::Uuid::new_v4(),
+            roles: vec![Role::Agent],
+            exp: 0,
+            iat: 0,
+            iss: "".to_string(),
+        };
+        assert!(agent_claims.has_permission(Permission::CanExecuteMcp));
+        assert!(!agent_claims.has_permission(Permission::CanManageSettings));
+
+        let federated_claims = AiomeCustomClaims {
+            sub: "node-x".to_string(),
+            ekyc_verified: false,
+            agent_id: uuid::Uuid::nil(),
+            roles: vec![Role::Federated],
+            exp: 0,
+            iat: 0,
+            iss: "".to_string(),
+        };
+        assert!(federated_claims.has_permission(Permission::CanAcceptFederatedGig));
+        assert!(!federated_claims.has_permission(Permission::CanExecuteMcp));
     }
 }

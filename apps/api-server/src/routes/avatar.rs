@@ -48,6 +48,11 @@ pub async fn upload_avatar_handler(
     axum::extract::Extension(user): axum::extract::Extension<crate::auth::AuthenticatedUser>,
     Json(req): Json<AvatarAssetRequest>,
 ) -> Result<Json<AvatarVerificationResult>, AppError> {
+    let safe_len = req.name.len().clamp(0, 1024);
+    if req.name.len() != safe_len {
+        return Err(AppError::bad_request("Name too long"));
+    }
+
     info!(
         "📤 [Avatar] Processing custom asset: {} for user: {}",
         req.name, user.0.sub

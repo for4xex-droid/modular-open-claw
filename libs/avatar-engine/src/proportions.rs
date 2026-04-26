@@ -58,27 +58,121 @@ impl ProportionsChecker {
     /// [G-22] Extract dimensions directly from binary data (VRM/GLB).
     /// This prevents metadata spoofing.
     pub fn extract_from_binary(data: &[u8]) -> Result<AvatarDimensions, ProportionError> {
-        // [SIMPLIFIED FOR TDD]
-        // Real implementation would use gltf-rs to find 'head' and 'leftFoot'/'rightFoot' bones.
-        // Here we simulate it by looking for VRM headers.
+        let g = gltf::Gltf::from_slice(data)
+            .map_err(|e| ProportionError::InvalidMetadata(e.to_string()))?;
 
-        if data.starts_with(b"glTF") {
-            // Check for VRM extension in the JSON chunk
-            let data_str = String::from_utf8_lossy(data);
-            if data_str.contains("VRMC_vrm") {
-                // If it's a VRM, we expect standard humanoid proportions.
-                // In a real implementation, we'd parse the GLB structure.
-                return Ok(AvatarDimensions {
-                    total_height_meters: 1.6,
-                    head_height_meters: 0.2,
-                    is_humanoid: true,
-                });
-            }
+        let doc_json = g.document.into_json();
+        let extensions = doc_json.extensions.clone().unwrap_or_default();
+        let ext_value = serde_json::to_value(&extensions).unwrap_or(serde_json::Value::Null);
+
+        let head_idx = Self::get_human_bone_node(&ext_value, "head");
+        let neck_idx = Self::get_human_bone_node(&ext_value, "neck");
+
+        let Some(head_idx) = head_idx else {
+            return Err(ProportionError::InvalidMetadata(
+                "Not a valid humanoid VRM (missing head bone)".into(),
+            ));
+        };
+
+        let Some(neck_idx) = neck_idx else {
+            return Err(ProportionError::InvalidMetadata(
+                "Not a valid humanoid VRM (missing neck bone)".into(),
+            ));
+        };
+
+        let absolute_y = Self::compute_absolute_y_positions(&doc_json.nodes, &doc_json.scenes);
+
+        let head_y = absolute_y.get(head_idx).copied().unwrap_or(0.0);
+        let neck_y = absolute_y.get(neck_idx).copied().unwrap_or(0.0);
+
+        let head_height_meters = (head_y - neck_y).abs() * 2.0;
+        if head_height_meters <= 0.0 {
+            return Err(ProportionError::InvalidMetadata(
+                "Invalid bone translations".into(),
+            ));
         }
 
-        Err(ProportionError::InvalidMetadata(
-            "Unsupported or invalid avatar format".into(),
-        ))
+        // Simplification for TDD: Total height is roughly head_y + (head_size / 2)
+        // because the avatar stands at Y=0.
+        let total_height_meters = head_y + (head_height_meters / 2.0);
+
+        Ok(AvatarDimensions {
+            total_height_meters,
+            head_height_meters,
+            is_humanoid: true,
+        })
+    }
+
+    fn get_human_bone_node(ext: &serde_json::Value, bone_name: &str) -> Option<usize> {
+        // VRM 1.0 (VRMC_vrm)
+        if let Some(vrmc) = ext.get("VRMC_vrm") {
+            if let Some(node) = vrmc.pointer(&format!("/humanoid/humanBones/{}/node", bone_name)) {
+                return node.as_u64().map(|n| n as usize);
+            }
+        }
+        // VRM 0.0 (VRM)
+        if let Some(vrm) = ext.get("VRM") {
+            if let Some(bones) = vrm
+                .pointer("/humanoid/humanBones")
+                .and_then(|b| b.as_array())
+            {
+                for b in bones {
+                    if b.get("bone").and_then(|s| s.as_str()) == Some(bone_name) {
+                        return b.get("node").and_then(|n| n.as_u64()).map(|n| n as usize);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn compute_absolute_y_positions(
+        nodes: &[gltf::json::Node],
+        scenes: &[gltf::json::Scene],
+    ) -> Vec<f32> {
+        let mut abs_y = vec![0.0; nodes.len()];
+        let mut roots = vec![];
+
+        if let Some(scene) = scenes.first() {
+            for root_idx in &scene.nodes {
+                roots.push(root_idx.value());
+            }
+        } else if !nodes.is_empty() {
+            roots.push(0);
+        }
+
+        for root in roots {
+            Self::traverse_y(root, 0.0, nodes, &mut abs_y);
+        }
+
+        abs_y
+    }
+
+    fn traverse_y(
+        node_idx: usize,
+        parent_y: f32,
+        nodes: &[gltf::json::Node],
+        abs_y: &mut Vec<f32>,
+    ) {
+        if node_idx >= nodes.len() {
+            return;
+        }
+
+        let node = &nodes[node_idx];
+        let local_y = if let Some(tr) = node.translation {
+            tr[1]
+        } else {
+            0.0
+        };
+
+        let current_y = parent_y + local_y;
+        abs_y[node_idx] = current_y;
+
+        if let Some(ref children) = node.children {
+            for child in children {
+                Self::traverse_y(child.value(), current_y, nodes, abs_y);
+            }
+        }
     }
 }
 
@@ -123,21 +217,36 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_from_binary_vrm() {
-        let mut data = b"glTF".to_vec();
-        data.extend_from_slice(b"some_json_with_VRMC_vrm_extension");
+    fn test_extract_from_binary_adult_vrm() {
+        let data = std::fs::read("tests/fixtures/adult.vrm").unwrap(); // allow-anti-pattern
 
         let res = ProportionsChecker::extract_from_binary(&data);
-        assert!(res.is_ok());
+        assert!(
+            res.is_ok(),
+            "Adult VRM should be parsed successfully. Err: {:?}",
+            res.err()
+        );
         let dim = res.unwrap(); // allow-anti-pattern
         assert!(dim.is_humanoid);
-        assert_eq!(dim.total_height_meters, 1.6);
+
+        let ratio = dim.total_height_meters / dim.head_height_meters;
+        assert!(ratio >= 5.5, "Ratio {} should be >= 5.5", ratio);
+        assert!(ProportionsChecker::validate(&dim).is_ok());
     }
 
     #[test]
-    fn test_extract_from_binary_invalid() {
-        let data = b"NOT_A_GLB";
-        let res = ProportionsChecker::extract_from_binary(data);
-        assert!(res.is_err());
+    fn test_extract_from_binary_child_vrm() {
+        let data = std::fs::read("tests/fixtures/child.vrm").unwrap(); // allow-anti-pattern
+        let res = ProportionsChecker::extract_from_binary(&data);
+        assert!(res.is_ok(), "Child VRM should be parsed successfully");
+        let dim = res.unwrap(); // allow-anti-pattern
+
+        let res_val = ProportionsChecker::validate(&dim);
+        assert!(res_val.is_err(), "Child VRM should fail validation");
+        if let Err(ProportionError::TooYoung(r)) = res_val {
+            assert!(r < 5.5);
+        } else {
+            panic!("Expected TooYoung error");
+        }
     }
 }

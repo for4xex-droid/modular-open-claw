@@ -41,76 +41,134 @@ impl AsyncAuditLogger {
         let (tx, rx) = mpsc::channel(queue_capacity);
 
         let pool_clone = pool.clone();
-        tokio::spawn(async move {
-            Self::audit_worker(pool_clone, rx).await;
-        });
+        let rx_arc = Arc::new(tokio::sync::Mutex::new(rx));
+
+        #[cfg(test)]
+        let delay_secs = 0;
+        #[cfg(not(test))]
+        let delay_secs = 60;
+
+        let supervisor = crate::supervisor::TaskSupervisor::new(10, delay_secs);
+        let ct = tokio_util::sync::CancellationToken::new();
+
+        struct AuditWorkerTask {
+            pool: Arc<DatabasePool>,
+            rx: Arc<tokio::sync::Mutex<mpsc::Receiver<AuditEntry>>>,
+        }
+
+        impl crate::supervisor::SupervisedTask for AuditWorkerTask {
+            fn name(&self) -> &'static str {
+                "AuditWorker"
+            }
+            fn run(
+                &self,
+                cancel_token: tokio_util::sync::CancellationToken,
+            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+                let pool = self.pool.clone();
+                let rx_clone = self.rx.clone();
+                Box::pin(async move {
+                    let mut rx_guard = rx_clone.lock().await;
+                    AsyncAuditLogger::audit_worker_loop(pool, &mut rx_guard, cancel_token).await;
+                })
+            }
+        }
+
+        supervisor.spawn_supervised(
+            AuditWorkerTask {
+                pool: pool_clone,
+                rx: rx_arc,
+            },
+            ct,
+        );
 
         Self { sender: tx }
     }
 
     /// Background worker that receives elements from the channel and persists them.
-    async fn audit_worker(pool: Arc<DatabasePool>, mut rx: mpsc::Receiver<AuditEntry>) {
+    async fn audit_worker_loop(
+        pool: Arc<DatabasePool>,
+        rx: &mut mpsc::Receiver<AuditEntry>,
+        cancel_token: tokio_util::sync::CancellationToken,
+    ) {
         info!("🛡️ [AsyncAuditLogger] Background worker started.");
 
         use sha2::Digest;
 
-        while let Some(entry) = rx.recv().await {
-            // Write out the ledger item to the database pool.
-            let now_str = Utc::now().to_rfc3339();
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    info!("🛑 [AsyncAuditLogger] Cancellation requested.");
+                    break;
+                }
+                msg = rx.recv() => {
+                    match msg {
+                        Some(entry) => {
+                            // Write out the ledger item to the database pool.
+                            let now_str = Utc::now().to_rfc3339();
 
-            // Merkle Chain: prev_hash || table_name || operation || record_id || new_data → SHA-256
-            let prev_q = "SELECT COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS')";
-            let prev_hash: String = match &*pool {
-                DatabasePool::Sqlite(p) => sqlx::query_scalar(prev_q)
-                    .fetch_one(p)
-                    .await
-                    .unwrap_or_else(|_| "GENESIS".to_string()),
-                DatabasePool::Postgres(p) => sqlx::query_scalar(prev_q)
-                    .fetch_one(p)
-                    .await
-                    .unwrap_or_else(|_| "GENESIS".to_string()),
-            };
+                            // Merkle Chain: prev_hash || table_name || operation || record_id || new_data → SHA-256
+                            let prev_q = "SELECT COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS')";
+                            let prev_hash: String = match &*pool {
+                                DatabasePool::Sqlite(p) => sqlx::query_scalar(prev_q)
+                                    .fetch_one(p)
+                                    .await
+                                    .unwrap_or_else(|_| "GENESIS".to_string()),
+                                DatabasePool::Postgres(p) => sqlx::query_scalar(prev_q)
+                                    .fetch_one(p)
+                                    .await
+                                    .unwrap_or_else(|_| "GENESIS".to_string()),
+                            };
 
-            let entry_new_data_str = entry.new_data.to_string();
-            let hash_input = format!(
-                "{}|{}|{}|{}|{}",
-                prev_hash, entry.table_name, entry.operation, entry.record_id, entry_new_data_str
-            );
-            let current_hash = format!("{:x}", sha2::Sha256::digest(hash_input.as_bytes()));
+                            let entry_new_data_str = entry.new_data.to_string();
+                            let hash_input = format!(
+                                "{}|{}|{}|{}|{}",
+                                prev_hash, entry.table_name, entry.operation, entry.record_id, entry_new_data_str
+                            );
+                            let current_hash = format!("{:x}", sha2::Sha256::digest(hash_input.as_bytes()));
 
-            // To ensure compatibility across both dialects (SQLite and PostgreSQL),
-            // we leverage `sql_exec!` which uses the positional placeholders underneath.
-            let q = format!(
-                "INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash, timestamp)
-                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
-                pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6)
-            );
+                            // To ensure compatibility across both dialects (SQLite and PostgreSQL),
+                            // we leverage `sql_exec!` which uses the positional placeholders underneath.
+                            let q = format!(
+                                "INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash, timestamp)
+                                 VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
+                                pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6)
+                            );
 
-            let result = sql_exec!(
-                &*pool,
-                &q,
-                &entry.table_name,
-                &entry.operation,
-                &entry.record_id,
-                &entry_new_data_str,
-                &prev_hash,
-                &current_hash,
-                &now_str
-            );
+                            let result = sql_exec!(
+                                &*pool,
+                                &q,
+                                &entry.table_name,
+                                &entry.operation,
+                                &entry.record_id,
+                                &entry_new_data_str,
+                                &prev_hash,
+                                &current_hash,
+                                &now_str
+                            );
 
-            match result {
-                Ok(_) => debug!(
-                    "✅ [AsyncAuditLogger] Recorded {} on {}",
-                    entry.operation, entry.table_name
-                ),
-                Err(e) => error!(
-                    "❌ [AsyncAuditLogger] Database insert failed for actor {}: {}. Payload: {}",
-                    entry.table_name, e, entry_new_data_str
-                ),
+                            match result {
+                                Ok(_) => debug!(
+                                    "✅ [AsyncAuditLogger] Recorded {} on {}",
+                                    entry.operation, entry.table_name
+                                ),
+                                Err(e) => {
+                                    error!(
+                                        "❌ [AsyncAuditLogger] Database insert failed for actor {}: {}. Payload: {}",
+                                        entry.table_name, e, entry_new_data_str
+                                    );
+                                    // Trigger panic to restart the task if DB connection goes bad
+                                    panic!("AuditLogger database insert failed: {}", e);
+                                }
+                            }
+                        }
+                        None => {
+                            info!("🛑 [AsyncAuditLogger] Sequence completed; channel closed.");
+                            break;
+                        }
+                    }
+                }
             }
         }
-
-        info!("🛑 [AsyncAuditLogger] Sequence completed; channel closed.");
     }
 }
 
@@ -239,5 +297,82 @@ mod tests {
 
         assert_eq!(curr1, &expected_hash1, "Hash mismatch for first record");
         assert_eq!(curr2, &expected_hash2, "Hash mismatch for second record");
+    }
+
+    #[tokio::test]
+    async fn test_audit_merkle_chain_integrity_after_panic() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+
+        let schema = "CREATE TABLE audit_ledger_global (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name TEXT,
+            operation TEXT,
+            record_id TEXT,
+            new_data TEXT,
+            prev_hash TEXT,
+            current_hash TEXT,
+            timestamp TEXT
+        )";
+        sql_exec!(&pool, schema).unwrap();
+
+        let pool_arc = Arc::new(pool.clone());
+        let logger = AsyncAuditLogger::new(pool_arc.clone(), 100);
+
+        // 1. Initial successful event
+        logger
+            .log_event("OP1", "test", &json!({"record_id": "1"}))
+            .await
+            .unwrap();
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // 2. Cause a transient failure (rename table)
+        sql_exec!(
+            &*pool_arc,
+            "ALTER TABLE audit_ledger_global RENAME TO audit_ledger_global_temp"
+        )
+        .unwrap();
+
+        // This will panic the worker
+        let _ = logger
+            .log_event("OP2_FAIL", "test", &json!({"record_id": "2"}))
+            .await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // 3. Recover the table
+        sql_exec!(
+            &*pool_arc,
+            "ALTER TABLE audit_ledger_global_temp RENAME TO audit_ledger_global"
+        )
+        .unwrap();
+
+        // Wait for supervisor to restart the worker (using exponential backoff or immediate restart)
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+        // 4. Log after recovery
+        logger
+            .log_event("OP3_RECOVER", "test", &json!({"record_id": "3"}))
+            .await
+            .unwrap();
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        let rows: Vec<(String, String, String)> = sql_fetch_all!(
+            &*pool_arc,
+            (String, String, String),
+            "SELECT operation, prev_hash, current_hash FROM audit_ledger_global ORDER BY id ASC"
+        )
+        .unwrap();
+
+        assert_eq!(
+            rows.len(),
+            2,
+            "Should have exactly 2 successful records (OP1 and OP3)"
+        );
+        assert_eq!(rows[0].0, "OP1");
+        assert_eq!(rows[0].1, "GENESIS");
+        assert_eq!(rows[1].0, "OP3_RECOVER");
+        assert_eq!(
+            rows[1].1, rows[0].2,
+            "Recovered record MUST link to OP1's hash to preserve Merkle Chain integrity"
+        );
     }
 }

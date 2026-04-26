@@ -10,7 +10,7 @@ use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
 use aiome_core::trajectory::{AgentDiagnosis, TrajectoryStep, TrajectoryStore};
 use aiome_core_contracts::contracts::{
     ArenaMatch, ArtifactCategory, ArtifactEdge, ArtifactMeta, FederatedMetrics, ImmuneRule,
-    JobMetrics, KarmaEntry, KarmaMetrics, OracleVerdict, SamsaraEvent,
+    JobMetrics, KarmaEntry, KarmaMetrics, OracleVerdict, SamsaraEvent, SystemEvent,
 };
 use aiome_core_contracts::security::PermissionManifest;
 use aiome_core_contracts::traits::{
@@ -102,6 +102,7 @@ pub struct UniversalJobQueue {
     pub slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
     pub trajectory_store: Arc<dyn TrajectoryStore>,
     pub security_validator: Arc<aiome_core::security::ConstitutionalValidator>,
+    pub event_bus: tokio::sync::broadcast::Sender<SystemEvent>,
 }
 
 impl std::fmt::Debug for UniversalJobQueue {
@@ -153,6 +154,7 @@ impl UniversalJobQueue {
             slm_bridge,
             trajectory_store,
             security_validator: Arc::new(aiome_core::security::ConstitutionalValidator::new()),
+            event_bus: tokio::sync::broadcast::channel(100).0,
         };
 
         if this.pool.is_sqlite() {
@@ -179,6 +181,7 @@ impl UniversalJobQueue {
             slm_bridge: None,
             trajectory_store,
             security_validator: Arc::new(aiome_core::security::ConstitutionalValidator::new()),
+            event_bus: tokio::sync::broadcast::channel(100).0,
         }
     }
 

@@ -7,6 +7,7 @@
 use crate::db::DatabasePool;
 use aiome_core::error::AiomeError;
 use aiome_core_contracts::llm::LlmProvider;
+use aiome_core_contracts::rlm::RlmProvider;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -49,6 +50,7 @@ impl DisclosureLevel {
 
 pub struct CortexQueryEngine {
     llm_provider: Arc<dyn LlmProvider>,
+    rlm_provider: Option<Arc<dyn RlmProvider>>,
     pool: DatabasePool,
     max_context_chars: usize,
     disclosure_level: DisclosureLevel,
@@ -59,6 +61,7 @@ impl CortexQueryEngine {
         let disclosure_level = DisclosureLevel::default();
         Self {
             llm_provider,
+            rlm_provider: None,
             pool,
             max_context_chars: disclosure_level.max_chars(),
             disclosure_level,
@@ -76,9 +79,49 @@ impl CortexQueryEngine {
         self
     }
 
+    pub fn with_rlm_provider(mut self, rlm: Arc<dyn RlmProvider>) -> Self {
+        self.rlm_provider = Some(rlm);
+        self
+    }
+
     /// Returns the current max_context_chars setting.
     pub fn max_context_chars(&self) -> usize {
         self.max_context_chars
+    }
+
+    pub async fn deep_query(
+        &self,
+        question: &str,
+        max_depth: usize,
+        max_budget_usd: f64,
+    ) -> Result<CortexAnswer, AiomeError> {
+        let rlm = self
+            .rlm_provider
+            .as_ref()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "RLM provider is not configured".into(),
+            })?;
+
+        let config = aiome_core_contracts::rlm::RlmConfig {
+            max_depth,
+            max_budget_usd,
+        };
+
+        // Get initial context
+        let initial_context = self.query(question).await?;
+
+        let enhanced_prompt = format!(
+            "Context:\n{}\nQuestion: {}",
+            initial_context.answer_md, question
+        );
+        let rlm_resp = rlm.deep_complete(&enhanced_prompt, config).await?;
+
+        Ok(CortexAnswer {
+            question: question.to_string(),
+            answer_md: rlm_resp.content,
+            source_articles: initial_context.source_articles,
+            confidence: 0.95,
+        })
     }
 
     pub async fn query(&self, question: &str) -> Result<CortexAnswer, AiomeError> {
@@ -603,5 +646,58 @@ mod tests {
         let engine = CortexQueryEngine::new(provider, pool);
         let ans = engine.query("What is \"rust-\" async?").await.unwrap(); // allow-anti-pattern
         assert_eq!(ans.answer_md, "Safe from syntax panics");
+    }
+
+    #[derive(Debug)]
+    struct MockRlmProvider {
+        response: tokio::sync::Mutex<Option<aiome_core_contracts::rlm::RlmResponse>>,
+    }
+
+    #[async_trait::async_trait]
+    impl aiome_core_contracts::rlm::RlmProvider for MockRlmProvider {
+        async fn deep_complete(
+            &self,
+            _prompt: &str,
+            _config: aiome_core_contracts::rlm::RlmConfig,
+        ) -> Result<aiome_core_contracts::rlm::RlmResponse, AiomeError> {
+            let mut guard = self.response.lock().await;
+            Ok(guard.take().unwrap())
+        }
+
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        fn name(&self) -> &str {
+            "mock_rlm"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cortex_query_deep_query() {
+        let pool = setup_db_pool().await;
+        let provider = Arc::new(MockLlmProvider {
+            responses: tokio::sync::Mutex::new(vec![
+                r#"["deep_concept"]"#.to_string(),
+                r#"{"answer_md": "Shallow context", "confidence": 0.8}"#.to_string(),
+            ]),
+        });
+
+        let rlm_provider = Arc::new(MockRlmProvider {
+            response: tokio::sync::Mutex::new(Some(aiome_core_contracts::rlm::RlmResponse {
+                content: "Deeply reasoned context.".to_string(),
+                recursion_depth: 3,
+                cost_usd: 0.1,
+            })),
+        });
+
+        let engine = CortexQueryEngine::new(provider, pool).with_rlm_provider(rlm_provider);
+
+        let ans = engine
+            .deep_query("What is the meaning of life?", 3, 1.0)
+            .await;
+        assert!(ans.is_ok());
+        let ans_val = ans.unwrap();
+        assert_eq!(ans_val.answer_md, "Deeply reasoned context.");
     }
 }

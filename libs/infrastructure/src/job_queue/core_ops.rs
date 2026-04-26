@@ -191,50 +191,63 @@ impl CoreOps for UniversalJobQueue {
 
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
-                let mut q = sqlx::query(&query_str).bind("Pending");
-                for cat in capable_categories {
-                    q = q.bind(*cat);
-                }
-                let row =
-                    q.fetch_optional(&mut *tx)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                if let Some(r) = row {
-                    let id: String = r.get("id");
-                    let res = sqlx::query(&update_str)
-                        .bind("Processing")
-                        .bind(&now)
-                        .bind(&now)
-                        .bind(&now)
-                        .bind(&id)
-                        .bind("Pending")
-                        .execute(&mut *tx)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                    if res.rows_affected() == 0 {
-                        tx.rollback().await.ok(); // allow-anti-pattern
-                        return Ok(None);
-                    }
-                    tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                // SQLite: 楽観的ロック (UPDATE ... AND status = 'Pending') による排他制御
+                // 他のワーカーが先に取得した場合は、影響行数が0になるためリトライする
+                loop {
+                    let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                    Ok(Some(self.do_fetch_job(&id).await?.unwrap())) // allow-anti-pattern
-                } else {
-                    Ok(None)
+                    let mut q = sqlx::query(&query_str).bind("Pending");
+                    for cat in capable_categories {
+                        q = q.bind(*cat);
+                    }
+                    let row = q.fetch_optional(&mut *tx).await.map_err(|e| {
+                        AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        }
+                    })?;
+
+                    if let Some(r) = row {
+                        let id: String = r.get("id");
+                        let res = sqlx::query(&update_str)
+                            .bind("Processing")
+                            .bind(&now)
+                            .bind(&now)
+                            .bind(&now)
+                            .bind(&id)
+                            .bind("Pending")
+                            .execute(&mut *tx)
+                            .await
+                            .map_err(|e| AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            })?;
+                        if res.rows_affected() == 0 {
+                            if let Err(e) = tx.rollback().await {
+                                tracing::warn!("Failed to rollback transaction: {}", e);
+                            }
+                            // 他のワーカーが取得したため、次のジョブを探すループに戻る
+                            continue;
+                        }
+                        tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                            reason: e.to_string(),
+                        })?;
+                        let job = self.do_fetch_job(&id).await?.ok_or_else(|| {
+                            AiomeError::Infrastructure {
+                                reason: format!("Job {} committed but vanished during fetch", id),
+                            }
+                        })?;
+                        return Ok(Some(job));
+                    } else {
+                        return Ok(None);
+                    }
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
+                let pg_query_str = format!("{} FOR UPDATE SKIP LOCKED", query_str);
                 let mut tx = p.begin().await.map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
-                let mut q = sqlx::query(&query_str).bind("Pending");
+                let mut q = sqlx::query(&pg_query_str).bind("Pending");
                 for cat in capable_categories {
                     q = q.bind(*cat);
                 }
@@ -259,13 +272,20 @@ impl CoreOps for UniversalJobQueue {
                             reason: e.to_string(),
                         })?;
                     if res.rows_affected() == 0 {
-                        tx.rollback().await.ok(); // allow-anti-pattern
+                        if let Err(e) = tx.rollback().await {
+                            tracing::warn!("Failed to rollback transaction: {}", e);
+                        }
                         return Ok(None);
                     }
                     tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                    Ok(Some(self.do_fetch_job(&id).await?.unwrap())) // allow-anti-pattern
+                    let job = self.do_fetch_job(&id).await?.ok_or_else(|| {
+                        AiomeError::Infrastructure {
+                            reason: format!("Job {} committed but vanished during fetch", id),
+                        }
+                    })?;
+                    Ok(Some(job))
                 } else {
                     Ok(None)
                 }

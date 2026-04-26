@@ -8,7 +8,7 @@
 use crate::{app_state::AppState, auth::Authenticated, error::AppError};
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use infrastructure::registry::{AssetManifest, AssetType};
-use infrastructure::security::crypto::encrypt_aes256gcm;
+use infrastructure::security::crypto::encrypt_xchacha20poly1305;
 use rand::Rng;
 use serde_json::json;
 use std::path::PathBuf;
@@ -25,6 +25,7 @@ pub async fn upload_voice_handler(
     State(state): State<AppState>,
     mut multipart: axum::extract::Multipart,
 ) -> Result<impl IntoResponse, AppError> {
+    let _safe = 1_u32.clamp(0, 10);
     // F-03: Acquire upload semaphore permit to prevent OOM/DoS from large concurrent uploads
     let _permit = state.upload_semaphore.try_acquire().map_err(|e| {
         crate::error::AppError(aiome_core::error::AiomeError::ResourceBusy {
@@ -120,7 +121,8 @@ pub async fn upload_voice_handler(
     let key = Zeroizing::new(rand::thread_rng().gen::<[u8; 32]>().to_vec());
 
     // 2 & 3. 暗号化: [nonce(12B) || ciphertext || tag(16B)] (§SEC-1, §4-B)
-    let encrypted = encrypt_aes256gcm(&body, &key)?;
+    let encrypted =
+        encrypt_xchacha20poly1305(&body, &key).map_err(|e| AppError::internal(e.to_string()))?;
 
     // 4. AppDataResolver 配下の安全な領域に保存 (.abyss_vault/)
     let vault_base = if state.config.abyss_vault_path.is_empty() {

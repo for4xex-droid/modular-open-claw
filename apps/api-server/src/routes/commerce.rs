@@ -76,6 +76,148 @@ pub async fn get_balance(
     Ok(Json(serde_json::json!({ "balance": balance })))
 }
 
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct WithdrawRequest {
+    #[schema(value_type = String)]
+    pub agent_id: Uuid,
+    pub amount: u64,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct TransferRequest {
+    #[schema(value_type = String)]
+    pub from_id: Uuid,
+    #[schema(value_type = String)]
+    pub to_id: Uuid,
+    pub amount: u64,
+}
+
+/// [GET] /api/v1/commerce/points/:agent_id
+#[utoipa::path(
+    get,
+    path = "/api/v1/commerce/points/{agent_id}",
+    responses(
+        (status = 200, description = "Points Balance", body = aiome_core_contracts::commerce::PointsBalance),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("agent_id" = String, Path, description = "The unique ID of the agent")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_points(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(agent_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+    let points = engine.get_points(agent_id).await?;
+    Ok(Json(points))
+}
+
+/// [GET] /api/v1/commerce/history/:agent_id
+#[utoipa::path(
+    get,
+    path = "/api/v1/commerce/history/{agent_id}",
+    responses(
+        (status = 200, description = "Transaction History", body = Vec<aiome_core_contracts::commerce::TransactionRecord>),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("agent_id" = String, Path, description = "The unique ID of the agent")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_transaction_history(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(agent_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+    let history = engine.get_transaction_history(agent_id, 100).await?;
+    Ok(Json(history))
+}
+
+/// [POST] /api/v1/commerce/withdraw
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/withdraw",
+    request_body = WithdrawRequest,
+    responses(
+        (status = 200, description = "Withdrawal initiated successfully"),
+        (status = 403, description = "Unauthorized access or missing eKYC")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn withdraw_points(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Json(req): Json<WithdrawRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if req.agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+    if !auth.ekyc_verified {
+        return Err(AppError::forbidden(
+            "eKYC verification required to withdraw",
+        ));
+    }
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+    engine.withdraw_points(req.agent_id, req.amount).await?;
+    Ok(StatusCode::OK)
+}
+
+/// [POST] /api/v1/commerce/transfer
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/transfer",
+    request_body = TransferRequest,
+    responses(
+        (status = 200, description = "Transfer completed", body = serde_json::Value),
+        (status = 403, description = "Unauthorized access or missing eKYC")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn transfer(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Json(req): Json<TransferRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if req.from_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+    if !auth.ekyc_verified {
+        return Err(AppError::forbidden(
+            "eKYC verification required to transfer funds",
+        ));
+    }
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+    let tx_id = engine.transfer(req.from_id, req.to_id, req.amount).await?;
+    Ok(Json(serde_json::json!({ "transaction_id": tx_id })))
+}
+
 /// [POST] /api/v1/commerce/purchase/:agent_id
 #[utoipa::path(
     post,
