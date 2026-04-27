@@ -21,8 +21,20 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     info!("💓 [Heartbeat] Initializing Unified Heartbeat Service...");
 
     // 1. ScoreTracker の初期化 (Phase 3D / Sprint 3)
+    let forecast_provider: Option<Arc<dyn aiome_core_contracts::forecast::ForecastProvider>> = {
+        if let Ok(timesfm_url) = std::env::var("TIMESFM_URL") {
+            let auth = std::env::var("TIMESFM_AUTH_TOKEN").unwrap_or_default();
+            shared::security::scrub_env("TIMESFM_AUTH_TOKEN");
+            Some(Arc::new(
+                infrastructure::forecast::timesfm::TimesFmProvider::new(timesfm_url, auth),
+            ))
+        } else {
+            None
+        }
+    };
+
     let score_tracker = Arc::new(ScoreTracker::new(
-        None, // Phase 4C TODO: Add ForecastProvider (TimesFM) if needed // allow-anti-pattern
+        forecast_provider,
         state.job_queue.get_inner().get_pool().clone(),
     ));
 

@@ -37,7 +37,6 @@ mod tests {
         );
     }
 
-    // TODO: Add route tests with MockLLM once skeleton is in lib.rs
     #[tokio::test]
     async fn test_hierarchical_route_success() {
         let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
@@ -86,12 +85,34 @@ mod tests {
         .await
         .unwrap();
 
-        let mock_llm = Arc::new(GlobalMockLlm);
+        #[derive(Debug)]
+        struct SelectionMockLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for SelectionMockLlm {
+            fn name(&self) -> &str {
+                "SelectionMockLlm"
+            }
+            async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
+                Ok(())
+            }
+            async fn complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, aiome_core::error::AiomeError>
+            {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "I choose option 1 because it fits best.".into(),
+                    stop_reason: aiome_core_contracts::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+        }
+
+        let mock_llm = Arc::new(SelectionMockLlm);
         let router = HierarchicalRouter::new(mock_llm, pool.clone());
 
-        // Test route (MockLlm returns "mock", parse_llm_selection finds "1")
-        // Wait, MockLlm returns "mock", which doesn't contain digit "1".
-        // I should probably use a better MockLlm or just rely on the fallback (top-1).
         let res = router.route("Find me leaf", "test_doc").await.unwrap();
         assert!(res.is_some());
         assert_eq!(res.unwrap().content, "Target content found!");

@@ -53,7 +53,9 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (Lint)
-        run: cargo clippy --workspace -- -D warnings
+        run: |
+          cargo clippy --workspace -- -D warnings
+          cargo clippy --manifest-path vendor/oxilean-kernel/Cargo.toml -- -D warnings
 
       - name: Start Test Database
         run: |
@@ -71,6 +73,9 @@ jobs:
           DATABASE_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
           TEST_POSTGRES_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
         run: cargo test --workspace -- --test-threads=1
+
+      - name: Run Tests (Oxilean-Kernel)
+        run: cargo test --manifest-path vendor/oxilean-kernel/Cargo.toml
 
       - name: Verify Release Build (Phase γ)
         run: cargo build --release --workspace

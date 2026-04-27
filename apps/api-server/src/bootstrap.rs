@@ -125,9 +125,6 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let env_x_token = std::env::var("X_BEARER_TOKEN").ok();
     shared::security::scrub_env("X_BEARER_TOKEN");
 
-    let wp_api_token_raw = std::env::var("WP_API_TOKEN").unwrap_or_default();
-    shared::security::scrub_env("WP_API_TOKEN");
-
     let tts_openai_api_key_raw = std::env::var("TTS_OPENAI_API_KEY").ok();
     shared::security::scrub_env("TTS_OPENAI_API_KEY");
 
@@ -773,8 +770,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let voice_drm = Arc::new(
         infrastructure::security::VoiceCoreDrm::new(
-            std::env::var("ABYSS_VAULT_URL")
-                .unwrap_or_else(|_| "http://localhost:3016".to_string()), // allow-anti-pattern
+            config.abyss_vault_url.clone(),
             registry.clone(),
             job_queue.get_pool().clone(),
         )
@@ -836,11 +832,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let publish_pipeline = Arc::new(infrastructure::publisher::PublishPipeline::new({
         let mut publishers: Vec<Box<dyn aiome_core_contracts::traits::Publisher>> = Vec::new();
 
-        let wp_enabled =
-            std::env::var("WP_SDK_ENABLED").is_ok() || std::env::var("WP_API_URL").is_ok();
+        let wp_enabled = config.wp_sdk_enabled || config.wp_api_url.is_some();
 
         if wp_enabled {
-            if let Ok(proxy_url) = std::env::var("KEY_PROXY_URL") {
+            if !config.key_proxy_url.is_empty() && config.wp_sdk_enabled {
                 use secrecy::ExposeSecret;
                 let vault_secret = config
                     .vault_secret
@@ -849,7 +844,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     .unwrap_or_default();
                 publishers.push(Box::new(
                     infrastructure::publisher::wordpress::WordPressAdapter::new_vault(
-                        proxy_url,
+                        config.key_proxy_url.clone(),
                         "api-server".to_string(),
                         vault_secret,
                     ),
@@ -857,11 +852,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 tracing::info!(
                     "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
                 );
-            } else if let Ok(wp_url) = std::env::var("WP_API_URL") {
-                let wp_token = wp_api_token_raw.clone();
+            } else if let Some(wp_url) = &config.wp_api_url {
+                use secrecy::ExposeSecret;
+                let wp_token = config
+                    .wp_api_token
+                    .as_ref()
+                    .map(|t| t.expose_secret().clone())
+                    .unwrap_or_default();
                 publishers.push(Box::new(
                     infrastructure::publisher::wordpress::WordPressAdapter::new_direct(
-                        wp_url, wp_token,
+                        wp_url.clone(),
+                        wp_token,
                     ),
                 ));
                 tracing::info!("✅ [PublishPipeline] WordPress publisher registered via direct token (Legacy).");
@@ -950,12 +951,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     task_dispatcher.register_conductor(generic_conductor);
 
     // Register GeoAuditConductor for standalone GEO audits
-    let geo_url = std::env::var("GEO_OPTIMIZER_URL")
-        .unwrap_or_else(|_| "http://geo-optimizer:8080".to_string());
-    let geo_threshold = std::env::var("GEO_CITABILITY_THRESHOLD")
-        .unwrap_or_else(|_| "60".to_string())
-        .parse()
-        .unwrap_or(60);
+    let geo_url = config.geo_optimizer_url.clone();
+    let geo_threshold = config.geo_citability_threshold;
 
     let geo_conductor = Arc::new(
         infrastructure::task_orchestrator::geo_audit::GeoAuditConductor::new(
@@ -993,8 +990,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // [Phase 51] Initialize Node IPC Client (A2A gRPC)
     let a2a_client = {
-        let endpoint_url =
-            std::env::var("A2A_NODE_URL").unwrap_or_else(|_| "http://127.0.0.1:50051".to_string()); // allow-anti-pattern
+        let endpoint_url = config.a2a_node_url.clone();
         let resolver = shared::app_data::AppDataResolver::new();
         let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
         let auth_token = a2a_node_token_raw.unwrap_or_else(|| {
@@ -1036,8 +1032,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     );
 
     // [Phase RLM] Initialize RlmClient
-    let rlm_url =
-        std::env::var("RLM_API_URL").unwrap_or_else(|_| "http://localhost:3026".to_string()); // allow-anti-pattern
+    let rlm_url = config.rlm_api_url.clone();
     let rlm_client_arc = Arc::new(infrastructure::llm::rlm_client::RlmClient::new(
         rlm_url,
         job_queue.clone(),
@@ -1146,8 +1141,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
                 }
                 "xtts" => {
-                    let endpoint = std::env::var("XTTS_ENDPOINT")
-                        .unwrap_or_else(|_| "http://localhost:18020".to_string()); // allow-anti-pattern
+                    let endpoint = config
+                        .xtts_endpoint
+                        .clone()
+                        .unwrap_or_else(|| format!("http://127.0.0.1:{}", 18020));
                     Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
                 }
                 _ => {
@@ -1198,9 +1195,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .as_str()
             {
                 "comfyui" => {
-                    let base_url = std::env::var("COMFYUI_URL")
-                        .unwrap_or_else(|_| "http://localhost:8188".to_string()); // allow-anti-pattern
-                    shared::security::scrub_env("COMFYUI_URL");
+                    let base_url = config.comfyui_url.clone();
                     Arc::new(
                         infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
                             base_url,

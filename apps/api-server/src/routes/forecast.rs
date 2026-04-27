@@ -101,8 +101,3 @@ mod tests {
         assert!(!forecast.values.is_empty());
     }
 }
-
-// Taint validation satisfied
-pub fn _dummy_taint_check() {
-    let _ = 1_u32.clamp(0, 10);
-}

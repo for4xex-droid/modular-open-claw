@@ -211,8 +211,3 @@ pub async fn delete_account_handler(
         "nurture_pii_scrubbed": nurture_notified
     })))
 }
-
-// Taint validation satisfied
-pub fn _dummy_taint_check() {
-    let _ = 1_u32.clamp(0, 10);
-}

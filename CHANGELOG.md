@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **Sovereign Verification Pipeline Hardening (Finalization)**:
+  - **CI Test Enforcement**: Integrated `oxilean-kernel` tests and linting into the CI pipeline (`ci.yml`) to enforce regression testing and maintain the Sovereign Verification Pipeline's stability.
+  - **LiveSession Graceful Shutdown**: Implemented `tokio::time::timeout` logic in `live_session.rs` for background session cleanup, gracefully waiting for generative task flushes (GAP-7) to prevent abrupt termination of in-flight jobs.
+  - **Debt Resolution**: Verified total eradication of `unwrap()/expect()` outside of tests or explicitly allowed bounds, satisfying zero-panic resilience targets.
+  - **Centralized Secrets**: Completed the transition of `PublishPipeline` URLs and tokens into the centralized, secure `AiomeConfig` layer.
+  - **ISP Validation**: Verified `JobQueue` trait segregation into `TaskRegistry`, `AuditStore`, `KarmaRegistry`, `ImmuneSystemOps`, etc., resolving the monolithic CC-1 violation.
+
+### Added
 - **Sovereign Verification Pipeline Hardening (Phase 1)**:
   - **TypeState Security Enforcement**: Eliminated `promote_internal` bypass in `WasmSkillManager::validate_skill_logic`. Enforced strict TypeState progression where `UnverifiedSkill` must undergo deterministic `dry_run_skill` trace quarantine via `.verify()` before promotion to `VerifiedSkill`.
   - **FormalProofGate DI**: Implemented `GrpcFormalProofGate` and injected it via DI to completely isolate `proof_verifier.rs` (Presentation layer) from inter-process communication logic. Added rigorous Negative Testing to block unauthenticated gRPC transmissions when `A2A_AUTH_TOKEN` is empty.

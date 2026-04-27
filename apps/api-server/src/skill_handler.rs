@@ -60,7 +60,7 @@ pub async fn execute_forge_command(
                         )),
                         Err(e) => {
                             let err_msg = format!("Forge failed: {}", e);
-                            state
+                            if let Err(karma_err) = state
                                 .job_queue
                                 .store_karma(
                                     "forge",
@@ -74,7 +74,12 @@ pub async fn execute_forge_command(
                                     false,
                                 )
                                 .await
-                                .ok();
+                            {
+                                tracing::warn!(
+                                    "Failed to store karma for forge failure: {}",
+                                    karma_err
+                                );
+                            }
                             Err(err_msg)
                         }
                     }

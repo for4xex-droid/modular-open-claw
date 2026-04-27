@@ -64,6 +64,24 @@ pub struct AiomeConfig {
     pub frontend_static_path: String,
     /// システムプロンプトに注入するプロジェクトルールの最大文字数
     pub max_project_rules_chars: usize,
+    /// WordPress API URL
+    pub wp_api_url: Option<String>,
+    /// WordPress API Token
+    pub wp_api_token: Option<SecretString>,
+    /// WordPress SDK Enabled
+    pub wp_sdk_enabled: bool,
+    /// A2A Node URL
+    pub a2a_node_url: String,
+    /// Geo Optimizer URL
+    pub geo_optimizer_url: String,
+    /// Geo Citability Threshold
+    pub geo_citability_threshold: u32,
+    /// RLM API URL
+    pub rlm_api_url: String,
+    /// ComfyUI URL
+    pub comfyui_url: String,
+    /// Abyss Vault Server URL
+    pub abyss_vault_url: String,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -110,6 +128,15 @@ impl Default for AiomeConfig {
             resolver,
             frontend_static_path: "apps/api-server/static".to_string(),
             max_project_rules_chars: 3000,
+            wp_api_url: None,
+            wp_api_token: None,
+            wp_sdk_enabled: false,
+            a2a_node_url: "http://127.0.0.1:50051".to_string(),
+            geo_optimizer_url: "http://geo-optimizer:8080".to_string(),
+            geo_citability_threshold: 60,
+            rlm_api_url: "http://localhost:3026".to_string(),
+            comfyui_url: "http://localhost:8188".to_string(),
+            abyss_vault_url: "http://localhost:3016".to_string(),
         }
     }
 }
@@ -208,6 +235,26 @@ impl AiomeConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(3000),
+            wp_api_url: env::var("WP_API_URL").ok(),
+            wp_api_token: env::var("WP_API_TOKEN").ok().map(|token| {
+                crate::security::scrub_env("WP_API_TOKEN");
+                SecretString::from(token)
+            }),
+            wp_sdk_enabled: env::var("WP_SDK_ENABLED").is_ok(),
+            a2a_node_url: env::var("A2A_NODE_URL")
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 50051)),
+            geo_optimizer_url: env::var("GEO_OPTIMIZER_URL")
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8080)),
+            geo_citability_threshold: env::var("GEO_CITABILITY_THRESHOLD")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(60),
+            rlm_api_url: env::var("RLM_API_URL")
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3026)),
+            comfyui_url: env::var("COMFYUI_URL")
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8188)),
+            abyss_vault_url: env::var("ABYSS_VAULT_URL")
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)),
         })
     }
 

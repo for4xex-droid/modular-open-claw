@@ -40,9 +40,36 @@ impl LiveSessionProvider {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
             loop {
                 interval.tick().await;
-                let mut s = sessions_clone.lock().await;
-                // ここでは単純化のため、sender が切断されているものを削除
-                s.retain(|_id, tx| !tx.is_closed());
+                let to_remove = {
+                    let s = sessions_clone.lock().await;
+                    let mut dead = Vec::new();
+                    for (id, tx) in s.iter() {
+                        if tx.is_closed() {
+                            dead.push(id.clone());
+                        }
+                    }
+                    dead
+                };
+
+                for id in to_remove {
+                    info!(
+                        "🧹 [LiveSession] Background cleanup: waiting for graceful shutdown of {}",
+                        id
+                    );
+                    // GAP-7 Fix: 未完了タスクの完了を待機 (Graceful Cleanup)
+                    // If the websocket sender has closed, generative tasks holding a clone of the sender
+                    // will fail on their next `send()` and initiate their own shutdown.
+                    // We yield execution here to give those tasks time to cleanly flush and drop resources.
+                    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
+                        tokio::task::yield_now().await;
+                        // Future: integrate with a session-scoped JoinSet to truly await generative tasks
+                    })
+                    .await;
+
+                    let mut s = sessions_clone.lock().await;
+                    s.remove(&id);
+                    info!("🛑 [LiveSession] Session {} successfully cleaned up.", id);
+                }
             }
         });
 

@@ -219,6 +219,25 @@ impl DockerConductor {
 
         let container_name = format!("aiome-job-{}", job.id);
 
+        // Gap L: Image pull control
+        let image_name = "aiome-shadow-worker";
+        let check_image_cmd = format!("{} image inspect {}", self.container_runtime, image_name);
+        if self
+            .bastion
+            .safe_exec_with_profile(&check_image_cmd, SandboxProfile::Strict)
+            .await
+            .is_err()
+        {
+            let pull_cmd = format!("{} pull {}", self.container_runtime, image_name);
+            if let Err(e) = self
+                .bastion
+                .safe_exec_with_profile(&pull_cmd, SandboxProfile::Strict)
+                .await
+            {
+                tracing::warn!("Failed to pull image {}: {:?}", image_name, e);
+            }
+        }
+
         // Gap S: Ensure aiome-internal network exists (idempotent)
         // Note: BastionGuard executes binaries directly without a shell, so we cannot use `|| true` or redirections.
         let network_cmd = format!(
@@ -253,8 +272,9 @@ impl DockerConductor {
         }
 
         // Detached Container Execution (gRPC Server) - Gap I, J, L, N, R, S
+        // Gap N: Added `--rm` for cleanup guarantee and `--label` for potential GC
         let cmd = format!(
-            "{} run -d --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
+            "{} run -d --rm --label aiome_managed=true --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
             self.container_runtime,
             container_name,
             yaml_path.display(),
@@ -279,6 +299,33 @@ impl DockerConductor {
             });
         }
 
+        // Gap I: Check if it crashed immediately
+        let inspect_cmd = format!(
+            "{} inspect -f '{{{{.State.Status}}}}' {}",
+            self.container_runtime, container_name
+        );
+        if let Ok(status) = self
+            .bastion
+            .safe_exec_with_profile(&inspect_cmd, SandboxProfile::Strict)
+            .await
+        {
+            if status.trim() == "exited" || status.trim() == "dead" {
+                let logs_cmd = format!("{} logs {}", self.container_runtime, container_name);
+                let crash_logs = self
+                    .bastion
+                    .safe_exec_with_profile(&logs_cmd, SandboxProfile::Strict)
+                    .await
+                    .unwrap_or_default();
+                let _ = std::fs::remove_dir_all(&temp_dir);
+                return Err(AiomeError::Infrastructure {
+                    reason: format!(
+                        "Shadow Worker container crashed immediately. Logs: {}",
+                        crash_logs.trim()
+                    ),
+                });
+            }
+        }
+
         // 2. Get dynamic port mapped to 50051
         let port_cmd = format!("{} port {} 50051", self.container_runtime, container_name);
 
@@ -300,12 +347,22 @@ impl DockerConductor {
         }
 
         if mapped_port.is_empty() {
+            // Gap J: Fetch logs on port bind failure
+            let logs_cmd = format!("{} logs {}", self.container_runtime, container_name);
+            let crash_logs = self
+                .bastion
+                .safe_exec_with_profile(&logs_cmd, SandboxProfile::Strict)
+                .await
+                .unwrap_or_default();
             if let Err(e) = self.cancel(&job.id).await {
                 tracing::warn!("Best-effort container cleanup failed for {}: {}", job.id, e);
             }
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
-                reason: "Failed to resolve worker mapped port".to_string(),
+                reason: format!(
+                    "Failed to resolve worker mapped port. Container logs: {}",
+                    crash_logs.trim()
+                ),
             });
         }
 

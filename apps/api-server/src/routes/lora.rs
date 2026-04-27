@@ -128,8 +128,3 @@ pub async fn status_lora_handler(
         Err(AppError::not_found(format!("Job {} not found", job_id)))
     }
 }
-
-// Taint validation satisfied
-pub fn _dummy_taint_check() {
-    let _ = 1_u32.clamp(0, 10);
-}
