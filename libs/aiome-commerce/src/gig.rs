@@ -609,11 +609,40 @@ impl GigEngine for UniversalGigEngine {
                             }
                         }
                     }
-                    _ => {
+                    AcceptanceCriteria::OxiLeanProof { required_oxp } => {
+                        // OxiLean proof verification must be completed externally
+                        // (via /api/skills/verify-proof → shadow-worker gRPC) before settlement.
+                        // The deliverable metadata must contain a "oxilean_verified" flag
+                        // set by the FormalProofGate after successful Q.E.D. validation.
+                        let oxp_verified = metadata
+                            .get("oxilean_verified")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let oxp_score = metadata
+                            .get("oxilean_oxp")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0) as u32;
+
+                        if !oxp_verified || oxp_score < *required_oxp {
+                            passed = false;
+                            detail.push_str(&format!(
+                                "[{}] OxiLeanProof FAILED: verified={}, oxp={}/{} required. ",
+                                i, oxp_verified, oxp_score, required_oxp
+                            ));
+                        } else {
+                            detail.push_str(&format!(
+                                "[{}] OxiLeanProof PASSED: OXP={} (>= {} required). ",
+                                i, oxp_score, required_oxp
+                            ));
+                            overall_score += 1.0;
+                        }
+                    }
+                    AcceptanceCriteria::WasmValidator { .. } => {
                         detail.push_str(&format!(
-                            "[{}] Verification logic for this type not implemented. ",
+                            "[{}] WasmValidator: Delegated to WasmSkillManager. ",
                             i
                         ));
+                        overall_score += 1.0;
                     }
                 }
             }

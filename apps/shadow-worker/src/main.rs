@@ -176,6 +176,12 @@ impl DockerConductor for ShadowWorkerService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var("CELL_ID").unwrap_or_default().is_empty() {
+        panic!(
+            "🚨 FATAL: CELL_ID is not set! The Sovereign Verifier architecture requires strict cellular isolation. No identity = No survival."
+        );
+    }
+
     tracing_subscriber::fmt::init();
 
     info!("Starting Shadow Worker...");
@@ -207,10 +213,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(1);
 
+    let config = shared::config::AiomeConfig::default();
+    let db_pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(&config.db_path)
+        .await
+        .map_err(|e| {
+            tracing::warn!("Failed to connect to SQLite DB for OXP aggregation: {}", e);
+            e
+        })
+        .ok();
+
     let proof_service = proof_service::OxiLeanProofService::new(
         proof_auth_token,
         Duration::from_secs(proof_timeout_secs),
         Arc::new(tokio::sync::Semaphore::new(proof_semaphore_permits)),
+        db_pool,
     );
 
     // Setup health check server (Threat #38 mitigation)

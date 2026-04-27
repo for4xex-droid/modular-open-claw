@@ -9,6 +9,12 @@ description: リリース前の最終セキュリティ・衛生チェック。p
 ## ステップ 0: ロールバック計画の存在確認
 このリリースに失敗した場合の「引き返し方（Feature Flagの無効化、`git revert`、DBダウングレード等）」がイシューやPRに明記されているか確認すること。ない場合はリリースを停止。
 
+## ステップ 0.5: Sovereign Verifier DAG チェック
+```bash
+python3 scripts/enforce_dag.py
+```
+Exit code 0 (DAG Topology is clean) であることを確認。違反があればリリースを中止する。
+
 ## ステップ 1: シークレットスキャン
 ```bash
 gitleaks detect -v 2>&1 | tail -5

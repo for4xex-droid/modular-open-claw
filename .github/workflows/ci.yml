@@ -17,8 +17,23 @@ permissions:
   contents: read
 
 jobs:
+  dag-enforce:
+    name: The Sovereign Verifier (DAG Enforcement)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Enforce Hexagonal DAG
+        run: python3 scripts/enforce_dag.py
+
   test:
     name: Test & Lint
+    needs: [dag-enforce]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

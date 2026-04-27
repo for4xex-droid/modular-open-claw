@@ -124,14 +124,23 @@ impl McpClient {
 
         // Use SafeCommandBuilder for async I/O and security
         // Order matters: env_clear → safe system vars → user envs (user can override)
-        let mut builder = infrastructure::security::SafeCommandBuilder::new(cmd).args(args);
+        let mut builder = infrastructure::security::SafeCommandBuilder::new(cmd)
+            .args(args)
+            .profile(aiome_core_contracts::security::SandboxProfile::McpServer);
 
         // (P-3b) Re-inject essential safe environment variables for proper operation.
         for var_name in MCP_SAFE_ENV_VARS {
             builder = builder.env_passthrough(*var_name);
         }
 
-        let mut command = builder.build_internal()?;
+        let manifest = aiome_core_contracts::security::PermissionManifest {
+            allow_shell_execution: true,
+            allow_filesystem_write: true, // Legacy behavior; ideally should be restricted via manifest in future
+            allow_network: true,
+            ..Default::default()
+        };
+
+        let mut command = builder.build(manifest)?;
 
         // (P-3) User-defined envs applied LAST so they can override system defaults
         // (e.g., custom PATH for a specific Python venv)

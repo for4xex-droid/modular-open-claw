@@ -400,6 +400,7 @@ name = "api-server"
 version = "0.1.0"
 dependencies = [
  "aiome-commerce",
+ "aiome-contracts",
  "aiome-core",
  "aiome-core-contracts",
  "anyhow",
@@ -450,6 +451,7 @@ dependencies = [
  "tokio-stream",
  "tokio-tungstenite 0.28.0",
  "tokio-util",
+ "tonic",
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
@@ -5866,6 +5868,7 @@ name = "infrastructure"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "aiome-contracts",
  "aiome-core",
  "aiome-core-contracts",
  "ammonia",
@@ -10292,10 +10295,12 @@ dependencies = [
  "base64 0.22.1",
  "hex",
  "oxilean-kernel",
+ "rand 0.8.5",
  "reqwest 0.12.28",
  "serde_json",
  "sha2 0.10.9",
  "shared",
+ "sqlx",
  "tokio",
  "tokio-stream",
  "tonic",

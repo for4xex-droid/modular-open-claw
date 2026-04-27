@@ -75,6 +75,8 @@ pub enum AcceptanceCriteria {
         min_score: f32,
         model: Option<String>,
     },
+    /// OxiLean Formal Verification 基準
+    OxiLeanProof { required_oxp: u32 },
 }
 
 /// インテント（依頼の欲求表明）：AIがブロードキャストする
@@ -166,3 +168,27 @@ pub trait GigEngine: Send + Sync {
 pub struct UnspentEscrow(pub String);
 pub struct SpentEscrow(pub String);
 pub struct RefundedEscrow(pub String);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_acceptance_criteria_oxilean_proof() {
+        let json_str = r#"
+        {
+            "type": "OxiLeanProof",
+            "config": {
+                "required_oxp": 900
+            }
+        }
+        "#;
+
+        let criteria: AcceptanceCriteria = serde_json::from_str(json_str).expect("Failed to parse");
+        if let AcceptanceCriteria::OxiLeanProof { required_oxp } = criteria {
+            assert_eq!(required_oxp, 900);
+        } else {
+            panic!("Expected OxiLeanProof variant");
+        }
+    }
+}

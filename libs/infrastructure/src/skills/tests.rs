@@ -25,7 +25,7 @@ mod tests {
             .expect("Failed to create manager")
             .with_limits(1024 * 1024, std::time::Duration::from_millis(500));
 
-        let verified = crate::skills::VerifiedSkill::promote("hello_skill".to_string());
+        let verified = crate::skills::VerifiedSkill::new_for_test("hello_skill".to_string());
         let result = manager
             .call_skill(&verified, "test_timeout", "", None)
             .await;
@@ -49,7 +49,7 @@ mod tests {
         let mut configs = std::collections::HashMap::new();
         configs.insert("api_key".to_string(), "SECRET_TOKEN_123".to_string());
 
-        let verified = crate::skills::VerifiedSkill::promote("hello_skill".to_string());
+        let verified = crate::skills::VerifiedSkill::new_for_test("hello_skill".to_string());
         let result = manager
             .call_skill(&verified, "test_config", "", Some(configs))
             .await
@@ -186,5 +186,32 @@ mod tests {
             metadata[0].allowed_hosts,
             vec!["api.example.com".to_string()]
         );
+    }
+
+    #[cfg(feature = "grpc")]
+    #[tokio::test]
+    async fn test_grpc_formal_proof_gate_empty_token_rejection() {
+        use crate::grpc_proof_gate::GrpcFormalProofGate;
+        use aiome_contracts::proof::FormalProofGate;
+        use aiome_core_contracts::AiomeError;
+
+        // Step 2: Negative Test (異常注入)
+        // 意図的に空の auth_token を注入し、gRPC通信前にブロックされることを確認する。
+        let endpoint = tonic::transport::Endpoint::from_static("http://[::1]:50051");
+        let channel = endpoint.connect_lazy();
+
+        let gate = GrpcFormalProofGate::new(channel, "".to_string());
+
+        let result = gate.verify_skill("dummy_skill", "dummy_proof").await;
+
+        assert!(result.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = result {
+            assert!(reason.contains("A2A_AUTH_TOKEN is empty"));
+        } else {
+            panic!(
+                "Expected Infrastructure error due to empty token, got: {:?}",
+                result
+            );
+        }
     }
 }

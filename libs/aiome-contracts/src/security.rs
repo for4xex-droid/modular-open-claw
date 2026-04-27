@@ -39,6 +39,8 @@ pub enum SandboxProfile {
     Strict,
     /// LoRA 学習用（HuggingFace などの一部ドメインのみ透過 + 長時間実行可）
     LoraTraining,
+    /// MCP サーバー用（ネットワーク許可、ファイル書き込みはマニフェストに従う）
+    McpServer,
 }
 
 /// ⛓️ RuntimeJail

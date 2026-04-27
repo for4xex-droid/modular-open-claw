@@ -29,6 +29,7 @@ pub mod karma;
 pub mod lora;
 pub mod lora_market;
 pub mod model_setup;
+pub mod proof_verifier;
 pub mod quality_gate;
 pub mod security;
 pub mod settings;

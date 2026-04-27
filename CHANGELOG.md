@@ -1,6 +1,15 @@
 ## [Unreleased]
 
 ### Added
+- **Sovereign Verification Pipeline Hardening (Phase 1)**:
+  - **TypeState Security Enforcement**: Eliminated `promote_internal` bypass in `WasmSkillManager::validate_skill_logic`. Enforced strict TypeState progression where `UnverifiedSkill` must undergo deterministic `dry_run_skill` trace quarantine via `.verify()` before promotion to `VerifiedSkill`.
+  - **FormalProofGate DI**: Implemented `GrpcFormalProofGate` and injected it via DI to completely isolate `proof_verifier.rs` (Presentation layer) from inter-process communication logic. Added rigorous Negative Testing to block unauthenticated gRPC transmissions when `A2A_AUTH_TOKEN` is empty.
+  - **Database Decoupling**: Refactored `proof_verifier.rs` to persist `oxilean_verified` state via the newly injected `GigMetadataUpdater` (`DbGigUpdater`), discarding raw DB accesses and correctly propagating `AppError::internal` to prevent silent inconsistencies on failure.
+  - **Sanitized Test Sandboxing**: Cleaned up integration tests (`api_integration_tests.rs`) to securely initialize `AppState` with a `MockFormalProofGate` and an isolated `DbGigUpdater` running on in-memory SQLite instances.
+- **OxiLean Security Pipeline Hardening**:
+  - **Rate Limiting Integration**: Added a rigorous 1 req / 10s rate limiter using `tower::ServiceBuilder` to the `/api/skills/verify-proof` endpoint in `router.rs` to protect the OxiLean verification pipeline against DoS and timing side-channel attacks.
+  - **OpenAPI Schema Sync**: Synchronized the new `verify_skill_proof` endpoint and its associated request/response structs into the `ApiDoc` OpenAPI schema in `api.rs`.
+
 - **AST-Driven Security Pipeline Integration (Cross-Repo)**: `nurture_auditor.py` (Patch 10: RUST_FQP_PATTERN) and `taint_scanner.py` have been fully integrated into the Aiome repository.
   - Integrated `taint_scanner.py --ci` into `deep-scan.sh` to enforce automated fail-fast security gates for Taint Route (Source -> Sink) reachability.
   - Hardened scanner coverage by injecting Aiome-specific Sink patterns (`#[napi]`, `stripe::Client`).

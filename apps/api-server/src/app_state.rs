@@ -163,6 +163,9 @@ pub struct AppState {
     pub oxilean_power: Arc<std::sync::atomic::AtomicU32>,
     // --- Phase RLM ---
     pub rlm_client: Component<Arc<dyn aiome_core_contracts::rlm::RlmProvider>>,
+    // --- Phase 1 Verification ---
+    pub formal_proof_gate: Component<Arc<dyn aiome_contracts::proof::FormalProofGate>>,
+    pub gig_updater: Component<Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>>,
 }
 
 impl AppState {

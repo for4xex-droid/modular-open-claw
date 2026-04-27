@@ -91,6 +91,10 @@ use shared::health::HealthMonitor;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    if std::env::var("CELL_ID").unwrap_or_default().is_empty() {
+        panic!("🚨 FATAL: CELL_ID is not set! The Sovereign Verifier architecture requires strict cellular isolation. No identity = No survival.");
+    }
+
     let mut boot_ctx = crate::bootstrap::boot_sequence().await?;
     let state = boot_ctx.state;
     let plugin_registry = boot_ctx.plugin_registry;

@@ -783,6 +783,50 @@
         ]
       }
     },
+    "/api/skills/verify-proof": {
+      "post": {
+        "tags": [
+          "crate::routes::proof_verifier"
+        ],
+        "operationId": "verify_skill_proof",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyProofRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Proof verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyProofResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid skill name"
+          },
+          "404": {
+            "description": "Skill not found"
+          },
+          "500": {
+            "description": "Internal error"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/synergy/graph": {
       "get": {
         "tags": [
@@ -3546,6 +3590,36 @@
                 ]
               }
             }
+          },
+          {
+            "type": "object",
+            "description": "OxiLean Formal Verification 基準",
+            "required": [
+              "config",
+              "type"
+            ],
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "OxiLean Formal Verification 基準",
+                "required": [
+                  "required_oxp"
+                ],
+                "properties": {
+                  "required_oxp": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "OxiLeanProof"
+                ]
+              }
+            }
           }
         ],
         "description": "納品検収基準（The Immutable Gateway の審査エンジン）"
@@ -5694,6 +5768,36 @@
           "score": {
             "type": "number",
             "format": "float"
+          }
+        }
+      },
+      "VerifyProofRequest": {
+        "type": "object",
+        "required": [
+          "skill_name",
+          "proof_spec_b64"
+        ],
+        "properties": {
+          "proof_spec_b64": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyProofResponse": {
+        "type": "object",
+        "required": [
+          "is_valid",
+          "message"
+        ],
+        "properties": {
+          "is_valid": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
           }
         }
       },

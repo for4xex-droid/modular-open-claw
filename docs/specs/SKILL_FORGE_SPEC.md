@@ -14,8 +14,8 @@
 2.  **設計と実装 (Forge)**: `SkillForge` が Oracle LLM に対して、特定の PDK 制約と「鉄の掟」を遵守した Rust コードの生成を依頼する。
 3.  **セキュリティ監査 (Audit)**: 生成、またはインポートされたソースコードは、コンパイル前に `Cleanroom` (Oracle LLM) による多角的なセキュリティ監査を受け、Vampire Attack や悪意あるロジックの混入をチェックする。
 4.  **隔離ビルド (Compile)**: 監査を通過したコードは `/tmp` 下の UUID フォルダで、最小限の依存関係を持つ `skill_generator` テンプレートを用いて `wasm32-wasip1` ターゲットでビルドされる。
-4.  **検証とデプロイ (Load)**: ビルドが成功すると、WASM ファイルは `workspace/skills/` に配置され、`WasmSkillManager` がこれをホットロードする。
-5.  **実行 (Execute)**: ロードされたスキルは WASI サンドボックス内で、秒単位のタイムアウトとメモリ制限、ネットワークホワイトリスト管理の下で実行される。さらに **Phase 3** にて、パス・トラバーサル防御および `SkillArena` による実行前後の Culling（Fail Rate 等に基づく MoE Routing 淘汰）フィードバックループが統合されている。
+5.  **検証とデプロイ (Load)**: ビルドが成功すると、WASM ファイルは `workspace/skills/` に配置される。`WasmSkillManager` においては TypeState パターンによる厳格な検疫（`UnverifiedSkill::verify` を通じた Deterministic Tracer 実行）を通過したもののみが `VerifiedSkill` としてホットロードされる。
+6.  **実行 (Execute)**: ロードされたスキルは WASI サンドボックス内で、秒単位のタイムアウトとメモリ制限、ネットワークホワイトリスト管理の下で実行される。さらに **Phase 3** にて、パス・トラバーサル防御および `SkillArena` による実行前後の Culling（Fail Rate 等に基づく MoE Routing 淘汰）フィードバックループが統合されている。
 
 ### 2. 構成コンポーネント
 

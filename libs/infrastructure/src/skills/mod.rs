@@ -50,7 +50,7 @@ pub struct VerifiedSkill {
 impl VerifiedSkill {
     /// Internal constructor for the infrastructure crate to promote unverified skills.
     /// This ensures mathematical safety of the TypeState pattern.
-    pub fn promote(name: String) -> Self {
+    pub(crate) fn promote_internal(name: String) -> Self {
         Self { name }
     }
 
@@ -78,7 +78,7 @@ impl UnverifiedSkill {
             .dry_run_skill(&self.name, &self.input_test_payload)
             .await?;
         if is_safe {
-            Ok(VerifiedSkill::promote(self.name))
+            Ok(VerifiedSkill::promote_internal(self.name))
         } else {
             Err(format!(
                 "Skill {} failed the deterministic dry-run quarantine",
@@ -156,14 +156,14 @@ impl WasmSkillManager {
             allowed_root,
             vault_path: None,
             memory_limit_bytes: 10 * 1024 * 1024, // 10MB default
-            timeout: Duration::from_millis(5000), // 5s default
+            timeout: Duration::from_secs(5),      // デフォルト5秒
             wasm_cache: std::sync::RwLock::new(HashMap::new()),
             db_pool: None,
         })
     }
 
     /// DB 連携設定
-    pub fn with_database(mut self, pool: crate::db::DatabasePool) -> Self {
+    pub fn with_db_pool(mut self, pool: crate::db::DatabasePool) -> Self {
         self.db_pool = Some(pool);
         self
     }
@@ -504,9 +504,21 @@ impl WasmSkillManager {
                                         }
                                     }
 
+                                    let mut is_sensitive = false;
+                                    for component in final_path.components() {
+                                        if let std::path::Component::Normal(c) = component {
+                                            if let Some(s) = c.to_str() {
+                                                if s.starts_with(".env") || s == ".git" || s == "security.json" {
+                                                    is_sensitive = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     if !path_allowed {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Path traversal blocked." }).to_string()
-                                    } else if p_str.contains(".env") || p_str.contains(".git") || p_str.contains("config/security.json") {
+                                    } else if is_sensitive {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Access to sensitive internal file is forbidden." }).to_string()
                                     } else {
                                         if let Some(parent) = final_path.parent() { let _ = std::fs::create_dir_all(parent); }
@@ -659,7 +671,12 @@ impl WasmSkillManager {
         );
 
         // 内部的に VerifiedSkill を作成 (※validate_skill_logic は管理者のみが呼ぶため信頼済み)
-        let verified = VerifiedSkill::promote(skill_name.to_string());
+        // -> [Phase 1 Update] 管理者であっても強制的に検証パイプライン(dry-run)を通しTypeStateを保証する
+        let unverified = UnverifiedSkill {
+            name: skill_name.to_string(),
+            input_test_payload: test_input.to_string(),
+        };
+        let verified = unverified.verify(self).await?;
         let output = self
             .call_skill(&verified, "execute", test_input, None)
             .await?;

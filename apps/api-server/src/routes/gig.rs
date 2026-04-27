@@ -65,6 +65,7 @@ pub async fn publish_intent(
                     }
                 }
             }
+            AcceptanceCriteria::OxiLeanProof { .. } => {}
         }
     }
 

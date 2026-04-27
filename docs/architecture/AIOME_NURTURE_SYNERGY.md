@@ -786,7 +786,7 @@ gantt
 
 | クレート | シンボル数 | 代表的なシンボル |
 |---------|----------|---------------|
-| `aiome-contracts` | 17 | `LlmProvider`, `RlmProvider`, `CommerceEngine`, `GiftEngine`, `AiomePlugin`, `RuntimeJail` |
+| `aiome-contracts` | 19 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `FormalProofGate`, `GigMetadataUpdater` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
 | `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
 | `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger` |

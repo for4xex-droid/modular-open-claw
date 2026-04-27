@@ -16,6 +16,7 @@
 
 pub mod commerce;
 pub mod error;
+pub mod gig_metadata;
 pub mod llm;
 pub mod plugin;
 pub mod proof;

@@ -91,6 +91,15 @@
     - `api-server` の `AppState` に `proof_semaphore` フィールドを追加する場合、`api_integration_tests.rs` の `create_test_server()` (L489, L665) にもフィールド追加が必要。
     - `Dockerfile.shadow-worker` の `COPY . .` は `.dockerignore` に `vendor/` が含まれないため、ビルドコンテキストに自動的に含まれる。
 
+### 4. `verify-proof` API Endpoint Rate Limiting & Integration
+- **変更内容**:
+    - `apps/api-server/src/router.rs` [MODIFY]: `/api/skills/verify-proof` ルートに対し、1リクエスト/10秒の `tower::ServiceBuilder` レートリミット（`rate_limit_1_10s`）を適用。
+    - `apps/api-server/src/api_integration_tests.rs` [MODIFY]: `test_verify_skill_proof_endpoint_connected` 結合テストを追加し、404 (Skill WASM not found) と 429 (Too Many Requests) のエラーハンドリングを実証。
+    - `apps/api-server/src/api.rs` [MODIFY]: OpenAPI ドキュメントへ `verify_skill_proof` エンドポイントおよび入出力構造体をマージ。
+- **波及効果**:
+    - Aiome の主権的検証パイプライン（Sovereign Verification Pipeline）が DoS 攻撃に対して強固に保護された。
+    - 今後 `verify-proof` を呼び出す Project-Nurture フロントエンドや外部エージェントは、10秒間隔のポーリング・リトライ制御を実装する必要がある。
+
 ## Agentic AI Adaptation Framework (Reflexion x3)
 ### 1. AgentHook Architecture & NurtureAgentHook
 - **変更内容**:

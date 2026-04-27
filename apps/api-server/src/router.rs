@@ -520,6 +520,17 @@ pub fn build_app(
         )
         .route("/api/skills", get(routes::skill::list_skills))
         .route(
+            "/api/skills/verify-proof",
+            axum::routing::post(routes::proof_verifier::verify_skill_proof).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(10)), // 1 verify per 10s
+            ),
+        )
+        .route(
             "/api/skills/import",
             axum::routing::post(routes::skill::import_skill).route_layer(
                 tower::ServiceBuilder::new()

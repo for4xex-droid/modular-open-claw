@@ -235,11 +235,14 @@ mod tests {
         assert!(config
             .vault_path
             .to_string_lossy()
-            .contains("Application Support/com.aiome.nexus/vault"));
+            .contains("Application Support/com.aiome.nexus/test-cell/vault"));
 
         #[cfg(not(target_os = "macos"))]
         assert!(
-            config.vault_path.to_string_lossy().contains(".aiome/vault")
+            config
+                .vault_path
+                .to_string_lossy()
+                .contains(".aiome/test-cell/vault")
                 || config.vault_path.to_string_lossy().contains("aiome")
         );
     }

@@ -321,22 +321,30 @@ impl RuntimeJail for BastionGuard {
         let (program, mut sandbox_args) = if cfg!(target_os = "macos") && !self.is_system_internal {
             if std::path::Path::new("/usr/bin/sandbox-exec").exists() {
                 let profile_str = match profile {
-                    SandboxProfile::Strict => {
-                        "(version 1)
+                    SandboxProfile::Strict => "(version 1)
                          (allow default)
                          (deny network*)
                          (deny file-write*)"
-                    }
-                    SandboxProfile::PythonForge | SandboxProfile::WasmRun => {
-                        "(version 1)
+                        .to_string(),
+                    SandboxProfile::PythonForge | SandboxProfile::WasmRun => "(version 1)
                          (allow default)
                          (deny network*)"
-                    }
-                    SandboxProfile::WasmBuild | SandboxProfile::ForgeBuild => {
-                        "(version 1)
+                        .to_string(),
+                    SandboxProfile::WasmBuild | SandboxProfile::ForgeBuild => "(version 1)
                          (allow default)"
+                        .to_string(),
+                    SandboxProfile::McpServer => {
+                        let mut profile =
+                            String::from("(version 1)\n                         (allow default)");
+                        if !self.manifest.allow_network {
+                            profile.push_str("\n                         (deny network*)");
+                        }
+                        if !self.manifest.allow_filesystem_write {
+                            profile.push_str("\n                         (deny file-write*)");
+                        }
+                        profile
                     }
-                    _ => "(version 1) (allow default)",
+                    _ => "(version 1) (allow default)".to_string(),
                 };
                 (
                     "sandbox-exec",
@@ -447,9 +455,19 @@ impl BastionGuard {
             if sandbox_exists {
                 let profile_str = match profile {
                     SandboxProfile::LoraTraining => {
-                        "(version 1)\n                         (allow default)\n                         (allow network-outbound (remote tcp \"*:443\"))\n                         (allow network-outbound (remote tcp \"*:80\"))\n                         (deny file-write* (regex #\"^/etc\"))\n                         (deny file-write* (regex #\"^/var\"))"
+                        "(version 1)\n                         (allow default)\n                         (allow network-outbound (remote tcp \"*:443\"))\n                         (allow network-outbound (remote tcp \"*:80\"))\n                         (deny file-write* (regex #\"^/etc\"))\n                         (deny file-write* (regex #\"^/var\"))".to_string()
                     }
-                    _ => "(version 1) (allow default)",
+                    SandboxProfile::McpServer => {
+                        let mut p = String::from("(version 1)\n                         (allow default)");
+                        if !self.manifest.allow_network {
+                            p.push_str("\n                         (deny network*)");
+                        }
+                        if !self.manifest.allow_filesystem_write {
+                            p.push_str("\n                         (deny file-write*)");
+                        }
+                        p
+                    }
+                    _ => "(version 1) (allow default)".to_string(),
                 };
                 return (
                     "sandbox-exec".to_string(),
@@ -822,6 +840,28 @@ mod tests {
         if let Err(AiomeError::Infrastructure { reason }) = res {
             assert!(!reason.contains("not in the whitelist"));
         }
+    }
+
+    #[tokio::test]
+    async fn test_sandbox_profile_mcp_server() {
+        std::env::set_var("CELL_ID", "test_cell");
+        // Test that SandboxProfile::McpServer properly limits file access but allows network
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            allow_network: true,
+            allow_filesystem_write: false,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+
+        // This should use the new McpServer profile logic
+        let mut cmd = guard
+            .build_safe_command_args("ls", vec![], SandboxProfile::McpServer)
+            .expect("Failed to build command args");
+
+        // We just ensure it builds successfully.
+        // The actual runsc profile validation is complex to test without runsc,
+        // but we verify the profile is accepted and creates a valid builder.
     }
 
     #[tokio::test]

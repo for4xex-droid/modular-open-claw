@@ -8,6 +8,7 @@ edition = "2021"
 aiome_core = { path = "../core", package = "aiome-core" }
 soul = { path = "../soul" }
 aiome-core-contracts = { workspace = true }
+aiome-contracts = { workspace = true }
 # tuning = { path = "../tuning" } (Moved to commercial repo)
 shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["sqlite", "postgres", "runtime-tokio-rustls"] }

@@ -21,6 +21,9 @@ reqwest = { workspace = true }
 aiome-core = { path = "../../libs/core" }
 shared = { path = "../../libs/shared" }
 oxilean-kernel = { path = "../../vendor/oxilean-kernel" }
+rand = { workspace = true }
+
+sqlx = { workspace = true }
 
 [lints]
 workspace = true

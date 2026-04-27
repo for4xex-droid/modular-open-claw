@@ -311,9 +311,29 @@ impl McpServer {
                 }
 
                 if let Some(manager) = &self.wasm_manager {
-                    let verified =
-                        infrastructure::skills::VerifiedSkill::promote(skill_name.to_string());
+                    // SEC-1: Enforce TypeState Pattern
+                    // Do NOT bypass dry-run. Always verify before executing.
                     let args_str = serde_json::to_string(&arguments).unwrap_or_default();
+                    let unverified = infrastructure::skills::UnverifiedSkill {
+                        name: skill_name.to_string(),
+                        input_test_payload: args_str.clone(),
+                    };
+
+                    let verified = match unverified.verify(manager).await {
+                        Ok(v) => v,
+                        Err(e) => {
+                            tracing::warn!("Skill {} failed verification: {}", skill_name, e);
+                            if let Some(arena) = &self.skill_arena {
+                                arena.record_outcome(skill_name, false, 0, -10.0).await;
+                            }
+                            return JsonRpcResponse::error(
+                                id,
+                                -32603,
+                                format!("Skill verification failed: {}", e),
+                                None,
+                            );
+                        }
+                    };
 
                     let start_time = std::time::Instant::now();
 

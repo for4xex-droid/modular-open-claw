@@ -380,12 +380,25 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let forge_semaphore = Arc::new(tokio::sync::Semaphore::new(2));
     let compute_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
 
+    let formal_proof_gate = {
+        let port = std::env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
+        let addr = format!("http://localhost:{}", port);
+        let endpoint = tonic::transport::Endpoint::from_shared(addr)
+            .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;
+        let channel = endpoint.connect_lazy();
+        let token = std::env::var("A2A_AUTH_TOKEN").unwrap_or_default();
+        Arc::new(infrastructure::grpc_proof_gate::GrpcFormalProofGate::new(
+            channel, token,
+        )) as Arc<dyn aiome_contracts::proof::FormalProofGate>
+    };
+
     let wasm_skill_manager = Arc::new(
         infrastructure::skills::WasmSkillManager::new(
             resolver.resolve("wasm_storage"),
             resolver.resolve("sandbox"),
         )
-        .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?,
+        .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?
+        .with_db_pool(job_queue.get_pool().clone()),
     );
 
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
@@ -1293,6 +1306,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: nurture_secret_raw.clone(),
         rlm_client: Component::new(rlm_client_arc),
+        formal_proof_gate: Component::new(formal_proof_gate),
+        gig_updater: Component::new(Arc::new(
+            infrastructure::gig_metadata_updater::DbGigUpdater::new(
+                job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+            ),
+        )
+            as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

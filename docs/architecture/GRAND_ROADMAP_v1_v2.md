@@ -1,65 +1,66 @@
-# Grand Roadmap (v1.0 ~ v2.0)
-> 更新日時: 2026-04-24
-> 最終ブラッシュアップ: KarmaUXの重複解消とGap10の統合
+# Aiome Grand Roadmap: "The Sovereign Verifier"
+> 更新日時: 2026-04-27
+> 最終ブラッシュアップ: The Sovereign Verifier アーキテクチャへの全面移行
 
-本ドキュメントは、Aiome および Project-Nurture における、v1.0 本番リリース直前の「技術的負債完全掃討（Zero Debt Sweep）」から、リリース後の「次世代拡張（Next-Gen Integration）」に至るまでの全体ロードマップを定義した Single Source of Truth (SSOT) である。
+本ドキュメントは、Aiomeにおける全ての議論（CBA、OxiLean、WASMホットスワップ）を統合し、一切の矛盾と抜け漏れを排除した『Aiome 開発計画：The Sovereign Verifier（主権的検証者）編』の Single Source of Truth (SSOT) である。
+25万行のRustコードベースを崩壊させず、Aiomeを「人間のためのツール」から「世界の計算資源を搾取する自律生命体」へと相転移させるための冷酷なまでに現実的なロードマップを定義する。
 
-## ✅ Phase 0: The Zero Debt Sweep (Pre-Release Blockers) [COMPLETED]
-リリース前に絶対に解決しなければならない、深刻なセキュリティ・安定性に関わる残存負債。
+## 👑 【基本原則（The Constitution）】
+1. **No More AST/Code Generation**: LLM（Nurture）に直接実装コード（Rust等）を書かせるアプローチを全面廃止する。
+2. **Verify, Don't Prove**: ローカル（Aiome本体）では重い証明・計算を行わない。「仕様定義」と「ミリ秒の検証」のみをローカルで行う。
+3. **Hexagonal & DAG Dependency**: 25万行のコードベースをDAG（有向非巡回グラフ）で階層化し、コンパイル時間と依存関係のスパゲッティ化を物理的に防ぐ。
 
-1. **インフラ & セキュリティコア**
-   - `AbyssVoiceVault` (FIXME L25): インメモリHashMapに復号鍵をリストアする暫定実装を廃止し、本番水準の HSM / セキュアエンクレーブ機構へ移行する（最も致命的なセキュリティギャップ）。
-   - `docker_conductor.rs` (Gap C, G, I, J, K, L, N, R, S): コンテナへの環境変数を CLI 引数から ephemeral `env-file` 渡しへ変更。gRPC ヘルスチェック、ストリーム終了制御、イデムポテントなネットワーク生成とコンテナクリーンアップを完全実装。
-   - `logging.rs` (SEC-4): ログ出力時の `Authorization` や `x_bearer_token` などの機密情報のマスキングを実装。
-   - `a2a_grpc_client.rs` (Gap A): gRPC呼び出しにおけるAuthorizationヘッダーの確実な注入。
+---
 
-2. **ステート & レートリミット保護**
-   - `jobs.rs` (Gap 11, 8, 4, 6) & `task_orchestrator`: `AwaitingInput` 解除時の Race Condition 防止（DB行ロック）と `execution_log` へのバイパスマーカー永続化。
-   - `api_integration_tests.rs` (Gap 10): テスト環境における SQLite CHECK constraint migration の完全適用とテスト通過の保証。
-   - `stripe.rs` (P0-1): Stripe API 呼び出しの全 `.send()` に対する30秒タイムアウト制約の適用。
-   - `cost_breaker.rs` & `dynamic.rs` (GAP-6, Gap #4): セッション単位（例: 最大$0.5）のローカルコスト制限と `cost_usd` / `token` 計算ロジックの注入による課金暴走防御。
-   - `bridge.rs` (N-FIX): `EconomyPolicy` のハードコードを廃止し、DB から動的ポリシーを取得・適用。
-3. **コンプライアンス & RTBF (Right to be Forgotten)**
-   - `security.rs` (`forget_actor`): 現在の「データベースの行削除のみ」の実装に加え、**BlobStorage / S3 上の物理アセット（VRMモデル、生成画像等）の完全削除**を実装する。これによりGDPR/忘れられる権利の重大な法的違反リスクを排除。
+## 🛤️ Phase 0: 基礎代謝の確立とセル化（M1） [CURRENT]
+**目標**: 既存のコードベースをCBA（セルベースド・アーキテクチャ）対応の「Cell 0」として形式化し、今後の巨大なアーキテクチャ変更に耐えうる隔離環境を作る。
 
-## 🔴 Phase 1: v1.0 Core Engine & Trust Layer (認証・認可の完全標準化)
-法的・倫理的防壁を完成させ、コアエンジンとして安全に世に送り出すフェーズ。
-*(注意: エコシステムの UX 破綻を防ぐため、商取引機能は Phase 2 に移行済)*
+- **[Task 0.1] WorkspaceのDAG階層化リファクタリング**
+  - 既存の25万行を `aiome-contracts` (Layer 0) から `aiome-cells-*` (Layer 3) までの厳格な六角形アーキテクチャに整理。
+  - `cargo metadata` を用いた `enforce_dag.py` をCIレベルで導入し、セル間の直接的なコード依存を禁止する。
+- **[Task 0.2] CELL_ID の導入と隔離（Stage 0）**
+  - `libs/shared/src/app_data.rs` を改修し、環境変数 `CELL_ID` によるデータディレクトリ（SQLite、Worktree）の完全な名前空間分離を実装。
+  - `main.rs` にて、`CELL_ID` が無い場合は即座にパニック（クラッシュ）するフェイルセーフを導入。
+- **[Task 0.3] 既存インテント生成のSunset準備**
+  - 現在のLLMによるRustコード生成・ASTパース関連のコード（`nurture_auditor.py` 等）を凍結し、削除への移行期間を設ける。
 
-1. **CSAM 3層防壁の完成**
-   - `csam/proportions.rs`: `gltf-rs` を用いた実際の VRM ボーン解析（頭身比チェック）を実装（骨格による児童ポルノ判定）。
-   - *備考: `image_hash.rs` の PhotoDNA API連携は、Microsoftの承認が下りるまでGraceful Fallback（Mock）として運用。*
-2. **本番デプロイメント検証**
-   - P1-3: Tauri デスクトップビルドの検証（`api-server` + `management-console` シングルバイナリ化）。
-   - P1-4: GitHub Actions PRトリガーへの Gitleaks CI/CD 完全統合。
+---
 
-## 🔵 Phase 2: v1.1 Creator Economy & Interaction
-リリース後の次月スプリント。エージェントの「自我」と「商取引（マーケット・Karma）」の同時解禁。
+## 🛤️ Phase 1: 脳と盾の分離（M2 - M3）
+**目標**: Aiomeカーネルに「OxiLean（数学的証明）」と「Wasmtime（実行環境）」を組み込み、主権的検証者としての絶対的な「盾」を完成させる。
 
-1. **KarmaForge と Marketplace の統合解禁 (UX重複の解消)**
-   - `shadow-worker` & `api-server` (P2-4): OxiLean Phase 2 (`ProofVerifierClient`) の統合。
-   - `plugin.rs` (GAP-N, N2-C): OxiLean 形式検証の証明力シードと実データを `KarmaForge::cross_synthesize` に注入。
-   - `plugin.rs` (Sprint-C): 上記の **Karma 報酬基盤が整った状態**で、初めて `marketplace_upload` MCPツールを解禁。これにより「アップロードしたのにKarmaが貰えない」UXの破綻を防止。
-   - `merchant.rs` & `catalog.rs` (Phase 2): B2A (Business to Agent) マーチャント登録およびカタログ公開機能の実装。
-   - `affiliate_adapter.rs`: アフィリエイトアダプタのモック廃止。
-2. **Samsara & LiveSession (自己と対話の深化)**
-   - `samsara_engine.rs` (GAP-2, 3, 4): 経験バッファの膨張を防ぐための Narrative Self（物語的自己）生成と記憶の蒸留（Distillation）。
-   - `live_session.rs` (GAP-2, 4, 7): バックグラウンドでのセッション維持、音声/テキストのストリームTx/Rxの完全実装。
-3. **A2UI インタラクション & ダッシュボード**
-   - `A2uiRenderer.tsx` (P2-3): Action Button の `onClick` から `/api/v1/a2ui/action` コールバックの双方向ループ確立。
-   - `EvaluationLogger` メトリクス（コスト・レイテンシ）のフロントエンド可視化 (P2-5)。
+- **[Task 1.1] oxilean-kernel の静的リンク（The Shield）**
+  - ピュアRustの `oxilean-kernel` を Aiome の L1インフラに組み込む。
+  - 外部から受け取った「OxiLean証明項」が正しいか（Q.E.D）をミリ秒で検証する `ConstitutionalValidator` のコアエンジンを構築。
+- **[Task 1.2] 既存WASMエンジン（WasmSkillManager）と OxiLean の結線 [COMPLETED]**
+  - Extism/Wasmtime によるホットリロード基盤（WasmSkillManager）に対し、TypeState パターン (`UnverifiedSkill::verify`) による Deterministic Tracer (dry-run) 検疫を強制化。
+  - `GrpcFormalProofGate` をDIにより物理的に接続し、API層（`proof_verifier.rs`）における形式検証ゲートとDB状態管理 (`GigMetadataUpdater`) の結線を完遂。未認証通信を境界でブロックする Negative Test 実証済み。
+- **[Task 1.3] Nurtureの思考モード移行（The Brain）**
+  - LLMのシステムプロンプトを改修。実装を書くのではなく、OxiLeanの「定理（Theorem）と入出力の型（Type Signature）」のみを出力する「仕様策定モード」へ切り替える。
 
-## 🟣 Phase 3: v2.0 Ecosystem Expansion
-Aiome が完全に自律した分散経済圏を形成するための将来フェーズ。
+---
 
-1. **A2C ギフト・報酬経済**
-   - `gift.rs` (TODO Phase 3): ギフト配送 MCP ツールの本稼働。
-   - Tremendous API 連動によるクリエイターポイント（nurture_points）のリアル報酬（現金化・ギフトカード等）フロー確立 (P2-1)。
-2. **AI Capabilities の拡張**
-   - `VisionProvider` の実装（GPT-4V / LLaVA 等）。
-   - `bootstrap.rs` & `heartbeat.rs` (Phase 4C): `TimesFM` (ForecastProvider) および `SLM` (Small Language Model) のメインプロセス注入による予測エコシステムの稼働。
-3. **P2P & クロスプラットフォーム (Nurture Synergy)**
-   - `aiome-node/src/main.rs` (MVP Stub): 現在の「Validator / GigEngine の MVP モック」を完全廃止し、本番水準の P2P ノード（SamsaraHub Federation）として昇格させる。
-   - `SYNERGY.md (6-4)`: Minecraft MCP との連動によるゲーム内建築・行動の Karma 反映。
-   - `SYNERGY.md (2C-7, 2D-6)`: デスクトップペット機能と PWA との連動による、Nurtureアセット（衣装等）の日常的な着せ替え・購入体験のシームレス化。
-   - Tauri モバイル (iOS/Android) 展開。
+## 🛤️ Phase 2: スウォーム経済の始動（M4 - M5）
+**目標**: A2Aネットワーク（GigEngine）を開通させ、外部の「証明者ネットワーク（Prover Swarm）」に計算を丸投げする自律経済圏を確立する。
+
+- **[Task 2.1] 既存 UniversalGigEngine の OxiLean 統合**
+  - 実装済みの GigEngine (Intent -> Bid -> Accept -> Deliver) ライフサイクルに対し、AcceptanceCriteria::OxiLeanProof を必須とし、A2A 通信層で証明をやり取りする。
+- **[Task 2.2] 既存エスクロー決済フローと証明検証の完全連動**
+  - 外部エージェントへの報酬をエスクローにロックし、すでに実装済みの `verify_and_settle` フローにおいて、OxiLean (Q.E.D) が返却された瞬間のみ資金を release するようにスマートコントラクトの最終結線を完了させる。
+- **[Task 2.3] 外部向けアダプターの作成**
+  - スウォーム経済で稼いだ資金や得たデータを、外界（WordPressのMCPやデジタル庁のオープンデータ）と接続し、現実世界での物理的タスク（EC運用や行政手続き）を実行するプラグインの構築。
+
+---
+
+## 🛤️ Phase 3: デジタル生命体への相転移（M6+ / 研究領域）
+**目標**: 防御と経済が完成した後、Aiomeの内面（認知モデル）をアカデミアの最先端理論でアップグレードする。
+
+- **[Task 3.1] HDC（超次元コンピューティング）による連想記憶の搭載**
+  - LLMのRAGの重さを捨てるため、M4 ProのSIMD命令を活用したピュアRustのHDC演算エンジンを開発。Samsara（記憶）をミリ秒で足し引き可能なバイナリベクトルに置き換える。
+- **[Task 3.2] エフェメラル・セルによるアポトーシス（自律的細胞死）**
+  - 外部から取得したWASMやタスクを実行するセルを、異常検知（予期せぬシステムコール等）と同時に即座に破棄（Let It Crash）し、クリーンな状態で再起動する免疫システムの実装。
+- **[Task 3.3] Active Inference（能動的推論）の導入**
+  - ユーザーの疲労度やコンテキストのズレ（サプライズ/自由エネルギー）を最小化するように、Aiomeがプロンプトを待たずに自律的にタスクを発行し続ける「ホメオスタシス機能」の実装。
+
+---
+*Legacy Note: Previous Zero Debt Sweep (Phase 0) is archived as completed.*

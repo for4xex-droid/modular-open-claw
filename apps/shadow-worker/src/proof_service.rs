@@ -27,15 +27,23 @@ pub struct OxiLeanProofService {
     timeout: Duration,
     /// Concurrency limiter – prevents OxiLean from starving the LLM thread pool.
     semaphore: Arc<Semaphore>,
+    /// Database pool for fetching KarmaForge OXP aggregation.
+    db_pool: Option<sqlx::SqlitePool>,
 }
 
 impl OxiLeanProofService {
     /// Create with explicit configuration (production use).
-    pub fn new(auth_token: String, timeout: Duration, semaphore: Arc<Semaphore>) -> Self {
+    pub fn new(
+        auth_token: String,
+        timeout: Duration,
+        semaphore: Arc<Semaphore>,
+        db_pool: Option<sqlx::SqlitePool>,
+    ) -> Self {
         Self {
             auth_token,
             timeout,
             semaphore,
+            db_pool,
         }
     }
 }
@@ -138,6 +146,33 @@ impl ProofVerifier for OxiLeanProofService {
             }
         }
     }
+
+    async fn get_oxi_lean_status(
+        &self,
+        request: Request<aiome_core_contracts::a2a::internal::GetOxiLeanStatusRequest>,
+    ) -> Result<Response<aiome_core_contracts::a2a::internal::GetOxiLeanStatusResponse>, Status>
+    {
+        verify_auth(&request, &self.auth_token)?;
+
+        let pool = self
+            .db_pool
+            .as_ref()
+            .ok_or_else(|| Status::internal("Database connection not available"))?;
+
+        let row: (i64,) =
+            sqlx::query_as("SELECT COALESCE(SUM(success_count), 0) FROM skill_performance")
+                .fetch_one(pool)
+                .await
+                .map_err(|e| Status::internal(format!("KarmaForge aggregation failed: {}", e)))?;
+
+        // Calculate OXP (baseline 850, +5 per success, max 999)
+        let successes = row.0 as u32;
+        let current_oxp = 850 + std::cmp::min(successes * 5, 149);
+
+        Ok(Response::new(
+            aiome_core_contracts::a2a::internal::GetOxiLeanStatusResponse { current_oxp },
+        ))
+    }
 }
 
 // ─────────────────────────── Tests ───────────────────────────
@@ -153,7 +188,70 @@ mod tests {
             TEST_TOKEN.to_string(),
             Duration::from_secs(10),
             Arc::new(Semaphore::new(1)),
+            None,
         )
+    }
+
+    fn make_authed_status_request()
+    -> Request<aiome_core_contracts::a2a::internal::GetOxiLeanStatusRequest> {
+        let mut req = Request::new(aiome_core_contracts::a2a::internal::GetOxiLeanStatusRequest {});
+        req.metadata_mut().insert(
+            "authorization",
+            format!("Bearer {}", TEST_TOKEN).parse().unwrap(),
+        );
+        req
+    }
+
+    #[tokio::test]
+    async fn test_get_oxi_lean_status_db_not_connected() {
+        let service = test_service(); // db_pool is None
+        let response = service
+            .get_oxi_lean_status(make_authed_status_request())
+            .await;
+
+        assert!(response.is_err());
+        let status = response.unwrap_err();
+        assert_eq!(status.code(), tonic::Code::Internal);
+        assert!(
+            status
+                .message()
+                .contains("Database connection not available")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_oxi_lean_status_success() {
+        // Setup in-memory SQLite
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        sqlx::query("CREATE TABLE skill_performance (success_count INTEGER)")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO skill_performance (success_count) VALUES (5), (10)")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let service = OxiLeanProofService::new(
+            TEST_TOKEN.to_string(),
+            Duration::from_secs(10),
+            Arc::new(Semaphore::new(1)),
+            Some(pool),
+        );
+
+        let response = service
+            .get_oxi_lean_status(make_authed_status_request())
+            .await
+            .unwrap();
+        let inner = response.into_inner();
+
+        // 15 successes * 5 = 75. 850 + 75 = 925.
+        assert_eq!(inner.current_oxp, 925);
     }
 
     /// Create a request with valid authorization metadata.
@@ -161,6 +259,7 @@ mod tests {
         let mut req = Request::new(ProofRequest {
             skill_name: skill_name.to_string(),
             proof_spec_b64: String::new(),
+            wasm_hash: String::new(),
         });
         req.metadata_mut().insert(
             "authorization",
@@ -176,6 +275,7 @@ mod tests {
         Request::new(ProofRequest {
             skill_name: skill_name.to_string(),
             proof_spec_b64: String::new(),
+            wasm_hash: String::new(),
         })
     }
 
@@ -213,6 +313,7 @@ mod tests {
         let mut req = Request::new(ProofRequest {
             skill_name: "test_skill".to_string(),
             proof_spec_b64: String::new(),
+            wasm_hash: String::new(),
         });
         req.metadata_mut().insert(
             "authorization",
@@ -233,6 +334,7 @@ mod tests {
             TEST_TOKEN.to_string(),
             Duration::ZERO,
             Arc::new(Semaphore::new(1)),
+            None,
         );
         let response = service.verify_proof(make_authed_request("any_skill")).await;
 
@@ -262,6 +364,7 @@ mod tests {
             TEST_TOKEN.to_string(),
             Duration::from_millis(50),
             Arc::clone(&shared_sema),
+            None,
         );
 
         let response = tokio::time::timeout(

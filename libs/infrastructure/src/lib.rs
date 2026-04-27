@@ -96,9 +96,12 @@ pub mod dream_state;
 /// スキルの並列実行と評価
 pub mod arena_battle;
 pub mod forecast;
+/// 定期診断・プロアクティブ発火
+pub mod gig_metadata_updater;
 #[cfg(feature = "grpc")]
 pub mod grpc;
-/// 定期診断・プロアクティブ発火
+#[cfg(feature = "grpc")]
+pub mod grpc_proof_gate;
 pub mod heartbeat_wakeup;
 pub mod hierarchical_router;
 /// 脅威シグネチャ監視・遮断

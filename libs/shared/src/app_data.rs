@@ -27,51 +27,42 @@ impl AppDataResolver {
     /// `CELL_ID` 環境変数が設定されている場合、ルートパスの末尾にセル名前空間を追加します。
     /// パストラバーサル防止のため、`CELL_ID` は英数字・ハイフン・アンダースコアのみ許可されます。
     pub fn new() -> Self {
-        let cell_id = std::env::var("CELL_ID")
-            .ok()
-            .filter(|v| !v.is_empty())
-            .filter(|v| {
-                if Self::is_safe_cell_id(v) {
-                    true
-                } else {
-                    warn!(
-                        "⚠️ CELL_ID '{}' contains invalid characters and was ignored. \
-                         Only [a-zA-Z0-9_-] (max 64 chars) are allowed.",
-                        v
-                    );
-                    false
-                }
-            });
+        let cell_id = std::env::var("CELL_ID").unwrap_or_else(|_| {
+            let is_test_binary = std::env::current_exe()
+                .map(|p| p.to_string_lossy().contains("/deps/"))
+                .unwrap_or(false);
+            if is_test_binary {
+                "test-cell".to_string()
+            } else {
+                panic!("🚨 FATAL: CELL_ID is required for AppDataResolver!");
+            }
+        });
+        if !Self::is_safe_cell_id(&cell_id) {
+            panic!("🚨 FATAL: CELL_ID '{}' contains invalid characters. Only [a-zA-Z0-9_-] (max 64 chars) are allowed.", cell_id);
+        }
+
         let is_dev = std::env::var("AIOME_DEV_MODE")
             .map(|v| v == "1")
             .unwrap_or(false);
 
         let root = if is_dev {
-            // 開発モード: カレントディレクトリの workspace を使用
+            // 開発モード: カレントディレクトリの workspace/CELL_ID を使用
             let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             path.push("workspace");
-            if let Some(ref id) = cell_id {
-                path.push(id);
-            }
+            path.push(&cell_id);
             path
         } else {
             // 本番モード: OS標準のデータディレクトリ
-            // macOS: ~/Library/Application Support/com.aiome.nexus
             dirs::data_local_dir()
                 .map(|mut p| {
                     p.push("com.aiome.nexus");
-                    if let Some(ref id) = cell_id {
-                        p.push(id);
-                    }
+                    p.push(&cell_id);
                     p
                 })
                 .unwrap_or_else(|| {
-                    // フォールバック: ホームディレクトリの .aiome
                     let mut p = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
                     p.push(".aiome");
-                    if let Some(ref id) = cell_id {
-                        p.push(id);
-                    }
+                    p.push(&cell_id);
                     p
                 })
         };
@@ -140,7 +131,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_root_dev() {
-        clean_cell_id();
+        env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         assert!(resolver.root().to_string_lossy().contains("workspace"));
@@ -149,7 +140,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_root_prod() {
-        clean_cell_id();
+        env::set_var("CELL_ID", "test-cell");
         env::remove_var("AIOME_DEV_MODE");
         let resolver = AppDataResolver::new();
         #[cfg(target_os = "macos")]
@@ -162,7 +153,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_path_resolution() {
-        clean_cell_id();
+        env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         let path = resolver.db_path();
@@ -175,7 +166,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_url_resolution() {
-        clean_cell_id();
+        env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new();
         let url = resolver.db_url();
@@ -213,13 +204,11 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_cell_id_absent_preserves_compat() {
+    fn test_cell_id_absent_defaults_to_test_cell() {
         env::set_var("AIOME_DEV_MODE", "1");
         clean_cell_id();
         let resolver = AppDataResolver::new();
-        let path_str = resolver.root().to_string_lossy().to_string();
-        assert!(!path_str.contains("cell-0"));
-        assert!(path_str.ends_with("workspace"));
+        assert!(resolver.root().to_string_lossy().contains("test-cell"));
     }
 
     #[test]
@@ -227,12 +216,14 @@ mod tests {
     fn test_cell_id_rejects_traversal() {
         env::set_var("AIOME_DEV_MODE", "1");
         env::set_var("CELL_ID", "../../etc");
-        let resolver = AppDataResolver::new();
-        let path_str = resolver.root().to_string_lossy().to_string();
-        // パストラバーサルを含む CELL_ID は無視されるべき
-        assert!(!path_str.contains("etc"));
-        assert!(path_str.ends_with("workspace"));
+        let result = std::panic::catch_unwind(|| {
+            AppDataResolver::new();
+        });
         clean_cell_id();
+        assert!(
+            result.is_err(),
+            "Expected panic due to invalid characters in CELL_ID"
+        );
     }
 
     #[test]

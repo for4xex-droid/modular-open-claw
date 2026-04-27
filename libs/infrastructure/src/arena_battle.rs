@@ -68,9 +68,32 @@ impl ArenaBattle {
             self.provider.name()
         );
 
-        // 両方のスキルを実行
-        let skill_a_v = crate::skills::VerifiedSkill::promote(skill_a.to_string());
-        let skill_b_v = crate::skills::VerifiedSkill::promote(skill_b.to_string());
+        // 両方のスキルを検証してから実行
+        let unverified_a = crate::skills::UnverifiedSkill {
+            name: skill_a.to_string(),
+            input_test_payload: input.to_string(),
+        };
+        let unverified_b = crate::skills::UnverifiedSkill {
+            name: skill_b.to_string(),
+            input_test_payload: input.to_string(),
+        };
+
+        let skill_a_v = match unverified_a.verify(sm).await {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("❌ Skill A ({}) failed verification: {}", skill_a, e);
+                return Ok(Some(skill_b.to_string())); // Aが失格なのでBの勝利
+            }
+        };
+
+        let skill_b_v = match unverified_b.verify(sm).await {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("❌ Skill B ({}) failed verification: {}", skill_b, e);
+                return Ok(Some(skill_a.to_string())); // Bが失格なのでAの勝利
+            }
+        };
+
         let res_a = sm.call_skill(&skill_a_v, "call", input, None).await;
         let res_b = sm.call_skill(&skill_b_v, "call", input, None).await;
 

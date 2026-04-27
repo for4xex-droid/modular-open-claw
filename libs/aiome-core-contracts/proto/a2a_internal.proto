@@ -31,11 +31,19 @@ message TaskProgress {
 // OxiLean formal verification service inside shadow-worker.
 service ProofVerifier {
   rpc VerifyProof(ProofRequest) returns (ProofResult);
+  rpc GetOxiLeanStatus(GetOxiLeanStatusRequest) returns (GetOxiLeanStatusResponse);
+}
+
+message GetOxiLeanStatusRequest {}
+
+message GetOxiLeanStatusResponse {
+  uint32 current_oxp = 1;
 }
 
 message ProofRequest {
   string skill_name = 1;
   string proof_spec_b64 = 2; // base64 encoded CiC proof specification
+  string wasm_hash = 3;      // cryptographically bound WASM hash
 }
 
 message ProofResult {

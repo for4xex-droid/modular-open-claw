@@ -400,6 +400,20 @@ impl aiome_core_contracts::traits::LoraEngine for MockLoraEngine {
     }
 }
 
+pub struct MockFormalProofGate;
+
+#[async_trait::async_trait]
+impl aiome_contracts::proof::FormalProofGate for MockFormalProofGate {
+    async fn verify_skill(
+        &self,
+        _skill_name: &str,
+        proof_spec_b64: &str,
+    ) -> Result<bool, aiome_contracts::error::AiomeError> {
+        // Return true if proof is not empty, for testing
+        Ok(!proof_spec_b64.is_empty())
+    }
+}
+
 pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
@@ -779,6 +793,19 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::skills::skill_arena::SkillArena::new(),
         )),
         rlm_client: Component::default(),
+        formal_proof_gate: Component::new(
+            Arc::new(MockFormalProofGate) as Arc<dyn aiome_contracts::proof::FormalProofGate>
+        ),
+        gig_updater: Component::new(Arc::new(
+            infrastructure::gig_metadata_updater::DbGigUpdater::new(
+                job_queue
+                    .get_pool()
+                    .get_sqlite_pool()
+                    .cloned()
+                    .expect("SQLite pool required for gig_updater"),
+            ),
+        )
+            as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1247,6 +1274,38 @@ async fn test_lora_training_status() {
 
     let json = resp.json::<serde_json::Value>();
     assert_eq!(json.get("status").unwrap().as_str().unwrap(), "Completed");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_verify_skill_proof_endpoint_connected() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "skill_name": "test_skill",
+        "proof_spec_b64": "ZHVtbXlfcHJvb2Y=",
+        "wasm_hash": "hash123"
+    });
+
+    let resp = server
+        .post("/api/skills/verify-proof")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::NOT_FOUND,
+        "Handler should return 404 when WASM not found"
+    );
+
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json["code"], "NotFound");
+    assert!(json["error"]
+        .as_str()
+        .unwrap()
+        .contains("Skill WASM not found"));
 }
 
 #[serial]
