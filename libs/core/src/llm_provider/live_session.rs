@@ -53,22 +53,25 @@ impl LiveSessionProvider {
 
                 for id in to_remove {
                     info!(
-                        "🧹 [LiveSession] Background cleanup: waiting for graceful shutdown of {}",
+                        "🧹 [LiveSession] Background cleanup: draining session {}",
                         id
                     );
-                    // GAP-7 Fix: 未完了タスクの完了を待機 (Graceful Cleanup)
-                    // If the websocket sender has closed, generative tasks holding a clone of the sender
-                    // will fail on their next `send()` and initiate their own shutdown.
-                    // We yield execution here to give those tasks time to cleanly flush and drop resources.
-                    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
-                        tokio::task::yield_now().await;
-                        // Future: integrate with a session-scoped JoinSet to truly await generative tasks
-                    })
-                    .await;
+                    // GAP-7 Fix: Graceful Cleanup — Drain Window
+                    //
+                    // When tx.is_closed() is detected, generative tasks still holding
+                    // cloned senders will fail on their next send() and begin teardown.
+                    // We provide a bounded drain window (up to 2 seconds) so those
+                    // tasks can flush buffers and drop resources before we evict the
+                    // session from the map.
+                    //
+                    // NOTE: This is a heuristic drain, not a precise await on task
+                    // handles. For deterministic shutdown, integrate a per-session
+                    // JoinSet and replace this sleep with `join_set.join_all()`.
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
                     let mut s = sessions_clone.lock().await;
                     s.remove(&id);
-                    info!("🛑 [LiveSession] Session {} successfully cleaned up.", id);
+                    info!("🛑 [LiveSession] Session {} cleaned up.", id);
                 }
             }
         });

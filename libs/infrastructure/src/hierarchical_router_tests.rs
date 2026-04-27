@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use crate::hierarchical_router::HierarchicalRouter;
     use crate::test_utils::job_queue_mock::GlobalMockLlm;
     use std::sync::Arc;
