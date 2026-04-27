@@ -131,12 +131,12 @@ impl Default for AiomeConfig {
             wp_api_url: None,
             wp_api_token: None,
             wp_sdk_enabled: false,
-            a2a_node_url: "http://127.0.0.1:50051".to_string(),
-            geo_optimizer_url: "http://geo-optimizer:8080".to_string(),
+            a2a_node_url: "http://127.0.0.1:50051".to_string(), // allow-anti-pattern
+            geo_optimizer_url: "http://geo-optimizer:8080".to_string(), // allow-anti-pattern
             geo_citability_threshold: 60,
-            rlm_api_url: "http://localhost:3026".to_string(),
-            comfyui_url: "http://localhost:8188".to_string(),
-            abyss_vault_url: "http://localhost:3016".to_string(),
+            rlm_api_url: "http://localhost:3026".to_string(), // allow-anti-pattern
+            comfyui_url: "http://localhost:8188".to_string(), // allow-anti-pattern
+            abyss_vault_url: "http://localhost:3016".to_string(), // allow-anti-pattern
         }
     }
 }

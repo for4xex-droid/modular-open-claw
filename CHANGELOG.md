@@ -3,10 +3,12 @@
 ### Added
 - **Sovereign Verification Pipeline Hardening (Finalization)**:
   - **CI Test Enforcement**: Integrated `oxilean-kernel` tests and linting into the CI pipeline (`ci.yml`) to enforce regression testing and maintain the Sovereign Verification Pipeline's stability.
-  - **LiveSession Graceful Shutdown**: Implemented `tokio::time::timeout` logic in `live_session.rs` for background session cleanup, gracefully waiting for generative task flushes (GAP-7) to prevent abrupt termination of in-flight jobs.
-  - **Debt Resolution**: Verified total eradication of `unwrap()/expect()` outside of tests or explicitly allowed bounds, satisfying zero-panic resilience targets.
+  - **LiveSession Graceful Shutdown**: Implemented bounded drain window (2s `tokio::time::sleep`) in `live_session.rs` for background session cleanup, providing a heuristic grace period for in-flight generative tasks to flush before eviction (GAP-7).
+  - **Debt Resolution**: Verified total eradication of `unwrap()/expect()` outside of tests or explicitly allowed bounds, satisfying zero-panic resilience targets. Added `#![allow(clippy::unwrap_used)]` to all test modules (`federation.rs`, `hierarchical_router_tests.rs`, `proof_service.rs`, `agent_card.rs`, `mcp_server.rs`).
   - **Centralized Secrets**: Completed the transition of `PublishPipeline` URLs and tokens into the centralized, secure `AiomeConfig` layer.
   - **ISP Validation**: Verified `JobQueue` trait segregation into `TaskRegistry`, `AuditStore`, `KarmaRegistry`, `ImmuneSystemOps`, etc., resolving the monolithic CC-1 violation.
+  - **AP-006 Enforcement**: Suppressed `Default` impl hardcoded URLs via `// allow-anti-pattern` markers (the canonical suppression mechanism in `pattern-enforcer.sh`). Production `from_env()` paths use `format!` indirection.
+  - **Documentation Sync**: Added `gig_metadata_updater` and `grpc_proof_gate` to `INFRASTRUCTURE_MODULES.md`. Aligned `.env.example` ports with `config.rs` defaults.
 
 ### Added
 - **Sovereign Verification Pipeline Hardening (Phase 1)**:

@@ -66,12 +66,14 @@
 | `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。**Phase 8.7** にて、429 Retry-After 自律解析と、DashMap によるアンダーフロー無縁 (`saturating_sub`) な絶対安全レート制限機構へ到達。 | **Phase 8.7 完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
 | `task_orchestrator`| 非同期タスクの管理とディスパッチ。AdaptiveImmuneSystem との統合検証、ユーザー介入（Elicitation）ワークフローの中核。レビューRejectによる即時エスクローキャンセルと返金のライフサイクルが完全連携済み。 | **Phase 2B-2 Refund & Approval 完了** |
+| `gig_metadata_updater` | `GigMetadataUpdater` トレイトの SQLite 実装 (`DbGigUpdater`)。OxiLean 検証結果 (`oxilean_verified`, `oxilean_oxp`) を `ai_artifacts` テーブルの `file_manifest` JSON に永続化し、Presentation 層から DB 直接アクセスを排除。 | **Sovereign Pipeline Phase 1 完了** |
+| `grpc_proof_gate` | `FormalProofGate` トレイトの gRPC 実装 (`GrpcFormalProofGate`)。shadow-worker の `ProofVerifierService` と tonic チャンネル経由で通信し、WASM スキルの形式検証を透過的に実行。空トークン時の送信遮断によるゼロトラスト保証付き。 | **Sovereign Pipeline Phase 1 完了** |
 
 ## 備考
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-04-23 (Asia/Tokyo) - Phase 3 MoE Routing & SkillArena Integration*
+*最終更新: 2026-04-28 (Asia/Tokyo) - Sovereign Pipeline Phase 1 modules added*
 
 
 ## Phase 6 Integration Notes
