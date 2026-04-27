@@ -754,16 +754,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 let registry = self.registry.clone();
                 Box::pin(async move {
                     info!("🔍 [MCP Discovery] Starting automated server discovery...");
-                    let has_error = match mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
-                        Err(e) => {
-                            tracing::error!(
-                                "🚨 [MCP Discovery] Failed during initial discovery: {}",
-                                e
-                            );
-                            true
-                        }
-                        Ok(_) => false,
-                    };
+                    let has_error =
+                        match mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
+                            Err(e) => {
+                                tracing::error!(
+                                    "🚨 [MCP Discovery] Failed during initial discovery: {}",
+                                    e
+                                );
+                                true
+                            }
+                            Ok(_) => false,
+                        };
                     if has_error {
                         tokio::time::sleep(Duration::from_secs(5)).await;
                     }
@@ -1122,42 +1123,47 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         },
         tts_provider: {
             let tts_type = std::env::var("TTS_PROVIDER").unwrap_or_else(|_| "mock".to_string());
-            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> = match tts_type
-                .as_str()
-            {
-                "openai" => {
-                    let key: secrecy::SecretString = match tts_openai_api_key_raw {
-                        Some(raw) => secrecy::SecretString::from(raw),
-                        None => {
-                            tracing::warn!("⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail");
-                            config
-                                .openai_api_key
-                                .clone()
-                                .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
+            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> =
+                match tts_type.as_str() {
+                    "openai" => {
+                        let key: secrecy::SecretString = match tts_openai_api_key_raw {
+                            Some(raw) => secrecy::SecretString::from(raw),
+                            None => {
+                                tracing::warn!(
+                                    "⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail"
+                                );
+                                config
+                                    .openai_api_key
+                                    .clone()
+                                    .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
+                            }
+                        };
+                        let model = std::env::var("TTS_OPENAI_MODEL")
+                            .unwrap_or_else(|_| "tts-1".to_string());
+                        Arc::new(infrastructure::tts::OpenAiTtsProvider::new(
+                            key,
+                            model,
+                            std::env::var("OPENAI_TTS_ENDPOINT").ok(),
+                        ))
+                    }
+                    "xtts" => {
+                        let endpoint = config
+                            .xtts_endpoint
+                            .clone()
+                            .unwrap_or_else(|| format!("http://127.0.0.1:{}", 18020));
+                        Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                    }
+                    _ => {
+                        #[cfg(debug_assertions)]
+                        {
+                            Arc::new(infrastructure::tts::MockTtsProvider::default())
                         }
-                    };
-                    let model =
-                        std::env::var("TTS_OPENAI_MODEL").unwrap_or_else(|_| "tts-1".to_string());
-                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model, std::env::var("OPENAI_TTS_ENDPOINT").ok()))
-                }
-                "xtts" => {
-                    let endpoint = config
-                        .xtts_endpoint
-                        .clone()
-                        .unwrap_or_else(|| format!("http://127.0.0.1:{}", 18020));
-                    Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
-                }
-                _ => {
-                    #[cfg(debug_assertions)]
-                    {
-                        Arc::new(infrastructure::tts::MockTtsProvider::default())
+                        #[cfg(not(debug_assertions))]
+                        {
+                            Arc::new(infrastructure::tts::DisabledTtsProvider::default())
+                        }
                     }
-                    #[cfg(not(debug_assertions))]
-                    {
-                        Arc::new(infrastructure::tts::DisabledTtsProvider::default())
-                    }
-                }
-            };
+                };
             Component::new(provider)
         },
         news_service: {

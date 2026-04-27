@@ -1,4 +1,7 @@
 ## [Unreleased]
+### Changed
+- `tts_worker.rs`: Applied Interface Segregation Principle (ISP) to decouple from `JobQueue` God Trait, introducing `TtsQueue` for robust `mockall::automock` testing.
+- `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
 
 ### Added
 - **Phase 4 Agentic Core Refactoring**:

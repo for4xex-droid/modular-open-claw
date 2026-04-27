@@ -37,7 +37,8 @@ impl OpenAiTtsProvider {
             client: aiome_core::http::get_http_client().clone(),
             api_key,
             model,
-            endpoint: endpoint.unwrap_or_else(|| "https://api.openai.com/v1/audio/speech".to_string()),
+            endpoint: endpoint
+                .unwrap_or_else(|| "https://api.openai.com/v1/audio/speech".to_string()),
         }
     }
 }
@@ -54,7 +55,10 @@ impl TtsProvider for OpenAiTtsProvider {
         let resp = self
             .client
             .post(&self.endpoint)
-            .header("Authorization", format!("Bearer {}", self.api_key.expose_secret()))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.expose_secret()),
+            )
             .json(&payload)
             .send()
             .await
@@ -92,7 +96,10 @@ impl TtsProvider for OpenAiTtsProvider {
         let resp = self
             .client
             .post(&self.endpoint)
-            .header("Authorization", format!("Bearer {}", self.api_key.expose_secret()))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.expose_secret()),
+            )
             .json(&payload)
             .send()
             .await

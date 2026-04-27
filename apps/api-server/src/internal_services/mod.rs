@@ -37,7 +37,10 @@ pub async fn spawn_all(state: AppState) {
             Box::pin(async move {
                 loop {
                     if let Err(e) = watchtower::run(state.clone()).await {
-                        tracing::error!("❌ Internal Watchtower service failed: {:?}. Restarting in 5s...", e);
+                        tracing::error!(
+                            "❌ Internal Watchtower service failed: {:?}. Restarting in 5s...",
+                            e
+                        );
                         tokio::select! {
                             _ = ct.cancelled() => { tracing::info!("🛑 Watchtower shutdown requested"); return; }
                             _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {}
@@ -72,7 +75,10 @@ pub async fn spawn_all(state: AppState) {
             Box::pin(async move {
                 loop {
                     if let Err(e) = heartbeat::run(state.clone()).await {
-                        tracing::error!("❌ Internal Heartbeat service failed: {:?}. Restarting in 5s...", e);
+                        tracing::error!(
+                            "❌ Internal Heartbeat service failed: {:?}. Restarting in 5s...",
+                            e
+                        );
                         tokio::select! {
                             _ = ct.cancelled() => { tracing::info!("🛑 Heartbeat shutdown requested"); return; }
                             _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {}
@@ -107,7 +113,10 @@ pub async fn spawn_all(state: AppState) {
             Box::pin(async move {
                 loop {
                     if let Err(e) = dream::run(state.clone()).await {
-                        tracing::error!("❌ Internal Dream service failed: {:?}. Restarting in 5s...", e);
+                        tracing::error!(
+                            "❌ Internal Dream service failed: {:?}. Restarting in 5s...",
+                            e
+                        );
                         tokio::select! {
                             _ = ct.cancelled() => { tracing::info!("🛑 Dream shutdown requested"); return; }
                             _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {}
@@ -142,7 +151,10 @@ pub async fn spawn_all(state: AppState) {
             Box::pin(async move {
                 loop {
                     if let Err(e) = oxilean_poller::run(state.clone()).await {
-                        tracing::error!("❌ Internal OxiLean Poller service failed: {:?}. Restarting in 5s...", e);
+                        tracing::error!(
+                            "❌ Internal OxiLean Poller service failed: {:?}. Restarting in 5s...",
+                            e
+                        );
                         tokio::select! {
                             _ = ct.cancelled() => { tracing::info!("🛑 OxiLean shutdown requested"); return; }
                             _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {}

@@ -31,7 +31,7 @@ pub struct BlobStorageAdapter {
 
 impl BlobStorageAdapter {
     pub fn new(local_base_dir: PathBuf) -> Self {
-        Self { 
+        Self {
             local_base_dir,
             #[cfg(feature = "s3")]
             s3_client: None,
@@ -42,7 +42,7 @@ impl BlobStorageAdapter {
 
     #[cfg(feature = "s3")]
     pub fn new_with_s3(local_base_dir: PathBuf, s3_client: S3Client, s3_bucket: String) -> Self {
-        Self { 
+        Self {
             local_base_dir,
             s3_client: Some(s3_client),
             s3_bucket: Some(s3_bucket),
@@ -122,28 +122,45 @@ impl BlobStorageOps for BlobStorageAdapter {
                             let mut delete = aws_sdk_s3::types::Delete::builder();
                             for obj in contents {
                                 if let Some(key) = obj.key() {
-                                    if let Ok(obj_id) = aws_sdk_s3::types::ObjectIdentifier::builder().key(key).build() {
+                                    if let Ok(obj_id) =
+                                        aws_sdk_s3::types::ObjectIdentifier::builder()
+                                            .key(key)
+                                            .build()
+                                    {
                                         delete = delete.objects(obj_id);
                                     }
                                 }
                             }
                             if let Ok(delete_params) = delete.build() {
-                                if let Err(e) = client.delete_objects().bucket(bucket).delete(delete_params).send().await {
+                                if let Err(e) = client
+                                    .delete_objects()
+                                    .bucket(bucket)
+                                    .delete(delete_params)
+                                    .send()
+                                    .await
+                                {
                                     return Err(AiomeError::Infrastructure {
-                                        reason: format!("RTBF: Failed to delete S3 objects for actor {}: {}", agent_id, e),
+                                        reason: format!(
+                                            "RTBF: Failed to delete S3 objects for actor {}: {}",
+                                            agent_id, e
+                                        ),
                                     });
                                 }
                             }
                         }
                         if resp.is_truncated().unwrap_or(false) {
-                            continuation_token = resp.next_continuation_token().map(|s| s.to_string());
+                            continuation_token =
+                                resp.next_continuation_token().map(|s| s.to_string());
                         } else {
                             break;
                         }
                     }
                     Err(e) => {
                         return Err(AiomeError::Infrastructure {
-                            reason: format!("RTBF: Failed to list S3 objects for actor {}: {}", agent_id, e),
+                            reason: format!(
+                                "RTBF: Failed to list S3 objects for actor {}: {}",
+                                agent_id, e
+                            ),
                         });
                     }
                 }

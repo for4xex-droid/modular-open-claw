@@ -1,16 +1,28 @@
 import re
 
-with open("libs/core/src/expression/tts_worker.rs", "r") as f:
+# Update CHANGELOG.md
+with open("CHANGELOG.md", "r") as f:
     content = f.read()
 
-# 1. Add `use async_trait::async_trait;`
-if "use async_trait::async_trait;" not in content:
-    content = content.replace("use crate::error::AiomeError;", "use crate::error::AiomeError;\nuse async_trait::async_trait;")
+unreleased_idx = content.find("## [Unreleased]")
+if unreleased_idx != -1:
+    insert_pos = content.find("\n", unreleased_idx) + 1
+    new_entries = """### Changed
+- `tts_worker.rs`: Applied Interface Segregation Principle (ISP) to decouple from `JobQueue` God Trait, introducing `TtsQueue` for robust `mockall::automock` testing.
+- `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
+"""
+    content = content[:insert_pos] + new_entries + content[insert_pos:]
+    with open("CHANGELOG.md", "w") as f:
+        f.write(content)
 
-# 2. Change `queue: &dyn JobQueue,` to `queue: &dyn TtsQueue,`
-content = content.replace("queue: &dyn JobQueue,", "queue: &dyn TtsQueue,")
+# Update RIPPLE_MAP.md
+with open(".context/RIPPLE_MAP.md", "r") as f:
+    content = f.read()
 
-with open("libs/core/src/expression/tts_worker.rs", "w") as f:
+# Replace "Abyss Vault化は「将来フェーズへのTODO」としてマーク済。" with "Abyss Vault化完了。"
+content = content.replace("Abyss Vault化は「将来フェーズへのTODO」としてマーク済。", "Abyss Vault化を完了し、直接取得フォールバックを撤廃済。")
+
+with open(".context/RIPPLE_MAP.md", "w") as f:
     f.write(content)
 
-print("Fixed imports and types")
+print("Updated docs")

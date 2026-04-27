@@ -79,7 +79,10 @@ pub fn start_mdns_listener(
                         match mdns.browse("_aiome._tcp.local.") {
                             Ok(r) => break r,
                             Err(e) => {
-                                tracing::error!("🚨 [mDNS] Failed to browse: {}. Retrying in 5s...", e);
+                                tracing::error!(
+                                    "🚨 [mDNS] Failed to browse: {}. Retrying in 5s...",
+                                    e
+                                );
                                 tokio::select! {
                                     _ = ct.cancelled() => return,
                                     _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {}

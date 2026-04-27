@@ -141,8 +141,12 @@ pub async fn build_active_trend_sonar(
 
     if let Some(api_key) = search_api_key {
         if !api_key.is_empty() {
-            adapters.push(std::sync::Arc::new(WebSearchAdapter::new(SecretString::from(api_key.clone()))));
-            adapters.push(std::sync::Arc::new(SerpAnalysisAdapter::new(SecretString::from(api_key))));
+            adapters.push(std::sync::Arc::new(WebSearchAdapter::new(
+                SecretString::from(api_key.clone()),
+            )));
+            adapters.push(std::sync::Arc::new(SerpAnalysisAdapter::new(
+                SecretString::from(api_key),
+            )));
         }
     }
 
@@ -204,7 +208,10 @@ impl TrendAdapter for SerpAnalysisAdapter {
 
         // Use a hash of the API key as the rate limiter key to avoid
         // storing the plaintext credential in the DashMap (CWE-316).
-        let rate_key = format!("{:x}", Sha256::digest(self.api_key.expose_secret().as_bytes()));
+        let rate_key = format!(
+            "{:x}",
+            Sha256::digest(self.api_key.expose_secret().as_bytes())
+        );
 
         if let Some(mut time) = SERP_API_RATE_LIMITER.get_mut(&rate_key) {
             let elapsed = time.0.elapsed();
@@ -214,10 +221,7 @@ impl TrendAdapter for SerpAnalysisAdapter {
             }
             *time = (Instant::now(), Duration::from_secs(600));
         } else {
-            SERP_API_RATE_LIMITER.insert(
-                rate_key,
-                (Instant::now(), Duration::from_secs(600)),
-            );
+            SERP_API_RATE_LIMITER.insert(rate_key, (Instant::now(), Duration::from_secs(600)));
         }
 
         #[cfg(any(test, feature = "test-utils"))]

@@ -6,11 +6,11 @@
  */
 
 use crate::error::AiomeError;
-use async_trait::async_trait;
 use crate::expression::engine::ExpressionEngine;
 use crate::expression::Expression;
 use crate::traits::JobQueue;
 use aiome_core_contracts::expression::TtsStatus;
+use async_trait::async_trait;
 use chrono::Utc;
 use tracing::{error, info, warn};
 
@@ -168,7 +168,7 @@ mod tests {
         }
     }
 
-        #[tokio::test]
+    #[tokio::test]
     async fn test_tts_worker_uses_provider() {
         let call_count = Arc::new(AtomicUsize::new(0));
         let provider = MockTtsProvider {
@@ -185,7 +185,9 @@ mod tests {
 
         let mut queue = MockTtsQueue::new();
         let expr_clone = expr.clone();
-        queue.expect_fetch_expressions().returning(move |_| Ok(vec![expr_clone.clone()]));
+        queue
+            .expect_fetch_expressions()
+            .returning(move |_| Ok(vec![expr_clone.clone()]));
         queue.expect_store_expression().returning(|_| Ok(()));
 
         let processed = TtsWorker::process_pending_tts(&queue, &provider, "p225", &artifacts_root)

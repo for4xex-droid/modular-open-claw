@@ -114,7 +114,7 @@ pub struct FalAiGenerativeEngine {
 
 impl FalAiGenerativeEngine {
     pub fn new(api_key: secrecy::SecretString, base_url: Option<String>) -> Self {
-        Self { 
+        Self {
             api_key,
             base_url: base_url.unwrap_or_else(|| "https://fal.run".to_string()),
         }

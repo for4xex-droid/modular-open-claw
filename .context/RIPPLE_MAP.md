@@ -591,7 +591,7 @@
     - `libs/infrastructure/src/trend_sonar.rs`: `SerpAnalysisAdapter` の具象実装を追加。Tavily等の実APIコールとHTMLサニタイズ (`sanitize_snippet`) を行うと同時に、自律ループ枯渇防止目的のインメモリ・レートリミッター機能（10分に1回のみ）を内蔵。
     - `apps/api-server/src/internal_services/dream.rs`: `SEARCH_API_KEY` の環境変数が存在する場合のみ、`WebSearchAdapter` と結合した `ExternalTrendSonar` コンペティター分析ノードを `DreamService` にDI（注入）する仕組みへアップグレード。
     - `libs/infrastructure/src/publisher/wordpress.rs` [NEW]: `WordPressAdapter` の追加。WP REST API v2 を利用した記事自動投稿を実装（テストケース完備）。
-    - `apps/api-server/src/bootstrap.rs`: `PublishPipeline` インスタンス化処理において `WP_API_URL` および `WP_API_TOKEN` をフォールバック付きで解決し、本番CMSと静的に繋ぐ仕組みを実装。Abyss Vault化は「将来フェーズへのTODO」としてマーク済。
+    - `apps/api-server/src/bootstrap.rs`: `PublishPipeline` インスタンス化処理において `WP_API_URL` および `WP_API_TOKEN` をフォールバック付きで解決し、本番CMSと静的に繋ぐ仕組みを実装。Abyss Vault化を完了し、直接取得フォールバックを撤廃済。
 - **波及効果**:
     - DreamService の自律ループからSEOギャップを取得する部分が完全自動かつレートリミット保護により自律破綻しないよう修正された。また、記事出力の終着点であるCMSシステム (WordPress) に対する直結が確立し、SEOインテリジェンス・パイプラインの最後のパズルが完成した。
 
