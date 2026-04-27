@@ -18,10 +18,12 @@ async-trait = "0.1"
 aiome-core-contracts = { workspace = true, features = ["grpc"] }
 shared = { path = "../../libs/shared" }
 infrastructure = { path = "../../libs/infrastructure", features = ["grpc"] }
+aiome-commerce = { path = "../../libs/aiome-commerce" }
+aiome-core = { path = "../../libs/core" }
 tower = { workspace = true }
 http-body-util = "0.1.1"
-
-
+tokio-stream = "0.1"
+futures = { workspace = true }
 mdns-sd = "0.11"
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
 

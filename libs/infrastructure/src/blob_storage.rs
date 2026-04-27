@@ -18,13 +18,35 @@ pub trait BlobStorageOps: Send + Sync {
     async fn purge_actor_assets(&self, agent_id: Uuid) -> Result<(), AiomeError>;
 }
 
+#[cfg(feature = "s3")]
+use aws_sdk_s3::Client as S3Client;
+
 pub struct BlobStorageAdapter {
     local_base_dir: PathBuf,
+    #[cfg(feature = "s3")]
+    s3_client: Option<S3Client>,
+    #[cfg(feature = "s3")]
+    s3_bucket: Option<String>,
 }
 
 impl BlobStorageAdapter {
     pub fn new(local_base_dir: PathBuf) -> Self {
-        Self { local_base_dir }
+        Self { 
+            local_base_dir,
+            #[cfg(feature = "s3")]
+            s3_client: None,
+            #[cfg(feature = "s3")]
+            s3_bucket: None,
+        }
+    }
+
+    #[cfg(feature = "s3")]
+    pub fn new_with_s3(local_base_dir: PathBuf, s3_client: S3Client, s3_bucket: String) -> Self {
+        Self { 
+            local_base_dir,
+            s3_client: Some(s3_client),
+            s3_bucket: Some(s3_bucket),
+        }
     }
 
     /// SystemEvent::ActorForgotten イベントを監視し、該当アクターの物理ファイルを削除する
@@ -49,6 +71,8 @@ impl BlobStorageAdapter {
                             );
                         }
                     }
+                    #[allow(unreachable_patterns)]
+                    Ok(_) => {}
                     Err(broadcast::error::RecvError::Closed) => {
                         warn!("⚠️ [BlobStorage] Event channel closed, stopping listener.");
                         break;
@@ -82,9 +106,49 @@ impl BlobStorageOps for BlobStorageAdapter {
             }
         }
 
-        // TODO: S3 や R2 などの外部ストレージパージロジックを追加 (将来拡張用)
-        // let prefix = format!("actors/{}/", agent_id);
-        // s3_client.delete_objects_with_prefix(bucket, prefix).await?;
+        #[cfg(feature = "s3")]
+        if let (Some(client), Some(bucket)) = (&self.s3_client, &self.s3_bucket) {
+            let prefix = format!("actors/{}/", agent_id);
+            let mut continuation_token = None;
+            loop {
+                let mut req = client.list_objects_v2().bucket(bucket).prefix(&prefix);
+                if let Some(token) = continuation_token {
+                    req = req.continuation_token(token);
+                }
+                match req.send().await {
+                    Ok(resp) => {
+                        let contents = resp.contents();
+                        if !contents.is_empty() {
+                            let mut delete = aws_sdk_s3::types::Delete::builder();
+                            for obj in contents {
+                                if let Some(key) = obj.key() {
+                                    if let Ok(obj_id) = aws_sdk_s3::types::ObjectIdentifier::builder().key(key).build() {
+                                        delete = delete.objects(obj_id);
+                                    }
+                                }
+                            }
+                            if let Ok(delete_params) = delete.build() {
+                                if let Err(e) = client.delete_objects().bucket(bucket).delete(delete_params).send().await {
+                                    return Err(AiomeError::Infrastructure {
+                                        reason: format!("RTBF: Failed to delete S3 objects for actor {}: {}", agent_id, e),
+                                    });
+                                }
+                            }
+                        }
+                        if resp.is_truncated().unwrap_or(false) {
+                            continuation_token = resp.next_continuation_token().map(|s| s.to_string());
+                        } else {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        return Err(AiomeError::Infrastructure {
+                            reason: format!("RTBF: Failed to list S3 objects for actor {}: {}", agent_id, e),
+                        });
+                    }
+                }
+            }
+        }
 
         Ok(())
     }

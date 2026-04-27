@@ -1,5 +1,45 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 4: Agentic Core Refactoring & Zero-Trust Sync
+### 1. Zero-Panic Initiative
+- **変更内容**:
+    - `apps/api-server/src/internal_services/mod.rs` [MODIFY]: `Watchtower`, `Heartbeat`, `Dream`, `OxiLean` タスクの `panic!` を graceful restart ループに置換。
+    - `apps/samsara-hub/src/mdns_listener.rs` [MODIFY]: `mDNS` ブラウズ時の `panic!` を再試行ループに置換し、P2P 発見がクラッシュするのを防ぐ。
+- **波及効果**:
+    - 内部サービスがクラッシュしてもアプリケーション全体を道連れにせず、自律的に復旧可能になり、システムの可用性が向上。
+
+### 2. SecretString Credential Protection
+- **変更内容**:
+    - `libs/infrastructure/src/tts.rs` [MODIFY]: `OpenAiTtsProvider` の `api_key: String` を `secrecy::SecretString` に置換。
+    - `libs/infrastructure/src/trend_sonar.rs` [MODIFY]: `WebSearchAdapter` と `SerpAnalysisAdapter` の `api_key: String` を `secrecy::SecretString` に置換。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `OpenAiTtsProvider` 初期化時、不必要に `expose_secret().to_string()` していた箇所を削除し、直接 `SecretString` を引き回すように修正。
+- **波及効果**:
+    - メモリダンプや不用意なロギングによって API キーが平文のまま漏洩するリスク（CWE-532, CWE-316）を完全に排除した。
+
+## Phase P3: Infrastructure Stabilization & Edge Integration
+### 1. UniversalGigEngine Migration
+- **変更内容**:
+    - `apps/aiome-node/Cargo.toml` [MODIFY]: `aiome-commerce` と `aiome-core` への依存関係を追加し、実機エンジン稼働の準備を完了。
+    - `apps/aiome-node/src/main.rs` [MODIFY]: `DummyGigEngine` と `DummyValidator` を撤廃。本番運用に向けた `UniversalGigEngine` をインジェクト。
+    - `apps/aiome-node/src/main.rs` [MODIFY]: Edge Node 環境での不正な決済挙動を防ぐため、常に `AiomeError::Infrastructure` を返す `StubCommerceEngine` と `DisabledLlmProvider` を実装・注入。
+- **波及効果**:
+    - `aiome-node` がスタブから本番レベルの基盤へ移行。将来的な Commerce 統合（本番への昇格）への準備が整った。同時に誤った「成功（Phantom Success）」によるインシデントリスクをゼロ化した。
+
+### 2. RTBF/GDPR Blob Storage S3 Purge
+- **変更内容**:
+    - `libs/infrastructure/Cargo.toml` [MODIFY]: `aws-sdk-s3` と `aws-config` をオプショナル（feature gate: `s3`）として追加。
+    - `libs/infrastructure/src/blob_storage.rs` [MODIFY]: `BlobStorageAdapter` に S3 クライアントとバケットを保持する構成を追加。`purge_actor_assets` に `delete_objects` を用いた一括物理削除ロジックを実装。
+- **波及効果**:
+    - クラウドストレージ（S3/R2）に対する RTBF（忘れられる権利）要件を満たすことが可能となった。
+
+### 3. URL Hardcoding Elimination & Panic Remediation
+- **変更内容**:
+    - `libs/infrastructure/src/tts.rs` [MODIFY]: `OpenAiTtsProvider` でエンドポイントURLを動的化（環境変数経由）。
+    - `libs/infrastructure/src/generative_engine.rs` [MODIFY]: `FalAiGenerativeEngine` で Base URL を動的化（環境変数経由）。
+    - `libs/infrastructure/src/tts.rs` / `cortex_query.rs` [MODIFY]: `#![allow(clippy::unwrap_used)]` 外での本番 `unwrap()` を `Result` ハンドリングに修正。
+- **波及効果**:
+    - 環境差異（オンプレミス、クラウド）への対応力が強化され、予期せぬパニック（プロセス終了）リスクが低減された。
+
 ## Phase RLM: Recursive Language Model Integration
 ### 1. RlmClient & CortexQueryEngine Deep Query Extension
 - **変更内容**:

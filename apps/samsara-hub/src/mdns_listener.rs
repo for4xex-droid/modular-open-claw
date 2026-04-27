@@ -74,41 +74,53 @@ pub fn start_mdns_listener(
             let registry = self.registry.clone();
             let mdns = self.mdns.clone();
             Box::pin(async move {
-                let receiver = match mdns.browse("_aiome._tcp.local.") {
-                    Ok(r) => r,
-                    Err(e) => {
-                        tracing::error!("🚨 [mDNS] Failed to browse: {}", e);
-                        panic!("mDNS browse failed");
-                    }
-                };
-
                 loop {
-                    tokio::select! {
-                        _ = ct.cancelled() => break,
-                        res = receiver.recv_async() => {
-                            match res {
-                                Ok(event) => {
-                                    match event {
-                                        ServiceEvent::ServiceResolved(info) => {
-                                            let did = info.get_property_val_str("did").unwrap_or("unknown_did").to_string();
-                                            let ip = info.get_addresses().iter().next().map(|ip| ip.to_string()).unwrap_or_default();
-                                            let port = info.get_port();
-                                            tracing::info!("🔍 [mDNS] Discovered Agent (DID: {}): {}:{}", did, ip, port);
-                                            update_registry(&registry, did, ip, port).await;
-                                        }
-                                        ServiceEvent::ServiceRemoved(_, full_name) => {
-                                            tracing::info!("🔌 [mDNS] Service removed: {}", full_name);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::error!("🚨 [mDNS] Receiver failed: {}", e);
-                                    panic!("MdnsListener receiver failed");
+                    let receiver = loop {
+                        match mdns.browse("_aiome._tcp.local.") {
+                            Ok(r) => break r,
+                            Err(e) => {
+                                tracing::error!("🚨 [mDNS] Failed to browse: {}. Retrying in 5s...", e);
+                                tokio::select! {
+                                    _ = ct.cancelled() => return,
+                                    _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {}
                                 }
                             }
                         }
+                    };
+
+                    let should_break = loop {
+                        tokio::select! {
+                            _ = ct.cancelled() => break true,
+                            res = receiver.recv_async() => {
+                                match res {
+                                    Ok(event) => {
+                                        match event {
+                                            ServiceEvent::ServiceResolved(info) => {
+                                                let did = info.get_property_val_str("did").unwrap_or("unknown_did").to_string();
+                                                let ip = info.get_addresses().iter().next().map(|ip| ip.to_string()).unwrap_or_default();
+                                                let port = info.get_port();
+                                                tracing::info!("🔍 [mDNS] Discovered Agent (DID: {}): {}:{}", did, ip, port);
+                                                update_registry(&registry, did, ip, port).await;
+                                            }
+                                            ServiceEvent::ServiceRemoved(_, full_name) => {
+                                                tracing::info!("🔌 [mDNS] Service removed: {}", full_name);
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("🚨 [mDNS] Receiver failed: {}. Re-browsing...", e);
+                                        break false; // break inner loop to re-browse
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    if should_break {
+                        break; // cancelled — exit outer loop
                     }
+                    // else: receiver failed, outer loop will re-browse
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 }
             })
         }

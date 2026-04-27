@@ -574,9 +574,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     tokio::select! {
                         _ = ct.cancelled() => break,
                         _ = interval.tick() => {
-                            if let Err(e) = crystallizer.run_distillation_cycle().await {
-                                tracing::error!("🚨 [MemoryCrystallizer] Distillation error: {}", e);
-                                panic!("MemoryCrystallizer crashed");
+                            let has_error = match crystallizer.run_distillation_cycle().await {
+                                Err(e) => {
+                                    tracing::error!("🚨 [MemoryCrystallizer] Distillation error: {}", e);
+                                    true
+                                }
+                                Ok(_) => false,
+                            };
+                            if has_error {
+                                tokio::time::sleep(Duration::from_secs(5)).await;
+                                continue;
                             }
                         }
                     }
@@ -747,14 +754,18 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 let registry = self.registry.clone();
                 Box::pin(async move {
                     info!("🔍 [MCP Discovery] Starting automated server discovery...");
-                    if let Err(e) =
-                        mcp::discovery::discover_and_connect(&mcp_manager, &registry).await
-                    {
-                        tracing::error!(
-                            "🚨 [MCP Discovery] Failed during initial discovery: {}",
-                            e
-                        );
-                        panic!("MCP Discovery crashed");
+                    let has_error = match mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
+                        Err(e) => {
+                            tracing::error!(
+                                "🚨 [MCP Discovery] Failed during initial discovery: {}",
+                                e
+                            );
+                            true
+                        }
+                        Ok(_) => false,
+                    };
+                    if has_error {
+                        tokio::time::sleep(Duration::from_secs(5)).await;
                     }
                 })
             }
@@ -835,7 +846,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         let wp_enabled = config.wp_sdk_enabled || config.wp_api_url.is_some();
 
         if wp_enabled {
-            if !config.key_proxy_url.is_empty() && config.wp_sdk_enabled {
+            if !config.key_proxy_url.is_empty() {
                 use secrecy::ExposeSecret;
                 let vault_secret = config
                     .vault_secret
@@ -852,20 +863,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 tracing::info!(
                     "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
                 );
-            } else if let Some(wp_url) = &config.wp_api_url {
-                use secrecy::ExposeSecret;
-                let wp_token = config
-                    .wp_api_token
-                    .as_ref()
-                    .map(|t| t.expose_secret().clone())
-                    .unwrap_or_default();
-                publishers.push(Box::new(
-                    infrastructure::publisher::wordpress::WordPressAdapter::new_direct(
-                        wp_url.clone(),
-                        wp_token,
-                    ),
-                ));
-                tracing::info!("✅ [PublishPipeline] WordPress publisher registered via direct token (Legacy).");
+            } else {
+                tracing::warn!("⚠️ [PublishPipeline] WordPress enabled but key_proxy_url is empty. Publishing may fail.");
             }
         } else {
             tracing::warn!("⚠️ [PublishPipeline] WordPress publisher not configured.");
@@ -1127,18 +1126,19 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 .as_str()
             {
                 "openai" => {
-                    use secrecy::ExposeSecret;
-                    let key = tts_openai_api_key_raw.unwrap_or_else(|| {
-                        tracing::warn!("⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail");
-                        config
-                            .openai_api_key
-                            .as_ref()
-                            .map(|s| s.expose_secret().to_string())
-                            .unwrap_or_default()
-                    });
+                    let key: secrecy::SecretString = match tts_openai_api_key_raw {
+                        Some(raw) => secrecy::SecretString::from(raw),
+                        None => {
+                            tracing::warn!("⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail");
+                            config
+                                .openai_api_key
+                                .clone()
+                                .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
+                        }
+                    };
                     let model =
                         std::env::var("TTS_OPENAI_MODEL").unwrap_or_else(|_| "tts-1".to_string());
-                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model))
+                    Arc::new(infrastructure::tts::OpenAiTtsProvider::new(key, model, std::env::var("OPENAI_TTS_ENDPOINT").ok()))
                 }
                 "xtts" => {
                     let endpoint = config
@@ -1209,6 +1209,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                     Arc::new(
                         infrastructure::generative_engine::FalAiGenerativeEngine::new(
                             secrecy::SecretString::from(api_key),
+                            std::env::var("FAL_AI_ENDPOINT").ok(),
                         ),
                     )
                 }

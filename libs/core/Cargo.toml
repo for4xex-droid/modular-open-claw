@@ -39,6 +39,7 @@ futures-util = "0.3"
 
 [dev-dependencies]
 wiremock = { workspace = true }
+mockall = "0.13"
 
 [features]
 default = []

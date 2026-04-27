@@ -109,11 +109,15 @@ impl GenerativeEngine for ComfyUiGenerativeEngine {
 /// APIキーは `secrecy::SecretString` で保護され、Debug出力やログに漏洩しない。
 pub struct FalAiGenerativeEngine {
     api_key: secrecy::SecretString,
+    base_url: String,
 }
 
 impl FalAiGenerativeEngine {
-    pub fn new(api_key: secrecy::SecretString) -> Self {
-        Self { api_key }
+    pub fn new(api_key: secrecy::SecretString, base_url: Option<String>) -> Self {
+        Self { 
+            api_key,
+            base_url: base_url.unwrap_or_else(|| "https://fal.run".to_string()),
+        }
     }
 }
 
@@ -126,7 +130,7 @@ impl GenerativeEngine for FalAiGenerativeEngine {
         _input_artifact: Option<&Path>,
     ) -> Result<ArtifactResponse, AiomeError> {
         let client = aiome_core::http::get_http_client();
-        let url = format!("https://fal.run/{}", workflow_id);
+        let url = format!("{}/{}", self.base_url, workflow_id);
         let res = client
             .post(&url)
             .header(
@@ -240,7 +244,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_falai_engine_generate_artifact_green() {
-        let engine = FalAiGenerativeEngine::new("dummy_key".to_string().into());
+        let engine = FalAiGenerativeEngine::new("dummy_key".to_string().into(), None);
         let result = engine
             .generate_artifact("test prompt", "fast_lora", None)
             .await;

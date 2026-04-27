@@ -79,10 +79,15 @@ hkdf = "0.12"
 argon2 = "0.5"
 chacha20poly1305 = "0.10"
 
+# S3 Integration (RTBF Purge)
+aws-config = { version = "1.5.0", optional = true }
+aws-sdk-s3 = { version = "1.65.0", optional = true }
+
 [features]
 test-utils = []
 grpc = ["tonic", "aiome-core-contracts/grpc", "tonic-health"]
 native-inference = ["candle-core", "candle-nn", "candle-transformers", "hf-hub", "tokenizers"]
+s3 = ["aws-config", "aws-sdk-s3"]
 
 [dev-dependencies]
 filetime = "0.2"

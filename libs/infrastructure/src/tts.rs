@@ -9,23 +9,35 @@ use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::traits::TtsProvider;
 use async_trait::async_trait;
+use secrecy::{ExposeSecret, SecretString};
 use std::sync::Arc;
 use std::time::Duration;
 
 /// Phase 13.3: OpenAI をバックエンドとした TTS プロバイダー
-#[derive(Debug)]
 pub struct OpenAiTtsProvider {
     client: reqwest::Client,
-    api_key: String,
+    api_key: SecretString,
     model: String,
+    endpoint: String,
+}
+
+impl std::fmt::Debug for OpenAiTtsProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAiTtsProvider")
+            .field("model", &self.model)
+            .field("endpoint", &self.endpoint)
+            .field("api_key", &"[REDACTED]")
+            .finish()
+    }
 }
 
 impl OpenAiTtsProvider {
-    pub fn new(api_key: String, model: String) -> Self {
+    pub fn new(api_key: SecretString, model: String, endpoint: Option<String>) -> Self {
         Self {
             client: aiome_core::http::get_http_client().clone(),
             api_key,
             model,
+            endpoint: endpoint.unwrap_or_else(|| "https://api.openai.com/v1/audio/speech".to_string()),
         }
     }
 }
@@ -41,8 +53,8 @@ impl TtsProvider for OpenAiTtsProvider {
 
         let resp = self
             .client
-            .post("https://api.openai.com/v1/audio/speech")
-            .header("Authorization", format!("Bearer {}", self.api_key))
+            .post(&self.endpoint)
+            .header("Authorization", format!("Bearer {}", self.api_key.expose_secret()))
             .json(&payload)
             .send()
             .await
@@ -79,8 +91,8 @@ impl TtsProvider for OpenAiTtsProvider {
 
         let resp = self
             .client
-            .post("https://api.openai.com/v1/audio/speech")
-            .header("Authorization", format!("Bearer {}", self.api_key))
+            .post(&self.endpoint)
+            .header("Authorization", format!("Bearer {}", self.api_key.expose_secret()))
             .json(&payload)
             .send()
             .await
@@ -107,7 +119,7 @@ impl TtsProvider for OpenAiTtsProvider {
     }
 
     async fn health_check(&self) -> Result<bool, AiomeError> {
-        Ok(!self.api_key.is_empty())
+        Ok(!self.api_key.expose_secret().is_empty())
     }
 }
 
@@ -197,7 +209,7 @@ impl TtsProvider for XttsProvider {
             .timeout(Duration::from_secs(3))
             .send()
             .await;
-        Ok(resp.is_ok() && resp.unwrap().status().is_success()) // allow-anti-pattern
+        Ok(resp.map(|r| r.status().is_success()).unwrap_or(false))
     }
 }
 

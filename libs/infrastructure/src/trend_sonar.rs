@@ -15,7 +15,9 @@ use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::traits::{TrendItem, TrendSource};
 use async_trait::async_trait;
 use schemars::JsonSchema;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 /// Responses from External Web Search API
 #[derive(Deserialize, Debug)]
@@ -49,14 +51,14 @@ pub trait TrendAdapter: Send + Sync {
 
 /// Web検索（Tavily等）を使用するトレンドアダプター
 pub struct WebSearchAdapter {
-    api_key: String,
+    api_key: SecretString,
     client: reqwest::Client,
     endpoint: String,
 }
 
 impl WebSearchAdapter {
     /// WebSearchAdapter の新規インスタンスを生成する
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: SecretString) -> Self {
         let endpoint = std::env::var("SEARCH_API_ENDPOINT")
             .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".to_string());
         Self {
@@ -83,7 +85,7 @@ impl TrendAdapter for WebSearchAdapter {
             .client
             .get(&self.endpoint)
             .query(&[("q", category), ("freshness", "pd"), ("count", "3")])
-            .header("X-Subscription-Token", &self.api_key)
+            .header("X-Subscription-Token", self.api_key.expose_secret())
             .header("Accept", "application/json")
             .send()
             .await
@@ -139,8 +141,8 @@ pub async fn build_active_trend_sonar(
 
     if let Some(api_key) = search_api_key {
         if !api_key.is_empty() {
-            adapters.push(std::sync::Arc::new(WebSearchAdapter::new(api_key.clone())));
-            adapters.push(std::sync::Arc::new(SerpAnalysisAdapter::new(api_key)));
+            adapters.push(std::sync::Arc::new(WebSearchAdapter::new(SecretString::from(api_key.clone()))));
+            adapters.push(std::sync::Arc::new(SerpAnalysisAdapter::new(SecretString::from(api_key))));
         }
     }
 
@@ -173,13 +175,13 @@ static SERP_API_RATE_LIMITER: once_cell::sync::Lazy<DashMap<String, (Instant, Du
 
 /// SerpAnalysisAdapter: SEO Topic Gab and Competitor SERP Analysis
 pub struct SerpAnalysisAdapter {
-    api_key: String,
+    api_key: SecretString,
     client: reqwest::Client,
     endpoint: String,
 }
 
 impl SerpAnalysisAdapter {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: SecretString) -> Self {
         let endpoint = std::env::var("SEARCH_API_ENDPOINT")
             .unwrap_or_else(|_| "https://api.search.provider.com/res/v1/web/search".to_string());
         Self {
@@ -200,7 +202,11 @@ impl TrendAdapter for SerpAnalysisAdapter {
             });
         }
 
-        if let Some(mut time) = SERP_API_RATE_LIMITER.get_mut(&self.api_key) {
+        // Use a hash of the API key as the rate limiter key to avoid
+        // storing the plaintext credential in the DashMap (CWE-316).
+        let rate_key = format!("{:x}", Sha256::digest(self.api_key.expose_secret().as_bytes()));
+
+        if let Some(mut time) = SERP_API_RATE_LIMITER.get_mut(&rate_key) {
             let elapsed = time.0.elapsed();
             if elapsed < time.1 {
                 tracing::info!("🚦 [SerpAnalysisAdapter] Rate limited to protect API quota. (Cooldown remaining: {}s)", time.1.saturating_sub(elapsed).as_secs());
@@ -209,13 +215,13 @@ impl TrendAdapter for SerpAnalysisAdapter {
             *time = (Instant::now(), Duration::from_secs(600));
         } else {
             SERP_API_RATE_LIMITER.insert(
-                self.api_key.clone(),
+                rate_key,
                 (Instant::now(), Duration::from_secs(600)),
             );
         }
 
         #[cfg(any(test, feature = "test-utils"))]
-        if self.api_key == "fake_key" || self.api_key == "fake" {
+        if self.api_key.expose_secret() == "fake_key" || self.api_key.expose_secret() == "fake" {
             return Ok(vec![TrendItem {
                 keyword: format!("{} benefits", query),
                 source: "SerpAnalysisAdapter".into(),
@@ -233,7 +239,7 @@ impl TrendAdapter for SerpAnalysisAdapter {
                 ("freshness", "pm"),
                 ("count", "5"),
             ])
-            .header("X-Subscription-Token", &self.api_key)
+            .header("X-Subscription-Token", self.api_key.expose_secret())
             .header("Accept", "application/json")
             .send()
             .await
@@ -463,7 +469,7 @@ mod tests {
     #[tokio::test]
     async fn test_serp_analysis_adapter_fetches_seo_gaps() {
         // Arrange
-        let adapter = SerpAnalysisAdapter::new("fake_key".to_string());
+        let adapter = SerpAnalysisAdapter::new(SecretString::from("fake_key".to_string()));
 
         // Act
         let result = adapter.fetch("organic coffee").await;
@@ -478,7 +484,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_serp_adapter_rate_limiting() {
-        let adapter = SerpAnalysisAdapter::new("fake".into());
+        let adapter = SerpAnalysisAdapter::new(SecretString::from("fake".to_string()));
         // Mock the fetch call directly on our newly implemented rate limiter
         let _ = adapter.fetch("organic").await;
         let second_call = adapter.fetch("organic").await;
@@ -493,7 +499,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_serp_adapter_rejects_invalid_queries() {
-        let adapter = SerpAnalysisAdapter::new("fake".into());
+        let adapter = SerpAnalysisAdapter::new(SecretString::from("fake".to_string()));
         // Empty query
         let empty_res = adapter.fetch("   ").await;
         assert!(empty_res.is_err(), "Should reject empty query");

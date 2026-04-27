@@ -661,7 +661,9 @@ mod tests {
             _config: aiome_core_contracts::rlm::RlmConfig,
         ) -> Result<aiome_core_contracts::rlm::RlmResponse, AiomeError> {
             let mut guard = self.response.lock().await;
-            Ok(guard.take().unwrap())
+            Ok(guard.take().ok_or_else(|| AiomeError::Infrastructure {
+                reason: "MockRlmProvider: No response available".into(),
+            })?)
         }
 
         async fn test_connection(&self) -> Result<(), AiomeError> {

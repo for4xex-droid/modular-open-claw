@@ -290,15 +290,12 @@ main() {
 
   cross_cutting_checks
 
-  echo ""
-  echo "╔══════════════════════════════════════════╗"
-  echo "║   🛡️  Phase 3: AST Taint Analysis        ║"
-  echo "╚══════════════════════════════════════════╝"
-  if [[ "$CI_MODE" == true ]]; then
-    python3 scripts/taint_scanner.py --ci || ERROR_COUNT=$((ERROR_COUNT + 1))
-  else
-    python3 scripts/taint_scanner.py || true
-  fi
+  # Phase 3 (Security Assurance) は以下のツールチェインで担保:
+  #   - cargo clippy (静的解析)
+  #   - cargo audit / cargo deny (脆弱性検出)
+  #   - OxiLean formal verification (ConstitutionalValidator)
+  #   - pattern-enforcer.sh (アンチパターン検出)
+  # 自作の taint_scanner.py は廃止 (ADR: 偽陽性/偽陰性リスクの排除)
 
   echo ""
   echo "══════════════════════════════════════════"

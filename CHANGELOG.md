@@ -1,6 +1,34 @@
 ## [Unreleased]
 
 ### Added
+- **Phase 4 Agentic Core Refactoring**:
+  - `secrecy::SecretString` migration for `OpenAiTtsProvider` and `TrendSonar` adapters, preventing credential leaks in memory/logs.
+
+### Fixed
+- **Phase 4 Zero-Panic Initiative**:
+  - Replaced `panic!` inside `internal_services/mod.rs` (Watchtower, Heartbeat, Dream, OxiLean) with graceful restart loops.
+  - Replaced `panic!` inside `samsara-hub/src/mdns_listener.rs` with safe retry mechanisms.
+  - Fixed `bootstrap.rs` to correctly unwrap and pass `SecretString` without converting it back to a plain `String`.
+
+### Added
+- **P3 Infrastructure Stabilization (Finalization)**:
+  - **UniversalGigEngine Migration**: Successfully replaced the `DummyGigEngine` and `DummyValidator` in `aiome-node/src/main.rs` with the production-ready `UniversalGigEngine`. Implemented `StubCommerceEngine` explicitly returning `AiomeError::Infrastructure` to enforce safe edge-node operations and prevent phantom commerce success.
+  - **S3 RTBF Compliance**: Added `#[cfg(feature = "s3")]` and `aws-sdk-s3` (optional) to `infrastructure` crate. Implemented `delete_objects` loop for S3/R2 actor assets purging during `SystemEvent::ActorForgotten` events.
+  - **Configuration Decoupling**: Refactored `OpenAiTtsProvider` and `FalAiGenerativeEngine` to ingest dynamic `base_url`/`endpoint` configurations from environment variables, removing hardcoded paths.
+
+### Fixed
+- **System Stability & Zero-Panic**:
+  - Remediated highly hazardous `unwrap()` calls in `libs/infrastructure/src/tts.rs` (health check) and `libs/infrastructure/src/cortex_query.rs` (mock setup).
+  - Addressed missing `tokio-stream` and `futures` workspace dependencies in `aiome-node` to support production streaming interfaces.
+  - Rectified missing environment variables in `.env.example` to establish an accurate and synchronous onboarding state.
+- **Security Posture Sync**:
+  - Re-aligned `scripts/deep-scan.sh` to strictly invoke Rust formal verification (Clipy, Audit, OxiLean) and removed phantom references to `taint_scanner.py`.
+  - Fortified `docs/architecture/SECURITY_DESIGN.md` Threat Model to incorporate the Sovereign Verification Pipeline (OxiLean) and CI Enforcement policies.
+
+### Changed
+- **ADR 031**: Intentionally deferred the Interface Segregation Principle (ISP) refactoring of the 93-method `JobQueue` trait to Phase 4 (WASM Agent Async Queue Scaling) to prevent catastrophic regressions in the critical stabilization path.
+
+### Added
 - **Sovereign Verification Pipeline Hardening (Finalization)**:
   - **CI Test Enforcement**: Integrated `oxilean-kernel` tests and linting into the CI pipeline (`ci.yml`) to enforce regression testing and maintain the Sovereign Verification Pipeline's stability.
   - **LiveSession Graceful Shutdown**: Implemented bounded drain window (2s `tokio::time::sleep`) in `live_session.rs` for background session cleanup, providing a heuristic grace period for in-flight generative tasks to flush before eviction (GAP-7).

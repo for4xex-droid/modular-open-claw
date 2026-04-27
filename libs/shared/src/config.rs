@@ -66,8 +66,6 @@ pub struct AiomeConfig {
     pub max_project_rules_chars: usize,
     /// WordPress API URL
     pub wp_api_url: Option<String>,
-    /// WordPress API Token
-    pub wp_api_token: Option<SecretString>,
     /// WordPress SDK Enabled
     pub wp_sdk_enabled: bool,
     /// A2A Node URL
@@ -129,7 +127,6 @@ impl Default for AiomeConfig {
             frontend_static_path: "apps/api-server/static".to_string(),
             max_project_rules_chars: 3000,
             wp_api_url: None,
-            wp_api_token: None,
             wp_sdk_enabled: false,
             a2a_node_url: "http://127.0.0.1:50051".to_string(), // allow-anti-pattern
             geo_optimizer_url: "http://geo-optimizer:8080".to_string(), // allow-anti-pattern
@@ -236,10 +233,6 @@ impl AiomeConfig {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(3000),
             wp_api_url: env::var("WP_API_URL").ok(),
-            wp_api_token: env::var("WP_API_TOKEN").ok().map(|token| {
-                crate::security::scrub_env("WP_API_TOKEN");
-                SecretString::from(token)
-            }),
             wp_sdk_enabled: env::var("WP_SDK_ENABLED").is_ok(),
             a2a_node_url: env::var("A2A_NODE_URL")
                 .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 50051)),

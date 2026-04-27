@@ -232,9 +232,16 @@ async fn main() -> anyhow::Result<()> {
                         _ = interval.tick() => {
                             info!("♻️ [HubMaintenance] Running Maintenance...");
                             if let Some(sq) = state_bg.pool.get_sqlite_pool() {
-                                 if let Err(e) = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(sq).await {
-                                     tracing::error!("🚨 [HubMaintenance] SQLite checkpoint failed: {}", e);
-                                     panic!("HubMaintenance crashed");
+                                 let has_error = match sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(sq).await {
+                                     Err(e) => {
+                                         tracing::error!("🚨 [HubMaintenance] SQLite checkpoint failed: {}", e);
+                                         true
+                                     }
+                                     Ok(_) => false,
+                                 };
+                                 if has_error {
+                                     tokio::time::sleep(Duration::from_secs(5)).await;
+                                     continue;
                                  }
                             }
                         }
