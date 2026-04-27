@@ -133,13 +133,14 @@ impl HealthMonitor {
         #[cfg(target_os = "macos")]
         {
             // Simple heuristic for macOS VRAM usage using ioreg
-            if let Ok(output) = std::process::Command::new("ioreg")
-                .args(["-l", "-d0", "-w0", "-r", "-c", "IOAccelerator"])
-                .output()
-            {
+            let mut cmd = std::process::Command::new("ioreg");
+            cmd.args(["-l", "-d0", "-w0", "-r", "-c", "IOAccelerator"]);
+            crate::security::harden_command(&mut cmd);
+            if let Ok(output) = cmd.output() {
                 let out_str = String::from_utf8_lossy(&output.stdout);
-                if let Some(idx) = out_str.find("\"vram-free-bytes\"=") {
-                    let remainder = &out_str[idx + 18..];
+                const VRAM_KEY: &str = "\"vram-free-bytes\"=";
+                if let Some(idx) = out_str.find(VRAM_KEY) {
+                    let remainder = &out_str[idx + VRAM_KEY.len()..];
                     if let Some(end) = remainder.find(',') {
                         if let Ok(free_bytes) = remainder[..end].trim().parse::<u64>() {
                             // Total VRAM is hard to get reliably via ioreg, so we just return what we find

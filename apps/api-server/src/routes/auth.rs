@@ -51,6 +51,7 @@ pub struct TokenResponse {
     )
 )]
 // auth-exempt: OAuth フロー
+#[tracing::instrument(skip_all, fields(path = "/api/v1/auth/authorize"))]
 pub async fn authorize_handler(
     Query(query): Query<AuthorizeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
@@ -71,6 +72,7 @@ pub async fn authorize_handler(
     )
 )]
 // auth-exempt: OAuth フロー
+#[tracing::instrument(skip_all, fields(path = "/api/v1/auth/token"))]
 pub async fn token_handler(
     State(state): State<AppState>,
     Json(payload): Json<TokenRequest>,

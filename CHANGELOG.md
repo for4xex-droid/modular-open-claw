@@ -31,6 +31,7 @@
 ### Added
 
 ### Changed
+- **Security Infrastructure Refactoring (DRY & Memory Efficiency)**: `SafeCommandBuilder` の環境変数適用ロジックを静的メソッド `apply_envs` に集約。環境変数適用時に `self.args.clone()` を排除する値渡し（ムーブ）へ変更し、メモリ効率を改善。また `PROCESS_SAFE_ENV_VARS` の定義を `shared::security` へ移動し、システム全体での再利用性を向上しました。
 - **Security Pipeline Evolution (Sunset of Taint Scanner)**: ファイル単位の正規表現スキャンに依存し、スコープ汚染やクロスファイル追跡の欠如により大量の偽陰性（False Negatives）を生んでいたレガシーな `taint_scanner.py` を完全に非推奨化・削除（Sunset）しました。
 - **Type-State Security & Data Flow Paradigm**: Rust の所有権モデルに対する静的解析の学術的限界（Flowistry, MIRAI 等の知見）に基づき、セキュリティアーキテクチャを根本から見直しました。場当たり的な外部スキャナへの依存を脱却し、今後は「Type-State パターンと Clippy によるコンパイラレベルの絶対的な境界防御」および「CodeQL の TRAP ベースの厳密なデータフロー解析（Taint Tracking）」を組み合わせた多層防御へ移行する基盤を確立しました。
 - **Infrastructure**: Refactored `store_chat_message` calls across `api-server` and `napi-bridge` to fully utilize the new `Option<serde_json::Value>` metadata parameter.

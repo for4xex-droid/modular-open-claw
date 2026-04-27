@@ -116,18 +116,11 @@ impl CliSlmBackend {
         args: Vec<&str>,
         timeout_secs: u64,
     ) -> Result<std::process::Output, AiomeError> {
-        let mut cmd = Command::new(&self.command_name);
-        cmd.arg(subcommand)
+        let mut cmd = crate::security::SafeCommandBuilder::new(&self.command_name)
+            .arg(subcommand)
             .args(args)
-            .stdin(Stdio::null())
-            .kill_on_drop(true);
-        // Defense-in-depth: Prevent secret leakage to SLM CLI (SSOT: PROCESS_SAFE_ENV_VARS)
-        cmd.env_clear();
-        for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
-            if let Ok(val) = std::env::var(var_name) {
-                cmd.env(var_name, val);
-            }
-        }
+            .build_internal()?;
+        cmd.stdin(Stdio::null()).kill_on_drop(true);
         let cmd_fut = cmd.output();
 
         timeout(Duration::from_secs(timeout_secs), cmd_fut)

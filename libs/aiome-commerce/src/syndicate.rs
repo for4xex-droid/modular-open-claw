@@ -308,11 +308,23 @@ impl SyndicateOps for UniversalSyndicateStore {
                             reason: e.to_string(),
                         })?;
                 for row in rows {
+                    let id = Uuid::parse_str(row.get("id")).map_err(|e| {
+                        error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid guild id: {}", e),
+                        }
+                    })?;
+                    let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
+                        error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid owner_id: {}", e),
+                        }
+                    })?;
                     guilds.push(Guild {
-                        id: Uuid::parse_str(row.get("id")).unwrap(), // allow-anti-pattern
+                        id,
                         name: row.get("name"),
                         description: row.get("description"),
-                        owner_id: Uuid::parse_str(row.get("owner_id")).unwrap(), // allow-anti-pattern
+                        owner_id,
                         created_at: row.get("created_at"),
                     });
                 }
@@ -325,11 +337,23 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
                 for row in rows {
+                    let id = Uuid::parse_str(row.get("id")).map_err(|e| {
+                        error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB (postgres)");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid guild id: {}", e),
+                        }
+                    })?;
+                    let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
+                        error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB (postgres)");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid owner_id: {}", e),
+                        }
+                    })?;
                     guilds.push(Guild {
-                        id: Uuid::parse_str(row.get("id")).unwrap(), // allow-anti-pattern
+                        id,
                         name: row.get("name"),
                         description: row.get("description"),
-                        owner_id: Uuid::parse_str(row.get("owner_id")).unwrap(), // allow-anti-pattern
+                        owner_id,
                         created_at: row.get("created_at"),
                     });
                 }
@@ -351,9 +375,21 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
                 for row in rows {
+                    let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
+                        error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid guild_id: {}", e),
+                        }
+                    })?;
+                    let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
+                        error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid agent_id: {}", e),
+                        }
+                    })?;
                     members.push(GuildMember {
-                        guild_id: Uuid::parse_str(row.get("guild_id")).unwrap(), // allow-anti-pattern
-                        agent_id: Uuid::parse_str(row.get("agent_id")).unwrap(), // allow-anti-pattern
+                        guild_id: parsed_guild_id,
+                        agent_id: parsed_agent_id,
                         role: row.get("role"),
                         joined_at: row.get("joined_at"),
                     });
@@ -368,9 +404,21 @@ impl SyndicateOps for UniversalSyndicateStore {
                         reason: e.to_string(),
                     })?;
                 for row in rows {
+                    let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
+                        error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members (postgres)");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid guild_id: {}", e),
+                        }
+                    })?;
+                    let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
+                        error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members (postgres)");
+                        AiomeError::Infrastructure {
+                            reason: format!("Invalid agent_id: {}", e),
+                        }
+                    })?;
                     members.push(GuildMember {
-                        guild_id: Uuid::parse_str(row.get("guild_id")).unwrap(), // allow-anti-pattern
-                        agent_id: Uuid::parse_str(row.get("agent_id")).unwrap(), // allow-anti-pattern
+                        guild_id: parsed_guild_id,
+                        agent_id: parsed_agent_id,
                         role: row.get("role"),
                         joined_at: row.get("joined_at"),
                     });
@@ -486,5 +534,60 @@ mod tests {
 
         let res_delete = store.delete_guild(fake_guild_id, agent_id).await;
         assert!(matches!(res_delete, Err(AiomeError::NotFound { .. })));
+    }
+
+    #[tokio::test]
+    async fn test_fetch_guilds_invalid_uuid_graceful_error() {
+        let pool = setup_test_db().await;
+        let store = UniversalSyndicateStore::new(pool.clone());
+
+        // Directly insert a bad UUID using raw SQL to bypass the create_guild logic
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        sqlx::query("INSERT INTO guilds (id, name, description, owner_id) VALUES ('invalid-uuid', 'Bad Guild', 'Desc', 'another-invalid')")
+            .execute(sqlite_pool)
+            .await
+            .unwrap(); // allow-anti-pattern
+
+        let res = store.fetch_guilds().await;
+        assert!(
+            res.is_err(),
+            "Expected an error when parsing invalid UUID, but got {:?}",
+            res
+        );
+        assert!(matches!(res, Err(AiomeError::Infrastructure { .. })));
+    }
+
+    #[tokio::test]
+    async fn test_fetch_members_invalid_uuid_graceful_error() {
+        let pool = setup_test_db().await;
+        let store = UniversalSyndicateStore::new(pool.clone());
+
+        // Insert a valid guild first, then corrupt guild_members
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let guild_id = Uuid::new_v4();
+        let guild_id_str = guild_id.to_string();
+        sqlx::query(
+            "INSERT INTO guilds (id, name, description, owner_id) VALUES (?, 'TestGuild', NULL, ?)",
+        )
+        .bind(&guild_id_str)
+        .bind(&guild_id_str)
+        .execute(sqlite_pool)
+        .await
+        .unwrap(); // allow-anti-pattern
+
+        // Insert corrupted member record with invalid agent_id
+        sqlx::query("INSERT INTO guild_members (guild_id, agent_id, role) VALUES (?, 'not-a-uuid', 'worker')")
+            .bind(&guild_id_str)
+            .execute(sqlite_pool)
+            .await
+            .unwrap(); // allow-anti-pattern
+
+        let res = store.fetch_members(guild_id).await;
+        assert!(
+            res.is_err(),
+            "Expected an error when parsing invalid agent_id, but got {:?}",
+            res
+        );
+        assert!(matches!(res, Err(AiomeError::Infrastructure { .. })));
     }
 }

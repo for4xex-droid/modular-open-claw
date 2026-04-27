@@ -364,19 +364,16 @@ impl LoraTrainingService {
         );
 
         if std::env::var("AIOME_SKIP_OLLAMA").is_err() {
-            let mut cmd = tokio::process::Command::new("ollama");
-            cmd.arg("create")
+            let mut cmd = crate::security::SafeCommandBuilder::new("ollama")
+                .arg("create")
                 .arg(&target_model_name)
                 .arg("-f")
-                .arg(&modelfile_path)
-                .kill_on_drop(true);
-            // Defense-in-depth: Prevent secret leakage to ollama CLI (SSOT: PROCESS_SAFE_ENV_VARS)
-            cmd.env_clear();
-            for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
-                if let Ok(val) = std::env::var(var_name) {
-                    cmd.env(var_name, val);
-                }
-            }
+                .arg(modelfile_path.to_string_lossy().to_string())
+                .build_internal()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to build ollama command: {}", e),
+                })?;
+            cmd.kill_on_drop(true);
             let mut child = cmd.spawn().map_err(|e| AiomeError::Infrastructure {
                 reason: format!(
                     "Failed to spawn 'ollama create'. Is Ollama installed? {}",
@@ -643,17 +640,13 @@ impl LoraEngine for LoraTrainingService {
             return Ok(false);
         }
 
-        let mut cmd = tokio::process::Command::new("python3");
-        cmd.arg("-c")
+        let mut cmd = crate::security::SafeCommandBuilder::new("python3")
+            .arg("-c")
             .arg("import mlx_lm; print('ready')")
-            .env_clear(); // Clean environment for security
-
-        // (P-3b) Re-inject essential vars (SSOT: PROCESS_SAFE_ENV_VARS)
-        for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
-            if let Ok(val) = std::env::var(var_name) {
-                cmd.env(var_name, val);
-            }
-        }
+            .build_internal()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to build python health check command: {}", e),
+            })?;
 
         let output = cmd.output().await;
 

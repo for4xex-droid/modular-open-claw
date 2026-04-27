@@ -63,8 +63,9 @@ pub async fn run_startup_diagnosis(config: &shared::config::AiomeConfig) -> Resu
     // 3. Container Runtime Ping
     let runtime = shared::container_runtime::detect_runtime();
 
-    let docker_out = tokio::process::Command::new(runtime)
+    let docker_out = infrastructure::security::SafeCommandBuilder::new(runtime)
         .arg("info")
+        .build_internal()?
         .output()
         .await;
 

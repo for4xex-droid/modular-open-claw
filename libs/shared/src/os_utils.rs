@@ -25,10 +25,10 @@ pub fn prevent_app_nap() -> Result<std::process::Child, std::io::Error> {
         // -d: prevent display sleep (optional, but good for visibility)
         // -m: prevent disk idle sleep
         // -c: create a new assertion for the duration of the command
-        Command::new("caffeinate")
-            .arg("-c") // Added -c argument
-            .args(["-i", "-m"]) // Changed to array literal for clippy
-            .spawn()
+        let mut cmd = Command::new("caffeinate");
+        cmd.arg("-c").args(["-i", "-m"]);
+        crate::security::harden_command(&mut cmd);
+        cmd.spawn()
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -69,8 +69,11 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> std::path::PathBuf {
             if path == Path::new("~") {
                 expanded
             } else {
-                // `~` の後の `/` をスキップして結合
-                expanded.push(path.strip_prefix("~").unwrap()); // allow-anti-pattern
+                // `starts_with("~")` ガード済みのため strip_prefix は常に成功する
+                let stripped = path
+                    .strip_prefix("~")
+                    .expect("strip_prefix(~) must succeed after starts_with(~) guard"); // allow-anti-pattern
+                expanded.push(stripped);
                 expanded
             }
         }

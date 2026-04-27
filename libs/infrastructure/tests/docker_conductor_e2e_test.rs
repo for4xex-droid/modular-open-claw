@@ -24,9 +24,12 @@ async fn test_docker_conductor_e2e_success_flow() {
     // Check if runtime is available, otherwise skip (to avoid failing in environments without docker/podman)
     let runtime = shared::container_runtime::detect_runtime();
 
-    let output = std::process::Command::new(runtime)
+    let output = infrastructure::security::SafeCommandBuilder::new(runtime)
         .arg("--version")
-        .output();
+        .build_internal()
+        .unwrap() // allow-anti-pattern
+        .output()
+        .await;
 
     if output.is_err() {
         println!("Skipping E2E test as {} is not installed", runtime);
@@ -39,7 +42,12 @@ async fn test_docker_conductor_e2e_success_flow() {
     }
 
     // Check if daemon is running
-    let info_output = std::process::Command::new(runtime).arg("info").output();
+    let info_output = infrastructure::security::SafeCommandBuilder::new(runtime)
+        .arg("info")
+        .build_internal()
+        .unwrap() // allow-anti-pattern
+        .output()
+        .await;
 
     if info_output.is_err() || !info_output.unwrap().status.success() {
         println!("Skipping E2E test as {} daemon is not running", runtime);

@@ -111,14 +111,14 @@ pub fn mask_pii(text: &str) -> String {
     let mut masked = text.to_string();
 
     let email_re = EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap() // allow-anti-pattern
+        Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap_or_else(|_| unreachable!())
     });
     let cc_re = CREDIT_CARD_REGEX.get_or_init(|| {
-        Regex::new(r"\b(?:\d[ -\.]*?){13,16}\b").unwrap() // allow-anti-pattern
+        Regex::new(r"\b(?:\d[ -\.]*?){13,16}\b").unwrap_or_else(|_| unreachable!())
     });
     let phone_re = PHONE_REGEX.get_or_init(|| {
         let pattern = r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}\b";
-        Regex::new(pattern).unwrap() // allow-anti-pattern
+        Regex::new(pattern).unwrap_or_else(|_| unreachable!())
     });
 
     masked = email_re.replace_all(&masked, "[EMAIL_MASKED]").into_owned();

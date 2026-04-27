@@ -8,6 +8,9 @@
 use crate::auth;
 use crate::routes;
 use crate::AppState;
+use axum::extract::Request;
+use axum::middleware::Next;
+use axum::response::Response;
 use axum::{
     http::{
         header::{
@@ -20,11 +23,28 @@ use axum::{
     Router,
 };
 use std::time::Duration;
+use std::time::Instant;
 use tower_http::{
     cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir,
     set_header::SetResponseHeaderLayer, timeout::TimeoutLayer,
 };
 use utoipa::OpenApi;
+
+pub async fn metrics_middleware(req: Request, next: Next) -> Response {
+    let start = Instant::now();
+    let path = req.uri().path().to_owned();
+    let method = req.method().clone();
+
+    let response = next.run(req).await;
+
+    let latency = start.elapsed().as_secs_f64();
+    let status = response.status().as_u16().to_string();
+
+    metrics::counter!("aiome_api_requests_total", "method" => method.to_string(), "path" => path.clone(), "status" => status.clone()).increment(1);
+    metrics::histogram!("aiome_api_request_duration_seconds", "method" => method.to_string(), "path" => path, "status" => status).record(latency);
+
+    response
+}
 
 pub fn build_app(
     state: AppState,
@@ -661,6 +681,7 @@ pub fn build_app(
 
     // Assembly with Global Config Layers (CORS, Headers, etc.)
     final_router
+        .layer(axum::middleware::from_fn(metrics_middleware))
         .layer(SetResponseHeaderLayer::if_not_present(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff")))
         .layer(SetResponseHeaderLayer::if_not_present(X_FRAME_OPTIONS, HeaderValue::from_static("DENY")))
         .layer(SetResponseHeaderLayer::if_not_present(STRICT_TRANSPORT_SECURITY, HeaderValue::from_static("max-age=31536000; includeSubDomains")))

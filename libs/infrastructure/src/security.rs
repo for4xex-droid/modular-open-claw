@@ -131,18 +131,11 @@ pub static GLOBAL_SECURITY_CONFIG: once_cell::sync::Lazy<SecurityConfig> =
 
 /// Defense-in-depth: env_clear() 後に再注入する必須環境変数の SSOT ホワイトリスト。
 ///
+/// **正規定義は `shared::security::PROCESS_SAFE_ENV_VARS`**。
 /// BastionGuard (`build_safe_command_args`) および ZombieKiller (`run_with_timeout`)
-/// の両方がこの定数を参照する。MCP クライアント側は MCP 固有の拡張変数を含む
+/// がこの re-export を参照する。MCP クライアント側は MCP 固有の拡張変数を含む
 /// `MCP_SAFE_ENV_VARS` を使用するため意図的に分離。
-pub const PROCESS_SAFE_ENV_VARS: &[&str] = &[
-    "PATH",
-    "HOME",
-    "LANG",
-    "TMPDIR",
-    // Python venv 互換性: mlx-lm / pip 等がパッケージ解決に使用
-    "PYTHONPATH",
-    "VIRTUAL_ENV",
-];
+pub use shared::security::PROCESS_SAFE_ENV_VARS;
 
 /// Phase 2: Runtime Enforcement (The Bastion Guard)
 ///
@@ -357,11 +350,7 @@ impl RuntimeJail for BastionGuard {
                 (binary, vec![])
             }
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
-            let runsc_exists = std::process::Command::new("which")
-                .arg("runsc")
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
+            let runsc_exists = BastionGuard::binary_exists_on_path("runsc");
 
             if runsc_exists {
                 let mut args = Vec::new();
@@ -440,14 +429,20 @@ impl BastionGuard {
         }
     }
 
+    /// [Internal] 指定されたバイナリが PATH 上に存在するかを安全にチェックする。
+    ///
+    /// `which` コマンドを `harden_command` で環境隔離した上で実行する。
+    fn binary_exists_on_path(name: &str) -> bool {
+        let mut cmd = std::process::Command::new("which");
+        cmd.arg(name);
+        shared::security::harden_command(&mut cmd);
+        cmd.output().map(|o| o.status.success()).unwrap_or(false)
+    }
+
     /// [Internal] 🛡️ 指定されたバイナリをサンドボックスでラップする
     fn wrap_binary(&self, binary: &str, profile: SandboxProfile) -> (String, Vec<String>) {
         if cfg!(target_os = "macos") && !self.is_system_internal {
-            let sandbox_exists = std::process::Command::new("which")
-                .arg("sandbox-exec")
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
+            let sandbox_exists = Self::binary_exists_on_path("sandbox-exec");
 
             if sandbox_exists {
                 let profile_str = match profile {
@@ -466,11 +461,7 @@ impl BastionGuard {
                 );
             }
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
-            let runsc_exists = std::process::Command::new("which")
-                .arg("runsc")
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
+            let runsc_exists = Self::binary_exists_on_path("runsc");
 
             if runsc_exists && GLOBAL_SECURITY_CONFIG.use_runsc_sandbox {
                 let mut runsc_args = Vec::new();
@@ -511,14 +502,8 @@ impl BastionGuard {
 
         let mut cmd = tokio::process::Command::new(actual_prog);
 
-        // Step 4-B: Defense-in-depth: Clear environment variables
-        cmd.env_clear();
-        // Re-inject essential system variables (SSOT: PROCESS_SAFE_ENV_VARS)
-        for var_name in PROCESS_SAFE_ENV_VARS {
-            if let Ok(val) = std::env::var(var_name) {
-                cmd.env(var_name, val);
-            }
-        }
+        // Step 4-B: Defense-in-depth — SSOT harden_command_async
+        shared::security::harden_command_async(&mut cmd);
 
         cmd.args(actual_args);
         Ok(cmd)
@@ -532,7 +517,105 @@ impl BastionGuard {
             boundary_verifier: BoundaryVerifier::from_global_config(),
         }
     }
+}
 
+/// A builder for creating safe tokio::process::Command instances using BastionGuard.
+pub struct SafeCommandBuilder {
+    program: String,
+    args: Vec<String>,
+    profile: SandboxProfile,
+    envs: Vec<(String, String)>,
+    env_passthroughs: Vec<String>,
+}
+
+impl SafeCommandBuilder {
+    pub fn new(program: impl Into<String>) -> Self {
+        Self {
+            program: program.into(),
+            args: Vec::new(),
+            profile: SandboxProfile::Default,
+            envs: Vec::new(),
+            env_passthroughs: Vec::new(),
+        }
+    }
+
+    pub fn arg(mut self, arg: impl Into<String>) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for arg in args {
+            self.args.push(arg.into());
+        }
+        self
+    }
+
+    pub fn profile(mut self, profile: SandboxProfile) -> Self {
+        self.profile = profile;
+        self
+    }
+
+    pub fn env<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.envs.push((key.into(), val.into()));
+        self
+    }
+
+    pub fn env_passthrough<K>(mut self, key: K) -> Self
+    where
+        K: Into<String>,
+    {
+        self.env_passthroughs.push(key.into());
+        self
+    }
+
+    fn apply_envs(
+        mut cmd: tokio::process::Command,
+        envs: Vec<(String, String)>,
+        passthroughs: Vec<String>,
+    ) -> tokio::process::Command {
+        for (k, v) in envs {
+            cmd.env(k, v);
+        }
+        for k in passthroughs {
+            if let Ok(val) = std::env::var(&k) {
+                cmd.env(k, val);
+            }
+        }
+        cmd
+    }
+
+    pub fn build_internal(self) -> Result<tokio::process::Command, AiomeError> {
+        let manifest = PermissionManifest {
+            allow_shell_execution: true,
+            allow_filesystem_write: true,
+            allow_network: true,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new_internal(manifest);
+        let cmd = guard.build_safe_command_args(&self.program, self.args, self.profile)?;
+        Ok(Self::apply_envs(cmd, self.envs, self.env_passthroughs))
+    }
+
+    pub fn build(
+        self,
+        manifest: PermissionManifest,
+    ) -> Result<tokio::process::Command, AiomeError> {
+        let guard = BastionGuard::new(manifest);
+        let cmd = guard.build_safe_command_args(&self.program, self.args, self.profile)?;
+        Ok(Self::apply_envs(cmd, self.envs, self.env_passthroughs))
+    }
+}
+
+impl BastionGuard {
     /// SEC-5: Quote-aware command splitting for paths with spaces
     /// Supports double and single quotes. Does NOT support escape sequences for security.
     fn shell_split(input: &str) -> Vec<String> {
@@ -693,6 +776,31 @@ mod tests {
         assert!(
             stdout.contains("'PATH'"),
             "PATH must be re-injected for processes to function correctly. Stdout: {}",
+            stdout
+        );
+    }
+
+    #[tokio::test]
+    async fn test_safe_command_builder_env_passthrough() {
+        let secret_key = "BASTION_TEST_PASSTHROUGH_SECRET";
+        std::env::set_var(secret_key, "passthrough-success-123");
+
+        let mut cmd = SafeCommandBuilder::new("python3")
+            .arg("-c")
+            .arg("import os; print(os.environ.get('BASTION_TEST_PASSTHROUGH_SECRET', 'not_found'))")
+            .env_passthrough(secret_key)
+            .build_internal()
+            .expect("Failed to build command args");
+
+        let output = cmd.output().await.expect("Failed to run command");
+
+        std::env::remove_var(secret_key);
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            stdout.contains("passthrough-success-123"),
+            "env_passthrough failed to inject the requested variable. Stdout: {}",
             stdout
         );
     }

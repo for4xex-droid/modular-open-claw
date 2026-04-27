@@ -7,7 +7,6 @@
 
 use aiome_core::biome::DelegationResult;
 use std::fs;
-use std::process::Command;
 use std::time::Instant;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -58,33 +57,40 @@ pub async fn delegate_docker_worker(
 
     // Call docker-agent (expected to be in PATH or symlinked)
     // Using --exec and --json for stable parsing (scanned from docker-agent repo)
-    let output = tokio::task::spawn_blocking({
-        let yaml_path = yaml_path.clone();
-        let task_prompt = {
-            use base64::Engine;
-            base64::engine::general_purpose::STANDARD.encode(task_prompt)
-        };
-        let runtime = shared::container_runtime::detect_runtime().to_string();
-        move || {
-            Command::new(&runtime)
-                .arg("agent")
-                .arg("run")
-                .arg("--exec")
-                .arg("--json")
-                .arg(yaml_path.to_string_lossy().as_ref())
-                .arg("--prompt-b64")
-                .arg(task_prompt)
-                .output()
-        }
-    })
-    .await;
+    let yaml_path_str = yaml_path.to_string_lossy().to_string();
+    let task_prompt_b64 = {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.encode(task_prompt)
+    };
+    let runtime = shared::container_runtime::detect_runtime().to_string();
+
+    let cmd_res = infrastructure::security::SafeCommandBuilder::new(&runtime)
+        .arg("agent")
+        .arg("run")
+        .arg("--exec")
+        .arg("--json")
+        .arg(&yaml_path_str)
+        .arg("--prompt-b64")
+        .arg(&task_prompt_b64)
+        .env_passthrough("DOCKER_HOST")
+        .env_passthrough("PATH")
+        .env_passthrough("USER")
+        .build_internal();
+
+    let output = match cmd_res {
+        Ok(mut cmd) => cmd
+            .output()
+            .await
+            .map_err(|e| format!("Command execution failed: {}", e)),
+        Err(e) => Err(format!("Command build failed: {}", e)),
+    };
 
     // Clean up temp dir
     let _ = fs::remove_dir_all(&temp_dir);
     let duration_ms = start.elapsed().as_millis() as u64;
 
     match output {
-        Ok(Ok(out)) => {
+        Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout).to_string();
             let stderr = String::from_utf8_lossy(&out.stderr).to_string();
             let exit_code = out.status.code().unwrap_or(-2);
@@ -108,21 +114,12 @@ pub async fn delegate_docker_worker(
                 duration_ms,
             }
         }
-        Ok(Err(e)) => {
+        Err(e) => {
             error!("❌ [DockerDelegator] Execution error: {}", e);
             DelegationResult {
                 stdout: "".to_string(),
-                stderr: format!("Command execution failed: {}", e),
+                stderr: e,
                 exit_code: -3,
-                duration_ms,
-            }
-        }
-        Err(e) => {
-            error!("❌ [DockerDelegator] Task join error: {}", e);
-            DelegationResult {
-                stdout: "".to_string(),
-                stderr: format!("Task join error: {}", e),
-                exit_code: -4,
                 duration_ms,
             }
         }

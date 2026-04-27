@@ -90,12 +90,16 @@ impl OssRepositoryIndexer {
         );
 
         // 1. git clone --depth 1
-        let output = tokio::process::Command::new("git")
+        let output = crate::security::SafeCommandBuilder::new("git")
             .arg("clone")
             .arg("--depth")
             .arg("1")
             .arg(github_url)
-            .arg(&temp_dir)
+            .arg(temp_dir.to_string_lossy().to_string())
+            .build_internal()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to build git command: {}", e),
+            })?
             .output()
             .await
             .map_err(|e| AiomeError::Infrastructure {
@@ -300,24 +304,23 @@ mod tests {
         .unwrap(); // allow-anti-pattern
 
         // Init git repo
-        let _ = std::process::Command::new("git")
-            .arg("init")
-            .current_dir(&remote_dir)
-            .output()
-            .unwrap(); // allow-anti-pattern
-        let _ = std::process::Command::new("git")
-            .arg("add")
-            .arg(".")
-            .current_dir(&remote_dir)
-            .output()
-            .unwrap(); // allow-anti-pattern
-        let _ = std::process::Command::new("git")
-            .arg("commit")
+        let mut cmd1 = std::process::Command::new("git");
+        cmd1.arg("init").current_dir(&remote_dir);
+        shared::security::harden_command(&mut cmd1);
+        let _ = cmd1.output().unwrap(); // allow-anti-pattern
+
+        let mut cmd2 = std::process::Command::new("git");
+        cmd2.arg("add").arg(".").current_dir(&remote_dir);
+        shared::security::harden_command(&mut cmd2);
+        let _ = cmd2.output().unwrap(); // allow-anti-pattern
+
+        let mut cmd3 = std::process::Command::new("git");
+        cmd3.arg("commit")
             .arg("-m")
             .arg("initial commit")
-            .current_dir(&remote_dir)
-            .output()
-            .unwrap(); // allow-anti-pattern
+            .current_dir(&remote_dir);
+        shared::security::harden_command(&mut cmd3);
+        let _ = cmd3.output().unwrap(); // allow-anti-pattern
 
         // 2. Clone and Index
         let remote_url = format!("file://{}", remote_dir.display());

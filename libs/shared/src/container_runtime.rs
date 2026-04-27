@@ -34,13 +34,13 @@ pub fn detect_runtime() -> &'static str {
         }
 
         // 2. Podman の存在チェック
-        if std::process::Command::new("podman")
-            .arg("--version")
+        let mut cmd = std::process::Command::new("podman");
+        cmd.arg("--version")
             .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
+            .stderr(std::process::Stdio::null());
+        crate::security::harden_command(&mut cmd);
+
+        if cmd.status().map(|s| s.success()).unwrap_or(false)
         {
             return "podman".to_string();
         }

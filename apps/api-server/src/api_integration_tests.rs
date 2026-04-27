@@ -3051,3 +3051,28 @@ async fn test_commerce_release_escrow_idor() {
     // This should fail due to IDOR protection
     assert_eq!(res_invalid.status_code(), reqwest::StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+#[serial]
+async fn test_metrics_observability() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // 1. Send a request to a core handler, e.g., health
+    let res = server.get("/api/health").await;
+    res.assert_status_ok();
+
+    // 2. Fetch metrics
+    let metrics_res = server
+        .get("/api/v1/metrics")
+        .add_header(axum::http::header::AUTHORIZATION, bearer)
+        .await;
+    metrics_res.assert_status_ok();
+
+    let text = metrics_res.text();
+    // Validate that our custom metric 'aiome_api_requests_total' exists and was incremented
+    assert!(
+        text.contains("aiome_api_requests_total"),
+        "Custom metric aiome_api_requests_total is missing from Prometheus output!"
+    );
+}

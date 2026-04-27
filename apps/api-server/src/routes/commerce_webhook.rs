@@ -25,6 +25,7 @@ use tracing::{error, info, warn};
     )
 )]
 // auth-exempt: Stripe 署名検証
+#[tracing::instrument(skip_all, fields(path = "/api/v1/commerce/webhook"))]
 pub async fn stripe_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,

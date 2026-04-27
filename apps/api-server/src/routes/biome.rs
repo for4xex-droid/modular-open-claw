@@ -356,6 +356,7 @@ pub async fn list_messages(
     ),
     security(("api_key" = []))
 )]
+#[tracing::instrument(skip_all, fields(path = "/api/biome/send"))]
 pub async fn send_message(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,

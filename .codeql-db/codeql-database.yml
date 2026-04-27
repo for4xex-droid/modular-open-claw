@@ -1,0 +1,13 @@
+---
+sourceLocationPrefix: /Users/motista/Desktop/antigravity/aiome
+baselineLinesOfCode: 195290
+unicodeNewlines: false
+columnKind: utf8
+primaryLanguage: rust
+creationMetadata:
+  sha: dcc3c0272f6306f1002db0183834378c65ed48cc
+  cliVersion: 2.25.2
+  creationTime: 2026-04-26T20:03:04.005922Z
+overlayBaseDatabase: false
+overlayDatabase: false
+finalised: true

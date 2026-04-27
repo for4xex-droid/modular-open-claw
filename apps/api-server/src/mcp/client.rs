@@ -33,6 +33,9 @@ pub const MCP_SAFE_ENV_VARS: &[&str] = &[
     "XDG_CONFIG_HOME",
     "XDG_CACHE_HOME",
     "XDG_DATA_HOME",
+    "NVM_DIR",
+    "OLLAMA_HOST",
+    "DOCKER_HOST",
 ];
 
 /// Phase 17-B: Zombie Defense - Managed child process.
@@ -119,17 +122,16 @@ impl McpClient {
             // Flags like -c or -e are legitimate for these commands.
         }
 
-        // Use tokio::process::Command for async I/O
+        // Use SafeCommandBuilder for async I/O and security
         // Order matters: env_clear → safe system vars → user envs (user can override)
-        let mut command = Command::new(cmd);
-        command.env_clear().args(args);
+        let mut builder = infrastructure::security::SafeCommandBuilder::new(cmd).args(args);
 
         // (P-3b) Re-inject essential safe environment variables for proper operation.
         for var_name in MCP_SAFE_ENV_VARS {
-            if let Ok(val) = std::env::var(var_name) {
-                command.env(var_name, val);
-            }
+            builder = builder.env_passthrough(*var_name);
         }
+
+        let mut command = builder.build_internal()?;
 
         // (P-3) User-defined envs applied LAST so they can override system defaults
         // (e.g., custom PATH for a specific Python venv)

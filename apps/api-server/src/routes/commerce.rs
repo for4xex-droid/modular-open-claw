@@ -232,6 +232,7 @@ pub async fn transfer(
     ),
     security(("api_key" = []))
 )]
+#[tracing::instrument(skip_all, fields(path = "/api/v1/commerce/purchase"))]
 pub async fn execute_purchase(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,

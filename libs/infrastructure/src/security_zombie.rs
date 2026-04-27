@@ -131,14 +131,8 @@ pub async fn run_with_timeout(
     cmd_obj.args(args);
     cmd_obj.kill_on_drop(true);
 
-    // Step 4-A: Defense-in-depth: Clear environment variables
-    cmd_obj.env_clear();
-    // Re-inject essential system variables (SSOT: PROCESS_SAFE_ENV_VARS)
-    for var_name in crate::security::PROCESS_SAFE_ENV_VARS {
-        if let Ok(val) = std::env::var(var_name) {
-            cmd_obj.env(var_name, val);
-        }
-    }
+    // Step 4-A: Defense-in-depth — SSOT harden_command_async
+    shared::security::harden_command_async(&mut cmd_obj);
     let mut child = cmd_obj
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

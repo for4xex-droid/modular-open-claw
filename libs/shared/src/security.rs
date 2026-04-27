@@ -9,6 +9,69 @@ use anyhow::{bail, Result};
 use bastion::net_guard::ShieldClient;
 use serde::{Deserialize, Serialize};
 
+/// Defense-in-depth: `env_clear()` 後に再注入する必須環境変数の SSOT ホワイトリスト。
+///
+/// **この定数が唯一の正規定義 (Single Source of Truth)** です。
+/// `infrastructure::security::PROCESS_SAFE_ENV_VARS` はこの定数を re-export します。
+/// `shared` クレート内の全 `Command::new` 呼び出しは [`harden_command`] ヘルパーを使用し、
+/// この定数を直接参照します。
+///
+/// # 含まれる変数
+/// - `PATH` / `HOME` / `LANG` / `TMPDIR`: OS 基本動作に必須
+/// - `PYTHONPATH` / `VIRTUAL_ENV`: Python venv 互換性 (mlx-lm / pip 等)
+pub const PROCESS_SAFE_ENV_VARS: &[&str] = &[
+    "PATH",
+    "HOME",
+    "LANG",
+    "TMPDIR",
+    "USER",
+    "LOGNAME",
+    // Python venv 互換性: mlx-lm / pip 等がパッケージ解決に使用
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+];
+
+/// `std::process::Command` に対して環境変数の安全な隔離処理を適用する。
+///
+/// 1. `env_clear()` で親プロセスの全環境変数を除去
+/// 2. [`PROCESS_SAFE_ENV_VARS`] に定義された変数のみを再注入
+///
+/// # Usage
+/// ```ignore
+/// let mut cmd = std::process::Command::new("git");
+/// cmd.arg("status");
+/// shared::security::harden_command(&mut cmd);
+/// ```
+pub fn harden_command(cmd: &mut std::process::Command) {
+    cmd.env_clear();
+    for var_name in PROCESS_SAFE_ENV_VARS {
+        if let Ok(val) = std::env::var(var_name) {
+            cmd.env(var_name, val);
+        }
+    }
+}
+
+/// `tokio::process::Command` に対して環境変数の安全な隔離処理を適用する。
+///
+/// [`harden_command`] の非同期版。`security_zombie::run_with_timeout` や
+/// `BastionGuard::build_safe_command_args` 等、`tokio::process::Command` を
+/// 使用する箇所で呼び出す。
+///
+/// # Usage
+/// ```ignore
+/// let mut cmd = tokio::process::Command::new("git");
+/// cmd.arg("status");
+/// shared::security::harden_command_async(&mut cmd);
+/// ```
+pub fn harden_command_async(cmd: &mut tokio::process::Command) {
+    cmd.env_clear();
+    for var_name in PROCESS_SAFE_ENV_VARS {
+        if let Ok(val) = std::env::var(var_name) {
+            cmd.env(var_name, val);
+        }
+    }
+}
+
 /// 工場のセキュリティポリシー
 ///
 /// 許可されたホスト、ツール、リソースへのアクセスを制御する。
@@ -226,6 +289,108 @@ pub fn scrub_env(key: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ───── harden_command tests (Verification Protocol: Positive + Negative) ─────
+
+    #[test]
+    fn test_harden_command_injects_path() {
+        // Positive: PATH が再注入されていることを確認
+        let mut cmd = std::process::Command::new("env");
+        harden_command(&mut cmd);
+        let output = cmd.output().expect("failed to run env");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("PATH="),
+            "harden_command must re-inject PATH. Got: {}",
+            stdout
+        );
+    }
+
+    #[test]
+    fn test_harden_command_blocks_secret_leakage() {
+        // Negative Injection: 任意の秘密変数が子プロセスに漏洩しないことを確認
+        let secret_key = "HARDEN_CMD_TEST_SECRET_XYZ_987";
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::set_var(secret_key, "leak-canary-value");
+        }
+
+        let mut cmd = std::process::Command::new("env");
+        harden_command(&mut cmd);
+        let output = cmd.output().expect("failed to run env");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        // Revert
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::remove_var(secret_key);
+        }
+
+        assert!(
+            !stdout.contains("leak-canary-value"),
+            "Secret '{}' leaked through harden_command! Stdout: {}",
+            secret_key,
+            stdout
+        );
+    }
+
+    #[test]
+    fn test_harden_command_only_injects_ssot_vars() {
+        // PROCESS_SAFE_ENV_VARS 以外の変数が一切注入されないことを確認
+        let mut cmd = std::process::Command::new("env");
+        harden_command(&mut cmd);
+        let output = cmd.output().expect("failed to run env");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        for line in stdout.lines() {
+            if let Some(key) = line.split('=').next() {
+                assert!(
+                    PROCESS_SAFE_ENV_VARS.contains(&key),
+                    "Unexpected env var '{}' leaked through harden_command. Only SSOT vars should be present.",
+                    key
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_harden_command_async_injects_path() {
+        let mut cmd = tokio::process::Command::new("env");
+        harden_command_async(&mut cmd);
+        let output = cmd.output().await.expect("failed to run env");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("PATH="),
+            "harden_command_async must re-inject PATH. Got: {}",
+            stdout
+        );
+    }
+
+    #[tokio::test]
+    async fn test_harden_command_async_blocks_secret_leakage() {
+        let secret_key = "HARDEN_ASYNC_TEST_SECRET_ABC_456";
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::set_var(secret_key, "async-leak-canary");
+        }
+
+        let mut cmd = tokio::process::Command::new("env");
+        harden_command_async(&mut cmd);
+        let output = cmd.output().await.expect("failed to run env");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::remove_var(secret_key);
+        }
+
+        assert!(
+            !stdout.contains("async-leak-canary"),
+            "Secret '{}' leaked through harden_command_async! Stdout: {}",
+            secret_key,
+            stdout
+        );
+    }
 
     #[test]
     fn test_default_policy_allows_registered_tools() {
