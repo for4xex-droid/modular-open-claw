@@ -230,14 +230,11 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generator_generates_intent_green() {
         let _tmp = tempdir().unwrap(); // allow-anti-pattern
-        let pool = crate::db::DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(), // allow-anti-pattern
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
@@ -315,14 +312,11 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generation_reflects_soul_state() {
         let _tmp = tempdir().unwrap(); // allow-anti-pattern
-        let pool = crate::db::DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(), // allow-anti-pattern
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)

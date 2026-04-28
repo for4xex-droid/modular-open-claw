@@ -217,14 +217,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_cost_limit_green() {
-        let pool = crate::db::DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(), // allow-anti-pattern
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
@@ -244,14 +241,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_monthly_cost_limit() {
-        let pool = crate::db::DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(), // allow-anti-pattern
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap(); // allow-anti-pattern
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
