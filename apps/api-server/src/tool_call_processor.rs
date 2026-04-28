@@ -254,13 +254,17 @@ mod tests {
                 _prompt: &str,
                 _system: Option<&str>,
             ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
-                unimplemented!()
+                Err(AiomeError::Infrastructure {
+                    reason: "DummyLlm: complete not implemented".to_string(),
+                })
             }
             async fn complete_with_cache(
                 &self,
                 _a: aiome_core_contracts::llm::LlmRequest,
             ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
-                unimplemented!()
+                Err(AiomeError::Infrastructure {
+                    reason: "DummyLlm: complete_with_cache not implemented".to_string(),
+                })
             }
             fn name(&self) -> &str {
                 "DummyLlm"
