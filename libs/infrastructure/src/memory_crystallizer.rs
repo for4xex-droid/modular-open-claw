@@ -126,9 +126,7 @@ impl MemoryCrystallizer {
                                             )),
                                             ..Default::default()
                                         };
-                                        if let Err(e) =
-                                            self.ops.store_trajectory_step(step).await
-                                        {
+                                        if let Err(e) = self.ops.store_trajectory_step(step).await {
                                             warn!("⚠️ [MemoryCrystallizer] Failed to record belief revision step for {}: {:?}", skill, e);
                                         }
                                         continue;
@@ -139,7 +137,8 @@ impl MemoryCrystallizer {
                                 }
                             }
 
-                            self.ops.apply_distilled_karma(
+                            self.ops
+                                .apply_distilled_karma(
                                     &skill,
                                     &resp.content,
                                     &ids,
@@ -173,12 +172,12 @@ impl MemoryCrystallizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::job_queue::UniversalJobQueue;
     use crate::slm_bridge::SlmBridge;
     use aiome_core_contracts::llm::{LlmProvider, LlmResponse, StopReason};
     use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
-    use crate::job_queue::UniversalJobQueue;
 
     #[derive(Debug)]
     struct MockLlm;
@@ -215,7 +214,7 @@ mod tests {
                 .unwrap(), // allow-anti-pattern
         );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         if let Ok(jq) = UniversalJobQueue::new(pool.clone(), None, ts).await {
             let semaphore = Arc::new(Semaphore::new(1));

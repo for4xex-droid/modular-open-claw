@@ -6,6 +6,7 @@
  */
 
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core::traits::SettingsOps;
 use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
 };

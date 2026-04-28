@@ -448,13 +448,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
     let job_queue = Arc::new(
-        infrastructure::job_queue::UniversalJobQueue::new(
-            pool.clone(),
-            None,
-            ts,
-        )
-        .await
-        .expect("Failed to create test job queue"),
+        infrastructure::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+            .await
+            .expect("Failed to create test job queue"),
     );
 
     let provider = Arc::new(DummyLlm);
@@ -514,9 +510,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         soul_store.clone(),
     ));
 
-    let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        pool.clone(),
-    ));
+    let registry = Arc::new(infrastructure::registry::RegistryManager::new(pool.clone()));
     std::env::set_var("VAULT_MASTER_PASSWORD", "test_master_password_for_vault");
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
     let voice_drm = Arc::new(
@@ -545,10 +539,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         100,
     ));
 
-    let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
-        pool.clone(),
-        500 * 1024 * 1024,
-    );
+    let disk_quota_mgr =
+        infrastructure::disk_quota::DiskQuotaManager::new(pool.clone(), 500 * 1024 * 1024);
     let _ = disk_quota_mgr.init().await;
 
     let state = AppState {
@@ -735,8 +727,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         hierarchical_router: Component::new(Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(
                 provider.clone(),
-                pool
-                    .get_sqlite_pool()
+                pool.get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for HierarchicalRouter"),
             ),
@@ -752,16 +743,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::generative_engine::mock::MockGenerativeEngine::default(),
         )),
         cortex_ingester: Component::new(Arc::new(
-            infrastructure::cortex_ingester::CortexIngester::new(
-                provider.clone(),
-                pool.clone(),
-            ),
+            infrastructure::cortex_ingester::CortexIngester::new(provider.clone(), pool.clone()),
         )),
         cortex_query: Component::new(Arc::new(
-            infrastructure::cortex_query::CortexQueryEngine::new(
-                provider.clone(),
-                pool.clone(),
-            ),
+            infrastructure::cortex_query::CortexQueryEngine::new(provider.clone(), pool.clone()),
         )),
         cortex_projector: Default::default(),
         feature_flags_cache: Component::new(Arc::new(
@@ -771,9 +756,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         )),
         eval_logger: Component::new(Arc::new(
             infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
-                infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(
-                    pool.clone(),
-                ),
+                infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone()),
             )),
         )),
         lora_marketplace: {
@@ -802,8 +785,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         ),
         gig_updater: Component::new(Arc::new(
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
-                pool
-                    .get_sqlite_pool()
+                pool.get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for gig_updater"),
             ),
@@ -1991,13 +1973,9 @@ async fn test_fallback_router_failover() {
         infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
     let job_queue = Arc::new(
-        infrastructure::job_queue::UniversalJobQueue::new(
-            pool.clone(),
-            None,
-            ts,
-        )
-        .await
-        .expect("Failed to create test job queue"),
+        infrastructure::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+            .await
+            .expect("Failed to create test job queue"),
     );
 
     // 1. Setup primary that always fails

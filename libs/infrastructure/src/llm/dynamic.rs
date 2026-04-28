@@ -61,7 +61,8 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
+        let cost_breaker =
+            crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -205,7 +206,8 @@ impl LlmProvider for DynamicLlmProvider {
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
         // --- Day 1: Cost Control ---
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
+        let cost_breaker =
+            crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks (Streaming) ---
@@ -325,7 +327,8 @@ impl LlmProvider for DynamicLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
+        let cost_breaker =
+            crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -603,7 +606,8 @@ impl LlmProvider for BackgroundLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
+        let cost_breaker =
+            crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -768,7 +772,8 @@ impl LlmProvider for BackgroundLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
+        let cost_breaker =
+            crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---

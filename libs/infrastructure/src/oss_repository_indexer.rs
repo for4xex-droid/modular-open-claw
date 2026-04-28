@@ -233,7 +233,6 @@ impl OssRepositoryIndexer {
 
         Ok(session)
     }
-
 }
 
 #[cfg(test)]

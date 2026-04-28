@@ -246,27 +246,28 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
         infrastructure::db::DatabasePool::Sqlite(sq)
     };
-    
+
     let db_pool = Arc::new(ts_pool.clone());
-    
+
     let trajectory_store: Arc<dyn aiome_core::trajectory::TrajectoryStore> = {
         Arc::new(infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool))
     };
 
-    let job_queue =
-        infrastructure::job_queue::UniversalJobQueue::new((*db_pool).clone(), None, trajectory_store)
-            .await
-            .unwrap_or_else(|e| {
-                error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
-                std::process::exit(1);
-            });
+    let job_queue = infrastructure::job_queue::UniversalJobQueue::new(
+        (*db_pool).clone(),
+        None,
+        trajectory_store,
+    )
+    .await
+    .unwrap_or_else(|e| {
+        error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
+        std::process::exit(1);
+    });
     let job_queue = Arc::new(job_queue);
 
     let eval_logger = Arc::new(
         infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
-            infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(
-                (*db_pool).clone(),
-            ),
+            infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new((*db_pool).clone()),
         )),
     );
 
@@ -901,9 +902,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     }));
 
     let quality_gate_store = Arc::new(
-        infrastructure::quality_gate_store::SqliteQualityGateStore::new(
-            (*db_pool).clone(),
-        ),
+        infrastructure::quality_gate_store::SqliteQualityGateStore::new((*db_pool).clone()),
     ) as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
 
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
@@ -1087,8 +1086,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         rate_limiter: Component::new(rate_limiter),
         slo_engine: Component::new(slo_engine),
         skill_arena: Component::new(Arc::new(
-            infrastructure::skills::skill_arena::SkillArena::new()
-                .with_db_pool((*db_pool).clone()),
+            infrastructure::skills::skill_arena::SkillArena::new().with_db_pool((*db_pool).clone()),
         )),
         api_server_secret: Component::new(api_server_secret),
         federation_secret: Component(federation_secret),
@@ -1177,9 +1175,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         },
         news_service: {
             let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(Arc::new(
-                infrastructure::rss_collector::SqlTrendCacheRepository::new(
-                    (*db_pool).clone(),
-                ),
+                infrastructure::rss_collector::SqlTrendCacheRepository::new((*db_pool).clone()),
             )));
             Component::new(rss as Arc<dyn aiome_core_contracts::traits::NewsService>)
         },

@@ -4,6 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
+use aiome_core::traits::SettingsOps;
 use axum::{
     extract::{Path, State},
     http::StatusCode,

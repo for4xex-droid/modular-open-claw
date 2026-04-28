@@ -6,18 +6,18 @@
  */
 
 use aiome_core::error::AiomeError;
-use infrastructure::job_queue::UniversalJobQueue;
+use aiome_core::traits::JobQueue;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 
-static DB: OnceCell<Arc<UniversalJobQueue>> = OnceCell::const_new();
+static DB: OnceCell<Arc<dyn JobQueue>> = OnceCell::const_new();
 static LLM: OnceCell<Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>> =
     OnceCell::const_new();
 static IMMUNE: OnceCell<Arc<infrastructure::immune_system::AdaptiveImmuneSystem>> =
     OnceCell::const_new();
 static SLM_BRIDGE: OnceCell<Arc<infrastructure::slm_bridge::SlmBridge>> = OnceCell::const_new();
 
-pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
+pub async fn get_db() -> Result<&'static Arc<dyn JobQueue>, AiomeError> {
     DB.get_or_try_init(|| async {
         let db_path = std::env::var("AIOME_DB_PATH")
             .unwrap_or_else(|_| "sqlite://workspace/aiome.db".to_string());
@@ -35,14 +35,15 @@ pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
             })?,
         );
 
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&db_path).await
+        let pool = infrastructure::db::DatabasePool::new_sqlite(&db_path)
+            .await
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to create DatabasePool: {}", e),
             })?;
-        let mut queue = UniversalJobQueue::new(pool, Some(slm.clone()), ts).await?;
-        queue.slm_bridge = Some(slm.clone());
+        let queue =
+            infrastructure::job_queue::create_job_queue(pool, Some(slm.clone()), ts).await?;
 
-        Ok(Arc::new(queue))
+        Ok(queue)
     })
     .await
 }
@@ -84,7 +85,9 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::GeminiProvider::new(
-                        client, api_key.into(), model,
+                        client,
+                        api_key.into(),
+                        model,
                     ))
                 }
                 "openai" => {
@@ -99,7 +102,9 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::OpenAiProvider::new(
-                        client, api_key.into(), model,
+                        client,
+                        api_key.into(),
+                        model,
                     ))
                 }
                 "claude" => {
@@ -114,7 +119,9 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::ClaudeProvider::new(
-                        client, api_key.into(), model,
+                        client,
+                        api_key.into(),
+                        model,
                     ))
                 }
                 "lmstudio" => {

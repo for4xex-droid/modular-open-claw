@@ -5,9 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use super::{SettingsOps, UniversalJobQueue};
+use super::UniversalJobQueue;
 use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::traits::SettingsOps;
 use async_trait::async_trait;
 use sqlx::Row;
 use std::collections::HashMap;
@@ -304,7 +305,10 @@ impl WatchtowerOps for UniversalJobQueue {
             );
             // 重要度の低そうな記憶を recall でリストアップ
             if let Ok(results) = slm
-                .recall("low importance logic artifacts redundant", batch_size as i64)
+                .recall(
+                    "low importance logic artifacts redundant",
+                    batch_size as i64,
+                )
                 .await
             {
                 let queries: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
@@ -364,7 +368,8 @@ impl WatchtowerOps for UniversalJobQueue {
                                 "✅ [PoincareGC] Archived {} low-importance karma entries.",
                                 res_slm
                             );
-                            metrics::counter!("aiome_poincare_gc_archived_total").increment(res_slm as u64);
+                            metrics::counter!("aiome_poincare_gc_archived_total")
+                                .increment(res_slm);
                         }
                     }
                 }

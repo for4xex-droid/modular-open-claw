@@ -109,7 +109,10 @@ impl LlmProvider for ProxyLlmProvider {
             .header("Content-Type", "application/json");
 
         if let Some(secret) = &self.vault_secret {
-            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret.expose_secret()));
+            request_builder = request_builder.header(
+                "Authorization",
+                format!("Bearer {}", secret.expose_secret()),
+            );
         }
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering
@@ -149,7 +152,10 @@ impl LlmProvider for ProxyLlmProvider {
             .timeout(std::time::Duration::from_secs(5));
 
         if let Some(secret) = &self.vault_secret {
-            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret.expose_secret()));
+            request_builder = request_builder.header(
+                "Authorization",
+                format!("Bearer {}", secret.expose_secret()),
+            );
         }
 
         let res = request_builder
@@ -195,7 +201,10 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             .header("Content-Type", "application/json");
 
         if let Some(secret) = &self.vault_secret {
-            request_builder = request_builder.header("Authorization", format!("Bearer {}", secret.expose_secret()));
+            request_builder = request_builder.header(
+                "Authorization",
+                format!("Bearer {}", secret.expose_secret()),
+            );
         }
 
         // VULN-65: Add HMAC Signature to headers to prevent LLM Proxy Integrity tampering

@@ -7,6 +7,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
+use aiome_core::traits::SettingsOps;
 use axum::{
     extract::{Query, State},
     response::Json,

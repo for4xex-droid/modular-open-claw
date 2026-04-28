@@ -11,50 +11,8 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use sqlx::Row;
 
-#[async_trait]
-/// `SettingsOps` トレイト
-pub trait SettingsOps: Send + Sync {
-    /// 指定キーの設定値を取得する
-    async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
-    /// 設定値を保存・更新する
-    async fn do_set_setting(
-        &self,
-        key: &str,
-        value: &str,
-        category: &str,
-        is_secret: bool,
-    ) -> Result<(), AiomeError>;
-    /// 全設定値を一覧取得する
-    async fn do_get_all_settings(
-        &self,
-    ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError>;
-
-    /// 特定のフィーチャーフラグが有効か確認する (Phase 2-D)
-    async fn is_feature_enabled(&self, flag: &str) -> bool {
-        self.do_get_setting(&format!("feature_flag.{}", flag))
-            .await
-            .ok()
-            .flatten()
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(false)
-    }
-
-    /// ラッパー: 指定キーの設定値を取得する
-    async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
-        self.do_get_setting(key).await
-    }
-
-    /// ラッパー: 設定値を保存・更新する
-    async fn update_setting(
-        &self,
-        key: &str,
-        value: &str,
-        category: &str,
-        is_secret: bool,
-    ) -> Result<(), AiomeError> {
-        self.do_set_setting(key, value, category, is_secret).await
-    }
-}
+use crate::job_queue::expression::ExpressionOps;
+use aiome_core_contracts::traits::SettingsOps;
 
 #[async_trait]
 pub trait CostOps: SettingsOps {
@@ -174,6 +132,14 @@ impl SettingsOps for UniversalJobQueue {
                 }
             };
         Ok(entries)
+    }
+
+    async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+        self.do_get_auto_expression_enabled().await
+    }
+
+    async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError> {
+        self.do_set_auto_expression_enabled(enabled).await
     }
 }
 

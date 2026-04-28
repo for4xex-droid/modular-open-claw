@@ -47,9 +47,11 @@ impl LlmProvider for MockLlmProvider {
 }
 
 async fn create_test_queue() -> UniversalJobQueue {
-    let pool = infrastructure::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+    let pool = infrastructure::db::DatabasePool::new_sqlite("sqlite::memory:")
+        .await
+        .unwrap();
     let ts = std::sync::Arc::new(
-        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
     );
     UniversalJobQueue::new(pool.clone(), None, ts)
         .await

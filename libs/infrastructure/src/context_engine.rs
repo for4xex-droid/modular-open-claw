@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use crate::job_queue::UniversalJobQueue;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
 use aiome_core_contracts::traits::{ChatStore, ContextDeps, JobQueue, KarmaRegistry};

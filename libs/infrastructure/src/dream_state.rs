@@ -502,6 +502,33 @@ mod tests {
         }
     }
     #[async_trait]
+    impl aiome_core_contracts::traits::SettingsOps for BusyJQ {
+        async fn do_get_setting(&self, _key: &str) -> Result<Option<String>, AiomeError> {
+            Ok(None)
+        }
+        async fn do_set_setting(
+            &self,
+            _k: &str,
+            _v: &str,
+            _c: &str,
+            _s: bool,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn do_get_all_settings(
+            &self,
+        ) -> Result<Vec<aiome_core_contracts::contracts::SystemSetting>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+            Ok(false)
+        }
+        async fn set_auto_expression_enabled(&self, _e: bool) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait]
     impl JobQueue for BusyJQ {
         async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> {
             Ok("".into())
@@ -724,6 +751,9 @@ mod tests {
         }
         async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> {
             Ok(())
+        }
+        async fn purge_old_distilled_chats(&self, _: i64) -> Result<u64, AiomeError> {
+            Ok(0)
         }
     }
 
@@ -1018,7 +1048,9 @@ mod tests {
         use crate::llm::evaluation_logger::{EvaluationLogEntry, EvaluationLogger};
         use std::sync::Arc;
 
-        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
@@ -1031,7 +1063,9 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(std::sync::Arc::new(crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone())));
+        let logger = EvaluationLogger::new(std::sync::Arc::new(
+            crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone()),
+        ));
         logger
             .log(EvaluationLogEntry {
                 prompt: "P1".into(),
@@ -1140,10 +1174,11 @@ mod tests {
         use crate::llm::evaluation_logger::EvaluationLogger;
         use std::sync::Arc;
 
-        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
-        let ts = Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts =
+            Arc::new(crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()));
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
@@ -1153,7 +1188,9 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(std::sync::Arc::new(crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone())));
+        let logger = EvaluationLogger::new(std::sync::Arc::new(
+            crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone()),
+        ));
         // No data inserted — empty stats
 
         #[derive(Debug)]

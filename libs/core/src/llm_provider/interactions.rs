@@ -95,7 +95,10 @@ impl InteractionsGeminiProvider {
         let response = self
             .client
             .post(&url)
-            .header("x-goog-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-goog-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .json(&payload)
             .send()
             .await

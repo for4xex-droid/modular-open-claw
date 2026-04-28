@@ -224,22 +224,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_creation() {
-        let provider =
-            LiveSessionProvider::new(secrecy::SecretString::from("test_key".to_string()), "gemini-3.1-flash-live-preview".into());
+        let provider = LiveSessionProvider::new(
+            secrecy::SecretString::from("test_key".to_string()),
+            "gemini-3.1-flash-live-preview".into(),
+        );
         assert_eq!(provider.model, "gemini-3.1-flash-live-preview");
     }
 
     #[tokio::test]
     async fn test_create_session_failure() {
         // 間違ったAPIキーまたはオフラインで接続エラーになることを確認（REDテスト）
-        let provider =
-            LiveSessionProvider::new(secrecy::SecretString::from("invalid_key".to_string()), "gemini-3.1-flash-live-preview".into());
+        let provider = LiveSessionProvider::new(
+            secrecy::SecretString::from("invalid_key".to_string()),
+            "gemini-3.1-flash-live-preview".into(),
+        );
         let result = provider.create_session(ThinkingLevel::Minimal).await;
         assert!(result.is_err());
     }
     #[tokio::test]
     async fn test_session_gc_green() {
-        let provider = LiveSessionProvider::new(secrecy::SecretString::from("test".to_string()), "model".into());
+        let provider = LiveSessionProvider::new(
+            secrecy::SecretString::from("test".to_string()),
+            "model".into(),
+        );
         let session_id = "test_gc_session".to_string();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         {

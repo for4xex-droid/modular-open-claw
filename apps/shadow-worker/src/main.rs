@@ -194,7 +194,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required"); // allow-anti-pattern
     shared::security::scrub_env("A2A_AUTH_TOKEN");
 
-    let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|s| secrecy::SecretString::from(s));
+    let gemini_api_key = env::var("GEMINI_API_KEY")
+        .ok()
+        .map(secrecy::SecretString::from);
     shared::security::scrub_env("GEMINI_API_KEY");
 
     let proof_auth_token = auth_token.clone();

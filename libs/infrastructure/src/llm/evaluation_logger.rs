@@ -216,10 +216,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
         }
     }
 
-    async fn get_all_provider_stats(
-        &self,
-        days: u32,
-    ) -> Result<Vec<ProviderEvalStat>, AiomeError> {
+    async fn get_all_provider_stats(&self, days: u32) -> Result<Vec<ProviderEvalStat>, AiomeError> {
         let pool = &self.pool;
 
         let stats = match pool {
@@ -320,7 +317,7 @@ mod tests {
                 .unwrap(), // allow-anti-pattern
         );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
@@ -377,7 +374,7 @@ mod tests {
                 .unwrap(), // allow-anti-pattern
         );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
@@ -421,7 +418,7 @@ mod tests {
                 .unwrap(), // allow-anti-pattern
         );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
@@ -489,7 +486,7 @@ mod tests {
                 .unwrap(), // allow-anti-pattern
         );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)

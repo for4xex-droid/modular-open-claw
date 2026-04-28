@@ -46,7 +46,7 @@ impl AdaptiveImmuneSystem {
     }
 
     /// 失敗ログやセキュリティインシデントを分析し、新しい免疫ルールを生成する
-    pub async fn analyze_threats(&self, jq: &impl JobQueue) -> Result<u32, AiomeError> {
+    pub async fn analyze_threats(&self, jq: &(impl JobQueue + ?Sized)) -> Result<u32, AiomeError> {
         info!(
             "防御システム: 脅威分析を開始中 (using {})...",
             self.provider.name()
@@ -352,6 +352,33 @@ mod tests {
         }
     }
     #[async_trait]
+    impl aiome_core_contracts::traits::SettingsOps for MockJQ {
+        async fn do_get_setting(&self, _key: &str) -> Result<Option<String>, AiomeError> {
+            Ok(None)
+        }
+        async fn do_set_setting(
+            &self,
+            _k: &str,
+            _v: &str,
+            _c: &str,
+            _s: bool,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn do_get_all_settings(
+            &self,
+        ) -> Result<Vec<aiome_core_contracts::contracts::SystemSetting>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+            Ok(false)
+        }
+        async fn set_auto_expression_enabled(&self, _e: bool) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait]
     impl JobQueue for MockJQ {
         async fn sign_swarm_payload(&self, _: &str) -> Result<String, AiomeError> {
             Ok("".into())
@@ -570,6 +597,9 @@ mod tests {
         }
         async fn mark_chats_as_distilled(&self, _: &str, _: i64) -> Result<(), AiomeError> {
             Ok(())
+        }
+        async fn purge_old_distilled_chats(&self, _: i64) -> Result<u64, AiomeError> {
+            Ok(0)
         }
     }
 

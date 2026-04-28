@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
+use aiome_core::traits::SettingsOps;
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]

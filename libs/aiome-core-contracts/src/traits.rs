@@ -395,6 +395,7 @@ pub trait ChatStore: Send + Sync + std::fmt::Debug {
         channel_id: &str,
         last_id: i64,
     ) -> Result<(), AiomeError>;
+    async fn purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError>;
 }
 
 /// 4. 教育・教訓・長期記憶 (KarmaRegistry)
@@ -466,6 +467,51 @@ pub trait SystemStateOps: Send + Sync + std::fmt::Debug {
     async fn store_system_state(&self, key: &str, value: &str) -> Result<(), AiomeError>;
     /// キーを指定してシステム状態を取得する
     async fn fetch_system_state(&self, key: &str) -> Result<Option<String>, AiomeError>;
+}
+
+/// 9. 設定・環境変数管理 (SettingsOps)
+#[async_trait]
+pub trait SettingsOps: Send + Sync + std::fmt::Debug {
+    async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
+    async fn do_set_setting(
+        &self,
+        key: &str,
+        value: &str,
+        category: &str,
+        is_secret: bool,
+    ) -> Result<(), AiomeError>;
+    async fn do_get_all_settings(&self)
+        -> Result<Vec<crate::contracts::SystemSetting>, AiomeError>;
+
+    async fn is_feature_enabled(&self, flag: &str) -> bool {
+        self.do_get_setting(&format!("feature_flag.{}", flag))
+            .await
+            .ok()
+            .flatten()
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false)
+    }
+
+    async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
+        self.do_get_setting(key).await
+    }
+
+    async fn update_setting(
+        &self,
+        key: &str,
+        value: &str,
+        category: &str,
+        is_secret: bool,
+    ) -> Result<(), AiomeError> {
+        self.do_set_setting(key, value, category, is_secret).await
+    }
+
+    async fn fetch_all_settings(&self) -> Result<Vec<crate::contracts::SystemSetting>, AiomeError> {
+        self.do_get_all_settings().await
+    }
+
+    async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError>;
+    async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError>;
 }
 
 /// 5. エージェント進化・統計 (AgentEvolver)
@@ -610,6 +656,7 @@ pub trait JobQueue:
     + SystemStateOps
     + SoulStore
     + HarnessRegistryOps
+    + SettingsOps
     + Send
     + Sync
     + std::fmt::Debug

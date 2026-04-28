@@ -15,9 +15,9 @@ use sqlx::Row;
 use std::sync::Arc;
 use tracing::{debug, info};
 
-use async_trait::async_trait;
 use crate::db::DatabasePool;
 use aiome_core_contracts::llm::EmbeddingProvider;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait SemanticCacheRepository: Send + Sync {
@@ -80,12 +80,11 @@ impl SemanticCacheRepository for SqlSemanticCacheRepository {
         let semantic_q = "SELECT response, prompt_embedding FROM llm_response_cache WHERE prompt_embedding IS NOT NULL ORDER BY created_at DESC LIMIT 100";
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(semantic_q)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
+                let rows = sqlx::query(semantic_q).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
                         reason: format!("Failed to fetch embeddings: {}", e),
-                    })?;
+                    }
+                })?;
                 Ok(rows
                     .into_iter()
                     .map(|row| {
@@ -96,12 +95,11 @@ impl SemanticCacheRepository for SqlSemanticCacheRepository {
                     .collect())
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(semantic_q)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
+                let rows = sqlx::query(semantic_q).fetch_all(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
                         reason: format!("Failed to fetch embeddings: {}", e),
-                    })?;
+                    }
+                })?;
                 Ok(rows
                     .into_iter()
                     .map(|row| {
@@ -169,7 +167,10 @@ impl SemanticCache {
         repo: Arc<dyn SemanticCacheRepository>,
         embedding_provider: Option<Arc<dyn EmbeddingProvider>>,
     ) -> Self {
-        Self { repo, embedding_provider }
+        Self {
+            repo,
+            embedding_provider,
+        }
     }
 
     /// プロンプトのハッシュ計算
@@ -215,10 +216,7 @@ impl SemanticCache {
                         );
                         if score > 0.95 {
                             best = Some(response);
-                            info!(
-                                "🧠 [SemanticCache] Semantic Hit! Score: {:.4}",
-                                score
-                            );
+                            info!("🧠 [SemanticCache] Semantic Hit! Score: {:.4}", score);
                             break;
                         }
                     }
@@ -287,8 +285,14 @@ mod tests {
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
-        let jq = Arc::new(crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts).await.unwrap()); // allow-anti-pattern
-        crate::job_queue::migrations::DbInitializer::init_db(&*jq).await.unwrap();
+        let jq = Arc::new(
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        ); // allow-anti-pattern
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
 
         let repo = Arc::new(SqlSemanticCacheRepository::new(pool.clone()));
         let cache = SemanticCache::new(repo, None);

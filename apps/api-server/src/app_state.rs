@@ -178,7 +178,7 @@ impl AppState {
             }
         }
 
-        use infrastructure::job_queue::settings::SettingsOps;
+        use aiome_core::traits::SettingsOps;
         let val = self.job_queue.get_inner().is_feature_enabled(flag).await;
 
         if let Some(cache) = self.feature_flags_cache.as_opt() {

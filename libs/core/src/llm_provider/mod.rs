@@ -718,7 +718,10 @@ impl LlmProvider for GeminiProvider {
         let resp = self
             .client
             .post(&url)
-            .header("x-goog-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-goog-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .json(&payload)
             .send()
             .await
@@ -814,7 +817,10 @@ impl LlmProvider for GeminiProvider {
         let mut resp = self
             .client
             .post(&url)
-            .header("x-goog-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-goog-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .json(&payload)
             .send()
             .await
@@ -904,7 +910,10 @@ impl EmbeddingProvider for GeminiProvider {
         let resp = self
             .client
             .post(&url)
-            .header("x-goog-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-goog-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .json(&payload)
             .send()
             .await
@@ -1022,7 +1031,13 @@ impl LlmProvider for OpenAiProvider {
         let resp = self
             .client
             .post(url)
-            .header("Authorization", format!("Bearer {}", secrecy::ExposeSecret::expose_secret(&self.api_key)))
+            .header(
+                "Authorization",
+                format!(
+                    "Bearer {}",
+                    secrecy::ExposeSecret::expose_secret(&self.api_key)
+                ),
+            )
             .json(&payload)
             .send()
             .await
@@ -1114,7 +1129,13 @@ impl LlmProvider for OpenAiProvider {
         let mut resp = self
             .client
             .post(url)
-            .header("Authorization", format!("Bearer {}", secrecy::ExposeSecret::expose_secret(&self.api_key)))
+            .header(
+                "Authorization",
+                format!(
+                    "Bearer {}",
+                    secrecy::ExposeSecret::expose_secret(&self.api_key)
+                ),
+            )
             .json(&payload)
             .send()
             .await
@@ -1266,7 +1287,10 @@ impl LlmProvider for ClaudeProvider {
         let resp = self
             .client
             .post(url)
-            .header("x-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .header("anthropic-version", "2023-06-01")
             .header("anthropic-beta", "prompt-caching-2024-07-31")
             .json(&payload)
@@ -1361,7 +1385,10 @@ impl LlmProvider for ClaudeProvider {
         let mut resp = self
             .client
             .post(url)
-            .header("x-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
+            .header(
+                "x-api-key",
+                secrecy::ExposeSecret::expose_secret(&self.api_key),
+            )
             .header("anthropic-version", "2023-06-01")
             .json(&payload)
             .send()
@@ -1770,13 +1797,25 @@ mod tests {
             OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string()); // allow-anti-pattern
         assert_eq!(LlmProvider::name(&ollama), "Ollama");
 
-        let gemini = GeminiProvider::new(client.clone(), secrecy::SecretString::from("key".to_string()), "gemini".to_string());
+        let gemini = GeminiProvider::new(
+            client.clone(),
+            secrecy::SecretString::from("key".to_string()),
+            "gemini".to_string(),
+        );
         assert_eq!(LlmProvider::name(&gemini), "Gemini");
 
-        let openai = OpenAiProvider::new(client.clone(), secrecy::SecretString::from("key".to_string()), "gpt-4".to_string());
+        let openai = OpenAiProvider::new(
+            client.clone(),
+            secrecy::SecretString::from("key".to_string()),
+            "gpt-4".to_string(),
+        );
         assert_eq!(openai.name(), "OpenAI");
 
-        let claude = ClaudeProvider::new(client.clone(), secrecy::SecretString::from("key".to_string()), "claude".to_string());
+        let claude = ClaudeProvider::new(
+            client.clone(),
+            secrecy::SecretString::from("key".to_string()),
+            "claude".to_string(),
+        );
         assert_eq!(claude.name(), "Claude");
 
         let lmstudio = LmStudioProvider::new(

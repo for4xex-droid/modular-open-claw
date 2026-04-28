@@ -10,8 +10,8 @@
 //! ファイルベース一時 SQLite を使った `UniversalJobQueue` の完全テストスイート。
 //! 全 15 テストで心臓部の不変性を機械的に保証する。
 
-use super::settings::SettingsOps;
 use super::watchtower::WatchtowerOps;
+use super::SettingsOps;
 use super::UniversalJobQueue;
 use crate::job_queue::karma::KarmaOps;
 use crate::job_queue::trajectory_store::TrajectoryOps;
@@ -83,9 +83,15 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
             crate::db::DatabasePool::Postgres(pg)
         };
         let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
-        let jq = UniversalJobQueue::new(crate::db::DatabasePool::new_postgres(&pg_url).await.unwrap(), None, ts)
-            .await
-            .expect("Failed to create test job queue (Postgres)");
+        let jq = UniversalJobQueue::new(
+            crate::db::DatabasePool::new_postgres(&pg_url)
+                .await
+                .unwrap(),
+            None,
+            ts,
+        )
+        .await
+        .expect("Failed to create test job queue (Postgres)");
 
         // Return dummy TempDir to satisfy the signature
         return (jq, tmp_dir);
@@ -98,9 +104,15 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         .expect("TS pool connect");
     let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
-    let jq = UniversalJobQueue::new(crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str)).await.unwrap(), None, ts)
-        .await
-        .expect("Failed to create test job queue");
+    let jq = UniversalJobQueue::new(
+        crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str))
+            .await
+            .unwrap(),
+        None,
+        ts,
+    )
+    .await
+    .expect("Failed to create test job queue");
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist
 }
 

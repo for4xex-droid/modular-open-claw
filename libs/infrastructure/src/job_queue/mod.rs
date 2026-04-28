@@ -13,6 +13,7 @@ use aiome_core_contracts::contracts::{
     JobMetrics, KarmaEntry, KarmaMetrics, OracleVerdict, SamsaraEvent, SystemEvent,
 };
 use aiome_core_contracts::security::PermissionManifest;
+pub use aiome_core_contracts::traits::SettingsOps;
 use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
@@ -76,7 +77,7 @@ pub use self::federation::FederationOps;
 pub use self::guardrails::GuardrailOps;
 pub use self::karma::KarmaOps;
 pub use self::security::SecurityOps;
-pub use self::settings::{CostOps, SettingsOps};
+pub use self::settings::CostOps;
 pub use self::soul_store::SoulStoreOps;
 pub use self::swarm::SwarmOps;
 pub use self::trajectory_store::TrajectoryOps;
@@ -84,8 +85,14 @@ pub use self::watchtower::WatchtowerOps;
 
 #[async_trait]
 pub trait DistillationOps: Send + Sync {
-    async fn fetch_skills_for_distillation(&self, threshold: i64) -> Result<Vec<String>, AiomeError>;
-    async fn fetch_raw_karma_for_skill(&self, skill: &str) -> Result<Vec<(String, String)>, AiomeError>;
+    async fn fetch_skills_for_distillation(
+        &self,
+        threshold: i64,
+    ) -> Result<Vec<String>, AiomeError>;
+    async fn fetch_raw_karma_for_skill(
+        &self,
+        skill: &str,
+    ) -> Result<Vec<(String, String)>, AiomeError>;
     async fn apply_distilled_karma(
         &self,
         skill: &str,
@@ -285,10 +292,16 @@ impl TaskRegistry for UniversalJobQueue {
 
 #[async_trait]
 impl DistillationOps for UniversalJobQueue {
-    async fn fetch_skills_for_distillation(&self, threshold: i64) -> Result<Vec<String>, AiomeError> {
+    async fn fetch_skills_for_distillation(
+        &self,
+        threshold: i64,
+    ) -> Result<Vec<String>, AiomeError> {
         self.do_fetch_skills_for_distillation(threshold).await
     }
-    async fn fetch_raw_karma_for_skill(&self, skill: &str) -> Result<Vec<(String, String)>, AiomeError> {
+    async fn fetch_raw_karma_for_skill(
+        &self,
+        skill: &str,
+    ) -> Result<Vec<(String, String)>, AiomeError> {
         self.do_fetch_raw_karma_for_skill(skill).await
     }
     async fn apply_distilled_karma(
@@ -404,6 +417,9 @@ impl ChatStore for UniversalJobQueue {
         before_id: i64,
     ) -> Result<(), AiomeError> {
         Box::pin(self.do_mark_chats_as_distilled(channel_id, before_id)).await
+    }
+    async fn purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError> {
+        Box::pin(self.do_purge_old_distilled_chats(days)).await
     }
 }
 
@@ -704,29 +720,6 @@ impl Publisher for UniversalJobQueue {
 }
 
 impl UniversalJobQueue {
-    pub async fn update_setting(
-        &self,
-        key: &str,
-        val: &str,
-        category: &str,
-        is_secret: bool,
-    ) -> Result<(), AiomeError> {
-        Box::pin(self.do_set_setting(key, val, category, is_secret)).await
-    }
-    pub async fn fetch_all_settings(
-        &self,
-    ) -> Result<Vec<aiome_core::contracts::SystemSetting>, AiomeError> {
-        Box::pin(self.do_get_all_settings()).await
-    }
-    pub async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
-        Box::pin(self.do_get_setting(key)).await
-    }
-    pub async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
-        Box::pin(self.do_get_auto_expression_enabled()).await
-    }
-    pub async fn set_auto_expression_enabled(&self, enabled: bool) -> Result<(), AiomeError> {
-        Box::pin(self.do_set_auto_expression_enabled(enabled)).await
-    }
     pub async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {
         <Self as FederationOps>::do_push_federated_metrics(self).await
     }
@@ -761,3 +754,14 @@ impl JobQueue for UniversalJobQueue {
 
 #[cfg(test)]
 pub mod tests;
+
+/// ファクトリ関数 (Phase 7 Dependency Inversion)
+pub async fn create_job_queue(
+    pool: crate::db::DatabasePool,
+    slm_bridge: Option<std::sync::Arc<crate::slm_bridge::SlmBridge>>,
+    trajectory_store: std::sync::Arc<dyn aiome_core_contracts::trajectory::TrajectoryStore>,
+) -> Result<std::sync::Arc<dyn aiome_core_contracts::traits::JobQueue>, aiome_core::error::AiomeError>
+{
+    let queue = UniversalJobQueue::new(pool, slm_bridge, trajectory_store).await?;
+    Ok(std::sync::Arc::new(queue))
+}

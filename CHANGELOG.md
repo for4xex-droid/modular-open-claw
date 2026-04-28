@@ -1,9 +1,14 @@
 ## [Unreleased]
 ### Changed
-### Changed
 - `tts_worker.rs`: Applied Interface Segregation Principle (ISP) to decouple from `JobQueue` God Trait, introducing `TtsQueue` for robust `mockall::automock` testing.
 - `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
-- **Phase 6 Infrastructure Decoupling**: Successfully completed the migration of core components from the monolithic `UniversalJobQueue` to specialized Repository and Ops traits.
+- **Phase 6 Infrastructure Decoupling (Continued)**:
+  - Added `purge_old_distilled_chats` to `ChatStore` trait to standardize chat history purging across all mock and production implementers.
+  - Refactored `napi-bridge` to depend on `Arc<dyn JobQueue>` instead of the concrete `UniversalJobQueue`, completely decoupling the native addon layer from the infrastructure implementation.
+  - Migrated `api-server` and `infrastructure` instantiations to use the new `create_job_queue` factory function, enforcing dependency inversion.
+  - `SettingsOps` trait augmented with `get_auto_expression_enabled` and `set_auto_expression_enabled` to further isolate settings management.
+- **Security Hardening**:
+  - `proxy.rs`: Wrapped proxy secrets in `secrecy::SecretString` and restricted field visibility (Reflexion R3) to prevent credential leaks.
   - `SemanticCache`: Migrated to `SemanticCacheRepository` (`SqlSemanticCacheRepository`), fully decoupling the embedding cache from the God Trait.
   - `MemoryCrystallizer`: Migrated to the new `DistillationOps` trait, removing direct job queue dependency for distillation tasks.
   - `UniversalJobQueue`: Eliminated all `get_pool()` exposure in production code paths to enforce strict database abstraction.

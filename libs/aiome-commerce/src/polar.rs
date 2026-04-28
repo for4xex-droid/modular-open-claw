@@ -22,7 +22,11 @@ pub struct PolarCommerceEngine {
 }
 
 impl PolarCommerceEngine {
-    pub fn new(api_key: secrecy::SecretString, webhook_secret: secrecy::SecretString, base_url: Option<String>) -> Self {
+    pub fn new(
+        api_key: secrecy::SecretString,
+        webhook_secret: secrecy::SecretString,
+        base_url: Option<String>,
+    ) -> Self {
         Self {
             api_key,
             webhook_secret,
@@ -378,7 +382,11 @@ mod tests {
         let secret = format!("whsec_{}", b64_secret);
 
         let payload = "msg_123.1614556800.{\"test\":true}";
-        let engine = PolarCommerceEngine::new(secrecy::SecretString::from("key".to_string()), secrecy::SecretString::from(secret), None);
+        let engine = PolarCommerceEngine::new(
+            secrecy::SecretString::from("key".to_string()),
+            secrecy::SecretString::from(secret),
+            None,
+        );
 
         type HmacSha256 = Hmac<Sha256>;
         let mut mac = HmacSha256::new_from_slice(raw_secret).unwrap();
@@ -402,8 +410,11 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let engine =
-            PolarCommerceEngine::new(secrecy::SecretString::from("key".to_string()), secrecy::SecretString::from("secret".to_string()), Some(mock_server.uri()));
+        let engine = PolarCommerceEngine::new(
+            secrecy::SecretString::from("key".to_string()),
+            secrecy::SecretString::from("secret".to_string()),
+            Some(mock_server.uri()),
+        );
 
         let result = engine.escrow_create(Uuid::nil(), 1000).await;
         assert!(result.is_ok());

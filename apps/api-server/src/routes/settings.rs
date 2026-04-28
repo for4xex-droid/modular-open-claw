@@ -7,6 +7,7 @@
 
 use crate::error::AppError;
 use crate::{auth::Authenticated, AppState};
+use aiome_core::traits::SettingsOps;
 use aiome_core_contracts::AuditLogger;
 use axum::{
     extract::{Json, State},

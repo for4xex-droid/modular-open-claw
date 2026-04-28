@@ -21,7 +21,9 @@ async fn test_biome_dialogue_limit() {
             ),
         ),
     );
-    let pool = infrastructure::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+    let pool = infrastructure::db::DatabasePool::new_sqlite("sqlite::memory:")
+        .await
+        .unwrap();
     let queue = UniversalJobQueue::new(pool.clone(), None, ts)
         .await
         .unwrap(); // allow-anti-pattern

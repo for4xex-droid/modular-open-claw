@@ -14,7 +14,9 @@ mod tests {
     use soul::AgentSoul;
 
     async fn setup_db() -> DatabasePool {
-        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );

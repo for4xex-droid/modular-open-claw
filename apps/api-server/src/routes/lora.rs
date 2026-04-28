@@ -8,6 +8,7 @@
 use crate::app_state::AppState;
 use crate::auth::Authenticated;
 use crate::error::AppError;
+use aiome_core::traits::SettingsOps;
 use aiome_core_contracts::TaskRegistry;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};

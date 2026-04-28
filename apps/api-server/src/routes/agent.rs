@@ -120,11 +120,17 @@ mod tests {
         let db_path = tmp_dir.path().join("test_agent.db");
         let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
 
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url).await.unwrap();
+        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
+            .await
+            .unwrap();
         let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
-        let jq = Arc::new(UniversalJobQueue::new(pool.clone(), None, ts).await.unwrap()); // allow-anti-pattern
+        let jq = Arc::new(
+            UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        ); // allow-anti-pattern
         let registry = Arc::new(RegistryManager::new(pool.clone()));
 
         // Setup WASM Skill Manager in a tmp dir

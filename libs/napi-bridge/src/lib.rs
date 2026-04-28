@@ -23,8 +23,6 @@ pub use state::*;
 use aiome_core::traits::{
     AgentEvolver, ChatStore, ImmuneSystemOps, JobQueue, KarmaRegistry, TaskRegistry,
 };
-use infrastructure::job_queue::WatchtowerOps;
-
 #[napi(object)]
 /// `SubagentSpawnResponse` 構造体
 pub struct SubagentSpawnResponse {
@@ -198,7 +196,7 @@ pub async fn karma_compact(
     let db = get_db().await.map_err(map_err)?;
 
     // Memory distillation / Purging old chats
-    db.do_purge_old_distilled_chats(7).await.map_err(map_err)?; // Purge 7 days old
+    db.purge_old_distilled_chats(7).await.map_err(map_err)?; // Purge 7 days old
     db.karma_decay_sweep().await.map_err(map_err)?;
 
     Ok(())
@@ -426,14 +424,14 @@ pub async fn karma_flush_session(session_id: String) -> Result<()> {
     tracing::info!("karma_flush_session triggered for session {}", session_id);
     let db = get_db().await.map_err(map_err)?;
 
-    if let Err(e) = db.do_mark_chats_as_distilled(&session_id, i64::MAX).await {
+    if let Err(e) = db.mark_chats_as_distilled(&session_id, i64::MAX).await {
         tracing::warn!(
             "⚠️ [Karma] Failed to mark chats as distilled for flush: {}",
             e
         );
     }
     if let Err(e) = db
-        .do_update_chat_memory_summary(&session_id, "[FLUSHED AND ARCHIVED]", None)
+        .update_chat_memory_summary(&session_id, "[FLUSHED AND ARCHIVED]", None)
         .await
     {
         tracing::warn!(
