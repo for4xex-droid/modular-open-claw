@@ -9,8 +9,7 @@ use crate::error::AiomeError;
 use crate::expression::Expression;
 use aiome_core_contracts::expression::TtsStatus;
 use async_trait::async_trait;
-use chrono::Utc;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /// TTS ワーカーが必要とする最小限のキューインターフェース (ISP)。
 ///
