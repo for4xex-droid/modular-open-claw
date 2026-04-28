@@ -35,7 +35,11 @@ pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
             })?,
         );
 
-        let mut queue = UniversalJobQueue::new(infrastructure::db::DatabasePool::new_sqlite(&db_path).await.unwrap(), Some(slm.clone()), ts).await?;
+        let pool = infrastructure::db::DatabasePool::new_sqlite(&db_path).await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create DatabasePool: {}", e),
+            })?;
+        let mut queue = UniversalJobQueue::new(pool, Some(slm.clone()), ts).await?;
         queue.slm_bridge = Some(slm.clone());
 
         Ok(Arc::new(queue))
