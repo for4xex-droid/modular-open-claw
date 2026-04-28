@@ -6,33 +6,37 @@
  */
 
 use crate::error::AiomeError;
-use crate::expression::engine::ExpressionEngine;
 use crate::expression::Expression;
-use crate::traits::JobQueue;
 use aiome_core_contracts::expression::TtsStatus;
 use async_trait::async_trait;
 use chrono::Utc;
 use tracing::{error, info, warn};
 
-/// Phase 10.1a: TTS生成をバックグラウンドで非同期に処理するワーカー
-
+/// TTS ワーカーが必要とする最小限のキューインターフェース (ISP)。
+///
+/// `JobQueue` の God Trait を直接モック化するのが困難なため、
+/// TTS ワーカーが実際に使用する2つのメソッドのみを抽出しています。
+/// `JobQueue` を実装する全ての型に対して blanket impl が提供されます。
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait TtsQueue: Send + Sync {
+    /// 保留中の Expression を最大 `limit` 件取得する。
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError>;
+    /// Expression の状態を永続化する。
     async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
 impl<T: aiome_core_contracts::traits::JobQueue + ?Sized> TtsQueue for T {
     async fn fetch_expressions(&self, limit: i64) -> Result<Vec<Expression>, AiomeError> {
-        self.fetch_expressions(limit).await
+        aiome_core_contracts::traits::JobQueue::fetch_expressions(self, limit).await
     }
     async fn store_expression(&self, expression: &Expression) -> Result<(), AiomeError> {
-        self.store_expression(expression).await
+        aiome_core_contracts::traits::JobQueue::store_expression(self, expression).await
     }
 }
 
+/// TTS生成をバックグラウンドで非同期に処理するワーカー (Phase 10.1a)。
 pub struct TtsWorker;
 
 impl TtsWorker {
@@ -147,7 +151,7 @@ impl TtsWorker {
 mod tests {
     use super::*;
     use aiome_core_contracts::error::AiomeError;
-    use aiome_core_contracts::traits::{JobQueue, TtsProvider};
+    use aiome_core_contracts::traits::TtsProvider;
     use async_trait::async_trait;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;

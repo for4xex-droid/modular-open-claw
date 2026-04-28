@@ -31,6 +31,8 @@ impl WordPressAdapter {
     }
 
     /// Legacy / Test creation using direct token injection.
+    /// Production code MUST use `new_vault()` instead.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn new_direct(api_url: String, token: String) -> Self {
         Self {
             api_url: Some(api_url),
@@ -41,7 +43,8 @@ impl WordPressAdapter {
         }
     }
 
-    // Retained for backward compatibility
+    /// Alias for `new_direct`. Test-only.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn new(api_url: String, token: String) -> Self {
         Self::new_direct(api_url, token)
     }
