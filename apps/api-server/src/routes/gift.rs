@@ -117,7 +117,7 @@ pub async fn send_gift(
     let prev_hash: String = sqlx::query_scalar(
         "SELECT COALESCE((SELECT current_hash FROM audit_ledger_global ORDER BY id DESC LIMIT 1), 'GENESIS')"
     )
-    .fetch_one(state.job_queue.get_pool().get_sqlite_pool_or_err()?)
+    .fetch_one(state.db_pool.get_inner().get_sqlite_pool_or_err()?)
     .await
     .unwrap_or_else(|_| "GENESIS".to_string());
 
@@ -136,7 +136,7 @@ pub async fn send_gift(
     .bind(&audit_data_str)
     .bind(&prev_hash)
     .bind(&current_hash)
-    .execute(state.job_queue.get_pool().get_sqlite_pool_or_err()?)
+    .execute(state.db_pool.get_inner().get_sqlite_pool_or_err()?)
     .await {
         tracing::error!("🚨 [Gift] Audit trail write failed: {}. Gift was sent but audit record is missing!", e);
     }

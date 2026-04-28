@@ -1,7 +1,13 @@
 ## [Unreleased]
 ### Changed
+### Changed
 - `tts_worker.rs`: Applied Interface Segregation Principle (ISP) to decouple from `JobQueue` God Trait, introducing `TtsQueue` for robust `mockall::automock` testing.
 - `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
+- **Phase 6 Infrastructure Decoupling**: Successfully completed the migration of core components from the monolithic `UniversalJobQueue` to specialized Repository and Ops traits.
+  - `SemanticCache`: Migrated to `SemanticCacheRepository` (`SqlSemanticCacheRepository`), fully decoupling the embedding cache from the God Trait.
+  - `MemoryCrystallizer`: Migrated to the new `DistillationOps` trait, removing direct job queue dependency for distillation tasks.
+  - `UniversalJobQueue`: Eliminated all `get_pool()` exposure in production code paths to enforce strict database abstraction.
+  - Refactored `UniversalJobQueue::new` constructor usage across `api-server` and `infrastructure` test suites to utilize the new `DatabasePool` injection pattern, eliminating compiler and borrowing errors.
 
 ### Added
 - **Phase 4 Agentic Core Refactoring**:

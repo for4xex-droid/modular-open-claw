@@ -230,18 +230,17 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generator_generates_intent_green() {
         let _tmp = tempdir().unwrap(); // allow-anti-pattern
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -316,18 +315,17 @@ mod tests {
     #[tokio::test]
     async fn test_intent_generation_reflects_soul_state() {
         let _tmp = tempdir().unwrap(); // allow-anti-pattern
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            crate::job_queue::UniversalJobQueue::new(":memory:", None, ts)
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );

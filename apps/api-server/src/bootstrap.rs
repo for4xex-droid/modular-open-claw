@@ -220,7 +220,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         config.gemini_api_key.as_ref().map(|key| {
             Arc::new(
                 aiome_core::llm_provider::live_session::LiveSessionProvider::new(
-                    key.expose_secret().to_string(),
+                    key.clone(),
                     "gemini-2.0-flash-exp".to_string(),
                 ),
             ) as Arc<dyn aiome_core_contracts::traits::LiveSessionManager>
@@ -228,30 +228,33 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
 
     // === 🏗️ STAGE 2/7: Database ===
+    let ts_pool = if config.db_path.starts_with("postgres://")
+        || config.db_path.starts_with("postgresql://")
+    {
+        let pg = sqlx::PgPool::connect(&config.db_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
+        infrastructure::db::DatabasePool::Postgres(pg)
+    } else {
+        use std::str::FromStr;
+        let opts = sqlx::sqlite::SqliteConnectOptions::from_str(&config.db_path)
+            .map_err(|e| anyhow::anyhow!("🚨 Invalid DB path for TS: {}", e))?
+            .create_if_missing(true);
+        let sq = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect_with(opts)
+            .await
+            .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
+        infrastructure::db::DatabasePool::Sqlite(sq)
+    };
+    
+    let db_pool = Arc::new(ts_pool.clone());
+    
     let trajectory_store: Arc<dyn aiome_core::trajectory::TrajectoryStore> = {
-        let ts_pool = if config.db_path.starts_with("postgres://")
-            || config.db_path.starts_with("postgresql://")
-        {
-            let pg = sqlx::PgPool::connect(&config.db_path)
-                .await
-                .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
-            infrastructure::db::DatabasePool::Postgres(pg)
-        } else {
-            use std::str::FromStr;
-            let opts = sqlx::sqlite::SqliteConnectOptions::from_str(&config.db_path)
-                .map_err(|e| anyhow::anyhow!("🚨 Invalid DB path for TS: {}", e))?
-                .create_if_missing(true);
-            let sq = sqlx::sqlite::SqlitePoolOptions::new()
-                .connect_with(opts)
-                .await
-                .map_err(|e| anyhow::anyhow!("🚨 Failed to connect TS pool: {}", e))?;
-            infrastructure::db::DatabasePool::Sqlite(sq)
-        };
         Arc::new(infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool))
     };
 
     let job_queue =
-        infrastructure::job_queue::UniversalJobQueue::new(&config.db_path, None, trajectory_store)
+        infrastructure::job_queue::UniversalJobQueue::new((*db_pool).clone(), None, trajectory_store)
             .await
             .unwrap_or_else(|e| {
                 error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
@@ -259,11 +262,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             });
     let job_queue = Arc::new(job_queue);
 
-    let eval_logger =
-        Arc::new(infrastructure::llm::evaluation_logger::EvaluationLogger::new(job_queue.clone()));
+    let eval_logger = Arc::new(
+        infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
+            infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(
+                (*db_pool).clone(),
+            ),
+        )),
+    );
 
     let audit_logger = Arc::new(AsyncAuditLogger::new(
-        Arc::new(job_queue.get_pool().clone()),
+        Arc::new((*db_pool).clone()),
         10000, // Process up to 10k items in memory before blocking
     ));
 
@@ -317,7 +325,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // === 🏗️ STAGE 3/7: Engine ===
     let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
-        jq: job_queue.clone(),
+        ops: job_queue.clone(),
         client: http_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
@@ -332,7 +340,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     });
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
-        jq: job_queue.clone(),
+        ops: job_queue.clone(),
         client: http_client.clone(),
         fallback_model: config.ollama_model.clone(),
         fallback_host: config.ollama_host.clone(),
@@ -363,7 +371,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     // === 🏗️ STAGE 4/7: Core Services ===
     let artifact_store = Arc::new(
         infrastructure::artifact_store::UniversalArtifactStore::new(
-            job_queue.get_pool().clone(),
+            (*db_pool).clone(),
             resolver.resolve("artifacts"),
         )
         .with_embeddings(embed_provider.clone())
@@ -395,7 +403,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             resolver.resolve("sandbox"),
         )
         .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?
-        .with_db_pool(job_queue.get_pool().clone()),
+        .with_db_pool((*db_pool).clone()),
     );
 
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
@@ -411,7 +419,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
         shared::security::scrub_env("POLAR_WEBHOOK_SECRET");
 
-        let sqlite_pool = job_queue.get_pool().get_sqlite_pool_or_err()?.clone();
+        let sqlite_pool = (*db_pool).get_sqlite_pool_or_err()?.clone();
 
         let nurture_url = std::env::var("NURTURE_API_URL").ok();
         let nurture_secret = nurture_secret_raw.clone();
@@ -475,7 +483,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // Soul (Sense Foundation)
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
-        job_queue.get_pool().clone(),
+        (*db_pool).clone(),
     ));
 
     // Phase 37a: Step 2 - SoulPipeline Initialization
@@ -547,7 +555,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     // Initialize MemoryCrystallizer Background Loop (Phase 49)
     let crystallizer = Arc::new(MemoryCrystallizer::new(
         provider.clone(),
-        job_queue.clone(),
+        job_queue.clone() as Arc<dyn infrastructure::job_queue::DistillationOps>,
         forge_semaphore.clone(),
         slm_bridge.clone(),
         Some(belief_gate.clone()),
@@ -668,12 +676,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         Arc::new(aiome_commerce::gift::TremendousGiftEngine::new(
             key,
             sandbox,
-            job_queue.get_pool().clone(),
+            (*db_pool).clone(),
             audit_logger.clone(),
         )) as Arc<dyn GiftEngine>
     };
     let ekyc_session_store = {
-        let pool = job_queue.get_pool().clone();
+        let pool = (*db_pool).clone();
         Arc::new(aiome_commerce::ekyc::store::UniversalEkycSessionStore::new(
             pool.clone(),
         )) as Arc<dyn EkycSessionStore>
@@ -702,7 +710,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         }
     };
     let quarantine_store = {
-        let pool = job_queue.get_pool().clone();
+        let pool = (*db_pool).clone();
         let store = infrastructure::compliance::quarantine::UniversalQuarantineStore::new(pool);
         Arc::new(store) as Arc<dyn QuarantineStore>
     };
@@ -730,7 +738,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
     // === 🏗️ STAGE 5/7: Registry & Core Orchestration ===
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue.get_pool().clone(),
+        (*db_pool).clone(),
     ));
 
     // [A-3] MCP Discovery: Automated server discovery and registration
@@ -784,12 +792,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         infrastructure::security::VoiceCoreDrm::new(
             config.abyss_vault_url.clone(),
             registry.clone(),
-            job_queue.get_pool().clone(),
+            (*db_pool).clone(),
         )
         .await,
     );
     let gig_engine = Arc::new(aiome_commerce::gig::UniversalGigEngine::new(
-        job_queue.get_pool().clone(),
+        (*db_pool).clone(),
         commerce_engine
             .clone()
             .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,
@@ -894,7 +902,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let quality_gate_store = Arc::new(
         infrastructure::quality_gate_store::SqliteQualityGateStore::new(
-            job_queue.get_pool().clone(),
+            (*db_pool).clone(),
         ),
     ) as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
 
@@ -1008,7 +1016,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
 
     let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
-        job_queue.get_pool().clone(),
+        (*db_pool).clone(),
         500 * 1024 * 1024, // 500MB per agent
     );
     if let Err(e) = disk_quota_mgr.init().await {
@@ -1026,7 +1034,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let cortex_projector_arc = Arc::new(
         infrastructure::cortex_file_projector::CortexFileProjector::new(
-            job_queue.get_pool().clone(),
+            (*db_pool).clone(),
             resolver.resolve("cortex_fs"),
         ),
     );
@@ -1042,6 +1050,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         oxilean_power: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
         hook_manager: Component::new(hook_manager.clone()),
+        db_pool: Component::new(db_pool.clone()),
         health_monitor: Component::new(health_monitor),
         job_queue: Component::new(job_queue.clone()),
         wasm_skill_manager: Component::new(wasm_skill_manager),
@@ -1079,7 +1088,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         slo_engine: Component::new(slo_engine),
         skill_arena: Component::new(Arc::new(
             infrastructure::skills::skill_arena::SkillArena::new()
-                .with_db_pool(job_queue.get_pool().clone()),
+                .with_db_pool((*db_pool).clone()),
         )),
         api_server_secret: Component::new(api_server_secret),
         federation_secret: Component(federation_secret),
@@ -1167,20 +1176,21 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             Component::new(provider)
         },
         news_service: {
-            let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(
-                job_queue.clone(),
-            ));
+            let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(Arc::new(
+                infrastructure::rss_collector::SqlTrendCacheRepository::new(
+                    (*db_pool).clone(),
+                ),
+            )));
             Component::new(rss as Arc<dyn aiome_core_contracts::traits::NewsService>)
         },
         live_session_manager: Component(live_manager),
         syndicate_store: Component::new(Arc::new(
-            aiome_commerce::syndicate::UniversalSyndicateStore::new(job_queue.get_pool().clone()),
+            aiome_commerce::syndicate::UniversalSyndicateStore::new((*db_pool).clone()),
         )),
         hierarchical_router: Component::new(Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(
                 bg_provider.clone(),
-                job_queue
-                    .get_pool()
+                (*db_pool)
                     .get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for HierarchicalRouter"), // allow-anti-pattern
@@ -1240,7 +1250,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         cortex_ingester: Component::new(Arc::new(
             infrastructure::cortex_ingester::CortexIngester::new(
                 router_provider.clone(),
-                job_queue.get_pool().clone(),
+                (*db_pool).clone(),
             ),
         )),
         project_rules_cache: Component::new(Arc::new(
@@ -1251,7 +1261,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         cortex_query: Component::new(Arc::new(
             infrastructure::cortex_query::CortexQueryEngine::new(
                 router_provider.clone(),
-                job_queue.get_pool().clone(),
+                (*db_pool).clone(),
             )
             .with_rlm_provider(rlm_client_arc.clone()),
         )),
@@ -1260,7 +1270,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             let commerce_for_marketplace = commerce_engine_arc.clone();
             let marketplace = Arc::new(
                 infrastructure::lora_marketplace::UniversalLoraMarketplace::new(
-                    job_queue.get_pool().clone(),
+                    (*db_pool).clone(),
                     commerce_for_marketplace,
                     vault_root,
                 ),
@@ -1311,7 +1321,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         formal_proof_gate: Component::new(formal_proof_gate),
         gig_updater: Component::new(Arc::new(
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
-                job_queue.get_pool().get_sqlite_pool_or_err()?.clone(),
+                (*db_pool).get_sqlite_pool_or_err()?.clone(),
             ),
         )
             as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
@@ -1359,7 +1369,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // [Step 1.10] Initialize and Spawn CortexCompiler Background Loop (Phase B)
     let compiler_provider = state.provider.get_inner().clone();
-    let compiler_pool = state.job_queue.get_pool().clone();
+    let compiler_pool = state.db_pool.get_inner().clone();
     let compiler_semaphore = state.compute_semaphore.get_inner().clone();
     let compiler_gate = Some(belief_gate.clone());
     let compiler_projector = state.cortex_projector.get_inner().clone();
@@ -1367,7 +1377,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         tracing::info!("📚 [Cortex] Starting compilation loop...");
         let compiler = infrastructure::cortex_compiler::CortexCompiler::new(
             compiler_provider,
-            compiler_pool,
+            (*compiler_pool).clone(),
             compiler_gate,
             compiler_semaphore,
         )

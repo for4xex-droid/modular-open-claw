@@ -14,19 +14,14 @@ mod tests {
     use soul::AgentSoul;
 
     async fn setup_db() -> DatabasePool {
-        let pool_dummy = crate::db::DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(),
-        );
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool_dummy),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
-        let jq = crate::job_queue::UniversalJobQueue::new("sqlite::memory:", None, ts)
+        let _jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
             .expect("Failed to create in-memory job queue");
-        jq.get_pool().clone()
+        pool
     }
 
     #[tokio::test]

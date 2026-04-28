@@ -52,8 +52,8 @@ impl CommerceEngineFactory {
                     anyhow::anyhow!("POLAR_API_KEY must be set for Polar provider")
                 })?;
                 Ok(Arc::new(crate::polar::PolarCommerceEngine::new(
-                    key,
-                    config.webhook_secret,
+                    secrecy::SecretString::from(key),
+                    secrecy::SecretString::from(config.webhook_secret.clone()),
                     config.base_url,
                 )))
             }

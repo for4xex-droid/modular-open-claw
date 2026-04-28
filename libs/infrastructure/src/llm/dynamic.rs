@@ -6,7 +6,7 @@
  */
 
 use crate::circuit_breaker::CircuitBreaker;
-use crate::job_queue::UniversalJobQueue;
+use crate::job_queue::CostOps;
 use crate::slo_engine::SloEngine;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{EmbeddingProvider, LlmProvider, LlmRequest, LlmResponse};
@@ -16,11 +16,11 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio_stream::Stream;
 
-#[derive(Debug)]
+#[derive(Clone)]
 /// `DynamicLlmProvider` 構造体
 pub struct DynamicLlmProvider {
     /// jq
-    pub jq: Arc<UniversalJobQueue>,
+    pub ops: Arc<dyn CostOps>,
     /// client
     pub client: reqwest::Client,
     /// fallback_host
@@ -45,6 +45,15 @@ pub struct DynamicLlmProvider {
     pub eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
 }
 
+impl std::fmt::Debug for DynamicLlmProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DynamicLlmProvider")
+            .field("fallback_host", &self.fallback_host)
+            .field("fallback_model", &self.fallback_model)
+            .finish_non_exhaustive()
+    }
+}
+
 #[async_trait]
 impl LlmProvider for DynamicLlmProvider {
     async fn complete(
@@ -52,7 +61,7 @@ impl LlmProvider for DynamicLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -196,7 +205,7 @@ impl LlmProvider for DynamicLlmProvider {
         system: Option<&str>,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AiomeError>> + Send>>, AiomeError> {
         // --- Day 1: Cost Control ---
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks (Streaming) ---
@@ -316,7 +325,7 @@ impl LlmProvider for DynamicLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -481,7 +490,7 @@ impl DynamicLlmProvider {
         let prefix = if is_bg { "bg_" } else { "" };
 
         let provider = self
-            .jq
+            .ops
             .get_setting_value(&format!("{}llm_provider", prefix))
             .await
             .ok()
@@ -496,7 +505,7 @@ impl DynamicLlmProvider {
             .unwrap_or_else(|| "ollama".to_string());
 
         let model: String = self
-            .jq
+            .ops
             .get_setting_value(&format!("{}llm_model", prefix))
             .await
             .ok()
@@ -513,32 +522,24 @@ impl DynamicLlmProvider {
         (provider, model)
     }
 
-    async fn get_api_key(&self, setting_name: &str, provider_name: &str) -> String {
-        self.jq
+    async fn get_api_key(&self, setting_name: &str, provider_name: &str) -> secrecy::SecretString {
+        self.ops
             .get_setting_value(setting_name)
             .await
             .ok()
             .flatten()
+            .map(|s| secrecy::SecretString::from(s))
             .or_else(|| match provider_name {
-                "gemini" => self
-                    .gemini_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
-                "openai" => self
-                    .openai_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
-                "claude" => self
-                    .anthropic_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string()),
+                "gemini" => self.gemini_api_key.clone(),
+                "openai" => self.openai_api_key.clone(),
+                "claude" => self.anthropic_api_key.clone(),
                 _ => None,
             })
-            .unwrap_or_default()
+            .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
     }
 
     async fn get_host(&self, setting_name: &str, default: &str) -> String {
-        self.jq
+        self.ops
             .get_setting_value(setting_name)
             .await
             .ok()
@@ -561,11 +562,11 @@ impl DynamicLlmProvider {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 /// `BackgroundLlmProvider` 構造体
 pub struct BackgroundLlmProvider {
     /// jq
-    pub jq: Arc<UniversalJobQueue>,
+    pub ops: Arc<dyn CostOps>,
     /// client
     pub client: reqwest::Client,
     /// fallback_model
@@ -586,6 +587,15 @@ pub struct BackgroundLlmProvider {
     pub eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
 }
 
+impl std::fmt::Debug for BackgroundLlmProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BackgroundLlmProvider")
+            .field("fallback_host", &self.fallback_host)
+            .field("fallback_model", &self.fallback_model)
+            .finish_non_exhaustive()
+    }
+}
+
 #[async_trait]
 impl LlmProvider for BackgroundLlmProvider {
     async fn complete(
@@ -593,7 +603,7 @@ impl LlmProvider for BackgroundLlmProvider {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
@@ -622,14 +632,14 @@ impl LlmProvider for BackgroundLlmProvider {
         self.hook_manager.trigger_pre_execute(&request).await?;
 
         let provider_type = self
-            .jq
+            .ops
             .get_setting_value("bg_llm_provider")
             .await?
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
-            .jq
+            .ops
             .get_setting_value("bg_llm_model")
             .await?
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
@@ -669,7 +679,7 @@ impl LlmProvider for BackgroundLlmProvider {
             }
             "lmstudio" => {
                 let host = self
-                    .jq
+                    .ops
                     .get_setting_value("lm_studio_host")
                     .await?
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
@@ -682,7 +692,7 @@ impl LlmProvider for BackgroundLlmProvider {
             }
             _ => {
                 let host = self
-                    .jq
+                    .ops
                     .get_setting_value("ollama_host")
                     .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
@@ -758,21 +768,21 @@ impl LlmProvider for BackgroundLlmProvider {
     }
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
-        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.jq.clone(), 10.0);
+        let cost_breaker = crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
         cost_breaker.enforce().await?;
 
         // --- Phase 36: Security Hooks ---
         self.hook_manager.trigger_pre_execute(&request).await?;
 
         let provider_type = self
-            .jq
+            .ops
             .get_setting_value("bg_llm_provider")
             .await?
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
-            .jq
+            .ops
             .get_setting_value("bg_llm_model")
             .await?
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
@@ -811,7 +821,7 @@ impl LlmProvider for BackgroundLlmProvider {
             }
             "lmstudio" => {
                 let host = self
-                    .jq
+                    .ops
                     .get_setting_value("lm_studio_host")
                     .await?
                     .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
@@ -824,7 +834,7 @@ impl LlmProvider for BackgroundLlmProvider {
             }
             _ => {
                 let host = self
-                    .jq
+                    .ops
                     .get_setting_value("ollama_host")
                     .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
@@ -918,12 +928,12 @@ impl EmbeddingProvider for BackgroundLlmProvider {
             "gemini" => self.gemini_embed_fallback(text, is_query).await,
             _ => {
                 let host = self
-                    .jq
+                    .ops
                     .get_setting_value("ollama_host")
                     .await?
                     .unwrap_or_else(|| self.fallback_host.clone());
                 let model = self
-                    .jq
+                    .ops
                     .get_setting_value("bg_llm_model")
                     .await?
                     .or_else(|| std::env::var("BG_LLM_MODEL").ok())
@@ -950,28 +960,17 @@ impl EmbeddingProvider for BackgroundLlmProvider {
 }
 
 impl BackgroundLlmProvider {
-    async fn resolve_bg_api_key(&self) -> String {
-        self.jq
+    async fn resolve_bg_api_key(&self) -> secrecy::SecretString {
+        self.ops
             .get_setting_value("bg_llm_api_key")
             .await
             .ok()
             .flatten()
-            .or_else(|| {
-                self.gemini_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
-            })
-            .or_else(|| {
-                self.openai_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
-            })
-            .or_else(|| {
-                self.anthropic_api_key
-                    .as_ref()
-                    .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
-            })
-            .unwrap_or_default()
+            .map(|s| secrecy::SecretString::from(s))
+            .or_else(|| self.gemini_api_key.clone())
+            .or_else(|| self.openai_api_key.clone())
+            .or_else(|| self.anthropic_api_key.clone())
+            .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
     }
 
     async fn gemini_embed_fallback(
@@ -980,23 +979,24 @@ impl BackgroundLlmProvider {
         is_query: bool,
     ) -> Result<Vec<f32>, AiomeError> {
         let mut api_key = self.resolve_bg_api_key().await;
-        if api_key.is_empty() {
+        use secrecy::ExposeSecret;
+        if api_key.expose_secret().is_empty() {
             api_key = self
-                .jq
+                .ops
                 .get_setting_value("llm_api_key")
                 .await
                 .ok()
                 .flatten()
-                .unwrap_or_default();
+                .map(|s| secrecy::SecretString::from(s))
+                .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
         }
-        if api_key.is_empty() {
+        if api_key.expose_secret().is_empty() {
             api_key = self
                 .gemini_api_key
-                .as_ref()
-                .map(|s| secrecy::ExposeSecret::expose_secret(s).to_string())
-                .unwrap_or_default();
+                .clone()
+                .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
         }
-        if api_key.is_empty() {
+        if api_key.expose_secret().is_empty() {
             return Err(AiomeError::Infrastructure {
                 reason: "No embedding provider available: ruri-embed-server not running and no Gemini API key configured".into()
             });

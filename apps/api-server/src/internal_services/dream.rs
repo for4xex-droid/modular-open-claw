@@ -56,7 +56,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         // TrendSonar をループ毎に再構築し、最新の DB 設定を反映する
         // (State Staleness 防止: API キーの動的変更に追従)
         let trend_sonar =
-            infrastructure::trend_sonar::build_active_trend_sonar(&job_queue, llm_provider.clone())
+            infrastructure::trend_sonar::build_active_trend_sonar(job_queue.as_ref(), llm_provider.clone())
                 .await;
 
         let level = job_queue

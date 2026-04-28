@@ -57,7 +57,7 @@ impl AutonomousDemo {
 
     async fn do_run(state: AppState) -> Result<(), AiomeError> {
         let agent_id = state.system_agent_id;
-        let pool = state.job_queue.get_pool().clone();
+        let pool = state.db_pool.get_inner().clone();
 
         // Drop ALL audit triggers on gig tables for the demo duration.
         // Even without transactions, triggers cause write lock contention.
@@ -71,8 +71,8 @@ impl AutonomousDemo {
         for (table, _) in &gig_tables {
             let q1 = format!("DROP TRIGGER IF EXISTS audit_insert_{}", table);
             let q2 = format!("DROP TRIGGER IF EXISTS audit_update_{}", table);
-            let _ = sql_exec!(&pool, &q1);
-            let _ = sql_exec!(&pool, &q2);
+            let _ = sql_exec!(&*pool, &q1);
+            let _ = sql_exec!(&*pool, &q2);
         }
 
         // Run demo (result captured so triggers are always restored)
@@ -82,7 +82,7 @@ impl AutonomousDemo {
         for (table, pk) in &gig_tables {
             // Note: Postgres uses PL/pgSQL for audit logging now (set up natively),
             // so this trigger re-creation primarily targets SQLite for the demo.
-            if let DatabasePool::Sqlite(_) = pool {
+            if let DatabasePool::Sqlite(_) = *pool {
                 let q_insert = format!(
                     "CREATE TRIGGER IF NOT EXISTS audit_insert_{0} AFTER INSERT ON {0} BEGIN \
                      INSERT INTO audit_ledger_global (table_name, operation, record_id, new_data, prev_hash, current_hash) \
@@ -101,8 +101,8 @@ impl AutonomousDemo {
                      hex(randomblob(16))); END;",
                     table, pk
                 );
-                let _ = sql_exec!(&pool, &q_insert);
-                let _ = sql_exec!(&pool, &q_update);
+                let _ = sql_exec!(&*pool, &q_insert);
+                let _ = sql_exec!(&*pool, &q_update);
             }
         }
 

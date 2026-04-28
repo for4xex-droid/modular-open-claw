@@ -1018,18 +1018,12 @@ mod tests {
         use crate::llm::evaluation_logger::{EvaluationLogEntry, EvaluationLogger};
         use std::sync::Arc;
 
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -1037,7 +1031,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(std::sync::Arc::new(crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone())));
         logger
             .log(EvaluationLogEntry {
                 prompt: "P1".into(),
@@ -1146,18 +1140,12 @@ mod tests {
         use crate::llm::evaluation_logger::EvaluationLogger;
         use std::sync::Arc;
 
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
         let ts = Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -1165,7 +1153,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(std::sync::Arc::new(crate::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone())));
         // No data inserted — empty stats
 
         #[derive(Debug)]

@@ -234,9 +234,6 @@ impl OssRepositoryIndexer {
         Ok(session)
     }
 
-    pub fn get_pool(&self) -> &SqlitePool {
-        &self.pool
-    }
 }
 
 #[cfg(test)]
@@ -287,7 +284,7 @@ mod tests {
             db_pool,
             temp_dir.path().join("artifacts"),
         ));
-        let indexer = OssRepositoryIndexer::new(store, pool);
+        let indexer = OssRepositoryIndexer::new(store, pool.clone());
 
         // 1. Create a "remote" local git repo
         let remote_dir = temp_dir.path().join("remote_repo");
@@ -332,7 +329,7 @@ mod tests {
 
         // 3. Verify Artifacts in DB
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ai_artifacts")
-            .fetch_one(indexer.get_pool())
+            .fetch_one(&pool)
             .await
             .unwrap(); // allow-anti-pattern
                        // Expecting 2 artifacts (1 for README chunk, 1 for main.rs)

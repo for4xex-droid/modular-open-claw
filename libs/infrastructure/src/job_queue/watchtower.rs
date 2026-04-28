@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use super::UniversalJobQueue;
+use super::{SettingsOps, UniversalJobQueue};
 use crate::{sql_exec, sql_fetch_all, sql_fetch_one, sql_fetch_optional};
 use aiome_core::error::AiomeError;
 use async_trait::async_trait;
@@ -280,13 +280,31 @@ impl WatchtowerOps for UniversalJobQueue {
 
         // 2. Phase 4: Poincare ベースの重要度パージ (CR-1: バッチ化)
         let mut res_slm = 0;
+
+        let threshold_str = self
+            .get_setting_value("poincare_gc_threshold")
+            .await
+            .unwrap_or_default()
+            .unwrap_or_else(|| "0.3".to_string());
+        let threshold: f64 = threshold_str.parse().unwrap_or(0.3);
+
+        let batch_size_str = self
+            .get_setting_value("poincare_gc_batch_size")
+            .await
+            .unwrap_or_default()
+            .unwrap_or_else(|| "100".to_string());
+        let batch_size: usize = batch_size_str.parse().unwrap_or(100);
+
+        metrics::gauge!("aiome_poincare_gc_threshold").set(threshold);
+        metrics::gauge!("aiome_poincare_gc_batch_size").set(batch_size as f64);
+
         if let Some(slm) = &self.slm_bridge {
             tracing::info!(
                 "🧬 [PoincareGC] Analyzing low-importance karma via SLM (batch mode)..."
             );
             // 重要度の低そうな記憶を recall でリストアップ
             if let Ok(results) = slm
-                .recall("low importance logic artifacts redundant", 100)
+                .recall("low importance logic artifacts redundant", batch_size as i64)
                 .await
             {
                 let queries: Vec<String> = results.iter().map(|r| r.content.clone()).collect();
@@ -297,7 +315,7 @@ impl WatchtowerOps for UniversalJobQueue {
                     {
                         Ok(scored) => scored
                             .into_iter()
-                            .filter(|(_, importance)| *importance < 0.3) // 閾値: 極めて低い
+                            .filter(|(_, importance)| *importance < threshold) // 動的閾値
                             .map(|(content, _)| content)
                             .collect(),
                         Err(e) => {
@@ -346,6 +364,7 @@ impl WatchtowerOps for UniversalJobQueue {
                                 "✅ [PoincareGC] Archived {} low-importance karma entries.",
                                 res_slm
                             );
+                            metrics::counter!("aiome_poincare_gc_archived_total").increment(res_slm as u64);
                         }
                     }
                 }

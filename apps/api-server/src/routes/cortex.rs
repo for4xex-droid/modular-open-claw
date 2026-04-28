@@ -149,7 +149,7 @@ pub async fn list_wiki_articles_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
 
     let rows = sqlx::query(
         r#"
@@ -205,7 +205,7 @@ pub async fn get_wiki_article_handler(
     _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
 
     let row = sqlx::query(
         r#"
@@ -343,7 +343,7 @@ pub async fn synth_dataset_handler(
 
     // Phase D: Synth -> LoRA integration
     let provider = state.provider.get_inner().clone();
-    let pool = state.job_queue.get_pool().clone();
+    let pool = state.db_pool.get_inner().clone();
 
     // Gather initial beliefs from the SoulStore
     let soul_store = state.soul_store.get_inner();
@@ -384,7 +384,7 @@ pub async fn synth_dataset_handler(
 
     let synth = infrastructure::cortex_synth::CortexSynthesizer::new(
         provider,
-        pool,
+        (*pool).clone(),
         Some(std::sync::Arc::new(belief_gate)),
     );
     let jq = state.job_queue.get_inner().clone();

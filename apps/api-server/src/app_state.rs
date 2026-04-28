@@ -66,6 +66,7 @@ impl<T> std::ops::Deref for Component<T> {
 #[derive(Clone, Default)]
 pub struct AppState {
     pub health_monitor: Component<Arc<Mutex<HealthMonitor>>>,
+    pub db_pool: Component<Arc<infrastructure::db::DatabasePool>>,
     pub job_queue: Component<Arc<UniversalJobQueue>>,
     pub wasm_skill_manager: Component<Arc<WasmSkillManager>>,
     pub skill_forge: Component<Arc<SkillForge>>,

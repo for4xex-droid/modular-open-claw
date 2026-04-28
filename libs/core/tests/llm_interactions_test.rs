@@ -45,7 +45,7 @@ async fn test_interactions_complete_with_cache() {
 
     let provider = InteractionsGeminiProvider::with_base_url(
         aiome_core::http::get_http_client().clone(),
-        "fake_key".to_string(),
+        secrecy::SecretString::from("fake_key".to_string()),
         "gemini-3-flash-preview".to_string(),
         mock_server.uri(),
     );
@@ -152,7 +152,7 @@ async fn test_interactions_failover() {
 
     let provider = InteractionsGeminiProvider::with_base_url(
         aiome_core::http::get_http_client().clone(),
-        "fake_key".to_string(),
+        secrecy::SecretString::from("fake_key".to_string()),
         "gemini-3-flash-preview".to_string(),
         mock_server.uri(),
     )

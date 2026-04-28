@@ -25,7 +25,7 @@ mod proof_service;
 
 pub struct ShadowWorkerService {
     auth_token: String,
-    gemini_api_key: Option<String>,
+    gemini_api_key: Option<secrecy::SecretString>,
 }
 
 #[tonic::async_trait]
@@ -119,7 +119,7 @@ impl DockerConductor for ShadowWorkerService {
 
             // Use GEMINI_API_KEY if exists, else fallback to Ollama
             let llm_res = match gemini_key {
-                Some(key) if !key.is_empty() => {
+                Some(key) if !secrecy::ExposeSecret::expose_secret(&key).is_empty() => {
                     let provider = GeminiProvider::new(
                         aiome_core::http::get_http_client().clone(),
                         key,
@@ -194,7 +194,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required"); // allow-anti-pattern
     shared::security::scrub_env("A2A_AUTH_TOKEN");
 
-    let gemini_api_key = env::var("GEMINI_API_KEY").ok();
+    let gemini_api_key = env::var("GEMINI_API_KEY").ok().map(|s| secrecy::SecretString::from(s));
     shared::security::scrub_env("GEMINI_API_KEY");
 
     let proof_auth_token = auth_token.clone();

@@ -61,7 +61,7 @@ async fn test_soul_pipeline_with_whisper_integration() {
     );
     let adapter = CoreDomainAdapter::new(
         Arc::new(
-            infrastructure::job_queue::UniversalJobQueue::new(":memory:", None, ts)
+            infrastructure::job_queue::UniversalJobQueue::new(infrastructure::db::DatabasePool::new_sqlite(":memory:").await.unwrap(), None, ts)
                 .await
                 .unwrap(),
         ),

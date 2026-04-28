@@ -19,7 +19,7 @@ use tracing::{error, info, warn};
 /// Gemini 3.1 Flash Live 用の WebSocket プロバイダー
 #[derive(Debug)]
 pub struct LiveSessionProvider {
-    api_key: String,
+    api_key: secrecy::SecretString,
     model: String,
     // セッションID -> WebSocket 接続のマップ（簡易実装）
     #[allow(dead_code)]
@@ -29,7 +29,7 @@ pub struct LiveSessionProvider {
 
 impl LiveSessionProvider {
     /// Initializes a new LiveSessionProvider for Gemini interactions
-    pub fn new(api_key: String, model: String) -> Self {
+    pub fn new(api_key: secrecy::SecretString, model: String) -> Self {
         let sessions: Arc<
             Mutex<std::collections::HashMap<String, tokio::sync::mpsc::UnboundedSender<Message>>>,
         > = Arc::new(Mutex::new(std::collections::HashMap::new()));
@@ -86,7 +86,7 @@ impl LiveSessionProvider {
     fn get_url(&self) -> String {
         format!(
             "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key={}",
-            self.api_key
+            secrecy::ExposeSecret::expose_secret(&self.api_key)
         )
     }
 }
@@ -225,7 +225,7 @@ mod tests {
     #[tokio::test]
     async fn test_provider_creation() {
         let provider =
-            LiveSessionProvider::new("test_key".into(), "gemini-3.1-flash-live-preview".into());
+            LiveSessionProvider::new(secrecy::SecretString::from("test_key".to_string()), "gemini-3.1-flash-live-preview".into());
         assert_eq!(provider.model, "gemini-3.1-flash-live-preview");
     }
 
@@ -233,13 +233,13 @@ mod tests {
     async fn test_create_session_failure() {
         // 間違ったAPIキーまたはオフラインで接続エラーになることを確認（REDテスト）
         let provider =
-            LiveSessionProvider::new("invalid_key".into(), "gemini-3.1-flash-live-preview".into());
+            LiveSessionProvider::new(secrecy::SecretString::from("invalid_key".to_string()), "gemini-3.1-flash-live-preview".into());
         let result = provider.create_session(ThinkingLevel::Minimal).await;
         assert!(result.is_err());
     }
     #[tokio::test]
     async fn test_session_gc_green() {
-        let provider = LiveSessionProvider::new("test".into(), "model".into());
+        let provider = LiveSessionProvider::new(secrecy::SecretString::from("test".to_string()), "model".into());
         let session_id = "test_gc_session".to_string();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         {

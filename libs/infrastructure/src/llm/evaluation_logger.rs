@@ -5,13 +5,42 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use crate::job_queue::UniversalJobQueue;
+use crate::db::DatabasePool;
 use aiome_core_contracts::error::AiomeError;
+use async_trait::async_trait;
 use std::sync::Arc;
+
+#[async_trait]
+pub trait EvalLogRepository: Send + Sync + std::fmt::Debug {
+    async fn insert_eval_log(
+        &self,
+        prompt_hash: &str,
+        entry: &EvaluationLogEntry,
+    ) -> Result<(), AiomeError>;
+    async fn get_provider_stats(
+        &self,
+        provider: &str,
+        model: &str,
+        days: i64,
+    ) -> Result<ProviderEvalStat, AiomeError>;
+    async fn get_all_provider_stats(&self, days: u32) -> Result<Vec<ProviderEvalStat>, AiomeError>;
+    async fn garbage_collect(&self, days: u32) -> Result<u64, AiomeError>;
+}
+
+#[derive(Debug)]
+pub struct SqlEvalLogRepository {
+    pool: DatabasePool,
+}
+
+impl SqlEvalLogRepository {
+    pub fn new(pool: DatabasePool) -> Self {
+        Self { pool }
+    }
+}
 
 #[derive(Debug)]
 pub struct EvaluationLogger {
-    jq: Arc<UniversalJobQueue>,
+    repo: Arc<dyn EvalLogRepository>,
 }
 
 pub struct EvaluationLogEntry {
@@ -27,8 +56,8 @@ pub struct EvaluationLogEntry {
 }
 
 impl EvaluationLogger {
-    pub fn new(jq: Arc<UniversalJobQueue>) -> Self {
-        Self { jq }
+    pub fn new(repo: Arc<dyn EvalLogRepository>) -> Self {
+        Self { repo }
     }
 
     pub async fn log(&self, entry: EvaluationLogEntry) -> Result<(), AiomeError> {
@@ -40,20 +69,51 @@ impl EvaluationLogger {
             hasher.update(sys.as_bytes());
         }
         let prompt_hash = hex::encode(hasher.finalize());
+        self.repo.insert_eval_log(&prompt_hash, &entry).await
+    }
+
+    pub async fn get_provider_stats(
+        &self,
+        provider: &str,
+        model: &str,
+        days: i64,
+    ) -> Result<ProviderEvalStat, AiomeError> {
+        self.repo.get_provider_stats(provider, model, days).await
+    }
+
+    pub async fn get_all_provider_stats(
+        &self,
+        days: u32,
+    ) -> Result<Vec<ProviderEvalStat>, AiomeError> {
+        self.repo.get_all_provider_stats(days).await
+    }
+
+    pub async fn garbage_collect(&self, days: u32) -> Result<u64, AiomeError> {
+        self.repo.garbage_collect(days).await
+    }
+}
+
+#[async_trait]
+impl EvalLogRepository for SqlEvalLogRepository {
+    async fn insert_eval_log(
+        &self,
+        prompt_hash: &str,
+        entry: &EvaluationLogEntry,
+    ) -> Result<(), AiomeError> {
         let cache_hit_int = if entry.cache_hit { 1 } else { 0 };
 
-        let pool = self.jq.get_pool();
+        let pool = &self.pool;
         let query = format!(
             "INSERT INTO prompt_evaluation_log (prompt_hash, provider, model, latency_ms, token_count_in, token_count_out, cost_usd, cache_hit) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
             pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7)
         );
 
-        match &pool {
+        match pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query(&query)
                     .bind(prompt_hash)
-                    .bind(entry.provider)
-                    .bind(entry.model)
+                    .bind(&entry.provider)
+                    .bind(&entry.model)
                     .bind(entry.latency_ms)
                     .bind(entry.token_count_in)
                     .bind(entry.token_count_out)
@@ -71,8 +131,8 @@ impl EvaluationLogger {
             crate::db::DatabasePool::Postgres(p) => {
                 sqlx::query(&query)
                     .bind(prompt_hash)
-                    .bind(entry.provider)
-                    .bind(entry.model)
+                    .bind(&entry.provider)
+                    .bind(&entry.model)
                     .bind(entry.latency_ms)
                     .bind(entry.token_count_in)
                     .bind(entry.token_count_out)
@@ -91,13 +151,13 @@ impl EvaluationLogger {
         Ok(())
     }
 
-    pub async fn get_provider_stats(
+    async fn get_provider_stats(
         &self,
         provider: &str,
         model: &str,
         days: i64,
     ) -> Result<ProviderEvalStat, AiomeError> {
-        let pool = self.jq.get_pool();
+        let pool = &self.pool;
         let sql_modifier = format!("-{} days", days);
 
         let query = format!(
@@ -110,7 +170,7 @@ impl EvaluationLogger {
              pool.ph(0), pool.ph(1), pool.ph(2)
         );
 
-        let stat = match &pool {
+        let stat = match pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query_as::<_, ProviderEvalStat>(&query)
                     .bind(provider)
@@ -156,13 +216,13 @@ impl EvaluationLogger {
         }
     }
 
-    pub async fn get_all_provider_stats(
+    async fn get_all_provider_stats(
         &self,
         days: u32,
     ) -> Result<Vec<ProviderEvalStat>, AiomeError> {
-        let pool = self.jq.get_pool();
+        let pool = &self.pool;
 
-        let stats = match &pool {
+        let stats = match pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 let sql_modifier = format!("-{} days", days);
                 let query = "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls, 
@@ -199,12 +259,12 @@ impl EvaluationLogger {
         })
     }
 
-    pub async fn garbage_collect(&self, days: u32) -> Result<u64, AiomeError> {
-        let pool = self.jq.get_pool();
+    async fn garbage_collect(&self, days: u32) -> Result<u64, AiomeError> {
+        let pool = &self.pool;
         let sql_modifier = format!("-{} days", days);
         let query = "DELETE FROM prompt_evaluation_log WHERE created_at < datetime('now', ?)";
 
-        let affected_res: Result<u64, sqlx::Error> = match &pool {
+        let affected_res: Result<u64, sqlx::Error> = match pool {
             crate::db::DatabasePool::Sqlite(p) => sqlx::query(query)
                 .bind(sql_modifier)
                 .execute(p)
@@ -253,18 +313,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluation_logger_inserts_log() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -273,7 +332,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(Arc::new(SqlEvalLogRepository::new(pool.clone())));
         let entry = EvaluationLogEntry {
             prompt: "Test prompt".into(),
             system: Some("Test system".into()),
@@ -297,7 +356,7 @@ mod tests {
         );
 
         // Verify insertion
-        let pool = jq.get_pool();
+        let pool = &pool;
         if let DatabasePool::Sqlite(p) = pool {
             let count: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM prompt_evaluation_log WHERE provider = 'mock_provider'",
@@ -311,18 +370,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluation_logger_stats() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -330,7 +388,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(Arc::new(SqlEvalLogRepository::new(pool.clone())));
         logger
             .log(EvaluationLogEntry {
                 prompt: "P1".into(),
@@ -356,18 +414,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_provider_stats_returns_aggregated_data() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -375,7 +432,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(Arc::new(SqlEvalLogRepository::new(pool.clone())));
 
         // Insert two entries for different providers
         logger
@@ -425,18 +482,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_provider_stats_returns_empty_for_no_data() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -444,7 +500,7 @@ mod tests {
             .await
             .unwrap();
 
-        let logger = EvaluationLogger::new(jq.clone());
+        let logger = EvaluationLogger::new(Arc::new(SqlEvalLogRepository::new(pool.clone())));
 
         // Act: no data inserted
         let stats = logger.get_all_provider_stats(7).await.unwrap();

@@ -6,7 +6,7 @@
  */
 
 use crate::belief_consistency_gate::{BeliefCheckResult, BeliefConsistencyGate};
-use crate::job_queue::{UniversalJobQueue, WatchtowerOps};
+use crate::job_queue::DistillationOps;
 use crate::slm_bridge::SlmBridge;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::LlmProvider;
@@ -29,7 +29,7 @@ pub enum FactCategory {
 /// 短期記憶から長期Karmaへの結晶化エンジン
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
-    job_queue: Arc<UniversalJobQueue>,
+    ops: Arc<dyn DistillationOps>,
     semaphore: Arc<Semaphore>,
     slm_bridge: Option<Arc<SlmBridge>>,
     belief_gate: Option<Arc<BeliefConsistencyGate>>,
@@ -39,14 +39,14 @@ impl MemoryCrystallizer {
     /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
-        job_queue: Arc<UniversalJobQueue>,
+        ops: Arc<dyn DistillationOps>,
         semaphore: Arc<Semaphore>,
         slm_bridge: Option<Arc<SlmBridge>>,
         belief_gate: Option<Arc<BeliefConsistencyGate>>,
     ) -> Self {
         Self {
             provider,
-            job_queue,
+            ops,
             semaphore,
             slm_bridge,
             belief_gate,
@@ -57,14 +57,14 @@ impl MemoryCrystallizer {
     pub async fn run_distillation_cycle(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 1. Skill-based Karma Distillation (Consolidating raw experiences)
         // Fetch skills that have 10+ raw karma entries
-        let skills = self.job_queue.do_fetch_skills_for_distillation(10).await?;
+        let skills = self.ops.fetch_skills_for_distillation(10).await?;
         for skill in skills {
             if let Ok(_permit) = self.semaphore.try_acquire() {
                 info!(
                     "💎 [MemoryCrystallizer] Crystallizing karma for skill: {}",
                     skill
                 );
-                let raw_karma = self.job_queue.do_fetch_raw_karma_for_skill(&skill).await?;
+                let raw_karma = self.ops.fetch_raw_karma_for_skill(&skill).await?;
 
                 // VULN-63: OOM Prevention - process in batches of 50 to avoid massive string allocation
                 for raw_karma_chunk in raw_karma.chunks(50) {
@@ -127,7 +127,7 @@ impl MemoryCrystallizer {
                                             ..Default::default()
                                         };
                                         if let Err(e) =
-                                            self.job_queue.store_trajectory_step(step).await
+                                            self.ops.store_trajectory_step(step).await
                                         {
                                             warn!("⚠️ [MemoryCrystallizer] Failed to record belief revision step for {}: {:?}", skill, e);
                                         }
@@ -139,8 +139,7 @@ impl MemoryCrystallizer {
                                 }
                             }
 
-                            self.job_queue
-                                .do_apply_distilled_karma(
+                            self.ops.apply_distilled_karma(
                                     &skill,
                                     &resp.content,
                                     &ids,
@@ -179,6 +178,7 @@ mod tests {
     use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
+    use crate::job_queue::UniversalJobQueue;
 
     #[derive(Debug)]
     struct MockLlm;
@@ -208,22 +208,26 @@ mod tests {
     async fn test_memory_crystallizer_initialization() {
         let provider = Arc::new(MockLlm);
         // UniversalJobQueue の実体化（インメモリ）を試みる
-        let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
         );
-        if let Ok(jq) = UniversalJobQueue::new("sqlite::memory:", None, ts).await {
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
+        );
+        if let Ok(jq) = UniversalJobQueue::new(pool.clone(), None, ts).await {
             let semaphore = Arc::new(Semaphore::new(1));
             let slm = Some(Arc::new(SlmBridge::new()));
 
-            let crystallizer =
-                MemoryCrystallizer::new(provider, Arc::new(jq), semaphore, slm, None);
+            let crystallizer = MemoryCrystallizer::new(
+                provider,
+                Arc::new(jq) as Arc<dyn DistillationOps>,
+                semaphore,
+                slm,
+                None,
+            );
 
             assert!(crystallizer.slm_bridge.is_some());
         }

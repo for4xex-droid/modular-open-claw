@@ -83,7 +83,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
             crate::db::DatabasePool::Postgres(pg)
         };
         let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
-        let jq = UniversalJobQueue::new(&pg_url, None, ts)
+        let jq = UniversalJobQueue::new(crate::db::DatabasePool::new_postgres(&pg_url).await.unwrap(), None, ts)
             .await
             .expect("Failed to create test job queue (Postgres)");
 
@@ -98,7 +98,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         .expect("TS pool connect");
     let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
-    let jq = UniversalJobQueue::new(&format!("sqlite://{}", db_path_str), None, ts)
+    let jq = UniversalJobQueue::new(crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str)).await.unwrap(), None, ts)
         .await
         .expect("Failed to create test job queue");
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist

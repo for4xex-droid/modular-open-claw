@@ -128,7 +128,7 @@ impl TrendAdapter for WebSearchAdapter {
 }
 
 pub async fn build_active_trend_sonar(
-    jq: &crate::job_queue::UniversalJobQueue,
+    jq: &dyn crate::job_queue::SettingsOps,
     eval_llm: Option<std::sync::Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>>,
 ) -> ExternalTrendSonar {
     let mut adapters: Vec<std::sync::Arc<dyn TrendAdapter>> = vec![];

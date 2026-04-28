@@ -35,7 +35,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
 
     let score_tracker = Arc::new(ScoreTracker::new(
         forecast_provider,
-        state.job_queue.get_inner().get_pool().clone(),
+        (**state.db_pool.get_inner()).clone(),
     ));
 
     // 2. HeartbeatWakeupService の初期化

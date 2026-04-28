@@ -13,7 +13,7 @@ use sqlx::Row;
 
 #[async_trait]
 /// `SettingsOps` トレイト
-pub trait SettingsOps {
+pub trait SettingsOps: Send + Sync {
     /// 指定キーの設定値を取得する
     async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError>;
     /// 設定値を保存・更新する
@@ -38,6 +38,30 @@ pub trait SettingsOps {
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false)
     }
+
+    /// ラッパー: 指定キーの設定値を取得する
+    async fn get_setting_value(&self, key: &str) -> Result<Option<String>, AiomeError> {
+        self.do_get_setting(key).await
+    }
+
+    /// ラッパー: 設定値を保存・更新する
+    async fn update_setting(
+        &self,
+        key: &str,
+        value: &str,
+        category: &str,
+        is_secret: bool,
+    ) -> Result<(), AiomeError> {
+        self.do_set_setting(key, value, category, is_secret).await
+    }
+}
+
+#[async_trait]
+pub trait CostOps: SettingsOps {
+    /// 過去 N 時間のコスト合計を取得する
+    async fn aggregate_cost_hours(&self, hours: i64) -> Result<f64, AiomeError>;
+    /// 過去 N 日のコスト合計を取得する
+    async fn aggregate_cost_days(&self, days: i64) -> Result<f64, AiomeError>;
 }
 
 #[async_trait]
@@ -149,7 +173,63 @@ impl SettingsOps for UniversalJobQueue {
                         .collect()
                 }
             };
-
         Ok(entries)
+    }
+}
+
+#[async_trait]
+impl CostOps for UniversalJobQueue {
+    async fn aggregate_cost_hours(&self, hours: i64) -> Result<f64, AiomeError> {
+        let res_opt = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let sql_modifier = format!("-{} hours", hours);
+                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', ?)")
+                    .bind(sql_modifier)
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0))
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let interval = format!("{} hours", hours);
+                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - $1::interval")
+                    .bind(interval)
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0))
+            }
+        };
+
+        res_opt
+            .map(|opt| opt.unwrap_or(0.0))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to aggregate hours costs: {}", e),
+            })
+    }
+
+    async fn aggregate_cost_days(&self, days: i64) -> Result<f64, AiomeError> {
+        let res_opt = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let sql_modifier = format!("-{} days", days);
+                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', ?)")
+                    .bind(sql_modifier)
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0))
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let interval = format!("{} days", days);
+                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - $1::interval")
+                    .bind(interval)
+                    .fetch_one(p)
+                    .await
+                    .map(|row| row.get::<Option<f64>, _>(0))
+            }
+        };
+
+        res_opt
+            .map(|opt| opt.unwrap_or(0.0))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to aggregate days costs: {}", e),
+            })
     }
 }

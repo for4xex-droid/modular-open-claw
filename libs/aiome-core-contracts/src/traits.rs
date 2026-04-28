@@ -445,13 +445,19 @@ pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
     /// SLM (SuperLocalMemory) から教訓を想起する (Phase 2-B)
     async fn recall_from_slm(
         &self,
-        query: &str,
-        limit: i64,
+        _query: &str,
+        _limit: i64,
     ) -> Result<KarmaSearchResult, AiomeError> {
         // デフォルトでは空の結果を返す (既存の Mock 互換性維持)
         Ok(KarmaSearchResult::empty())
     }
 }
+
+/// ISP: ContextEngine が必要とする最小インターフェース
+pub trait ContextDeps: ChatStore + KarmaRegistry + Send + Sync {}
+
+// Blanket impl: ChatStore + KarmaRegistry を実装する全ての型に自動適用
+impl<T: ChatStore + KarmaRegistry + Send + Sync> ContextDeps for T {}
 
 /// 6. システム状態永続化 (SystemStateOps)
 #[async_trait]

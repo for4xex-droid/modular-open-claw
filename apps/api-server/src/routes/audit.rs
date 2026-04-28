@@ -97,7 +97,7 @@ pub async fn get_audit_ledger(
         }
         .into());
     }
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
     let rows = sqlx::query_as::<_, AuditLedgerResponse>(
         "SELECT id, table_name, operation, record_id, current_hash, timestamp FROM audit_ledger_global ORDER BY id DESC LIMIT 100",
     )
@@ -138,7 +138,7 @@ pub async fn get_diagnoses(
         }
         .into());
     }
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
     let rows = sqlx::query_as::<_, DiagnosisResponse>(
         "SELECT id, job_id, root_cause, self_repair_hint, failure_category, diagnosed_at as timestamp FROM agent_diagnoses ORDER BY id DESC LIMIT 100",
     )
@@ -259,7 +259,7 @@ pub async fn get_logs(
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(100);
 
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err()?;
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
     let rows = sqlx::query_as::<_, LogEntryResponse>(
         "SELECT id, timestamp, level, target, message FROM app_logs ORDER BY id DESC LIMIT ?",
     )

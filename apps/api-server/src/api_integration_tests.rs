@@ -449,7 +449,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
-            &format!("sqlite://{}", db_path.to_str().unwrap()),
+            pool.clone(),
             None,
             ts,
         )
@@ -486,7 +486,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
     let artifact_store = Arc::new(
         infrastructure::artifact_store::UniversalArtifactStore::new(
-            job_queue.get_pool().clone(),
+            pool.clone(),
             artifacts_dir.clone(),
         )
         .with_job_queue(job_queue.clone()),
@@ -505,7 +505,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
-        job_queue.get_pool().clone(),
+        pool.clone(),
     ));
     let intent_generator = Arc::new(infrastructure::intent::IntentGenerator::new(
         context_engine.clone(),
@@ -515,7 +515,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
 
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        job_queue.get_pool().clone(),
+        pool.clone(),
     ));
     std::env::set_var("VAULT_MASTER_PASSWORD", "test_master_password_for_vault");
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
@@ -523,7 +523,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::security::VoiceCoreDrm::new(
             "http://localhost:3016".to_string(),
             registry.clone(),
-            job_queue.get_pool().clone(),
+            pool.clone(),
         )
         .await,
     );
@@ -541,17 +541,18 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         "test distillator".to_string(),
     );
     let audit_logger = Arc::new(infrastructure::audit_logger::AsyncAuditLogger::new(
-        job_queue.get_pool().clone().into(),
+        pool.clone().into(),
         100,
     ));
 
     let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
-        job_queue.get_pool().clone(),
+        pool.clone(),
         500 * 1024 * 1024,
     );
     let _ = disk_quota_mgr.init().await;
 
     let state = AppState {
+        db_pool: Component::new(Arc::new(pool.clone())),
         oxilean_power: Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
         hook_manager: Default::default(),
@@ -647,7 +648,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         voice_drm: Component::new(voice_drm.clone()),
         registry: Component::new(registry.clone()),
         gig_engine: Component::new(Arc::new(aiome_commerce::gig::UniversalGigEngine::new(
-            job_queue.get_pool().clone(),
+            pool.clone(),
             Arc::new(MockCommerceEngine),
             provider.clone(),
             tmp_dir.path().join("gig_artifacts"),
@@ -729,13 +730,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         news_service: Component::default(),
         live_session_manager: Component::new(Arc::new(MockLiveSessionManager::default())),
         syndicate_store: Component::new(Arc::new(
-            aiome_commerce::syndicate::UniversalSyndicateStore::new(job_queue.get_pool().clone()),
+            aiome_commerce::syndicate::UniversalSyndicateStore::new(pool.clone()),
         )),
         hierarchical_router: Component::new(Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(
                 provider.clone(),
-                job_queue
-                    .get_pool()
+                pool
                     .get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for HierarchicalRouter"),
@@ -754,13 +754,13 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         cortex_ingester: Component::new(Arc::new(
             infrastructure::cortex_ingester::CortexIngester::new(
                 provider.clone(),
-                job_queue.get_pool().clone(),
+                pool.clone(),
             ),
         )),
         cortex_query: Component::new(Arc::new(
             infrastructure::cortex_query::CortexQueryEngine::new(
                 provider.clone(),
-                job_queue.get_pool().clone(),
+                pool.clone(),
             ),
         )),
         cortex_projector: Default::default(),
@@ -770,14 +770,18 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 .build(),
         )),
         eval_logger: Component::new(Arc::new(
-            infrastructure::llm::evaluation_logger::EvaluationLogger::new(job_queue.clone()),
+            infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
+                infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(
+                    pool.clone(),
+                ),
+            )),
         )),
         lora_marketplace: {
             let vault_root = tmp_dir.path().join("vault");
             std::fs::create_dir_all(&vault_root).ok();
             Component::new(Arc::new(
                 infrastructure::lora_marketplace::UniversalLoraMarketplace::new(
-                    job_queue.get_pool().clone(),
+                    pool.clone(),
                     commerce_engine.clone()
                         as Arc<dyn aiome_core_contracts::commerce::CommerceEngine>,
                     vault_root,
@@ -798,8 +802,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         ),
         gig_updater: Component::new(Arc::new(
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
-                job_queue
-                    .get_pool()
+                pool
                     .get_sqlite_pool()
                     .cloned()
                     .expect("SQLite pool required for gig_updater"),
@@ -1031,7 +1034,7 @@ async fn test_get_prompt_stats() {
     let bearer = format!("Bearer mock_valid_token_admin:{}", uuid::Uuid::new_v4());
 
     // Arrange: Insert seed data
-    let db_pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let db_pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
     sqlx::query(
         "INSERT INTO prompt_evaluation_log (prompt_hash, provider, model, latency_ms, token_count_in, token_count_out, cost_usd, cache_hit) VALUES ('testhash', 'test_provider', 'test_model', 100, 10, 20, 0.0015, 1)"
     )
@@ -1989,7 +1992,7 @@ async fn test_fallback_router_failover() {
     );
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(
-            &format!("sqlite://{}", db_path.to_str().unwrap()),
+            pool.clone(),
             None,
             ts,
         )
@@ -2016,9 +2019,10 @@ async fn test_fallback_router_failover() {
 
     // 3. Register state with this router
     let state = AppState {
+        db_pool: Component::new(Arc::new(pool.clone())),
         hook_chain: Default::default(),
         registry: Component::new(Arc::new(infrastructure::registry::RegistryManager::new(
-            job_queue.get_pool().clone(),
+            pool.clone(),
         ))),
         wasm_skill_manager: Component::new(Arc::new(
             infrastructure::skills::WasmSkillManager::new(
@@ -2529,7 +2533,7 @@ async fn test_awaiting_input_job_lifecycle() {
     let bearer = test_bearer();
 
     // 1. Insert a mock AwaitingInput job directly into DB
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
     let test_job_id = "test-awaiting-input-job";
 
     // NOTE: This will fail until the SQLite CHECK constraint migration (Gap 10) is applied, or it might pass if AwaitingInput is already in the old check constraint.
@@ -2616,7 +2620,7 @@ async fn test_cancel_awaiting_input_job() {
     let (server, state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
     let test_job_id = "test-cancel-awaiting-input-job";
 
     sqlx::query(
@@ -2841,7 +2845,7 @@ async fn test_cortex_wiki_authorized() {
     let bearer = test_bearer();
 
     // Insert dummy article directly into DB so we can test the API
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
     sqlx::query(
         "INSERT INTO cortex_wiki_articles (id, title, content_md, concepts, backlinks, source_refs, content_hash, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
@@ -2950,7 +2954,7 @@ async fn test_cortex_query_file_back() {
     println!("Response Body: {}", response.text());
     assert_eq!(status, axum::http::StatusCode::OK);
 
-    let pool = state.job_queue.get_pool().get_sqlite_pool_or_err().unwrap();
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
 
     let log_row =
         sqlx::query("SELECT COUNT(*) as count FROM cortex_activity_log WHERE event_type = 'query'")

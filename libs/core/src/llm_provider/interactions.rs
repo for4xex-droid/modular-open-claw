@@ -13,7 +13,7 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 pub struct InteractionsGeminiProvider {
     client: reqwest::Client,
-    api_key: String,
+    api_key: secrecy::SecretString,
     model: String,
     base_url: Option<String>,
     fallback: Option<std::sync::Arc<dyn LlmProvider>>,
@@ -21,7 +21,7 @@ pub struct InteractionsGeminiProvider {
 
 impl InteractionsGeminiProvider {
     /// 新しい InteractionsGeminiProvider を作成します
-    pub fn new(client: reqwest::Client, api_key: String, model: String) -> Self {
+    pub fn new(client: reqwest::Client, api_key: secrecy::SecretString, model: String) -> Self {
         Self {
             client,
             api_key,
@@ -34,7 +34,7 @@ impl InteractionsGeminiProvider {
     /// ベースURLを指定して新しい InteractionsGeminiProvider を作成します（テスト用）
     pub fn with_base_url(
         client: reqwest::Client,
-        api_key: String,
+        api_key: secrecy::SecretString,
         model: String,
         base_url: String,
     ) -> Self {
@@ -95,7 +95,7 @@ impl InteractionsGeminiProvider {
         let response = self
             .client
             .post(&url)
-            .header("x-goog-api-key", &self.api_key)
+            .header("x-goog-api-key", secrecy::ExposeSecret::expose_secret(&self.api_key))
             .json(&payload)
             .send()
             .await

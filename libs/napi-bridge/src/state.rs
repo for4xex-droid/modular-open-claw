@@ -35,7 +35,7 @@ pub async fn get_db() -> Result<&'static Arc<UniversalJobQueue>, AiomeError> {
             })?,
         );
 
-        let mut queue = UniversalJobQueue::new(&db_path, Some(slm.clone()), ts).await?;
+        let mut queue = UniversalJobQueue::new(infrastructure::db::DatabasePool::new_sqlite(&db_path).await.unwrap(), Some(slm.clone()), ts).await?;
         queue.slm_bridge = Some(slm.clone());
 
         Ok(Arc::new(queue))
@@ -80,7 +80,7 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::GeminiProvider::new(
-                        client, api_key, model,
+                        client, api_key.into(), model,
                     ))
                 }
                 "openai" => {
@@ -95,7 +95,7 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::OpenAiProvider::new(
-                        client, api_key, model,
+                        client, api_key.into(), model,
                     ))
                 }
                 "claude" => {
@@ -110,7 +110,7 @@ pub async fn get_llm_provider(
                             .unwrap_or_default()
                     };
                     Arc::new(aiome_core::llm_provider::ClaudeProvider::new(
-                        client, api_key, model,
+                        client, api_key.into(), model,
                     ))
                 }
                 "lmstudio" => {

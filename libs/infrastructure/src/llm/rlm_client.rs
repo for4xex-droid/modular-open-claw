@@ -134,14 +134,10 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup_jq() -> Arc<UniversalJobQueue> {
-        let ts = Arc::new(SqliteTrajectoryStore::new(DatabasePool::Sqlite(
-            sqlx::sqlite::SqlitePoolOptions::new()
-                .connect("sqlite::memory:")
-                .await
-                .unwrap(),
-        )));
+        let pool = DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+        let ts = Arc::new(SqliteTrajectoryStore::new(pool.clone()));
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(),
         );

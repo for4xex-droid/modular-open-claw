@@ -264,15 +264,12 @@ mod tests {
         let db_path = tmp_dir.path().join("test_agent.db");
         let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
 
+        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url).await.unwrap();
         let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                infrastructure::db::DatabasePool::new_sqlite(&pool_url)
-                    .await
-                    .unwrap(), // allow-anti-pattern
-            ),
+            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
-        let jq = Arc::new(UniversalJobQueue::new(&pool_url, None, ts).await.unwrap()); // allow-anti-pattern
-        let registry = Arc::new(RegistryManager::new(jq.get_pool().clone()));
+        let jq = Arc::new(UniversalJobQueue::new(pool.clone(), None, ts).await.unwrap()); // allow-anti-pattern
+        let registry = Arc::new(RegistryManager::new(pool.clone()));
 
         let skills_dir = tmp_dir.path().join("skills");
         let sandbox_dir = tmp_dir.path().join("sandbox");

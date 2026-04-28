@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use crate::job_queue::UniversalJobQueue;
+use crate::job_queue::{CostOps, SettingsOps};
 use aiome_core::error::AiomeError;
 use sqlx::Row;
 use std::sync::Arc;
@@ -27,16 +27,16 @@ pub struct CostStatus {
 
 /// コストに基づくサーキットブレーカー
 pub struct CostCircuitBreaker {
-    jq: Arc<UniversalJobQueue>,
+    ops: Arc<dyn CostOps>,
     /// 24時間あたりのデフォルトコスト上限 (USD)
     default_limit_usd: f64,
 }
 
 impl CostCircuitBreaker {
     /// CostCircuitBreaker の新規インスタンスを生成する
-    pub fn new(jq: Arc<UniversalJobQueue>, default_limit_usd: f64) -> Self {
+    pub fn new(ops: Arc<dyn CostOps>, default_limit_usd: f64) -> Self {
         Self {
-            jq,
+            ops,
             default_limit_usd,
         }
     }
@@ -45,7 +45,7 @@ impl CostCircuitBreaker {
     pub async fn check_state(&self) -> Result<CostStatus, AiomeError> {
         // 設定からカスタム上限を取得（なければデフォルト）
         let limit_usd = self
-            .jq
+            .ops
             .get_setting_value("cost_limit_24h")
             .await
             .ok()
@@ -54,7 +54,7 @@ impl CostCircuitBreaker {
             .unwrap_or(self.default_limit_usd);
 
         let monthly_limit_usd = self
-            .jq
+            .ops
             .get_setting_value("cost_limit_monthly")
             .await
             .ok()
@@ -62,27 +62,11 @@ impl CostCircuitBreaker {
             .and_then(|s| s.parse::<f64>().ok());
 
         // 過去24時間の累計コストを集計
-        let res_opt_24h = match &self.jq.get_pool() {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-1 day')")
-                .fetch_one(p)
-                .await
-                .map(|row| row.get::<Option<f64>, _>(0)),
-            crate::db::DatabasePool::Postgres(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - INTERVAL '1 day'")
-                .fetch_one(p)
-                .await
-                .map(|row| row.get::<Option<f64>, _>(0)),
-        };
-
-        let total_usd_24h: f64 =
-            res_opt_24h
-                .map(|opt| opt.unwrap_or(0.0))
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to aggregate 24h costs: {}", e),
-                })?;
+        let total_usd_24h = self.ops.aggregate_cost_hours(24).await?;
 
         // バイパススイッチ（手動拡張）の確認
         let bypass_amount = self
-            .jq
+            .ops
             .get_setting_value("cost_bypass_amount")
             .await
             .ok()
@@ -96,22 +80,7 @@ impl CostCircuitBreaker {
         let mut final_monthly_limit = None;
 
         if let Some(m_limit) = monthly_limit_usd {
-            let res_opt_30d = match &self.jq.get_pool() {
-                crate::db::DatabasePool::Sqlite(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', '-30 days')")
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0)),
-                crate::db::DatabasePool::Postgres(p) => sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - INTERVAL '30 days'")
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0)),
-            };
-
-            let total_usd_30d: f64 = res_opt_30d.map(|opt| opt.unwrap_or(0.0)).map_err(|e| {
-                AiomeError::Infrastructure {
-                    reason: format!("Failed to aggregate 30d costs: {}", e),
-                }
-            })?;
+            let total_usd_30d = self.ops.aggregate_cost_days(30).await?;
 
             final_total_usd_30d = Some(total_usd_30d);
             final_monthly_limit = Some(m_limit + bypass_amount);
@@ -179,7 +148,7 @@ impl CostCircuitBreaker {
         current_session_cost: f64,
     ) -> Result<(), AiomeError> {
         let limit = self
-            .jq
+            .ops
             .get_setting_value("cost_limit_per_session")
             .await
             .ok()
@@ -205,12 +174,12 @@ impl CostCircuitBreaker {
 
 /// 特定のトランザクションを保護するためのバイパススイッチ
 pub struct CostBypassSwitch {
-    jq: Arc<UniversalJobQueue>,
+    jq: Arc<dyn SettingsOps>,
 }
 
 impl CostBypassSwitch {
     /// CostBypassSwitch の新規インスタンスを生成する
-    pub fn new(jq: Arc<UniversalJobQueue>) -> Self {
+    pub fn new(jq: Arc<dyn SettingsOps>) -> Self {
         Self { jq }
     }
 
@@ -248,18 +217,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_cost_limit_green() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );
@@ -276,18 +244,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_monthly_cost_limit() {
+        let pool = crate::db::DatabasePool::Sqlite(
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect("sqlite::memory:")
+                .await
+                .unwrap(), // allow-anti-pattern
+        );
         let ts = std::sync::Arc::new(
-            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(
-                crate::db::DatabasePool::Sqlite(
-                    sqlx::sqlite::SqlitePoolOptions::new()
-                        .connect("sqlite::memory:")
-                        .await
-                        .unwrap(), // allow-anti-pattern
-                ),
-            ),
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone())
         );
         let jq = Arc::new(
-            UniversalJobQueue::new("sqlite::memory:", None, ts)
+            UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(), // allow-anti-pattern
         );

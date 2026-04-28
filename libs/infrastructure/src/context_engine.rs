@@ -8,7 +8,7 @@
 use crate::job_queue::UniversalJobQueue;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmMessage, LlmProvider, LlmRequest, LlmResponse};
-use aiome_core_contracts::traits::{ChatStore, JobQueue, KarmaRegistry};
+use aiome_core_contracts::traits::{ChatStore, ContextDeps, JobQueue, KarmaRegistry};
 use async_trait::async_trait;
 use shared::guardrails::sanitize_for_prompt;
 use std::sync::Arc;
@@ -84,7 +84,7 @@ impl Default for ContextBudget {
 /// LLM向けコンテキスト生成エンジン
 pub struct ContextEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
-    job_queue: Arc<UniversalJobQueue>,
+    job_queue: Arc<dyn ContextDeps>,
     semaphore: Arc<Semaphore>,
 }
 
@@ -92,7 +92,7 @@ impl ContextEngine {
     /// 新しいインスタンスを生成する
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
-        job_queue: Arc<UniversalJobQueue>,
+        job_queue: Arc<dyn ContextDeps>,
         semaphore: Arc<Semaphore>,
     ) -> Self {
         Self {

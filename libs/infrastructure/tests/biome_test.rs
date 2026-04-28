@@ -21,7 +21,8 @@ async fn test_biome_dialogue_limit() {
             ),
         ),
     );
-    let queue = UniversalJobQueue::new("sqlite::memory:", None, ts)
+    let pool = infrastructure::db::DatabasePool::new_sqlite("sqlite::memory:").await.unwrap();
+    let queue = UniversalJobQueue::new(pool.clone(), None, ts)
         .await
         .unwrap(); // allow-anti-pattern
     let topic_id = "test_dialogue_topic";
@@ -57,9 +58,9 @@ async fn test_biome_dialogue_limit() {
 
     // Verify it's archived
     let archived_status: String =
-        sqlx::query_scalar("SELECT status FROM biome_topics WHERE topic_id = ?")
+        sqlx::query_scalar::<_, String>("SELECT status FROM biome_topics WHERE topic_id = ?")
             .bind(topic_id)
-            .fetch_one(queue.get_pool().get_sqlite_pool().unwrap()) // allow-anti-pattern
+            .fetch_one(pool.get_sqlite_pool_or_err().unwrap()) // allow-anti-pattern
             .await
             .unwrap(); // allow-anti-pattern
 

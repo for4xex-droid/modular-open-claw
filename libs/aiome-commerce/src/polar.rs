@@ -15,14 +15,14 @@ use subtle::ConstantTimeEq;
 use uuid::Uuid;
 
 pub struct PolarCommerceEngine {
-    api_key: String,
-    webhook_secret: String,
+    api_key: secrecy::SecretString,
+    webhook_secret: secrecy::SecretString,
     base_url: String,
     http_client: reqwest::Client,
 }
 
 impl PolarCommerceEngine {
-    pub fn new(api_key: String, webhook_secret: String, base_url: Option<String>) -> Self {
+    pub fn new(api_key: secrecy::SecretString, webhook_secret: secrecy::SecretString, base_url: Option<String>) -> Self {
         Self {
             api_key,
             webhook_secret,
@@ -91,7 +91,7 @@ impl CommerceEngine for PolarCommerceEngine {
         let res = self
             .http_client
             .post(&url)
-            .bearer_auth(&self.api_key)
+            .bearer_auth(secrecy::ExposeSecret::expose_secret(&self.api_key))
             .json(&payload)
             .send()
             .await
@@ -179,10 +179,10 @@ impl CommerceEngine for PolarCommerceEngine {
                     reason: "Invalid Polar signature base64".into(),
                 })?;
 
-        let secret = self
-            .webhook_secret
+        let exposed_secret = secrecy::ExposeSecret::expose_secret(&self.webhook_secret);
+        let secret = exposed_secret
             .strip_prefix("whsec_")
-            .unwrap_or(&self.webhook_secret);
+            .unwrap_or(exposed_secret);
         let decoded_secret = base64::prelude::BASE64_STANDARD
             .decode(secret)
             .map_err(|_| AiomeError::Infrastructure {
@@ -235,7 +235,7 @@ impl CommerceEngine for PolarCommerceEngine {
         let res = self
             .http_client
             .post(&url)
-            .bearer_auth(&self.api_key)
+            .bearer_auth(secrecy::ExposeSecret::expose_secret(&self.api_key))
             .json(&payload)
             .send()
             .await
@@ -360,8 +360,8 @@ mod tests {
             .await;
 
         let engine = PolarCommerceEngine::new(
-            "test_api_key".into(),
-            "test_webhook_secret".into(),
+            secrecy::SecretString::from("test_api_key".to_string()),
+            secrecy::SecretString::from("test_webhook_secret".to_string()),
             Some(mock_server.uri()),
         );
 
@@ -378,7 +378,7 @@ mod tests {
         let secret = format!("whsec_{}", b64_secret);
 
         let payload = "msg_123.1614556800.{\"test\":true}";
-        let engine = PolarCommerceEngine::new("key".into(), secret, None);
+        let engine = PolarCommerceEngine::new(secrecy::SecretString::from("key".to_string()), secrecy::SecretString::from(secret), None);
 
         type HmacSha256 = Hmac<Sha256>;
         let mut mac = HmacSha256::new_from_slice(raw_secret).unwrap();
@@ -403,7 +403,7 @@ mod tests {
             .await;
 
         let engine =
-            PolarCommerceEngine::new("key".into(), "secret".into(), Some(mock_server.uri()));
+            PolarCommerceEngine::new(secrecy::SecretString::from("key".to_string()), secrecy::SecretString::from("secret".to_string()), Some(mock_server.uri()));
 
         let result = engine.escrow_create(Uuid::nil(), 1000).await;
         assert!(result.is_ok());

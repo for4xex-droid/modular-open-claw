@@ -76,11 +76,28 @@ pub use self::federation::FederationOps;
 pub use self::guardrails::GuardrailOps;
 pub use self::karma::KarmaOps;
 pub use self::security::SecurityOps;
-pub use self::settings::SettingsOps;
+pub use self::settings::{CostOps, SettingsOps};
 pub use self::soul_store::SoulStoreOps;
 pub use self::swarm::SwarmOps;
 pub use self::trajectory_store::TrajectoryOps;
 pub use self::watchtower::WatchtowerOps;
+
+#[async_trait]
+pub trait DistillationOps: Send + Sync {
+    async fn fetch_skills_for_distillation(&self, threshold: i64) -> Result<Vec<String>, AiomeError>;
+    async fn fetch_raw_karma_for_skill(&self, skill: &str) -> Result<Vec<(String, String)>, AiomeError>;
+    async fn apply_distilled_karma(
+        &self,
+        skill: &str,
+        distilled_lesson: &str,
+        old_karma_ids: &[String],
+        soul_hash: &str,
+        domain: Option<&str>,
+        subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
+    ) -> Result<(), AiomeError>;
+    async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError>;
+}
 
 use crate::db::DatabasePool;
 use crate::job_queue::migrations::DbInitializer;
@@ -117,34 +134,13 @@ impl std::fmt::Debug for UniversalJobQueue {
 
 impl UniversalJobQueue {
     pub async fn new(
-        path: &str,
+        pool: DatabasePool,
         slm_bridge: Option<Arc<crate::slm_bridge::SlmBridge>>,
         trajectory_store: Arc<dyn TrajectoryStore>,
     ) -> Result<Self, AiomeError> {
-        let pool = if path.starts_with("postgres://") || path.starts_with("postgresql://") {
-            let pg_pool =
-                sqlx::PgPool::connect(path)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            Self::postgres_init(&pg_pool).await?;
-            DatabasePool::Postgres(pg_pool)
-        } else {
-            use std::str::FromStr;
-            let options = sqlx::sqlite::SqliteConnectOptions::from_str(path)
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .create_if_missing(true);
-            let sq_pool = sqlx::sqlite::SqlitePoolOptions::new()
-                .connect_with(options)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
-            DatabasePool::Sqlite(sq_pool)
-        };
+        if pool.is_postgres() {
+            Self::postgres_init(pool.get_postgres_pool_or_err()?).await?;
+        }
 
         let this = Self {
             pool,
@@ -198,10 +194,6 @@ impl UniversalJobQueue {
     pub fn with_llm(mut self, llm: Arc<dyn LlmProvider>) -> Self {
         self.llm = Some(llm);
         self
-    }
-
-    pub fn get_pool(&self) -> &DatabasePool {
-        &self.pool
     }
 }
 
@@ -288,6 +280,40 @@ impl TaskRegistry for UniversalJobQueue {
     }
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
         Box::pin(self.do_set_creative_rating(job_id, rating)).await
+    }
+}
+
+#[async_trait]
+impl DistillationOps for UniversalJobQueue {
+    async fn fetch_skills_for_distillation(&self, threshold: i64) -> Result<Vec<String>, AiomeError> {
+        self.do_fetch_skills_for_distillation(threshold).await
+    }
+    async fn fetch_raw_karma_for_skill(&self, skill: &str) -> Result<Vec<(String, String)>, AiomeError> {
+        self.do_fetch_raw_karma_for_skill(skill).await
+    }
+    async fn apply_distilled_karma(
+        &self,
+        skill: &str,
+        distilled_lesson: &str,
+        old_karma_ids: &[String],
+        soul_hash: &str,
+        domain: Option<&str>,
+        subtopic: Option<&str>,
+        clone_origin_id: Option<&str>,
+    ) -> Result<(), AiomeError> {
+        self.do_apply_distilled_karma(
+            skill,
+            distilled_lesson,
+            old_karma_ids,
+            soul_hash,
+            domain,
+            subtopic,
+            clone_origin_id,
+        )
+        .await
+    }
+    async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError> {
+        AuditStore::store_trajectory_step(self, step).await
     }
 }
 

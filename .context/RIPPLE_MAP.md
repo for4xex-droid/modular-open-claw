@@ -1,7 +1,18 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 6: Infrastructure Decoupling (Repository Pattern & Trait Isolation)
+### 1. SemanticCache & MemoryCrystallizer Isolation
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: `SemanticCacheRepository` と `DistillationOps` トレイトを追加定義。`UniversalJobQueue` にこれらのトレイトを実装。
+    - `libs/infrastructure/src/llm/semantic_cache.rs` [MODIFY]: `SemanticCache` の初期化引数を `Arc<UniversalJobQueue>` から `Arc<dyn SemanticCacheRepository>` に変更。
+    - `libs/infrastructure/src/memory_crystallizer.rs` [MODIFY]: `MemoryCrystallizer` の初期化引数を `Arc<UniversalJobQueue>` から `Arc<dyn DistillationOps>` に変更。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: 上記の変更に伴い、DI時のキャストを追加。
+    - テストファイル全般 [MODIFY]: `mockall` で生成したモックリポジトリを使用するように `SemanticCache` と `MemoryCrystallizer` のテストをリファクタリング。
+- **波及効果**:
+    - `SemanticCache` および `MemoryCrystallizer` が `UniversalJobQueue` への直接依存から脱却し、単体テスト時のSQLite（ファイルIO）依存が排除された。
+    - `get_pool()` などの内部実装を外部に露出しない、堅牢な Interface Segregation Principle (ISP) が実現。
+
 ## Phase 4: Agentic Core Refactoring & Zero-Trust Sync
-### 1. Zero-Panic Initiative
 - **変更内容**:
     - `apps/api-server/src/internal_services/mod.rs` [MODIFY]: `Watchtower`, `Heartbeat`, `Dream`, `OxiLean` タスクの `panic!` を graceful restart ループに置換。
     - `apps/samsara-hub/src/mdns_listener.rs` [MODIFY]: `mDNS` ブラウズ時の `panic!` を再試行ループに置換し、P2P 発見がクラッシュするのを防ぐ。
