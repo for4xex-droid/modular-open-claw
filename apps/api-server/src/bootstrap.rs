@@ -1321,6 +1321,12 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             ),
         )
             as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
+        pkce_cache: Component::new(Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(600))
+                .max_capacity(10_000)
+                .build(),
+        )),
     };
 
     // === 🏗️ STAGE 6/7: Workers (Background loops) ===

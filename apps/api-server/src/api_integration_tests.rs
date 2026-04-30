@@ -791,6 +791,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             ),
         )
             as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
+        pkce_cache: Component::new(Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(600))
+                .max_capacity(10_000)
+                .build(),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -1766,16 +1772,26 @@ async fn test_quarantine_release_api() {
 async fn test_oauth2_endpoints_stub() {
     let (server, _state, _tmp) = create_test_server().await;
 
-    // 1. Authorize: GET
-    let resp = server
-        .get("/api/v1/auth/authorize?client_id=test&response_type=code")
-        .await;
+    // Generate a real PKCE challenge/verifier pair
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use sha2::{Digest, Sha256};
+    let verifier = "my_super_secret_verifier_for_testing_purposes";
+    let mut hasher = Sha256::new();
+    hasher.update(verifier.as_bytes());
+    let challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
+    // 1. Authorize: GET with PKCE
+    let authorize_url = format!("/api/v1/auth/authorize?client_id=test&response_type=code&code_challenge={}&code_challenge_method=S256", challenge);
+    let resp = server.get(&authorize_url).await;
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 
-    // 2. Token: POST
+    let json: serde_json::Value = resp.json();
+    let auth_code = json["code"].as_str().unwrap();
+
+    // 2. Token: POST with matching verifier
     let resp = server
         .post("/api/v1/auth/token")
-        .json(&json!({"grant_type": "authorization_code", "code": "mock"}))
+        .json(&json!({"grant_type": "authorization_code", "code": auth_code, "code_verifier": verifier}))
         .await;
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 }
@@ -3017,12 +3033,22 @@ async fn test_whisper_monologue_api() {
 async fn test_auth_full_oauth_workflow() {
     let (server, state, _tmp) = create_test_server().await;
 
+    // Generate real PKCE challenge/verifier pair
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use sha2::{Digest, Sha256};
+    let verifier = "another_secret_verifier_for_full_oauth_workflow";
+    let mut hasher = Sha256::new();
+    hasher.update(verifier.as_bytes());
+    let challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
     // 1. Authorize (Request Code)
     // We expect a valid JSON auth code, not a plain string Mock.
     let authorize_res = server
         .get("/api/v1/auth/authorize")
         .add_query_param("client_id", "aiome_test_client")
         .add_query_param("response_type", "code")
+        .add_query_param("code_challenge", &challenge)
+        .add_query_param("code_challenge_method", "S256")
         .await;
 
     assert_eq!(authorize_res.status_code(), reqwest::StatusCode::OK);
@@ -3035,7 +3061,8 @@ async fn test_auth_full_oauth_workflow() {
     let token_payload = serde_json::json!({
         "grant_type": "authorization_code",
         "code": auth_code,
-        "client_id": "aiome_test_client"
+        "client_id": "aiome_test_client",
+        "code_verifier": verifier
     });
 
     let token_res = server.post("/api/v1/auth/token").json(&token_payload).await;
@@ -3059,6 +3086,45 @@ async fn test_auth_full_oauth_workflow() {
         .await
         .expect("Token must be validly signed");
     assert_eq!(claim.roles, vec![shared::auth::Role::Agent]);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_auth_pkce_rejection_workflow() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use sha2::{Digest, Sha256};
+    let verifier = "correct_secret_verifier_for_rejection_test";
+    let mut hasher = Sha256::new();
+    hasher.update(verifier.as_bytes());
+    let challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
+    // 1. Authorize (Request Code) with PKCE
+    let authorize_res = server
+        .get("/api/v1/auth/authorize")
+        .add_query_param("client_id", "aiome_test_client_rej")
+        .add_query_param("response_type", "code")
+        .add_query_param("code_challenge", &challenge)
+        .add_query_param("code_challenge_method", "S256")
+        .await;
+
+    assert_eq!(authorize_res.status_code(), reqwest::StatusCode::OK);
+    let authorize_json: serde_json::Value = authorize_res.json();
+    let auth_code = authorize_json["code"].as_str().unwrap();
+
+    // 2. Token Exchange with WRONG verifier
+    let token_payload = serde_json::json!({
+        "grant_type": "authorization_code",
+        "code": auth_code,
+        "client_id": "aiome_test_client_rej",
+        "code_verifier": "wrong_verifier_should_fail"
+    });
+
+    let token_res = server.post("/api/v1/auth/token").json(&token_payload).await;
+
+    // This should fail with 400 Bad Request
+    assert_eq!(token_res.status_code(), reqwest::StatusCode::BAD_REQUEST);
 }
 
 #[serial]

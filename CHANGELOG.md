@@ -1,7 +1,9 @@
 ## [Unreleased]
-### Changed
-- **Documentation (Synergy)**: Updated `AIOME_NURTURE_SYNERGY.md` to document the Phase 7 Nurture Webhook -> AgentHook -> KarmaForge financial event propagation sequence.
-- `tts_worker.rs`: Applied Interface Segregation Principle (ISP) to decouple from `JobQueue` God Trait, introducing `TtsQueue` for robust `mockall::automock` testing.
+> Last Updated: 2026-05-01
+
+### Added
+- **Configuration Hygiene (Deep Scan)**: Added missing `EKYC_CALLBACK_URL` and `SHADOW_CLONE_GRPC_HOST` to `.env.example` based on Deep Scan AST Taint Analysis warnings to maintain strict configuration consistency.
+- **Documentation (Synergy)**: Updated `AIOME_NURTURE_SYNERGY.md` to document the Phase 8 Security Hardening for Nurture API authentication, transitioning from legacy local `McpAuth` to the shared `OAuth 2.1 PKCE` infrastructure and `AuthManager` (EdDSA).
 - `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
 - **Phase 6 Infrastructure Decoupling (Continued)**:
   - Added `purge_old_distilled_chats` to `ChatStore` trait to standardize chat history purging across all mock and production implementers.
@@ -16,6 +18,11 @@
   - Refactored `UniversalJobQueue::new` constructor usage across `api-server` and `infrastructure` test suites to utilize the new `DatabasePool` injection pattern, eliminating compiler and borrowing errors.
 
 ### Added
+- **Phase 8 Security Hardening (OAuth 2.1 PKCE)**: Integrated Proof Key for Code Exchange (PKCE) into `/api/v1/auth/authorize` and `/api/v1/auth/token` endpoints.
+  - Migrated the ephemeral PKCE storage from a static `DashMap` to `moka::future::Cache` within `AppState`, providing robust async TTL eviction and bounded capacity management (10,000 entries max) to prevent memory exhaustion (DoS).
+  - Enforced `code_challenge` validation with `S256` hashing to mitigate authorization code interception attacks.
+  - Added constant-time PKCE string comparison (`subtle::ConstantTimeEq`) to prevent timing attacks.
+  - Enforced strict RFC-compliant `response_type` and `code_challenge_method` validation.
 - **Phase 4 Agentic Core Refactoring**:
   - `secrecy::SecretString` migration for `OpenAiTtsProvider` and `TrendSonar` adapters, preventing credential leaks in memory/logs.
 

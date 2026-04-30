@@ -12,8 +12,12 @@ use axum::{
     extract::{Query, State},
     response::Json,
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use chrono::Utc;
 use infrastructure::job_queue::SecurityOps;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use shared::auth::AiomeCustomClaims;
 
 #[derive(Debug, Deserialize)]
 pub struct AuthorizeRequest {
@@ -22,6 +26,8 @@ pub struct AuthorizeRequest {
     pub redirect_uri: Option<String>,
     pub scope: Option<String>,
     pub state: Option<String>,
+    pub code_challenge: Option<String>,
+    pub code_challenge_method: Option<String>,
 }
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
@@ -30,6 +36,7 @@ pub struct TokenRequest {
     pub code: Option<String>,
     pub client_id: Option<String>,
     pub client_secret: Option<String>,
+    pub code_verifier: Option<String>,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -54,10 +61,44 @@ pub struct TokenResponse {
 // auth-exempt: OAuth フロー
 #[tracing::instrument(skip_all, fields(path = "/api/v1/auth/authorize"))]
 pub async fn authorize_handler(
+    State(state): State<AppState>,
     Query(query): Query<AuthorizeRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // Generate a simple auth code for standard OAuth code flow.
-    let code = format!("auth_code_{}", query.client_id);
+    // Validate response_type per RFC 6749 §4.1.1
+    if query.response_type != "code" {
+        return Err(AppError::bad_request(
+            "Unsupported response_type. Only 'code' is supported.",
+        ));
+    }
+
+    // If code_challenge is present, code_challenge_method must be S256
+    if query.code_challenge.is_some() {
+        match &query.code_challenge_method {
+            Some(method) if method == "S256" => { /* OK */ }
+            Some(_) => {
+                return Err(AppError::bad_request(
+                    "Unsupported code_challenge_method. Only S256 is supported.",
+                ));
+            }
+            None => {
+                return Err(AppError::bad_request(
+                    "code_challenge_method is required when code_challenge is provided.",
+                ));
+            }
+        }
+    }
+
+    // Generate a cryptographic authorization code
+    let code = uuid::Uuid::new_v4().to_string();
+
+    state
+        .pkce_cache
+        .insert(
+            code.clone(),
+            (query.code_challenge.clone(), query.client_id.clone()),
+        )
+        .await;
+
     Ok(Json(serde_json::json!({
         "code": code,
         "state": query.state
@@ -83,10 +124,43 @@ pub async fn token_handler(
         return Err(AppError::bad_request("Unsupported grant_type"));
     }
 
-    // Issue a real JWT using AuthManager
-    use chrono::Utc;
-    use shared::auth::AiomeCustomClaims;
+    let code = payload
+        .code
+        .ok_or_else(|| AppError::bad_request("Missing code"))?;
 
+    // Consume the code (one-time use).
+    let (stored_challenge, stored_client_id) = state
+        .pkce_cache
+        .get(&code)
+        .await
+        .ok_or_else(|| AppError::bad_request("Invalid or expired authorization code"))?;
+    state.pkce_cache.invalidate(&code).await;
+
+    if let Some(client_id) = &payload.client_id {
+        if client_id != &stored_client_id {
+            return Err(AppError::bad_request("Client ID mismatch"));
+        }
+    }
+
+    // PKCE verification: if a challenge was registered, the verifier is mandatory
+    if let Some(challenge) = stored_challenge {
+        let verifier = payload
+            .code_verifier
+            .ok_or_else(|| AppError::bad_request("Missing code_verifier for PKCE"))?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(verifier.as_bytes());
+        let expected_challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
+        // Constant-time comparison to prevent timing side-channel attacks
+        use subtle::ConstantTimeEq;
+        let is_valid = challenge.as_bytes().ct_eq(expected_challenge.as_bytes());
+        if !bool::from(is_valid) {
+            return Err(AppError::bad_request("Invalid code_verifier"));
+        }
+    }
+
+    // Issue a real JWT using AuthManager
     let now = Utc::now().timestamp() as usize;
     let exp = now + 3600; // 1 hour expiration
 

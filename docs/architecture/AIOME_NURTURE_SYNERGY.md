@@ -104,7 +104,7 @@ graph TB
             STRIPE["StripeWebhookHandler"]
             IDEMPOTENCY["IdempotencyStore (48h TTL)"]
             ESCROW_TTL["EscrowTTL (24h 自動返金)"]
-            SANDBOX["PythonExecutor"]
+            SANDBOX["PythonExecutor (Podman)"]
             SIDECAR["SidecarLauncher"]
             TIMESFM["timesfm-sidecar /health"]
             VRAM["VramArbiter"]
@@ -115,7 +115,7 @@ graph TB
 
         subgraph "Nurture API"
             NAPI["nurture-api (JSON-RPC)"]
-            MCP_AUTH["McpAuth (OAuth 2.1)"]
+            MCP_AUTH["McpAuth (OAuth 2.1 PKCE)"]
             MCP_TOOLS["MCP Tools (search/buy/gift)"]
             PLUGIN["NurturePlugin"]
         end
@@ -723,12 +723,12 @@ graph TB
 
     subgraph "Trust Zone B (NURTURE)"
         direction TB
-        B1["McpAuth — OAuth 2.1 + RBAC"]
+        B1["McpAuth — OAuth 2.1 PKCE + RBAC"]
         B2["EconomyInterceptor — 予算超過防止"]
         B3["CsamPipeline — 3層コンテンツ安全"]
         B4["DrmEngine — オンメモリ暗号化"]
         B5["P2PSanitizer — Federation浄化"]
-        B6["PythonExecutor — サンドボックス実行"]
+        B6["PythonExecutor — サンドボックス実行 (Podman)"]
     end
 
     subgraph "Trust Zone C (外部)"

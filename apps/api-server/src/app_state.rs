@@ -167,6 +167,7 @@ pub struct AppState {
     // --- Phase 1 Verification ---
     pub formal_proof_gate: Component<Arc<dyn aiome_contracts::proof::FormalProofGate>>,
     pub gig_updater: Component<Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>>,
+    pub pkce_cache: Component<Arc<moka::future::Cache<String, (Option<String>, String)>>>,
 }
 
 impl AppState {
