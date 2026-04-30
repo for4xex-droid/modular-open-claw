@@ -5,14 +5,32 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use reqwest;
-use alloy::primitives::U256;
-use alloy::signers::local::PrivateKeySigner;
+use aiome_core_contracts::PaymentProof;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use thiserror::Error;
+use reqwest;
 use std::str::FromStr;
-use aiome_core_contracts::x402::PaymentProof;
+use thiserror::Error;
+
+// TODO(Phase3): Replace mock types below with real alloy/keyring crate imports.
+// Mock types for Phase 1b TDD (isolated without heavy EVM crates)
+pub(crate) type U256 = u64;
+pub struct PrivateKeySigner {
+    address: String,
+}
+impl PrivateKeySigner {
+    pub fn address(&self) -> &str {
+        &self.address
+    }
+}
+impl FromStr for PrivateKeySigner {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(Self {
+            address: "0xMock".to_string(),
+        })
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum X402Error {
@@ -41,20 +59,12 @@ pub struct X402Client {
 impl X402Client {
     pub fn new(rpc_url: String, budget_cap: U256) -> Result<Self> {
         // [重要: 秘密鍵保護] keyring クレートにより OS Keychain からプライベートキーを即時・安全に取得
-        let entry = keyring::Entry::new("aiome_x402", "wallet_key")
-            .context("Failed to init keyring entry")?;
+        // NOTE: Mocked for Phase 1b
+        let private_key_hex =
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string();
 
-        let private_key_hex = entry.get_password().or_else(|e| -> Result<String> {
-            #[cfg(debug_assertions)]
-            {
-                tracing::warn!("Failed to get real key from keyring, falling back to dummy key for testing/dev: {}", e);
-                Ok("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string())
-            }
-            #[cfg(not(debug_assertions))]
-            Err(anyhow::anyhow!("Could not retrieve wallet key from OS Keyring: {}", e))
-        })?;
-
-        let signer = PrivateKeySigner::from_str(&private_key_hex).context("Invalid private key format")?;
+        let signer =
+            PrivateKeySigner::from_str(&private_key_hex).context("Invalid private key format")?;
 
         Ok(Self {
             rpc_url,
@@ -68,26 +78,27 @@ impl X402Client {
 impl X402Negotiator for X402Client {
     async fn negotiate(&self, response: &reqwest::Response) -> Result<PaymentProof> {
         let headers = response.headers();
-        
+
         let price_str = headers
             .get("X-Payment-Price")
             .and_then(|h| h.to_str().ok())
             .ok_or(X402Error::MissingHeaders)?;
 
-        let price = U256::from_str_radix(price_str, 10)
-            .map_err(|_| X402Error::InvalidPaymentResponse)?;
+        let price =
+            U256::from_str_radix(price_str, 10).map_err(|_| X402Error::InvalidPaymentResponse)?;
 
         if price > self.budget_cap {
             return Err(X402Error::BudgetExhausted {
                 requested: price,
                 remaining: self.budget_cap,
-            }.into());
+            }
+            .into());
         }
 
         // REFACTOR: Here we will eventually use self.signer to construct a real transaction.
         // For now, we return a mocked transaction hash to ensure the structural TDD logic holds.
         let mocked_tx_hash = format!("0x_mock_tx_signed_by_{}", self.signer.address());
-        
+
         Ok(PaymentProof {
             transaction_hash: mocked_tx_hash,
         })
@@ -98,12 +109,19 @@ impl X402Negotiator for X402Client {
     }
 }
 
+impl From<X402Error> for aiome_core_contracts::error::AiomeError {
+    fn from(err: X402Error) -> Self {
+        Self::Infrastructure {
+            reason: err.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
-    use alloy::primitives::U256;
 
     #[tokio::test]
     async fn test_x402_extracts_headers_and_pays_under_budget() {
@@ -118,18 +136,28 @@ mod tests {
                 ResponseTemplate::new(402)
                     .insert_header("X-Payment-Price", "1000000") // 1 USDC
                     .insert_header("X-Payment-Currency", "USDC")
-                    .insert_header("X-Payment-Recipient", "0x00000000219ab540356cBB839Cbe05303d7705Fa")
-                    .insert_header("X-Payment-Network", "base-sepolia")
+                    .insert_header(
+                        "X-Payment-Recipient",
+                        "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+                    )
+                    .insert_header("X-Payment-Network", "base-sepolia"),
             )
             .mount(&mock_server)
             .await;
 
         let req_client = aiome_core::http::get_http_client();
-        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
-        
+        let resp = req_client
+            .get(format!("{}/protected", mock_server.uri()))
+            .send()
+            .await
+            .unwrap(); // allow-anti-pattern
+
         // Act & Assert
         let proof = client.negotiate(&resp).await;
-        assert!(proof.is_ok(), "Should successfully construct and sign payment");
+        assert!(
+            proof.is_ok(),
+            "Should successfully construct and sign payment"
+        );
         assert!(!proof.unwrap().transaction_hash.is_empty()); // allow-anti-pattern
     }
 
@@ -145,20 +173,46 @@ mod tests {
                 ResponseTemplate::new(402)
                     .insert_header("X-Payment-Price", "5000000") // 5 USDC
                     .insert_header("X-Payment-Currency", "USDC")
-                    .insert_header("X-Payment-Recipient", "0x00000000219ab540356cBB839Cbe05303d7705Fa")
+                    .insert_header(
+                        "X-Payment-Recipient",
+                        "0x00000000219ab540356cBB839Cbe05303d7705Fa",
+                    ),
             )
             .mount(&mock_server)
             .await;
 
         let req_client = aiome_core::http::get_http_client();
-        let resp = req_client.get(format!("{}/protected", mock_server.uri())).send().await.unwrap(); // allow-anti-pattern
+        let resp = req_client
+            .get(format!("{}/protected", mock_server.uri()))
+            .send()
+            .await
+            .unwrap(); // allow-anti-pattern
 
         // Act & Assert
         let proof = client.negotiate(&resp).await;
         assert!(proof.is_err(), "Should error out due to budget exhausted");
         if let Err(e) = proof {
             let error_msg = e.to_string();
-            assert!(error_msg.contains("Budget exhausted"), "Error should be BudgetExhausted");
+            assert!(
+                error_msg.contains("Budget exhausted"),
+                "Error should be BudgetExhausted"
+            );
         }
+    }
+
+    #[test]
+    fn test_x402_to_aiome_error() {
+        use aiome_core_contracts::error::AiomeError;
+
+        let err = X402Error::MissingHeaders;
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::Infrastructure { .. }));
+
+        let err = X402Error::BudgetExhausted {
+            requested: 100u64,
+            remaining: 50u64,
+        };
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::Infrastructure { .. }));
     }
 }

@@ -17,6 +17,7 @@ pub mod splitter;
 pub mod stripe;
 pub mod syndicate;
 pub mod wallet;
+pub mod x402;
 
 // Re-exports for convenience
 pub use crate::ekyc::StripeEkycEngine;

@@ -54,6 +54,20 @@ impl Inochi2dLoader {
     }
 }
 
+impl From<LoaderError> for aiome_core_contracts::error::AiomeError {
+    fn from(err: LoaderError) -> Self {
+        match err {
+            LoaderError::InvalidHeader => Self::Validation {
+                reason: err.to_string(),
+            },
+            LoaderError::Io(e) => Self::OsError {
+                source: anyhow::anyhow!(e),
+            },
+            LoaderError::Serde(e) => Self::JsonSerialization(e),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +79,18 @@ mod tests {
 
         assert!(Inochi2dLoader::load_metadata(valid_data).is_ok());
         assert!(Inochi2dLoader::load_metadata(invalid_data).is_err());
+    }
+
+    #[test]
+    fn test_loader_to_aiome_error() {
+        use aiome_core_contracts::error::AiomeError;
+
+        let err = LoaderError::InvalidHeader;
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::Validation { .. }));
+
+        let err = LoaderError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "test"));
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::OsError { .. }));
     }
 }

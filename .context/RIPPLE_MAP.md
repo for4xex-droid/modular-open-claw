@@ -1,5 +1,28 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 8.5: Infrastructure Hardening & Nurture Integration
+### 1. Cross-Domain Error Unification
+- **変更内容**:
+    - `libs/aiome-commerce/src/x402.rs` [MODIFY]: `X402Error` から `AiomeError` への `From` トレイト実装。
+    - `libs/avatar-engine/src/loader.rs` [MODIFY]: `LoaderError` から `AiomeError` への `From` トレイト実装。
+    - `libs/avatar-engine/src/proportions.rs` [MODIFY]: `ProportionError` から `AiomeError` への `From` トレイト実装。
+- **波及効果**:
+    - Aiome および Nurture ドメイン間で発生する各モジュールの特化エラーが `AiomeError` に一元化され、HTTPレイヤーや呼び出し元へシームレスに伝播可能となった。
+    - `?` 演算子によるクリーンなエラーハンドリングが実現。
+
+### 2. Zero-Trust Environment Variable Scubbing
+- **変更内容**:
+    - `Project-Nurture/apps/nurture-api/src/main.rs` [MODIFY]: 起動時の `std::env::remove_var` を `shared::security::scrub_env` に置換。
+- **波及効果**:
+    - `NURTURE_INTERNAL_SECRET` や `STRIPE_WEBHOOK_SECRET` 等のメモリ・常駐リスクが解消され、Aiome OSSのセキュリティ基準と完全に統一された。
+
+### 3. KarmaForge Sandbox Integration
+- **変更内容**:
+    - `Project-Nurture/libs/nurture-infra/src/economy/karma_forge.rs` [MODIFY]: `PythonExecutor` を用いて、`sage_meditation` メソッドを通じたコンテナ化（Podman）サンドボックスによる経済分析ロジックを実装。
+    - `Project-Nurture/apps/nurture-api/src/state.rs` [MODIFY]: `AppState` 初期化時に `PythonExecutor` を `KarmaForge` へ DI 注入するよう修正。
+- **波及効果**:
+    - ユーザー提供のデータや外部要素に基づく分析スクリプトが本体プロセスから隔離され、RCE リスクを排除したセキュアな Economy 監査が可能となった。
+
 ## Phase 6: Infrastructure Decoupling (Repository Pattern & Trait Isolation)
 ### 1. SemanticCache & MemoryCrystallizer Isolation
 - **変更内容**:

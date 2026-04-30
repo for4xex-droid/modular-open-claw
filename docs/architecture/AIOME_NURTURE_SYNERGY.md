@@ -252,7 +252,7 @@ graph LR
 | NURTURE 側ファイル | 使用する Aiome シンボル |
 |-------------------|---------------------|
 | `economy/bridge.rs` | `aiome_core::commerce::CommerceEngine`, `aiome_core::error::AiomeError`, `aiome_core::traits::JobQueue` |
-| `economy/karma_forge.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
+| `economy/karma_forge.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue`, `aiome_core::error::AiomeError` |
 | `economy/karma_immune_filter.rs` | `aiome_core::contracts::KarmaEntry` |
 | `sidecar/clone_manager.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
 | `mock_job_queue.rs` | `infrastructure::job_queue::UniversalJobQueue`, `aiome_core::contracts::*` |
@@ -682,6 +682,12 @@ classDiagram
         CommerceEngine を実装
         +aiome 台帳と nurture 台帳を橋渡し
         +process_expired_escrows() 障害分離パターン
+    }
+
+    class KarmaForge {
+        +KarmaForge(PythonExecutor)
+        +cross_synthesize(amount)
+        +sage_meditation(data)
     }
 
     class IdempotencyStore {

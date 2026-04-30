@@ -22,6 +22,7 @@ pub mod plugin;
 pub mod proof;
 pub mod rlm;
 pub mod security;
+pub mod x402;
 
 pub use commerce::*;
 pub use error::*;
@@ -29,3 +30,4 @@ pub use llm::*;
 pub use plugin::*;
 pub use rlm::*;
 pub use security::*;
+pub use x402::*;

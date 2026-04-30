@@ -176,6 +176,19 @@ impl ProportionsChecker {
     }
 }
 
+impl From<ProportionError> for aiome_core_contracts::error::AiomeError {
+    fn from(err: ProportionError) -> Self {
+        match err {
+            ProportionError::TooYoung(_) => Self::SecurityViolation {
+                reason: err.to_string(),
+            },
+            ProportionError::InvalidMetadata(_) => Self::Validation {
+                reason: err.to_string(),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +261,18 @@ mod tests {
         } else {
             panic!("Expected TooYoung error");
         }
+    }
+
+    #[test]
+    fn test_proportion_to_aiome_error() {
+        use aiome_core_contracts::error::AiomeError;
+
+        let err = ProportionError::TooYoung(4.0);
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::SecurityViolation { .. }));
+
+        let err = ProportionError::InvalidMetadata("test".into());
+        let aiome_err: AiomeError = err.into();
+        assert!(matches!(aiome_err, AiomeError::Validation { .. }));
     }
 }

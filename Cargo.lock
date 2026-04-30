@@ -2353,10 +2353,12 @@ name = "commerce-protocol"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "axum 0.7.9",
  "chrono",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+ "tracing",
  "uuid",
 ]
 

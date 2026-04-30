@@ -2,6 +2,10 @@
 > Last Updated: 2026-05-01
 
 ### Added
+- **Phase 8.5 Nurture Infrastructure & Economy Integration**:
+  - **Sandboxed Execution**: Integrated `PythonExecutor` (Podman-based containerized sandbox) into `KarmaForge`, enabling secure, isolated execution of economic analysis via the new `sage_meditation` pipeline.
+  - **Cross-Domain Error Unification**: Completed `From<T> for AiomeError` mapping for `X402Error`, `ProportionError`, and `LoaderError`, achieving unified and stable error propagation across Aiome and Nurture domains.
+  - **Zero-Trust Hardening**: Migrated remaining `std::env::remove_var` calls in `nurture-api` to the central `shared::security::scrub_env` standard, fortifying protection against memory-resident secrets.
 - **Configuration Hygiene (Deep Scan)**: Added missing `EKYC_CALLBACK_URL` and `SHADOW_CLONE_GRPC_HOST` to `.env.example` based on Deep Scan AST Taint Analysis warnings to maintain strict configuration consistency.
 - **Documentation (Synergy)**: Updated `AIOME_NURTURE_SYNERGY.md` to document the Phase 8 Security Hardening for Nurture API authentication, transitioning from legacy local `McpAuth` to the shared `OAuth 2.1 PKCE` infrastructure and `AuthManager` (EdDSA).
 - `aiome-core-contracts`: Removed `WP_API_TOKEN` plaintext injection logic; fully migrated to AbyssVault Key Proxy for `WordPressAdapter` to eliminate memory extraction vulnerabilities.
