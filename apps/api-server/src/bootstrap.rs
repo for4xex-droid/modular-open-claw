@@ -387,8 +387,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let compute_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
 
     let formal_proof_gate = {
+        let host =
+            std::env::var("SHADOW_CLONE_GRPC_HOST").unwrap_or_else(|_| "localhost".to_string());
         let port = std::env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
-        let addr = format!("http://localhost:{}", port);
+        let addr = format!("http://{}:{}", host, port);
         let endpoint = tonic::transport::Endpoint::from_shared(addr)
             .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;
         let channel = endpoint.connect_lazy();
@@ -428,22 +430,22 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         let config = if let Some(key) = stripe_key {
             aiome_commerce::factory::CommerceConfig {
                 provider: aiome_commerce::factory::ProviderType::Stripe,
-                api_key: Some(key),
-                webhook_secret: stripe_webhook_secret,
+                api_key: Some(secrecy::SecretString::from(key)),
+                webhook_secret: secrecy::SecretString::from(stripe_webhook_secret),
                 base_url: None,
             }
         } else if let Some(key) = polar_key {
             aiome_commerce::factory::CommerceConfig {
                 provider: aiome_commerce::factory::ProviderType::Polar,
-                api_key: Some(key),
-                webhook_secret: polar_webhook_secret,
+                api_key: Some(secrecy::SecretString::from(key)),
+                webhook_secret: secrecy::SecretString::from(polar_webhook_secret),
                 base_url: std::env::var("POLAR_BASE_URL").ok(),
             }
         } else {
             aiome_commerce::factory::CommerceConfig {
                 provider: aiome_commerce::factory::ProviderType::Mock,
                 api_key: None,
-                webhook_secret: "".to_string(),
+                webhook_secret: secrecy::SecretString::from("".to_string()),
                 base_url: None,
             }
         };
@@ -664,12 +666,10 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let mcp_manager = Arc::new(mcp::client::McpProcessManager::new());
 
     let gift_engine = {
-        use secrecy::ExposeSecret;
         let key = config
             .tremendous_api_key
-            .as_ref()
-            .map(|s| s.expose_secret().to_string())
-            .unwrap_or_default();
+            .clone()
+            .unwrap_or_else(|| secrecy::SecretString::from("".to_string()));
         let sandbox = std::env::var("TREMENDOUS_SANDBOX")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(true); // Default to true (Sandbox First)
@@ -688,13 +688,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         )) as Arc<dyn EkycSessionStore>
     };
     let ekyc_engine = {
-        use secrecy::ExposeSecret;
         let stripe_key = stripe_key_raw.clone().map(secrecy::SecretString::from);
 
         if let Some(key) = stripe_key {
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
                 key,
-                "http://localhost:1420/verify-callback".to_string(), // allow-anti-pattern
+                std::env::var("EKYC_CALLBACK_URL")
+                    .unwrap_or_else(|_| "http://localhost:1420/verify-callback".to_string()), // allow-anti-pattern
                 http_client.clone(),
             )) as Arc<dyn EkycEngine>
         } else {

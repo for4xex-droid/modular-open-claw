@@ -113,6 +113,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 90 | **UI Metadata Leakage** | **Malformed XML `<thinking>` tags bypassing regex and leaking to UI** | 🔴 High | **Iterative parsing & Defense-in-depth sanitization (Reflexion Phase 3)** |
 | 91 | **RTBF (GDPR) Compliance Failure**| **SQL error during `forget_actor` causing partial PII deletion** | 🔴 High | **Atomic Transactions & Schema-safe INSERT alignment (Reflexion Phase 3)** |
 | 92 | **Proxy Secret Leakage in Memory**| **Secrets exposed via public struct fields and debug dumps** | 🟢 Fixed | **Wrapped proxy secrets in secrecy::SecretString, restricting field visibility (Reflexion R3)** |
+| 93 | **Unauthorized Karma Generation** | **Direct DB Ledger updates bypassing AgentHook** | 🔴 High | **ADR-009 Enforcement: Mandatory Webhook -> AgentHook Event Flow (Phase 7 Finalization)** |
 
 ## 3. Defense Architecture
 
@@ -202,8 +203,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-04-23*
-*Managed by: Aiome Sovereign Task Force (Ref: CBA Stage 0 Integration)*
+*Last Mutated: 2026-04-30*
+*Managed by: Aiome Sovereign Task Force (Ref: Phase 7 Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -232,4 +233,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-04-29 (Reflexion R3 Hardening)*
+*最終更新: 2026-04-30 (Phase 7 Hardening & ADR-009)*

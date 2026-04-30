@@ -1,10 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 import subprocess
 import json
 import logging
 import tempfile
 import os
+import re
+
+# CWE-78 Mitigation: Pre-compiled pattern for shell metacharacters
+_SHELL_METACHAR_PATTERN = re.compile(r'[;|`$&><()\n\r\\]')
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +25,13 @@ class AuditRequest(BaseModel):
 async def audit(req: AuditRequest):
     logging.info(f"Received GEO audit request for topic: {req.topic[:50]}...")
     
+    # CWE-78 Mitigation: Reject shell metacharacters
+    if _SHELL_METACHAR_PATTERN.search(req.topic) or _SHELL_METACHAR_PATTERN.search(req.content):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid characters detected in input. Shell metacharacters are not allowed."
+        )
+
     # In a real implementation this would call geo-optimizer-skill Python API directly
     # or write content to a temp file, run CLI, and parse back.
     # We create a dummy/wrapper utilizing the geo-optimizer-skill since we can't reliably know its Python API shape from the evaluation.
@@ -73,6 +84,12 @@ async def audit(req: AuditRequest):
         finally:
             os.unlink(tmp_path)
             
+    except FileNotFoundError as e:
+        logging.error(f"geo CLI not found: {e}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="geo optimizer CLI not found.")
+    except subprocess.TimeoutExpired as e:
+        logging.error(f"geo CLI timed out: {e}")
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="geo optimizer CLI timed out.")
     except Exception as e:
         logging.error(f"GEO processing failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

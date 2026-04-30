@@ -296,13 +296,13 @@ impl DistillationOps for UniversalJobQueue {
         &self,
         threshold: i64,
     ) -> Result<Vec<String>, AiomeError> {
-        self.do_fetch_skills_for_distillation(threshold).await
+        Box::pin(self.do_fetch_skills_for_distillation(threshold)).await
     }
     async fn fetch_raw_karma_for_skill(
         &self,
         skill: &str,
     ) -> Result<Vec<(String, String)>, AiomeError> {
-        self.do_fetch_raw_karma_for_skill(skill).await
+        Box::pin(self.do_fetch_raw_karma_for_skill(skill)).await
     }
     async fn apply_distilled_karma(
         &self,
@@ -314,7 +314,7 @@ impl DistillationOps for UniversalJobQueue {
         subtopic: Option<&str>,
         clone_origin_id: Option<&str>,
     ) -> Result<(), AiomeError> {
-        self.do_apply_distilled_karma(
+        Box::pin(self.do_apply_distilled_karma(
             skill,
             distilled_lesson,
             old_karma_ids,
@@ -322,7 +322,7 @@ impl DistillationOps for UniversalJobQueue {
             domain,
             subtopic,
             clone_origin_id,
-        )
+        ))
         .await
     }
     async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError> {
@@ -527,7 +527,7 @@ impl KarmaRegistry for UniversalJobQueue {
 #[async_trait]
 impl AgentEvolver for UniversalJobQueue {
     async fn get_agent_stats(&self) -> Result<AgentStats, AiomeError> {
-        let s = self.do_get_agent_stats().await?;
+        let s = Box::pin(self.do_get_agent_stats()).await?;
         Ok(AgentStats {
             level: s.level,
             exp: s.exp,
@@ -583,7 +583,7 @@ impl AgentEvolver for UniversalJobQueue {
     async fn transmute(&self, _jq: &dyn JobQueue) -> Result<bool, AiomeError> {
         // UniversalJobQueue acts as a registry, evolution is usually delegated.
         // For now, return Ok(false) or a default.
-        Ok(false)
+        Box::pin(async { Ok(false) }).await
     }
 
     async fn transmute_with_metadata(
@@ -591,7 +591,7 @@ impl AgentEvolver for UniversalJobQueue {
         _jq: &dyn JobQueue,
         _metadata: serde_json::Value,
     ) -> Result<bool, AiomeError> {
-        Ok(false)
+        Box::pin(async { Ok(false) }).await
     }
 }
 
@@ -620,8 +620,11 @@ impl FederationRegistry for UniversalJobQueue {
         &self,
         since: Option<&str>,
     ) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>, Vec<ArenaMatch>), AiomeError> {
-        let (k, r, m) = FederationOps::do_export_federated_data(self, since).await?;
-        Ok((k.into_iter().map(|fk| fk).collect(), r, m))
+        Box::pin(async move {
+            let (k, r, m) = FederationOps::do_export_federated_data(self, since).await?;
+            Ok((k.into_iter().map(|fk| fk).collect(), r, m))
+        })
+        .await
     }
     async fn import_federated_data(
         &self,
@@ -629,12 +632,12 @@ impl FederationRegistry for UniversalJobQueue {
         rules: Vec<ImmuneRule>,
         matches: Vec<ArenaMatch>,
     ) -> Result<(), AiomeError> {
-        FederationOps::do_import_federated_data(
+        Box::pin(FederationOps::do_import_federated_data(
             self,
             karmas.into_iter().map(|ke| ke).collect(),
             rules,
             matches,
-        )
+        ))
         .await
     }
     async fn get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError> {
@@ -653,8 +656,11 @@ impl FederationRegistry for UniversalJobQueue {
     async fn fetch_unfederated_data(
         &self,
     ) -> Result<(Vec<KarmaEntry>, Vec<ImmuneRule>), AiomeError> {
-        let (k, r) = FederationOps::do_fetch_unfederated_data(self).await?;
-        Ok((k.into_iter().map(|fk| fk).collect(), r))
+        Box::pin(async move {
+            let (k, r) = FederationOps::do_fetch_unfederated_data(self).await?;
+            Ok((k.into_iter().map(|fk| fk).collect(), r))
+        })
+        .await
     }
     async fn mark_as_federated(
         &self,

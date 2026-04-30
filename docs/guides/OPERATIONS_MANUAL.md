@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-04-29
+**Last Updated:** 2026-04-30
 
 ---
 

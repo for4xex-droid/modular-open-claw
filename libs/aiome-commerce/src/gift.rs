@@ -10,6 +10,7 @@ use aiome_core_contracts::audit::AuditLogger;
 use aiome_core_contracts::commerce::GiftEngine;
 use async_trait::async_trait;
 use reqwest::Client;
+use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 use shared::db::DatabasePool;
 use std::sync::Arc;
@@ -18,7 +19,7 @@ use uuid::Uuid;
 
 /// Tremendous API を使用したギフト送信エンジン
 pub struct TremendousGiftEngine {
-    api_key: String,
+    api_key: SecretString,
     base_url: String,
     client: Client,
     pool: DatabasePool,
@@ -28,7 +29,7 @@ pub struct TremendousGiftEngine {
 impl TremendousGiftEngine {
     /// 新しい TremendousGiftEngine を作成する
     pub fn new(
-        api_key: String,
+        api_key: SecretString,
         sandbox: bool,
         pool: DatabasePool,
         audit_logger: Arc<dyn AuditLogger>,
@@ -95,7 +96,7 @@ impl GiftEngine for TremendousGiftEngine {
         let res = self
             .client
             .post(format!("{}/orders", self.base_url))
-            .bearer_auth(&self.api_key)
+            .bearer_auth(self.api_key.expose_secret())
             .json(&payload)
             .send()
             .await
@@ -265,7 +266,12 @@ mod tests {
         };
 
         let logger = std::sync::Arc::new(MockAuditLogger);
-        TremendousGiftEngine::new("test_key".into(), true, pool, logger)
+        TremendousGiftEngine::new(
+            SecretString::from("test_key".to_string()),
+            true,
+            pool,
+            logger,
+        )
     }
 
     #[tokio::test]
@@ -304,7 +310,8 @@ mod tests {
             )
         };
         let logger = std::sync::Arc::new(MockAuditLogger);
-        let sandbox_engine = TremendousGiftEngine::new("key".into(), true, pool, logger);
+        let sandbox_engine =
+            TremendousGiftEngine::new(SecretString::from("key".to_string()), true, pool, logger);
         assert!(sandbox_engine.base_url.contains("testflight"));
     }
 }

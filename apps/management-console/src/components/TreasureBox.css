@@ -264,7 +264,7 @@
     color: var(--white-100);
     font-weight: 700; /* font-bold */
     border-radius: 9999px; /* rounded-full */
-    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.5); /* shadow-lg shadow-indigo-500/50 */
+    box-shadow: 0 10px 15px -3px var(--accent-purple-50); /* shadow-lg shadow-indigo-500/50 */
     display: flex;
     align-items: center;
     gap: 0.5rem; /* gap-2 */

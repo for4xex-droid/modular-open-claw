@@ -110,4 +110,16 @@ pub trait AgentHook: Send + Sync + std::fmt::Debug {
     ) -> Result<(), crate::error::AiomeError> {
         Ok(())
     }
+
+    /// 決済イベント完了時に実行されるフック。
+    /// 決済データから経済的貢献を評価し、KarmaForge等へ伝搬するために使用される。
+    async fn on_transaction_completed(
+        &self,
+        _source: &str,
+        _amount_cents: i64,
+        _actor_id: &str,
+        _transaction_id: &str,
+    ) -> Result<(), crate::error::AiomeError> {
+        Ok(())
+    }
 }

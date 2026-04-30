@@ -97,6 +97,36 @@ impl HookManager {
             None => Ok(()),
         }
     }
+
+    /// 決済イベント完了時のフック通知（ベストエフォート）。
+    /// Nurture側のKarmaForge等へ経済的貢献を伝搬するために使用される。
+    pub async fn trigger_transaction_completed(
+        &self,
+        source: &str,
+        amount_cents: i64,
+        actor_id: &str,
+        transaction_id: &str,
+    ) -> Result<(), AiomeError> {
+        let mut last_error: Option<AiomeError> = None;
+        for hook in &self.hooks {
+            if let Err(e) = hook
+                .on_transaction_completed(source, amount_cents, actor_id, transaction_id)
+                .await
+            {
+                tracing::warn!(
+                    "⚠️ [HookManager] Hook {:?} failed on transaction_completed({}): {}",
+                    hook,
+                    transaction_id,
+                    e
+                );
+                last_error = Some(e);
+            }
+        }
+        match last_error {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -109,6 +139,7 @@ mod tests {
         pre_called: std::sync::atomic::AtomicBool,
         job_completed_called: std::sync::atomic::AtomicBool,
         proof_completed_called: std::sync::atomic::AtomicBool,
+        transaction_completed_called: std::sync::atomic::AtomicBool,
     }
 
     #[async_trait]
@@ -139,6 +170,17 @@ mod tests {
                 .store(true, std::sync::atomic::Ordering::SeqCst);
             Ok(())
         }
+        async fn on_transaction_completed(
+            &self,
+            _source: &str,
+            _amount_cents: i64,
+            _actor_id: &str,
+            _transaction_id: &str,
+        ) -> Result<(), AiomeError> {
+            self.transaction_completed_called
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        }
     }
 
     #[tokio::test]
@@ -148,6 +190,7 @@ mod tests {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
             proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -178,6 +221,7 @@ mod tests {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
             proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -197,6 +241,7 @@ mod tests {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
             proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
         });
         manager.add_hook(hook.clone());
 
@@ -206,6 +251,26 @@ mod tests {
             .expect("Hook should pass");
         assert!(hook
             .proof_completed_called
+            .load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_executes_transaction_completed_hooks() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        manager
+            .trigger_transaction_completed("polar", 1000, "actor-1", "tx-42")
+            .await
+            .expect("Hook should pass");
+        assert!(hook
+            .transaction_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));
     }
 }

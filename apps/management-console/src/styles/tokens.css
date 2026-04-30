@@ -61,6 +61,7 @@
   --accent-purple-20: rgba(188, 140, 255, 0.2);
   --accent-purple-10: rgba(188, 140, 255, 0.1);
   --accent-purple-05: rgba(188, 140, 255, 0.05);
+  --accent-purple-15: rgba(188, 140, 255, 0.15);
   --accent-rose: #ff4d94;
   --accent-rose-rgb: 255, 77, 148;
   --accent-rose-50: rgba(255, 77, 148, 0.5);
@@ -68,10 +69,14 @@
   --accent-rose-20: rgba(255, 77, 148, 0.2);
   --accent-rose-10: rgba(255, 77, 148, 0.1);
   --accent-rose-05: rgba(255, 77, 148, 0.05);
+  --accent-rose-15: rgba(255, 77, 148, 0.15);
+  --accent-emerald-05: rgba(16, 185, 129, 0.05);
   --accent-emerald-10: rgba(16, 185, 129, 0.1);
+  --accent-emerald-15: rgba(16, 185, 129, 0.15);
   --accent-emerald-20: rgba(16, 185, 129, 0.2);
   --accent-amber-05: rgba(245, 158, 11, 0.05);
   --accent-amber-10: rgba(245, 158, 11, 0.1);
+  --accent-amber-15: rgba(245, 158, 11, 0.15);
   --accent-amber-20: rgba(245, 158, 11, 0.2);
   --accent-amber-30: rgba(245, 158, 11, 0.3);
   --accent-amber-80: rgba(245, 158, 11, 0.8);

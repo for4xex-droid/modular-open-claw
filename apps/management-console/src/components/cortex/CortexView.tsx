@@ -128,7 +128,7 @@ export default function CortexView() {
         {error && (
           <div style={{
             padding: 'var(--space-sm)',
-            background: 'rgba(var(--accent-rose-rgb), 0.1)',
+            background: 'var(--accent-rose-10)',
             border: '1px solid var(--accent-rose)',
             color: 'var(--accent-rose)',
             borderRadius: 'var(--radius-sm)',

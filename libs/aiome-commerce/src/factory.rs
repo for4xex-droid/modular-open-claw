@@ -6,6 +6,7 @@
  */
 use aiome_core_contracts::commerce::CommerceEngine;
 use anyhow::Result;
+use secrecy::SecretString;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,8 +19,8 @@ pub enum ProviderType {
 #[derive(Debug, Clone)]
 pub struct CommerceConfig {
     pub provider: ProviderType,
-    pub api_key: Option<String>,
-    pub webhook_secret: String,
+    pub api_key: Option<SecretString>,
+    pub webhook_secret: SecretString,
     pub base_url: Option<String>,
 }
 
@@ -52,8 +53,8 @@ impl CommerceEngineFactory {
                     anyhow::anyhow!("POLAR_API_KEY must be set for Polar provider")
                 })?;
                 Ok(Arc::new(crate::polar::PolarCommerceEngine::new(
-                    secrecy::SecretString::from(key),
-                    secrecy::SecretString::from(config.webhook_secret.clone()),
+                    key,
+                    config.webhook_secret,
                     config.base_url,
                 )))
             }
@@ -89,8 +90,8 @@ mod tests {
 
         let config = CommerceConfig {
             provider: ProviderType::Stripe,
-            api_key: Some("sk_test_mock_123".to_string()),
-            webhook_secret: "whsec_mock".to_string(),
+            api_key: Some(SecretString::from("sk_test_mock_123".to_string())),
+            webhook_secret: SecretString::from("whsec_mock".to_string()),
             base_url: None,
         };
 
@@ -108,8 +109,8 @@ mod tests {
 
         let config = CommerceConfig {
             provider: ProviderType::Polar,
-            api_key: Some("polar_test_mock_123".to_string()),
-            webhook_secret: "whsec_mock".to_string(),
+            api_key: Some(SecretString::from("polar_test_mock_123".to_string())),
+            webhook_secret: SecretString::from("whsec_mock".to_string()),
             base_url: None,
         };
 
@@ -128,7 +129,7 @@ mod tests {
         let config = CommerceConfig {
             provider: ProviderType::Mock,
             api_key: None,
-            webhook_secret: "".to_string(),
+            webhook_secret: SecretString::from("".to_string()),
             base_url: None,
         };
 

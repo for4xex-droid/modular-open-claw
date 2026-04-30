@@ -8,13 +8,14 @@
 use aiome_core_contracts::commerce::{CommerceEngine, EscrowRecord};
 use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
+use secrecy::{ExposeSecret, SecretString};
 use stripe_webhook::Webhook;
 use uuid::Uuid;
 
 /// Stripe Webhook イベントを処理する商用エンジン実装
 pub struct StripeCommerceEngine {
     client: stripe::Client,
-    webhook_secret: String,
+    webhook_secret: SecretString,
     pool: sqlx::SqlitePool,
     is_mock: bool,
     nurture_client: Option<reqwest::Client>,
@@ -26,18 +27,19 @@ pub struct StripeCommerceEngine {
 impl StripeCommerceEngine {
     /// 新規 Stripe エンジンを初期化する
     pub fn new(
-        api_key: String,
-        webhook_secret: String,
+        api_key: SecretString,
+        webhook_secret: SecretString,
         pool: sqlx::SqlitePool,
         nurture_url: Option<String>,
         nurture_secret: Option<String>,
     ) -> Self {
-        let is_mock = api_key.starts_with("sk_test_mock") || webhook_secret == "whsec_test";
+        let is_mock = api_key.expose_secret().starts_with("sk_test_mock")
+            || webhook_secret.expose_secret() == "whsec_test";
         let nurture_client = nurture_url
             .as_ref()
             .map(|_| aiome_core::http::get_http_client().clone());
         Self {
-            client: stripe::Client::new(api_key),
+            client: stripe::Client::new(api_key.expose_secret().to_string()),
             webhook_secret,
             pool,
             is_mock,
@@ -471,7 +473,7 @@ impl CommerceEngine for StripeCommerceEngine {
         // ここでは HMAC 署名検証のみを目的とし、パース済み Event は意図的に破棄する。
         // ペイロードのビジネスロジック処理は commerce_webhook.rs 側で
         // serde_json::Value として柔軟にパースする。
-        Webhook::construct_event(payload, sig_header, &self.webhook_secret)
+        Webhook::construct_event(payload, sig_header, self.webhook_secret.expose_secret())
             .map(|_| ())
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Stripe Webhook verification failed: {}", e),
@@ -769,7 +771,13 @@ mod tests {
         .await
         .unwrap(); // allow-anti-pattern
 
-        StripeCommerceEngine::new("sk_test_mock".into(), "whsec_test".into(), pool, None, None)
+        StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            None,
+            None,
+        )
     }
 
     #[tokio::test]

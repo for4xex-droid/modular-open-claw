@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-04-29
+> **最終更新**: 2026-04-30
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -452,6 +452,32 @@ sequenceDiagram
         Market-->>NAPI: OK
         NAPI-->>API: 201 Created { item_id: UUID }
     end
+```
+
+### 5.6 財務イベントの伝播 (Webhook → AgentHook → KarmaForge)
+
+```mermaid
+sequenceDiagram
+    participant Webhook as Stripe/Polar Webhook (Nurture)
+    participant Ledger as EconomyLedger (Nurture)
+    participant AgentHook as AgentHook (Aiome)
+    participant Proxy as NurtureAgentHook (Nurture)
+    participant KarmaForge as KarmaForge (Nurture)
+    participant LLM as LlmProvider (Aiome)
+
+    Webhook->>Ledger: record_entry(tx)
+    Ledger-->>Webhook: OK
+
+    Webhook->>AgentHook: on_transaction_completed("stripe", amount)
+    note right of Webhook: ADR-009: 決済完了時のみに一元化
+    AgentHook->>Proxy: 呼び出し (動的ディスパッチ)
+    Proxy->>KarmaForge: cross_synthesize(amount)
+    
+    KarmaForge->>LLM: 経済的インサイトの生成要求
+    LLM-->>KarmaForge: "The agent effectively monetized..."
+    KarmaForge-->>Proxy: ✅
+    Proxy-->>AgentHook: ✅
+    AgentHook-->>Webhook: ✅
 ```
 
 ---

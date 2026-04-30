@@ -15,8 +15,9 @@ use tracing::{debug, error, info};
 pub async fn run(state: AppState) -> Result<(), anyhow::Error> {
     info!("🛡️ Starting OxiLean Background Poller...");
 
+    let host = std::env::var("SHADOW_CLONE_GRPC_HOST").unwrap_or_else(|_| "localhost".to_string());
     let port = std::env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
-    let addr = format!("http://localhost:{}", port);
+    let addr = format!("http://{}:{}", host, port);
     let auth_token = std::env::var("A2A_AUTH_TOKEN").unwrap_or_default();
 
     let endpoint = tonic::transport::Endpoint::from_shared(addr)
