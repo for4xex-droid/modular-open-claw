@@ -34,19 +34,24 @@ impl CommerceEngineFactory {
         pool: sqlx::SqlitePool,
         nurture_url: Option<String>,
         nurture_secret: Option<String>,
+        oxp_score_provider: Option<std::sync::Arc<std::sync::atomic::AtomicU32>>,
     ) -> Result<Arc<dyn CommerceEngine>> {
         match config.provider {
             ProviderType::Stripe => {
                 let key = config.api_key.ok_or_else(|| {
                     anyhow::anyhow!("STRIPE_API_KEY must be set for Stripe provider")
                 })?;
-                Ok(Arc::new(crate::stripe::StripeCommerceEngine::new(
+                let mut engine = crate::stripe::StripeCommerceEngine::new(
                     key,
                     config.webhook_secret,
                     pool,
                     nurture_url,
                     nurture_secret,
-                )))
+                );
+                if let Some(p) = oxp_score_provider {
+                    engine = engine.with_oxp_score_provider(p);
+                }
+                Ok(Arc::new(engine))
             }
             ProviderType::Polar => {
                 let key = config.api_key.ok_or_else(|| {
@@ -95,7 +100,7 @@ mod tests {
             base_url: None,
         };
 
-        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
+        let engine = CommerceEngineFactory::create(config, pool, None, None, None).await;
 
         assert!(engine.is_ok());
     }
@@ -114,7 +119,7 @@ mod tests {
             base_url: None,
         };
 
-        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
+        let engine = CommerceEngineFactory::create(config, pool, None, None, None).await;
 
         assert!(engine.is_ok());
     }
@@ -133,7 +138,7 @@ mod tests {
             base_url: None,
         };
 
-        let engine = CommerceEngineFactory::create(config, pool, None, None).await;
+        let engine = CommerceEngineFactory::create(config, pool, None, None, None).await;
 
         #[cfg(debug_assertions)]
         {

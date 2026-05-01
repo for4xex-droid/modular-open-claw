@@ -2,6 +2,17 @@
 > Last Updated: 2026-05-02
 
 ### Added
+- **Aiome v1.1 / Project-Nurture Economic Integration**:
+  - Implemented HTTP Proxy routing in `StripeCommerceEngine` for `transfer`, `instant_refund`, `withdraw_points`, `get_points`, and `get_transaction_history` to proxy requests to Nurture API.
+  - Integrated `OxiLeanProofCertificate` header generation (`X-OxiLean-Proof-Certificate`) in `StripeCommerceEngine` to establish secure, trusted out-of-process authentication.
+  - Added strict Fail-Fast warnings in `StripeCommerceEngine::new` to prevent split-brain data corruption in production when `NURTURE_API_URL` is omitted.
+  - Fixed `oxp_score_provider` injection via `CommerceEngineFactory` and `boot_sequence` in `aiome/apps/api-server/src/bootstrap.rs` to correctly pass the live OXP score.
+  - Fixed compilation errors in `CommerceEngineFactory` tests (`factory.rs`) by properly injecting the new `oxp_score_provider` parameter.
+  - Added proxy endpoints in Nurture API's `internal.rs` to receive and process proxy requests from Aiome.
+  - Fixed Nurture API proxy request models to correctly map `idempotency_key` via `serde(rename)` to prevent deserialization failures.
+  - Improved HTTP error status mapping in Nurture API proxy handlers, returning `400 Bad Request` for validation errors instead of generic `500 Internal Server Error`.
+  - `SYSTEM_PANORAMA.md`: Marked Tauri Management Console as (Frozen in v1.1).
+
 - **Authentication**: Added support for OAuth `grant_type="password"` in `/api/v1/auth/token`. This allows the Management Console to securely exchange the `API_SERVER_SECRET` for an EdDSA signed JWT, resolving the Docker Quickstart authentication deadlock.
 - **Documentation**: Created `QUICK_START.md` to explicitly document the Docker MVP environment constraints, including the Mock eKYC flow and the disabled Nurture Commerce engine.
 - **Security Hardening**: Replaced `unwrap()` with `uuid::uuid!` in `auth.rs` to enforce zero-panic execution.

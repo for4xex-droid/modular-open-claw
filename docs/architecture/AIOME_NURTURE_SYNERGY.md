@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-01
+> **最終更新**: 2026-05-02
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -160,6 +160,9 @@ graph TB
     PLUGIN -->|AiomePlugin trait| API
     MCP_TOOLS --> MCP_REG
     CLONE -->|use aiome_core::FederatedKarma| KARMA
+
+    %% Aiome → NURTURE 依存 (v1.1 Economic Bridge)
+    API -->|HTTP Proxy (OxiLeanProofCertificate)| NAPI
 
     %% NURTURE 内部フロー
     TX --> LEDGER
@@ -678,6 +681,12 @@ classDiagram
         +deep_complete(prompt, config) Result~RlmResponse~
     }
 
+    class StripeCommerceEngine {
+        CommerceEngine を実装
+        +OXPスコア依存の証明書生成
+        +Nurture APIへのHTTPプロキシ (transfer等)
+    }
+
     class NurtureCommerceBridge {
         CommerceEngine を実装
         +aiome 台帳と nurture 台帳を橋渡し
@@ -703,6 +712,7 @@ classDiagram
         +nurture-api のルートを登録
     }
 
+    CommerceEngine <|.. StripeCommerceEngine : implements
     CommerceEngine <|.. NurtureCommerceBridge : implements
     AiomePlugin <|.. NurturePlugin : implements
 

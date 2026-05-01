@@ -44,7 +44,7 @@
 ```mermaid
 graph TD
     subgraph "🖥️ Applications / アプリケーション"
-        MC["🎛️ management-console<br/><i>Tauri + React UI</i>"]
+        MC["🎛️ management-console<br/><i>Tauri + React UI (Frozen in v1.1)</i>"]
         API["⚡ api-server<br/><i>Axum REST + SSE</i>"]
         KP["🔐 key-proxy<br/><i>Abyss Vault</i>"]
         SH["🌐 samsara-hub<br/><i>Federation Hub</i>"]

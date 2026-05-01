@@ -25,7 +25,6 @@ pub struct StripeCommerceEngine {
 }
 
 impl StripeCommerceEngine {
-    /// 新規 Stripe エンジンを初期化する
     pub fn new(
         api_key: SecretString,
         webhook_secret: SecretString,
@@ -33,6 +32,12 @@ impl StripeCommerceEngine {
         nurture_url: Option<String>,
         nurture_secret: Option<String>,
     ) -> Self {
+        if nurture_url.is_none() {
+            tracing::warn!("⚠️ [StripeCommerceEngine] NURTURE_API_URL is NOT set. The engine will run in OSS fallback mode. This may cause split-brain if used in a commercial deployment!");
+            #[cfg(not(debug_assertions))]
+            tracing::error!("🚨 [StripeCommerceEngine] Running in RELEASE mode without NURTURE_API_URL! Operations will write to local SQLite instead of Nurture API.");
+        }
+
         let is_mock = api_key.expose_secret().starts_with("sk_test_mock")
             || webhook_secret.expose_secret() == "whsec_test";
         let nurture_client = nurture_url
@@ -100,15 +105,18 @@ impl CommerceEngine for StripeCommerceEngine {
             &self.nurture_client,
         ) {
             let req_url = format!("{}/internal/balance/{}", url, agent_id);
-            let res = client
+            let mut req = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if res.status().is_success() {
                 let body: BalanceRes =
@@ -146,15 +154,18 @@ impl CommerceEngine for StripeCommerceEngine {
             &self.nurture_client,
         ) {
             let req_url = format!("{}/internal/daily-stats/{}", url, agent_id);
-            let res = client
+            let mut req = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if res.status().is_success() {
                 let body: DailyStatsRes =
@@ -174,15 +185,18 @@ impl CommerceEngine for StripeCommerceEngine {
             &self.nurture_client,
         ) {
             let req_url = format!("{}/internal/daily-stats/{}", url, agent_id);
-            let res = client
+            let mut req = client
                 .get(&req_url)
                 .header("Authorization", format!("Bearer {}", secret))
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
 
             if res.status().is_success() {
                 let body: DailyStatsRes =
@@ -634,11 +648,56 @@ impl CommerceEngine for StripeCommerceEngine {
 
     async fn transfer(
         &self,
-        _from_id: Uuid,
-        _to_id: Uuid,
-        _amount: u64,
+        from_id: Uuid,
+        to_id: Uuid,
+        amount: u64,
     ) -> Result<String, AiomeError> {
-        // P0-1: Mock implementation for Stripe
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/transfer", url);
+            let payload = serde_json::json!({
+                "from_id": from_id,
+                "to_id": to_id,
+                "amount": amount,
+                "idempotency_key": Uuid::new_v4().to_string()
+            });
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("HTTP error: {}", e),
+            })?;
+
+            if res.status().is_success() {
+                #[derive(serde::Deserialize)]
+                struct TransferRes {
+                    transaction_id: String,
+                }
+                let body: TransferRes =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body.transaction_id);
+            } else {
+                let status = res.status();
+                let text = res.text().await.unwrap_or_default();
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Transfer failed ({}): {}", status, text),
+                });
+            }
+        }
+
+        tracing::warn!("⚠️ [StripeCommerceEngine] Nurture URL not set. Using mock transfer.");
         Ok("tx_stripe_transfer_mock".into())
     }
 
@@ -716,35 +775,174 @@ impl CommerceEngine for StripeCommerceEngine {
         }
     }
 
-    async fn instant_refund(
-        &self,
-        _transaction_id: &str,
-        _agent_id: Uuid,
-    ) -> Result<(), AiomeError> {
+    async fn instant_refund(&self, transaction_id: &str, actor_id: Uuid) -> Result<(), AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/instant-refund", url);
+            let payload = serde_json::json!({
+                "transaction_id": transaction_id,
+                "actor_id": actor_id,
+                "idempotency_key": Uuid::new_v4().to_string()
+            });
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("HTTP error: {}", e),
+            })?;
+
+            if res.status().is_success() {
+                return Ok(());
+            } else {
+                let status = res.status();
+                let text = res.text().await.unwrap_or_default();
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Instant refund failed ({}): {}", status, text),
+                });
+            }
+        }
         Ok(())
     }
 
-    async fn withdraw_points(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+    async fn withdraw_points(&self, actor_id: Uuid, amount: u64) -> Result<(), AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/withdraw-points", url);
+            let payload = serde_json::json!({
+                "actor_id": actor_id,
+                "points": amount,
+                "idempotency_key": Uuid::new_v4().to_string()
+            });
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("HTTP error: {}", e),
+            })?;
+
+            if res.status().is_success() {
+                return Ok(());
+            } else {
+                let status = res.status();
+                let text = res.text().await.unwrap_or_default();
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Withdraw points failed ({}): {}", status, text),
+                });
+            }
+        }
         Ok(())
     }
 
     async fn get_points(
         &self,
-        _agent_id: Uuid,
+        agent_id: Uuid,
     ) -> Result<aiome_core_contracts::commerce::PointsBalance, AiomeError> {
-        Err(AiomeError::Infrastructure {
-            reason: "get_points not implemented for Stripe API".into(),
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/points/{}", url, agent_id);
+            let mut req = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("HTTP error: {}", e),
+            })?;
+
+            if res.status().is_success() {
+                let body: aiome_core_contracts::commerce::PointsBalance =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body);
+            } else {
+                let status = res.status();
+                let text = res.text().await.unwrap_or_default();
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Get points failed ({}): {}", status, text),
+                });
+            }
+        }
+
+        tracing::warn!("⚠️ [StripeCommerceEngine] Nurture URL not set. Returning zero points.");
+        Ok(aiome_core_contracts::commerce::PointsBalance {
+            balance: 0,
+            lifetime_earned: 0,
+            lifetime_withdrawn: 0,
+            conversion_rate_bps: 10000,
         })
     }
 
     async fn get_transaction_history(
         &self,
-        _agent_id: Uuid,
-        _limit: u32,
+        agent_id: Uuid,
+        limit: u32,
     ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
-        Err(AiomeError::Infrastructure {
-            reason: "get_transaction_history not implemented for Stripe API".into(),
-        })
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!(
+                "{}/internal/transaction-history/{}?limit={}",
+                url, agent_id, limit
+            );
+            let mut req = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("HTTP error: {}", e),
+            })?;
+
+            if res.status().is_success() {
+                let body: Vec<aiome_core_contracts::commerce::TransactionRecord> =
+                    res.json().await.map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                return Ok(body);
+            } else {
+                let status = res.status();
+                let text = res.text().await.unwrap_or_default();
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Get history failed ({}): {}", status, text),
+                });
+            }
+        }
+
+        Ok(vec![])
     }
 }
 
@@ -984,5 +1182,75 @@ mod tests {
         let escrow_id2 = engine.escrow_create(agent_id, 500).await.unwrap(); // allow-anti-pattern
         let refund_result2 = engine.escrow_refund(&escrow_id2).await;
         assert!(refund_result2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_http_proxy_transfer_green() {
+        use wiremock::{matchers, Mock, MockServer, ResponseTemplate};
+        let mock_server = MockServer::start().await;
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            Some(mock_server.uri()),
+            Some("test_secret".to_string()),
+        );
+
+        Mock::given(matchers::method("POST"))
+            .and(matchers::path("/internal/transfer"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "transaction_id": "tx_http_123"
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let from_id = Uuid::new_v4();
+        let to_id = Uuid::new_v4();
+        let result = engine.transfer(from_id, to_id, 100).await.unwrap(); // allow-anti-pattern
+        assert_eq!(
+            result, "tx_http_123",
+            "Must return transaction ID from Nurture API"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_http_proxy_get_points_green() {
+        use wiremock::{matchers, Mock, MockServer, ResponseTemplate};
+        let mock_server = MockServer::start().await;
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            Some(mock_server.uri()),
+            Some("test_secret".to_string()),
+        );
+
+        let agent_id = Uuid::new_v4();
+        let path = format!("/internal/points/{}", agent_id);
+
+        Mock::given(matchers::method("GET"))
+            .and(matchers::path(path))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "balance": 150,
+                "lifetime_earned": 500,
+                "lifetime_withdrawn": 350,
+                "conversion_rate_bps": 10000
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let result = engine.get_points(agent_id).await.unwrap(); // allow-anti-pattern
+        assert_eq!(result.balance, 150);
+        assert_eq!(result.lifetime_earned, 500);
     }
 }

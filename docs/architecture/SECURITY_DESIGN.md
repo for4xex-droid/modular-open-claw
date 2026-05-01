@@ -118,6 +118,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 95 | **Unauditable Gift Transfers** | **Zero-coin transactions bypassing ledger audit** | 🔴 High | **Explicit EntryType::Gift Ledger Tracking (Nurture Phase 3)** |
 | 96 | **Timing Attack (Auth)** | **Short-circuiting length comparison in verify_constant_time** | 🔴 High | **Non-short-circuiting Bitwise AND (`&`) Enforcement (Reflexion Phase 4)** |
 | 97 | **Identity Null Panic** | **UUID parse unwrap() during token generation** | 🔴 High | **Zero-panic `uuid::uuid!` macro enforcement (Reflexion Phase 4)** |
+| 98 | **Split-Brain Economic States** | **Aiome and Nurture API ledgers drifting out of sync** | 🔴 High | **Centralized Commerce HTTP Proxy via OxiLeanProofCertificate (Nurture Phase 4)** |
 
 ## 3. Defense Architecture
 
@@ -152,6 +153,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **5-Layer Shadow Sandbox (Phase 43)**: `DockerConductor` enforces five progressive security layers for sub-agent delegation: 1) **Fork Bomb Protection** (Semaphore limit: 3), 2) **Economic Binding** (Validation via `CommerceEngine`), 3) **Absolute Sterilization** (Pre-execution environment isolation), 4) **BastionGuard Strict** (Read-only root, no network by default), and 5) **Technical Timeout** (300s hard kill).
 - **Hybrid Context Isolation (Phase 5)**: `InteractionsGeminiProvider` isolates conversation state per session using `interaction_id`. This prevents cross-session context leakage and ensures that the agent's "chain of thought" (Reasoning Log) is tied to specific, authenticated job contexts within the `TrajectoryStore`.
 - **Port-Level SSRF Shield (Phase 53)**: `SecurityPolicy::validate_url` explicitly blocks access to `127.0.0.1` and `localhost` UNLESS the destination port matches allowed internal services (8188 for ComfyUI, 11434 for Ollama). This prevents agents from attacking local administration interfaces or data stores (e.g., Redis, DB) via SSRF.
+- **Cross-Service OXP Trust (Nurture Phase 4)**: `StripeCommerceEngine` acts as an HTTP proxy that bridges all economic mutations (transfers, points, refunds) to the centralized `nurture-api` ledger. Every proxy request is cryptographically signed using an `OxiLeanProofCertificate`, ensuring that Nurture API only honors requests from verified Aiome core nodes with sufficient `oxp_score`.
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.

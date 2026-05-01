@@ -164,6 +164,8 @@ pub struct BootContext {
 }
 
 pub async fn boot_sequence() -> anyhow::Result<BootContext> {
+    let oxilean_power = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+
     let preflight = init_env_and_preflight().await?;
     let db_result = init_database(&preflight).await?;
     let llm_result = init_llm_providers(
@@ -172,9 +174,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         preflight.live_manager.clone(),
     )
     .await?;
-    let core_result = init_core_services(&preflight, &db_result, &llm_result).await?;
+    let core_result =
+        init_core_services(&preflight, &db_result, &llm_result, oxilean_power.clone()).await?;
 
-    let state = assemble_app_state(&preflight, &db_result, &llm_result, &core_result).await?;
+    let state = assemble_app_state(
+        &preflight,
+        &db_result,
+        &llm_result,
+        &core_result,
+        oxilean_power,
+    )
+    .await?;
 
     spawn_background_workers(
         &state,
@@ -581,6 +591,7 @@ pub async fn init_core_services(
     preflight: &PreflightResult,
     db: &DatabaseResult,
     llm: &ProviderResult,
+    oxilean_power: std::sync::Arc<std::sync::atomic::AtomicU32>,
 ) -> anyhow::Result<CoreServicesResult> {
     let resolver = &preflight.resolver;
     let config = &preflight.config;
@@ -690,6 +701,7 @@ pub async fn init_core_services(
                 sqlite_pool,
                 nurture_url,
                 nurture_secret,
+                Some(oxilean_power.clone()),
             )
             .await?,
         )
@@ -1344,11 +1356,12 @@ pub async fn assemble_app_state(
     db: &DatabaseResult,
     llm: &ProviderResult,
     core: &CoreServicesResult,
+    oxilean_power: std::sync::Arc<std::sync::atomic::AtomicU32>,
 ) -> anyhow::Result<crate::app_state::AppState> {
     let docs_path = "../../docs";
 
     let state = crate::app_state::AppState {
-        oxilean_power: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
+        oxilean_power,
         hook_chain: Default::default(),
         hook_manager: Component::new(db.hook_manager.clone()),
         db_pool: Component::new(std::sync::Arc::new(db.db_pool.clone())),
