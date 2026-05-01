@@ -523,10 +523,7 @@ pub async fn get_ollama_models(
         .await
         .ok()
         .flatten()
-        .unwrap_or_else(|| {
-            std::env::var("OLLAMA_HOST")
-                .unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
-        });
+        .unwrap_or_else(|| state.config.ollama_host.clone());
     let url = format!("{}/api/tags", host.trim_end_matches('/'));
     state.security_policy.validate_url(&url).await?;
 

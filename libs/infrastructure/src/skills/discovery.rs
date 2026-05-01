@@ -136,7 +136,9 @@ mod tests {
             &self,
             _req: aiome_core_contracts::llm::LlmRequest,
         ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
-            unimplemented!()
+            Err(AiomeError::Infrastructure {
+                reason: "Not yet implemented".into(),
+            })
         }
     }
 

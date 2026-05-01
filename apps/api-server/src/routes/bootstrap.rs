@@ -68,11 +68,11 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
     let diagnosis = BootstrapDetector::diagnose(root, Some(api_secret_set), Some(llm_configured));
 
     let mut sidecar_status = Vec::new();
-    let geo_url = std::env::var("GEO_OPTIMIZER_URL").unwrap_or_default();
+    let geo_url = state.config.geo_optimizer_url.clone();
     sidecar_status
         .push(check_sidecar_health("geo-optimizer", &geo_url, state.http_client.get_inner()).await);
 
-    let timesfm_url = std::env::var("TIMESFM_SIDECAR_URL").unwrap_or_default();
+    let timesfm_url = state.config.timesfm_sidecar_url.clone();
     sidecar_status.push(
         check_sidecar_health(
             "timesfm-sidecar",

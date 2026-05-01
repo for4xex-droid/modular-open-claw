@@ -130,10 +130,91 @@ impl FederationOps for UniversalJobQueue {
 
     async fn do_import_federated_data(
         &self,
-        _karmas: Vec<FederatedKarma>,
-        _rules: Vec<ImmuneRule>,
-        _matches: Vec<ArenaMatch>,
+        karmas: Vec<FederatedKarma>,
+        rules: Vec<ImmuneRule>,
+        matches: Vec<ArenaMatch>,
     ) -> Result<(), AiomeError> {
+        if !rules.is_empty() {
+            tracing::warn!(
+                "Importing federated ImmuneRules is not yet implemented (skipped {} rules)",
+                rules.len()
+            );
+        }
+        if !matches.is_empty() {
+            tracing::warn!(
+                "Importing federated ArenaMatches is not yet implemented (skipped {} matches)",
+                matches.len()
+            );
+        }
+
+        for karma in karmas {
+            let q = match &self.pool {
+                crate::db::DatabasePool::Sqlite(_) => format!(
+                    "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) \
+                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}) \
+                     ON CONFLICT (id) DO UPDATE SET \
+                     job_id = EXCLUDED.job_id, \
+                     karma_type = EXCLUDED.karma_type, \
+                     related_skill = EXCLUDED.related_skill, \
+                     lesson = EXCLUDED.lesson, \
+                     weight = EXCLUDED.weight, \
+                     soul_version_hash = EXCLUDED.soul_version_hash, \
+                     is_federated = EXCLUDED.is_federated, \
+                     clone_origin_id = EXCLUDED.clone_origin_id, \
+                     lamport_clock = EXCLUDED.lamport_clock, \
+                     node_id = EXCLUDED.node_id, \
+                     signature = EXCLUDED.signature, \
+                     created_at = EXCLUDED.created_at, \
+                     last_applied_at = EXCLUDED.last_applied_at \
+                     WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
+                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
+                ),
+                crate::db::DatabasePool::Postgres(_) => format!(
+                    "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) \
+                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}) \
+                     ON CONFLICT (id) DO UPDATE SET \
+                     job_id = EXCLUDED.job_id, \
+                     karma_type = EXCLUDED.karma_type, \
+                     related_skill = EXCLUDED.related_skill, \
+                     lesson = EXCLUDED.lesson, \
+                     weight = EXCLUDED.weight, \
+                     soul_version_hash = EXCLUDED.soul_version_hash, \
+                     is_federated = EXCLUDED.is_federated, \
+                     clone_origin_id = EXCLUDED.clone_origin_id, \
+                     lamport_clock = EXCLUDED.lamport_clock, \
+                     node_id = EXCLUDED.node_id, \
+                     signature = EXCLUDED.signature, \
+                     created_at = EXCLUDED.created_at, \
+                     last_applied_at = EXCLUDED.last_applied_at \
+                     WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
+                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
+                ),
+            };
+
+            let karma_id = karma.id.clone();
+            crate::sql_exec!(
+                &self.pool,
+                &q,
+                karma.id,
+                karma.job_id,
+                karma.karma_type,
+                karma.related_skill,
+                karma.lesson,
+                karma.weight,
+                karma.soul_version_hash,
+                1, // is_federated
+                karma.clone_origin_id,
+                karma.lamport_clock as i64,
+                karma.node_id,
+                karma.signature,
+                karma.created_at,
+                karma.last_applied_at
+            )
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to import federated karma {}: {}", karma_id, e),
+            })?;
+        }
+
         Ok(())
     }
 
@@ -190,9 +271,24 @@ impl FederationOps for UniversalJobQueue {
     }
 
     async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {
+        use aiome_core_contracts::traits::SettingsOps;
+        let hub_url_opt = self.do_get_setting("samsara_hub_url").await?;
+        let hub_url = match hub_url_opt {
+            Some(url) if !url.trim().is_empty() => url,
+            _ => {
+                tracing::warn!("samsara_hub_url is not set; skipping federated metrics push.");
+                return Ok(());
+            }
+        };
+
         let stats = self.get_agent_stats().await?;
-        let _req = FederationPushRequest {
-            node_id: "self".to_string(),
+        let node_id = self
+            .do_get_setting("node_id")
+            .await?
+            .unwrap_or_else(|| "self".to_string());
+
+        let req = FederationPushRequest {
+            node_id,
             karmas: Vec::new(),
             rules: Vec::new(),
             arena_matches: Vec::new(),
@@ -203,6 +299,33 @@ impl FederationOps for UniversalJobQueue {
                 karma_metrics: Default::default(),
             }),
         };
+
+        let url = format!("{}/api/v1/federation/push", hub_url.trim_end_matches('/'));
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to build HTTP client: {}", e),
+            })?;
+
+        let res =
+            client
+                .post(&url)
+                .json(&req)
+                .send()
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to push metrics to {}: {}", url, e),
+                })?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res.text().await.unwrap_or_default();
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Hub at {} returned {}: {}", url, status, body),
+            });
+        }
+
         Ok(())
     }
 }

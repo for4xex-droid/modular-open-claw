@@ -143,7 +143,9 @@ mod tests {
             &self,
             _order_id: Uuid,
         ) -> Result<VerificationResult, AiomeError> {
-            unimplemented!()
+            Err(AiomeError::Infrastructure {
+                reason: "Not yet implemented".into(),
+            })
         }
     }
 

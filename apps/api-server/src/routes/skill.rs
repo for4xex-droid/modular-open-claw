@@ -351,8 +351,7 @@ pub async fn update_mcp_config(
     _auth: crate::auth::Authenticated,
     Json(payload): Json<crate::mcp::discovery::McpDiscoveryFile>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
+    let config_path = state.config.resolver.resolve(".aiome/mcp_servers.json");
 
     if let Some(parent) = config_path.parent() {
         let _ = tokio::fs::create_dir_all(parent).await;
@@ -387,11 +386,10 @@ pub async fn update_mcp_config(
     security(("api_key" = []))
 )]
 pub async fn get_mcp_config(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Json<crate::mcp::discovery::McpDiscoveryFile>, AppError> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
+    let config_path = state.config.resolver.resolve(".aiome/mcp_servers.json");
 
     let content = tokio::fs::read_to_string(&config_path)
         .await

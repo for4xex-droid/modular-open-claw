@@ -72,28 +72,43 @@ pub async fn list_topics(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url = std::env::var("SAMSARA_HUB_URL")
-        .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+    let hub_url = state.config.samsara_hub_url.clone();
     let url = format!("{}/api/v1/hub/topics", hub_url);
     state.security_policy.validate_url(&hub_url).await?;
 
-    let res = state
+    if let Err(e) = state.circuit_breaker.check_state().await {
+        return Err(aiome_core::error::AiomeError::RemoteServiceError {
+            url: "Samsara Hub".into(),
+            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
+        }
+        .into());
+    }
+
+    let req_res = state
         .http_client
         .get(url)
         .timeout(std::time::Duration::from_secs(10))
         .send()
-        .await
-        .map_err(|e| aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: e.into(),
-        })?
-        .json::<serde_json::Value>()
-        .await
-        .map_err(
-            |e| aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-                reason: e.to_string(),
-            },
-        )?;
+        .await;
+
+    let res = match req_res {
+        Ok(r) => {
+            state.circuit_breaker.record_success().await;
+            r.json::<serde_json::Value>().await.map_err(|e| {
+                aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
+                    reason: e.to_string(),
+                }
+            })?
+        }
+        Err(e) => {
+            state.circuit_breaker.record_failure().await;
+            return Err(aiome_core::error::AiomeError::RemoteServiceError {
+                url: "Samsara Hub".into(),
+                source: e.into(),
+            }
+            .into());
+        }
+    };
 
     Ok(Json(res))
 }
@@ -112,8 +127,7 @@ pub async fn create_topic(
     _auth: crate::auth::Authenticated,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url = std::env::var("SAMSARA_HUB_URL")
-        .unwrap_or_else(|_| shared::config::DEFAULT_SAMSARA_HUB_URL.to_string());
+    let hub_url = state.config.samsara_hub_url.clone();
     let hub_secret = state
         .federation_secret
         .as_opt()
@@ -121,21 +135,40 @@ pub async fn create_topic(
         .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
             source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
         })?;
-    let client = (*state.http_client).clone();
+    let client = &state.http_client;
 
     info!("🌟 [Biome] Requesting new topic creation on Hub: {:?}", req);
     state.security_policy.validate_url(&hub_url).await?;
-    let res = client
+    if let Err(e) = state.circuit_breaker.check_state().await {
+        return Err(aiome_core::error::AiomeError::RemoteServiceError {
+            url: "Samsara Hub".into(),
+            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
+        }
+        .into());
+    }
+
+    let req_res = client
         .post(format!("{}/api/v1/biome/topics", hub_url))
         .timeout(std::time::Duration::from_secs(10))
         .header("Authorization", format!("Bearer {}", hub_secret))
         .json(&req)
         .send()
-        .await
-        .map_err(|e| aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: e.into(),
-        })?;
+        .await;
+
+    let res = match req_res {
+        Ok(r) => {
+            state.circuit_breaker.record_success().await;
+            r
+        }
+        Err(e) => {
+            state.circuit_breaker.record_failure().await;
+            return Err(aiome_core::error::AiomeError::RemoteServiceError {
+                url: "Samsara Hub".into(),
+                source: e.into(),
+            }
+            .into());
+        }
+    };
 
     let status = res.status();
     let body = res.json::<serde_json::Value>().await.map_err(|e| {
@@ -468,6 +501,14 @@ pub async fn send_message(
         "🚀 [Biome] Sending message to Hub for relay (Topic: {})",
         msg.topic_id
     );
+    if let Err(e) = state.circuit_breaker.check_state().await {
+        return Err(aiome_core::error::AiomeError::RemoteServiceError {
+            url: "Samsara Hub".into(),
+            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
+        }
+        .into());
+    }
+
     let res = client
         .post(format!("{}/api/v1/biome/relay", hub_url))
         .timeout(std::time::Duration::from_secs(10))
@@ -475,6 +516,12 @@ pub async fn send_message(
         .json(&msg)
         .send()
         .await;
+
+    if res.is_ok() {
+        state.circuit_breaker.record_success().await;
+    } else {
+        state.circuit_breaker.record_failure().await;
+    }
 
     let sent_status = match res {
         Ok(r) if r.status().is_success() => {

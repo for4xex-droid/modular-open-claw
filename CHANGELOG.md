@@ -1,6 +1,24 @@
 ## [Unreleased]
 > Last Updated: 2026-05-01
 
+### Changed
+- **Samsara Hub Architecture Modularization**:
+  - Extracted the monolithic `samsara-hub/src/main.rs` into independent modules (`models.rs`, `state.rs`, `handlers/federation.rs`, `handlers/ws.rs`).
+  - Successfully migrated 330+ lines of raw SQLite and Postgres DDL queries into explicit, structured file-based migrations using `sqlx::migrate!`.
+  - Implemented the Multi-DB initialization fix by employing `match` to properly bind `sqlx::migrate!("path")` at compile time for both SQLite and Postgres execution paths.
+- **Aiome Boot Sequence Modularization**:
+  - Refactored the monolithic `boot_sequence` in `apps/api-server/src/bootstrap.rs` into a strict, orchestrator-style linear pipeline (`init_env` -> `init_database` -> `init_llm_providers` -> `init_core_services` -> `assemble_app_state` -> `spawn_background_workers`).
+  - Extracted complex AppState assembly and background worker initialization into discrete functions, reducing the main entry point to under 20 lines and improving testability.
+  - Standardized dependency injection using `Component<T>` for all `AppState` fields.
+
+### Fixed
+- **System Integrity & Graceful Shutdown (Reflexion v3)**:
+  - **Duplicate Initialization Resolved**: Fixed critical bugs where `DiskQuotaManager`, `QualityGateStore`, `A2aGrpcClient`, and `PublishPipeline` were instantiated twice. Deduplicated by promoting them to `CoreServicesResult`.
+  - **SEO Pipeline Restored**: Fixed a defect where `PublishPipeline` was initialized with an empty configuration during state assembly, restoring the automated WordPress publishing capability.
+  - **Zero-Panic Enforcement**: Eradicated all hazardous `.expect()` calls within the boot flow, replacing them with safe `anyhow::Result` error propagation (`.ok_or_else()?`).
+  - **Graceful Shutdown Hardening**: Integrated `tokio_util::sync::CancellationToken` into `TtsWorker` and `CortexCompiler` background `loop` operations via `tokio::select!`, ensuring all background tasks respect `SIGTERM` signals.
+  - **Zero-Trust Memory Hygiene**: Added missing `shared::security::scrub_env` calls for `POLAR_API_KEY` and `A2A_AUTH_TOKEN`, ensuring 100% of the 14 sensitive environment variables are purged from memory immediately after ingestion.
+
 ### Added
 - **Phase 8.5 Nurture Infrastructure & Economy Integration**:
   - **Sandboxed Execution**: Integrated `PythonExecutor` (Podman-based containerized sandbox) into `KarmaForge`, enabling secure, isolated execution of economic analysis via the new `sage_meditation` pipeline.

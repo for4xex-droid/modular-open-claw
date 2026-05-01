@@ -220,10 +220,16 @@ pub async fn delete_account_handler(
     let mut nurture_notified = false;
 
     if !nurture_url.is_empty() {
-        let secret = std::env::var("API_SERVER_SECRET").map_err(|_| {
-            tracing::error!("API_SERVER_SECRET is not set; cannot sign OxiLean certificate for account deletion");
-            AppError::internal("Server misconfiguration: signing secret unavailable")
-        })?;
+        use secrecy::ExposeSecret;
+        let secret = match state.api_server_secret.as_opt() {
+            Some(s) => s.expose_secret().clone(),
+            None => {
+                tracing::error!("API_SERVER_SECRET is not initialized in AppState; cannot sign OxiLean certificate for account deletion");
+                return Err(AppError::internal(
+                    "Server misconfiguration: signing secret unavailable",
+                ));
+            }
+        };
 
         // Create an OxiLean Certificate for internal request
         let ts = chrono::Utc::now().to_rfc3339();

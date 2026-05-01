@@ -80,6 +80,8 @@ pub struct AiomeConfig {
     pub comfyui_url: String,
     /// Abyss Vault Server URL
     pub abyss_vault_url: String,
+    /// TimesFM Sidecar URL
+    pub timesfm_sidecar_url: String,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -134,6 +136,7 @@ impl Default for AiomeConfig {
             rlm_api_url: "http://localhost:3026".to_string(), // allow-anti-pattern
             comfyui_url: "http://localhost:8188".to_string(), // allow-anti-pattern
             abyss_vault_url: "http://localhost:3016".to_string(), // allow-anti-pattern
+            timesfm_sidecar_url: "http://timesfm-sidecar:8000".to_string(),
         }
     }
 }
@@ -248,6 +251,8 @@ impl AiomeConfig {
                 .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8188)),
             abyss_vault_url: env::var("ABYSS_VAULT_URL")
                 .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)),
+            timesfm_sidecar_url: env::var("TIMESFM_SIDECAR_URL")
+                .unwrap_or_else(|_| "http://timesfm-sidecar:8000".to_string()),
         })
     }
 

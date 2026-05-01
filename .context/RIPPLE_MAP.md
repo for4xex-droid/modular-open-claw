@@ -1936,3 +1936,10 @@ graph TD
     - `README.md`, `README_en.md` [MODIFY]: 動画リンクと Docker/$0 の CTA パネルを追記。
 - **波及効果**:
     - マーケティング施策がインフラ (コード・テスト) のライフサイクルと結合された。ドキュメント改修ミスが CI 上で検知されるようになる。
+
+
+## 2026-05-01: Samsara Hub Modularization
+- Extracted `apps/samsara-hub/src/models.rs` containing `FederatedKarmaRecord`, `ImmuneRuleRecord`, `ArenaMatchRecord`, `TopicRecord`.
+- Extracted `apps/samsara-hub/src/state.rs` containing `HubState`.
+- Extracted handlers to `apps/samsara-hub/src/handlers/federation.rs` and `ws.rs`.
+- Migrated hardcoded SQL DDLs to `sqlx::migrate!` in `migrations/sqlite/` and `migrations/postgres/`.

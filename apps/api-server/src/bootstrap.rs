@@ -63,6 +63,98 @@ use aiome_core::expression::tts_worker::TtsWorker;
 use aiome_core::traits::JobQueue;
 use shared::health::HealthMonitor;
 
+pub struct PreflightResult {
+    pub resolver: shared::app_data::AppDataResolver,
+    pub config: Arc<shared::config::AiomeConfig>,
+    pub cancel_token: CancellationToken,
+    pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
+    pub plugin_registry: crate::plugin_loader::PluginRegistry,
+    pub secrets: BootSecrets,
+    pub health_monitor: Arc<Mutex<HealthMonitor>>,
+    pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
+    pub db_url: String,
+}
+
+pub struct BootSecrets {
+    pub stripe_key: Option<String>,
+    pub nurture_secret: Option<String>,
+    pub search_key: Option<String>,
+    pub x_token: Option<String>,
+    pub tts_openai_key: Option<String>,
+    pub a2a_node_token: Option<String>,
+}
+
+pub struct DatabaseResult {
+    pub db_pool: infrastructure::db::DatabasePool,
+    pub job_queue: Arc<infrastructure::job_queue::UniversalJobQueue>,
+    pub eval_logger: Arc<infrastructure::llm::evaluation_logger::EvaluationLogger>,
+    pub audit_logger: Arc<infrastructure::audit_logger::AsyncAuditLogger>,
+    pub system_agent_id: uuid::Uuid,
+    pub circuit_breaker: Arc<infrastructure::circuit_breaker::CircuitBreaker>,
+    pub rate_limiter: infrastructure::rate_limiter::AgentRateLimiter,
+    pub slo_engine: Arc<infrastructure::slo_engine::SloEngine>,
+    pub http_client: reqwest::Client,
+    pub sandbox: Arc<shared::sandbox::PathSandbox>,
+    pub hook_manager: Arc<infrastructure::security::hook_manager::HookManager>,
+}
+
+pub struct ProviderResult {
+    pub provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+    pub bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+    pub embed_provider: Arc<dyn aiome_core::llm_provider::EmbeddingProvider>,
+}
+
+pub struct CoreServicesResult {
+    pub artifact_store: Arc<dyn aiome_core::traits::ArtifactStore>,
+    pub event_sender: tokio::sync::broadcast::Sender<aiome_core_contracts::events::CoreEvent>,
+    pub llm_semaphore: Arc<tokio::sync::Semaphore>,
+    pub forge_semaphore: Arc<tokio::sync::Semaphore>,
+    pub compute_semaphore: Arc<tokio::sync::Semaphore>,
+    pub formal_proof_gate: Arc<dyn aiome_contracts::proof::FormalProofGate>,
+    pub wasm_skill_manager: Arc<infrastructure::skills::WasmSkillManager>,
+    pub skill_forge: Arc<infrastructure::skills::forge::SkillForge>,
+    pub commerce_engine: Option<Arc<dyn aiome_core_contracts::commerce::CommerceEngine>>,
+    pub api_server_secret: Arc<secrecy::SecretString>,
+    pub federation_secret: Option<Arc<secrecy::SecretString>>,
+    pub gift_engine: Arc<dyn aiome_core_contracts::commerce::GiftEngine>,
+    pub ekyc_engine: Arc<dyn aiome_core_contracts::ekyc::EkycEngine>,
+    pub ekyc_session_store: Arc<dyn aiome_core_contracts::ekyc::EkycSessionStore>,
+    pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
+    pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
+    pub soul_store: Arc<infrastructure::soul_store::UniversalSoulStore>,
+    pub soul_pipeline: Arc<
+        soul::pipeline::SoulPipeline<
+            infrastructure::soul_adapter::CoreDomainAdapter,
+            infrastructure::samsara_engine::DefaultSamsaraEngine,
+        >,
+    >,
+    pub soul_mutator: Arc<infrastructure::soul_mutator::SoulMutator>,
+    pub intent_generator: Arc<infrastructure::intent::IntentGenerator>,
+    pub intent_firewall: Arc<infrastructure::intent::IntentFirewall>,
+    pub context_engine: Arc<infrastructure::context_engine::ContextEngine>,
+    pub belief_gate: Arc<infrastructure::belief_consistency_gate::BeliefConsistencyGate>,
+    pub router_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+    pub autonomous_running: Arc<std::sync::atomic::AtomicBool>,
+    pub autonomous_config:
+        Arc<tokio::sync::RwLock<Option<aiome_core::biome::autonomous::AutonomousConfig>>>,
+    pub docker_failures: Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>,
+    pub mcp_manager: Arc<mcp::client::McpProcessManager>,
+    pub gig_engine: Arc<dyn aiome_core_contracts::gig::GigEngine>,
+    pub voice_drm: Arc<infrastructure::security::VoiceCoreDrm>,
+    pub registry: Arc<infrastructure::registry::RegistryManager>,
+    pub transcription_engine: Arc<dyn aiome_core_contracts::traits::TranscriptionEngine>,
+    pub task_dispatcher: Arc<infrastructure::task_orchestrator::TaskDispatcher>,
+    pub rlm_client: Arc<dyn aiome_core_contracts::rlm::RlmProvider>,
+    pub cortex_projector: Arc<infrastructure::cortex_file_projector::CortexFileProjector>,
+    pub a2a_client: Arc<dyn aiome_core_contracts::a2a::A2aClient>,
+    pub disk_quota_mgr: Arc<infrastructure::disk_quota::DiskQuotaManager>,
+    pub quality_gate_store: Arc<dyn infrastructure::quality_gate_store::QualityGateStore>,
+    pub publish_pipeline: Arc<infrastructure::publisher::PublishPipeline>,
+    pub api_server_secret_raw: String,
+    pub stripe_key_raw: Option<String>,
+    pub tts_openai_api_key_raw: Option<String>,
+}
+
 pub struct BootContext {
     pub state: crate::app_state::AppState,
     pub plugin_registry: crate::plugin_loader::PluginRegistry,
@@ -72,6 +164,74 @@ pub struct BootContext {
 }
 
 pub async fn boot_sequence() -> anyhow::Result<BootContext> {
+    let preflight = init_env_and_preflight().await?;
+    let db_result = init_database(&preflight).await?;
+    let llm_result = init_llm_providers(
+        &preflight.config,
+        &db_result,
+        preflight.live_manager.clone(),
+    )
+    .await?;
+    let core_result = init_core_services(&preflight, &db_result, &llm_result).await?;
+
+    let state = assemble_app_state(&preflight, &db_result, &llm_result, &core_result).await?;
+
+    spawn_background_workers(
+        &state,
+        &core_result.belief_gate,
+        preflight.cancel_token.clone(),
+    )
+    .await?;
+
+    let cors_layer = init_cors()?;
+
+    Ok(BootContext {
+        state,
+        plugin_registry: preflight.plugin_registry,
+        metrics_handle: preflight.metrics_handle,
+        cancel_token: preflight.cancel_token,
+        cors_layer,
+    })
+}
+
+pub fn init_cors() -> anyhow::Result<CorsLayer> {
+    use axum::http::HeaderValue;
+
+    let mut layer = CorsLayer::new()
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any);
+
+    match std::env::var("ALLOWED_ORIGINS") {
+        Ok(origins) if !origins.is_empty() => {
+            let list: Vec<HeaderValue> = origins
+                .split(',')
+                .map(|s| {
+                    HeaderValue::from_str(s.trim()).map_err(|e| {
+                        anyhow::anyhow!("🚨 Invalid origin in ALLOWED_ORIGINS '{}': {}", s, e)
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            layer = layer.allow_origin(AllowOrigin::list(list));
+            info!("🌐 [CORS] Allowed origins: {}", origins);
+        }
+        _ => {
+            #[cfg(debug_assertions)]
+            {
+                warn!("⚠️ [CORS] ALLOWED_ORIGINS not set. All origins allowed in dev mode.");
+                layer = layer.allow_origin(AllowOrigin::any());
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                error!("🚨 [FATAL SECURITY ERROR] ALLOWED_ORIGINS MUST be set in production!");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    Ok(layer)
+}
+
+pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
 
@@ -91,9 +251,6 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         .install_recorder()
         .expect("Failed to install Prometheus recorder"); // allow-anti-pattern
     tracing::info!("📊 Prometheus Metrics initialized at /api/v1/metrics");
-
-    let static_path = "apps/api-server/static";
-    let docs_path = "../../docs";
 
     let health_monitor = shared::health::HealthMonitor::new();
     let health_monitor = Arc::new(Mutex::new(health_monitor));
@@ -227,6 +384,32 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         })
     };
 
+    let secrets = BootSecrets {
+        stripe_key: stripe_key_raw,
+        nurture_secret: nurture_secret_raw,
+        search_key: env_search_key,
+        x_token: env_x_token,
+        tts_openai_key: tts_openai_api_key_raw,
+        a2a_node_token: a2a_node_token_raw,
+    };
+
+    Ok(PreflightResult {
+        resolver,
+        config,
+        cancel_token,
+        metrics_handle,
+        plugin_registry,
+        secrets,
+        health_monitor,
+        live_manager,
+        db_url,
+    })
+}
+pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<DatabaseResult> {
+    let config = &preflight.config;
+    let resolver = &preflight.resolver;
+    let plugin_registry = &preflight.plugin_registry;
+
     // === 🏗️ STAGE 2/7: Database ===
     let ts_pool = if config.db_path.starts_with("postgres://")
         || config.db_path.starts_with("postgresql://")
@@ -247,32 +430,30 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         infrastructure::db::DatabasePool::Sqlite(sq)
     };
 
-    let db_pool = Arc::new(ts_pool.clone());
+    let db_pool = ts_pool.clone();
 
     let trajectory_store: Arc<dyn aiome_core::trajectory::TrajectoryStore> = {
         Arc::new(infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool))
     };
 
-    let job_queue = infrastructure::job_queue::UniversalJobQueue::new(
-        (*db_pool).clone(),
-        None,
-        trajectory_store,
-    )
-    .await
-    .unwrap_or_else(|e| {
-        error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
-        std::process::exit(1);
-    });
+    let job_queue =
+        infrastructure::job_queue::UniversalJobQueue::new(db_pool.clone(), None, trajectory_store)
+            .await
+            .unwrap_or_else(|e| {
+                error!("🚨 Failed to init DB at {}: {}", config.db_path, e);
+                std::process::exit(1);
+            });
     let job_queue = Arc::new(job_queue);
 
     let eval_logger = Arc::new(
         infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
-            infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new((*db_pool).clone()),
+            infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(db_pool.clone()),
         )),
     );
 
+    use infrastructure::audit_logger::AsyncAuditLogger;
     let audit_logger = Arc::new(AsyncAuditLogger::new(
-        Arc::new((*db_pool).clone()),
+        Arc::new(db_pool.clone()),
         10000, // Process up to 10k items in memory before blocking
     ));
 
@@ -324,55 +505,106 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     }
     let hook_manager = Arc::new(hook_manager);
 
+    Ok(DatabaseResult {
+        db_pool,
+        job_queue,
+        eval_logger,
+        audit_logger,
+        system_agent_id,
+        circuit_breaker,
+        rate_limiter,
+        slo_engine,
+        http_client,
+        sandbox,
+        hook_manager,
+    })
+}
+pub async fn init_llm_providers(
+    config: &Arc<shared::config::AiomeConfig>,
+    db: &DatabaseResult,
+    live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
+) -> anyhow::Result<ProviderResult> {
     // === 🏗️ STAGE 3/7: Engine ===
     let provider = Arc::new(infrastructure::llm::dynamic::DynamicLlmProvider {
-        ops: job_queue.clone(),
-        client: http_client.clone(),
+        ops: db.job_queue.clone(),
+        client: db.http_client.clone(),
         fallback_host: config.ollama_host.clone(),
         fallback_model: config.ollama_model.clone(),
         gemini_api_key: config.gemini_api_key.clone(),
         openai_api_key: config.openai_api_key.clone(),
         anthropic_api_key: config.anthropic_api_key.clone(),
-        circuit_breaker: circuit_breaker.clone(),
-        slo_engine: slo_engine.clone(),
-        hook_manager: hook_manager.clone(),
+        circuit_breaker: db.circuit_breaker.clone(),
+        slo_engine: db.slo_engine.clone(),
+        hook_manager: db.hook_manager.clone(),
         live_manager: live_manager.clone(),
-        eval_logger: Some(eval_logger.clone()),
+        eval_logger: Some(db.eval_logger.clone()),
     });
 
     let bg_instance = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
-        ops: job_queue.clone(),
-        client: http_client.clone(),
+        ops: db.job_queue.clone(),
+        client: db.http_client.clone(),
         fallback_model: config.ollama_model.clone(),
         fallback_host: config.ollama_host.clone(),
         gemini_api_key: config.gemini_api_key.clone(),
         openai_api_key: config.openai_api_key.clone(),
         anthropic_api_key: config.anthropic_api_key.clone(),
-        hook_manager: hook_manager.clone(),
+        hook_manager: db.hook_manager.clone(),
         live_manager: live_manager.clone(),
-        eval_logger: Some(eval_logger.clone()),
+        eval_logger: Some(db.eval_logger.clone()),
     });
 
-    let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider> = bg_instance.clone();
+    let bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        bg_instance.clone();
     let embed_provider: Arc<dyn aiome_core::llm_provider::EmbeddingProvider> = bg_instance.clone();
 
     // Wire embedding provider back to job_queue (resolves circular dependency)
-    job_queue
+    db.job_queue
         .set_embedding_provider(embed_provider.clone())
         .await;
 
     let embed_type = std::env::var("EMBEDDING_PROVIDER").unwrap_or_else(|_| "ruri".to_string());
-    info!(
+    tracing::info!(
         "🧠 [LLM] Front-end: DynamicLlm (DB-configured), Background: {} ({}), Embedding: {}",
         std::env::var("BG_LLM_PROVIDER").unwrap_or_else(|_| "ollama".to_string()),
         std::env::var("BG_LLM_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string()),
         embed_type,
     );
 
+    Ok(ProviderResult {
+        provider: provider as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+        bg_provider,
+        embed_provider,
+    })
+}
+
+pub async fn init_core_services(
+    preflight: &PreflightResult,
+    db: &DatabaseResult,
+    llm: &ProviderResult,
+) -> anyhow::Result<CoreServicesResult> {
+    let resolver = &preflight.resolver;
+    let config = &preflight.config;
+    let cancel_token = &preflight.cancel_token;
+    let plugin_registry = &preflight.plugin_registry;
+    let stripe_key_raw = &preflight.secrets.stripe_key;
+    let nurture_secret_raw = &preflight.secrets.nurture_secret;
+    let a2a_node_token_raw = &preflight.secrets.a2a_node_token;
+
+    let db_pool = &db.db_pool;
+    let job_queue = &db.job_queue;
+    let audit_logger = &db.audit_logger;
+    let system_agent_id = db.system_agent_id;
+    let http_client = &db.http_client;
+    let hook_manager = &db.hook_manager;
+
+    let embed_provider = &llm.embed_provider;
+    let bg_provider = &llm.bg_provider;
+    let provider = &llm.provider;
+
     // === 🏗️ STAGE 4/7: Core Services ===
     let artifact_store = Arc::new(
         infrastructure::artifact_store::UniversalArtifactStore::new(
-            (*db_pool).clone(),
+            db_pool.clone(),
             resolver.resolve("artifacts"),
         )
         .with_embeddings(embed_provider.clone())
@@ -395,6 +627,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;
         let channel = endpoint.connect_lazy();
         let token = std::env::var("A2A_AUTH_TOKEN").unwrap_or_default();
+        shared::security::scrub_env("A2A_AUTH_TOKEN");
         Arc::new(infrastructure::grpc_proof_gate::GrpcFormalProofGate::new(
             channel, token,
         )) as Arc<dyn aiome_contracts::proof::FormalProofGate>
@@ -406,7 +639,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
             resolver.resolve("sandbox"),
         )
         .map_err(|e| anyhow::anyhow!("🚨 Failed to initialize WasmSkillManager: {}", e))?
-        .with_db_pool((*db_pool).clone()),
+        .with_db_pool(db_pool.clone()),
     );
 
     let skill_forge = Arc::new(infrastructure::skills::forge::SkillForge::new(
@@ -417,17 +650,18 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let commerce_engine = {
         let stripe_key = stripe_key_raw.clone();
         let polar_key = std::env::var("POLAR_API_KEY").ok();
+        shared::security::scrub_env("POLAR_API_KEY");
         let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
         let polar_webhook_secret = std::env::var("POLAR_WEBHOOK_SECRET").unwrap_or_default();
         shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
         shared::security::scrub_env("POLAR_WEBHOOK_SECRET");
 
-        let sqlite_pool = (*db_pool).get_sqlite_pool_or_err()?.clone();
+        let sqlite_pool = db_pool.get_sqlite_pool_or_err()?.clone();
 
         let nurture_url = std::env::var("NURTURE_API_URL").ok();
         let nurture_secret = nurture_secret_raw.clone();
 
-        let config = if let Some(key) = stripe_key {
+        let config_commerce = if let Some(key) = stripe_key {
             aiome_commerce::factory::CommerceConfig {
                 provider: aiome_commerce::factory::ProviderType::Stripe,
                 api_key: Some(secrecy::SecretString::from(key)),
@@ -452,7 +686,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
         Some(
             aiome_commerce::CommerceEngineFactory::create(
-                config,
+                config_commerce,
                 sqlite_pool,
                 nurture_url,
                 nurture_secret,
@@ -466,12 +700,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         Err(_) => {
             #[cfg(debug_assertions)]
             {
-                warn!("⚠️ [api-server] API_SERVER_SECRET not set. Using insecure default for development.");
+                tracing::warn!("⚠️ [api-server] API_SERVER_SECRET not set. Using insecure default for development.");
                 "dev_secret_donotuseinprod".to_string()
             }
             #[cfg(not(debug_assertions))]
             {
-                error!("🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET MUST be set in production!");
+                tracing::error!(
+                    "🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET MUST be set in production!"
+                );
                 std::process::exit(1);
             }
         }
@@ -486,7 +722,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     // Soul (Sense Foundation)
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
-        (*db_pool).clone(),
+        db_pool.clone(),
     ));
 
     // Phase 37a: Step 2 - SoulPipeline Initialization
@@ -548,26 +784,30 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         }
     };
 
-    let belief_gate = Arc::new(BeliefConsistencyGate::new(
-        provider.clone(),
-        slm_bridge.clone(),
-        soul_beliefs,
-        None,
-    ));
+    let belief_gate = Arc::new(
+        infrastructure::belief_consistency_gate::BeliefConsistencyGate::new(
+            provider.clone(),
+            slm_bridge.clone(),
+            soul_beliefs,
+            None,
+        ),
+    );
 
     // Initialize MemoryCrystallizer Background Loop (Phase 49)
-    let crystallizer = Arc::new(MemoryCrystallizer::new(
-        provider.clone(),
-        job_queue.clone() as Arc<dyn infrastructure::job_queue::DistillationOps>,
-        forge_semaphore.clone(),
-        slm_bridge.clone(),
-        Some(belief_gate.clone()),
-    ));
+    let crystallizer = Arc::new(
+        infrastructure::memory_crystallizer::MemoryCrystallizer::new(
+            provider.clone(),
+            job_queue.clone() as Arc<dyn infrastructure::job_queue::DistillationOps>,
+            forge_semaphore.clone(),
+            slm_bridge.clone(),
+            Some(belief_gate.clone()),
+        ),
+    );
 
     let crystallizer_task = crystallizer.clone();
     let supervisor = infrastructure::supervisor::TaskSupervisor::new(10, 300);
     struct MemoryCrystallizerTask {
-        crystallizer: Arc<MemoryCrystallizer>,
+        crystallizer: Arc<infrastructure::memory_crystallizer::MemoryCrystallizer>,
     }
     impl infrastructure::supervisor::SupervisedTask for MemoryCrystallizerTask {
         fn name(&self) -> &'static str {
@@ -579,8 +819,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
             let crystallizer = self.crystallizer.clone();
             Box::pin(async move {
-                info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
-                let mut interval = tokio::time::interval(Duration::from_secs(300)); // Every 5 minutes
+                tracing::info!("💎 [MemoryCrystallizer] Starting periodic distillation loop...");
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(300)); // Every 5 minutes
                 loop {
                     tokio::select! {
                         _ = ct.cancelled() => break,
@@ -593,7 +833,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                                 Ok(_) => false,
                             };
                             if has_error {
-                                tokio::time::sleep(Duration::from_secs(5)).await;
+                                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                                 continue;
                             }
                         }
@@ -614,7 +854,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         std::path::PathBuf::from("."),
         Some(belief_gate.clone()),
     ));
-    let mut primary_provider: Arc<dyn LlmProvider + Send + Sync> = provider.clone();
+    let mut primary_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        provider.clone();
 
     use secrecy::ExposeSecret;
     let proxy_provider = infrastructure::llm::proxy::ProxyLlmProvider::new(
@@ -635,31 +876,37 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     .await
     {
         Ok(Ok(_)) => {
-            info!("🔐 [KeyProxy] Connected successfully! Enabling Zero-Trust primary routing.");
+            tracing::info!(
+                "🔐 [KeyProxy] Connected successfully! Enabling Zero-Trust primary routing."
+            );
             primary_provider = Arc::new(proxy_provider);
         }
         Ok(Err(e)) => {
-            warn!(
+            tracing::warn!(
                 "⚠️ [KeyProxy] Unreachable (Error: {})! Falling back to Local DynamicLlmProvider.",
                 e
             );
         }
         Err(_) => {
-            warn!("⚠️ [KeyProxy] Unreachable (Timeout)! Falling back to Local DynamicLlmProvider.");
+            tracing::warn!(
+                "⚠️ [KeyProxy] Unreachable (Timeout)! Falling back to Local DynamicLlmProvider."
+            );
         }
     }
 
-    let fallback_provider: Arc<dyn LlmProvider + Send + Sync> = bg_provider.clone();
+    let fallback_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        bg_provider.clone();
     let base_router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
         primary_provider,
         fallback_provider,
         3, // failure threshold
-    )) as Arc<dyn LlmProvider + Send + Sync>;
+    ))
+        as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
     let router_provider = Arc::new(infrastructure::llm::humanizer_filter::HumanizerFilter::new(
         base_router_provider,
         infrastructure::llm::humanizer_rules::default_rules_ja(),
         infrastructure::llm::writing_context::WritingContext::Default,
-    )) as Arc<dyn LlmProvider + Send + Sync>;
+    )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
     let docker_failures = Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
@@ -677,15 +924,15 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         Arc::new(aiome_commerce::gift::TremendousGiftEngine::new(
             key,
             sandbox,
-            (*db_pool).clone(),
+            db_pool.clone(),
             audit_logger.clone(),
-        )) as Arc<dyn GiftEngine>
+        )) as Arc<dyn aiome_core_contracts::commerce::GiftEngine>
     };
     let ekyc_session_store = {
-        let pool = (*db_pool).clone();
+        let pool = db_pool.clone();
         Arc::new(aiome_commerce::ekyc::store::UniversalEkycSessionStore::new(
             pool.clone(),
-        )) as Arc<dyn EkycSessionStore>
+        )) as Arc<dyn aiome_core_contracts::ekyc::EkycSessionStore>
     };
     let ekyc_engine = {
         let stripe_key = stripe_key_raw.clone().map(secrecy::SecretString::from);
@@ -696,50 +943,52 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 std::env::var("EKYC_CALLBACK_URL")
                     .unwrap_or_else(|_| "http://localhost:1420/verify-callback".to_string()), // allow-anti-pattern
                 http_client.clone(),
-            )) as Arc<dyn EkycEngine>
+            )) as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
         } else {
             #[cfg(debug_assertions)]
             {
-                warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
-                Arc::new(aiome_commerce::ekyc::MockEkycEngine) as Arc<dyn EkycEngine>
+                tracing::warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
+                Arc::new(aiome_commerce::ekyc::MockEkycEngine)
+                    as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
             }
             #[cfg(not(debug_assertions))]
             {
-                error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
+                tracing::error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
                 std::process::exit(1);
             }
         }
     };
     let quarantine_store = {
-        let pool = (*db_pool).clone();
+        let pool = db_pool.clone();
         let store = infrastructure::compliance::quarantine::UniversalQuarantineStore::new(pool);
-        Arc::new(store) as Arc<dyn QuarantineStore>
+        Arc::new(store) as Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>
     };
     let auth_manager = {
         match std::env::var("JWT_PRIVATE_KEY_B64") {
             Ok(key_b64) => {
                 shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
-                info!("🔑 [Auth] Loading JWT private key from environment");
+                tracing::info!("🔑 [Auth] Loading JWT private key from environment");
                 Arc::new(
                     infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
                         .map_err(|e| anyhow::anyhow!("🚨 Invalid JWT_PRIVATE_KEY_B64: {}", e))?,
-                ) as Arc<dyn AuthManager>
+                ) as Arc<dyn infrastructure::auth::AuthManager>
             }
             #[cfg(debug_assertions)]
             Err(_) => {
-                warn!("⚠️ [Auth] JWT key not set, using MockAuthManager (dev only)");
-                Arc::new(infrastructure::auth::MockAuthManager::new()) as Arc<dyn AuthManager>
+                tracing::warn!("⚠️ [Auth] JWT key not set, using MockAuthManager (dev only)");
+                Arc::new(infrastructure::auth::MockAuthManager::new())
+                    as Arc<dyn infrastructure::auth::AuthManager>
             }
             #[cfg(not(debug_assertions))]
             Err(_) => {
-                error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
+                tracing::error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
                 std::process::exit(1);
             }
         }
     };
     // === 🏗️ STAGE 5/7: Registry & Core Orchestration ===
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
-        (*db_pool).clone(),
+        db_pool.clone(),
     ));
 
     // [A-3] MCP Discovery: Automated server discovery and registration
@@ -762,7 +1011,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 let mcp_manager = self.mcp_manager.clone();
                 let registry = self.registry.clone();
                 Box::pin(async move {
-                    info!("🔍 [MCP Discovery] Starting automated server discovery...");
+                    tracing::info!("🔍 [MCP Discovery] Starting automated server discovery...");
                     let has_error =
                         match mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
                             Err(e) => {
@@ -775,7 +1024,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                             Ok(_) => false,
                         };
                     if has_error {
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     }
                 })
             }
@@ -793,17 +1042,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         infrastructure::security::VoiceCoreDrm::new(
             config.abyss_vault_url.clone(),
             registry.clone(),
-            (*db_pool).clone(),
+            db_pool.clone(),
         )
         .await,
     );
     let gig_engine = Arc::new(aiome_commerce::gig::UniversalGigEngine::new(
-        (*db_pool).clone(),
+        db_pool.clone(),
         commerce_engine
             .clone()
             .ok_or_else(|| anyhow::anyhow!("🚨 [api-server] Commerce Engine must be initialized for Gig Engine (check STRIPE_API_KEY)"))?,
         provider.clone(),
-        config.resolver.resolve("gig_artifacts"),
+        resolver.resolve("gig_artifacts"),
     )) as Arc<dyn aiome_core_contracts::gig::GigEngine>;
 
     // [Step 1.7] Initialize TranscriptionEngine
@@ -811,13 +1060,14 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         .map(|v| v.to_lowercase() == "true")
         .unwrap_or(false);
 
-    let transcription_engine: Arc<dyn TranscriptionEngine> =
-        Arc::new(WhisperTranscriptionAdapter::new(
+    let transcription_engine: Arc<dyn aiome_core_contracts::traits::TranscriptionEngine> = Arc::new(
+        infrastructure::whisper_transcription::WhisperTranscriptionAdapter::new(
             Arc::new(infrastructure::security::BastionGuard::new_internal(
                 aiome_core::security::PermissionManifest::default(),
             )),
             stt_enabled,
-        ));
+        ),
+    );
 
     let validator = Arc::new(
         infrastructure::validator::DefaultConstitutionalValidator::new(
@@ -901,9 +1151,9 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         publishers
     }));
 
-    let quality_gate_store = Arc::new(
-        infrastructure::quality_gate_store::SqliteQualityGateStore::new((*db_pool).clone()),
-    ) as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
+    let quality_gate_store =
+        Arc::new(infrastructure::quality_gate_store::SqliteQualityGateStore::new(db_pool.clone()))
+            as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
 
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
@@ -998,9 +1248,8 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     // [Phase 51] Initialize Node IPC Client (A2A gRPC)
     let a2a_client = {
         let endpoint_url = config.a2a_node_url.clone();
-        let resolver = shared::app_data::AppDataResolver::new();
         let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
-        let auth_token = a2a_node_token_raw.unwrap_or_else(|| {
+        let auth_token = a2a_node_token_raw.clone().unwrap_or_else(|| {
             tracing::warn!("⚠️ [api-server] A2A_NODE_TOKEN not set! Insecure A2A communication.");
             "placeholder_for_phase51".to_string()
         });
@@ -1015,17 +1264,17 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     };
 
     let disk_quota_mgr = infrastructure::disk_quota::DiskQuotaManager::new(
-        (*db_pool).clone(),
+        db_pool.clone(),
         500 * 1024 * 1024, // 500MB per agent
     );
     if let Err(e) = disk_quota_mgr.init().await {
-        error!("🚨 Failed to init disk_quota schema: {}", e);
+        tracing::error!("🚨 Failed to init disk_quota schema: {}", e);
         std::process::exit(1);
     }
 
     // Commerce engine reference — unwrap here for both AppState and LoRA Marketplace
     let commerce_engine_arc: Arc<dyn aiome_core_contracts::commerce::CommerceEngine> =
-        commerce_engine.ok_or_else(|| {
+        commerce_engine.clone().ok_or_else(|| {
             anyhow::anyhow!(
                 "🚨 [api-server] Commerce Engine must be initialized (check STRIPE_API_KEY config)"
             )
@@ -1033,7 +1282,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
 
     let cortex_projector_arc = Arc::new(
         infrastructure::cortex_file_projector::CortexFileProjector::new(
-            (*db_pool).clone(),
+            db_pool.clone(),
             resolver.resolve("cortex_fs"),
         ),
     );
@@ -1045,244 +1294,313 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         job_queue.clone(),
     )) as Arc<dyn aiome_core_contracts::rlm::RlmProvider>;
 
-    let state = AppState {
+    Ok(CoreServicesResult {
+        artifact_store,
+        event_sender,
+        llm_semaphore,
+        forge_semaphore,
+        compute_semaphore,
+        formal_proof_gate,
+        wasm_skill_manager,
+        skill_forge,
+        commerce_engine,
+        api_server_secret,
+        federation_secret,
+        gift_engine,
+        ekyc_engine,
+        ekyc_session_store,
+        quarantine_store,
+        auth_manager,
+        soul_store,
+        soul_pipeline,
+        soul_mutator,
+        intent_generator,
+        intent_firewall,
+        context_engine,
+        belief_gate,
+        router_provider,
+        autonomous_running,
+        autonomous_config,
+        docker_failures,
+        mcp_manager,
+        gig_engine,
+        voice_drm,
+        registry,
+        transcription_engine,
+        task_dispatcher,
+        rlm_client: rlm_client_arc,
+        cortex_projector: cortex_projector_arc,
+        a2a_client,
+        disk_quota_mgr: Arc::new(disk_quota_mgr),
+        quality_gate_store,
+        publish_pipeline,
+        api_server_secret_raw,
+        stripe_key_raw: stripe_key_raw.clone(),
+        tts_openai_api_key_raw: preflight.secrets.tts_openai_key.clone(),
+    })
+}
+pub async fn assemble_app_state(
+    preflight: &PreflightResult,
+    db: &DatabaseResult,
+    llm: &ProviderResult,
+    core: &CoreServicesResult,
+) -> anyhow::Result<crate::app_state::AppState> {
+    let docs_path = "../../docs";
+
+    let state = crate::app_state::AppState {
         oxilean_power: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
-        hook_manager: Component::new(hook_manager.clone()),
-        db_pool: Component::new(db_pool.clone()),
-        health_monitor: Component::new(health_monitor),
-        job_queue: Component::new(job_queue.clone()),
-        wasm_skill_manager: Component::new(wasm_skill_manager),
-        skill_forge: Component::new(skill_forge),
+        hook_manager: Component::new(db.hook_manager.clone()),
+        db_pool: Component::new(std::sync::Arc::new(db.db_pool.clone())),
+        health_monitor: Component::new(preflight.health_monitor.clone()),
+        job_queue: Component::new(db.job_queue.clone()),
+        wasm_skill_manager: Component::new(core.wasm_skill_manager.clone()),
+        skill_forge: Component::new(core.skill_forge.clone()),
         docs_path: docs_path.to_string(),
-        llm_semaphore: Component::new(llm_semaphore),
-        forge_semaphore: Component::new(forge_semaphore),
-        mcp_sessions: Component::new(Arc::new(tokio::sync::RwLock::new(
+        llm_semaphore: Component::new(core.llm_semaphore.clone()),
+        forge_semaphore: Component::new(core.forge_semaphore.clone()),
+        mcp_sessions: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
             std::collections::HashMap::new(),
         ))),
-        mcp_manager: Component::new(mcp_manager),
+        mcp_manager: Component::new(core.mcp_manager.clone()),
         artifact_store: Component::new(
-            artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>
+            core.artifact_store.clone() as std::sync::Arc<dyn aiome_core::traits::ArtifactStore>
         ),
-        event_sender: Component::new(event_sender.clone()),
-        context_engine: Component::new(context_engine),
-        soul_mutator: Component::new(soul_mutator.clone()),
-        soul_store: Component::new(soul_store),
-        provider: Component::new(router_provider.clone()),
-        autonomous_running: Component::new(autonomous_running),
-        autonomous_config: Component::new(autonomous_config),
-        http_client: Component::new(http_client.clone()),
-        docker_failures: Component::new(docker_failures),
+        event_sender: Component::new(core.event_sender.clone()),
+        context_engine: Component::new(core.context_engine.clone()),
+        soul_mutator: Component::new(core.soul_mutator.clone()),
+        soul_store: Component::new(core.soul_store.clone()),
+        provider: Component::new(core.router_provider.clone()),
+        autonomous_running: Component::new(core.autonomous_running.clone()),
+        autonomous_config: Component::new(core.autonomous_config.clone()),
+        http_client: Component::new(db.http_client.clone()),
+        docker_failures: Component::new(core.docker_failures.clone()),
         security_policy: {
             let mut policy = shared::security::SecurityPolicy::default();
-            for tool in plugin_registry.registered_tools() {
+            for tool in preflight.plugin_registry.registered_tools() {
                 policy.register_tool(&tool);
             }
             policy
         },
-        commerce_engine: Component::new(commerce_engine_arc.clone()),
-        gig_engine: Component::new(gig_engine),
-        circuit_breaker: Component::new(circuit_breaker),
-        rate_limiter: Component::new(rate_limiter),
-        slo_engine: Component::new(slo_engine),
-        skill_arena: Component::new(Arc::new(
-            infrastructure::skills::skill_arena::SkillArena::new().with_db_pool((*db_pool).clone()),
+        commerce_engine: Component::new(
+            core.commerce_engine
+                .clone()
+                .ok_or_else(|| anyhow::anyhow!("commerce engine must be initialized"))?,
+        ),
+        gig_engine: Component::new(core.gig_engine.clone()),
+        circuit_breaker: Component::new(db.circuit_breaker.clone()),
+        rate_limiter: Component::new(db.rate_limiter.clone()),
+        slo_engine: Component::new(db.slo_engine.clone()),
+        skill_arena: Component::new(std::sync::Arc::new(
+            infrastructure::skills::skill_arena::SkillArena::new().with_db_pool(db.db_pool.clone()),
         )),
-        api_server_secret: Component::new(api_server_secret),
-        federation_secret: Component(federation_secret),
-        config: Component::new(config.clone()),
-        gift_engine: Component::new(gift_engine),
-        ekyc_engine: Component::new(ekyc_engine),
-        ekyc_session_store: Component::new(ekyc_session_store),
-        quarantine_store: Component::new(quarantine_store),
-        auth_manager: Component::new(auth_manager),
-        system_agent_id,
-        voice_drm: Component::new(voice_drm),
-        registry: Component::new(registry),
-        intent_generator: Component::new(intent_generator),
-        intent_firewall: Component::new(intent_firewall),
-        audit_logger: Component::new(audit_logger),
+        api_server_secret: Component::new(core.api_server_secret.clone()),
+        federation_secret: Component::new(
+            core.federation_secret
+                .clone()
+                .unwrap_or_else(|| Arc::new(secrecy::SecretString::from(String::new()))),
+        ),
+        config: Component::new(preflight.config.clone()),
+        gift_engine: Component::new(core.gift_engine.clone()),
+        ekyc_engine: Component::new(core.ekyc_engine.clone()),
+        ekyc_session_store: Component::new(core.ekyc_session_store.clone()),
+        quarantine_store: Component::new(core.quarantine_store.clone()),
+        auth_manager: Component::new(core.auth_manager.clone()),
+        system_agent_id: db.system_agent_id,
+        voice_drm: Component::new(core.voice_drm.clone()),
+        registry: Component::new(core.registry.clone()),
+        intent_generator: Component::new(core.intent_generator.clone()),
+        intent_firewall: Component::new(core.intent_firewall.clone()),
+        audit_logger: Component::new(db.audit_logger.clone()),
         affiliate_adapter: Component::new({
             #[cfg(debug_assertions)]
             {
-                Arc::new(infrastructure::intent::MockAffiliateAdapter::new())
-                    as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
+                std::sync::Arc::new(infrastructure::intent::MockAffiliateAdapter::new())
+                    as std::sync::Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
             }
             #[cfg(not(debug_assertions))]
             {
-                Arc::new(infrastructure::intent::DisabledAffiliateAdapter::new())
-                    as Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
+                std::sync::Arc::new(infrastructure::intent::DisabledAffiliateAdapter::new())
+                    as std::sync::Arc<dyn aiome_core_contracts::traits::AffiliateAdapter>
             }
         }),
-        soul_pipeline: Component::new(soul_pipeline),
-        transcription_engine: Component::new(transcription_engine),
-        task_dispatcher: Component::new(task_dispatcher),
+        soul_pipeline: Component::new(core.soul_pipeline.clone()),
+        transcription_engine: Component::new(core.transcription_engine.clone()),
+        task_dispatcher: Component::new(core.task_dispatcher.clone()),
         lora_engine: {
-            let core_engine = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-            let engine = Arc::new(infrastructure::lora_training::LoraTrainingService::new(
-                core_engine,
-                Some(soul_mutator.clone()),
-                Some(job_queue.clone()),
-                Some(event_sender.clone()),
-                Some(compute_semaphore.clone()),
-            ));
-            Component::new(engine as Arc<dyn aiome_core_contracts::traits::LoraEngine>)
+            let core_engine = std::sync::Arc::new(aiome_core::lora::engine::LoraEngine::new());
+            let engine =
+                std::sync::Arc::new(infrastructure::lora_training::LoraTrainingService::new(
+                    core_engine,
+                    Some(core.soul_mutator.clone()),
+                    Some(db.job_queue.clone()),
+                    Some(core.event_sender.clone()),
+                    Some(core.compute_semaphore.clone()),
+                ));
+            Component::new(engine as std::sync::Arc<dyn aiome_core_contracts::traits::LoraEngine>)
         },
         tts_provider: {
             let tts_type = std::env::var("TTS_PROVIDER").unwrap_or_else(|_| "mock".to_string());
-            let provider: Arc<dyn aiome_core_contracts::traits::TtsProvider> =
+            let provider: std::sync::Arc<dyn aiome_core_contracts::traits::TtsProvider> =
                 match tts_type.as_str() {
                     "openai" => {
-                        let key: secrecy::SecretString = match tts_openai_api_key_raw {
-                            Some(raw) => secrecy::SecretString::from(raw),
-                            None => {
-                                tracing::warn!(
-                                    "⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail"
-                                );
-                                config
-                                    .openai_api_key
-                                    .clone()
-                                    .unwrap_or_else(|| secrecy::SecretString::from(String::new()))
-                            }
-                        };
+                        let key: secrecy::SecretString =
+                            match &core.tts_openai_api_key_raw {
+                                Some(raw) => secrecy::SecretString::from(raw.clone()),
+                                None => {
+                                    tracing::warn!(
+                                        "⚠️ [TTS] TTS_OPENAI_API_KEY missing, OpenAI TTS will fail"
+                                    );
+                                    preflight.config.openai_api_key.clone().unwrap_or_else(|| {
+                                        secrecy::SecretString::from(String::new())
+                                    })
+                                }
+                            };
                         let model = std::env::var("TTS_OPENAI_MODEL")
                             .unwrap_or_else(|_| "tts-1".to_string());
-                        Arc::new(infrastructure::tts::OpenAiTtsProvider::new(
+                        std::sync::Arc::new(infrastructure::tts::OpenAiTtsProvider::new(
                             key,
                             model,
                             std::env::var("OPENAI_TTS_ENDPOINT").ok(),
                         ))
                     }
                     "xtts" => {
-                        let endpoint = config
+                        let endpoint = preflight
+                            .config
                             .xtts_endpoint
                             .clone()
                             .unwrap_or_else(|| format!("http://127.0.0.1:{}", 18020));
-                        Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
+                        std::sync::Arc::new(infrastructure::tts::XttsProvider::new(endpoint))
                     }
                     _ => {
                         #[cfg(debug_assertions)]
                         {
-                            Arc::new(infrastructure::tts::MockTtsProvider::default())
+                            std::sync::Arc::new(infrastructure::tts::MockTtsProvider::default())
                         }
                         #[cfg(not(debug_assertions))]
                         {
-                            Arc::new(infrastructure::tts::DisabledTtsProvider::default())
+                            std::sync::Arc::new(infrastructure::tts::DisabledTtsProvider::default())
                         }
                     }
                 };
             Component::new(provider)
         },
         news_service: {
-            let rss = Arc::new(infrastructure::rss_collector::RssCollector::new(Arc::new(
-                infrastructure::rss_collector::SqlTrendCacheRepository::new((*db_pool).clone()),
-            )));
-            Component::new(rss as Arc<dyn aiome_core_contracts::traits::NewsService>)
+            let rss = std::sync::Arc::new(infrastructure::rss_collector::RssCollector::new(
+                std::sync::Arc::new(infrastructure::rss_collector::SqlTrendCacheRepository::new(
+                    db.db_pool.clone(),
+                )),
+            ));
+            Component::new(rss as std::sync::Arc<dyn aiome_core_contracts::traits::NewsService>)
         },
-        live_session_manager: Component(live_manager),
-        syndicate_store: Component::new(Arc::new(
-            aiome_commerce::syndicate::UniversalSyndicateStore::new((*db_pool).clone()),
+        live_session_manager: Component(preflight.live_manager.clone()),
+        syndicate_store: Component::new(std::sync::Arc::new(
+            aiome_commerce::syndicate::UniversalSyndicateStore::new(db.db_pool.clone()),
         )),
-        hierarchical_router: Component::new(Arc::new(
+        hierarchical_router: Component::new(std::sync::Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(
-                bg_provider.clone(),
-                (*db_pool)
-                    .get_sqlite_pool()
-                    .cloned()
-                    .expect("SQLite pool required for HierarchicalRouter"), // allow-anti-pattern
+                llm.provider.clone(),
+                db.db_pool.get_sqlite_pool_or_err()?.clone(),
             ),
         )),
-        a2a_client: Component::new(a2a_client),
-        ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
-        harness_cache: Component::new(Arc::new(
-            infrastructure::skills::harness::HarnessCache::new(),
-        )),
-        upload_semaphore: Component::new(Arc::new(tokio::sync::Semaphore::new(2))),
-        compute_semaphore: Component::new(compute_semaphore.clone()),
-        disk_quota: Component::new(Arc::new(disk_quota_mgr)),
-        generative_engine: {
-            let engine_type =
-                std::env::var("GENERATIVE_ENGINE").unwrap_or_else(|_| "mock".to_string());
-            let engine: Arc<dyn aiome_core_contracts::traits::GenerativeEngine> = match engine_type
-                .as_str()
-            {
-                "comfyui" => {
-                    let base_url = config.comfyui_url.clone();
-                    Arc::new(
-                        infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
-                            base_url,
-                            Some(compute_semaphore.clone()),
-                        ),
-                    )
-                }
-                "falai" => {
-                    let api_key = std::env::var("FAL_KEY").unwrap_or_default();
-                    shared::security::scrub_env("FAL_KEY");
-                    Arc::new(
-                        infrastructure::generative_engine::FalAiGenerativeEngine::new(
-                            secrecy::SecretString::from(api_key),
-                            std::env::var("FAL_AI_ENDPOINT").ok(),
-                        ),
-                    )
-                }
-                _ => {
-                    #[cfg(any(test, debug_assertions))]
-                    {
-                        tracing::warn!("⚠️ [GenerativeEngine] Using Mock engine for development.");
-                        Arc::new(
-                            infrastructure::generative_engine::mock::MockGenerativeEngine::default(
-                            ),
-                        )
-                    }
-                    #[cfg(not(any(test, debug_assertions)))]
-                    {
-                        tracing::error!("🚨 [FATAL] GenerativeEngine must be explicitly configured in production (GENERATIVE_ENGINE=comfyui|falai).");
-                        std::process::exit(1);
-                    }
-                }
-            };
-            Component::new(engine)
-        },
-        cortex_ingester: Component::new(Arc::new(
-            infrastructure::cortex_ingester::CortexIngester::new(
-                router_provider.clone(),
-                (*db_pool).clone(),
-            ),
-        )),
-        project_rules_cache: Component::new(Arc::new(
-            moka::future::Cache::builder()
-                .time_to_live(std::time::Duration::from_secs(30))
-                .build(),
-        )),
-        cortex_query: Component::new(Arc::new(
-            infrastructure::cortex_query::CortexQueryEngine::new(
-                router_provider.clone(),
-                (*db_pool).clone(),
-            )
-            .with_rlm_provider(rlm_client_arc.clone()),
-        )),
+        rlm_client: Component::new(core.rlm_client.clone()),
+        formal_proof_gate: Component::new(core.formal_proof_gate.clone()),
+        a2a_client: Component::new(core.a2a_client.clone()),
+        compute_semaphore: Component::new(core.compute_semaphore.clone()),
+        disk_quota: Component::new(core.disk_quota_mgr.clone()),
+        publish_pipeline: Component::new(core.publish_pipeline.clone()),
+        cortex_projector: Component::new(core.cortex_projector.clone()),
         lora_marketplace: {
-            let vault_root = config.resolver.resolve("vault");
-            let commerce_for_marketplace = commerce_engine_arc.clone();
+            let vault_root = preflight.config.resolver.resolve("vault");
+            let commerce_for_marketplace = core.commerce_engine.clone().ok_or_else(|| {
+                anyhow::anyhow!("commerce engine must be initialized for lora marketplace")
+            })?;
             let marketplace = Arc::new(
                 infrastructure::lora_marketplace::UniversalLoraMarketplace::new(
-                    (*db_pool).clone(),
+                    db.db_pool.clone(),
                     commerce_for_marketplace,
                     vault_root,
                 ),
             );
             Component::new(
-                marketplace as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>,
+                marketplace
+                    as std::sync::Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>,
             )
         },
-        publish_pipeline: Component::new(publish_pipeline),
-        cortex_projector: Component::new(cortex_projector_arc.clone()),
-        feature_flags_cache: Component::new(Arc::new(
+        quality_gate_store: Component::new(core.quality_gate_store.clone()),
+        ws_active_connections: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+        harness_cache: Component::new(std::sync::Arc::new(
+            infrastructure::skills::harness::HarnessCache::new(),
+        )),
+        upload_semaphore: Component::new(std::sync::Arc::new(tokio::sync::Semaphore::new(2))),
+        generative_engine: {
+            let engine_type =
+                std::env::var("GENERATIVE_ENGINE").unwrap_or_else(|_| "mock".to_string());
+            let engine: std::sync::Arc<dyn aiome_core_contracts::traits::GenerativeEngine> =
+                match engine_type.as_str() {
+                    "comfyui" => {
+                        let base_url = preflight.config.comfyui_url.clone();
+                        std::sync::Arc::new(
+                            infrastructure::generative_engine::ComfyUiGenerativeEngine::new(
+                                base_url,
+                                Some(core.compute_semaphore.clone()),
+                            ),
+                        )
+                    }
+                    "falai" => {
+                        let api_key = std::env::var("FAL_KEY").unwrap_or_default();
+                        shared::security::scrub_env("FAL_KEY");
+                        std::sync::Arc::new(
+                            infrastructure::generative_engine::FalAiGenerativeEngine::new(
+                                secrecy::SecretString::from(api_key),
+                                std::env::var("FAL_AI_ENDPOINT").ok(),
+                            ),
+                        )
+                    }
+                    _ => {
+                        #[cfg(any(test, debug_assertions))]
+                        {
+                            tracing::warn!(
+                                "⚠️ [GenerativeEngine] Using Mock engine for development."
+                            );
+                            std::sync::Arc::new(
+                            infrastructure::generative_engine::mock::MockGenerativeEngine::default(
+                            ),
+                        )
+                        }
+                        #[cfg(not(any(test, debug_assertions)))]
+                        {
+                            tracing::error!("🚨 [FATAL] GenerativeEngine must be explicitly configured in production (GENERATIVE_ENGINE=comfyui|falai).");
+                            std::process::exit(1);
+                        }
+                    }
+                };
+            Component::new(engine)
+        },
+        cortex_ingester: Component::new(std::sync::Arc::new(
+            infrastructure::cortex_ingester::CortexIngester::new(
+                core.router_provider.clone(),
+                db.db_pool.clone(),
+            ),
+        )),
+        project_rules_cache: Component::new(std::sync::Arc::new(
+            moka::future::Cache::builder()
+                .time_to_live(std::time::Duration::from_secs(30))
+                .build(),
+        )),
+        cortex_query: Component::new(std::sync::Arc::new(
+            infrastructure::cortex_query::CortexQueryEngine::new(
+                core.router_provider.clone(),
+                db.db_pool.clone(),
+            )
+            .with_rlm_provider(core.rlm_client.clone()),
+        )),
+        feature_flags_cache: Component::new(std::sync::Arc::new(
             moka::future::Cache::builder()
                 .time_to_live(std::time::Duration::from_secs(60))
                 .build(),
         )),
-        eval_logger: Component::new(eval_logger),
+        eval_logger: Component::new(db.eval_logger.clone()),
         a2ui_catalog: {
             let mut catalog = infrastructure::a2ui::AiomeCatalog::default();
             catalog.register_component(
@@ -1308,19 +1626,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
                 "treasureItem",
                 serde_json::json!({"name": "string", "value": "number", "currency": "string"}),
             );
-            Component::new(Arc::new(catalog))
+            Component::new(std::sync::Arc::new(catalog))
         },
-        quality_gate_store: Component::new(quality_gate_store.clone()),
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
-        nurture_internal_secret: nurture_secret_raw.clone(),
-        rlm_client: Component::new(rlm_client_arc),
-        formal_proof_gate: Component::new(formal_proof_gate),
-        gig_updater: Component::new(Arc::new(
+        nurture_internal_secret: preflight.secrets.nurture_secret.clone(),
+        gig_updater: Component::new(std::sync::Arc::new(
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
-                (*db_pool).get_sqlite_pool_or_err()?.clone(),
+                db.db_pool.get_sqlite_pool_or_err()?.clone(),
             ),
         )
-            as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
+            as std::sync::Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
         pkce_cache: Component::new(Arc::new(
             moka::future::Cache::builder()
                 .time_to_live(std::time::Duration::from_secs(600))
@@ -1329,18 +1644,27 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         )),
     };
 
-    // === 🏗️ STAGE 6/7: Workers (Background loops) ===
+    Ok(state)
+}
+pub async fn spawn_background_workers(
+    state: &crate::app_state::AppState,
+    belief_gate: &std::sync::Arc<infrastructure::belief_consistency_gate::BeliefConsistencyGate>,
+    cancel_token: tokio_util::sync::CancellationToken,
+) -> anyhow::Result<()> {
+    let resolver = &state.config.get_inner().resolver;
+    let job_queue = state.job_queue.get_inner().clone();
+
     // [Step 1.8.5] Spawn Unified Internal Services (Watchtower & Heartbeat)
     internal_services::spawn_all(state.clone()).await;
 
     // [Step 1.8.6] Spawn BlobStorageAdapter (Event-Driven Physical Asset Purging)
-    let blob_adapter = Arc::new(infrastructure::blob_storage::BlobStorageAdapter::new(
+    let blob_adapter = std::sync::Arc::new(infrastructure::blob_storage::BlobStorageAdapter::new(
         resolver.root().to_path_buf(),
     ));
     let blob_rx = job_queue.event_bus.subscribe();
     blob_adapter.start_event_listener(blob_rx).await;
 
-    // [Step 1.9] Initialize and Spawn TtsWorker Background Loop (Phase 13.3)
+    // [Step 1.9] Initialize and Spawn TtsWorker Background Loop
     let tts_worker_jq = state.job_queue.get_inner().clone();
     let tts_worker_provider = state.tts_provider.get_inner().clone();
     let tts_worker_speaker = state
@@ -1349,32 +1673,41 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         .xtts_speaker
         .clone()
         .unwrap_or_else(|| "p225".to_string());
-    let tts_worker_artifacts = state.config.resolver.resolve("artifacts");
+    let tts_worker_artifacts = resolver.resolve("artifacts");
 
+    let tts_cancel = cancel_token.clone();
     tokio::spawn(async move {
-        info!("🎙️ [TtsWorker] Starting background synthesis loop...");
+        tracing::info!("🎙️ [TtsWorker] Starting background synthesis loop...");
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
         loop {
-            interval.tick().await;
-            if let Err(e) = TtsWorker::process_pending_tts(
-                &*tts_worker_jq,
-                &*tts_worker_provider,
-                &tts_worker_speaker,
-                &tts_worker_artifacts,
-            )
-            .await
-            {
-                error!("🚨 [TtsWorker] Loop error: {}", e);
+            tokio::select! {
+                _ = tts_cancel.cancelled() => {
+                    tracing::info!("🛑 [TtsWorker] Shutting down cleanly...");
+                    break;
+                }
+                _ = interval.tick() => {
+                    if let Err(e) = TtsWorker::process_pending_tts(
+                        &*tts_worker_jq,
+                        &*tts_worker_provider,
+                        &tts_worker_speaker,
+                        &tts_worker_artifacts,
+                    )
+                    .await
+                    {
+                        tracing::error!("🚨 [TtsWorker] Loop error: {}", e);
+                    }
+                }
             }
         }
     });
 
-    // [Step 1.10] Initialize and Spawn CortexCompiler Background Loop (Phase B)
+    // [Step 1.10] Initialize and Spawn CortexCompiler Background Loop
     let compiler_provider = state.provider.get_inner().clone();
     let compiler_pool = state.db_pool.get_inner().clone();
     let compiler_semaphore = state.compute_semaphore.get_inner().clone();
     let compiler_gate = Some(belief_gate.clone());
     let compiler_projector = state.cortex_projector.get_inner().clone();
+    let cortex_cancel = cancel_token.clone();
     tokio::spawn(async move {
         tracing::info!("📚 [Cortex] Starting compilation loop...");
         let compiler = infrastructure::cortex_compiler::CortexCompiler::new(
@@ -1386,60 +1719,44 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         .with_file_projector(compiler_projector);
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1800));
         loop {
-            interval.tick().await;
-            match compiler.run_compilation_cycle().await {
-                Ok(ref report) if report.new_articles > 0 || report.updated_articles > 0 => {
-                    tracing::info!(
-                        "📚 [Cortex] Compilation: {} new, {} updated",
-                        report.new_articles,
-                        report.updated_articles
-                    );
+            tokio::select! {
+                _ = cortex_cancel.cancelled() => {
+                    tracing::info!("🛑 [Cortex] Shutting down cleanly...");
+                    break;
                 }
-                Err(e) => tracing::error!("🚨 [Cortex] Compilation error: {}", e),
-                _ => {} // Ignore empty cycles
+                _ = interval.tick() => {
+                    match compiler.run_compilation_cycle().await {
+                        Ok(ref report) if report.new_articles > 0 || report.updated_articles > 0 => {
+                            tracing::info!(
+                                "📚 [Cortex] Compilation: {} new, {} updated",
+                                report.new_articles,
+                                report.updated_articles
+                            );
+                        }
+                        Err(e) => tracing::error!("🚨 [Cortex] Compilation error: {}", e),
+                        _ => {} // Ignore empty cycles
+                    }
+                }
             }
         }
     });
 
-    let cors_layer = {
-        let mut layer = CorsLayer::new()
-            .allow_methods(tower_http::cors::Any)
-            .allow_headers(tower_http::cors::Any);
+    Ok(())
+}
 
-        match std::env::var("ALLOWED_ORIGINS") {
-            Ok(origins) if !origins.is_empty() => {
-                let list: Vec<HeaderValue> = origins
-                    .split(',')
-                    .map(|s| {
-                        HeaderValue::from_str(s.trim()).map_err(|e| {
-                            anyhow::anyhow!("🚨 Invalid origin in ALLOWED_ORIGINS '{}': {}", s, e)
-                        })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                layer = layer.allow_origin(AllowOrigin::list(list));
-                info!("🌐 [CORS] Allowed origins: {}", origins);
-            }
-            _ => {
-                #[cfg(debug_assertions)]
-                {
-                    warn!("⚠️ [CORS] ALLOWED_ORIGINS not set. All origins allowed in dev mode.");
-                    layer = layer.allow_origin(AllowOrigin::any());
-                }
-                #[cfg(not(debug_assertions))]
-                {
-                    error!("🚨 [FATAL SECURITY ERROR] ALLOWED_ORIGINS MUST be set in production!");
-                    std::process::exit(1);
-                }
-            }
-        }
-        layer
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    Ok(BootContext {
-        state,
-        plugin_registry,
-        metrics_handle,
-        cancel_token,
-        cors_layer,
-    })
+    #[test]
+    fn test_init_cors() {
+        std::env::set_var("ALLOWED_ORIGINS", "http://localhost:1420");
+        let result = init_cors();
+        assert!(result.is_ok(), "init_cors failed: {:?}", result.err());
+
+        // Negative test (invalid origin)
+        std::env::set_var("ALLOWED_ORIGINS", "invalid\nuri");
+        let result = init_cors();
+        assert!(result.is_err(), "init_cors should fail with invalid URI");
+    }
 }

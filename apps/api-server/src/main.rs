@@ -65,8 +65,11 @@ mod audit_auth_tests;
 mod auth;
 mod autonomous_demo;
 pub mod bootstrap;
+pub mod bootstrap_builder;
 mod docker;
 mod error;
+#[cfg(test)]
+mod federation_e2e_tests;
 pub mod internal_services;
 #[cfg(test)]
 mod job_management_tests;
@@ -92,7 +95,8 @@ use shared::health::HealthMonitor;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     if std::env::var("CELL_ID").unwrap_or_default().is_empty() {
-        panic!("🚨 FATAL: CELL_ID is not set! The Sovereign Verifier architecture requires strict cellular isolation. No identity = No survival.");
+        eprintln!("🚨 FATAL: CELL_ID is not set! The Sovereign Verifier architecture requires strict cellular isolation. No identity = No survival.");
+        std::process::exit(1);
     }
 
     let mut boot_ctx = crate::bootstrap::boot_sequence().await?;
@@ -101,9 +105,8 @@ async fn main() -> anyhow::Result<()> {
     let metrics_handle = boot_ctx.metrics_handle;
     let cancel_token = boot_ctx.cancel_token;
     let cors_layer = boot_ctx.cors_layer;
-    let cancel_serve = cancel_token.clone();
     let static_path = state.config.get_inner().frontend_static_path.clone();
-    let static_path = Box::leak(static_path.into_boxed_str());
+    // Box::leak is no longer needed since ServeDir accepts String
     let job_queue = state.job_queue.get_inner().clone();
 
     // === 🏗️ STAGE 7/7: Network ===
@@ -117,14 +120,22 @@ async fn main() -> anyhow::Result<()> {
 
     // G-23: Periodic Federated Metrics Push (Background Maintenance Loop)
     let jq_for_bg = job_queue.clone();
+    let cancel_bg = cancel_token.clone();
     tokio::spawn(async move {
         use infrastructure::job_queue::federation::FederationOps;
         let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
         loop {
-            interval.tick().await;
-            info!("♻️ [Maintenance] Running periodic federated metrics push...");
-            if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
-                error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);
+            tokio::select! {
+                _ = cancel_bg.cancelled() => {
+                    info!("🛑 [Maintenance] Federation metrics push stopped due to shutdown.");
+                    break;
+                }
+                _ = interval.tick() => {
+                    info!("♻️ [Maintenance] Running periodic federated metrics push...");
+                    if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
+                        error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);
+                    }
+                }
             }
         }
     });

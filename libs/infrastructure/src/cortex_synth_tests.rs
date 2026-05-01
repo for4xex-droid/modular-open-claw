@@ -39,7 +39,9 @@ impl LlmProvider for MockLlmProvider {
         std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>,
         AiomeError,
     > {
-        unimplemented!()
+        Err(AiomeError::Infrastructure {
+            reason: "Not yet implemented".into(),
+        })
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -145,7 +147,9 @@ async fn test_generate_dataset_filters_contradicted_beliefs(
             std::pin::Pin<Box<dyn futures::Stream<Item = Result<String, AiomeError>> + Send>>,
             AiomeError,
         > {
-            unimplemented!()
+            Err(AiomeError::Infrastructure {
+                reason: "Not yet implemented".into(),
+            })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {
             Ok(())

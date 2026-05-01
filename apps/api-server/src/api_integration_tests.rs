@@ -609,8 +609,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             let mut config = AiomeConfig::default();
             config.resolver = shared::app_data::AppDataResolver::new();
             config.log_level = "info".to_string();
-            config.ollama_host = "".to_string();
-            config.ollama_model = "".to_string();
+            // config.ollama_host = "".to_string();
+            // config.ollama_model = "".to_string();
             config.gemini_api_key = None;
             config.openai_api_key = None;
             config.anthropic_api_key = None;
@@ -806,7 +806,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let app = build_app(
         state.clone(),
         cors_layer,
-        tmp_dir.path().join("static").to_str().unwrap(),
+        tmp_dir.path().join("static").to_str().unwrap().to_string(),
         plugin_registry,
         metrics_handle,
     );
@@ -2037,7 +2037,7 @@ async fn test_fallback_router_failover() {
     let app = build_app(
         state,
         CorsLayer::new().allow_origin(tower_http::cors::AllowOrigin::any()),
-        "static",
+        "static".to_string(),
         plugin_loader::PluginRegistry::new(),
         metrics_handle,
     );
@@ -2897,7 +2897,9 @@ async fn test_model_status_authorized() {
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
 
-    assert_eq!(response.status_code(), StatusCode::OK);
+    let status = response.status_code();
+    println!("Response Body: {}", response.text());
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[serial]

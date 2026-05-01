@@ -50,7 +50,7 @@ pub async fn metrics_middleware(req: Request, next: Next) -> Response {
 pub fn build_app(
     state: AppState,
     cors_layer: CorsLayer,
-    static_path: &str,
+    static_path: String,
     plugin_registry: crate::plugin_loader::PluginRegistry,
     metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 ) -> Router {

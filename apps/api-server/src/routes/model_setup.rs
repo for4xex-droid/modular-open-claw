@@ -49,10 +49,7 @@ pub async fn get_model_status(
         .await
         .ok()
         .flatten()
-        .unwrap_or_else(|| {
-            std::env::var("OLLAMA_HOST")
-                .unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
-        });
+        .unwrap_or_else(|| state.config.ollama_host.clone());
 
     let configured_model = state
         .job_queue
@@ -60,9 +57,7 @@ pub async fn get_model_status(
         .await
         .ok()
         .flatten()
-        .unwrap_or_else(|| {
-            std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string())
-        });
+        .unwrap_or_else(|| state.config.ollama_model.clone());
 
     let client = aiome_core::http::get_http_client();
     let tags_url = format!("{}/api/tags", host.trim_end_matches('/'));
@@ -159,10 +154,7 @@ pub async fn pull_model(
         .await
         .ok()
         .flatten()
-        .unwrap_or_else(|| {
-            std::env::var("OLLAMA_HOST")
-                .unwrap_or_else(|_| shared::config::DEFAULT_OLLAMA_HOST.to_string())
-        });
+        .unwrap_or_else(|| state.config.ollama_host.clone());
 
     let pull_url = format!("{}/api/pull", host.trim_end_matches('/'));
 
