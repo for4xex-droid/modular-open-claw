@@ -143,7 +143,13 @@ async fn main() -> anyhow::Result<()> {
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
         agent_registry,
-        config: shared::config::AiomeConfig::load().unwrap_or_default(),
+        config: shared::config::AiomeConfig::load().unwrap_or_else(|e| {
+            warn!(
+                "⚠️ [SamsaraHub] AiomeConfig::load() failed: {}. Using default config.",
+                e
+            );
+            shared::config::AiomeConfig::default()
+        }),
     });
 
     // Spawn the Approval Worker to process quarantine
@@ -1069,13 +1075,26 @@ pub fn build_app(state: Arc<HubState>) -> Router {
     let mut allowed_origins = vec![];
 
     for origin in &state.config.allowed_origins {
-        if let Ok(parsed) = origin.parse() {
-            allowed_origins.push(parsed);
+        match origin.parse() {
+            Ok(parsed) => allowed_origins.push(parsed),
+            Err(e) => {
+                tracing::warn!(
+                    origin = %origin,
+                    error = %e,
+                    "⚠️ [SamsaraHub] Failed to parse CORS origin, skipping"
+                );
+            }
         }
     }
 
     if allowed_origins.is_empty() {
-        tracing::warn!("No valid ALLOWED_ORIGINS found in config. CORS might block all requests.");
+        tracing::warn!("🚨 [SamsaraHub] No valid ALLOWED_ORIGINS found in config. CORS will block all cross-origin requests.");
+    } else {
+        tracing::info!(
+            count = allowed_origins.len(),
+            "🌐 [SamsaraHub] CORS configured with {} allowed origin(s)",
+            allowed_origins.len()
+        );
     }
 
     let cors = CorsLayer::new()
