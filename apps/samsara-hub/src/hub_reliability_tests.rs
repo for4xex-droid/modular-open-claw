@@ -87,6 +87,7 @@ mod tests {
             tx,
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            config: shared::config::AiomeConfig::default(),
         });
 
         let overflow_clock: i64 = (u32::MAX as i64) + 123456;

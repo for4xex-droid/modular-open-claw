@@ -143,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
         agent_registry,
+        config: shared::config::AiomeConfig::load().unwrap_or_default(),
     });
 
     // Spawn the Approval Worker to process quarantine
@@ -1065,43 +1066,16 @@ async fn timeline_sync_handler(
 }
 
 pub fn build_app(state: Arc<HubState>) -> Router {
-    let origins_env = std::env::var("ALLOWED_ORIGINS").unwrap_or_default();
     let mut allowed_origins = vec![];
 
-    // Add defaults
-    let defaults = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3015",
-        "http://localhost:3016",
-        "http://localhost:1420",
-    ];
-
-    let add_defaults = |origins: &mut Vec<_>| {
-        for d in defaults {
-            if let Ok(parsed) = d.parse() {
-                origins.push(parsed);
-            }
+    for origin in &state.config.allowed_origins {
+        if let Ok(parsed) = origin.parse() {
+            allowed_origins.push(parsed);
         }
-    };
+    }
 
-    if !origins_env.is_empty() {
-        // Production: Use ONLY the explicitly configured origins
-        for extra in origins_env.split(',') {
-            if let Ok(parsed) = extra.trim().parse() {
-                allowed_origins.push(parsed);
-            }
-        }
-    } else if cfg!(debug_assertions) {
-        // Debug build without explicit config: Use localhost defaults
-        add_defaults(&mut allowed_origins);
-    } else {
-        // Release build without explicit config: Fail-safe with localhost + warning
-        tracing::warn!(
-            "⚠️ ALLOWED_ORIGINS is not set in production build. \
-             Falling back to localhost defaults. Set ALLOWED_ORIGINS for production use."
-        );
-        add_defaults(&mut allowed_origins);
+    if allowed_origins.is_empty() {
+        tracing::warn!("No valid ALLOWED_ORIGINS found in config. CORS might block all requests.");
     }
 
     let cors = CorsLayer::new()

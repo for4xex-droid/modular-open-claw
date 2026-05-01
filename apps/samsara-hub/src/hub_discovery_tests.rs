@@ -46,6 +46,7 @@ mod tests {
             tx,
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry: agent_registry.clone(),
+            config: shared::config::AiomeConfig::default(),
         });
 
         let app = crate::build_app(state);

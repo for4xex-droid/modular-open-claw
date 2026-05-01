@@ -30,6 +30,7 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
         tx,
         active_connections: std::sync::atomic::AtomicUsize::new(0),
         agent_registry: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        config: shared::config::AiomeConfig::default(),
     });
 
     let app = build_app(state.clone());

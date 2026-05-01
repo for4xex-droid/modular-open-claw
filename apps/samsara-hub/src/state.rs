@@ -10,6 +10,7 @@ pub struct HubState {
     pub tx: broadcast::Sender<HubMessage>,
     pub active_connections: std::sync::atomic::AtomicUsize,
     pub agent_registry: crate::mdns_listener::AgentRegistry,
+    pub config: shared::config::AiomeConfig,
 }
 
 impl HubState {
@@ -19,6 +20,7 @@ impl HubState {
         auth_manager: Arc<dyn shared::auth::AuthManager>,
         tx: broadcast::Sender<HubMessage>,
         agent_registry: crate::mdns_listener::AgentRegistry,
+        config: shared::config::AiomeConfig,
     ) -> Self {
         Self {
             pool,
@@ -27,6 +29,7 @@ impl HubState {
             tx,
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry,
+            config,
         }
     }
 }
