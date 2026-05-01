@@ -36,6 +36,9 @@
 Aiome is designed to let you experience all features (chat, autonomous tool execution, self-healing, simulated AI economy) instantly with a single command, without tedious configuration.
 Advanced features like commercial payments (Commerce/Stripe) **automatically operate in mock mode** when API keys are not set, ensuring nothing breaks and you can evaluate everything.
 
+> **📖 Detailed Specifications and Constraints:**
+> Please ensure you read [QUICK_START.md](QUICK_START.md) regarding authentication flows and feature limitations within the Docker Quickstart environment.
+
 ### Option A: Using Docker / Podman (Recommended)
 Skip the 10+ minute initial compilation locally by using our pre-built image running alongside Ollama.
 

@@ -14,6 +14,8 @@ import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
 import { ProofPowerIndicator } from '../common/ProofPowerIndicator';
 import { EkycStatusBadge } from '../character/EkycStatusBadge';
 import { SoulStatusBadge } from '../character/SoulStatusBadge';
+import { authenticatedFetch } from '../../lib/auth';
+import { API_BASE } from '../../config';
 
 interface CharacterPanelProps {
     stats: AgentStats;
@@ -32,11 +34,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
     const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
 
     React.useEffect(() => {
-        fetch('/api/v1/ekyc/status')
+        authenticatedFetch(`${API_BASE}/api/v1/ekyc/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
             .then(d => setEkycStatus(d.verified))
             .catch(e => console.error('EKYC fetch error', e));
-        fetch('/api/v1/soul/status')
+        authenticatedFetch(`${API_BASE}/api/v1/soul/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
             .then(d => {
                 setSoulState(d.state || 'Awake');
@@ -44,6 +46,23 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             })
             .catch(e => console.error('Soul state fetch error', e));
     }, []);
+
+    const handleVerifyEkyc = async () => {
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/ekyc/session`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.session_url) {
+                    window.open(data.session_url, '_blank', 'noopener,noreferrer');
+                }
+            } else {
+                console.error('Failed to create eKYC session');
+            }
+        } catch (e) {
+            console.error('Error creating eKYC session', e);
+        }
+    };
+
 
     return (
         <div className="character-panel" style={{
@@ -114,9 +133,26 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <SoulStatusBadge level={fetchedLevel ?? stats.level} state={soulState} />
                 <EkycStatusBadge status={ekycStatus} />
+                {ekycStatus === false && (
+                    <button 
+                        onClick={handleVerifyEkyc}
+                        style={{
+                            background: 'var(--accent-cyan)',
+                            color: 'black',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '0.25rem 0.75rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        本人確認を開始する
+                    </button>
+                )}
             </div>
             
             <div style={{ flex: 1 }}></div>

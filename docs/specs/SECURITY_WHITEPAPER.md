@@ -103,7 +103,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-05-01 (Asia/Tokyo) - Phase 7 Infrastructure Hardening & Nurture Phase 3*
+*最終更新: 2026-05-02 (Asia/Tokyo) - Reflexion Phase 4*
 
 ## 2.6. A2UI Generative Interface Guardrails (Phase 0)
 LLM が動的に UI を生成する A2UI プロトコルにおいて、不正なペイロードがブラウザ上で実行されることを防ぐため、厳格なバリデーション層を設けています。

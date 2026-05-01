@@ -154,13 +154,18 @@ pub async fn auth_middleware(
 
 /// Constant-time comparison to prevent timing attacks.
 /// Both values are padded to the same length before comparison.
-fn verify_constant_time(a: &[u8], b: &[u8]) -> bool {
+pub fn verify_constant_time(a: &[u8], b: &[u8]) -> bool {
     let max_len = std::cmp::max(a.len(), b.len());
     let mut a_padded = vec![0u8; max_len];
     let mut b_padded = vec![0u8; max_len];
     a_padded[..a.len()].copy_from_slice(a);
     b_padded[..b.len()].copy_from_slice(b);
-    a.len() == b.len() && bool::from(a_padded.ct_eq(&b_padded))
+
+    let length_match = a.len() == b.len();
+    let content_match = bool::from(a_padded.ct_eq(&b_padded));
+
+    // Non-short-circuiting bitwise AND
+    length_match & content_match
 }
 
 /// A wrapper for the JWT Claims, provided by `jwt_auth_middleware` via request extensions.

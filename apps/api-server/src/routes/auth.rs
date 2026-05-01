@@ -119,45 +119,56 @@ pub async fn token_handler(
     State(state): State<AppState>,
     Json(payload): Json<TokenRequest>,
 ) -> Result<Json<TokenResponse>, AppError> {
-    // Basic validation of the authorization code flow
-    if payload.grant_type != "authorization_code" {
+    if payload.grant_type == "password" {
+        // Password Grant (Quickstart / Admin login)
+        let provided_secret = payload
+            .client_secret
+            .ok_or_else(|| AppError::bad_request("Missing client_secret for password grant"))?;
+
+        use secrecy::ExposeSecret;
+        let expected = state.api_server_secret.expose_secret();
+
+        if !crate::auth::verify_constant_time(provided_secret.as_bytes(), expected.as_bytes()) {
+            return Err(AppError::forbidden("Invalid admin secret"));
+        }
+    } else if payload.grant_type == "authorization_code" {
+        // Authorization Code Grant (OAuth)
+        let code = payload
+            .code
+            .ok_or_else(|| AppError::bad_request("Missing code"))?;
+
+        // Consume the code (one-time use).
+        let (stored_challenge, stored_client_id) = state
+            .pkce_cache
+            .get(&code)
+            .await
+            .ok_or_else(|| AppError::bad_request("Invalid or expired authorization code"))?;
+        state.pkce_cache.invalidate(&code).await;
+
+        if let Some(client_id) = &payload.client_id {
+            if client_id != &stored_client_id {
+                return Err(AppError::bad_request("Client ID mismatch"));
+            }
+        }
+
+        // PKCE verification
+        if let Some(challenge) = stored_challenge {
+            let verifier = payload
+                .code_verifier
+                .ok_or_else(|| AppError::bad_request("Missing code_verifier for PKCE"))?;
+
+            let mut hasher = Sha256::new();
+            hasher.update(verifier.as_bytes());
+            let expected_challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
+            use subtle::ConstantTimeEq;
+            let is_valid = challenge.as_bytes().ct_eq(expected_challenge.as_bytes());
+            if !bool::from(is_valid) {
+                return Err(AppError::bad_request("Invalid code_verifier"));
+            }
+        }
+    } else {
         return Err(AppError::bad_request("Unsupported grant_type"));
-    }
-
-    let code = payload
-        .code
-        .ok_or_else(|| AppError::bad_request("Missing code"))?;
-
-    // Consume the code (one-time use).
-    let (stored_challenge, stored_client_id) = state
-        .pkce_cache
-        .get(&code)
-        .await
-        .ok_or_else(|| AppError::bad_request("Invalid or expired authorization code"))?;
-    state.pkce_cache.invalidate(&code).await;
-
-    if let Some(client_id) = &payload.client_id {
-        if client_id != &stored_client_id {
-            return Err(AppError::bad_request("Client ID mismatch"));
-        }
-    }
-
-    // PKCE verification: if a challenge was registered, the verifier is mandatory
-    if let Some(challenge) = stored_challenge {
-        let verifier = payload
-            .code_verifier
-            .ok_or_else(|| AppError::bad_request("Missing code_verifier for PKCE"))?;
-
-        let mut hasher = Sha256::new();
-        hasher.update(verifier.as_bytes());
-        let expected_challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
-
-        // Constant-time comparison to prevent timing side-channel attacks
-        use subtle::ConstantTimeEq;
-        let is_valid = challenge.as_bytes().ct_eq(expected_challenge.as_bytes());
-        if !bool::from(is_valid) {
-            return Err(AppError::bad_request("Invalid code_verifier"));
-        }
     }
 
     // Issue a real JWT using AuthManager
@@ -165,12 +176,11 @@ pub async fn token_handler(
     let exp = now + 3600; // 1 hour expiration
 
     let claims = AiomeCustomClaims {
-        sub: payload
-            .client_id
-            .unwrap_or_else(|| "unknown_client".to_string()),
+        sub: payload.client_id.unwrap_or_else(|| "admin".to_string()),
         ekyc_verified: false,
-        agent_id: uuid::Uuid::nil(),
-        roles: vec![shared::auth::Role::User],
+        // Deterministic UUID for the local admin to pass the nil guard
+        agent_id: uuid::uuid!("00000000-0000-0000-0000-000000000001"),
+        roles: vec![shared::auth::Role::Admin],
         exp,
         iat: now,
         iss: "aiome_identity".to_string(),

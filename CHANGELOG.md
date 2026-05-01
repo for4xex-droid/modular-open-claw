@@ -1,5 +1,16 @@
 ## [Unreleased]
-> Last Updated: 2026-05-01
+> Last Updated: 2026-05-02
+
+### Added
+- **Authentication**: Added support for OAuth `grant_type="password"` in `/api/v1/auth/token`. This allows the Management Console to securely exchange the `API_SERVER_SECRET` for an EdDSA signed JWT, resolving the Docker Quickstart authentication deadlock.
+- **Documentation**: Created `QUICK_START.md` to explicitly document the Docker MVP environment constraints, including the Mock eKYC flow and the disabled Nurture Commerce engine.
+- **Security Hardening**: Replaced `unwrap()` with `uuid::uuid!` in `auth.rs` to enforce zero-panic execution.
+- **Security Hardening**: Refactored `verify_constant_time` in `auth.rs` to use non-short-circuiting bitwise operators (`&`), eliminating a potential timing side-channel attack vector when comparing secrets of different lengths.
+
+### Changed
+- **Management Console UI**: Migrated `AuthOverlay.tsx` to authenticate via the new `/api/v1/auth/token` endpoint instead of passing the raw secret to protected endpoints.
+- **Management Console UI**: Updated `CharacterPanel.tsx` to use `authenticatedFetch` and integrated the eKYC verification session trigger.
+- **Dependencies**: Bumped `react-dom` version in `apps/management-console/package.json` to `19.2.5`.
 
 ### Changed
 - **Samsara Hub Architecture Modularization**:

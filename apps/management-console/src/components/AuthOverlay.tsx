@@ -33,20 +33,30 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onAuthenticated }) => {
         const timeoutId = setTimeout(() => abortController.abort(), 10000);
 
         try {
-            // 認証が必要なエンドポイントで検証する（/api/health は公開なのでトークン検証にならない）
-            const response = await fetch(`${API_BASE}/api/v1/settings`, {
+            // 交換: 入力されたシークレットキーで JWT トークンを取得する
+            const response = await fetch(`${API_BASE}/api/v1/auth/token`, {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${trimmedToken}`
+                    'Content-Type': 'application/json'
                 },
+                body: JSON.stringify({
+                    grant_type: 'password',
+                    client_secret: trimmedToken
+                }),
                 signal: abortController.signal
             });
 
             clearTimeout(timeoutId);
 
-            if (response.ok || response.status === 200) {
-                setAuthToken(trimmedToken);
-                onAuthenticated();
-            } else if (response.status === 401) {
+            if (response.ok) {
+                const data = await response.json();
+                if (data.access_token) {
+                    setAuthToken(data.access_token);
+                    onAuthenticated();
+                } else {
+                    setError(t('auth.errorServer', { status: 'Missing token' }));
+                }
+            } else if (response.status === 401 || response.status === 400) {
                 setError(t('auth.errorInvalidKey'));
             } else {
                 setError(t('auth.errorServer', { status: response.status }));
