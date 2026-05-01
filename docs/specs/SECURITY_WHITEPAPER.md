@@ -29,6 +29,12 @@ LLM（プランナー）が生成した複数ステップから成る「行動�
 *   **Parse-What-You-Need (構造的デシリアライズ耐性)**: 外部決済サービスの API バージョンアップに伴う予期せぬ JSON 構造の変更によってシステム全体がパニックを起こすのを防ぐため、Webhook のデシリアライズ処理には不要なフィールドを無視する（`#[serde(ignore)]` 等）スワローレイヤーを設計しています。これにより、決済の疎結合な強靭性 (Resilience) が維持されます。
 *   **ADR-009 Karma Generation Path (経済整合性の保護)**: 決済トランザクション完了時に付与される「Karma」は、直接データベースの台帳(Ledger)を操作することをアーキテクチャレベルで禁止し、必ず `Webhook -> AgentHook -> KarmaForge` の一方向イベントフローを経由するよう強制（ADR-009）しています。これにより、未決済の状態で Karma のみが不正に生成される「ゴーストステート」を物理的に遮断します。
 
+## 1.8. Cross-Domain Atomicity & Fail-Closed License Transfer (Nurture Phase 3)
+デジタルアセット（ライセンス）の所有権移転やギフト処理において、システムの中断や予期せぬエラーが「ライセンスの消失」や「不正な複製」を引き起こさないよう、完全な Fail-Closed アーキテクチャを導入しています。
+
+*   **Atomic License Transfer (DBトランザクション)**: `LicenseStore` における「旧ライセンスの無効化（Revoke）」と「新ライセンスの発行（Issue）」は単一の DB トランザクションで原子化され、万が一 `UPDATE` で該当ライセンスが無効化できなかった場合（`rows_affected == 0`）は即座にトランザクションをロールバックします。これにより、レースコンディションによる「ライセンス錬成」を数学的に排除します。
+*   **Explicit Audit Trail (監査ログの独立性)**: ギフト転送のような「0コイン取引」であっても、台帳 (Ledger) 上では独立した `EntryType::Gift` として厳密に追跡され、金銭の絡まないアイテムの移動であっても完全な監査可能性（Auditability）を保証します。台帳とライセンスストアのトレイト分離というアーキテクチャ制約下において、安全性を犠牲にしない Fail-Soft 戦略を採用しています。
+
 ## 1.7. Data Flow & Boundary Defense (Taint Tracking Paradigm)
 外部入力に由来する汚染データ（Taint）が、ファイルシステムや外部コマンド実行などの危険な Sink に到達することを防ぐため、Rust の第一原理に基づいた堅牢な防衛線を構築しています。
 
@@ -97,7 +103,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-04-30 (Asia/Tokyo) - Phase 7 Infrastructure Hardening & ADR-009*
+*最終更新: 2026-05-01 (Asia/Tokyo) - Phase 7 Infrastructure Hardening & Nurture Phase 3*
 
 ## 2.6. A2UI Generative Interface Guardrails (Phase 0)
 LLM が動的に UI を生成する A2UI プロトコルにおいて、不正なペイロードがブラウザ上で実行されることを防ぐため、厳格なバリデーション層を設けています。
