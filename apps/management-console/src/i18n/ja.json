@@ -72,7 +72,9 @@
     "creativeSpark": "創造的なひらめきを検出しました。",
     "aiomeMessage": "Aiome メッセージ",
     "societyOfThought": "思考の社会",
-    "deliberationUpdate": "審議更新: {{type}}"
+    "deliberationUpdate": "審議更新: {{type}}",
+    "aegisSentinel": "Aegis 番兵",
+    "aegisAlert": "免疫警報が発令されました。"
   },
   "loading": "ニューラル同期中...",
   "biotope": {

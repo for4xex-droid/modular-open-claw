@@ -24,6 +24,12 @@ pub enum CoreEvent {
         style: String,
         preview_url: Option<String>,
     },
+    AegisSentinel {
+        level: String,
+        message: String,
+        total_incidents: i64,
+        top_skill: Option<String>,
+    },
     /// コアからの対話応答 (音声付き)
     ChatResponse {
         response: String,

@@ -27,10 +27,16 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use crate::aegis::incident_repo::IncidentRepository;
+use aiome_core_contracts::events::CoreEvent;
+use tokio::sync::broadcast;
+
 /// `DreamState` 構造体
 pub struct DreamState {
     llm: Arc<dyn aiome_core::llm_provider::LlmProvider>,
     eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
+    incident_repo: Option<Arc<IncidentRepository>>,
+    event_sender: Option<broadcast::Sender<CoreEvent>>,
 }
 
 impl DreamState {
@@ -39,6 +45,8 @@ impl DreamState {
         Self {
             llm,
             eval_logger: None,
+            incident_repo: None,
+            event_sender: None,
         }
     }
 
@@ -47,6 +55,16 @@ impl DreamState {
         logger: Arc<crate::llm::evaluation_logger::EvaluationLogger>,
     ) -> Self {
         self.eval_logger = Some(logger);
+        self
+    }
+
+    pub fn with_incident_repo(mut self, repo: Arc<IncidentRepository>) -> Self {
+        self.incident_repo = Some(repo);
+        self
+    }
+
+    pub fn with_event_sender(mut self, sender: broadcast::Sender<CoreEvent>) -> Self {
+        self.event_sender = Some(sender);
         self
     }
 
@@ -78,6 +96,7 @@ impl DreamState {
         let sci_prob = if level >= 5 { 20 } else { 0 };
         // Observability dreams get a dedicated 15% slot when eval_logger is connected
         let obs_prob = if self.eval_logger.is_some() { 15 } else { 0 };
+        let aegis_prob = if self.incident_repo.is_some() { 10 } else { 0 };
 
         let insight = if rand_val < comm_prob as i64 {
             self.communicative_dream(job_queue).await?
@@ -85,6 +104,8 @@ impl DreamState {
             self.scientific_dream(job_queue).await?
         } else if rand_val < (comm_prob + sci_prob + obs_prob) as i64 {
             self.observability_dream().await?
+        } else if rand_val < (comm_prob + sci_prob + obs_prob + aegis_prob) as i64 {
+            self.aegis_sentinel_dream().await?
         } else if rand_val % 2 == 0 {
             self.explorative_dream(job_queue, trend_sonar).await?
         } else {
@@ -160,6 +181,53 @@ impl DreamState {
             info!("💤 [DreamState] Observability logger is not connected.");
             Ok(None)
         }
+    }
+
+    /// Aegis Sentinel 夢 (Phase 1)
+    pub(crate) async fn aegis_sentinel_dream(
+        &self,
+    ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+        let repo = match &self.incident_repo {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        let stats = match repo.compute_weekly_stats().await {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("⚠️ [DreamState] Failed to compute Aegis stats: {}", e);
+                return Ok(None);
+            }
+        };
+
+        let mut alert_level = "Info";
+        if stats.total_incidents_7d >= 50 || stats.unresolved >= 20 {
+            alert_level = "Critical";
+        } else if stats.total_incidents_7d >= 10 || stats.distinct_skills >= 5 {
+            alert_level = "Warning";
+        }
+
+        if alert_level != "Info" {
+            let msg = format!(
+                "Aegis {} Alert: {} total incidents in last 7 days. Top failing skill: {:?}",
+                alert_level, stats.total_incidents_7d, stats.top_failing_skill
+            );
+            warn!("🚨 [DreamState] {}", msg);
+
+            if let Some(sender) = &self.event_sender {
+                let _ = sender.send(CoreEvent::AegisSentinel {
+                    level: alert_level.to_string(),
+                    message: msg.clone(),
+                    total_incidents: stats.total_incidents_7d,
+                    top_skill: stats.top_failing_skill.clone(),
+                });
+            }
+            return Ok(Some(msg));
+        }
+
+        Ok(Some(
+            "Aegis Sentinel check complete. System is stable.".to_string(),
+        ))
     }
 
     /// 探索夢
@@ -1228,6 +1296,68 @@ mod tests {
         assert!(
             res.is_none(),
             "With empty stats, observability_dream must return None"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_aegis_sentinel_dream() {
+        use crate::aegis::incident_repo::IncidentRepository;
+        use crate::job_queue::trajectory_store::SqliteTrajectoryStore;
+        use crate::job_queue::UniversalJobQueue;
+        use tokio::sync::broadcast;
+
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(SqliteTrajectoryStore::new(pool.clone()));
+        let _jq = UniversalJobQueue::new(pool.clone(), None, ts)
+            .await
+            .expect("jq");
+        crate::job_queue::migrations::DbInitializer::init_db(&_jq)
+            .await
+            .unwrap();
+
+        let repo = Arc::new(IncidentRepository::new(pool));
+        let (tx, _) = broadcast::channel(16);
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let dream = DreamState::new(Arc::new(MockLlm))
+            .with_incident_repo(repo)
+            .with_event_sender(tx);
+
+        let res = dream.aegis_sentinel_dream().await.unwrap();
+        assert_eq!(
+            res.unwrap(),
+            "Aegis Sentinel check complete. System is stable."
         );
     }
 }

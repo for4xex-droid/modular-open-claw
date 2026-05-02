@@ -34,6 +34,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_wasm_skill_incident_on_error() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        let wasm_bytes = include_bytes!("test_data/hello_skill.wasm");
+        std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
+
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        {
+            let ts = std::sync::Arc::new(
+                crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+            );
+            let jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap();
+            crate::job_queue::migrations::DbInitializer::init_db(&jq)
+                .await
+                .unwrap();
+        }
+
+        let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
+            .expect("Failed to create manager")
+            .with_limits(1024 * 1024, std::time::Duration::from_millis(500))
+            .with_db_pool(pool.clone());
+
+        let verified = crate::skills::VerifiedSkill::new_for_test("hello_skill".to_string());
+        let _ = manager
+            .call_skill(&verified, "test_timeout", "", None)
+            .await;
+
+        if let crate::db::DatabasePool::Sqlite(sqlite_pool) = &pool {
+            let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM aegis_incidents")
+                .fetch_one(sqlite_pool)
+                .await
+                .unwrap();
+            assert_eq!(row.0, 1, "Incident should be recorded on timeout error");
+        }
+    }
+
+    #[tokio::test]
     async fn test_wasm_skill_config_injection() {
         let temp_dir = tempfile::tempdir().unwrap();
         let skills_dir = temp_dir.path().join("skills");

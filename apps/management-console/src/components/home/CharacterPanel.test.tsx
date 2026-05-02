@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CharacterPanel from './CharacterPanel';
 import { authenticatedFetch } from '../../lib/auth';
@@ -24,7 +24,7 @@ jest.mock('../character/SoulStatusBadge', () => ({
 }));
 
 describe('CharacterPanel', () => {
-    const mockStats = { level: 5, exp: 2500, resonance: 80 };
+    const mockStats = { level: 5, exp: 2500, resonance: 80, creativity: 0, fatigue: 0 };
     const defaultProps = {
         stats: mockStats,
         onOpenViewer: jest.fn(),

@@ -33,6 +33,8 @@
 pub mod a2ui;
 pub mod aiome_log;
 pub use aiome_core::error::AiomeError;
+/// Aegis Nervous System
+pub mod aegis;
 /// 成果物の永続化・管理
 pub mod artifact_store;
 /// 非同期監査ログ用 MPSC キュー (Phase 35 Step 7)

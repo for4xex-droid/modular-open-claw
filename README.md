@@ -125,6 +125,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
 8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクションの多層防御。
 9. **GDPR/RTBF Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と、安全な外部削除伝播（Zero-Trust Sync）を保証。
+10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、異常検知時にリアルタイムで自己修復とUIへの警告通知を行う自律型免疫システム。
 
 ---
 

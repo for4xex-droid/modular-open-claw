@@ -125,6 +125,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 7. **Automated Chaos Engineering**: Natively built fault-injection framework running steady-state resilience tests (e.g., simulating LLM timeouts and malformed responses) to mathematically guarantee graceful degradation against unpredictable AI failures.
 8. **Cell-Based Architecture (CBA)**: Physical path isolation governed by the 1-process=1-cell invariant. Implements multi-layered defense against path traversal and shell injection via `AppDataResolver` and shell guards.
 9. **GDPR/RTBF Compliance**: Guarantees complete physical data purge (via `forget_actor`) across up to 7 tables in a single atomic transaction, coupled with secure downstream deletion propagation (Zero-Trust Sync).
+10. **Aegis Sentinel**: An autonomous immune system actively monitoring WASM boundaries, automatically capturing kernel-level incidents, and executing real-time UI alerts and system healing.
 
 ---
 

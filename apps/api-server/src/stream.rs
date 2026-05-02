@@ -701,6 +701,15 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("quality_gate").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::AegisSentinel { level, message, total_incidents, top_skill } => {
+                            let data = serde_json::json!({
+                                "level": level,
+                                "message": message,
+                                "total_incidents": total_incidents,
+                                "top_skill": top_skill,
+                            });
+                            yield Ok(Event::default().event("aegis_sentinel").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

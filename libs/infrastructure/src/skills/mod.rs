@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 /// `actions_importer` モジュール
 pub mod actions_importer;
 /// `cleanroom` モジュール
@@ -553,9 +553,31 @@ impl WasmSkillManager {
                         format!("WASM execution error: {}", e)
                     }
                 })
-        }).await.map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { format!("Task execution failed/panicked: {}", e).into() });
-        let result =
-            result?.map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.into() })?;
+        }).await;
+
+        let res = match result {
+            Ok(Ok(val)) => Ok(val),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(format!("Task execution failed/panicked: {}", e)),
+        };
+
+        if let Err(err_msg) = &res {
+            if let Some(pool) = &self.db_pool {
+                let repo = crate::aegis::incident_repo::IncidentRepository::new(pool.clone());
+                if let Err(e) = repo
+                    .insert_incident(skill.name(), "N/A", input, &err_msg.to_string())
+                    .await
+                {
+                    warn!(
+                        "⚠️ [Aegis] Failed to record skill incident for '{}': {}",
+                        skill.name(),
+                        e
+                    );
+                }
+            }
+        }
+
+        let result = res.map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.into() })?;
 
         info!(
             "✅ [WasmSkillManager] Skill execution successful: {}",

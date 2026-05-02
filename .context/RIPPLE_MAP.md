@@ -1,5 +1,17 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 8.8: Aegis Sentinel Infrastructure Integration
+### 1. Incident Repository & DB Optimization
+- **変更内容**:
+    - `libs/infrastructure/src/aegis/incident_repo.rs` [NEW]: `IncidentRepository` を新設し、システムインシデント（WASM・ホスト実行時の異常）の記録をSQLite/Postgres共通のドライバで処理できるよう統一。
+    - `libs/infrastructure/src/skills/mod.rs` & `skill_arena.rs` [MODIFY]: 生のSQLクエリを削除し、`IncidentRepository` を用いるようにリファクタリング。さらに `RwLock` の書き込みロック期間から重いデータベースI/O操作を分離。
+    - `apps/api-server/src/stream.rs` [MODIFY]: `CoreEvent::AegisSentinel` のパターンマッチを追加し、Dream Loop からのイベントがフロントエンドのSSEへ伝搬するように修正。
+    - `apps/management-console/src/hooks/useSystemVitality.tsx` & `App.tsx` [MODIFY]: `aegis_sentinel` イベントの UI 側購読を追加し、重大度に応じたアラートレンダリングと i18n 翻訳を実装。
+- **波及効果**:
+    - Aiome の自律型免疫システム (Aegis Sentinel) がカーネルレベルからUIアラートまで E2E で貫通した。
+    - `SkillArena` 評価時のロック競合（Lock Contention）が排除され、複数エージェント並行実行時のレイテンシと安定性が向上した。
+    - データベース操作が抽象化されたことで、PostgreSQL 環境への移行がシームレスに行えるようになった。
+
 ## Phase 8.5: Infrastructure Hardening & Nurture Integration
 ### 1. Cross-Domain Error Unification
 - **変更内容**:

@@ -27,9 +27,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 4 | Supply Chain Vulnerability | Dependencies | 🟡 Mid | `cargo audit` + Sentinel |
 | 5 | Resource Exhaustion | Infinite Loop / Spams | 🟡 Mid | Rate Limiting + WASM Timeout & Circuit Breaker |
 | 6 | **Karma Poisoning** | **Malicious Federation Sync** | 🔴 High | **Bearer Auth + Node Reputation System** |
-| 7 | Reverse Shell Exploit | WASM Skill → host_exec | 🔴 High | **Immune System Baseline (14 signatures) + BastionGuard** |
-| 8 | Env Var Exfiltration | Skill reads API_KEY env | 🔴 High | **Baseline regex detection + WASM isolation** |
-| 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Baseline regex + parameterized queries** |
+| 7 | Reverse Shell Exploit | WASM Skill → host_exec | 🔴 High | **Aegis Sentinel (Immune System) + BastionGuard** |
+| 8 | Env Var Exfiltration | Skill reads API_KEY env | 🔴 High | **Aegis Sentinel baseline detection + WASM isolation** |
+| 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Aegis Sentinel regex + parameterized queries** |
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
 | 11 | **Cascade Error / AI Hallucination** | **Loss of Context during Self-Evolution** | 🔴 High | **Context Management System (`RIPPLE_MAP.md` + ADRs)** |
 | 12 | **CSAM / Binary Contamination** | **Malicious Binary CRDT/P2P / CPU Starvation** | 🔴 High | **3-Layer Defense + `spawn_blocking` Offload (Phase 2A-1)** |

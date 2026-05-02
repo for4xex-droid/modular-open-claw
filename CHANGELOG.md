@@ -2,6 +2,12 @@
 > Last Updated: 2026-05-02
 
 ### Added
+- **Aegis Sentinel Infrastructure Integration**:
+  - Implemented `IncidentRepository` (`libs/infrastructure/src/aegis/incident_repo.rs`) for structured, multi-driver (SQLite/Postgres) recording of system incidents to the `aegis_incidents` table.
+  - Refactored `WasmSkillManager::call_skill` and `SkillArena::record_outcome` to use `IncidentRepository` for persisting WASM execution failures and skill evaluation incidents, eliminating raw inline SQL and enforcing DRY principles.
+  - Optimized `SkillArena::record_outcome` by moving heavy Database I/O outside the `RwLock` write-guard scope, significantly reducing lock contention.
+  - Fixed a critical gap in the SSE event pipeline (`apps/api-server/src/stream.rs`) by adding a match arm for `CoreEvent::AegisSentinel`, ensuring immune system alerts correctly propagate from the backend to connected clients.
+  - Integrated `aegis_sentinel` events into the Management Console UI (`App.tsx`, `useSystemVitality.tsx`), mapped to visual timeline components with i18n support (`aegisSentinel`, `aegisAlert` in `en.json` and `ja.json`).
 - **Aiome v1.1 / Project-Nurture Economic Integration**:
   - Implemented HTTP Proxy routing in `StripeCommerceEngine` for `transfer`, `instant_refund`, `withdraw_points`, `get_points`, and `get_transaction_history` to proxy requests to Nurture API.
   - Integrated `OxiLeanProofCertificate` header generation (`X-OxiLean-Proof-Certificate`) in `StripeCommerceEngine` to establish secure, trusted out-of-process authentication.

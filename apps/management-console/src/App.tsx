@@ -112,6 +112,12 @@ function App() {
         addEvent(t('event.securityAlert'), d.description || t('event.anomalyDetected'), 'var(--accent-rose)', <Shield size={16} />);
         break;
       }
+      case 'aegis_sentinel': {
+        const d = data as any;
+        const color = d.level === 'Critical' ? 'var(--accent-rose)' : 'var(--accent-amber)';
+        addEvent(t('event.aegisSentinel'), d.message || t('event.aegisAlert'), color, <Shield size={16} />);
+        break;
+      }
       case 'job_started': {
         addEvent(t('event.deliberationStarted'), typeof data === 'string' ? data : t('event.thinking'), 'var(--accent-amber)', <Activity size={16} />);
         break;

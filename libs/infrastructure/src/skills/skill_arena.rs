@@ -31,6 +31,7 @@ pub struct SkillArena {
     pub culling_threshold: f64,
     pub protected_skills: std::collections::HashSet<String>,
     db_pool: Option<crate::db::DatabasePool>,
+    incident_repo: Option<crate::aegis::incident_repo::IncidentRepository>,
 }
 
 impl SkillArena {
@@ -47,10 +48,14 @@ impl SkillArena {
             culling_threshold: 0.5,
             protected_skills,
             db_pool: None,
+            incident_repo: None,
         }
     }
 
     pub fn with_db_pool(mut self, pool: crate::db::DatabasePool) -> Self {
+        self.incident_repo = Some(crate::aegis::incident_repo::IncidentRepository::new(
+            pool.clone(),
+        ));
         self.db_pool = Some(pool);
         self
     }
@@ -137,34 +142,57 @@ impl SkillArena {
         latency_ms: u64,
         karma_delta: f64,
     ) {
-        let mut map = self.performance_map.write().await;
-        let perf = map
-            .entry(skill_name.to_string())
-            .or_insert(SkillPerformance {
-                success_count: 0,
-                failure_count: 0,
-                average_latency_ms: 0,
-                total_karma_weight: 0.0,
-            });
+        let need_incident = {
+            let mut map = self.performance_map.write().await;
+            let perf = map
+                .entry(skill_name.to_string())
+                .or_insert(SkillPerformance {
+                    success_count: 0,
+                    failure_count: 0,
+                    average_latency_ms: 0,
+                    total_karma_weight: 0.0,
+                });
 
-        if is_success {
-            perf.success_count += 1;
-        } else {
-            perf.failure_count += 1;
-        }
+            if is_success {
+                perf.success_count += 1;
+            } else {
+                perf.failure_count += 1;
+            }
 
-        perf.total_karma_weight += karma_delta;
+            perf.total_karma_weight += karma_delta;
 
-        // Rolling average for latency
-        let total_runs = perf.success_count + perf.failure_count;
-        perf.average_latency_ms =
-            (perf.average_latency_ms * (total_runs - 1) + latency_ms) / total_runs;
+            // Rolling average for latency
+            let total_runs = perf.success_count + perf.failure_count;
+            perf.average_latency_ms =
+                (perf.average_latency_ms * (total_runs - 1) + latency_ms) / total_runs;
 
-        // Check for culling
-        if total_runs > 10 {
-            let failure_rate = perf.failure_count as f64 / total_runs as f64;
-            if failure_rate > self.culling_threshold {
-                warn!("🧹 [SkillArena] CULLING DETECTED: Skill '{}' has {}% failure rate. Marking for decommissioning.", skill_name, failure_rate * 100.0);
+            // Check for culling
+            if total_runs > 10 {
+                let failure_rate = perf.failure_count as f64 / total_runs as f64;
+                if failure_rate > self.culling_threshold {
+                    warn!("🧹 [SkillArena] CULLING DETECTED: Skill '{}' has {}% failure rate. Marking for decommissioning.", skill_name, failure_rate * 100.0);
+                }
+            }
+
+            !is_success
+        }; // write lock dropped here
+
+        // Aegis: Record failed skill outcome (outside lock scope)
+        if need_incident {
+            if let Some(repo) = &self.incident_repo {
+                let trace = format!(
+                    "SkillArena record_outcome: skill failed with latency {}ms",
+                    latency_ms
+                );
+                if let Err(e) = repo
+                    .insert_incident(skill_name, "N/A", "Arena Task", &trace)
+                    .await
+                {
+                    warn!(
+                        "⚠️ [Aegis] Failed to record arena incident for '{}': {}",
+                        skill_name, e
+                    );
+                }
             }
         }
     }
@@ -249,6 +277,37 @@ mod tests {
             !culled.contains(&"essential_core".to_string()),
             "Protected skill must not be culled"
         );
+    }
+
+    #[tokio::test]
+    async fn test_record_outcome_incident_on_failure() {
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        {
+            let ts = std::sync::Arc::new(
+                crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+            );
+            let jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap();
+            crate::job_queue::migrations::DbInitializer::init_db(&jq)
+                .await
+                .unwrap();
+        }
+
+        let mut arena = SkillArena::new().with_db_pool(pool.clone());
+        arena
+            .record_outcome("failing_skill", false, 1500, -1.0)
+            .await;
+
+        if let crate::db::DatabasePool::Sqlite(sqlite_pool) = &pool {
+            let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM aegis_incidents")
+                .fetch_one(sqlite_pool)
+                .await
+                .unwrap();
+            assert_eq!(row.0, 1, "Incident should be recorded on task failure");
+        }
     }
 
     #[tokio::test]

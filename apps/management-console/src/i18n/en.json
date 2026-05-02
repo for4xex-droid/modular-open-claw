@@ -72,7 +72,9 @@
     "creativeSpark": "Creative spark detected.",
     "aiomeMessage": "Aiome Message",
     "societyOfThought": "Society of Thought",
-    "deliberationUpdate": "Deliberation update: {{type}}"
+    "deliberationUpdate": "Deliberation update: {{type}}",
+    "aegisSentinel": "Aegis Sentinel",
+    "aegisAlert": "Immune system alert triggered."
   },
   "loading": "NEURAL SYNC...",
   "biotope": {
