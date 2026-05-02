@@ -195,6 +195,7 @@ impl AgentHook for UserLearner {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::error::AiomeError;

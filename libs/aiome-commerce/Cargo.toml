@@ -40,3 +40,6 @@ base64.workspace = true
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
 wiremock = { workspace = true }
+
+[lints]
+workspace = true

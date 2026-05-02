@@ -18,6 +18,7 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn alpha_td_1_and_6_dockerfile_security_and_version() {
     let path = workspace_root().join("Dockerfile");
@@ -40,6 +41,7 @@ fn alpha_td_1_and_6_dockerfile_security_and_version() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn alpha_td_2_port_unification() {
     let compose_path = workspace_root().join("docker-compose.quickstart.yml");
@@ -72,6 +74,7 @@ fn alpha_td_2_port_unification() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn alpha_td_3_gitignore_vault() {
     let path = workspace_root().join(".gitignore");
@@ -82,6 +85,7 @@ fn alpha_td_3_gitignore_vault() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn alpha_td_4_distroless_frontend() {
     let path = workspace_root().join("docker/distroless.Dockerfile");
@@ -92,6 +96,7 @@ fn alpha_td_4_distroless_frontend() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn alpha_td_5_i18n_parity() {
     let en_path = workspace_root().join("apps/management-console/src/i18n/en.json");
@@ -133,6 +138,7 @@ fn alpha_td_5_i18n_parity() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[test]
 fn td_f2_changelog_unreleased_count() {
     let path = workspace_root().join("CHANGELOG.md");

@@ -83,6 +83,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
             crate::db::DatabasePool::Postgres(pg)
         };
         let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
+        #[allow(clippy::unwrap_used)]
         let jq = UniversalJobQueue::new(
             crate::db::DatabasePool::new_postgres(&pg_url)
                 .await
@@ -104,6 +105,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         .expect("TS pool connect");
     let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
+    #[allow(clippy::unwrap_used)]
     let jq = UniversalJobQueue::new(
         crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str))
             .await
@@ -135,9 +137,11 @@ async fn test_sqlite_job_queue_basic_ops() {
 #[tokio::test]
 async fn test_sqlite_job_queue_dequeue_lifecycle() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     jq.enqueue("Task", "Topic 1", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let job = jq
         .dequeue(&["Task"])
         .await
@@ -146,9 +150,11 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
     assert_eq!(job.status, JobStatus::InProgress);
     assert!(job.started_at.is_some());
 
+    #[allow(clippy::unwrap_used)]
     jq.complete_job(&job.id, Some("[\"artifact.txt\"]"))
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let updated = jq.fetch_job(&job.id).await.unwrap().unwrap();
     assert_eq!(updated.status, JobStatus::Completed);
 }
@@ -156,10 +162,12 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_storage() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -173,6 +181,7 @@ async fn test_sqlite_job_queue_karma_storage() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     let result = jq
         .fetch_relevant_karma("Topic", "skill-1", 10, "hash1")
         .await
@@ -184,11 +193,13 @@ async fn test_sqlite_job_queue_karma_storage() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_somatic_valence() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic Valence", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 最初に store_karma する前に、手動でSQLを叩いてsomatic_valenceを設定できるか確認する
     jq.store_karma(
         &job_id,
@@ -204,6 +215,7 @@ async fn test_sqlite_job_queue_karma_somatic_valence() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 手動で valence をセット
     sqlx::query("UPDATE karma_logs SET somatic_valence = 0.8 WHERE lesson = 'Valence Lesson'")
         .execute(jq.pool.get_sqlite_pool().unwrap())
@@ -211,6 +223,7 @@ async fn test_sqlite_job_queue_karma_somatic_valence() {
         .unwrap();
 
     // 取得時に somatic_valence が JSON に含まれているかテスト
+    #[allow(clippy::unwrap_used)]
     let all_karma = jq.fetch_all_karma(10).await.unwrap();
     let entry = all_karma
         .iter()
@@ -227,12 +240,15 @@ async fn test_sqlite_job_queue_karma_somatic_valence() {
 #[tokio::test]
 async fn test_sqlite_job_queue_zombie_reclamation() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Zombies", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.dequeue(&["Task"]).await.unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // Simulate heartbeat timeout
     sqlx::query("UPDATE jobs SET last_heartbeat = datetime('now', '-15 minutes') WHERE id = ?")
         .bind(&job_id)
@@ -240,16 +256,20 @@ async fn test_sqlite_job_queue_zombie_reclamation() {
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let reclaimed = jq.reclaim_zombie_jobs(10).await.unwrap();
     assert_eq!(reclaimed, 1);
+    #[allow(clippy::unwrap_used)]
     let updated = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert_eq!(updated.status, JobStatus::Failed);
+    #[allow(clippy::unwrap_used)]
     assert!(updated.error_message.unwrap().contains("Zombie reclaimed"));
 }
 
 #[tokio::test]
 async fn test_sqlite_job_queue_creative_rating_guard() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Rating", "Style", None, None, None, 0)
         .await
@@ -259,10 +279,12 @@ async fn test_sqlite_job_queue_creative_rating_guard() {
     let res = jq.set_creative_rating(&job_id, 1).await;
     assert!(res.is_err());
 
+    #[allow(clippy::unwrap_used)]
     jq.dequeue(&["Task"]).await.unwrap();
     jq.set_creative_rating(&job_id, 1)
         .await
         .expect("Should allow rating on processing");
+    #[allow(clippy::unwrap_used)]
     let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert_eq!(job.creative_rating, Some(1));
 }
@@ -270,31 +292,39 @@ async fn test_sqlite_job_queue_creative_rating_guard() {
 #[tokio::test]
 async fn test_sqlite_job_queue_db_purge() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Old Job", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let job = jq
         .dequeue(&["Task"])
         .await
         .unwrap()
         .expect("Job should exist");
+    #[allow(clippy::unwrap_used)]
     jq.complete_job(&job.id, None).await.unwrap();
 
+    #[allow(clippy::unwrap_used)]
     sqlx::query("UPDATE jobs SET created_at = datetime('now', '-30 days') WHERE id = ?")
         .bind(&job_id)
         .execute(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let purged = jq.purge_old_jobs(1).await.unwrap();
     assert_eq!(purged, 1);
-    assert!(jq.fetch_job(&job_id).await.unwrap().is_none());
+    #[allow(clippy::unwrap_used)]
+    let fetched = jq.fetch_job(&job_id).await.unwrap();
+    assert!(fetched.is_none());
 }
 
 #[tokio::test]
 async fn test_sqlite_job_queue_concurrent_dequeue() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     jq.enqueue("Task", "Job 1", "Style", None, None, None, 0)
         .await
         .unwrap();
@@ -327,15 +357,20 @@ async fn test_sqlite_job_queue_concurrent_dequeue() {
 #[tokio::test]
 async fn test_sqlite_job_queue_heartbeat() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Heart", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.dequeue(&["Task"]).await.unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let first = jq.fetch_job(&job_id).await.unwrap().unwrap().last_heartbeat;
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    #[allow(clippy::unwrap_used)]
     jq.heartbeat_pulse(&job_id).await.unwrap();
+    #[allow(clippy::unwrap_used)]
     let second = jq.fetch_job(&job_id).await.unwrap().unwrap().last_heartbeat;
 
     assert!(second > first);
@@ -344,13 +379,16 @@ async fn test_sqlite_job_queue_heartbeat() {
 #[tokio::test]
 async fn test_sqlite_job_queue_execution_logs() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Log", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_execution_log(&job_id, "WASM STDOUT: Hello")
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert_eq!(job.execution_log, Some("WASM STDOUT: Hello".into()));
 }
@@ -358,10 +396,12 @@ async fn test_sqlite_job_queue_execution_logs() {
 #[tokio::test]
 async fn test_sqlite_job_queue_unincorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -376,6 +416,7 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let uninc = jq.fetch_unincorporated_karma(10, "hash-new").await.unwrap();
     assert_eq!(uninc.len(), 1);
     assert_eq!(
@@ -387,10 +428,12 @@ async fn test_sqlite_job_queue_unincorporate_karma() {
 #[tokio::test]
 async fn test_sqlite_job_queue_incorporate_karma() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -404,16 +447,20 @@ async fn test_sqlite_job_queue_incorporate_karma() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     let uninc = jq.fetch_unincorporated_karma(10, "hash-new").await.unwrap();
+    #[allow(clippy::unwrap_used)]
     let id = uninc[0]
         .get("id")
         .and_then(|v| v.as_str())
         .unwrap()
         .to_string();
 
+    #[allow(clippy::unwrap_used)]
     jq.mark_karma_as_incorporated(vec![id], "hash-new")
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let left = jq.fetch_unincorporated_karma(10, "hash-new").await.unwrap();
     assert_eq!(left.len(), 0);
 }
@@ -421,18 +468,24 @@ async fn test_sqlite_job_queue_incorporate_karma() {
 #[tokio::test]
 async fn test_sqlite_job_queue_retry_poison_pill() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Retry", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     jq.increment_job_retry_count(&job_id).await.unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.increment_job_retry_count(&job_id).await.unwrap();
+    #[allow(clippy::unwrap_used)]
     let poisoned = jq.increment_job_retry_count(&job_id).await.unwrap();
 
     assert!(poisoned);
+    #[allow(clippy::unwrap_used)]
     let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert_eq!(job.status, JobStatus::Failed);
+    #[allow(clippy::unwrap_used)]
     assert!(job.error_message.unwrap().contains("Poison Pill"));
 }
 
@@ -442,6 +495,7 @@ async fn test_sqlite_job_queue_immune_rules() {
 
     let (jq, _tmp) = create_test_queue().await;
 
+    #[allow(clippy::unwrap_used)]
     // Insert rules directly via SQL instead of do_store_immune_rule to avoid
     // swarm ops (crypto key generation + signing + Box::pin recursion) which
     // cause stack overflow. Test purpose = verify storage & filtering logic.
@@ -454,6 +508,7 @@ async fn test_sqlite_job_queue_immune_rules() {
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     sqlx::query("INSERT INTO immune_rules (id, pattern, severity, action, created_at, node_id, lamport_clock, status) VALUES (?, ?, ?, ?, datetime('now'), 'test', 0, 'Pending')")
         .bind("rule-pending")
         .bind("pending-pattern")
@@ -463,10 +518,12 @@ async fn test_sqlite_job_queue_immune_rules() {
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let rules = jq.do_fetch_active_immune_rules().await.unwrap();
     assert_eq!(rules.len(), 1);
     assert_eq!(rules[0].pattern, "rm -rf");
 
+    #[allow(clippy::unwrap_used)]
     let all_rules = jq.do_get_immune_rules().await.unwrap();
     assert_eq!(all_rules.len(), 2);
 }
@@ -483,12 +540,14 @@ async fn test_sqlite_job_queue_arena_history() {
         reasoning: "A is better".into(),
         created_at: Utc::now().to_rfc3339(),
     };
+    #[allow(clippy::unwrap_used)]
     jq.record_arena_match(&match_data).await.unwrap();
 }
 
 #[tokio::test]
 async fn test_sqlite_job_queue_soul_history() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     jq.record_soul_mutation("old", "new", "Mutation")
         .await
         .unwrap();
@@ -497,6 +556,7 @@ async fn test_sqlite_job_queue_soul_history() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_soul_coherence() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
@@ -504,6 +564,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     let soul_v1 = "550e8400-e29b-41d4-a716-446655440000";
     let soul_v2 = "660e8400-e29b-41d4-a716-446655440001";
 
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "soul_skill",
@@ -518,6 +579,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let result_v1 = jq
         .fetch_relevant_karma("Soul Test", "soul_skill", 10, soul_v1)
         .await
@@ -526,6 +588,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     assert_eq!(result_v1.entries[0].lesson, "[V1 KARMA]");
 
     // Implementation returns legacy marked karma instead of empty list
+    #[allow(clippy::unwrap_used)]
     let result_v2_legacy = jq
         .fetch_relevant_karma("Soul Test Legacy", "soul_skill", 10, soul_v2)
         .await
@@ -533,10 +596,12 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     assert_eq!(result_v2_legacy.entries.len(), 1);
     assert!(result_v2_legacy.entries[0].lesson.contains("[LEGACY KARMA"));
 
+    #[allow(clippy::unwrap_used)]
     let job_id2 = jq
         .enqueue("Task", "Topic 2", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id2,
         "soul_skill",
@@ -551,6 +616,7 @@ async fn test_sqlite_job_queue_karma_soul_coherence() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     let result_v2 = jq
         .fetch_relevant_karma("Soul Test Final", "soul_skill", 10, soul_v2)
         .await
@@ -595,6 +661,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
     let (mut jq, _tmp) = create_test_queue().await;
     jq.set_embedding_provider(Arc::new(MockEmbedProvider)).await;
 
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Real Topic", "Style", None, None, None, 0)
         .await
@@ -603,10 +670,12 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
     let id = uuid::Uuid::new_v4().to_string();
     let encoder = crate::polar_quant::PolarQuantEncoder::new(4, 32);
     let emb = encoder.encode(&vec![1.0; 1536]);
+    #[allow(clippy::unwrap_used)]
     sqlx::query("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, created_at, karma_embedding) VALUES (?, ?, 'Technical', 'skill-1', 'Real Lesson', datetime('now'), ?)")
         .bind(&id).bind(&job_id).bind(&emb).execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // Closer match (Mock returns 1.0, DB has 1.0 -> score 1.0)
+    #[allow(clippy::unwrap_used)]
     let result = jq
         .fetch_relevant_karma("Real Topic", "skill-1", 10, "hash1")
         .await
@@ -614,6 +683,7 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
     assert!(!result.is_ood);
 
     // Out of domain (Mock returns 0.0, DB has 1.0 -> score 0.0)
+    #[allow(clippy::unwrap_used)]
     let result_ood = jq
         .fetch_relevant_karma("space aliens", "skill-1", 10, "hash1")
         .await
@@ -624,10 +694,12 @@ async fn test_sqlite_job_queue_karma_ood_detection() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_cache_hit() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Cache Test", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -643,11 +715,13 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
     .unwrap();
 
     // First call - fills cache
+    #[allow(clippy::unwrap_used)]
     let _ = jq
         .fetch_relevant_karma("Cache Test", "skill-1", 10, "hash1")
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // Directly modify DB
     sqlx::query("UPDATE karma_logs SET lesson = 'Modified Lesson'")
         .execute(jq.pool.get_sqlite_pool().unwrap())
@@ -655,6 +729,7 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
         .unwrap();
 
     // Second call - should hit cache
+    #[allow(clippy::unwrap_used)]
     let result2 = jq
         .fetch_relevant_karma("Cache Test", "skill-1", 10, "hash1")
         .await
@@ -665,10 +740,12 @@ async fn test_sqlite_job_queue_karma_cache_hit() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_weight_clamp() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -684,14 +761,17 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
     .unwrap();
 
     // Default weight is 100 or inherited. Let's find the id.
+    #[allow(clippy::unwrap_used)]
     let row = sqlx::query("SELECT id, weight FROM karma_logs LIMIT 1")
         .fetch_one(jq.pool.get_sqlite_pool().unwrap())
         .await
         .unwrap();
     let kid: String = row.get("id");
 
+    #[allow(clippy::unwrap_used)]
     // Clamp Max
     jq.adjust_karma_weight(&kid, 50).await.unwrap();
+    #[allow(clippy::unwrap_used)]
     let row_max = sqlx::query("SELECT weight FROM karma_logs WHERE id = ?")
         .bind(&kid)
         .fetch_one(jq.pool.get_sqlite_pool().unwrap())
@@ -699,8 +779,10 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
         .unwrap();
     assert_eq!(row_max.get::<i64, _>("weight"), 100);
 
+    #[allow(clippy::unwrap_used)]
     // Clamp Min
     jq.adjust_karma_weight(&kid, -150).await.unwrap();
+    #[allow(clippy::unwrap_used)]
     let row_min = sqlx::query("SELECT weight FROM karma_logs WHERE id = ?")
         .bind(&kid)
         .fetch_one(jq.pool.get_sqlite_pool().unwrap())
@@ -712,11 +794,13 @@ async fn test_sqlite_job_queue_karma_weight_clamp() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 1. Weak memory (low weight) + unused
     jq.store_karma(
         &job_id,
@@ -731,8 +815,10 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     sqlx::query("UPDATE karma_logs SET weight = 2, last_applied_at = datetime('now', '-91 days') WHERE lesson = 'Weak Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 2. Another weak/old memory
     jq.store_karma(
         &job_id,
@@ -747,8 +833,10 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     sqlx::query("UPDATE karma_logs SET weight = 3, last_applied_at = datetime('now', '-100 days') WHERE lesson = 'Old Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 3. Fresh strong memory
     jq.store_karma(
         &job_id,
@@ -764,6 +852,7 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 4. Strong but old memory (should NOT be archived because weight is high)
     jq.store_karma(
         &job_id,
@@ -778,13 +867,16 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     sqlx::query("UPDATE karma_logs SET weight = 80, last_applied_at = datetime('now', '-200 days') WHERE lesson = 'Old Strong Lesson'").execute(jq.pool.get_sqlite_pool().unwrap()).await.unwrap();
 
     // Run sweep
+    #[allow(clippy::unwrap_used)]
     let archived = jq.karma_decay_sweep().await.unwrap();
     assert_eq!(archived, 2); // Weak + Old (now weak) should be archived
 
     // Verify search excludes archived
+    #[allow(clippy::unwrap_used)]
     let result = jq
         .fetch_relevant_karma("Topic", "skill-1", 10, "hash1")
         .await
@@ -798,11 +890,13 @@ async fn test_sqlite_job_queue_karma_forgetting_sweep() {
 #[tokio::test]
 async fn test_sqlite_job_queue_karma_fts_match() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "Topic", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 1. Generic lesson
     jq.store_karma(
         &job_id,
@@ -817,6 +911,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
     )
     .await
     .unwrap();
+    #[allow(clippy::unwrap_used)]
     // 2. Focused lesson with keyword 'security'
     jq.store_karma(
         &job_id,
@@ -833,6 +928,7 @@ async fn test_sqlite_job_queue_karma_fts_match() {
     .unwrap();
 
     // Search for 'security'
+    #[allow(clippy::unwrap_used)]
     let result = jq
         .fetch_relevant_karma("security", "skill-1", 10, "hash1")
         .await
@@ -849,6 +945,7 @@ async fn test_karma_taxonomy_classification() {
         json_response: r#"{ "domain": "Technical", "subtopic": "Security", "reasoning": "Lesson about security." }"#.to_string(),
     };
 
+    #[allow(clippy::unwrap_used)]
     let result =
         super::taxonomy::KarmaTaxonomy::classify(&mock, "Always use parameterized queries")
             .await
@@ -879,6 +976,7 @@ async fn test_sqlite_settings_crud() {
     jq.update_setting("llm_model", "test-model-1", "llm", false)
         .await
         .expect("Failed to set");
+    #[allow(clippy::unwrap_used)]
     let val = jq.get_setting_value("llm_model").await.unwrap();
     assert_eq!(val, Some("test-model-1".to_string()));
 
@@ -886,10 +984,12 @@ async fn test_sqlite_settings_crud() {
     jq.update_setting("llm_model", "test-model-2", "llm", false)
         .await
         .expect("Failed to overwrite");
+    #[allow(clippy::unwrap_used)]
     let val2 = jq.get_setting_value("llm_model").await.unwrap();
     assert_eq!(val2, Some("test-model-2".to_string()));
 
     // Test fetch all (visible)
+    #[allow(clippy::unwrap_used)]
     let all = jq.fetch_all_settings().await.unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].key, "llm_model");
@@ -906,12 +1006,14 @@ async fn test_sqlite_settings_secret_masking() {
         .expect("Failed to set secret");
 
     // get_setting_value should return the actual value (for internal use)
+    #[allow(clippy::unwrap_used)]
     let val = jq.get_setting_value("telegram_token").await.unwrap();
     assert_eq!(val, Some("super-secret-123".to_string()));
 
     // fetch_all_settings isn't implemented as a method directly yielding masked values in tests.
     // The web layer `routes::settings::get_settings` does the masking.
     // In db layer fetch_all_settings, we expect it to return raw values, or we manually verify the field `is_secret` is true.
+    #[allow(clippy::unwrap_used)]
     let all = jq.fetch_all_settings().await.unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].key, "telegram_token");
@@ -1067,17 +1169,20 @@ async fn test_sqlite_expression_tts_status() {
 async fn test_sqlite_job_queue_priority_order() {
     let (jq, _tmp) = create_test_queue().await;
 
+    #[allow(clippy::unwrap_used)]
     // 1. Enqueue low priority job
     jq.enqueue("Task", "Low Priority", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 2. Enqueue high priority job (enqueued later)
     jq.enqueue("Task", "High Priority", "Style", None, None, None, 10)
         .await
         .unwrap();
 
     // 3. Dequeue - should get High Priority first
+    #[allow(clippy::unwrap_used)]
     let job1 = jq
         .dequeue(&["Task"])
         .await
@@ -1087,6 +1192,7 @@ async fn test_sqlite_job_queue_priority_order() {
     assert_eq!(job1.priority, 10);
 
     // 4. Dequeue - should get Low Priority next
+    #[allow(clippy::unwrap_used)]
     let job2 = jq
         .dequeue(&["Task"])
         .await
@@ -1120,6 +1226,7 @@ async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
     let slm = Arc::new(SlmBridge::new());
     jq.slm_bridge = Some(slm.clone());
 
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("Task", "GC Test", "Style", None, None, None, 0)
         .await
@@ -1127,6 +1234,7 @@ async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
 
     // 1. 低重要度の記憶を模したデータを挿入
     let low_importance_content = "redundant log fragment 12345 non-essential";
+    #[allow(clippy::unwrap_used)]
     jq.store_karma(
         &job_id,
         "skill-1",
@@ -1142,10 +1250,12 @@ async fn test_sqlite_job_queue_karma_decay_sweep_poincare() {
     .unwrap();
 
     // 2. Sweep 実行
+    #[allow(clippy::unwrap_used)]
     let archived = jq.karma_decay_sweep().await.unwrap();
     info!("Poincare GC archived {} entries", archived);
 
     // 3. アーカイブ後の検索
+    #[allow(clippy::unwrap_used)]
     let res = jq
         .fetch_relevant_karma("redundant log", "skill-1", 10, "hash-gc")
         .await
@@ -1158,15 +1268,18 @@ async fn test_federation_export_privacy_filter() {
     let (jq, _tmp) = create_test_queue().await;
 
     // 0. Enqueue jobs to satisfy foreign key constraints
+    #[allow(clippy::unwrap_used)]
     let job1 = jq
         .enqueue("Task", "Public", "Style", None, None, None, 0)
         .await
         .unwrap();
+    #[allow(clippy::unwrap_used)]
     let job2 = jq
         .enqueue("Task", "Private", "Style", None, None, None, 0)
         .await
         .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 1. Store a public karma
     jq.store_karma(
         &job1,
@@ -1182,6 +1295,7 @@ async fn test_federation_export_privacy_filter() {
     .await
     .unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 2. Store a private karma
     jq.store_karma(
         &job2,
@@ -1198,6 +1312,7 @@ async fn test_federation_export_privacy_filter() {
     .unwrap();
 
     // 3. Export
+    #[allow(clippy::unwrap_used)]
     let (karmas, _, _) = jq.export_federated_data(None).await.unwrap();
 
     // Assert
@@ -1244,14 +1359,17 @@ async fn test_job_enqueue_constitutional_violation() {
 #[tokio::test]
 async fn test_elicitation_status_transition_red() {
     let (jq, _tmp) = create_test_queue().await;
+    #[allow(clippy::unwrap_used)]
     let job_id = jq
         .enqueue("test", "topic", "style", None, None, None, 100)
         .await
         .unwrap();
 
     // 1. Pending -> Processing (Dequeue)
+    #[allow(clippy::unwrap_used)]
     let _job = jq.dequeue(&["test"]).await.unwrap().unwrap();
 
+    #[allow(clippy::unwrap_used)]
     // 2. Processing -> AwaitingInput
     jq.update_job_status(
         &job_id,
@@ -1261,6 +1379,7 @@ async fn test_elicitation_status_transition_red() {
     .unwrap();
 
     // 3. Verify status
+    #[allow(clippy::unwrap_used)]
     let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert!(matches!(
         job.status,
@@ -1279,6 +1398,7 @@ async fn test_forget_actor_broadcasts_system_event() {
 
     let mut rx = jq.event_bus.subscribe();
 
+    #[allow(clippy::unwrap_used)]
     jq.forget_actor(agent_id).await.unwrap();
 
     // イベントを受信できるか確認

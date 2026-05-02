@@ -60,6 +60,7 @@ async fn setup_db_pool() -> DatabasePool {
         .unwrap()
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_extract_concepts() {
     let pool = setup_db_pool().await;
@@ -95,6 +96,7 @@ async fn test_extract_concepts() {
     assert_eq!(concepts[1].name, "Tokio");
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_run_compilation_cycle() {
     let pool = setup_db_pool().await;
@@ -121,6 +123,7 @@ async fn test_run_compilation_cycle() {
     assert!(report.new_articles > 0, "Should create new article");
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_update_backlinks_and_typed_links() {
     let pool = setup_db_pool().await;
@@ -187,6 +190,7 @@ async fn test_update_backlinks_and_typed_links() {
     assert_eq!(c_b.link_type, "extends");
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_lint_wiki_not_stub() {
     let pool = setup_db_pool().await;
@@ -205,6 +209,7 @@ async fn test_lint_wiki_not_stub() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_cross_cycle_two_source_principle() {
     let pool = setup_db_pool().await;
@@ -250,6 +255,7 @@ async fn test_cross_cycle_two_source_principle() {
     );
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_concept_index_merge_not_overwrite() {
     let pool = setup_db_pool().await;
@@ -290,6 +296,7 @@ async fn test_concept_index_merge_not_overwrite() {
     assert!(doc_ids_json.contains("doc2"), "Index MUST include new doc2");
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_compilation_cycle_calls_backlinks() {
     let pool = setup_db_pool().await;

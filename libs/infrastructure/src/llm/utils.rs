@@ -42,6 +42,7 @@ pub fn extract_json(text: &str) -> Result<String, AiomeError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

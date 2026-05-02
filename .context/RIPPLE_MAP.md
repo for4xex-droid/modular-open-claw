@@ -12,6 +12,16 @@
     - `SkillArena` 評価時のロック競合（Lock Contention）が排除され、複数エージェント並行実行時のレイテンシと安定性が向上した。
     - データベース操作が抽象化されたことで、PostgreSQL 環境への移行がシームレスに行えるようになった。
 
+### 2. Aegis Sentinel HotSwap Auto-Remediation (Phase 2)
+- **変更内容**:
+    - `libs/infrastructure/src/dream_state.rs` [MODIFY]: `DreamResult` および `HotSwapRequest` 構造体を導入し、`aegis_sentinel_dream` の戻り値を拡張。Kani 検証成功時に HotSwap リクエストを呼び出し元に返却する。
+    - `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `DreamState` から受け取った `HotSwapRequest` を処理し、`SkillForge` を使用して WASM スキルを再コンパイルし、`WasmSkillManager` のキャッシュを破棄して `IncidentStatus::Resolved` に移行するロジックを実装。
+    - `libs/infrastructure/src/aegis/prover.rs` [MODIFY]: `generate_patch` のプロンプトを改修。`forge_workspaces` ディレクトリから元の `src/lib.rs` ソースコードを読み込み、LLM のプロンプト・コンテキストとして提供。
+    - `apps/api-server/src/api_integration_tests.rs` [MODIFY]: `test_aegis_sentinel_integration` を追加。大量のインシデント注入と、Dream Service のバッチ処理呼び出しによるブロードキャスト検証テストを実装。
+- **波及効果**:
+    - Aiome の自律修復機能 (HotSwap) が完全に稼働。Kani 検証を通過したパッチコードが自動的にスキルとしてビルドされ、再デプロイされる自己修復ループが完成した。
+    - LLM パッチ生成の精度が向上。既存のスタックトレース依存から、完全なソースコードとコンパイルエラー履歴に依存することでコンパイル成功率が大幅に上がった。
+
 ## Phase 8.5: Infrastructure Hardening & Nurture Integration
 ### 1. Cross-Domain Error Unification
 - **変更内容**:

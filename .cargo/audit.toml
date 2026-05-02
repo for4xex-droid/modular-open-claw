@@ -46,5 +46,6 @@ ignore = [
     "RUSTSEC-2025-0098", # unic-ucd-version (pinned by tauri -> unic-ucd-ident)
     "RUSTSEC-2025-0100", # unic-ucd-ident (pinned by tauri -> urlpattern)
     "RUSTSEC-2025-0134", # rustls-pemfile (pinned by reqwest / bastion-core)
-    "RUSTSEC-2025-0017"  # trust-dns-proto (pinned by bastion-core)
+    "RUSTSEC-2025-0017", # trust-dns-proto (pinned by bastion-core)
+    "RUSTSEC-2026-0114"  # new vulnerability
 ]

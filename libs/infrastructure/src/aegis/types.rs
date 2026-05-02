@@ -54,6 +54,7 @@ pub struct IncidentRecord {
     pub input_payload: String,
     pub stack_trace: String,
     pub status: IncidentStatus,
+    pub retry_count: u32,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }

@@ -1,14 +1,37 @@
 ## [Unreleased]
-> Last Updated: 2026-05-02
+> Last Updated: 2026-05-03
+
+### Added
+- **ADR-040: Aegis Kani Sandbox Implementation**:
+  - `AegisProver::verify_with_kani` の実装を完了し、Podman rootless コンテナ内での `cargo kani` 実行フローと `PathSandbox` によるパス検証を構築。
+  - `DreamState::aegis_sentinel_dream` に AegisProver のバッチ処理ループを実装し、Kani 検証失敗が `MAX_KANI_RETRIES` (3回) に達した場合の `IncidentStatus::WontFix` 自動遷移ロジックを追加。
+  - `IncidentRepository` に `retry_count` カラムを追加し、必要なステータス更新・取得メソッドを実装 (TDD Green)。
+  - `DreamState` への `IncidentRepository` および `event_sender` の DI 注入を実装し、監視ループを本番環境で有効化。
+  - Postgres 用の `aegis_incidents` マイグレーションテーブルを追加し、マルチバックエンド対応を強化。
+  - `.env.example` に `KANI_STUB_MODE`、`KANI_PROOF_TIMEOUT_SECS`、`FORGE_WORKSPACE_DIR` を追加。
+  - **[Phase 2]** `DreamResult` と `HotSwapRequest` 構造体を導入し、`aegis_sentinel_dream` からの戻り値ベースで `SkillForge` を連携。自己修復 (HotSwap) ループを自動化。
+  - **[Phase 2]** パッチ生成時のプロンプトを改修し、`forge_workspaces` 内の `src/lib.rs` ソースをコンテキストとして提供することでコンパイル成功率を向上。
+  - **[Phase 2]** 統合テスト `test_aegis_sentinel_integration` を追加し、Dream Service のインシデント記録とブロードキャスト機能の動作を保証。
+  - **[Phase 2: Final Polish]** `broadcast::send` のエラーロギングを追加し、SSE接続者不在時のサイレント破棄を防止。
+  - **[Phase 2: Final Polish]** `dream.rs` の未使用変数 (`cortex_fs_root`, `resolver`) の削除と、テストコード内の無効な `clippy::unwrap_used` 許可属性を解消し、コンパイラ警告ゼロを達成。
+
+### Changed
+- **Zero-Panic Policy (Clippy `deny` 化)**: `Cargo.toml` の `unwrap_used` を `"warn"` → `"deny"` に昇格。全 15 クレートに `[lints] workspace = true` を追加し、ワークスペース lint の継承を有効化。既存 `.unwrap()` 箇所にはステートメント境界に `#[allow(clippy::unwrap_used)]` を自動挿入（121 ファイル / 406 annotations）。新規 `.unwrap()` は Clippy で compile error として物理的に阻止される環境を構築。
 
 ### Added
 - **Aegis Sentinel Infrastructure Integration**:
+  - Implemented `PhashScanner` to use `ImageHasher` for pHash generation and local blacklist comparison, removing the `PhotoDNA` mock stub and hardening CSAM pipeline (Phase B).
+  - Implemented `AegisProver` batch-mode processing loop within `DreamState::aegis_sentinel_dream` to autonomously generate patches (`LLMProvider`) and invoke Kani verification (`verify_with_kani`) for open incidents.
+  - Implemented missing Aegis lifecycle methods in `IncidentRepository` (`update_status`, `fetch_open_incidents`, `fetch_by_status`) to enable closed-loop patch and recovery execution.
   - Implemented `IncidentRepository` (`libs/infrastructure/src/aegis/incident_repo.rs`) for structured, multi-driver (SQLite/Postgres) recording of system incidents to the `aegis_incidents` table.
   - Refactored `WasmSkillManager::call_skill` and `SkillArena::record_outcome` to use `IncidentRepository` for persisting WASM execution failures and skill evaluation incidents, eliminating raw inline SQL and enforcing DRY principles.
   - Optimized `SkillArena::record_outcome` by moving heavy Database I/O outside the `RwLock` write-guard scope, significantly reducing lock contention.
   - Fixed a critical gap in the SSE event pipeline (`apps/api-server/src/stream.rs`) by adding a match arm for `CoreEvent::AegisSentinel`, ensuring immune system alerts correctly propagate from the backend to connected clients.
   - Integrated `aegis_sentinel` events into the Management Console UI (`App.tsx`, `useSystemVitality.tsx`), mapped to visual timeline components with i18n support (`aegisSentinel`, `aegisAlert` in `en.json` and `ja.json`).
+  - **Observability Metrics**: Injected Prometheus instrumentation into `DreamState::aegis_sentinel_dream` (`aegis_total_incidents`, `aegis_open_incidents`) and `AegisProver` (`aegis_patch_generation_success`, `aegis_patch_generation_failure`, `aegis_patch_verification_success`) to monitor autonomous patch efficacy in real time.
 - **Aiome v1.1 / Project-Nurture Economic Integration**:
+  - Fixed production deployment blocker by explicitly defining the `nurture-api` service in `docker-compose.production.yml`.
+  - Removed redundant `TODO` stubs in `Project-Nurture/apps/nurture-api/src/plugin.rs` logic mapping verification results to `KarmaForge`.
   - Implemented HTTP Proxy routing in `StripeCommerceEngine` for `transfer`, `instant_refund`, `withdraw_points`, `get_points`, and `get_transaction_history` to proxy requests to Nurture API.
   - Integrated `OxiLeanProofCertificate` header generation (`X-OxiLean-Proof-Certificate`) in `StripeCommerceEngine` to establish secure, trusted out-of-process authentication.
   - Added strict Fail-Fast warnings in `StripeCommerceEngine::new` to prevent split-brain data corruption in production when `NURTURE_API_URL` is omitted.

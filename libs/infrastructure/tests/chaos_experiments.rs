@@ -37,6 +37,7 @@ use std::time::Duration;
 // ============================================================
 /// 仮説: LLM が空レスポンスを返しても、SoT セッションは panic せず
 ///       Graceful Degradation する（セッションが Result::Ok を返す）
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_sot_empty_llm_response() {
     // ── Steady State: SoT は正常な LLM 出力で AllCriteriaPassed を返す ──
@@ -81,6 +82,7 @@ async fn chaos_sot_empty_llm_response() {
 // ============================================================
 /// 仮説: LLM が不正 JSON を返しても、SoT の evaluate_scores は
 ///       panic せずフォールバックスコア (5.0) を返す
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_sot_malformed_json_response() {
     let inner = Arc::new(MockLlm::ok("fallback"));
@@ -123,6 +125,7 @@ async fn chaos_sot_malformed_json_response() {
 // ============================================================
 /// 仮説: LLM が全操作で失敗しても、DefaultSamsaraEngine の Rebirth は
 ///       panic せず、narrative を前世代からフォールバック継承する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_samsara_rebirth_llm_failure() {
     // ── Steady State: 正常な LLM で rebirth が成功する ──
@@ -168,6 +171,7 @@ async fn chaos_samsara_rebirth_llm_failure() {
 // ============================================================
 /// 仮説: CircuitBreaker が強制 Open 状態の時、check_state は
 ///       即座に Err を返し、後続の処理をブロックする
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_circuit_breaker_forced_open() {
     let config = CircuitBreakerConfig {
@@ -204,6 +208,7 @@ async fn chaos_circuit_breaker_forced_open() {
 // ============================================================
 /// 仮説: LLM が 200KB の出力を返した場合、ConstraintChecker の
 ///       evaluate_step が OutputSizeExceeded 違反を検出する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_giant_output_constraint() {
     let manifest = PermissionManifest {
@@ -261,6 +266,7 @@ async fn chaos_giant_output_constraint() {
 // ============================================================
 /// 仮説: LLM が 100ms のタイムアウトを起こした場合、SoT セッションは
 ///       panic せず Error を伝搬する（LLM の ? 演算子が正しく機能する）
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_sot_llm_timeout() {
     let inner = Arc::new(MockLlm::ok("fallback"));
@@ -292,6 +298,7 @@ async fn chaos_sot_llm_timeout() {
 // ============================================================
 /// 仮説: Sequential プロトコルで LLM が空レスポンスを返した場合、
 ///       全 Thinker が空でもセッションは panic せず Graceful Degradation する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_sequential_empty_response_graceful_degradation() {
     use aiome_core_contracts::contracts::CoordinationProtocol;
@@ -335,6 +342,7 @@ async fn chaos_sequential_empty_response_graceful_degradation() {
 // ============================================================
 /// 仮説: 全 Thinker が自発的辞退しても、セッションは panic せず
 ///       前ラウンドのコンテンツ（または空文字列）を保持して完了する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_sequential_full_abstention() {
     use aiome_core_contracts::contracts::CoordinationProtocol;
@@ -369,6 +377,7 @@ async fn chaos_sequential_full_abstention() {
 /// 仮説: LLM が MAX_COMPONENT_DEPTH を超える極端に深い再帰の
 ///       A2UI 表面を出力した場合、A2uiValidator は panic や
 ///       Stack Overflow を起こさず、エラーを返す
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_a2ui_deep_recursion_rejection() {
     use infrastructure::a2ui::{A2uiEnvelope, A2uiValidator, Component, Surface};
@@ -413,6 +422,7 @@ async fn chaos_a2ui_deep_recursion_rejection() {
 // ============================================================
 /// 仮説: 同一 agent_id に対して limit+1 回のリクエストを同時送信しても
 ///       RateLimiter はスレッドセーフに動作し、正確に limit 回だけ許可する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_rate_limiter_concurrent_burst() {
     use infrastructure::rate_limiter::AgentRateLimiter;
@@ -459,6 +469,7 @@ async fn chaos_rate_limiter_concurrent_burst() {
 // ============================================================
 /// 仮説: ホワイトリストに含まれる treasureItem タイプに SSRF ペイロードを
 ///       仕込んだ場合でも、props URL 検証で正しくブロックされる
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_a2ui_whitelisted_type_with_ssrf_payload() {
     use infrastructure::a2ui::{A2uiEnvelope, A2uiValidator, Component, Surface};
@@ -496,6 +507,7 @@ async fn chaos_a2ui_whitelisted_type_with_ssrf_payload() {
 // ============================================================
 /// 仮説: Oracle の評価で LLM が不正な JSON (Malformed JSON) を返した場合、
 ///       panic せずに Error(AiomeError::Infrastructure) として安全に伝搬する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_oracle_malformed_json() {
     use infrastructure::oracle::Oracle;
@@ -532,6 +544,7 @@ async fn chaos_oracle_malformed_json() {
 // ============================================================
 /// 仮説: マルチジャッジで全プロバイダーが Error などを起こした場合、
 ///       panic せずに "All Oracle providers failed" というエラーを返す
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_oracle_multi_judge_all_failing() {
     use infrastructure::oracle::Oracle;
@@ -566,6 +579,7 @@ async fn chaos_oracle_multi_judge_all_failing() {
 // ============================================================
 /// 仮説: ExpressionEngine の generate が LLM から空レスポンスを受け取っても
 ///       panic せず、デフォルト感情 "reflective" のフォールバック Expression を生成する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_expression_empty_response() {
     use aiome_core::expression::engine::ExpressionEngine;
@@ -600,6 +614,7 @@ async fn chaos_expression_empty_response() {
 /// 仮説: LLM が 'EMOTION: xxx' フォーマットを無視して自由記述テキスト(Malformed JSON)を
 ///       返しても、パースロジックは panic せずコンテンツを保持した上で
 ///       感情を "reflective" に縮退させる
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_expression_malformed_format() {
     use aiome_core::expression::engine::ExpressionEngine;
@@ -632,6 +647,7 @@ async fn chaos_expression_malformed_format() {
 // ============================================================
 /// 仮説: UserLearner が LLM から意図しない文字列 (Malformed JSON) を受け取っても
 ///       既存のプロファイルを破壊せず、panic せずに更新をスキップ (Ok(false)) する
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_user_learner_malformed_json() {
     use infrastructure::user_learner::{UserLearner, UserProfile};
@@ -662,6 +678,7 @@ async fn chaos_user_learner_malformed_json() {
 //  Experiment 17: UserLearner + EmptyResponse
 // ============================================================
 /// 仮説: UserLearner が LLM から空応答を受けた場合も安全にスキップする
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_user_learner_empty_response() {
     use infrastructure::user_learner::{UserLearner, UserProfile};
@@ -690,6 +707,7 @@ async fn chaos_user_learner_empty_response() {
 // ============================================================
 /// 仮説: UserLearner に GiantOutput (1MB) が渡された場合でもメモリ枯渇やパニックを
 ///       起こさず、非対応フォーマットとして破棄される
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn chaos_user_learner_giant_output() {
     use infrastructure::user_learner::{UserLearner, UserProfile};

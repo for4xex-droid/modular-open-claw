@@ -172,6 +172,7 @@ impl BlobStorageOps for BlobStorageAdapter {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use tokio::sync::broadcast;

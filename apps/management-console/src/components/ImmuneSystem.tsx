@@ -6,10 +6,10 @@
  */
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, AlertTriangle, Search, Filter, Lock, Plus, X } from 'lucide-react';
+import { Shield, AlertTriangle, Search, Filter, Lock, Plus, X, Activity } from 'lucide-react';
 import { API_BASE } from "../config";
 
-import { ImmuneRule } from "../types";
+import { ImmuneRule, AegisStatusResponse } from "../types";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 
@@ -26,7 +26,8 @@ const ImmuneSystem: React.FC = () => {
     const { t } = useTranslation();
     const [rules, setRules] = useState<ImmuneRule[]>([]);
     const [quarantinedAssets, setQuarantinedAssets] = useState<QuarantinedAsset[]>([]);
-    const [activeTab, setActiveTab] = useState<'RULES' | 'QUARANTINE'>('RULES');
+    const [aegisStatus, setAegisStatus] = useState<AegisStatusResponse | null>(null);
+    const [activeTab, setActiveTab] = useState<'RULES' | 'QUARANTINE' | 'AEGIS'>('RULES');
     const [isAdding, setIsAdding] = useState(false);
     const [newRule, setNewRule] = useState({ pattern: '', severity: 50, action: 'BLOCK' });
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,9 +62,22 @@ const ImmuneSystem: React.FC = () => {
         }
     };
 
+    const fetchAegisStatus = async () => {
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/watchtower`);
+            if (res.ok) {
+                const data = await res.json();
+                setAegisStatus(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch aegis status", e);
+        }
+    };
+
     useEffect(() => {
         fetchRules();
         fetchQuarantined();
+        fetchAegisStatus();
     }, []);
 
     const handleAddRule = async () => {
@@ -189,6 +203,16 @@ const ImmuneSystem: React.FC = () => {
                         >
                             QUARANTINE
                         </button>
+                        <button
+                            onClick={() => setActiveTab('AEGIS')}
+                            style={{
+                                background: activeTab === 'AEGIS' ? 'var(--accent-amber)' : 'transparent',
+                                color: activeTab === 'AEGIS' ? 'var(--bg-primary)' : 'var(--text-muted)',
+                                border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
+                            }}
+                        >
+                            AEGIS SENTINEL
+                        </button>
                     </div>
                 </div>
             </div>
@@ -261,7 +285,7 @@ const ImmuneSystem: React.FC = () => {
                                     <input
                                         type="number"
                                         value={newRule.severity}
-                                        onChange={e => setNewRule({ ...newRule, severity: parseInt(e.target.value) })}
+                                        onChange={e => setNewRule({ ...newRule, severity: parseInt(e.target.value) || 0 })}
                                         style={inputStyle}
                                     />
                                 </div>
@@ -385,7 +409,7 @@ const ImmuneSystem: React.FC = () => {
                                 <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.noActiveRules')}</div>
                                 <div style={{ fontSize: '0.9rem' }}>{t('immune.noActiveRulesDesc')}</div>
                             </motion.div>
-                        )) : (
+                        )) : activeTab === 'QUARANTINE' ? (
                             quarantinedAssets.length > 0 ? quarantinedAssets.map((asset, i) => (
                             <motion.div
                                 key={asset.id}
@@ -454,7 +478,105 @@ const ImmuneSystem: React.FC = () => {
                                 <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.quarantineClean')}</div>
                                 <div style={{ fontSize: '0.9rem' }}>{t('immune.quarantineCleanDesc')}</div>
                             </motion.div>
-                        ))}
+                        )) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', width: '100%' }}>
+                                <div style={{
+                                    background: 'var(--black-20)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid var(--border-glass)',
+                                    padding: 'var(--space-lg)',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(4, 1fr)',
+                                    gap: 'var(--space-md)'
+                                }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>TOTAL INCIDENTS (7d)</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{aegisStatus?.stats?.total_incidents_7d || 0}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>UNRESOLVED</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: aegisStatus?.stats?.unresolved && aegisStatus.stats.unresolved > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
+                                            {aegisStatus?.stats?.unresolved || 0}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>AFFECTED SKILLS</div>
+                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-amber)' }}>{aegisStatus?.stats?.distinct_skills || 0}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>TOP FAILING SKILL</div>
+                                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.8rem' }}>{aegisStatus?.stats?.top_failing_skill || 'None'}</div>
+                                    </div>
+                                </div>
+
+                                <h4 style={{ margin: 'var(--space-md) 0 0 0', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Open Incidents</h4>
+                                
+                                {aegisStatus && aegisStatus.open_incidents.length > 0 ? aegisStatus.open_incidents.map((incident, i) => (
+                                    <motion.div
+                                        key={incident.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.05 }}
+                                        className="card-hover"
+                                        style={{
+                                            background: 'var(--bg-glass-heavy)',
+                                            border: '1px solid var(--accent-amber-30)',
+                                            borderRadius: 'var(--radius-md)',
+                                            padding: 'var(--space-md)',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            boxShadow: 'var(--glow-amber)',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
+                                            <div style={{
+                                                width: '42px',
+                                                height: '42px',
+                                                borderRadius: 'var(--radius-sm)',
+                                                background: 'var(--accent-amber-10)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'var(--accent-amber)'
+                                            }}>
+                                                <Activity size={20} />
+                                            </div>
+                                            <div>
+                                                <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                                    <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                        {incident.skill_name}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 800,
+                                                        color: 'var(--bg-primary)',
+                                                        background: incident.status === 'Open' ? 'var(--accent-rose)' : 'var(--accent-amber)',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '4px'
+                                                    }}>
+                                                        {incident.status.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                    <span className="font-mono" style={{ background: 'var(--black-30)', padding: '2px 4px', borderRadius: '4px' }}>
+                                                        {incident.input_payload.substring(0, 40)}{incident.input_payload.length > 40 ? '...' : ''}
+                                                    </span>
+                                                    <span style={{ marginLeft: '1rem', opacity: 0.6 }}>Reported: {new Date(incident.created_at).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )) : (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
+                                        <Shield size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-emerald)" />
+                                        <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>Zero Active Incidents</div>
+                                        <div style={{ fontSize: '0.9rem' }}>The Aegis Sentinel is monitoring. All systems are stable.</div>
+                                    </motion.div>
+                                )}
+                            </div>
+                        )}
                     </AnimatePresence>
                 </div>
 

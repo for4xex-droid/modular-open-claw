@@ -175,6 +175,7 @@ fn has_extension(dir: &Path, ext: &str) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::fs::File;

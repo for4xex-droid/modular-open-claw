@@ -13,11 +13,13 @@
 //! - Safe Move Protocol
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::workspace_manager::WorkspaceManager;
     use std::time::{Duration, SystemTime};
     use tokio::fs;
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_ghost_town_pruning() {
         let tmp_dir = tempfile::TempDir::new().unwrap();
@@ -51,6 +53,7 @@ mod tests {
         assert!(root.exists(), "root should survive"); // root は prune しない
     }
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_friendly_fire_protection() {
         let tmp_dir = tempfile::TempDir::new().unwrap();
@@ -93,6 +96,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_safe_move_protocol() {
         let tmp_dir = tempfile::TempDir::new().unwrap();

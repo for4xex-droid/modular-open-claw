@@ -78,3 +78,6 @@ tempfile = "3.27.0"
 wiremock = { workspace = true }
 serial_test = "3"
 infrastructure = { path = "../../libs/infrastructure", features = ["test-utils"] }
+
+[lints]
+workspace = true

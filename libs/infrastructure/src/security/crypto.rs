@@ -134,6 +134,7 @@ pub fn decrypt_setting(ciphertext_hex: &str) -> Result<String, AiomeError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

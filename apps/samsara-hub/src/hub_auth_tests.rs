@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::{auth_middleware, HubState};
@@ -12,6 +13,7 @@ mod tests {
     // We need to mock Next and Request to test middleware in isolation or use Router.
     // For TDD, I'll use a simple Router with the middleware.
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_hub_auth_middleware_admin_allowed() {
         let state = Arc::new(HubState {
@@ -45,6 +47,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_hub_auth_middleware_user_rejected() {
         let state = Arc::new(HubState {

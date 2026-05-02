@@ -31,6 +31,30 @@ use crate::aegis::incident_repo::IncidentRepository;
 use aiome_core_contracts::events::CoreEvent;
 use tokio::sync::broadcast;
 
+/// HotSwap request structure (Phase 2)
+#[derive(Debug, Clone, PartialEq)]
+pub struct HotSwapRequest {
+    pub incident_id: String,
+    pub skill_name: String,
+    pub patch_code: String,
+}
+
+/// Consolidated dream output structure
+#[derive(Debug, Clone, PartialEq)]
+pub struct DreamResult {
+    pub insight: Option<String>,
+    pub hot_swaps: Vec<HotSwapRequest>,
+}
+
+impl DreamResult {
+    pub fn from_insight(insight: String) -> Self {
+        Self {
+            insight: Some(insight),
+            hot_swaps: Vec::new(),
+        }
+    }
+}
+
 /// `DreamState` 構造体
 pub struct DreamState {
     llm: Arc<dyn aiome_core::llm_provider::LlmProvider>,
@@ -75,7 +99,7 @@ impl DreamState {
         job_queue: &dyn JobQueue,
         trend_sonar: &ExternalTrendSonar,
         level: i32,
-    ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Option<DreamResult>, Box<dyn Error + Send + Sync>> {
         info!(
             "💤 [DreamState] AI (Lv{}) is entering a contemplative Dream State...",
             level
@@ -99,17 +123,27 @@ impl DreamState {
         let aegis_prob = if self.incident_repo.is_some() { 10 } else { 0 };
 
         let insight = if rand_val < comm_prob as i64 {
-            self.communicative_dream(job_queue).await?
+            self.communicative_dream(job_queue)
+                .await?
+                .map(DreamResult::from_insight)
         } else if rand_val < (comm_prob + sci_prob) as i64 {
-            self.scientific_dream(job_queue).await?
+            self.scientific_dream(job_queue)
+                .await?
+                .map(DreamResult::from_insight)
         } else if rand_val < (comm_prob + sci_prob + obs_prob) as i64 {
-            self.observability_dream().await?
+            self.observability_dream()
+                .await?
+                .map(DreamResult::from_insight)
         } else if rand_val < (comm_prob + sci_prob + obs_prob + aegis_prob) as i64 {
             self.aegis_sentinel_dream().await?
         } else if rand_val % 2 == 0 {
-            self.explorative_dream(job_queue, trend_sonar).await?
+            self.explorative_dream(job_queue, trend_sonar)
+                .await?
+                .map(DreamResult::from_insight)
         } else {
-            self.reflective_dream(job_queue).await?
+            self.reflective_dream(job_queue)
+                .await?
+                .map(DreamResult::from_insight)
         };
 
         Ok(insight)
@@ -183,10 +217,10 @@ impl DreamState {
         }
     }
 
-    /// Aegis Sentinel 夢 (Phase 1)
-    pub(crate) async fn aegis_sentinel_dream(
+    /// Aegis Sentinel 夢 (Phase 1 & Phase 2)
+    pub async fn aegis_sentinel_dream(
         &self,
-    ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Option<DreamResult>, Box<dyn Error + Send + Sync>> {
         let repo = match &self.incident_repo {
             Some(r) => r,
             None => return Ok(None),
@@ -207,6 +241,7 @@ impl DreamState {
             alert_level = "Warning";
         }
 
+        let mut alert_msg = None;
         if alert_level != "Info" {
             let msg = format!(
                 "Aegis {} Alert: {} total incidents in last 7 days. Top failing skill: {:?}",
@@ -215,19 +250,199 @@ impl DreamState {
             warn!("🚨 [DreamState] {}", msg);
 
             if let Some(sender) = &self.event_sender {
-                let _ = sender.send(CoreEvent::AegisSentinel {
+                if let Err(e) = sender.send(CoreEvent::AegisSentinel {
                     level: alert_level.to_string(),
                     message: msg.clone(),
                     total_incidents: stats.total_incidents_7d,
                     top_skill: stats.top_failing_skill.clone(),
-                });
+                }) {
+                    warn!("⚠️ [DreamState] Failed to broadcast AegisSentinel event (no subscribers?): {}", e);
+                }
             }
-            return Ok(Some(msg));
+            alert_msg = Some(msg);
         }
 
-        Ok(Some(
-            "Aegis Sentinel check complete. System is stable.".to_string(),
-        ))
+        let mut hot_swaps = Vec::new();
+
+        // Phase 2: AegisProver Batch Loop for auto-remediation (ADR-040)
+        let prover = crate::aegis::prover::AegisProver::new(self.llm.clone());
+        let open_incidents = match repo.fetch_open_incidents(5).await {
+            Ok(incidents) => incidents,
+            Err(e) => {
+                warn!(
+                    "⚠️ [DreamState] Failed to fetch open incidents for Aegis batch loop: {}",
+                    e
+                );
+                Vec::new()
+            }
+        };
+
+        for mut incident in open_incidents {
+            info!(
+                "🛡️ [DreamState] AegisProver analyzing incident: {}",
+                incident.id
+            );
+            if let Err(e) = repo
+                .update_status(&incident.id, crate::aegis::types::IncidentStatus::Analyzing)
+                .await
+            {
+                warn!(
+                    "⚠️ [DreamState] Failed to set Analyzing status for {}: {}",
+                    incident.id, e
+                );
+            }
+
+            match prover.generate_patch(&incident).await {
+                Ok(patch_code) => {
+                    if let Err(e) = repo
+                        .update_status(
+                            &incident.id,
+                            crate::aegis::types::IncidentStatus::PatchGenerated,
+                        )
+                        .await
+                    {
+                        warn!(
+                            "⚠️ [DreamState] Failed to set PatchGenerated status for {}: {}",
+                            incident.id, e
+                        );
+                    }
+
+                    if let Err(e) = repo
+                        .update_status(
+                            &incident.id,
+                            crate::aegis::types::IncidentStatus::KaniVerifying,
+                        )
+                        .await
+                    {
+                        warn!(
+                            "⚠️ [DreamState] Failed to set KaniVerifying status for {}: {}",
+                            incident.id, e
+                        );
+                    }
+                    match prover.verify_with_kani(&patch_code).await {
+                        Ok(true) => {
+                            info!(
+                                "✅ [DreamState] Kani verification SUCCEEDED for incident: {}",
+                                incident.id
+                            );
+                            if let Err(e) = repo
+                                .update_status(
+                                    &incident.id,
+                                    crate::aegis::types::IncidentStatus::KaniSuccess,
+                                )
+                                .await
+                            {
+                                warn!(
+                                    "⚠️ [DreamState] Failed to set KaniSuccess status for {}: {}",
+                                    incident.id, e
+                                );
+                            }
+
+                            // Return HotSwapRequest for Phase 2 automation
+                            hot_swaps.push(HotSwapRequest {
+                                incident_id: incident.id.clone(),
+                                skill_name: incident.skill_name.clone(),
+                                patch_code,
+                            });
+                        }
+                        _ => {
+                            warn!(
+                                "❌ [DreamState] Kani verification FAILED for incident: {}",
+                                incident.id
+                            );
+                            if let Err(e) = repo.increment_retry_count(&incident.id).await {
+                                warn!(
+                                    "⚠️ [DreamState] Failed to increment retry count for {}: {}",
+                                    incident.id, e
+                                );
+                            }
+                            incident.retry_count += 1; // local tracking for loop-internal threshold check
+
+                            if incident.retry_count >= crate::aegis::prover::MAX_KANI_RETRIES {
+                                warn!("⛔ [DreamState] Max Kani retries reached for incident: {}. Transitioning to WontFix.", incident.id);
+                                if let Err(e) = repo
+                                    .update_status(
+                                        &incident.id,
+                                        crate::aegis::types::IncidentStatus::WontFix,
+                                    )
+                                    .await
+                                {
+                                    warn!(
+                                        "⚠️ [DreamState] Failed to set WontFix status for {}: {}",
+                                        incident.id, e
+                                    );
+                                }
+                                metrics::counter!("aegis_kani_wontfix_total").increment(1);
+                            } else {
+                                // Revert to Open for next dream cycle
+                                if let Err(e) = repo
+                                    .update_status(
+                                        &incident.id,
+                                        crate::aegis::types::IncidentStatus::Open,
+                                    )
+                                    .await
+                                {
+                                    warn!(
+                                        "⚠️ [DreamState] Failed to revert Open status for {}: {}",
+                                        incident.id, e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "⚠️ [DreamState] AegisProver failed to generate patch: {}",
+                        e
+                    );
+                    if let Err(e) = repo.increment_retry_count(&incident.id).await {
+                        warn!(
+                            "⚠️ [DreamState] Failed to increment retry count for {}: {}",
+                            incident.id, e
+                        );
+                    }
+                    incident.retry_count += 1;
+
+                    if incident.retry_count >= crate::aegis::prover::MAX_KANI_RETRIES {
+                        warn!("⛔ [DreamState] Max Kani retries reached (patch generation failed). Transitioning to WontFix.");
+                        if let Err(e) = repo
+                            .update_status(
+                                &incident.id,
+                                crate::aegis::types::IncidentStatus::WontFix,
+                            )
+                            .await
+                        {
+                            warn!(
+                                "⚠️ [DreamState] Failed to set WontFix status for {}: {}",
+                                incident.id, e
+                            );
+                        }
+                        metrics::counter!("aegis_kani_wontfix_total").increment(1);
+                    } else {
+                        if let Err(e) = repo
+                            .update_status(&incident.id, crate::aegis::types::IncidentStatus::Open)
+                            .await
+                        {
+                            warn!(
+                                "⚠️ [DreamState] Failed to revert Open status for {}: {}",
+                                incident.id, e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if alert_msg.is_some() || !hot_swaps.is_empty() {
+            let fallback_msg = "Aegis Sentinel dream complete: analyzed recent incidents and ran auto-remediation batch loop.".to_string();
+            let insight = alert_msg.or(Some(fallback_msg));
+            return Ok(Some(DreamResult { insight, hot_swaps }));
+        }
+
+        Ok(Some(DreamResult::from_insight(
+            "Aegis Sentinel dream complete: no incidents to process.".to_string(),
+        )))
     }
 
     /// 探索夢
@@ -536,6 +751,7 @@ impl DreamState {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::biome::BiomeMessage;
@@ -1356,8 +1572,81 @@ mod tests {
 
         let res = dream.aegis_sentinel_dream().await.unwrap();
         assert_eq!(
-            res.unwrap(),
-            "Aegis Sentinel check complete. System is stable."
+            res.unwrap().insight.unwrap(),
+            "Aegis Sentinel dream complete: no incidents to process."
         );
+    }
+    #[tokio::test]
+    async fn test_aegis_sentinel_dream_batch_loop() {
+        use crate::aegis::incident_repo::IncidentRepository;
+        use crate::aegis::types::IncidentStatus;
+        use std::sync::Arc;
+
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+        );
+        let jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+            .await
+            .unwrap();
+        crate::job_queue::migrations::DbInitializer::init_db(&jq)
+            .await
+            .unwrap();
+
+        let repo = Arc::new(IncidentRepository::new(pool));
+
+        // Insert an incident that's already reached 2 retries
+        let id = repo
+            .insert_incident("test_skill", "hash", "{}", "err")
+            .await
+            .unwrap();
+        repo.increment_retry_count(&id).await.unwrap();
+        repo.increment_retry_count(&id).await.unwrap(); // Now at 2
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "fn patched() {}".into(), // Mock patch code
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    reasoning: None,
+                    metadata: None,
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let dream = DreamState::new(Arc::new(MockLlm)).with_incident_repo(repo.clone());
+
+        // Disable stub mode so verify_with_kani attempts real execution (which fails without Podman).
+        // Using empty string instead of remove_var to avoid parallel test race conditions.
+        std::env::set_var("KANI_STUB_MODE", "");
+
+        // In non-stub mode, verify_with_kani will fail because Podman/Kani are not available.
+        // This causes retry_count to increment and eventually reach MAX_KANI_RETRIES → WontFix.
+        let _ = dream.aegis_sentinel_dream().await;
+
+        let inc = repo.fetch_incident(&id).await.unwrap().unwrap();
+        assert_eq!(inc.status, IncidentStatus::WontFix);
+        assert_eq!(inc.retry_count, 3);
     }
 }

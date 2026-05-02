@@ -591,6 +591,7 @@ fn extract_role_and_content(raw: &str, thinker_idx: u8) -> (String, String) {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core::llm_provider::{LlmProvider, LlmRequest, LlmResponse};

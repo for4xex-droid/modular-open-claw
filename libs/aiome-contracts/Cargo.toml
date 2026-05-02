@@ -37,3 +37,6 @@ tonic-build = { workspace = true }
 axum = ["dep:axum"]
 grpc = ["tonic", "prost"]
 
+
+[lints]
+workspace = true

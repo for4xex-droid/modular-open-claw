@@ -80,6 +80,31 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  nurture-api:
+    build:
+      context: ../Project-Nurture
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3020
+      - DATABASE_URL=sqlite:///app/data/nurture.db
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - AIOME_API_URL=http://api-server:3015
+    depends_on:
+      - key-proxy
+    volumes:
+      - ../Project-Nurture/data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    restart: always
+
   samsara-hub:
     build:
       context: .

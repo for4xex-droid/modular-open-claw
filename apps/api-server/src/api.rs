@@ -267,6 +267,7 @@ impl utoipa::Modify for SecurityAddon {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use utoipa::OpenApi;

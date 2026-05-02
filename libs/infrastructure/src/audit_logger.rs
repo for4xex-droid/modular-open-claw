@@ -219,6 +219,7 @@ impl AuditLogger for AsyncAuditLogger {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::db::DatabasePool;

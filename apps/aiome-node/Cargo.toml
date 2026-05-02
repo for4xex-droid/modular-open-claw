@@ -29,3 +29,6 @@ sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
 
 [dev-dependencies]
 aiome-core-contracts = { workspace = true }
+
+[lints]
+workspace = true

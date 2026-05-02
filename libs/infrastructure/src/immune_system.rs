@@ -300,6 +300,7 @@ impl AdaptiveImmuneSystem {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::test_utils::job_queue_mock::GlobalMockJobQueue;

@@ -118,6 +118,7 @@ impl From<X402Error> for aiome_core_contracts::error::AiomeError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use wiremock::matchers::{method, path};

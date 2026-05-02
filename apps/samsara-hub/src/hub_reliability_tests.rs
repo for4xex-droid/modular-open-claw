@@ -6,9 +6,11 @@
  */
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::HubState;
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_clock_u32_boundary_failure() {
         let overflow_clock: i64 = (u32::MAX as i64) + 100;
@@ -22,6 +24,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_hub_db_clock_integrity() {
         // HubState を生成（SQLite memory）
@@ -63,6 +66,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_hub_rest_push_sync_integrity() {
         use aiome_core::contracts::{FederatedKarma, FederationPushRequest, FederationSyncRequest};

@@ -6,9 +6,11 @@
  */
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::invariant_dag::InvariantDag;
 
+    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_chain_append_and_verify() {
         let mut dag = InvariantDag::new();
@@ -27,6 +29,7 @@ mod tests {
         assert!(dag.verify_chain().is_ok());
     }
 
+    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_chain_tamper_detect() {
         let mut dag = InvariantDag::new();
@@ -52,6 +55,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_rollback() {
         let mut dag = InvariantDag::new();

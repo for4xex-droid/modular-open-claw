@@ -46,6 +46,7 @@ impl LlmProvider for MockLlm {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_soul_pipeline_with_whisper_integration() {
     let mock_llm = Arc::new(MockLlm);

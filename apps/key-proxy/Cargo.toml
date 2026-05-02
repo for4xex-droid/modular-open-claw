@@ -32,3 +32,6 @@ infrastructure = { path = "../../libs/infrastructure" }
 
 [dev-dependencies]
 axum-test = "16.4.0"
+
+[lints]
+workspace = true

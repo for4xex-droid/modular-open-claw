@@ -49,6 +49,7 @@ fn build_test_router(state: AppState) -> Router {
 async fn test_health_check() {
     let state = create_test_state();
     let app = build_test_router(state);
+    #[allow(clippy::unwrap_used)]
     let server = TestServer::new(app).unwrap();
 
     let response = server.get("/api/v1/health").await;
@@ -61,6 +62,7 @@ async fn test_health_check() {
 async fn test_health_check_authorized() {
     let state = create_test_state();
     let app = build_test_router(state.clone());
+    #[allow(clippy::unwrap_used)]
     let server = TestServer::new(app).unwrap();
 
     let response = server
@@ -78,6 +80,7 @@ async fn test_health_check_authorized() {
 async fn test_llm_complete_unauthorized() {
     let state = create_test_state();
     let app = build_test_router(state);
+    #[allow(clippy::unwrap_used)]
     let server = TestServer::new(app).unwrap();
 
     let response = server
@@ -91,6 +94,7 @@ async fn test_llm_complete_unauthorized() {
 async fn test_llm_embed_unauthorized() {
     let state = create_test_state();
     let app = build_test_router(state);
+    #[allow(clippy::unwrap_used)]
     let server = TestServer::new(app).unwrap();
 
     let response = server

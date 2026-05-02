@@ -349,6 +349,7 @@ macro_rules! sql_fetch_optional {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

@@ -62,6 +62,29 @@ export interface ImmuneRule {
     active?: boolean;
 }
 
+export interface AegisWeeklyStats {
+    total_incidents_7d: number;
+    distinct_skills: number;
+    unresolved: number;
+    top_failing_skill: string | null;
+}
+
+export interface AegisIncidentRecord {
+    id: string;
+    skill_name: string;
+    wasm_hash: string;
+    input_payload: string;
+    stack_trace: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AegisStatusResponse {
+    stats: AegisWeeklyStats | null;
+    open_incidents: AegisIncidentRecord[];
+}
+
 export interface Karma {
     id: string;
     job_id: string;

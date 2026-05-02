@@ -947,6 +947,7 @@ impl CommerceEngine for StripeCommerceEngine {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;

@@ -386,6 +386,7 @@ fn is_skill_whitelisted(name: &str) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::app_state::Component;

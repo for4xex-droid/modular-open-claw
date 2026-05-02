@@ -24,3 +24,6 @@ shared = { path = "../shared" }
 
 [build-dependencies]
 napi-build = "2.1.3"
+
+[lints]
+workspace = true

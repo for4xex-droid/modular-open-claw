@@ -73,7 +73,7 @@ prost = "0.13"
 tonic-build = "0.12"
 tiktoken-rs = "0.5.8"
 [workspace.lints.clippy]
-unwrap_used = "warn"
+unwrap_used = "deny"
 
 [workspace.dependencies.wasmtime]
 version = "43.0.1"

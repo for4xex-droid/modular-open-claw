@@ -41,3 +41,6 @@ tonic-build = { workspace = true }
 [features]
 axum = ["dep:axum", "aiome-contracts/axum"]
 grpc = ["tonic", "prost", "aiome-contracts/grpc"]
+
+[lints]
+workspace = true

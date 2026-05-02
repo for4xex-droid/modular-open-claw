@@ -238,6 +238,7 @@ impl HarnessRegistryOps for UniversalJobQueue {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::db::DatabasePool;

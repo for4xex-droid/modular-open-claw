@@ -20,3 +20,6 @@ gltf = { version = "1.4.1", features = ["extensions", "extras"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

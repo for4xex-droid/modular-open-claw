@@ -6,6 +6,7 @@
  */
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::skills::WasmSkillManager;
     use serde_json::json;

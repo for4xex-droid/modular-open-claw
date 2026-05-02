@@ -11,6 +11,7 @@
  */
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use std::fs;
 
@@ -18,6 +19,7 @@ mod tests {
     use tempfile::tempdir;
 
     // --- Component 2: Progressive Skill Loading (WasmSkillManager) ---
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_progressive_skill_mtime_invalidation() {
         use infrastructure::skills::{VerifiedSkill, WasmSkillManager};
@@ -49,6 +51,7 @@ mod tests {
     }
 
     // --- Component 3: Virtual Path System (PathSandbox) ---
+    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_virtual_path_resolution() {
         use shared::sandbox::PathSandbox;
@@ -69,6 +72,7 @@ mod tests {
     }
 
     // --- Component 4: Fact Extraction (MemoryCrystallizer) ---
+    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_fact_categories_enum_exists() {
         use infrastructure::memory_crystallizer::FactCategory;
@@ -77,6 +81,7 @@ mod tests {
     }
 
     // --- Component 1: Middleware Chain (SoulPipeline) ---
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_soul_middleware_structure() {
 

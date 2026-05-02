@@ -10,6 +10,7 @@ use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_interactions_complete_with_cache() {
     // Arrange
@@ -132,6 +133,7 @@ async fn test_interactions_complete_with_cache() {
     assert_eq!(id2, interaction_id2);
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_interactions_failover() {
     // Arrange

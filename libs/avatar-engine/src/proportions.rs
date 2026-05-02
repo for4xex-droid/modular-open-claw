@@ -190,6 +190,7 @@ impl From<ProportionError> for aiome_core_contracts::error::AiomeError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

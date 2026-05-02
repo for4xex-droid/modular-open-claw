@@ -820,6 +820,7 @@ pub fn test_bearer() -> String {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_health_check() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -843,6 +844,7 @@ async fn test_health_check() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_rate_limiting_per_agent() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -864,6 +866,7 @@ async fn test_rate_limiting_per_agent() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_a2ui_action_integration() {
     let (server, state, _tmp) = create_test_server().await;
@@ -976,6 +979,7 @@ async fn test_a2ui_action_integration() {
     assert_eq!(resp_rl.status_code(), StatusCode::TOO_MANY_REQUESTS);
 }
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_expression_generation_plan_limits() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1008,6 +1012,7 @@ async fn test_expression_generation_plan_limits() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_settings_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1016,6 +1021,7 @@ async fn test_settings_unauthorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_get_prompt_stats() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1067,6 +1073,7 @@ async fn test_get_prompt_stats() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_settings_authorized_and_crud() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1108,6 +1115,7 @@ async fn test_settings_authorized_and_crud() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_settings_ssrf_protection() {
     std::env::set_var("AIOME_DEV_MODE", "1");
@@ -1133,6 +1141,7 @@ async fn test_settings_ssrf_protection() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_biome_routes_auth() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1148,6 +1157,7 @@ async fn test_biome_routes_auth() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ollama_models() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1168,6 +1178,7 @@ async fn test_ollama_models() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_tts_synthesis() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1192,6 +1203,7 @@ async fn test_tts_synthesis() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_lora_training_start() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1220,6 +1232,7 @@ async fn test_lora_training_start() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_lora_training_status() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1268,6 +1281,7 @@ async fn test_lora_training_status() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_verify_skill_proof_endpoint_connected() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1300,6 +1314,7 @@ async fn test_verify_skill_proof_endpoint_connected() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_avatar_upload_ekyc_enforcement() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1330,6 +1345,7 @@ async fn test_avatar_upload_ekyc_enforcement() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_skill_import_oom_protection() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1350,6 +1366,7 @@ async fn test_skill_import_oom_protection() {
     assert_ne!(resp.status_code(), StatusCode::UNAUTHORIZED);
 }
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_global_body_limit() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1377,6 +1394,7 @@ async fn test_global_body_limit() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_avatar_upload_limit_bypass() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1407,6 +1425,7 @@ async fn test_avatar_upload_limit_bypass() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_diagnostics_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1432,6 +1451,7 @@ async fn test_diagnostics_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_artifacts_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1447,6 +1467,7 @@ async fn test_artifacts_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_trends_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1462,6 +1483,7 @@ async fn test_trends_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_stripe_webhook_idempotency_and_license_grant() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1582,6 +1604,7 @@ async fn test_stripe_webhook_idempotency_and_license_grant() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[serial]
 async fn test_voice_drm_roundtrip() {
@@ -1657,6 +1680,7 @@ async fn test_voice_drm_roundtrip() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_synergy_demo_routes_visibility() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1705,6 +1729,7 @@ async fn test_synergy_demo_routes_visibility() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_quarantine_audit_api() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1732,6 +1757,7 @@ async fn test_quarantine_audit_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_quarantine_release_api() {
     let (server, state, _tmp) = create_test_server().await;
@@ -1768,6 +1794,7 @@ async fn test_quarantine_release_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_oauth2_endpoints_stub() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1797,6 +1824,7 @@ async fn test_oauth2_endpoints_stub() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_voice_asset_list() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1813,6 +1841,7 @@ async fn test_voice_asset_list() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ekyc_session_creation() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1829,6 +1858,7 @@ async fn test_ekyc_session_creation() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_inochi2d_upload() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1854,6 +1884,7 @@ async fn test_inochi2d_upload() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_gift_policy_dynamic() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1872,6 +1903,7 @@ async fn test_gift_policy_dynamic() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_gift_send_success() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1898,6 +1930,7 @@ async fn test_gift_send_success() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_gift_send_unverified_blocked() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1925,6 +1958,7 @@ async fn test_gift_send_unverified_blocked() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_commerce_purchase_unverified_blocked() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1951,6 +1985,7 @@ async fn test_commerce_purchase_unverified_blocked() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_voice_upload_limit() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -1973,6 +2008,7 @@ async fn test_voice_upload_limit() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_fallback_router_failover() {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
@@ -2049,6 +2085,7 @@ async fn test_fallback_router_failover() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_tts_worker_flow_red() {
     use aiome_core::expression::tts_worker::TtsWorker;
@@ -2102,6 +2139,7 @@ async fn test_tts_worker_flow_red() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_gig_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2194,6 +2232,7 @@ async fn test_gig_lifecycle() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[serial]
 #[cfg(not(debug_assertions))]
@@ -2254,6 +2293,7 @@ async fn test_test_endpoints_are_inaccessible_in_release() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[serial]
 #[cfg(debug_assertions)]
@@ -2279,6 +2319,7 @@ async fn test_test_endpoints_are_accessible_in_debug() {
     assert_ne!(res.status_code(), axum::http::StatusCode::NOT_FOUND);
 }
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_treasure_get_recommendations() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2352,6 +2393,7 @@ async fn test_treasure_get_recommendations() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[cfg(debug_assertions)]
 async fn test_autonomous_demo_lifecycle() {
@@ -2374,6 +2416,7 @@ async fn test_autonomous_demo_lifecycle() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_subscription_lifecycle() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2418,6 +2461,7 @@ async fn test_subscription_lifecycle() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_syndicate_guild_api_flow() {
     let (server, _state, _tmp_dir) = create_test_server().await;
@@ -2480,6 +2524,7 @@ async fn test_syndicate_guild_api_flow() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_syndicate_guild_sanitization() {
     let (server, _state, _tmp_dir) = create_test_server().await;
@@ -2521,6 +2566,7 @@ async fn test_syndicate_guild_sanitization() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_awaiting_input_job_lifecycle() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2609,6 +2655,7 @@ async fn test_awaiting_input_job_lifecycle() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_cancel_awaiting_input_job() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2655,6 +2702,7 @@ async fn test_cancel_awaiting_input_job() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_compute_semaphore_limits_concurrency() {
     let (_server, state, _tmp) = create_test_server().await;
@@ -2684,6 +2732,7 @@ async fn test_compute_semaphore_limits_concurrency() {
 /// `HookVerdict` (proving HookChain integration).
 ///
 /// If this test fails, a new bypass path has been introduced.
+#[allow(clippy::unwrap_used)]
 #[test]
 fn test_hookchain_bypass_eradication() {
     use std::fs;
@@ -2738,6 +2787,7 @@ fn test_hookchain_bypass_eradication() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_security_regression_sentinel_block() {
     let (_server, mut state, _tmp) = create_test_server().await;
@@ -2787,6 +2837,7 @@ async fn test_security_regression_sentinel_block() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_security_regression_path_traversal() {
     let (_server, state, _tmp) = create_test_server().await;
@@ -2825,6 +2876,7 @@ async fn test_security_regression_path_traversal() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_cortex_wiki_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2833,6 +2885,7 @@ async fn test_cortex_wiki_unauthorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_cortex_wiki_authorized() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2878,6 +2931,7 @@ async fn test_cortex_wiki_authorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_model_status_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2886,6 +2940,7 @@ async fn test_model_status_unauthorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_model_status_authorized() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2903,6 +2958,7 @@ async fn test_model_status_authorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_mcp_config_update_unauthorized() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2914,6 +2970,7 @@ async fn test_mcp_config_update_unauthorized() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_mcp_config_update_authorized_green() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -2931,6 +2988,7 @@ async fn test_mcp_config_update_authorized_green() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_cortex_query_file_back() {
     let (server, state, _tmp) = create_test_server().await;
@@ -2974,6 +3032,7 @@ async fn test_cortex_query_file_back() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_seo_content_conductor_exists() {
     let (_server, state, _tmp) = create_test_server().await;
@@ -2995,6 +3054,7 @@ async fn test_seo_content_conductor_exists() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_inochi2d_asset_delivery_and_path_traversal() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -3016,6 +3076,7 @@ async fn test_inochi2d_asset_delivery_and_path_traversal() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_whisper_monologue_api() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -3031,6 +3092,7 @@ async fn test_whisper_monologue_api() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_auth_full_oauth_workflow() {
     let (server, state, _tmp) = create_test_server().await;
@@ -3091,6 +3153,7 @@ async fn test_auth_full_oauth_workflow() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_auth_pkce_rejection_workflow() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -3130,6 +3193,7 @@ async fn test_auth_pkce_rejection_workflow() {
 }
 
 #[serial]
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_commerce_release_escrow_idor() {
     let (server, _state, _tmp) = create_test_server().await;
@@ -3161,6 +3225,7 @@ async fn test_commerce_release_escrow_idor() {
     assert_eq!(res_invalid.status_code(), reqwest::StatusCode::FORBIDDEN);
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[serial]
 async fn test_metrics_observability() {
@@ -3184,4 +3249,65 @@ async fn test_metrics_observability() {
         text.contains("aiome_api_requests_total"),
         "Custom metric aiome_api_requests_total is missing from Prometheus output!"
     );
+}
+
+#[allow(clippy::unwrap_used)]
+#[tokio::test]
+#[serial]
+async fn test_aegis_sentinel_integration() {
+    let (_server, state, _tmp) = create_test_server().await;
+
+    // 1. Get the incident repo from the DB pool
+    let db_pool = state.db_pool.get_inner().as_ref().clone();
+    let repo = infrastructure::aegis::incident_repo::IncidentRepository::new(db_pool.clone());
+
+    // 2. Insert dummy incidents to trigger Aegis Alert
+    for i in 0..15 {
+        let _ = repo
+            .insert_incident(
+                "failing_test_skill",
+                "hash123",
+                &format!("payload_{}", i),
+                "panic at src/lib.rs:42",
+            )
+            .await
+            .unwrap();
+    }
+
+    // 3. Subscribe to CoreEvents to catch the AegisSentinel alert
+    let mut rx = state.event_sender.get_inner().subscribe();
+
+    // 4. Manually run the Aegis Sentinel dream logic to simulate background dream
+    let dream_state =
+        infrastructure::dream_state::DreamState::new(state.provider.get_inner().clone())
+            .with_incident_repo(std::sync::Arc::new(repo))
+            .with_event_sender(state.event_sender.get_inner().clone());
+
+    let res = dream_state.aegis_sentinel_dream().await.unwrap();
+    let result = res.expect("Should return a DreamResult");
+
+    // Check that we got an insight warning about the 15 incidents
+    let insight = result.insight.expect("Should have an insight message");
+    assert!(insight.contains("Aegis Warning Alert: 15 total incidents"));
+
+    // 5. Verify the event was broadcasted
+    let event = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv())
+        .await
+        .expect("Timeout waiting for AegisSentinel event")
+        .expect("Failed to receive event");
+
+    match event {
+        aiome_core_contracts::events::CoreEvent::AegisSentinel {
+            level,
+            message,
+            total_incidents,
+            top_skill,
+        } => {
+            assert_eq!(level, "Warning");
+            assert!(message.contains("Aegis Warning Alert: 15 total incidents"));
+            assert_eq!(total_incidents, 15);
+            assert_eq!(top_skill, Some("failing_test_skill".to_string()));
+        }
+        _ => panic!("Expected AegisSentinel event, got another event"),
+    }
 }

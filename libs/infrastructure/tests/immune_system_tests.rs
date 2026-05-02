@@ -58,6 +58,7 @@ async fn create_test_queue() -> UniversalJobQueue {
         .expect("Failed to create test job queue")
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_verify_intent_baseline() {
     let mock_provider = Arc::new(MockLlmProvider {
@@ -85,6 +86,7 @@ async fn test_verify_intent_baseline() {
     assert!(safe_result.is_none());
 }
 
+#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_analyze_threats_and_verify() {
     let mock_response = r#"

@@ -126,9 +126,168 @@ impl IncidentRepository {
             top_failing_skill: top_skill,
         })
     }
+
+    pub async fn fetch_incident(&self, id: &str) -> Result<Option<IncidentRecord>, AiomeError> {
+        let query = "SELECT * FROM aegis_incidents WHERE id = $1";
+        let row_opt = match &self.pool {
+            DatabasePool::Sqlite(p) => sqlx::query(query)
+                .bind(id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+                .map(|r| self.map_row_sqlite(r)),
+            DatabasePool::Postgres(p) => sqlx::query(query)
+                .bind(id)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+                .map(|r| self.map_row_postgres(r)),
+        };
+
+        match row_opt {
+            Some(res) => Ok(Some(res?)),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn fetch_open_incidents(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<IncidentRecord>, AiomeError> {
+        let query =
+            "SELECT * FROM aegis_incidents WHERE status = 'Open' ORDER BY created_at ASC LIMIT $1";
+        let mut incidents = Vec::new();
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(query)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    incidents.push(self.map_row_sqlite(r)?);
+                }
+            }
+            DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(query)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    incidents.push(self.map_row_postgres(r)?);
+                }
+            }
+        }
+        Ok(incidents)
+    }
+
+    pub async fn update_status(&self, id: &str, status: IncidentStatus) -> Result<(), AiomeError> {
+        let status_str = status.to_string();
+        let query =
+            "UPDATE aegis_incidents SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2";
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query(query)
+                    .bind(&status_str)
+                    .bind(id)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query(query)
+                    .bind(&status_str)
+                    .bind(id)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn increment_retry_count(&self, id: &str) -> Result<(), AiomeError> {
+        let query = "UPDATE aegis_incidents SET retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1";
+        match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query(query).bind(id).execute(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query(query).bind(id).execute(p).await.map_err(|e| {
+                    AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    }
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    // Helper to map DB row to IncidentRecord
+    fn map_row_sqlite(&self, row: sqlx::sqlite::SqliteRow) -> Result<IncidentRecord, AiomeError> {
+        let status_str: String = row.try_get("status").unwrap_or_else(|_| "Open".to_string());
+        let status = status_str.parse().unwrap_or(IncidentStatus::Open);
+        let retry_count = row.try_get::<u32, _>("retry_count").unwrap_or(0);
+
+        Ok(IncidentRecord {
+            id: row.try_get("id").unwrap_or_default(),
+            skill_name: row.try_get("skill_name").unwrap_or_default(),
+            wasm_hash: row.try_get("wasm_hash").unwrap_or_default(),
+            input_payload: row.try_get("input_payload").unwrap_or_default(),
+            stack_trace: row.try_get("stack_trace").unwrap_or_default(),
+            status,
+            retry_count,
+            created_at: row
+                .try_get("created_at")
+                .unwrap_or_else(|_| chrono::Utc::now()),
+            updated_at: row
+                .try_get("updated_at")
+                .unwrap_or_else(|_| chrono::Utc::now()),
+        })
+    }
+
+    fn map_row_postgres(&self, row: sqlx::postgres::PgRow) -> Result<IncidentRecord, AiomeError> {
+        let status_str: String = row.try_get("status").unwrap_or_else(|_| "Open".to_string());
+        let status = status_str.parse().unwrap_or(IncidentStatus::Open);
+        let retry_count = row.try_get::<i32, _>("retry_count").unwrap_or(0) as u32;
+
+        Ok(IncidentRecord {
+            id: row.try_get("id").unwrap_or_default(),
+            skill_name: row.try_get("skill_name").unwrap_or_default(),
+            wasm_hash: row.try_get("wasm_hash").unwrap_or_default(),
+            input_payload: row.try_get("input_payload").unwrap_or_default(),
+            stack_trace: row.try_get("stack_trace").unwrap_or_default(),
+            status,
+            retry_count,
+            created_at: row
+                .try_get("created_at")
+                .unwrap_or_else(|_| chrono::Utc::now()),
+            updated_at: row
+                .try_get("updated_at")
+                .unwrap_or_else(|_| chrono::Utc::now()),
+        })
+    }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -174,6 +333,34 @@ mod tests {
         assert_eq!(stats.distinct_skills, 2);
         assert_eq!(stats.unresolved, 3);
         assert_eq!(stats.top_failing_skill.as_deref(), Some("skill_A"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_fetch_and_update_incidents() -> Result<(), AiomeError> {
+        let pool = setup_db().await;
+        let repo = IncidentRepository::new(pool);
+
+        repo.insert_incident("skill_A", "hash1", "payload", "trace_1")
+            .await?;
+        repo.insert_incident("skill_B", "hash2", "payload", "trace_2")
+            .await?;
+
+        // Test fetching open incidents
+        let open_incidents = repo.fetch_open_incidents(10).await?;
+        assert_eq!(open_incidents.len(), 2);
+
+        let target_id = &open_incidents[0].id;
+
+        // Test update status and retry count
+        repo.update_status(target_id, IncidentStatus::KaniVerifying)
+            .await?;
+        repo.increment_retry_count(target_id).await?;
+
+        let fetched = repo.fetch_incident(target_id).await?.unwrap();
+        assert_eq!(fetched.status, IncidentStatus::KaniVerifying);
+        assert_eq!(fetched.retry_count, 1);
 
         Ok(())
     }

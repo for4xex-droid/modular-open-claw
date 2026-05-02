@@ -105,6 +105,7 @@ pub async fn handle_karma_feedback(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::agent_engine::build_system_instructions;

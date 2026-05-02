@@ -44,3 +44,6 @@ mockall = "0.13"
 [features]
 default = []
 nurture = []
+
+[lints]
+workspace = true

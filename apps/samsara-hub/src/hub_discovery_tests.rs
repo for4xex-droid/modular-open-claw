@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use axum::http::Request;
     use mdns_sd::{ServiceDaemon, ServiceInfo};
@@ -13,6 +14,7 @@ mod tests {
     // use tower::ServiceExt; の代わりに直接 axum::serve や oneshot を自作できないか？
     // oneshot を使うには `tower::ServiceExt` が必要。`samsara-hub` の依存に tower があるはず。
 
+    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_e2e_agent_discovery_flow() {
         use http_body_util::BodyExt;

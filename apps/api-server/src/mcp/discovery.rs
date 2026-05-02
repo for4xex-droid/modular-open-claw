@@ -250,6 +250,7 @@ pub async fn discover_and_connect(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
