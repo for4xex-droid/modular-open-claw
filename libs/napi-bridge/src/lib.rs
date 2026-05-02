@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 /*
  * Aiome - The Autonomous AI Operating System
@@ -284,12 +285,12 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
     static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
         vec![
-            Regex::new(r"(?i)rm\s+-rf").unwrap(),    // allow-anti-pattern
-            Regex::new(r"(?i)chmod\s+777").unwrap(), // allow-anti-pattern
-            Regex::new(r"(?i)cat\s+/etc/shadow").unwrap(), // allow-anti-pattern
-            Regex::new(r"(?i)shutdown").unwrap(),    // allow-anti-pattern
-            Regex::new(r"(?i)reboot").unwrap(),      // allow-anti-pattern
-            Regex::new(r#"(?i)":\s*".*";"#).unwrap(), // allow-anti-pattern
+            Regex::new(r"(?i)rm\s+-rf").expect("Invalid regex"),    // allow-anti-pattern
+            Regex::new(r"(?i)chmod\s+777").expect("Invalid regex"), // allow-anti-pattern
+            Regex::new(r"(?i)cat\s+/etc/shadow").expect("Invalid regex"), // allow-anti-pattern
+            Regex::new(r"(?i)shutdown").expect("Invalid regex"),    // allow-anti-pattern
+            Regex::new(r"(?i)reboot").expect("Invalid regex"),      // allow-anti-pattern
+            Regex::new(r#"(?i)":\s*".*";"#).expect("Invalid regex"), // allow-anti-pattern
         ]
     });
 

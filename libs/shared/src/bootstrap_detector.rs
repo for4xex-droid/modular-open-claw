@@ -218,7 +218,6 @@ impl std::fmt::Display for FactoryResetError {
 impl std::error::Error for FactoryResetError {}
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use serial_test::serial;

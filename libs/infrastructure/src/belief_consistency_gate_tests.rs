@@ -6,7 +6,6 @@
  */
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::super::belief_consistency_gate::*;
     use crate::slm_bridge::SlmBridge;
@@ -42,7 +41,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_consistent_karma_passes() {
         let llm = Arc::new(MockLlm {
@@ -58,7 +56,6 @@ mod tests {
         assert_eq!(result, BeliefCheckResult::Consistent);
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_contradicting_karma_flagged() {
         // Note: In RED phase, this will fail because the mock implementation always returns Consistent
@@ -81,7 +78,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_evidence_accumulation_and_revision_threshold() {
         let llm = Arc::new(MockLlm {
@@ -123,7 +119,6 @@ mod tests {
         assert!(gate.has_sufficient_evidence_for_revision().await);
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_slm_fallback_to_llm() {
         // SLM がエラーを返す環境を模倣（無効なコマンド）

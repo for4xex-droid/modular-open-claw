@@ -771,7 +771,6 @@ pub mod tests {
         assert!(result.is_ok(), "maintain_context should succeed");
 
         // Ensure the summary was updated
-        #[allow(clippy::unwrap_used)]
         let (summary, _) = job_queue
             .get_chat_memory_summary(channel_id)
             .await

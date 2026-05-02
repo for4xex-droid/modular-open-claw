@@ -3,6 +3,7 @@
  * Copyright (C) 2026 motivationstudio, LLC
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use shared::guardrails::{validate_input, BeggingSupervisor, ValidationResult};
 use shared::security::SecurityPolicy;

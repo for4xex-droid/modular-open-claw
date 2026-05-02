@@ -6,7 +6,6 @@
  */
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::boundary_verifier::BoundaryVerifier;
     use aiome_core_contracts::error::AiomeError;
@@ -25,7 +24,6 @@ mod tests {
         )
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_path_in_sandbox_pass() {
         let verifier = setup_verifier();
@@ -34,7 +32,6 @@ mod tests {
         assert!(result.unwrap().contains(&"path_in_sandbox".to_string()));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_path_not_system_reject() {
         let verifier = setup_verifier();
@@ -42,7 +39,6 @@ mod tests {
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_binary_whitelist_pass() {
         let verifier = setup_verifier();
@@ -51,7 +47,6 @@ mod tests {
         assert!(result.unwrap().contains(&"binary_in_whitelist".to_string()));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_binary_not_in_whitelist_reject() {
         let verifier = setup_verifier();
@@ -59,7 +54,6 @@ mod tests {
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_no_meta_characters_reject() {
         let verifier = setup_verifier();
@@ -67,7 +61,6 @@ mod tests {
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_no_env_access_reject() {
         let verifier = setup_verifier();
@@ -75,7 +68,6 @@ mod tests {
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_vault_access_external_reject() {
         let verifier = setup_verifier();
@@ -83,7 +75,6 @@ mod tests {
         assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_vault_access_internal_pass() {
         let verifier = setup_verifier();
@@ -91,7 +82,6 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_binary_whitelist_dynamic_pass() {
         let verifier = BoundaryVerifier::from_global_config();
@@ -108,7 +98,6 @@ mod tests {
         );
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_payload_size_limit_reject() {
         let verifier = setup_verifier();

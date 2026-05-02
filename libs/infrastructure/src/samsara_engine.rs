@@ -390,7 +390,6 @@ impl SamsaraEngine for DefaultSamsaraEngine {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core::error::AiomeError;

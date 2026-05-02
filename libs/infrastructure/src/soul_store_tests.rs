@@ -6,7 +6,6 @@
  */
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::db::DatabasePool;
     use crate::soul_store::UniversalSoulStore;
@@ -27,7 +26,6 @@ mod tests {
         pool
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_lora_persistence_roundtrip() -> Result<(), AiomeError> {
         let pool = setup_db().await;
@@ -66,7 +64,6 @@ mod tests {
         Ok(())
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_begging_persistence_roundtrip() -> Result<(), AiomeError> {
         use chrono::{TimeZone, Utc};
@@ -92,7 +89,6 @@ mod tests {
         Ok(())
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_soul_snapshot_lora_cache_sync() -> Result<(), AiomeError> {
         let pool = setup_db().await;
@@ -122,7 +118,6 @@ mod tests {
         Ok(())
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_archive_lora_model_on_rebirth() -> Result<(), AiomeError> {
         let pool = setup_db().await;

@@ -1071,7 +1071,6 @@ impl TaskDispatcher {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::task_orchestrator::planner::DefaultStrategicPlanner;

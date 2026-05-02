@@ -59,9 +59,7 @@ pub async fn get_agent_card() -> (StatusCode, Json<AgentCard>) {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::setup_router;
     use axum::{

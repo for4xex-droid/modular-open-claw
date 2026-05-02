@@ -70,7 +70,6 @@ impl<A: SoulDomainAdapter + 'static, E: SamsaraEngine + Send + Sync + 'static> S
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::model::{AgentSoul, Experience};

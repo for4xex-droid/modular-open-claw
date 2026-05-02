@@ -155,7 +155,6 @@ impl LlmProvider for HumanizerFilter {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::super::humanizer_rules::{default_rules_ja, HumanizerAction, HumanizerRule};
     use super::*;

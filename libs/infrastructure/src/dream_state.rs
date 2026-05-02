@@ -419,16 +419,14 @@ impl DreamState {
                             );
                         }
                         metrics::counter!("aegis_kani_wontfix_total").increment(1);
-                    } else {
-                        if let Err(e) = repo
-                            .update_status(&incident.id, crate::aegis::types::IncidentStatus::Open)
-                            .await
-                        {
-                            warn!(
-                                "⚠️ [DreamState] Failed to revert Open status for {}: {}",
-                                incident.id, e
-                            );
-                        }
+                    } else if let Err(e) = repo
+                        .update_status(&incident.id, crate::aegis::types::IncidentStatus::Open)
+                        .await
+                    {
+                        warn!(
+                            "⚠️ [DreamState] Failed to revert Open status for {}: {}",
+                            incident.id, e
+                        );
                     }
                 }
             }
@@ -751,7 +749,6 @@ impl DreamState {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::biome::BiomeMessage;

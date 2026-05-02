@@ -1,5 +1,4 @@
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use aiome_core::traits::JobQueue;
     use infrastructure::db::DatabasePool;
@@ -45,7 +44,6 @@ mod tests {
         (jq, pool)
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_push_federated_metrics_makes_http_request() {
         // Arrange
@@ -73,7 +71,6 @@ mod tests {
         );
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_import_federated_data_saves_to_db() {
         let mock_server = MockServer::start().await;

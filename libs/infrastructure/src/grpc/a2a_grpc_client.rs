@@ -153,7 +153,6 @@ impl A2aClient for A2aGrpcClient {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::a2a::internal::{

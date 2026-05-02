@@ -341,7 +341,6 @@ impl CommerceEngine for PolarCommerceEngine {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use hmac::{Hmac, Mac};

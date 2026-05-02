@@ -178,9 +178,7 @@ impl ProofVerifier for OxiLeanProofService {
 // ─────────────────────────── Tests ───────────────────────────
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use super::*;
 
     const TEST_TOKEN: &str = "test_secret_token";

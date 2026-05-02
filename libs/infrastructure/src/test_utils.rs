@@ -68,22 +68,18 @@ pub mod job_queue_mock {
             Ok("mock-id".into())
         }
         async fn dequeue(&self, _categories: &[&str]) -> Result<Option<Job>, AiomeError> {
-            #[allow(clippy::unwrap_used)]
             Ok(self.job_to_return.lock().unwrap().take())
         }
         async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> {
-            #[allow(clippy::unwrap_used)]
             Ok(self.fetched_job.lock().unwrap().clone())
         }
         async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
             {
-                #![allow(clippy::unwrap_used)]
                 *self.completed.lock().unwrap() = true;
             }
             Ok(())
         }
         async fn fail_job(&self, id: &str, reason: &str) -> Result<(), AiomeError> {
-            #[allow(clippy::unwrap_used)]
             self.failed_jobs
                 .lock()
                 .unwrap()
@@ -102,7 +98,6 @@ pub mod job_queue_mock {
             status: aiome_core_contracts::traits::JobStatus,
         ) -> Result<(), AiomeError> {
             {
-                #![allow(clippy::unwrap_used)]
                 *self.updated_status.lock().unwrap() = Some(status);
             }
             Ok(())
@@ -151,16 +146,13 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn store_trajectory_step(&self, step: TrajectoryStep) -> Result<(), AiomeError> {
-            #[allow(clippy::unwrap_used)]
             self.trajectory.lock().unwrap().push(step);
             Ok(())
         }
         async fn fetch_trajectory_steps(&self, _: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
-            #[allow(clippy::unwrap_used)]
             Ok(self.trajectory.lock().unwrap().clone())
         }
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
-            #[allow(clippy::unwrap_used)]
             self.trajectory.lock().unwrap().clear();
             Ok(())
         }
@@ -172,7 +164,6 @@ pub mod job_queue_mock {
             Option<aiome_core_contracts::trajectory::AgentDiagnosis>,
             aiome_core_contracts::error::AiomeError,
         > {
-            #[allow(clippy::unwrap_used)]
             Ok(self.diagnosis.lock().unwrap().clone())
         }
         async fn store_diagnosis(
@@ -181,7 +172,6 @@ pub mod job_queue_mock {
             diag: aiome_core_contracts::trajectory::AgentDiagnosis,
         ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             {
-                #![allow(clippy::unwrap_used)]
                 *self.diagnosis.lock().unwrap() = Some(diag);
             }
             Ok(())
@@ -273,7 +263,6 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn fetch_all_karma(&self, _: i64) -> Result<Vec<Value>, AiomeError> {
-            #[allow(clippy::unwrap_used)]
             Ok(self.karmas.lock().unwrap().clone())
         }
         async fn fetch_unincorporated_karma(
@@ -448,7 +437,6 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
-            #[allow(clippy::unwrap_used)]
             Ok(self.active_rules.lock().unwrap().clone())
         }
         async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> {

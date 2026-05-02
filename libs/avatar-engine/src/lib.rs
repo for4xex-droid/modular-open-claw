@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 
 pub mod asset_manifest;
 pub mod lip_sync;

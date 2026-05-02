@@ -91,7 +91,6 @@ impl LipSyncProvider for SimpleLipSyncEngine {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

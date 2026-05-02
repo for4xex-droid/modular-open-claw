@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use infrastructure::skills::{UnverifiedSkill, WasmSkillManager};
 use std::env;
@@ -38,7 +39,6 @@ fn setup_test_workspace(
 
 /// Trace 1: Downloading -> ManifestCheck -> DryRunQuarantine -> Active
 /// Expectation: The skill succeeds the Extism quarantine simulation and is promoted to VerifiedSkill.
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_mbt_quarantine_happy_path() {
     // Generate a minimalist WASM byte array that exports "execute"
@@ -93,7 +93,6 @@ async fn test_mbt_quarantine_happy_path() {
 
 /// Trace 2: ManifestCheck -> DryRunQuarantine -> Violated
 /// Expectation: A skill that triggers an error in the Extism plugin (OOM, missing exports) or is missing is rejected.
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_mbt_quarantine_dry_run_fails() {
     let (manager, _dir) = setup_test_workspace("missing_skill", &PathBuf::new(), "{}");
@@ -114,7 +113,6 @@ async fn test_mbt_quarantine_dry_run_fails() {
 
 /// Trace 3: Database DbC Contract Checks
 /// Expectation: Precondition failures (e.g. payload too large) trigger DbC assertions
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 #[should_panic(expected = "Payload limits exceeded")]
 async fn test_mbt_quarantine_payload_violation() {

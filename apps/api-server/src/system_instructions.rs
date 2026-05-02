@@ -252,7 +252,6 @@ pub(crate) async fn read_app_data_file(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::app_state::Component;

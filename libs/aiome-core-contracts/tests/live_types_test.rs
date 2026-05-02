@@ -4,6 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
+#![allow(clippy::unwrap_used)]
 
 use aiome_core_contracts::*;
 

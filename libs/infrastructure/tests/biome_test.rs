@@ -4,12 +4,12 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use aiome_core::biome::BiomeMessage;
 use aiome_core_contracts::traits::BiomeRegistry;
 use infrastructure::job_queue::UniversalJobQueue;
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_biome_dialogue_limit() {
     let ts = std::sync::Arc::new(

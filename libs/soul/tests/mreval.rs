@@ -70,7 +70,6 @@ impl SamsaraEngine for MREvalEngine {
     }
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_mreval_full_pipeline() {
     let mut soul = AgentSoul::new("elara".to_string());

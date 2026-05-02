@@ -214,7 +214,6 @@ pub async fn run_with_timeout_vec(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

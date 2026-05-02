@@ -1,10 +1,10 @@
-#![allow(clippy::unwrap_used)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use std::any::Any;
 use std::future::Future;
@@ -77,7 +77,6 @@ impl SamsaraEngine for MockEngine {
     }
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_l1_tag_rejection() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -105,7 +104,6 @@ async fn test_l1_tag_rejection() {
     assert_eq!(soul.experience_buffer.len(), 0);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_l2_plasticity_update() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -126,7 +124,6 @@ async fn test_l2_plasticity_update() {
     assert_eq!(dm.experience_count, 1);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_l3_shock_triggers_rebirth() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -147,7 +144,6 @@ async fn test_l3_shock_triggers_rebirth() {
     assert_eq!(new_soul.generation, 2);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_buffer_rotation() {
     let mut soul = AgentSoul::new("test".into());
@@ -160,7 +156,6 @@ async fn test_buffer_rotation() {
     );
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_predict_outcome_and_metrics_logic() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -202,7 +197,6 @@ async fn test_predict_outcome_and_metrics_logic() {
     assert_ne!(soul.soul_hash, old_hash);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_somatic_marker_generation() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -233,7 +227,6 @@ async fn test_somatic_marker_generation() {
     assert_eq!(soul.somatic_markers[0].arousal, 0.8);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_l1_semantic_rejection() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -264,7 +257,6 @@ async fn test_l1_semantic_rejection() {
     assert_eq!(soul.experience_buffer.len(), 0);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_execute_defense_hesitate() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -290,7 +282,6 @@ async fn test_execute_defense_hesitate() {
     assert!(result.is_none());
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_anamnesis_persists_across_rebirth() {
     let pipeline = SoulPipeline::new(MockAdapter, MockEngine);
@@ -315,7 +306,6 @@ async fn test_anamnesis_persists_across_rebirth() {
     );
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_custom_middleware_injection() {
     use std::sync::atomic::{AtomicBool, Ordering};

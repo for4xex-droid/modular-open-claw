@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use aiome_core::llm_provider::LlmProvider;
 use infrastructure::llm::proxy::ProxyLlmProvider;

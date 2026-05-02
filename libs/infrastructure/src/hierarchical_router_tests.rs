@@ -5,14 +5,11 @@
  */
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use crate::hierarchical_router::HierarchicalRouter;
     use crate::test_utils::job_queue_mock::GlobalMockLlm;
     use std::sync::Arc;
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn test_parse_llm_selection_safe() {
         // CHAIN-3: Robust parsing
@@ -40,7 +37,6 @@ mod tests {
         );
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_hierarchical_route_success() {
         let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();

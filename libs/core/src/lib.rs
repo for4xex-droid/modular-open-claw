@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 #![forbid(unsafe_code)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 

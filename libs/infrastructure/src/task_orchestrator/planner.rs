@@ -124,7 +124,6 @@ impl StrategicPlanner for DefaultStrategicPlanner {
     }
 }
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::trajectory::StepCategory;

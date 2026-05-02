@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 //! Aiome共有ライブラリ — 設定、ヘルス、セキュリティ等の横断的機能を提供
 //!
 //! # Unsafe Code Policy

@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{LlmProvider, LlmResponse};
@@ -46,7 +47,6 @@ impl LlmProvider for MockLlm {
     }
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_soul_pipeline_with_whisper_integration() {
     let mock_llm = Arc::new(MockLlm);

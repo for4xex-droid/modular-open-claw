@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
 use aiome_core_contracts::a2a::internal::{
     ExecuteTaskRequest, TaskProgress,

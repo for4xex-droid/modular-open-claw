@@ -208,7 +208,7 @@ impl AdaptiveImmuneSystem {
                 r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
             ]
             .iter()
-            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").unwrap())) // allow-anti-pattern
+            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").expect("Invalid fallback regex"))) // allow-anti-pattern
             .collect()
         });
 
@@ -300,7 +300,6 @@ impl AdaptiveImmuneSystem {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::test_utils::job_queue_mock::GlobalMockJobQueue;

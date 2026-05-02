@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use crate::artifact_store::UniversalArtifactStore;
     use crate::db::DatabasePool;
@@ -13,7 +12,6 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::tempdir;
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_save_artifact_protected_isolation() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
@@ -90,7 +88,6 @@ mod tests {
         );
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_save_artifact_file_size_limit() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
@@ -131,7 +128,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_save_artifact_file_count_limit() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
@@ -168,7 +164,6 @@ mod tests {
         assert!(result.is_err(), "Should fail for more than 20 files");
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_list_artifacts_pagination_clamp() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
@@ -197,7 +192,6 @@ mod tests {
         assert_eq!(result.len(), 100, "Should be clamped to 100 records");
     }
 
-    #[allow(clippy::unwrap_used)]
     #[tokio::test]
     async fn test_save_artifact_enqueues_csam_scan() {
         use aiome_core_contracts::error::AiomeError;

@@ -44,7 +44,6 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
     (addr, state)
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ws_authentication_unauthorized() {
     let (addr, _state) = spawn_test_hub().await;
@@ -55,7 +54,6 @@ async fn test_ws_authentication_unauthorized() {
     assert!(result.is_err(), "Expected connection to fail without auth");
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ws_authentication_authorized_and_ping() {
     let (addr, state) = spawn_test_hub().await;

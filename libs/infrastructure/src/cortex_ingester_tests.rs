@@ -52,7 +52,6 @@ impl LlmProvider for MockLlm {
 
 // Global mock pool initialization helper could be used here but keeping tests self-contained is better
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ingest_url_security_block() {
     let provider = Arc::new(MockLlm);
@@ -74,7 +73,6 @@ async fn test_ingest_url_security_block() {
     }
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ingest_text() {
     let provider = Arc::new(MockLlm);
@@ -91,7 +89,6 @@ async fn test_ingest_text() {
         .await;
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_delete_document() {
     // Tests the ingestion and subsequent mock deletion
@@ -105,7 +102,6 @@ async fn test_delete_document() {
     // mock db returns infrastructure errors for deleted unknown, so just assert it compiles & executes.
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_ingest_pdf() {
     let provider = Arc::new(MockLlm);

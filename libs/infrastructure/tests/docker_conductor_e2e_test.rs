@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 #![cfg(feature = "grpc")]
 use aiome_core::traits::Job;
 use infrastructure::docker_conductor::DockerConductor;
@@ -17,7 +18,6 @@ use uuid::Uuid;
 
 // IMPORTANT: This test requires a running Docker/Podman daemon and the aiome-shadow-worker image built.
 // Since it spins up real containers, it might be slow. We tag it implicitly as an integration test.
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_docker_conductor_e2e_success_flow() {
     dotenvy::dotenv().ok();

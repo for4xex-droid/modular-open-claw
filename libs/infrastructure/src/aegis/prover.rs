@@ -253,7 +253,6 @@ pub fn kani_timeout() -> std::time::Duration {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::aegis::types::IncidentStatus;
@@ -307,12 +306,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_generate_patch() {
+        let tmp_dir = tempfile::Builder::new()
+            .prefix("aegis-test-")
+            .tempdir()
+            .unwrap();
+        
+        let skill_dir = tmp_dir.path().join("test_skill").join("src");
+        tokio::fs::create_dir_all(&skill_dir).await.unwrap();
+        tokio::fs::write(skill_dir.join("lib.rs"), "fn original() {}").await.unwrap();
+        
+        std::env::set_var("FORGE_WORKSPACE_DIR", tmp_dir.path());
+
         let prover = AegisProver::new(Arc::new(MockLlm));
         let incident = dummy_incident();
 
-        #[allow(clippy::unwrap_used)]
-        let patch = prover.generate_patch(&incident).await.unwrap();
+        let patch = prover.generate_patch(&incident).await.expect("Failed to generate patch");
         assert_eq!(patch, "fn patched() {}");
+        
+        std::env::remove_var("FORGE_WORKSPACE_DIR");
     }
 
     #[tokio::test]
@@ -320,7 +331,6 @@ mod tests {
         std::env::set_var("KANI_STUB_MODE", "true");
         let prover = AegisProver::new(Arc::new(MockLlm));
 
-        #[allow(clippy::unwrap_used)]
         let result = prover.verify_with_kani("fn patched() {}").await.unwrap();
         assert!(result);
     }

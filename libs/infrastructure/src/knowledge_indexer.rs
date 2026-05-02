@@ -332,7 +332,7 @@ impl ProjectKnowledgeIndexer {
                     break;
                 }
 
-                let header_line = lines.next().unwrap(); // allow-anti-pattern
+                let header_line = lines.next().expect("Peeked value exists"); // allow-anti-pattern
                 let title = header_line.trim_start_matches('#').trim();
 
                 if level > max_depth || *node_count >= max_nodes {
@@ -355,7 +355,7 @@ impl ProjectKnowledgeIndexer {
                     if next_line.starts_with('#') {
                         break;
                     }
-                    content_lines.push(lines.next().unwrap()); // allow-anti-pattern
+                    content_lines.push(lines.next().expect("Peeked value exists")); // allow-anti-pattern
                 }
 
                 if !content_lines.is_empty() {

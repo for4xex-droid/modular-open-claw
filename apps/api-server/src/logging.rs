@@ -78,7 +78,7 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
             // More comprehensive regex for physical filtering of credentials
             let re =
                 regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY|Bearer\s+|secret|password|VAULT_MASTER_PASSWORD)[=: ]*[\x21-\x7E]+")
-                    .unwrap(); // allow-anti-pattern
+                    .expect("Invalid regex"); // allow-anti-pattern
             re.replace_all(&visitor.message, "$1***MASKED***")
                 .to_string()
         } else {

@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 /*
  * Aiome - The Autonomous AI Operating System

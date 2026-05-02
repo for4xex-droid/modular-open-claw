@@ -75,7 +75,7 @@ impl RssCollector {
         })?;
 
         // 簡易正規表現パース (RSS 2.0 / Atom 共通項)
-        let title_re = Regex::new(r"<title>(.*?)</title>").unwrap(); // allow-anti-pattern
+        let title_re = Regex::new(r"<title>(.*?)</title>").expect("Invalid regex"); // allow-anti-pattern
         let mut items = Vec::new();
 
         for cap in title_re.captures_iter(&xml) {
@@ -141,7 +141,7 @@ impl TrendCacheRepository for SqlTrendCacheRepository {
         items: &[TrendItem],
         ttl_sec: i64,
     ) -> Result<(), AiomeError> {
-        let json = serde_json::to_string(items).unwrap(); // allow-anti-pattern
+        let json = serde_json::to_string(items).expect("Serialization failed"); // allow-anti-pattern
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query("INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))")
@@ -228,7 +228,6 @@ impl TrendAdapter for RssCollector {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

@@ -433,9 +433,7 @@ impl McpServer {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use super::*;
     use infrastructure::skills::WasmSkillManager;
     use serde_json::json;

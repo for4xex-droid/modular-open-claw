@@ -101,7 +101,6 @@ impl ToolDiscoveryEngine for DefaultToolDiscoveryEngine {
     }
 }
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::skills::WasmSkillManager;

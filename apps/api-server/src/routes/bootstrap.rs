@@ -268,7 +268,6 @@ pub async fn factory_reset(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 
 use aiome_core::lora::engine::LoraEngine;

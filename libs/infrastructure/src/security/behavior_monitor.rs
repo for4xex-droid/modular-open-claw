@@ -86,7 +86,6 @@ impl AgentHook for BehaviorMonitor {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::llm::{LlmMessage, StopReason};

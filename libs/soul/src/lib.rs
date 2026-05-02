@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 #![allow(clippy::field_reassign_with_default)]
 /*
  * Aiome - The Autonomous AI Operating System

@@ -96,7 +96,6 @@ impl TaskConductor for CsamScanConductor {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

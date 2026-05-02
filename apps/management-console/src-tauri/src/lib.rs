@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 //! # クレート固有のインデックス
 //!
 #![forbid(unsafe_code)]

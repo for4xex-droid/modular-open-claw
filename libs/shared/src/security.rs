@@ -287,7 +287,6 @@ pub fn scrub_env(key: &str) {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

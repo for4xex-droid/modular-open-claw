@@ -391,7 +391,6 @@ impl CortexQueryEngine {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use aiome_core_contracts::llm::{LlmRequest, LlmResponse, StopReason};

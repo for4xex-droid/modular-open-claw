@@ -4,13 +4,13 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+#![allow(clippy::unwrap_used)]
 use aiome_core::llm_provider::interactions::InteractionsGeminiProvider;
 use aiome_core_contracts::llm::{LlmMessage, LlmProvider, LlmRequest};
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_interactions_complete_with_cache() {
     // Arrange
@@ -133,7 +133,6 @@ async fn test_interactions_complete_with_cache() {
     assert_eq!(id2, interaction_id2);
 }
 
-#[allow(clippy::unwrap_used)]
 #[tokio::test]
 async fn test_interactions_failover() {
     // Arrange

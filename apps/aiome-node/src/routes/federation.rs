@@ -52,9 +52,7 @@ async fn handle_sync(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use super::*;
     use axum::{
         body::Body,
