@@ -7,16 +7,12 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core::biome::dialogue::DialogueManager;
-use aiome_core::biome::{
-    AutonomousBiomeEngine, AutonomousConfig, BiomeDialogue, BiomeMessage, DialogueStatus,
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
 };
-use aiome_core::traits::*;
-use axum::{extract::State, http::StatusCode, response::Json};
-use sqlx::Row;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use tracing::{error, info, warn};
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 pub struct SendBiomeRequest {
@@ -33,84 +29,45 @@ pub struct StartAutonomousRequest {
     pub max_rounds: Option<u32>,
 }
 
+pub fn stubbed_response() -> Result<Response, AppError> {
+    Ok((
+        StatusCode::NOT_IMPLEMENTED,
+        Json(serde_json::json!({
+            "error": "Not Implemented",
+            "message": "Biome (Federation/P2P) features are deferred to v1.5."
+        })),
+    )
+        .into_response())
+}
+
 #[utoipa::path(
     get,
     path = "/api/biome/status",
     responses(
-        (status = 200, description = "Biome protocol status", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn biome_status(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let peer_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM biome_peers")
-        .fetch_one(state.db_pool.get_inner().get_sqlite_pool_or_err()?)
-        .await
-        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("DB Error: {}", e),
-        })?;
-
-    Ok(Json(serde_json::json!({
-        "status": "online",
-        "peer_count": peer_count,
-        "message_ja": "Biome プロトコル準備完了。AI同士の対話を待機中...",
-        "message_en": "Biome protocol ready. Waiting for AI-to-AI dialogue..."
-    })))
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
     get,
     path = "/api/biome/topics",
     responses(
-        (status = 200, description = "List topics from Hub", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn list_topics(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url = state.config.samsara_hub_url.clone();
-    let url = format!("{}/api/v1/hub/topics", hub_url);
-    state.security_policy.validate_url(&hub_url).await?;
-
-    if let Err(e) = state.circuit_breaker.check_state().await {
-        return Err(aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
-        }
-        .into());
-    }
-
-    let req_res = state
-        .http_client
-        .get(url)
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await;
-
-    let res = match req_res {
-        Ok(r) => {
-            state.circuit_breaker.record_success().await;
-            r.json::<serde_json::Value>().await.map_err(|e| {
-                aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-                    reason: e.to_string(),
-                }
-            })?
-        }
-        Err(e) => {
-            state.circuit_breaker.record_failure().await;
-            return Err(aiome_core::error::AiomeError::RemoteServiceError {
-                url: "Samsara Hub".into(),
-                source: e.into(),
-            }
-            .into());
-        }
-    };
-
-    Ok(Json(res))
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
@@ -118,74 +75,16 @@ pub async fn list_topics(
     path = "/api/biome/topics",
     request_body = serde_json::Value,
     responses(
-        (status = 200, description = "Topic created", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn create_topic(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-    Json(req): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let hub_url = state.config.samsara_hub_url.clone();
-    let hub_secret = state
-        .federation_secret
-        .as_opt()
-        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
-        .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
-            source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
-        })?;
-    let client = &state.http_client;
-
-    info!("🌟 [Biome] Requesting new topic creation on Hub: {:?}", req);
-    state.security_policy.validate_url(&hub_url).await?;
-    if let Err(e) = state.circuit_breaker.check_state().await {
-        return Err(aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
-        }
-        .into());
-    }
-
-    let req_res = client
-        .post(format!("{}/api/v1/biome/topics", hub_url))
-        .timeout(std::time::Duration::from_secs(10))
-        .header("Authorization", format!("Bearer {}", hub_secret))
-        .json(&req)
-        .send()
-        .await;
-
-    let res = match req_res {
-        Ok(r) => {
-            state.circuit_breaker.record_success().await;
-            r
-        }
-        Err(e) => {
-            state.circuit_breaker.record_failure().await;
-            return Err(aiome_core::error::AiomeError::RemoteServiceError {
-                url: "Samsara Hub".into(),
-                source: e.into(),
-            }
-            .into());
-        }
-    };
-
-    let status = res.status();
-    let body = res.json::<serde_json::Value>().await.map_err(|e| {
-        aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-            reason: e.to_string(),
-        }
-    })?;
-
-    if status.is_success() {
-        Ok(Json(body))
-    } else {
-        Err(aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: anyhow::anyhow!("Hub returned status {}: {:?}", status, body),
-        }
-        .into())
-    }
+    Json(_req): Json<serde_json::Value>,
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
@@ -193,191 +92,61 @@ pub async fn create_topic(
     path = "/api/biome/autonomous/start",
     request_body = StartAutonomousRequest,
     responses(
-        (status = 200, description = "Autonomous dialogue started", body = serde_json::Value),
-        (status = 409, description = "Dialogue already running")
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn autonomous_start(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-    Json(req): Json<StartAutonomousRequest>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    if state.autonomous_running.load(Ordering::SeqCst) {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: "Autonomous dialogue already running".to_string(),
-        }
-        .into());
-    }
-
-    if let shared::guardrails::ValidationResult::Blocked(reason) =
-        shared::guardrails::validate_input(&req.topic_id)
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: format!("Invalid topic_id: {}", reason),
-        }
-        .into());
-    }
-    if let shared::guardrails::ValidationResult::Blocked(reason) =
-        shared::guardrails::validate_input(&req.peer_pubkey)
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: format!("Invalid peer_pubkey: {}", reason),
-        }
-        .into());
-    }
-
-    state.autonomous_running.store(true, Ordering::SeqCst);
-    let config = aiome_core::biome::AutonomousConfig {
-        topic_id: req.topic_id.clone(),
-        peer_pubkey: req.peer_pubkey.clone(),
-        interval_secs: req.interval_secs.unwrap_or(30),
-        max_rounds: req.max_rounds.unwrap_or(10),
-    };
-    {
-        let mut config_write = state.autonomous_config.write().await;
-        *config_write = Some(config.clone());
-    }
-
-    info!(
-        "🌐 [Biome] Started autonomous dialogue for topic: {}",
-        req.topic_id
-    );
-
-    let queue = (*state.job_queue).clone();
-    let llm = (*state.provider).clone();
-    let running = (*state.autonomous_running).clone();
-    let semaphore = (*state.llm_semaphore).clone();
-    let gift_engine = (*state.gift_engine).clone();
-    let master_email = state.config.master_email.clone();
-
-    let hub_url = state.config.samsara_hub_url.clone();
-    let hub_secret = state
-        .federation_secret
-        .as_opt()
-        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
-        .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
-            source: anyhow::anyhow!("FEDERATION_SECRET not configured"),
-        })?;
-
-    tokio::spawn(async move {
-        AutonomousBiomeEngine::start_loop(
-            config,
-            queue,
-            llm,
-            running,
-            semaphore,
-            Some(gift_engine),
-            master_email,
-            hub_url,
-            hub_secret,
-        )
-        .await;
-    });
-
-    Ok(Json(serde_json::json!({"status": "started"})))
+    Json(_req): Json<StartAutonomousRequest>,
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
     post,
     path = "/api/biome/autonomous/stop",
     responses(
-        (status = 200, description = "Stopping autonomous dialogue", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn autonomous_stop(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<Json<serde_json::Value>, AppError> {
-    state.autonomous_running.store(false, Ordering::SeqCst);
-    Ok(Json(serde_json::json!({"status": "stopping"})))
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
     get,
     path = "/api/biome/autonomous/status",
     responses(
-        (status = 200, description = "Current autonomous status", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn autonomous_status(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let running = state.autonomous_running.load(Ordering::SeqCst);
-    let config = state.autonomous_config.read().await;
-
-    Ok(Json(serde_json::json!({
-        "running": running,
-        "config": *config
-    })))
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
     get,
     path = "/api/biome/list",
     responses(
-        (status = 200, description = "List biome messages", body = [serde_json::Value])
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
 pub async fn list_messages(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<Json<Vec<serde_json::Value>>, AppError> {
-    let rows = sqlx::query("SELECT * FROM biome_messages ORDER BY created_at DESC LIMIT 100")
-        .fetch_all(state.db_pool.get_inner().get_sqlite_pool_or_err()?)
-        .await
-        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("DB Error: {}", e),
-        })?;
-
-    let hub_secret_opt = state
-        .federation_secret
-        .as_opt()
-        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string());
-
-    let messages = rows
-        .into_iter()
-        .map(|row| {
-            let mut msg = BiomeMessage {
-                sender_pubkey: row.get::<String, _>("sender_pubkey"),
-                recipient_pubkey: row.get::<String, _>("recipient_pubkey"),
-                topic_id: row.get::<String, _>("topic_id"),
-                content: row.get::<String, _>("content"),
-                karma_root_cid: row.get::<String, _>("karma_root_cid"),
-                signature: row.get::<String, _>("signature"),
-                lamport_clock: u64::try_from(row.get::<i64, _>("lamport_clock")).unwrap_or(0),
-                timestamp: "".to_string(), // Not in DB or not needed for UI yet
-                encryption: row.get::<String, _>("encryption"),
-            };
-
-            // Attempt decryption if encrypted and secret available
-            if msg.encryption != "none" {
-                if let Some(hub_secret) = &hub_secret_opt {
-                    let key = shared::crypto::derive_biome_key(hub_secret);
-                    let _ = msg.decrypt(&key);
-                }
-            }
-
-            serde_json::json!({
-                "id": row.get::<i64, _>("id"),
-                "sender_pubkey": msg.sender_pubkey,
-                "recipient_pubkey": msg.recipient_pubkey,
-                "topic_id": msg.topic_id,
-                "content": msg.content,
-                "karma_root_cid": msg.karma_root_cid,
-                "signature": msg.signature,
-                "lamport_clock": msg.lamport_clock,
-                "encryption": msg.encryption,
-                "created_at": row.get::<Option<String>, _>("created_at"),
-            })
-        })
-        .collect();
-
-    Ok(Json(messages))
+) -> Result<Response, AppError> {
+    stubbed_response()
 }
 
 #[utoipa::path(
@@ -385,184 +154,14 @@ pub async fn list_messages(
     path = "/api/biome/send",
     request_body = SendBiomeRequest,
     responses(
-        (status = 200, description = "Message sent/relayed", body = serde_json::Value)
+        (status = 501, description = "Not Implemented", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
-#[tracing::instrument(skip_all, fields(path = "/api/biome/send"))]
 pub async fn send_message(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth: crate::auth::Authenticated,
-    Json(mut req): Json<SendBiomeRequest>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let sender_pubkey = state.job_queue.get_node_id().await?;
-    let clock = state.job_queue.tick_local_clock().await?;
-
-    // 🛡️ [GlassWorm Shield]
-    req.topic_id = shared::guardrails::strip_invisible_unicode(&req.topic_id).into_owned();
-    req.recipient_pubkey =
-        shared::guardrails::strip_invisible_unicode(&req.recipient_pubkey).into_owned();
-    req.content = shared::guardrails::strip_invisible_unicode(&req.content).into_owned();
-
-    if let shared::guardrails::ValidationResult::Blocked(reason) =
-        shared::guardrails::validate_input(&req.topic_id)
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: format!("Invalid topic_id: {}", reason),
-        }
-        .into());
-    }
-    if let shared::guardrails::ValidationResult::Blocked(reason) =
-        shared::guardrails::validate_input(&req.recipient_pubkey)
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: format!("Invalid recipient_pubkey: {}", reason),
-        }
-        .into());
-    }
-    if req.content.contains("data:image/")
-        || req.content.contains("data:video/")
-        || req.content.contains(";base64,")
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason:
-                "Binary data and inline assets are strictly prohibited by protocol (CSAM Defense)"
-                    .to_string(),
-        }
-        .into());
-    }
-
-    if let shared::guardrails::ValidationResult::Blocked(reason) =
-        shared::guardrails::validate_input(&req.content)
-    {
-        return Err(aiome_core::error::AiomeError::SecurityViolation {
-            reason: format!("Invalid content: {}", reason),
-        }
-        .into());
-    }
-
-    // 0. Biome Dialogue Constraint Check
-    let current_turn =
-        match DialogueManager::check_and_advance_turn(&**state.job_queue, &req.topic_id).await {
-            Ok(t) => t,
-            Err(e) => {
-                warn!("🚫 [Biome] Message blocked: {}", e);
-                return Err(aiome_core::error::AiomeError::SecurityViolation {
-                    reason: e.to_string(),
-                }
-                .into());
-            }
-        };
-
-    // 1. Sign the message
-    // SEC-1: Cryptographic fixation binding the content to the signature
-    let payload_to_sign = format!(
-        "{}:{}:{}:{}",
-        sender_pubkey, req.topic_id, clock, req.content
-    );
-    let signature = state.job_queue.sign_swarm_payload(&payload_to_sign).await?;
-
-    // Phase 20: Karma Root is derived from the signature of the turn
-    let karma_root = format!("biom:{}", signature);
-
-    let mut msg = BiomeMessage {
-        sender_pubkey,
-        recipient_pubkey: req.recipient_pubkey,
-        topic_id: req.topic_id,
-        content: req.content,
-        karma_root_cid: karma_root,
-        signature: signature.clone(),
-        lamport_clock: clock,
-        timestamp: chrono::Utc::now().to_rfc3339(),
-        encryption: "none".to_string(),
-    };
-
-    // NG-28: Apply encryption if FEDERATION_SECRET is set
-    let hub_secret = state
-        .federation_secret
-        .as_opt()
-        .map(|s| secrecy::ExposeSecret::expose_secret(s.as_ref()).to_string())
-        .ok_or_else(|| aiome_core::error::AiomeError::ConfigLoad {
-            source: anyhow::anyhow!("FEDERATION_SECRET not configured for biome encryption"),
-        })?;
-
-    let key = shared::crypto::derive_biome_key(&hub_secret);
-    msg.encrypt(&key)
-        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("Failed to encrypt biome message: {}", e),
-        })?;
-
-    // 2. Relay via Hub
-    let hub_url = state.config.samsara_hub_url.clone();
-    let client = state.http_client.clone();
-    state.security_policy.validate_url(&hub_url).await?;
-
-    info!(
-        "🚀 [Biome] Sending message to Hub for relay (Topic: {})",
-        msg.topic_id
-    );
-    if let Err(e) = state.circuit_breaker.check_state().await {
-        return Err(aiome_core::error::AiomeError::RemoteServiceError {
-            url: "Samsara Hub".into(),
-            source: anyhow::anyhow!("Circuit breaker open: {}", e).into(),
-        }
-        .into());
-    }
-
-    let res = client
-        .post(format!("{}/api/v1/biome/relay", hub_url))
-        .timeout(std::time::Duration::from_secs(10))
-        .header("Authorization", format!("Bearer {}", hub_secret))
-        .json(&msg)
-        .send()
-        .await;
-
-    if res.is_ok() {
-        state.circuit_breaker.record_success().await;
-    } else {
-        state.circuit_breaker.record_failure().await;
-    }
-
-    let sent_status = match res {
-        Ok(r) if r.status().is_success() => {
-            // Store a copy in local history
-            if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(i64::try_from(msg.lamport_clock).unwrap_or(0)).bind(&msg.encryption)
-                .execute(state.db_pool.get_inner().get_sqlite_pool_or_err()?).await {
-                error!("🚨 [Biome] Failed to store sent message in local history: {}", e);
-            }
-
-            "sent"
-        }
-        _ => {
-            // Hub unavailable or failed: Fallback to local
-            warn!("⚠️ [Biome] Hub relay failed. Saving message locally as fallback.");
-            if let Err(e) = sqlx::query("INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                .bind(&msg.sender_pubkey).bind(&msg.recipient_pubkey).bind(&msg.topic_id).bind(&msg.content).bind(&msg.karma_root_cid).bind(&signature).bind(i64::try_from(msg.lamport_clock).unwrap_or(0)).bind(&msg.encryption)
-                .execute(state.db_pool.get_inner().get_sqlite_pool_or_err()?).await {
-                error!("🚨 [Biome] Failed to store sent message locally (fallback): {}", e);
-            }
-
-            "sent_local_only"
-        }
-    };
-
-    // 3. If this was the last turn, perform distillation (State Channel Closing)
-    if current_turn >= aiome_core::biome::dialogue::MAX_DIALOGUE_TURNS {
-        info!(
-            "🔮 [Biome] Final turn reached for topic {}. Initiating distillation...",
-            msg.topic_id
-        );
-        let queue = state.job_queue.clone();
-        let llm = state.provider.clone();
-        let topic_id = msg.topic_id.clone();
-
-        tokio::spawn(async move {
-            let _ = DialogueManager::distill_conversation(&**queue, &**llm, &topic_id).await;
-        });
-    }
-
-    Ok(Json(
-        serde_json::json!({"status": sent_status, "topic_id": msg.topic_id, "turn": current_turn}),
-    ))
+    Json(_req): Json<SendBiomeRequest>,
+) -> Result<Response, AppError> {
+    stubbed_response()
 }

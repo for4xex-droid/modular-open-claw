@@ -252,7 +252,7 @@ impl AuthManager for MockAuthManager {
                 sub: "dev".to_string(),
                 ekyc_verified: true,
                 agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001")
-                    .expect("Hardcoded UUID is valid"), // allow-anti-pattern
+                    .unwrap_or_default(),
                 roles: vec![Role::Admin],
                 exp: 9999999999,
                 iat: 1600000000,

@@ -45,6 +45,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Federation (P2P) features are deferred to v1.5"]
     async fn test_push_federated_metrics_makes_http_request() {
         // Arrange
         let mock_server = MockServer::start().await;

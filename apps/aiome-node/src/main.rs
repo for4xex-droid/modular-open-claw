@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod mcp_server;
-mod mdns_broadcaster;
+// mod mdns_broadcaster; // Deferred to v1.5
 mod routes;
 
 #[tokio::main]
@@ -268,9 +268,10 @@ async fn main() {
     tracing::info!("Listening on {}", addr);
 
     // Start mDNS Broadcaster
-    let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
-    let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
-        .expect("Failed to start mdns broadcaster"); // allow-anti-pattern
+    // Federation features (including mDNS P2P discovery) are deferred to v1.5
+    // let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
+    // let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
+    //     .expect("Failed to start mdns broadcaster"); // allow-anti-pattern
 
     let listener = tokio::net::TcpListener::bind(&addr)
         .await

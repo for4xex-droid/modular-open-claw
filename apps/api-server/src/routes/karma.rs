@@ -144,17 +144,16 @@ pub async fn trigger_security_demo(
 #[cfg(debug_assertions)]
 pub async fn trigger_federation_demo(
     _auth: crate::auth::Authenticated,
-) -> Result<Json<serde_json::Value>, AppError> {
-    Ok(Json(serde_json::json!({
-        "status": "success",
-        "steps": [
-            {"actor": "Gateway", "type": "info", "action_ja": "Samsara Hub への免疫同期を開始...", "action_en": "Initiating immunity sync with Samsara Hub..."},
-            {"actor": "Samsara Hub", "type": "success", "action_ja": "他ノードで発生した未知の攻撃パターン 5k 件をダウンロード", "action_en": "Downloaded 5k unknown attack patterns from other nodes"},
-            {"actor": "Immune System", "type": "info", "action_ja": "グローバル免疫データベースを更新。システムの耐性が 45% 向上。", "action_en": "Global immune database updated. System resistance increased by 45%."}
-        ],
-        "message_ja": "世界中のノードが互いの失敗を共有し、システム全体で進化します。",
-        "message_en": "Nodes worldwide share each other failures, evolving as a collective system."
-    })))
+) -> Result<axum::response::Response, AppError> {
+    use axum::response::IntoResponse;
+    Ok((
+        axum::http::StatusCode::NOT_IMPLEMENTED,
+        axum::Json(serde_json::json!({
+            "error": "Not Implemented",
+            "message": "Federation demo is deferred to v1.5."
+        })),
+    )
+        .into_response())
 }
 
 #[derive(serde::Serialize, utoipa::ToSchema)]

@@ -853,7 +853,7 @@ async fn test_rate_limiting_per_agent() {
             .get("/api/biome/status")
             .add_header(axum::http::header::AUTHORIZATION, &bearer)
             .await;
-        assert_eq!(resp.status_code(), StatusCode::OK);
+        assert_eq!(resp.status_code(), StatusCode::NOT_IMPLEMENTED);
     }
 
     let resp = server
@@ -1144,7 +1144,7 @@ async fn test_biome_routes_auth() {
         .get("/api/biome/status")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
-    assert_eq!(resp_auth.status_code(), StatusCode::OK);
+    assert_eq!(resp_auth.status_code(), StatusCode::NOT_IMPLEMENTED);
 }
 
 #[serial]

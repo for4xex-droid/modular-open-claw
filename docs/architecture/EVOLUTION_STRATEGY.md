@@ -57,7 +57,9 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-## 🌐 集合知ネットワーク (Karma Federation)
+## 🌐 集合知ネットワーク (Karma Federation) [v1.5 導入予定]
+
+> **Note**: Aiome v1.0 ではシングルノードの安定性向上のため、P2P / Samsara Hub 同期機能は無効化（スタブ化）されています。Federation 機能は v1.5 での再有効化に向けて設計調整中です。
 
 単一ノードでの学習（Karma）や防衛ルール（Immune Rules）は、Samsara Hubを通じて複数のノード間でリアルタイムに同期されます。
 
@@ -66,5 +68,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-04-10 (Phase E-2 / Zero-Trust Architecture)
+最終更新: 2026-05-04 (Aiome v1.0 Stabilization / Federation Sunset)
 Aiome Development Team

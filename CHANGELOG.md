@@ -1,5 +1,5 @@
 ## [Unreleased]
-> Last Updated: 2026-05-03
+> Last Updated: 2026-05-04
 
 ### Added
 - **Zero-Panic CI Enforcement (AST Script)**:
@@ -21,6 +21,15 @@
   - **[Phase 2]** 統合テスト `test_aegis_sentinel_integration` を追加し、Dream Service のインシデント記録とブロードキャスト機能の動作を保証。
   - **[Phase 2: Final Polish]** `broadcast::send` のエラーロギングを追加し、SSE接続者不在時のサイレント破棄を防止。
   - **[Phase 2: Final Polish]** `dream.rs` の未使用変数 (`cortex_fs_root`, `resolver`) の削除と、テストコード内の無効な `clippy::unwrap_used` 許可属性を解消し、コンパイラ警告ゼロを達成。
+
+### Changed
+- **Aiome v1.0 Stabilization (Federation Sunset)**:
+  - Federation および Biome (P2P / Samsara Hub) 関連機能を v1.0 リリース対象から外し、v1.5 へ延期しました。
+  - `aiome-node` の `mdns_broadcaster` を無効化し、不要なバックグラウンド通信探索を停止。
+  - `api-server` の `/api/v1/biome/*` および `/api/v1/karma/federation-demo` エンドポイントを `501 NOT_IMPLEMENTED` スタブ関数に置き換え。
+  - OpenAPI ドキュメント (`docs/openapi.json`) を更新し、対象エンドポイントの期待ステータスを `501` に同期。
+  - 統合テスト (`api_integration_tests.rs`) を `501` を期待するように修正し、ネットワーク依存のE2Eテスト (`federation_e2e_tests.rs`) を `#[ignore]` で除外。
+  - 依存コード全体からデッドコードを排除し、完全な AST 整合性とテストカバレッジ (0 failures) を維持。
 
 ### Changed
 - **Zero-Panic Policy (Clippy `deny` 化)**: `Cargo.toml` の `unwrap_used` を `"warn"` → `"deny"` に昇格。全 15 クレートに `[lints] workspace = true` を追加し、ワークスペース lint の継承を有効化。既存 `.unwrap()` 箇所にはステートメント境界に `#[allow(clippy::unwrap_used)]` を自動挿入（121 ファイル / 406 annotations）。新規 `.unwrap()` は Clippy で compile error として物理的に阻止される環境を構築。

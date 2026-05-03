@@ -273,16 +273,13 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "Autonomous dialogue started",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
               }
             }
-          },
-          "409": {
-            "description": "Dialogue already running"
           }
         },
         "security": [
@@ -299,8 +296,8 @@
         ],
         "operationId": "autonomous_status",
         "responses": {
-          "200": {
-            "description": "Current autonomous status",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
@@ -322,8 +319,8 @@
         ],
         "operationId": "autonomous_stop",
         "responses": {
-          "200": {
-            "description": "Stopping autonomous dialogue",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
@@ -345,14 +342,11 @@
         ],
         "operationId": "list_messages",
         "responses": {
-          "200": {
-            "description": "List biome messages",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {}
-                }
+                "schema": {}
               }
             }
           }
@@ -381,8 +375,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "Message sent/relayed",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
@@ -404,8 +398,8 @@
         ],
         "operationId": "biome_status",
         "responses": {
-          "200": {
-            "description": "Biome protocol status",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
@@ -427,8 +421,8 @@
         ],
         "operationId": "list_topics",
         "responses": {
-          "200": {
-            "description": "List topics from Hub",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
@@ -456,8 +450,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "Topic created",
+          "501": {
+            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {}
