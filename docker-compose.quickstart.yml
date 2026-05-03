@@ -23,7 +23,7 @@ services:
 
   api-server:
     # Use the pre-built image to save 10+ minutes of build time
-    image: ghcr.io/motivationstudio-llc/aiome:v0.2.0-beta
+    image: ghcr.io/motivationstudio-llc/aiome:v1.0.0
     container_name: aiome-api-server
     build:
       context: .
@@ -31,6 +31,7 @@ services:
     ports:
       - "3015:3015"
     environment:
+      CELL_ID: "quickstart"
       OLLAMA_HOST: "http://ollama:11434"
       # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "gemma4:e4b"  # Gemma4 — multimodal, ~6GB RAM
@@ -38,6 +39,8 @@ services:
       WORKSPACE_DIR: "/data"
       API_SERVER_SECRET: "quickstart_secret_change_in_production"
       VAULT_MASTER_KEY: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      # JWT key for auth (release builds require this; generate your own for production)
+      JWT_PRIVATE_KEY_B64: "MC4CAQAwBQYDK2VwBCIEIO5u8FRMowHdVD/soQOD6TivIP1Ovb6Wm161FW6NmkYK" # gitleaks:allow
       # Optionals:
       # STRIPE_API_KEY: "" # Leave empty for automatic mock mode capability
     volumes:
@@ -52,7 +55,7 @@ services:
         condition: service_healthy
 
   management-console:
-    image: ghcr.io/motivationstudio-llc/aiome-console:v0.2.0-beta
+    image: ghcr.io/motivationstudio-llc/aiome-console:v1.0.0
     container_name: aiome-mc
     build:
       context: apps/management-console

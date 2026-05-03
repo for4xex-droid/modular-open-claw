@@ -53,7 +53,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
-            type=raw,value=v0.2.0-beta
+            type=raw,value=v1.0.0
 
       - name: Build and push API Server
         uses: docker/build-push-action@v5
@@ -78,7 +78,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
-            type=raw,value=v0.2.0-beta
+            type=raw,value=v1.0.0
 
       - name: Build and push Management Console
         uses: docker/build-push-action@v5

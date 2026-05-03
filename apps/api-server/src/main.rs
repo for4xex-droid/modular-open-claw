@@ -118,6 +118,8 @@ async fn main() -> anyhow::Result<()> {
         metrics_handle,
     );
 
+    // Deferred to v1.5: Federation metrics push loop
+    /*
     // G-23: Periodic Federated Metrics Push (Background Maintenance Loop)
     let jq_for_bg = job_queue.clone();
     let cancel_bg = cancel_token.clone();
@@ -139,6 +141,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     });
+    */
 
     let addr = SocketAddr::from(([0, 0, 0, 0], state.config.get_inner().api_server_port));
     info!("🚀 [api-server] Listening on http://{}", addr);

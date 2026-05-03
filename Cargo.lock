@@ -107,7 +107,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-commerce"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "aiome-core-contracts",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-contracts"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core-contracts",
  "ammonia",
@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-core-contracts"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-contracts",
  "anyhow",
@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-migrate"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "anyhow",
@@ -271,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "aiome-node"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-commerce",
  "aiome-core",
@@ -402,7 +402,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-server"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-commerce",
  "aiome-contracts",
@@ -988,7 +988,7 @@ dependencies = [
 
 [[package]]
 name = "avatar-engine"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core-contracts",
  "anyhow",
@@ -2286,7 +2286,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "clippy_test"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "sqlx",
  "tokio",
@@ -4211,7 +4211,7 @@ checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "fs_reader"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "extism-pdk",
  "serde",
@@ -4220,7 +4220,7 @@ dependencies = [
 
 [[package]]
 name = "fs_writer"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "extism-pdk",
  "serde",
@@ -5887,7 +5887,7 @@ checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
 
 [[package]]
 name = "infrastructure"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "aiome-contracts",
@@ -6309,7 +6309,7 @@ dependencies = [
 
 [[package]]
 name = "key-proxy"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "anyhow",
@@ -6592,7 +6592,7 @@ checksum = "670fdfda89751bc4a84ac13eaa63e205cf0fd22b4c9a5fbfa085b63c1f1d3a30"
 
 [[package]]
 name = "management-console"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -7085,7 +7085,7 @@ dependencies = [
 
 [[package]]
 name = "napi-bridge"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "infrastructure",
@@ -7839,7 +7839,7 @@ checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
 
 [[package]]
 name = "oxilean-kernel"
-version = "0.1.0"
+version = "1.0.0"
 
 [[package]]
 name = "p256"
@@ -9774,7 +9774,7 @@ dependencies = [
 
 [[package]]
 name = "samsara-hub"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "anyhow",
@@ -10365,7 +10365,7 @@ dependencies = [
 
 [[package]]
 name = "shadow-worker"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core",
  "aiome-core-contracts",
@@ -10399,7 +10399,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core-contracts",
  "anyhow",
@@ -10608,7 +10608,7 @@ dependencies = [
 
 [[package]]
 name = "soul"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aiome-core-contracts",
  "anyhow",
@@ -11669,7 +11669,7 @@ dependencies = [
 
 [[package]]
 name = "terminal_exec"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "extism-pdk",
  "serde",

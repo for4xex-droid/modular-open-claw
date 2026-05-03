@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-05-02
+**Last Updated:** 2026-05-04
 
 ---
 
@@ -49,7 +49,7 @@ BG_LLM_PROVIDER=ollama
 BG_LLM_MODEL=qwen3.5:9b
 API_SERVER_SECRET=your_random_secret_here
 VAULT_SECRET=your_vault_secret
-FEDERATION_SECRET=your_hub_secret
+FEDERATION_SECRET=your_hub_secret # [Deferred to v1.5]
 TTS_PROVIDER=openai
 TTS_OPENAI_API_KEY=your_openai_key
 TTS_OPENAI_MODEL=tts-1
@@ -64,8 +64,8 @@ OLLAMA_HOST=http://127.0.0.1:11434              # Ollamaホスト
 OLLAMA_MODEL=qwen3.5:9b                          # Ollamaモデル
 PORT=3015                                        # APIサーバーポート
 KEY_PROXY_URL=http://127.0.0.1:3017             # Abyss Vault URL
-SAMSARA_HUB_REST=http://127.0.0.1:3016          # Samsara Hub REST URL
-SAMSARA_HUB_WS=ws://127.0.0.1:3016/api/v1/federation/ws  # Hub WebSocket
+SAMSARA_HUB_REST=http://127.0.0.1:3016          # [Deferred to v1.5] Samsara Hub REST URL
+SAMSARA_HUB_WS=ws://127.0.0.1:3016/api/v1/federation/ws  # [Deferred to v1.5] Hub WebSocket
 ALLOWED_ORIGINS=http://localhost:1420,http://localhost:5173  # CORS許可オリジン
 EMBEDDING_PROVIDER=ruri                          # 埋め込みプロバイダー (ruri/gemini/ollama)
 RURI_EMBED_URL=http://localhost:8100             # RuriサーバーURL
@@ -143,7 +143,7 @@ AIの性格や話し方を定義するファイルです。オンボーディン
 - `ai_artifacts` / `artifact_edges`: アーティファクトストア
 - `expressions`: Expression Engine (自律表現)
 - `sns_metrics_history`: SNSメトリクスレコード
-- `federation_peers`: フェデレーションピア
+- `federation_peers`: フェデレーションピア [Deferred to v1.5]
 - `arena_history`: スキルアリーナ対戦履歴
 - `hypotheses`: 科学的夢想 (Scientific Dream) による改善仮説と実験ステータス
 
@@ -185,7 +185,7 @@ RUST_LOG=info cargo run -p api-server
 - [ ] `.env` に `GEMINI_API_KEY` を設定
 - [ ] `.env` に `API_SERVER_SECRET` を設定
 - [ ] `.env` に `VAULT_SECRET` を設定 (Key Proxy用)
-- [ ] `.env` に `FEDERATION_SECRET` を設定 (Samsara Hub用)
+- [ ] `.env` に `FEDERATION_SECRET` を設定 (Samsara Hub用 - v1.5へ延期)
 - [ ] `.env` に `TIMESFM_AUTH_TOKEN` を設定し、Docker側と一致させる (Phase 3D)
 - [ ] `SOUL.md` を確認・カスタマイズ
 - [ ] Ollama でモデルをダウンロード (`ollama pull qwen3.5:9b`)

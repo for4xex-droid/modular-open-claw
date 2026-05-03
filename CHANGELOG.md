@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.0.0] - 2026-05-04
 > Last Updated: 2026-05-04
 
 ### Added
@@ -30,6 +32,15 @@
   - OpenAPI ドキュメント (`docs/openapi.json`) を更新し、対象エンドポイントの期待ステータスを `501` に同期。
   - 統合テスト (`api_integration_tests.rs`) を `501` を期待するように修正し、ネットワーク依存のE2Eテスト (`federation_e2e_tests.rs`) を `#[ignore]` で除外。
   - 依存コード全体からデッドコードを排除し、完全な AST 整合性とテストカバレッジ (0 failures) を維持。
+- **v1.0.0 Release Packaging**:
+  - 全 17 クレートのバージョンを `0.1.0` → `1.0.0` に一括更新（Tauri クレート含む）。
+  - `management-console` の `package.json` および `tauri.conf.json` のバージョンを `1.0.0` に同期。
+  - `docs/openapi.json` の API バージョンを `1.0.0` に更新。
+  - `api-server/src/main.rs` の Federation メトリクスプッシュ・バックグラウンドループを無効化（v1.5 延期）。
+  - `docker-compose.production.yml`, `docker-compose.cell.yml`, `docker-compose.nurture.yml` から `samsara-hub` の `depends_on` を解除。
+  - `docker-compose.quickstart.yml` のイメージタグを `v1.0.0` に更新し、`CELL_ID` と `JWT_PRIVATE_KEY_B64` を追加（起動クラッシュのブロッカー修正）。
+  - `.github/workflows/docker-publish.yml` の fallback タグを `v0.2.0-beta` → `v1.0.0` に更新。
+  - `.env.example` の Federation 関連変数に `[Deferred to v1.5]` 注記を追加。
 
 ### Changed
 - **Zero-Panic Policy (Clippy `deny` 化)**: `Cargo.toml` の `unwrap_used` を `"warn"` → `"deny"` に昇格。全 15 クレートに `[lints] workspace = true` を追加し、ワークスペース lint の継承を有効化。既存 `.unwrap()` 箇所にはステートメント境界に `#[allow(clippy::unwrap_used)]` を自動挿入（121 ファイル / 406 annotations）。新規 `.unwrap()` は Clippy で compile error として物理的に阻止される環境を構築。

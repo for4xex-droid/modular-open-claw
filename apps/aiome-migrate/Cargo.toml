@@ -1,6 +1,6 @@
 [package]
 name = "aiome-migrate"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 license = "BUSL-1.1"
 
@@ -20,7 +20,7 @@ chrono = { workspace = true }
 
 aiome-core = { path = "../../libs/core" }
 infrastructure = { path = "../../libs/infrastructure" }
-shared = { version = "0.1.0", path = "../../libs/shared" }
+shared = { version = "1.0.0", path = "../../libs/shared" }
 
 [lints]
 workspace = true

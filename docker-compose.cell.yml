@@ -24,14 +24,14 @@ services:
       - KEY_PROXY_URL=http://key-proxy:9999
       - VAULT_SECRET=${VAULT_SECRET}
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
-      - SAMSARA_HUB_REST=http://samsara-hub:3016
+      # Deferred to v1.5: - SAMSARA_HUB_REST=http://samsara-hub:3016
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - RURI_EMBED_URL=${RURI_EMBED_URL:-http://ruri-embed-server:8100}
       - VAULT_PATH=/app/data/vault
       - NURTURE_API_URL=http://nurture-api:3020
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
       - MCP_ALLOW_LOCALHOST=${MCP_ALLOW_LOCALHOST:-false}
-    depends_on: [key-proxy, samsara-hub]
+    depends_on: [key-proxy]
     volumes:
       - ./data/${CELL_ID:-cell-0}/api:/app/data
     deploy: { resources: { limits: { memory: 2G } } }
@@ -46,18 +46,19 @@ services:
       timeout: 5s
       retries: 3
 
-  samsara-hub:
-    build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: samsara-hub } }
-    environment:
-      - CELL_ID=${CELL_ID:-cell-0}
-      - DATABASE_URL=sqlite:///app/data/samsara_hub.db
-      - FEDERATION_SECRET=${FEDERATION_SECRET}
-    volumes:
-      - ./data/${CELL_ID:-cell-0}/hub:/app/data
-    deploy: { resources: { limits: { memory: 1G } } }
-    security_opt: ["no-new-privileges:true"]
-    user: "1001:1001"
-    restart: always
+  # Deferred to v1.5: Samsara Hub
+  # samsara-hub:
+  #   build: { context: ., dockerfile: docker/production.Dockerfile, args: { BIN_NAME: samsara-hub } }
+  #   environment:
+  #     - CELL_ID=${CELL_ID:-cell-0}
+  #     - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+  #     - FEDERATION_SECRET=${FEDERATION_SECRET}
+  #   volumes:
+  #     - ./data/${CELL_ID:-cell-0}/hub:/app/data
+  #   deploy: { resources: { limits: { memory: 1G } } }
+  #   security_opt: ["no-new-privileges:true"]
+  #   user: "1001:1001"
+  #   restart: always
 
   geo-optimizer:
     build:
