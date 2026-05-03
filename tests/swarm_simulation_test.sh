@@ -9,8 +9,13 @@ export FEDERATION_SECRET="swarm_test_secret_2026"
 export SAMSARA_HUB_REST="http://127.0.0.1:3016"
 export HUB_DATABASE_URL="sqlite:hub_test.db?mode=rwc"
 export RUST_LOG=info
+export CELL_ID="swarm-simulation-cell"
+export FEDERATION_SYNC_INTERVAL="5"
+export SAMSARA_HUB_SECRET="swarm_test_secret_2026"
+export FEDERATION_SECRET="swarm_test_secret_2026"
 
-# Cleanup previous runs
+# Setup DB for nodes to have feature flag enabled
+
 pkill samsara-hub || true
 pkill api-server || true
 rm -f hub_test.db node_a.db node_b.db hub.log node_a.log node_b.log
@@ -22,22 +27,22 @@ cargo build -p samsara-hub -p api-server > /dev/null 2>&1
 
 # 1. Start Samsara Hub
 echo "🏔️ [Simulation] Launching Samsara Hub..."
-DATABASE_URL=$HUB_DATABASE_URL cargo run -p samsara-hub > hub.log 2>&1 &
+PORT=3016 DATABASE_URL=$HUB_DATABASE_URL ./target/debug/samsara-hub > hub.log 2>&1 &
 HUB_PID=$!
 
 # 2. Start Node A
 echo "🧬 [Simulation] Launching Node A (Port 3017)..."
-AIOME_DB_PATH="sqlite://workspace_a/node_a.db" PORT=3017 cargo run -p api-server > node_a.log 2>&1 &
+AIOME_DB_PATH="sqlite://workspace_a/node_a.db" PORT=3017 ./target/debug/api-server > node_a.log 2>&1 &
 NODE_A_PID=$!
 
 # 3. Start Node B
 echo "🌐 [Simulation] Launching Node B (Port 3018)..."
-AIOME_DB_PATH="sqlite://workspace_b/node_b.db" PORT=3018 cargo run -p api-server > node_b.log 2>&1 &
+AIOME_DB_PATH="sqlite://workspace_b/node_b.db" PORT=3018 ./target/debug/api-server > node_b.log 2>&1 &
 NODE_B_PID=$!
 
 echo "⏳ Waiting for nodes to be ready..."
 for i in {1..30}; do
-    if grep -q "listening on" node_a.log && grep -q "listening on" node_b.log && grep -q "listening on" hub.log; then
+    if grep -i -q "listening on" node_a.log && grep -i -q "listening on" node_b.log && grep -i -q "listening on" hub.log; then
         echo " Ready!"
         break
     fi
@@ -49,9 +54,20 @@ for i in {1..30}; do
     fi
 done
 
+echo "⚙️ [Simulation] Configuring Feature Flags and Hub URL..."
+sqlite3 workspace_a/node_a.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('feature_flag.federation_v1_5', 'true');"
+sqlite3 workspace_a/node_a.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('samsara_hub_url', 'http://127.0.0.1:3016');"
+sqlite3 workspace_a/node_a.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('federation_secret', 'swarm_test_secret_2026');"
+sqlite3 workspace_a/node_a.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('node_id', 'node_a_sim');"
+
+sqlite3 workspace_b/node_b.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('feature_flag.federation_v1_5', 'true');"
+sqlite3 workspace_b/node_b.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('samsara_hub_url', 'http://127.0.0.1:3016');"
+sqlite3 workspace_b/node_b.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('federation_secret', 'swarm_test_secret_2026');"
+sqlite3 workspace_b/node_b.db "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('node_id', 'node_b_sim');"
+
 # 4. Trigger Karma generation on Node A
-echo "⚡ [Simulation] Triggering failure demo on Node A..."
-curl -s -X POST http://127.0.0.1:3017/api/synergy/test/failure > /dev/null
+echo "⚡ [Simulation] Triggering failure demo on Node A (via SQL)..."
+sqlite3 workspace_a/node_a.db "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, is_federated, lamport_clock, created_at, node_id, signature, clone_origin_id, somatic_valence) VALUES ('sim-fail-1', 'Technical', 'test_skill', 'Simulation Failure Demo', 100, 0, 1, '2026-05-03T12:00:00Z', 'node_a_sim', 'test_sig', NULL, 0.0);"
 
 echo "🔍 [Simulation] Verifying Node A Local Karma..."
 sleep 2

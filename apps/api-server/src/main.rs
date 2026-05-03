@@ -118,30 +118,37 @@ async fn main() -> anyhow::Result<()> {
         metrics_handle,
     );
 
-    // Deferred to v1.5: Federation metrics push loop
-    /*
-    // G-23: Periodic Federated Metrics Push (Background Maintenance Loop)
+    // G-23: Periodic Federated Metrics Push & Pull (Background Maintenance Loop)
     let jq_for_bg = job_queue.clone();
     let cancel_bg = cancel_token.clone();
+    let state_for_bg = state.clone();
     tokio::spawn(async move {
         use infrastructure::job_queue::federation::FederationOps;
-        let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+        let interval_secs = std::env::var("FEDERATION_SYNC_INTERVAL")
+            .unwrap_or_else(|_| "3600".to_string())
+            .parse::<u64>()
+            .unwrap_or(3600);
+        let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
         loop {
             tokio::select! {
                 _ = cancel_bg.cancelled() => {
-                    info!("🛑 [Maintenance] Federation metrics push stopped due to shutdown.");
+                    info!("🛑 [Maintenance] Federation metrics sync stopped due to shutdown.");
                     break;
                 }
                 _ = interval.tick() => {
-                    info!("♻️ [Maintenance] Running periodic federated metrics push...");
-                    if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
-                        error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);
+                    if state_for_bg.is_feature_enabled("federation_v1_5").await {
+                        info!("♻️ [Maintenance] Running periodic federated metrics push & sync...");
+                        if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
+                            error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);
+                        }
+                        if let Err(e) = jq_for_bg.do_sync_federated_data().await {
+                            error!("🚨 [Maintenance] Failed to sync federated metrics: {}", e);
+                        }
                     }
                 }
             }
         }
     });
-    */
 
     let addr = SocketAddr::from(([0, 0, 0, 0], state.config.get_inner().api_server_port));
     info!("🚀 [api-server] Listening on http://{}", addr);

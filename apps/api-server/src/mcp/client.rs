@@ -309,20 +309,64 @@ impl McpEndpoint {
 
 const MAX_MCP_PROCESSES: usize = 10;
 
+#[derive(Clone, Debug)]
+pub struct McpRegistryEntry {
+    pub cmd: String,
+    pub args: Vec<String>,
+    pub envs: HashMap<String, String>,
+}
+
 pub struct McpProcessManager {
     clients: Arc<Mutex<HashMap<String, Arc<McpEndpoint>>>>,
+    registry: Arc<Mutex<HashMap<String, McpRegistryEntry>>>,
 }
 
 impl McpProcessManager {
     pub fn new() -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
+            registry: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
+    pub async fn register_server(
+        &self,
+        id: String,
+        cmd: String,
+        args: Vec<String>,
+        envs: HashMap<String, String>,
+    ) {
+        let mut registry = self.registry.lock().await;
+        registry.insert(id, McpRegistryEntry { cmd, args, envs });
+    }
+
     pub async fn get_client(&self, id: &str) -> Option<Arc<McpEndpoint>> {
-        let clients = self.clients.lock().await;
-        clients.get(id).cloned()
+        {
+            let clients = self.clients.lock().await;
+            if let Some(client) = clients.get(id) {
+                return Some(client.clone());
+            }
+        }
+
+        let entry = {
+            let registry = self.registry.lock().await;
+            registry.get(id).cloned()
+        };
+
+        if let Some(entry) = entry {
+            match self
+                .spawn_stdio_server(id.to_string(), &entry.cmd, entry.args, entry.envs)
+                .await
+            {
+                Ok(endpoint) => return Some(endpoint),
+                Err(e) => {
+                    tracing::error!("🚨 [MCP] Lazy load spawn failed for {}: {}", id, e);
+                    return None;
+                }
+            }
+        }
+
+        None
     }
 
     pub async fn spawn_stdio_server(
@@ -700,5 +744,31 @@ mod tests {
         // Verify essential vars are present
         assert!(safe_vars.contains(&"PATH"), "PATH must be in safe vars");
         assert!(safe_vars.contains(&"HOME"), "HOME must be in safe vars");
+    }
+
+    #[tokio::test]
+    async fn test_mcp_registry_lazy_load() {
+        let manager = McpProcessManager::new();
+        // Register an un-spawned client
+        manager
+            .register_server(
+                "lazy_python".to_string(),
+                "python3".to_string(),
+                vec!["-c".to_string(), "print('{}')".to_string()],
+                HashMap::new(),
+            )
+            .await;
+
+        // No clients should be active initially
+        assert_eq!(manager.active_client_ids().await.len(), 0);
+
+        // Fetching the client should trigger a lazy spawn
+        let endpoint = manager
+            .get_client("lazy_python")
+            .await
+            .expect("Client should be spawned on demand");
+
+        // Now it should be active
+        assert_eq!(manager.active_client_ids().await.len(), 1);
     }
 }

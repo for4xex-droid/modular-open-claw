@@ -1,9 +1,18 @@
 ## [Unreleased]
+### Added
+- **MCP Dynamic Registry & Lazy Loading (Phase 1.5 P0)**:
+  - `apps/api-server/src/mcp/client.rs` の `McpProcessManager` に `McpRegistryEntry` と `register_server` を追加。
+  - `get_client` メソッドを改修し、未起動の MCP サーバーを要求に応じて遅延起動 (Lazy Loading) する仕組みを実装。メモリの OOM リスクを軽減。
+  - `test_mcp_registry_lazy_load` テストを追加し、TDD サイクル (RED -> GREEN -> REFACTOR) を完了。
+
+- **Federation Unstubbing (Phase 1.5 P1)**:
+  - `libs/infrastructure/src/job_queue/federation.rs` において、ハリボテ（スタブ化）されていた `do_fetch_unfederated_data` と `do_mark_as_federated` を実装。
+  - `libs/infrastructure/src/job_queue/crdt.rs` にて Automerge を用いた CRDT タイムラインマージロジックの実装および TDD を完了。
+  - `apps/api-server/src/federation_e2e_tests.rs` の `ignore` を解除し、`do_push_federated_metrics` の結合テストを通過（P2P 同期クライアントの完全稼働を確認）。
+  - `karma_logs` および `immune_rules` テーブルから `is_federated = 0` のデータを抽出し、正しく同期マーク (`is_federated = 1`) を付ける機能を実現。
+  - `test_federation_unstub_do_fetch_unfederated_data` テストを追加し、インメモリ SQLite を使用した TDD を完了。
 
 ## [1.0.0] - 2026-05-04
-> Last Updated: 2026-05-04
-
-### Added
 - **Zero-Panic CI Enforcement (AST Script)**:
   - `scripts/enforce_unwrap_deny.py` とそのテストスイート (`scripts/test_enforce_unwrap_deny.py`) を実装し、CI向けの強力なパニック排除（`.unwrap()`, `.expect()`）ゲートを確立。
   - 文字列リテラル内の安全な記述を無視するステートマシンや、中括弧トラッキングによる `cfg(test)` ブロックおよびテストファイルの自動除外など、高度な解析ロジックを搭載。誤検知（False Negative）の完全排除と 99% のテストカバレッジを達成。

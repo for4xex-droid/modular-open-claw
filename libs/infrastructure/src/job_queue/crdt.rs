@@ -89,3 +89,82 @@ impl CrdtOps for UniversalJobQueue {
         Ok(row)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::DatabasePool;
+    use crate::job_queue::trajectory_store::SqliteTrajectoryStore;
+    use crate::job_queue::UniversalJobQueue;
+    use automerge::{transaction::Transactable, AutoCommit, Value};
+    use sqlx::sqlite::SqlitePoolOptions;
+    use std::sync::Arc;
+
+    async fn setup_test_queue() -> UniversalJobQueue {
+        let sql_pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        // Run migrations
+        sqlx::query("CREATE TABLE timeline_checkpoints (id TEXT PRIMARY KEY, automerge_blob BLOB NOT NULL, last_seq INTEGER NOT NULL DEFAULT 0, updated_at TEXT DEFAULT (datetime('now')));")
+            .execute(&sql_pool)
+            .await
+            .unwrap();
+
+        let db_pool = DatabasePool::Sqlite(sql_pool.clone());
+        let ts = Arc::new(SqliteTrajectoryStore::new(db_pool.clone()));
+        UniversalJobQueue::from_pool(db_pool, ts)
+    }
+
+    #[tokio::test]
+    async fn test_crdt_sync_empty_remote() {
+        let q = setup_test_queue().await;
+        let blob = q.sync_timeline("hub_1", None).await.unwrap();
+        assert!(!blob.is_empty());
+
+        let saved = q.get_timeline_blob("hub_1").await.unwrap().unwrap();
+        assert_eq!(blob, saved);
+    }
+
+    #[tokio::test]
+    async fn test_crdt_sync_with_remote() {
+        let q = setup_test_queue().await;
+
+        let mut remote_doc = AutoCommit::new();
+        remote_doc
+            .put(automerge::ROOT, "remote_key", "remote_value")
+            .unwrap();
+        let remote_blob = remote_doc.save();
+
+        let merged_blob = q.sync_timeline("hub_2", Some(&remote_blob)).await.unwrap();
+
+        let mut merged_doc = AutoCommit::load(&merged_blob).unwrap();
+        let val = merged_doc
+            .get(automerge::ROOT, "remote_key")
+            .unwrap()
+            .unwrap();
+        match val.0 {
+            Value::Scalar(s) => assert_eq!(s.to_string().trim_matches('"'), "remote_value"),
+            _ => panic!("Expected scalar string"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_crdt_sync_remote_too_large() {
+        let q = setup_test_queue().await;
+        let giant_blob = vec![0u8; 10 * 1024 * 1024 + 1]; // 10MB + 1 byte
+
+        let err = q
+            .sync_timeline("hub_3", Some(&giant_blob))
+            .await
+            .unwrap_err();
+        match err {
+            AiomeError::SecurityViolation { reason } => {
+                assert!(reason.contains("10MB"));
+            }
+            _ => panic!("Expected SecurityViolation"),
+        }
+    }
+}

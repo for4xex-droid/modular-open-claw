@@ -1,5 +1,18 @@
 # 🌊 Aiome Ripple Map
 
+## MCP Dynamic Registry & Federation Unstubbing (Phase 1.5)
+### 1. MCP Lazy Loading Integration
+- **変更内容**:
+    - `apps/api-server/src/mcp/client.rs` [MODIFY]: `McpRegistryEntry` および `McpProcessManager::register_server` を実装し、遅延起動 (Lazy Load) アーキテクチャを導入。
+- **波及効果**:
+    - MCP サーバーがアクセスされるまでプロセスを起動しないため、初期起動速度の向上と OOM リスクの大幅な低減が実現された。
+
+### 2. Federation Sync Data Implementation
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `do_fetch_unfederated_data` および `do_mark_as_federated` において、`is_federated = 0` の `karma_logs` と `immune_rules` の抽出と更新ロジックを実装。
+- **波及効果**:
+    - ハリボテだった P2P Federation のデータ抽出部分が実働コードに置き換わり、Samsara Hub などの外部ノードへ同期用ペイロードを渡す基盤が完成した。
+
 ## Zero-Panic CI Enforcement & Guardrails Hardening
 ### 1. `enforce_unwrap_deny.py` Integration
 - **変更内容**:
