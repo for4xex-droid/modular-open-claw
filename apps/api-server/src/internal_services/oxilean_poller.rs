@@ -15,10 +15,19 @@ use tracing::{debug, error, info};
 pub async fn run(state: AppState) -> Result<(), anyhow::Error> {
     info!("🛡️ Starting OxiLean Background Poller...");
 
-    let host = std::env::var("SHADOW_CLONE_GRPC_HOST").unwrap_or_else(|_| "localhost".to_string());
-    let port = std::env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
+    let host = state.config.get_inner().shadow_clone_grpc_host.clone();
+    let port = state.config.get_inner().shadow_clone_grpc_port.clone();
     let addr = format!("http://{}:{}", host, port);
-    let auth_token = std::env::var("A2A_AUTH_TOKEN").unwrap_or_default();
+    let auth_token = state
+        .config
+        .get_inner()
+        .a2a_auth_token
+        .clone()
+        .map(|s| {
+            use secrecy::ExposeSecret;
+            s.expose_secret().to_string()
+        })
+        .unwrap_or_default();
 
     let endpoint = tonic::transport::Endpoint::from_shared(addr)
         .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;

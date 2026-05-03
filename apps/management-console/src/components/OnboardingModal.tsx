@@ -264,22 +264,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
 
                         <div style={{ marginTop: '2rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                                {(!steps[step].hideNext && step < steps.length - 1) ? (
-                                    <button
-                                        onClick={() => setStep(step + 1)}
-                                        style={{
-                                            padding: '0.8rem 2.5rem',
-                                            background: 'var(--accent-cyan)',
-                                            color: 'var(--text-inverse)',
-                                            border: 'none',
-                                            borderRadius: 'var(--radius-md)',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        {t('onboarding.next')}
-                                    </button>
-                                ) : (
+                                {step === steps.length - 1 ? (
                                     <button
                                         onClick={handleFinalize}
                                         disabled={isSaving}
@@ -300,7 +285,22 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                         <Sparkles size={20} />
                                         {isSaving ? t('onboarding.finalizing') : t('onboarding.awaken')}
                                     </button>
-                                )}
+                                ) : !steps[step].hideNext ? (
+                                    <button
+                                        onClick={() => setStep(step + 1)}
+                                        style={{
+                                            padding: '0.8rem 2.5rem',
+                                            background: 'var(--accent-cyan)',
+                                            color: 'var(--text-inverse)',
+                                            border: 'none',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {t('onboarding.next')}
+                                    </button>
+                                ) : null}
                             </div>
 
                             <AnimatePresence>

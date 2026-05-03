@@ -82,6 +82,14 @@ pub struct AiomeConfig {
     pub abyss_vault_url: String,
     /// TimesFM Sidecar URL
     pub timesfm_sidecar_url: String,
+    /// A2A Node Auth Token (Scrubbed)
+    pub a2a_auth_token: Option<SecretString>,
+    /// A2A Node Token (Scrubbed)
+    pub a2a_node_token: Option<SecretString>,
+    /// Shadow Clone gRPC Host
+    pub shadow_clone_grpc_host: String,
+    /// Shadow Clone gRPC Port
+    pub shadow_clone_grpc_port: String,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -137,6 +145,10 @@ impl Default for AiomeConfig {
             comfyui_url: "http://localhost:8188".to_string(), // allow-anti-pattern
             abyss_vault_url: "http://localhost:3016".to_string(), // allow-anti-pattern
             timesfm_sidecar_url: "http://timesfm-sidecar:8000".to_string(),
+            a2a_auth_token: None,
+            a2a_node_token: None,
+            shadow_clone_grpc_host: "localhost".to_string(),
+            shadow_clone_grpc_port: "50051".to_string(),
         }
     }
 }
@@ -201,6 +213,16 @@ impl AiomeConfig {
             SecretString::from(key)
         });
 
+        let a2a_auth_token = env::var("A2A_AUTH_TOKEN").ok().map(|key| {
+            crate::security::scrub_env("A2A_AUTH_TOKEN");
+            SecretString::from(key)
+        });
+
+        let a2a_node_token = env::var("A2A_NODE_TOKEN").ok().map(|key| {
+            crate::security::scrub_env("A2A_NODE_TOKEN");
+            SecretString::from(key)
+        });
+
         Ok(Self {
             db_path,
             log_level,
@@ -253,6 +275,12 @@ impl AiomeConfig {
                 .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)),
             timesfm_sidecar_url: env::var("TIMESFM_SIDECAR_URL")
                 .unwrap_or_else(|_| "http://timesfm-sidecar:8000".to_string()),
+            a2a_auth_token,
+            a2a_node_token,
+            shadow_clone_grpc_host: env::var("SHADOW_CLONE_GRPC_HOST")
+                .unwrap_or_else(|_| "localhost".to_string()),
+            shadow_clone_grpc_port: env::var("SHADOW_CLONE_GRPC_PORT")
+                .unwrap_or_else(|_| "50051".to_string()),
         })
     }
 
@@ -289,6 +317,27 @@ mod tests {
                 .to_string_lossy()
                 .contains(".aiome/test-cell/vault")
                 || config.vault_path.to_string_lossy().contains("aiome")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_a2a_auth_token_scrubbing() {
+        std::env::set_var("A2A_AUTH_TOKEN", "test-secret-token");
+
+        let config = AiomeConfig::load().expect("Failed to load config");
+
+        // Assert token was loaded correctly
+        use secrecy::ExposeSecret;
+        assert_eq!(
+            config.a2a_auth_token.unwrap().expose_secret(),
+            "test-secret-token"
+        );
+
+        // Assert token was scrubbed from environment
+        assert!(
+            std::env::var("A2A_AUTH_TOKEN").is_err(),
+            "A2A_AUTH_TOKEN was not scrubbed!"
         );
     }
 }

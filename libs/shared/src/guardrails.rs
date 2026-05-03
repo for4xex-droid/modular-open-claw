@@ -69,11 +69,13 @@ pub fn validate_input(input: &str) -> ValidationResult {
     // 3. ローカルパターンマッチングによる補強 (Critical Injection Patterns)
     let lower_input = sanitized_input.to_lowercase();
     if lower_input.contains("ignore all previous instructions")
+        || lower_input.contains("ignore previous instructions")
+        || lower_input.contains("ignore all instructions")
         || lower_input.contains("reveal secret_key")
         || lower_input.contains("命令を無視せよ")
     {
         result = ValidationResult::Blocked(
-            "Potential Prompt Injection detected by local policy".to_string(),
+            "Potential prompt injection detected by local policy".to_string(),
         );
     }
 

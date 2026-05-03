@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import SettingsPage from './SettingsPage';
 
 // Mock required contexts
@@ -40,7 +40,21 @@ jest.mock('../config', () => ({
   API_BASE: 'http://localhost'
 }));
 
+// Mock useViewMode
+let mockViewMode = 'advanced';
+jest.mock('../hooks/useViewMode', () => ({
+  useViewMode: () => ({
+    viewMode: mockViewMode,
+    setViewMode: jest.fn((mode) => { mockViewMode = mode; })
+  })
+}));
+
 describe('SettingsPage Integrations', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockViewMode = 'advanced'; // Default to advanced for existing tests
+  });
+
   it('renders Channel Bridges section with X Bearer Token input', async () => {
     render(<SettingsPage />);
     
@@ -70,17 +84,58 @@ describe('SettingsPage Integrations', () => {
     
     // Simulate updating with empty boundary (null/blank)
     fireEvent.change(tokenInput, { target: { value: '' } });
-    await act(async () => {
-      fireEvent.blur(tokenInput);
-    });
+    fireEvent.blur(tokenInput);
+    
     expect(tokenInput).toHaveValue('');
 
     // Simulate exceedingly long payload
     const overflowToken = 'B'.repeat(500);
     fireEvent.change(tokenInput, { target: { value: overflowToken } });
-    await act(async () => {
-      fireEvent.blur(tokenInput);
-    });
+    fireEvent.blur(tokenInput);
+    
     expect(tokenInput).toHaveValue(overflowToken);
+  });
+
+  it('hides intermediate and advanced sections in beginner mode', async () => {
+    mockViewMode = 'beginner';
+    render(<SettingsPage />);
+    
+    // Should see Appearance and LLM Configuration
+    expect(await screen.findByText('settings.appearance')).toBeInTheDocument();
+    expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
+
+    // Should NOT see Commerce, Channel Bridges, Security, Feature Flags, Escrow, MCP
+    expect(screen.queryByText('settings.commerceEconomicBase')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.channelBridges')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.securityInfrastructure')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.featureFlags')).not.toBeInTheDocument();
+  });
+
+  it('shows intermediate sections but hides advanced sections in intermediate mode', async () => {
+    mockViewMode = 'intermediate';
+    render(<SettingsPage />);
+    
+    // Should see Appearance, LLM, Commerce, Channel Bridges, Security
+    expect(await screen.findByText('settings.appearance')).toBeInTheDocument();
+    expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
+    expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
+    expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
+    expect(screen.getByText('settings.securityInfrastructure')).toBeInTheDocument();
+
+    // Should NOT see Feature Flags (advanced only)
+    expect(screen.queryByText('settings.featureFlags')).not.toBeInTheDocument();
+  });
+
+  it('shows all sections in advanced mode', async () => {
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+    
+    // All sections should be visible
+    expect(await screen.findByText('settings.appearance')).toBeInTheDocument();
+    expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
+    expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
+    expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
+    expect(screen.getByText('settings.securityInfrastructure')).toBeInTheDocument();
+    expect(screen.getByText('settings.featureFlags')).toBeInTheDocument();
   });
 });

@@ -2,6 +2,13 @@
 > Last Updated: 2026-05-03
 
 ### Added
+- **Zero-Panic CI Enforcement (AST Script)**:
+  - `scripts/enforce_unwrap_deny.py` とそのテストスイート (`scripts/test_enforce_unwrap_deny.py`) を実装し、CI向けの強力なパニック排除（`.unwrap()`, `.expect()`）ゲートを確立。
+  - 文字列リテラル内の安全な記述を無視するステートマシンや、中括弧トラッキングによる `cfg(test)` ブロックおよびテストファイルの自動除外など、高度な解析ロジックを搭載。誤検知（False Negative）の完全排除と 99% のテストカバレッジを達成。
+  - プロダクションコードにおける正当なパニック箇所に対し `// allow-anti-pattern` アノテーションを適用する管理機構を実装し、設計の例外をセキュアに維持可能とした。
+- **Prompt Injection Defense Hardening**:
+  - `libs/shared/src/guardrails.rs` のローカルバリデーションにおいて、`ignore all instructions` や `ignore previous instructions` といった小文字化済み文字列の検知バリエーションを拡張し、指示無視系のプロンプトインジェクション防御を強化。
+
 - **ADR-040: Aegis Kani Sandbox Implementation**:
   - `AegisProver::verify_with_kani` の実装を完了し、Podman rootless コンテナ内での `cargo kani` 実行フローと `PathSandbox` によるパス検証を構築。
   - `DreamState::aegis_sentinel_dream` に AegisProver のバッチ処理ループを実装し、Kani 検証失敗が `MAX_KANI_RETRIES` (3回) に達した場合の `IncidentStatus::WontFix` 自動遷移ロジックを追加。

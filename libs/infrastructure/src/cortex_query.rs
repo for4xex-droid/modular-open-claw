@@ -596,6 +596,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_edge_blocked_input_returns_error() {
+        std::env::set_var("ENFORCE_GUARDRAIL", "true");
         let pool = setup_db_pool().await;
         let provider = Arc::new(MockLlmProvider {
             responses: tokio::sync::Mutex::new(vec![]),

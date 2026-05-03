@@ -58,6 +58,7 @@ import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTokenHealth } from "./hooks/useTokenHealth";
+import { APP_VERSION } from "./config";
 
 function App() {
   const { t } = useTranslation();
@@ -506,7 +507,7 @@ function App() {
             />
           </div>
           <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-            AIOME {import.meta.env.VITE_APP_VERSION || "v1.0.2"}
+            AIOME {APP_VERSION}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
             <button

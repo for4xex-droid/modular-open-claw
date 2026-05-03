@@ -33,24 +33,63 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
 
     if (!status?.ollama_connected) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
-                <div style={{ padding: '1rem', background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)', borderRadius: '12px' }}>
-                    <div style={{ fontWeight: 800, color: 'var(--accent-rose)', marginBottom: '0.5rem' }}>{t('onboarding.llmSetup.notConnected')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
+                <div style={{ padding: '1rem', background: 'var(--accent-cyan-10)', border: '1px solid var(--accent-cyan-30)', borderRadius: '12px' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>{t('onboarding.llmSetup.notConnected')}</div>
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         {t('onboarding.llmSetup.installGuide')}
                     </div>
                 </div>
+                
+                <button 
+                    onClick={() => {}}
+                    style={{
+                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
+                        border: '1px solid var(--accent-cyan-30)',
+                        background: 'var(--accent-cyan-05)',
+                        cursor: 'pointer', transition: 'all var(--speed-normal) ease',
+                        display: 'flex', alignItems: 'center', gap: '1rem'
+                    }}
+                >
+                    <div style={{ fontSize: '1.5rem' }}>🖥️</div>
+                    <div>
+                        <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{t('onboarding.llmSetup.optionLocal.title', { defaultValue: 'Local PC' })}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('onboarding.llmSetup.optionLocal.desc', { defaultValue: 'Install Ollama to run AI privately' })}</div>
+                    </div>
+                </button>
+
                 <button 
                     onClick={onSkip}
                     style={{
-                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'center',
+                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
                         border: '1px solid var(--border-glass-bright)',
                         background: 'var(--white-03)',
                         cursor: 'pointer', transition: 'all var(--speed-normal) ease',
-                        color: 'var(--text-secondary)', fontWeight: 600
+                        display: 'flex', alignItems: 'center', gap: '1rem'
                     }}
                 >
-                    {t('onboarding.llmSetup.skipCloud')}
+                    <div style={{ fontSize: '1.5rem' }}>☁️</div>
+                    <div>
+                        <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{t('onboarding.llmSetup.optionCloud.title', { defaultValue: 'Cloud API' })}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('onboarding.llmSetup.optionCloud.desc', { defaultValue: 'Use Gemini or OpenAI (Requires API Key)' })}</div>
+                    </div>
+                </button>
+
+                <button 
+                    onClick={onSkip}
+                    style={{
+                        padding: '1rem', borderRadius: 'var(--radius-md)', textAlign: 'left',
+                        border: '1px solid var(--border-glass-bright)',
+                        background: 'var(--white-03)',
+                        cursor: 'pointer', transition: 'all var(--speed-normal) ease',
+                        display: 'flex', alignItems: 'center', gap: '1rem'
+                    }}
+                >
+                    <div style={{ fontSize: '1.5rem' }}>👀</div>
+                    <div>
+                        <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{t('onboarding.llmSetup.optionDemo.title', { defaultValue: 'Demo' })}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('onboarding.llmSetup.optionDemo.desc', { defaultValue: 'Just looking around for now' })}</div>
+                    </div>
                 </button>
             </div>
         );

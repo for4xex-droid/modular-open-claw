@@ -91,14 +91,14 @@
     "weak": "WEAK"
   },
   "auth": {
-    "title": "Abyss Vault Access",
-    "description": "Please enter your Aiome Secret to synchronize with the neural foundation.",
-    "secretKeyLabel": "Vault Secret Key",
-    "synchronize": "Synchronize",
-    "gateway": "Aiome Secure Gateway v1.0.2",
-    "errorInvalidKey": "Invalid Secret Key. Use \"mock_valid_token_dev\" in development mode.",
-    "errorServer": "Server Error ({{status}}). Please ensure the API Server is running.",
-    "errorConnection": "Failed to connect to API Server. Please ensure \"cargo run --bin api-server\" is running.",
+    "title": "Login",
+    "description": "Enter your password to access the AIOME dashboard.",
+    "secretKeyLabel": "Password",
+    "synchronize": "Login",
+    "gateway": "AIOME Control Panel",
+    "errorInvalidKey": "Password is incorrect. Please try again.",
+    "errorServer": "Server error: {{status}}",
+    "errorConnection": "Connection failed. Is the API server running?",
     "errorTimeout": "Connection timed out"
   },
   "demo": {
@@ -211,18 +211,24 @@
     "ollamaPlaceholder": "http://localhost:11434",
     "securityInfrastructure": "Security Infrastructure",
     "serverRestartRequired": "Server restart required",
-    "testLlmConnection": "Test LLM Connection"
+    "testLlmConnection": "Test LLM Connection",
+    "interfaceComplexity": "Interface Complexity",
+    "viewMode_beginner": "Beginner",
+    "viewMode_intermediate": "Intermediate",
+    "viewMode_advanced": "Advanced",
+    "commerceEconomicBase": "Commerce & Economic Base",
+    "featureFlags": "Feature Flags"
   },
   "onboarding": {
     "welcome": "Welcome to Aiome",
     "setupTitle": "Set Up Your AI Identity",
     "namePlaceholder": "Enter AI Name...",
-    "nameDesc": "What should your system manifestation call itself?",
+    "nameDesc": "What should your AI partner be called?",
     "welcomeDesc": "Your autonomous AI companion begins its journey here.",
     "chooseAvatar": "Choose Your Avatar",
     "chooseAvatarDesc": "Select the visual identity for your AI partner.",
     "chooseView": "Choose Your View",
-    "chooseViewDesc": "Select the display complexity that suits your style.",
+    "chooseViewDesc": "Select the display mode that suits your style.",
     "beginner": "Beginner",
     "beginnerDesc": "Simplified UI, essential features only.",
     "intermediate": "Intermediate",
@@ -233,11 +239,23 @@
     "begin": "Begin Journey",
     "skip": "Skip",
     "finalizing": "Finalizing...",
-    "awaken": "Awaken System",
-    "manifestInit": "SYSTEM MANIFESTATION INITIALIZED",
+    "awaken": "Start System",
+    "manifestInit": "SYSTEM SETUP INITIATED",
     "llmSetup": {
       "title": "LLM Engine Setup",
       "desc": "Select the AI engine that will power your companion.",
+      "optionLocal": {
+        "title": "Local PC (Private & Recommended)",
+        "desc": "Run AI locally on your machine using Ollama. Complete privacy."
+      },
+      "optionCloud": {
+        "title": "Cloud API (Fast & Powerful)",
+        "desc": "Use cloud APIs like OpenAI or Gemini. API keys required."
+      },
+      "optionDemo": {
+        "title": "Demo Mode (Preview)",
+        "desc": "Experience the UI in a mocked mode with limited AI capabilities."
+      },
       "checking": "Checking Ollama connection...",
       "notConnected": "Ollama is not connected",
       "installGuide": "Please install Ollama and start it locally to run local models.",
@@ -261,9 +279,9 @@
         }
       }
     },
-    "chooseManifestation": "Choose Manifestation",
-    "manifestationDesc": "Select the visual form of your AI presence.",
-    "abyssSecurity": "Abyss Vault Security",
+    "chooseManifestation": "Choose Avatar Style",
+    "manifestationDesc": "Select the visual appearance of your AI partner.",
+    "abyssSecurity": "API Key Security (Abyss Vault)",
     "abyssSecurityDesc": "Your API keys are physically isolated at the OS level, ensuring safety even in autonomous mode.",
     "chooseExperience": "Choose Experience Level",
     "chooseExperienceDesc": "Select how you want to interact with the system. You can change this anytime.",

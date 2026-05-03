@@ -1,10 +1,13 @@
 import { render, screen, act } from '@testing-library/react';
-import App from './App';
 import * as TokenHealthModule from './hooks/useTokenHealth';
 
 jest.mock('./config', () => ({
-  API_BASE: 'http://localhost'
+  API_BASE: 'http://localhost:3015',
+  initApiBase: jest.fn().mockResolvedValue(undefined),
+  APP_VERSION: 'v1.0.2'
 }));
+
+import App from './App';
 
 // Mock framer-motion to skip animation delays using a Proxy to handle any motion.elem
 jest.mock('framer-motion', () => {

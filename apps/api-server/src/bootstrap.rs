@@ -81,7 +81,6 @@ pub struct BootSecrets {
     pub search_key: Option<String>,
     pub x_token: Option<String>,
     pub tts_openai_key: Option<String>,
-    pub a2a_node_token: Option<String>,
 }
 
 pub struct DatabaseResult {
@@ -295,9 +294,6 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     let tts_openai_api_key_raw = std::env::var("TTS_OPENAI_API_KEY").ok();
     shared::security::scrub_env("TTS_OPENAI_API_KEY");
 
-    let a2a_node_token_raw = std::env::var("A2A_NODE_TOKEN").ok();
-    shared::security::scrub_env("A2A_NODE_TOKEN");
-
     let db_url = std::env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
 
     let gig_artifacts = resolver.resolve("gig_artifacts");
@@ -400,7 +396,6 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
         search_key: env_search_key,
         x_token: env_x_token,
         tts_openai_key: tts_openai_api_key_raw,
-        a2a_node_token: a2a_node_token_raw,
     };
 
     Ok(PreflightResult {
@@ -597,9 +592,9 @@ pub async fn init_core_services(
     let config = &preflight.config;
     let cancel_token = &preflight.cancel_token;
     let plugin_registry = &preflight.plugin_registry;
+    let _tts_openai_key = &preflight.secrets.tts_openai_key;
     let stripe_key_raw = &preflight.secrets.stripe_key;
     let nurture_secret_raw = &preflight.secrets.nurture_secret;
-    let a2a_node_token_raw = &preflight.secrets.a2a_node_token;
 
     let db_pool = &db.db_pool;
     let job_queue = &db.job_queue;
@@ -630,15 +625,20 @@ pub async fn init_core_services(
     let compute_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
 
     let formal_proof_gate = {
-        let host =
-            std::env::var("SHADOW_CLONE_GRPC_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let port = std::env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
+        let host = config.shadow_clone_grpc_host.clone();
+        let port = config.shadow_clone_grpc_port.clone();
         let addr = format!("http://{}:{}", host, port);
         let endpoint = tonic::transport::Endpoint::from_shared(addr)
             .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;
         let channel = endpoint.connect_lazy();
-        let token = std::env::var("A2A_AUTH_TOKEN").unwrap_or_default();
-        shared::security::scrub_env("A2A_AUTH_TOKEN");
+        let token = config
+            .a2a_auth_token
+            .clone()
+            .map(|s| {
+                use secrecy::ExposeSecret;
+                s.expose_secret().to_string()
+            })
+            .unwrap_or_default();
         Arc::new(infrastructure::grpc_proof_gate::GrpcFormalProofGate::new(
             channel, token,
         )) as Arc<dyn aiome_contracts::proof::FormalProofGate>
@@ -1260,11 +1260,19 @@ pub async fn init_core_services(
     // [Phase 51] Initialize Node IPC Client (A2A gRPC)
     let a2a_client = {
         let endpoint_url = config.a2a_node_url.clone();
-        let db_path = std::env::var("DATABASE_URL").unwrap_or_else(|_| resolver.db_url());
-        let auth_token = a2a_node_token_raw.clone().unwrap_or_else(|| {
-            tracing::warn!("⚠️ [api-server] A2A_NODE_TOKEN not set! Insecure A2A communication.");
-            "placeholder_for_phase51".to_string()
-        });
+        let auth_token = config
+            .a2a_node_token
+            .clone()
+            .map(|s| {
+                use secrecy::ExposeSecret;
+                s.expose_secret().to_string()
+            })
+            .unwrap_or_else(|| {
+                tracing::warn!(
+                    "⚠️ [api-server] A2A_NODE_TOKEN not set! Insecure A2A communication."
+                );
+                "placeholder_for_phase51".to_string()
+            });
         let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
             endpoint_url,
             connect_timeout: std::time::Duration::from_secs(5),

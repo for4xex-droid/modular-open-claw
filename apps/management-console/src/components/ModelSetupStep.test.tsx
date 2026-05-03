@@ -51,6 +51,20 @@ describe('ModelSetupStep', () => {
     expect(screen.getByText('onboarding.llmSetup.notConnected')).toBeInTheDocument();
   });
 
+  it('RED: renders 3 options (Local, Cloud, Demo) when Ollama is not connected', () => {
+    (useModelStatus as jest.Mock).mockReturnValue({
+      status: { ollama_connected: false },
+      loading: false,
+      checkStatus: mockCheckStatus
+    });
+    render(<ModelSetupStep onNext={mockOnNext} onSkip={mockOnSkip} />);
+    
+    // Test for the 3 distinct options
+    expect(screen.getByText('onboarding.llmSetup.optionLocal.title')).toBeInTheDocument();
+    expect(screen.getByText('onboarding.llmSetup.optionCloud.title')).toBeInTheDocument();
+    expect(screen.getByText('onboarding.llmSetup.optionDemo.title')).toBeInTheDocument();
+  });
+
   it('renders model options when setup is required', () => {
     render(<ModelSetupStep onNext={mockOnNext} onSkip={mockOnSkip} />);
     expect(screen.getByText('onboarding.llmSetup.options.gemma4_26b.title')).toBeInTheDocument();

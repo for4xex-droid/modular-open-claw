@@ -26,6 +26,18 @@ patterns:
     severity: warning
     files: ["apps/api-server/src/main.rs"]
 
+  - id: env-after-scrub
+    description: "Calling std::env::var in internal_services or NAPI Bridge after scrub_env has executed leads to silent failures."
+    pattern: "std::env::var\\("
+    severity: error
+    files: ["apps/api-server/src/internal_services/**/*.rs", "libs/napi-bridge/src/**/*.rs"]
+
+  - id: raw-client-new
+    description: "Do not instantiate raw reqwest::Client::new() in production code. Use the injected AppState::http_client."
+    pattern: "reqwest::Client::new\\(\\)"
+    severity: warning
+    files: ["apps/api-server/src/**/*.rs", "libs/**/*.rs"]
+
   - id: missing-auth-extractor
     description: "API Handlers must use Type-Driven Security via Authenticated extractor. (If caught here loosely, verify manually, or rely on deep-scan CC-6)"
     pattern: "pub async fn .*(State<AppState>) *[)] *->"

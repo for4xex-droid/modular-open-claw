@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { useTranslation } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
+import { useViewMode, type ViewMode } from '../hooks/useViewMode';
 import {
     Monitor, Lock, Database,
     Shield, Check, X, Loader2, Plus, Share2, AlertTriangle
@@ -27,6 +28,7 @@ interface SettingEntry {
 const SettingsPage: React.FC = () => {
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
     const { mode, setMode } = useDisplayMode();
+    const { viewMode, setViewMode } = useViewMode();
     const { t } = useTranslation();
     const [settings, setSettings] = useState<SettingEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -183,6 +185,21 @@ const SettingsPage: React.FC = () => {
                                 ))}
                             </div>
                         </div>
+
+                        <div>
+                            <label style={labelStyle}>{t('settings.interfaceComplexity')}</label>
+                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
+                                {['beginner', 'intermediate', 'advanced'].map((m) => (
+                                    <button
+                                        key={m}
+                                        onClick={() => setViewMode(m as ViewMode)}
+                                        style={{ ...modeBtnStyle(viewMode === m), textTransform: 'capitalize' as const }}
+                                    >
+                                        {t(`settings.viewMode_${m}`)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -252,10 +269,11 @@ const SettingsPage: React.FC = () => {
                 </section>
 
                 {/* Commerce Integration Section */}
+                {viewMode !== 'beginner' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Shield size={24} color="var(--accent-emerald)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Commerce & Economic Base</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.commerceEconomicBase')}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -315,8 +333,10 @@ const SettingsPage: React.FC = () => {
                         )}
                     </div>
                 </section>
+                )}
 
                 {/* Channel Bridges Section */}
+                {viewMode !== 'beginner' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Share2 size={24} color="var(--accent-cyan)" />
@@ -337,8 +357,10 @@ const SettingsPage: React.FC = () => {
                         </div>
                     </div>
                 </section>
+                )}
 
                 {/* 3. Security & Infrastructure */}
+                {viewMode !== 'beginner' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Lock size={24} color="var(--accent-amber)" />
@@ -353,11 +375,13 @@ const SettingsPage: React.FC = () => {
                         />
                     </div>
                 </section>
+                )}
 
+                {viewMode === 'advanced' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Shield size={24} color="var(--accent-emerald)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Feature Flags</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.featureFlags')}</h3>
                     </div>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -391,10 +415,11 @@ const SettingsPage: React.FC = () => {
                         />
                     </div>
                 </section>
+                )}
 
-                <EscrowManagementView />
+                {viewMode === 'advanced' && <EscrowManagementView />}
 
-                <McpConfigManager />
+                {viewMode === 'advanced' && <McpConfigManager />}
 
             </div>
         </div>
