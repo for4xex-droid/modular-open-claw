@@ -124,10 +124,19 @@ async fn main() -> anyhow::Result<()> {
     let state_for_bg = state.clone();
     tokio::spawn(async move {
         use infrastructure::job_queue::federation::FederationOps;
-        let interval_secs = std::env::var("FEDERATION_SYNC_INTERVAL")
-            .unwrap_or_else(|_| "3600".to_string())
-            .parse::<u64>()
-            .unwrap_or(3600);
+        let interval_secs = match std::env::var("FEDERATION_SYNC_INTERVAL") {
+            Ok(val) => match val.parse::<u64>() {
+                Ok(v) => v,
+                Err(_) => {
+                    tracing::warn!(
+                        "⚠️ [Federation] FEDERATION_SYNC_INTERVAL='{}' is not a valid u64; defaulting to 3600s.",
+                        val
+                    );
+                    3600
+                }
+            },
+            Err(_) => 3600,
+        };
         let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
         loop {
             tokio::select! {

@@ -341,6 +341,7 @@ impl McpProcessManager {
     }
 
     pub async fn get_client(&self, id: &str) -> Option<Arc<McpEndpoint>> {
+        // Fast path: check if already spawned
         {
             let clients = self.clients.lock().await;
             if let Some(client) = clients.get(id) {
@@ -348,12 +349,21 @@ impl McpProcessManager {
             }
         }
 
+        // Check registry for lazy-load entry
         let entry = {
             let registry = self.registry.lock().await;
             registry.get(id).cloned()
         };
 
         if let Some(entry) = entry {
+            // Double-check: another task may have spawned it while we read the registry
+            {
+                let clients = self.clients.lock().await;
+                if let Some(client) = clients.get(id) {
+                    return Some(client.clone());
+                }
+            }
+
             match self
                 .spawn_stdio_server(id.to_string(), &entry.cmd, entry.args, entry.envs)
                 .await
