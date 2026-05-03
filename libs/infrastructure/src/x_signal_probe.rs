@@ -203,7 +203,7 @@ mod tests {
         // Now verify the DashMap was updated correctly by inspecting its cooldown
         let entry = X_API_RATE_LIMITER
             .get("retry_token_429")
-            .expect("Rate limiter should be set");
+            .expect("Rate limiter should be set"); // allow-anti-pattern
         assert_eq!(
             entry.1.as_secs(),
             3600,

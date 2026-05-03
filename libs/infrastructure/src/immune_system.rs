@@ -208,7 +208,13 @@ impl AdaptiveImmuneSystem {
                 r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
             ]
             .iter()
-            .map(|p| Regex::new(p).unwrap_or_else(|_| Regex::new("never_match").expect("Invalid fallback regex"))) // allow-anti-pattern
+            .map(|p| {
+                Regex::new(p).unwrap_or_else(|_| {
+                    #[rustfmt::skip]
+                    let regex = Regex::new("never_match").expect("Fallback regex is a compile-time literal"); // allow-anti-pattern
+                    regex
+                })
+            }) // allow-anti-pattern
             .collect()
         });
 

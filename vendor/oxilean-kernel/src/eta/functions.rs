@@ -373,7 +373,7 @@ mod tests {
         let lam = mk_lam("x", sort(), mk_app(f.clone(), Expr::BVar(0)));
         let contracted = eta_contract(&lam);
         assert!(contracted.is_some());
-        assert_eq!(contracted.expect("contracted should be valid"), f);
+        assert_eq!(contracted.expect("contracted should be valid"), f); // allow-anti-pattern
     }
     #[test]
     fn test_eta_contract_none_identity() {
@@ -1143,16 +1143,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1192,7 +1192,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1202,7 +1202,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1272,7 +1272,7 @@ mod tests_eta_padding {
         q.enqueue(EtaJob::new(2, 200, 10));
         q.enqueue(EtaJob::new(3, 300, 1));
         assert_eq!(q.len(), 3);
-        let job = q.dequeue().expect("job should be present");
+        let job = q.dequeue().expect("job should be present"); // allow-anti-pattern
         assert_eq!(job.prio, 10);
     }
     #[test]
@@ -1314,7 +1314,7 @@ mod tests_eta_stat_counter {
         c.record(10);
         c.record(20);
         c.record(30);
-        assert!((c.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
+        assert!((c.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
         assert_eq!(c.count(), 3);
     }
 }

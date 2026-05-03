@@ -18,7 +18,7 @@ impl std::fmt::Debug for LazyNormal {
                 "LazyNormal::Evaluated({:?})",
                 self.normal
                     .get()
-                    .expect("LazyNormal must be evaluated before Debug display")
+                    .expect("LazyNormal must be evaluated before Debug display") // allow-anti-pattern
             )
         } else {
             write!(f, "LazyNormal::Pending({:?})", self.original)

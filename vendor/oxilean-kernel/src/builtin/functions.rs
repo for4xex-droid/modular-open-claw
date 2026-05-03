@@ -963,53 +963,53 @@ mod tests {
     #[test]
     fn test_bool_axioms() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         let bool_decl = env
             .get(&Name::str("Bool"))
-            .expect("bool_decl should be present");
+            .expect("bool_decl should be present"); // allow-anti-pattern
         assert!(matches!(bool_decl, Declaration::Axiom { .. }));
         let true_decl = env
             .get(&Name::str("true"))
-            .expect("true_decl should be present");
+            .expect("true_decl should be present"); // allow-anti-pattern
         assert!(matches!(true_decl, Declaration::Axiom { .. }));
     }
     #[test]
     fn test_unit_axioms() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         let unit_decl = env
             .get(&Name::str("Unit"))
-            .expect("unit_decl should be present");
+            .expect("unit_decl should be present"); // allow-anti-pattern
         assert!(matches!(unit_decl, Declaration::Axiom { .. }));
         let unit_val = env
             .get(&Name::str("unit"))
-            .expect("unit_val should be present");
+            .expect("unit_val should be present"); // allow-anti-pattern
         assert!(matches!(unit_val, Declaration::Axiom { .. }));
     }
     #[test]
     fn test_empty_axioms() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         let empty_decl = env
             .get(&Name::str("Empty"))
-            .expect("empty_decl should be present");
+            .expect("empty_decl should be present"); // allow-anti-pattern
         assert!(matches!(empty_decl, Declaration::Axiom { .. }));
         let rec_decl = env
             .get(&Name::str("Empty.rec"))
-            .expect("rec_decl should be present");
+            .expect("rec_decl should be present"); // allow-anti-pattern
         assert!(matches!(rec_decl, Declaration::Axiom { .. }));
     }
     #[test]
     fn test_decidable_eq() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         let dec_eq = env
             .get(&Name::str("DecidableEq"))
-            .expect("dec_eq should be present");
+            .expect("dec_eq should be present"); // allow-anti-pattern
         assert!(matches!(dec_eq, Declaration::Axiom { .. }));
         let decide = env
             .get(&Name::str("DecidableEq.decide"))
-            .expect("decide should be present");
+            .expect("decide should be present"); // allow-anti-pattern
         assert!(matches!(decide, Declaration::Axiom { .. }));
     }
     #[test]
@@ -1024,7 +1024,7 @@ mod tests {
     #[test]
     fn test_bool_inductive() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         assert!(env.is_constructor(&Name::str("Bool.true")));
         assert!(env.is_constructor(&Name::str("Bool.false")));
         assert!(env.is_recursor(&Name::str("Bool.rec")));
@@ -1032,7 +1032,7 @@ mod tests {
     #[test]
     fn test_nat_inductive() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         assert!(env.is_inductive(&Name::str("Nat")));
         assert!(env.is_constructor(&Name::str("Nat.zero")));
         assert!(env.is_constructor(&Name::str("Nat.succ")));
@@ -1041,7 +1041,7 @@ mod tests {
     #[test]
     fn test_nat_ops_registered() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         assert!(env.find(&Name::str("Nat.add")).is_some());
         assert!(env.find(&Name::str("Nat.mul")).is_some());
         assert!(env.find(&Name::str("Nat.sub")).is_some());
@@ -1051,7 +1051,7 @@ mod tests {
     #[test]
     fn test_string_ops_registered() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         assert!(env.find(&Name::str("String")).is_some());
         assert!(env.find(&Name::str("String.length")).is_some());
         assert!(env.find(&Name::str("String.append")).is_some());
@@ -1060,7 +1060,7 @@ mod tests {
     #[test]
     fn test_core_axioms_registered() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         assert!(env.find(&Name::str("propext")).is_some());
         assert!(env.find(&Name::str("Quot")).is_some());
         assert!(env.find(&Name::str("Classical.choice")).is_some());
@@ -1374,7 +1374,7 @@ mod extended_builtin_tests {
     #[test]
     fn test_verify_builtins() {
         let mut env = Environment::new();
-        init_builtin_env(&mut env).expect("value should be present");
+        init_builtin_env(&mut env).expect("value should be present"); // allow-anti-pattern
         let missing = verify_builtins(&env);
         assert!(missing.len() < 15);
     }
@@ -1396,16 +1396,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1445,7 +1445,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1455,7 +1455,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1559,7 +1559,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

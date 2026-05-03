@@ -433,13 +433,13 @@ mod tests {
             univ_params: vec![],
             ty: nat_ty,
         };
-        check_declaration(&mut env, axiom).expect("value should be present");
+        check_declaration(&mut env, axiom).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Nat")));
     }
     #[test]
     fn test_check_definition() {
         let mut env = Environment::new();
-        env.add(mk_nat_axiom()).expect("value should be present");
+        env.add(mk_nat_axiom()).expect("value should be present"); // allow-anti-pattern
         let nat_ty = mk_nat_const();
         let val = Expr::Lit(Literal::Nat(42));
         let def = Declaration::Definition {
@@ -449,7 +449,7 @@ mod tests {
             val,
             hint: ReducibilityHint::Regular(1),
         };
-        check_declaration(&mut env, def).expect("value should be present");
+        check_declaration(&mut env, def).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("answer")));
     }
     #[test]
@@ -461,13 +461,13 @@ mod tests {
             univ_params: vec![],
             ty: type0.clone(),
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         env.add(Declaration::Axiom {
             name: Name::str("Nat"),
             univ_params: vec![],
             ty: type0,
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let string_ty = Expr::Const(Name::str("String"), vec![]);
         let val = Expr::Lit(Literal::Nat(42));
         let def = Declaration::Definition {
@@ -495,7 +495,7 @@ mod tests {
                 ty: mk_type0(),
             },
         ];
-        check_declarations(&mut env, decls).expect("value should be present");
+        check_declarations(&mut env, decls).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("A")));
         assert!(env.contains(&Name::str("B")));
     }
@@ -714,7 +714,7 @@ mod tests {
             },
             is_unsafe: false,
         });
-        check_constant_info(&mut env, ci).expect("value should be present");
+        check_constant_info(&mut env, ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("MyAxiom")));
     }
     #[test]
@@ -738,7 +738,7 @@ mod tests {
             is_prop: false,
         };
         let ci = ConstantInfo::Inductive(iv);
-        check_constant_info(&mut env, ci).expect("value should be present");
+        check_constant_info(&mut env, ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Bool")));
     }
     #[test]
@@ -762,7 +762,7 @@ mod tests {
             is_prop: false,
         };
         let ci = ConstantInfo::Inductive(iv);
-        check_constant_info(&mut env, ci).expect("value should be present");
+        check_constant_info(&mut env, ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Empty")));
     }
     #[test]
@@ -785,7 +785,7 @@ mod tests {
             is_reflexive: false,
             is_prop: false,
         });
-        check_constant_info(&mut env, ind_ci).expect("value should be present");
+        check_constant_info(&mut env, ind_ci).expect("value should be present"); // allow-anti-pattern
         let ctor_ci = ConstantInfo::Constructor(ConstructorVal {
             common: ConstantVal {
                 name: Name::str("Bool.true"),
@@ -798,7 +798,7 @@ mod tests {
             num_fields: 0,
             is_unsafe: false,
         });
-        check_constant_info(&mut env, ctor_ci).expect("value should be present");
+        check_constant_info(&mut env, ctor_ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Bool.true")));
     }
     #[test]
@@ -821,7 +821,7 @@ mod tests {
             is_reflexive: false,
             is_prop: false,
         }))
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         env.add_constant(ConstantInfo::Inductive(InductiveVal {
             common: ConstantVal {
                 name: Name::str("Nat"),
@@ -838,7 +838,7 @@ mod tests {
             is_reflexive: false,
             is_prop: false,
         }))
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let ctor_ci = ConstantInfo::Constructor(ConstructorVal {
             common: ConstantVal {
                 name: Name::str("Bool.bad"),
@@ -874,7 +874,7 @@ mod tests {
             is_reflexive: false,
             is_prop: false,
         }))
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let rec_ty = mk_type0();
         let rec_ci = ConstantInfo::Recursor(RecursorVal {
             common: ConstantVal {
@@ -891,7 +891,7 @@ mod tests {
             k: false,
             is_unsafe: false,
         });
-        check_constant_info(&mut env, rec_ci).expect("value should be present");
+        check_constant_info(&mut env, rec_ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Bool.rec")));
     }
     #[test]
@@ -906,7 +906,7 @@ mod tests {
             },
             kind: QuotKind::Type,
         });
-        check_constant_info(&mut env, quot_ci).expect("value should be present");
+        check_constant_info(&mut env, quot_ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Quot")));
     }
     #[test]
@@ -931,7 +931,7 @@ mod tests {
                 is_unsafe: false,
             }),
         ];
-        check_constant_infos(&mut env, cis).expect("value should be present");
+        check_constant_infos(&mut env, cis).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("P")));
         assert!(env.contains(&Name::str("Q")));
     }
@@ -949,7 +949,7 @@ mod tests {
                 is_unsafe: false,
             })
         };
-        check_constant_info(&mut env, make_ci()).expect("value should be present");
+        check_constant_info(&mut env, make_ci()).expect("value should be present"); // allow-anti-pattern
         let result = check_constant_info(&mut env, make_ci());
         assert!(result.is_err(), "duplicate should fail");
     }
@@ -964,16 +964,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1013,7 +1013,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1023,7 +1023,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1127,7 +1127,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

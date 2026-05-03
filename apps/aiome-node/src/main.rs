@@ -269,9 +269,12 @@ async fn main() {
 
     // Start mDNS Broadcaster
     let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
-    let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did).expect("Failed to start mdns broadcaster"); // allow-anti-pattern
+    let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
+        .expect("Failed to start mdns broadcaster"); // allow-anti-pattern
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Failed to bind to address"); // allow-anti-pattern
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind to address"); // allow-anti-pattern
     axum::serve(listener, app).await.expect("Server failed"); // allow-anti-pattern
 }
 

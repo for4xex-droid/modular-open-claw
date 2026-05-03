@@ -71,7 +71,7 @@ mod tests {
         }"#;
 
         let envelope: A2uiEnvelope = serde_json::from_str(json_str)
-            .expect("A2UI test: valid JSON must deserialize without error");
+            .expect("A2UI test: valid JSON must deserialize without error"); // allow-anti-pattern
 
         match envelope {
             A2uiEnvelope::CreateSurface { surface } => {
@@ -95,7 +95,7 @@ mod tests {
         }"#;
 
         let envelope: A2uiEnvelope =
-            serde_json::from_str(json_str).expect("A2UI test: updateComponents must deserialize");
+            serde_json::from_str(json_str).expect("A2UI test: updateComponents must deserialize"); // allow-anti-pattern
 
         match envelope {
             A2uiEnvelope::UpdateComponents {
@@ -118,7 +118,7 @@ mod tests {
         }"#;
 
         let envelope: A2uiEnvelope =
-            serde_json::from_str(json_str).expect("A2UI test: deleteSurface must deserialize");
+            serde_json::from_str(json_str).expect("A2UI test: deleteSurface must deserialize"); // allow-anti-pattern
 
         match envelope {
             A2uiEnvelope::DeleteSurface { surface_id } => {
@@ -132,7 +132,7 @@ mod tests {
     fn test_default_props_is_empty_object() {
         let json_str = r#"{"type": "text"}"#;
         let component: Component = serde_json::from_str(json_str)
-            .expect("Component without props/children must deserialize");
+            .expect("Component without props/children must deserialize"); // allow-anti-pattern
 
         assert!(
             component.props.is_object(),
@@ -156,9 +156,9 @@ mod tests {
             },
         };
 
-        let json_str = serde_json::to_string(&original).expect("A2UI envelope must serialize");
+        let json_str = serde_json::to_string(&original).expect("A2UI envelope must serialize"); // allow-anti-pattern
         let deserialized: A2uiEnvelope =
-            serde_json::from_str(&json_str).expect("Serialized A2UI must round-trip back");
+            serde_json::from_str(&json_str).expect("Serialized A2UI must round-trip back"); // allow-anti-pattern
 
         assert_eq!(original, deserialized, "Round-trip must preserve structure");
     }

@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn test_bump_arena() {
         let mut bump = BumpArena::with_capacity(64);
-        let off = bump.alloc_bytes(4).expect("off should be present");
+        let off = bump.alloc_bytes(4).expect("off should be present"); // allow-anti-pattern
         bump.write_at(off, &[1, 2, 3, 4]);
         assert_eq!(bump.read_at(off, 4), &[1, 2, 3, 4]);
         assert_eq!(bump.used(), 4);
@@ -115,14 +115,14 @@ mod tests {
     #[test]
     fn test_bump_arena_overflow() {
         let mut bump = BumpArena::with_capacity(4);
-        bump.alloc_bytes(4).expect("value should be present");
+        bump.alloc_bytes(4).expect("value should be present"); // allow-anti-pattern
         let r = bump.alloc_bytes(1);
         assert!(r.is_none());
     }
     #[test]
     fn test_bump_arena_reset() {
         let mut bump = BumpArena::with_capacity(16);
-        bump.alloc_bytes(8).expect("value should be present");
+        bump.alloc_bytes(8).expect("value should be present"); // allow-anti-pattern
         assert_eq!(bump.used(), 8);
         bump.reset();
         assert_eq!(bump.used(), 0);
@@ -244,8 +244,8 @@ mod tests_arena_extra {
     #[test]
     fn test_linear_arena() {
         let mut arena = LinearArena::new(1024);
-        let a = arena.alloc(16, 8).expect("a should be present");
-        let b = arena.alloc(32, 8).expect("b should be present");
+        let a = arena.alloc(16, 8).expect("a should be present"); // allow-anti-pattern
+        let b = arena.alloc(32, 8).expect("b should be present"); // allow-anti-pattern
         assert!(b >= a + 16);
         assert_eq!(arena.stats().alloc_count, 2);
         arena.reset();
@@ -269,7 +269,7 @@ mod tests_arena_extra {
     fn test_pool_arena() {
         let mut pool = PoolArena::new(8, 4);
         assert_eq!(pool.available(), 4);
-        let idx = pool.alloc_slot().expect("idx should be present");
+        let idx = pool.alloc_slot().expect("idx should be present"); // allow-anti-pattern
         assert_eq!(pool.available(), 3);
         pool.free_slot(idx);
         assert_eq!(pool.available(), 4);
@@ -305,7 +305,7 @@ mod tests_arena_extra {
     #[test]
     fn test_arena_string() {
         let mut arena = LinearArena::new(256);
-        let s = ArenaString::store(&mut arena, "hello").expect("s should be present");
+        let s = ArenaString::store(&mut arena, "hello").expect("s should be present"); // allow-anti-pattern
         assert_eq!(s.len(), 5);
         assert_eq!(arena.buf[s.offset + 5], 0);
     }
@@ -363,10 +363,10 @@ mod tests_arena_trait {
     #[test]
     fn test_arena_allocator_trait() {
         let mut la = LinearArena::new(256);
-        let offset = arena_alloc_array(&mut la, 4).expect("offset should be present");
+        let offset = arena_alloc_array(&mut la, 4).expect("offset should be present"); // allow-anti-pattern
         assert!(offset + 32 <= la.used());
         let mut ga = GrowableArena::new(16);
-        let _offset2 = arena_alloc_array(&mut ga, 8).expect("_offset2 should be present");
+        let _offset2 = arena_alloc_array(&mut ga, 8).expect("_offset2 should be present"); // allow-anti-pattern
         assert!(ga.used() >= 64);
     }
 }
@@ -391,7 +391,7 @@ mod tests_memory_region {
         assert_eq!(reg.len(), 2);
         assert!(reg.find(0x2000).is_some());
         assert_eq!(
-            reg.find(0x2000).expect("value should be present").label,
+            reg.find(0x2000).expect("value should be present").label, // allow-anti-pattern
             "heap"
         );
     }

@@ -75,7 +75,8 @@ impl RssCollector {
         })?;
 
         // 簡易正規表現パース (RSS 2.0 / Atom 共通項)
-        let title_re = Regex::new(r"<title>(.*?)</title>").expect("Invalid regex"); // allow-anti-pattern
+        let title_re = Regex::new(r"<title>(.*?)</title>")
+            .expect("RSS title extraction regex is a compile-time literal"); // allow-anti-pattern
         let mut items = Vec::new();
 
         for cap in title_re.captures_iter(&xml) {

@@ -323,7 +323,7 @@ mod tests {
         // Poll the stream. This should trigger the gRPC call and the assertion on the server.
         // If the server panics or returns an error due to wrong token, this should fail.
         while let Some(item) = stream.next().await {
-            item.expect("Stream item should be successful");
+            item.expect("Stream item should be successful"); // allow-anti-pattern
         }
     }
 }

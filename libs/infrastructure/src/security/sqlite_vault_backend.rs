@@ -32,7 +32,9 @@ impl UniversalVaultBackend {
     pub fn new(pool: DatabasePool) -> Self {
         Self {
             pool,
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).expect("Capacity must be > 0"))), // allow-anti-pattern
+            cache: Mutex::new(LruCache::new(
+                NonZeroUsize::new(1000).expect("Capacity must be > 0"), // allow-anti-pattern
+            )), // allow-anti-pattern
         }
     }
 
@@ -42,7 +44,9 @@ impl UniversalVaultBackend {
         let _ = GLOBAL_MASTER_KEY.set(MlockedVec::new(master_key_bytes));
         Self {
             pool,
-            cache: Mutex::new(LruCache::new(NonZeroUsize::new(1000).expect("Capacity must be > 0"))), // allow-anti-pattern
+            cache: Mutex::new(LruCache::new(
+                NonZeroUsize::new(1000).expect("Capacity must be > 0"), // allow-anti-pattern
+            )), // allow-anti-pattern
         }
     }
 

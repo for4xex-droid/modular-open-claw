@@ -340,10 +340,10 @@ mod tests {
 
         let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB");
+            .expect("Should create in-memory DB"); // allow-anti-pattern
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool");
+            .expect("Should get sqlite pool"); // allow-anti-pattern
 
         // Seed test data
         sqlx::query(
@@ -393,10 +393,10 @@ mod tests {
 
         let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB");
+            .expect("Should create in-memory DB"); // allow-anti-pattern
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool");
+            .expect("Should get sqlite pool"); // allow-anti-pattern
 
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)

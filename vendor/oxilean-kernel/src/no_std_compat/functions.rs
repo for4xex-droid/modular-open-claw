@@ -410,15 +410,15 @@ mod tests_compat_ext3 {
         assert_eq!(tbl.len(), 2);
         let found = tbl.find(2000);
         assert!(found.is_some());
-        assert_eq!(found.expect("found should be valid").label, "heap");
+        assert_eq!(found.expect("found should be valid").label, "heap"); // allow-anti-pattern
         assert!(tbl.find(5200).is_none());
     }
     #[test]
     fn test_bump_alloc() {
         let mut alloc = BumpAlloc::new(0, 1024);
-        let a = alloc.alloc(64, 8).expect("a should be present");
+        let a = alloc.alloc(64, 8).expect("a should be present"); // allow-anti-pattern
         assert_eq!(a, 0);
-        let b = alloc.alloc(64, 8).expect("b should be present");
+        let b = alloc.alloc(64, 8).expect("b should be present"); // allow-anti-pattern
         assert_eq!(b, 64);
         assert_eq!(alloc.used(), 128);
         alloc.reset();
@@ -505,7 +505,7 @@ mod tests_compat_final2 {
         assert!(!STANDARD_SECTIONS.is_empty());
         let text = STANDARD_SECTIONS.iter().find(|s| s.name == ".text");
         assert!(text.is_some());
-        assert!(text.expect("text should be valid").executable);
+        assert!(text.expect("text should be valid").executable); // allow-anti-pattern
     }
     #[test]
     fn test_symbol_table() {

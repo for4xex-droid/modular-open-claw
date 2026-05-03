@@ -87,7 +87,7 @@ mod tests {
         let fvar = ctx.push_local(Name::str("x"), ty, None);
         assert_eq!(ctx.num_locals(), 1);
         assert!(!ctx.is_empty());
-        let local = ctx.get_local(fvar).expect("local should be present");
+        let local = ctx.get_local(fvar).expect("local should be present"); // allow-anti-pattern
         assert_eq!(local.name, Name::str("x"));
     }
     #[test]
@@ -97,7 +97,7 @@ mod tests {
         ctx.push_local(Name::str("x"), ty.clone(), None);
         ctx.push_local(Name::str("y"), ty, None);
         assert_eq!(ctx.num_locals(), 2);
-        let popped = ctx.pop_local().expect("popped should be present");
+        let popped = ctx.pop_local().expect("popped should be present"); // allow-anti-pattern
         assert_eq!(popped.name, Name::str("y"));
         assert_eq!(ctx.num_locals(), 1);
     }
@@ -109,7 +109,7 @@ mod tests {
         ctx.push_local(Name::str("y"), ty, None);
         let local = ctx
             .find_local(&Name::str("x"))
-            .expect("local should be present");
+            .expect("local should be present"); // allow-anti-pattern
         assert_eq!(local.name, Name::str("x"));
     }
     #[test]
@@ -123,9 +123,9 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let val = Expr::Lit(Literal::Nat(42));
         let fvar = ctx.push_local(Name::str("x"), ty, Some(val.clone()));
-        let local = ctx.get_local(fvar).expect("local should be present");
+        let local = ctx.get_local(fvar).expect("local should be present"); // allow-anti-pattern
         assert!(local.val.is_some());
-        assert_eq!(local.val.as_ref().expect("as_ref should succeed"), &val);
+        assert_eq!(local.val.as_ref().expect("as_ref should succeed"), &val); // allow-anti-pattern
     }
     #[test]
     fn test_clear() {
@@ -203,7 +203,7 @@ mod tests {
         let mut ctx = Context::new();
         let ty = Expr::Sort(Level::zero());
         let fvar = ctx.push_local_with_binder(Name::str("x"), BinderInfo::Implicit, ty, None);
-        let local = ctx.get_local(fvar).expect("local should be present");
+        let local = ctx.get_local(fvar).expect("local should be present"); // allow-anti-pattern
         assert_eq!(local.binder_info, BinderInfo::Implicit);
     }
     #[test]
@@ -296,7 +296,7 @@ mod extended_ctx_tests {
         assert_eq!(chain.len(), 2);
         assert_eq!(chain.num_implicit(), 1);
         assert_eq!(chain.num_lets(), 0);
-        let popped = chain.pop().expect("collection should not be empty");
+        let popped = chain.pop().expect("collection should not be empty"); // allow-anti-pattern
         assert_eq!(popped.name, Name::str("y"));
     }
     #[test]
@@ -625,16 +625,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -674,7 +674,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -684,7 +684,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -788,7 +788,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

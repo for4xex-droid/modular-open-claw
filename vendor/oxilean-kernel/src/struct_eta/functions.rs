@@ -79,9 +79,9 @@ mod tests {
             is_prop: false,
         };
         env.add_constant(ConstantInfo::Inductive(ind_val))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(ConstantInfo::Constructor(ctor_val))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env
     }
     /// Build an environment with a singleton type `Unit` (1 constructor, 0 fields).
@@ -122,9 +122,9 @@ mod tests {
             is_prop: false,
         };
         env.add_constant(ConstantInfo::Inductive(ind_val))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(ConstantInfo::Constructor(ctor_val))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env
     }
     #[test]
@@ -168,7 +168,7 @@ mod tests {
         let ty = Expr::Const(Name::str("MyPair"), vec![]);
         let expanded = se.eta_expand_struct(&expr, &ty);
         assert!(expanded.is_some(), "should expand MyPair expression");
-        let result = expanded.expect("result should be present");
+        let result = expanded.expect("result should be present"); // allow-anti-pattern
         assert!(matches!(result, Expr::App(_, _)));
     }
     #[test]
@@ -193,7 +193,7 @@ mod tests {
         let ty = Expr::Const(Name::str("Unit"), vec![]);
         let result = reducer.k_reduce(&expr, &ty);
         assert!(result.is_some());
-        let canonical = result.expect("canonical should be present");
+        let canonical = result.expect("canonical should be present"); // allow-anti-pattern
         assert!(
             matches!(& canonical, Expr::Const(n, _) if n == & Name::str("Unit.unit")),
             "expected Unit.unit constructor, got {:?}",
@@ -351,7 +351,7 @@ mod tests_struct_eta_extended2 {
         assert_eq!(set.len(), 2);
         let r = set
             .find_by_projector("Point.x")
-            .expect("r should be present");
+            .expect("r should be present"); // allow-anti-pattern
         assert_eq!(r.field_index, 0);
         let rules = set.rules_for_ctor("Point.mk");
         assert_eq!(rules.len(), 2);

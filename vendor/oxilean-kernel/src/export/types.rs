@@ -223,7 +223,7 @@ impl ModuleDependencyGraph {
                 if deps.contains(&node) {
                     let deg = in_degree
                         .get_mut(other)
-                        .expect("node must exist in in_degree map");
+                        .expect("node must exist in in_degree map"); // allow-anti-pattern
                     *deg = deg.saturating_sub(1);
                     if *deg == 0 {
                         queue.push_back(other.clone());
@@ -275,6 +275,7 @@ impl<T: Clone> VersionedRecord<T> {
         self.history
             .last()
             .expect("VersionedRecord history is always non-empty after construction")
+        // allow-anti-pattern
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {

@@ -26,7 +26,7 @@ static GLOBAL_METRICS_HANDLE: once_cell::sync::Lazy<metrics_exporter_prometheus:
     once_cell::sync::Lazy::new(|| {
         metrics_exporter_prometheus::PrometheusBuilder::new()
             .install_recorder()
-            .expect("Failed to install global prometheus recorder in tests")
+            .expect("Failed to install global prometheus recorder in tests") // allow-anti-pattern
     });
 
 #[derive(Debug)]
@@ -415,7 +415,7 @@ impl aiome_contracts::proof::FormalProofGate for MockFormalProofGate {
 }
 
 pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
-    let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
+    let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed"); // allow-anti-pattern
     let db_path = tmp_dir.path().join("test.db");
 
     // Set WORKSPACE_DIR to tmp_dir for security sandbox consistency (S-4 fix)
@@ -426,12 +426,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         db_path.to_str().unwrap()
     ))
     .await
-    .expect("Failed to create test DB pool");
+    .expect("Failed to create test DB pool"); // allow-anti-pattern
 
     // G-Log Fix: Ensure app_logs table exists for integration tests
     let sqlite_pool = pool
         .get_sqlite_pool()
-        .expect("SQLite pool required for tests");
+        .expect("SQLite pool required for tests"); // allow-anti-pattern
     let _ = sqlx::query(
         "CREATE TABLE IF NOT EXISTS app_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -450,7 +450,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("Failed to create test job queue"),
+            .expect("Failed to create test job queue"), // allow-anti-pattern
     );
 
     let provider = Arc::new(DummyLlm);
@@ -729,7 +729,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 provider.clone(),
                 pool.get_sqlite_pool()
                     .cloned()
-                    .expect("SQLite pool required for HierarchicalRouter"),
+                    .expect("SQLite pool required for HierarchicalRouter"), // allow-anti-pattern
             ),
         )),
         ws_active_connections: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
@@ -787,7 +787,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
                 pool.get_sqlite_pool()
                     .cloned()
-                    .expect("SQLite pool required for gig_updater"),
+                    .expect("SQLite pool required for gig_updater"), // allow-anti-pattern
             ),
         )
             as Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>),
@@ -810,7 +810,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         plugin_registry,
         metrics_handle,
     );
-    let server = TestServer::new(app).expect("Failed to create TestServer");
+    let server = TestServer::new(app).expect("Failed to create TestServer"); // allow-anti-pattern
     (server, state, tmp_dir)
 }
 
@@ -837,7 +837,7 @@ async fn test_health_check() {
     // Check Circuit Breaker status (G-1)
     let cb = json
         .get("llm_circuit_breaker")
-        .expect("llm_circuit_breaker field missing");
+        .expect("llm_circuit_breaker field missing"); // allow-anti-pattern
     assert_eq!(cb["name"], "integration-test");
     assert_eq!(cb["state"], "Closed");
 }
@@ -1245,7 +1245,7 @@ async fn test_lora_training_status() {
             0,
         )
         .await
-        .expect("Failed to enqueue job");
+        .expect("Failed to enqueue job"); // allow-anti-pattern
 
     // We also need to update its status to something verifiable
     state
@@ -1975,7 +1975,7 @@ async fn test_voice_upload_limit() {
 #[serial]
 #[tokio::test]
 async fn test_fallback_router_failover() {
-    let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
+    let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed"); // allow-anti-pattern
     let db_path = tmp_dir.path().join("test_failover.db");
 
     let pool = infrastructure::db::DatabasePool::new_sqlite(&format!(
@@ -1983,7 +1983,7 @@ async fn test_fallback_router_failover() {
         db_path.to_str().unwrap()
     ))
     .await
-    .expect("Failed to create test DB pool");
+    .expect("Failed to create test DB pool"); // allow-anti-pattern
 
     let ts = std::sync::Arc::new(
         infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -1991,7 +1991,7 @@ async fn test_fallback_router_failover() {
     let job_queue = Arc::new(
         infrastructure::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("Failed to create test job queue"),
+            .expect("Failed to create test job queue"), // allow-anti-pattern
     );
 
     // 1. Setup primary that always fails
@@ -2344,7 +2344,7 @@ async fn test_treasure_get_recommendations() {
         .job_queue
         .get_agent_stats()
         .await
-        .expect("Failed to get initialized stats");
+        .expect("Failed to get initialized stats"); // allow-anti-pattern
     assert!(
         stats.resonance > 0,
         "Agent resonance should increase after feedback"
@@ -2512,7 +2512,7 @@ async fn test_syndicate_guild_sanitization() {
     let guild = guilds
         .iter()
         .find(|g| g.id == guild_id)
-        .expect("Guild not found");
+        .expect("Guild not found"); // allow-anti-pattern
 
     // Expecting: "Safe Guild" and "Description with " (or similar depending on purge_entities)
     // purge_entities usually strips tags.
@@ -2543,7 +2543,7 @@ async fn test_awaiting_input_job_lifecycle() {
     .bind("AwaitingInput")
     .bind(100)
     .execute(pool)
-    .await.expect("Failed to insert mock AwaitingInput job");
+    .await.expect("Failed to insert mock AwaitingInput job"); // allow-anti-pattern
 
     // 2. Test GET /api/v1/jobs/awaiting-input (RED: 404 expected initially)
     let get_resp = server
@@ -2628,7 +2628,7 @@ async fn test_cancel_awaiting_input_job() {
     .bind("AwaitingInput")
     .bind(100)
     .execute(pool)
-    .await.expect("Failed to insert mock AwaitingInput job for cancel test");
+    .await.expect("Failed to insert mock AwaitingInput job for cancel test"); // allow-anti-pattern
 
     // Test POST /api/v1/jobs/{id}/cancel (RED: currently fails to cancel AwaitingInput)
     let cancel_resp = server
@@ -2672,7 +2672,7 @@ async fn test_compute_semaphore_limits_concurrency() {
     // 強制的にロックを取得して1つ消費した場合、もう available は 0 になることを確認
     let _permit = semaphore
         .try_acquire()
-        .expect("Should be able to acquire the single compute permit");
+        .expect("Should be able to acquire the single compute permit"); // allow-anti-pattern
     assert_eq!(semaphore.available_permits(), 0);
 }
 
@@ -2988,7 +2988,7 @@ async fn test_seo_content_conductor_exists() {
     );
 
     assert_eq!(
-        conductor.expect("conductor is missing").conductor_name(),
+        conductor.expect("conductor is missing").conductor_name(), // allow-anti-pattern
         "SeoContentConductor",
         "seo_content should be handled by dedicated SeoContentConductor"
     );
@@ -3057,7 +3057,7 @@ async fn test_auth_full_oauth_workflow() {
     let authorize_json: serde_json::Value = authorize_res.json();
     let auth_code = authorize_json["code"]
         .as_str()
-        .expect("Must return auth code");
+        .expect("Must return auth code"); // allow-anti-pattern
 
     // 2. Token Exchange
     let token_payload = serde_json::json!({
@@ -3086,7 +3086,7 @@ async fn test_auth_full_oauth_workflow() {
         .auth_manager
         .validate_token(access_token)
         .await
-        .expect("Token must be validly signed");
+        .expect("Token must be validly signed"); // allow-anti-pattern
     assert_eq!(claim.roles, vec![shared::auth::Role::Agent]);
 }
 
@@ -3218,17 +3218,17 @@ async fn test_aegis_sentinel_integration() {
             .with_event_sender(state.event_sender.get_inner().clone());
 
     let res = dream_state.aegis_sentinel_dream().await.unwrap();
-    let result = res.expect("Should return a DreamResult");
+    let result = res.expect("Should return a DreamResult"); // allow-anti-pattern
 
     // Check that we got an insight warning about the 15 incidents
-    let insight = result.insight.expect("Should have an insight message");
+    let insight = result.insight.expect("Should have an insight message"); // allow-anti-pattern
     assert!(insight.contains("Aegis Warning Alert: 15 total incidents"));
 
     // 5. Verify the event was broadcasted
     let event = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv())
         .await
-        .expect("Timeout waiting for AegisSentinel event")
-        .expect("Failed to receive event");
+        .expect("Timeout waiting for AegisSentinel event") // allow-anti-pattern
+        .expect("Failed to receive event"); // allow-anti-pattern
 
     match event {
         aiome_core_contracts::events::CoreEvent::AegisSentinel {

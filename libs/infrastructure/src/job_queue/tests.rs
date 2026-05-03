@@ -71,7 +71,7 @@ impl LlmProvider for MockLlmProvider {
 /// テスト用のユニーク一時ファイル JobQueue を作成
 /// 各テストが独自のDBファイルを持ち、ロック競合を回避する
 pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir) {
-    let tmp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let tmp_dir = tempfile::TempDir::new().expect("Failed to create temp dir"); // allow-anti-pattern
 
     let _ = dotenvy::dotenv();
     if let Ok(pg_url) = std::env::var("TEST_POSTGRES_URL") {
@@ -79,7 +79,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         let ts_pool = {
             let pg = sqlx::PgPool::connect(&pg_url)
                 .await
-                .expect("TS pool connect");
+                .expect("TS pool connect"); // allow-anti-pattern
             crate::db::DatabasePool::Postgres(pg)
         };
         let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
@@ -91,17 +91,17 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
             ts,
         )
         .await
-        .expect("Failed to create test job queue (Postgres)");
+        .expect("Failed to create test job queue (Postgres)"); // allow-anti-pattern
 
         // Return dummy TempDir to satisfy the signature
         return (jq, tmp_dir);
     }
 
     let db_path = tmp_dir.path().join("test.db");
-    let db_path_str = db_path.to_str().expect("Invalid path");
+    let db_path_str = db_path.to_str().expect("Invalid path"); // allow-anti-pattern
     let ts_pool = crate::db::DatabasePool::new_sqlite(&format!("sqlite://{}", db_path_str))
         .await
-        .expect("TS pool connect");
+        .expect("TS pool connect"); // allow-anti-pattern
     let ts = std::sync::Arc::new(super::trajectory_store::SqliteTrajectoryStore::new(ts_pool));
     // SQLite connection string format needed for sqlx
     let jq = UniversalJobQueue::new(
@@ -112,7 +112,7 @@ pub(crate) async fn create_test_queue() -> (UniversalJobQueue, tempfile::TempDir
         ts,
     )
     .await
-    .expect("Failed to create test job queue");
+    .expect("Failed to create test job queue"); // allow-anti-pattern
     (jq, tmp_dir) // tmp_dir must be kept alive for the DB file to exist
 }
 
@@ -122,12 +122,12 @@ async fn test_sqlite_job_queue_basic_ops() {
     let job_id = jq
         .enqueue("Task", "Test Topic", "Style", None, None, None, 0)
         .await
-        .expect("Enqueue failed");
+        .expect("Enqueue failed"); // allow-anti-pattern
     let job = jq
         .fetch_job(&job_id)
         .await
-        .expect("Fetch failed")
-        .expect("Job not found");
+        .expect("Fetch failed") // allow-anti-pattern
+        .expect("Job not found"); // allow-anti-pattern
     assert_eq!(job.topic, "Test Topic");
     assert_eq!(job.status, JobStatus::Pending);
 }
@@ -142,7 +142,7 @@ async fn test_sqlite_job_queue_dequeue_lifecycle() {
         .dequeue(&["Task"])
         .await
         .unwrap()
-        .expect("Should dequeue job");
+        .expect("Should dequeue job"); // allow-anti-pattern
     assert_eq!(job.status, JobStatus::InProgress);
     assert!(job.started_at.is_some());
 
@@ -215,7 +215,7 @@ async fn test_sqlite_job_queue_karma_somatic_valence() {
     let entry = all_karma
         .iter()
         .find(|k| k.get("lesson").and_then(|v| v.as_str()) == Some("Valence Lesson"))
-        .expect("Should find the inserted karma");
+        .expect("Should find the inserted karma"); // allow-anti-pattern
 
     // RED: The current implementation doesn't return somatic_valence in JSON
     assert_eq!(
@@ -262,7 +262,7 @@ async fn test_sqlite_job_queue_creative_rating_guard() {
     jq.dequeue(&["Task"]).await.unwrap();
     jq.set_creative_rating(&job_id, 1)
         .await
-        .expect("Should allow rating on processing");
+        .expect("Should allow rating on processing"); // allow-anti-pattern
     let job = jq.fetch_job(&job_id).await.unwrap().unwrap();
     assert_eq!(job.creative_rating, Some(1));
 }
@@ -278,7 +278,7 @@ async fn test_sqlite_job_queue_db_purge() {
         .dequeue(&["Task"])
         .await
         .unwrap()
-        .expect("Job should exist");
+        .expect("Job should exist"); // allow-anti-pattern
     jq.complete_job(&job.id, None).await.unwrap();
 
     sqlx::query("UPDATE jobs SET created_at = datetime('now', '-30 days') WHERE id = ?")
@@ -879,14 +879,14 @@ async fn test_sqlite_settings_crud() {
     // Test set and get
     jq.update_setting("llm_model", "test-model-1", "llm", false)
         .await
-        .expect("Failed to set");
+        .expect("Failed to set"); // allow-anti-pattern
     let val = jq.get_setting_value("llm_model").await.unwrap();
     assert_eq!(val, Some("test-model-1".to_string()));
 
     // Test overwrite
     jq.update_setting("llm_model", "test-model-2", "llm", false)
         .await
-        .expect("Failed to overwrite");
+        .expect("Failed to overwrite"); // allow-anti-pattern
     let val2 = jq.get_setting_value("llm_model").await.unwrap();
     assert_eq!(val2, Some("test-model-2".to_string()));
 
@@ -904,7 +904,7 @@ async fn test_sqlite_settings_secret_masking() {
     // Set a secret
     jq.update_setting("telegram_token", "super-secret-123", "system", true)
         .await
-        .expect("Failed to set secret");
+        .expect("Failed to set secret"); // allow-anti-pattern
 
     // get_setting_value should return the actual value (for internal use)
     let val = jq.get_setting_value("telegram_token").await.unwrap();
@@ -941,7 +941,7 @@ async fn test_sqlite_trajectory_store() {
             0,
         )
         .await
-        .expect("Failed to enqueue dummy job");
+        .expect("Failed to enqueue dummy job"); // allow-anti-pattern
 
     // 1. Record Step
     let step = TrajectoryStep {
@@ -969,14 +969,14 @@ async fn test_sqlite_trajectory_store() {
     jq.trajectory_store
         .record_step(&job_id, step.clone())
         .await
-        .expect("Failed to record trajectory step");
+        .expect("Failed to record trajectory step"); // allow-anti-pattern
 
     // 2. Fetch Trajectory
     let trajectory = jq
         .trajectory_store
         .fetch_trajectory(&job_id)
         .await
-        .expect("Failed to fetch trajectory");
+        .expect("Failed to fetch trajectory"); // allow-anti-pattern
 
     assert_eq!(trajectory.len(), 1);
     assert_eq!(trajectory[0].action, "test_action");
@@ -1001,15 +1001,15 @@ async fn test_sqlite_trajectory_store() {
     jq.trajectory_store
         .store_diagnosis(&job_id, diagnosis)
         .await
-        .expect("Failed to store diagnosis");
+        .expect("Failed to store diagnosis"); // allow-anti-pattern
 
     // 4. Fetch Diagnosis
     let fetched = jq
         .trajectory_store
         .fetch_diagnosis(&job_id)
         .await
-        .expect("Failed to fetch diagnosis")
-        .expect("Diagnosis should exist");
+        .expect("Failed to fetch diagnosis") // allow-anti-pattern
+        .expect("Diagnosis should exist"); // allow-anti-pattern
 
     assert_eq!(fetched.root_cause, "Missing argument");
     assert_eq!(fetched.self_repair_hint, "Add argument");
@@ -1037,12 +1037,12 @@ async fn test_sqlite_expression_tts_status() {
 
     jq.do_store_expression(&expr)
         .await
-        .expect("Failed to store expression");
+        .expect("Failed to store expression"); // allow-anti-pattern
 
     let fetched = jq
         .do_fetch_expressions(10)
         .await
-        .expect("Failed to fetch expressions");
+        .expect("Failed to fetch expressions"); // allow-anti-pattern
     assert_eq!(fetched.len(), 1);
     assert_eq!(fetched[0].id, "expr-1");
     assert_eq!(fetched[0].tts_status, TtsStatus::NotRequested);
@@ -1054,12 +1054,12 @@ async fn test_sqlite_expression_tts_status() {
 
     jq.do_store_expression(&updated)
         .await
-        .expect("Failed to update expression");
+        .expect("Failed to update expression"); // allow-anti-pattern
 
     let refetched = jq
         .do_fetch_expressions(10)
         .await
-        .expect("Failed to fetch expressions");
+        .expect("Failed to fetch expressions"); // allow-anti-pattern
     assert_eq!(refetched.len(), 1);
     assert_eq!(refetched[0].tts_status, TtsStatus::Ready);
     assert_eq!(refetched[0].audio_path, Some("path/to/audio.wav".into()));
@@ -1083,7 +1083,7 @@ async fn test_sqlite_job_queue_priority_order() {
         .dequeue(&["Task"])
         .await
         .unwrap()
-        .expect("Should find job");
+        .expect("Should find job"); // allow-anti-pattern
     assert_eq!(job1.topic, "High Priority");
     assert_eq!(job1.priority, 10);
 
@@ -1092,7 +1092,7 @@ async fn test_sqlite_job_queue_priority_order() {
         .dequeue(&["Task"])
         .await
         .unwrap()
-        .expect("Should find job");
+        .expect("Should find job"); // allow-anti-pattern
     assert_eq!(job2.topic, "Low Priority");
     assert_eq!(job2.priority, 0);
 }
@@ -1104,7 +1104,7 @@ async fn test_fetch_federated_metrics() {
     let metrics = jq
         .fetch_federated_metrics()
         .await
-        .expect("Fetch federated metrics failed");
+        .expect("Fetch federated metrics failed"); // allow-anti-pattern
 
     // 基本構造の妥当性を検証
     assert_eq!(metrics.stats.level, 1);
@@ -1285,8 +1285,8 @@ async fn test_forget_actor_broadcasts_system_event() {
     // イベントを受信できるか確認
     let event = tokio::time::timeout(tokio::time::Duration::from_secs(1), rx.recv())
         .await
-        .expect("Should not timeout")
-        .expect("Should receive event");
+        .expect("Should not timeout") // allow-anti-pattern
+        .expect("Should receive event"); // allow-anti-pattern
 
     let SystemEvent::ActorForgotten(id) = event;
     assert_eq!(id, agent_id);

@@ -119,7 +119,7 @@ mod tests {
         assert!(checker.check_terminates(&f, &body).is_ok());
         assert!(checker
             .get_calls(&f)
-            .expect("value should be present")
+            .expect("value should be present") // allow-anti-pattern
             .is_empty());
     }
 }
@@ -263,7 +263,7 @@ mod extended_termination_tests {
         }];
         let result = try_structural_certificate(&Name::str("f"), &calls, &params);
         assert!(result.is_some());
-        assert!(result.expect("result should be valid").is_structural());
+        assert!(result.expect("result should be valid").is_structural()); // allow-anti-pattern
     }
     #[test]
     fn test_wf_custom_description() {
@@ -375,7 +375,7 @@ mod utility_tests {
         let candidates = &["intro", "intros", "exact", "apply"];
         let result = closest_match("intoo", candidates);
         assert!(result.is_some());
-        assert_eq!(result.expect("result should be valid"), "intro");
+        assert_eq!(result.expect("result should be valid"), "intro"); // allow-anti-pattern
     }
     #[test]
     fn test_closest_match_empty() {
@@ -466,16 +466,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -515,7 +515,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -525,7 +525,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -629,7 +629,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

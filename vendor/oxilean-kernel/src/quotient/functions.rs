@@ -253,7 +253,7 @@ mod tests {
         let result = reduce_quot_lift(&[f.clone(), h, mk_42]);
         assert!(result.is_some());
         assert_eq!(
-            result.expect("result should be valid"),
+            result.expect("result should be valid"), // allow-anti-pattern
             Expr::App(Box::new(f), Box::new(forty_two))
         );
     }
@@ -574,7 +574,7 @@ mod extended_tests {
         let result = reduce_quot_ind(&[h.clone(), mk_a]);
         assert!(result.is_some());
         assert_eq!(
-            result.expect("result should be valid"),
+            result.expect("result should be valid"), // allow-anti-pattern
             Expr::App(Box::new(h), Box::new(a))
         );
     }
@@ -584,7 +584,7 @@ mod extended_tests {
         let h = mk_const("h");
         let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
         let (result, kind) = try_reduce_quot_full(&mk_const("Quot.lift"), &[f, h, mk_a])
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert_eq!(kind, QuotReductionKind::Lift);
         assert!(matches!(result, Expr::App(..)));
     }
@@ -595,7 +595,7 @@ mod extended_tests {
             .relation(mk_const("Eq"))
             .build();
         assert!(qt.is_some());
-        assert_eq!(qt.expect("qt should be valid").base_type, mk_const("Nat"));
+        assert_eq!(qt.expect("qt should be valid").base_type, mk_const("Nat")); // allow-anti-pattern
     }
     #[test]
     fn test_quotient_builder_incomplete() {
@@ -997,7 +997,7 @@ mod normalizer_tests {
     #[test]
     fn test_extract_quot_lift_args() {
         let lift = build_quot_lift(mk_c("f"), mk_c("h"), build_quot_mk(mk_c("a")));
-        let (f, h, q) = extract_quot_lift_args(&lift).expect("value should be present");
+        let (f, h, q) = extract_quot_lift_args(&lift).expect("value should be present"); // allow-anti-pattern
         assert_eq!(f, mk_c("f"));
         assert_eq!(h, mk_c("h"));
         assert!(is_quot_mk(&q));
@@ -1032,16 +1032,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1081,7 +1081,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1091,7 +1091,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1195,7 +1195,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

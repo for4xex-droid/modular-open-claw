@@ -17,6 +17,10 @@
 
 ### Changed
 - **Zero-Panic Policy (Clippy `deny` 化)**: `Cargo.toml` の `unwrap_used` を `"warn"` → `"deny"` に昇格。全 15 クレートに `[lints] workspace = true` を追加し、ワークスペース lint の継承を有効化。既存 `.unwrap()` 箇所にはステートメント境界に `#[allow(clippy::unwrap_used)]` を自動挿入（121 ファイル / 406 annotations）。新規 `.unwrap()` は Clippy で compile error として物理的に阻止される環境を構築。
+- **Zero-Panic Infrastructure Hardening (Reflexion Phase)**:
+  - ワークスペース全体の `expect("safe unwrap")` や `expect("Invalid regex")` などの診断価値の低いエラーメッセージ 25件 を、具体的なエラー意図（例: `"Model name validation regex is a compile-time literal"`）を示すメッセージに置換し、パニック発生時のデバッグオブザーバビリティを劇的に向上。
+  - レガシーな使い捨て開発スクリプト (`apply_plan.py`, `fix_clippy.py`, `fix_clippy_lines.py`) を削除し、リポジトリの衛生状態を浄化。
+  - `cargo clippy --workspace --all-targets -- -D warnings` の警告ゼロおよび `cargo test` の全件PASS (100% GREEN) を維持しつつ、堅牢なエラーハンドリングを確立。
 
 ### Added
 - **Aegis Sentinel Infrastructure Integration**:

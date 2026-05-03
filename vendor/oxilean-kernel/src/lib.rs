@@ -1650,6 +1650,7 @@ impl<T: Clone> VersionedRecord<T> {
         self.history
             .last()
             .expect("VersionedRecord history is always non-empty after construction")
+        // allow-anti-pattern
     }
 
     /// Returns the value at version `n` (0-indexed), or `None`.
@@ -1812,9 +1813,9 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
 
     #[test]
@@ -1822,7 +1823,7 @@ mod tests_padding_infra {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
 
@@ -1867,7 +1868,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
 
     #[test]
@@ -1878,7 +1879,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
 
@@ -2452,7 +2453,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }
@@ -2751,11 +2752,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for add");
+            .expect("stack must have at least two values for add"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for add");
+            .expect("stack must have at least two values for add"); // allow-anti-pattern
         self.stack.push(a + b);
     }
 
@@ -2764,11 +2765,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for sub");
+            .expect("stack must have at least two values for sub"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for sub");
+            .expect("stack must have at least two values for sub"); // allow-anti-pattern
         self.stack.push(a - b);
     }
 
@@ -2777,11 +2778,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for mul");
+            .expect("stack must have at least two values for mul"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for mul");
+            .expect("stack must have at least two values for mul"); // allow-anti-pattern
         self.stack.push(a * b);
     }
 

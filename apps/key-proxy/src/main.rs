@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-
 #![deny(unsafe_code)]
 #![allow(clippy::collapsible_if)]
 

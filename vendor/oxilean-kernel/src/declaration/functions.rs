@@ -170,7 +170,7 @@ mod tests {
             is_unsafe: false,
         });
         assert!(info.is_constructor());
-        let ctor = info.to_constructor_val().expect("ctor should be present");
+        let ctor = info.to_constructor_val().expect("ctor should be present"); // allow-anti-pattern
         assert_eq!(ctor.induct, Name::str("Nat"));
         assert_eq!(ctor.cidx, 1);
         assert_eq!(ctor.num_fields, 1);
@@ -195,7 +195,7 @@ mod tests {
         });
         assert!(info.is_inductive());
         assert!(!info.is_structure_like());
-        let ind = info.to_inductive_val().expect("ind should be present");
+        let ind = info.to_inductive_val().expect("ind should be present"); // allow-anti-pattern
         assert_eq!(ind.ctors.len(), 2);
     }
     #[test]
@@ -242,7 +242,7 @@ mod tests {
             kind: QuotKind::Type,
         });
         assert!(info.is_quotient());
-        let qv = info.to_quotient_val().expect("qv should be present");
+        let qv = info.to_quotient_val().expect("qv should be present"); // allow-anti-pattern
         assert_eq!(qv.kind, QuotKind::Type);
     }
 }

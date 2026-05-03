@@ -141,7 +141,10 @@ pub async fn pull_model(
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, AppError> {
     // 1. Validate model name to prevent command injection or strange paths
     static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let re = RE.get_or_init(|| regex::Regex::new(r"^[a-zA-Z0-9._:-]+$").expect("Invalid regex")); // allow-anti-pattern
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(r"^[a-zA-Z0-9._:-]+$")
+            .expect("Model name validation regex is a compile-time literal") // allow-anti-pattern
+    }); // allow-anti-pattern
     if !re.is_match(&payload.name) {
         return Err(AppError::bad_request(
             "Invalid model name format. Only alphanumeric characters, dots, underscores, colons, and hyphens are allowed.",

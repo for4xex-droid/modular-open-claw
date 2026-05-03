@@ -46,7 +46,7 @@ pub fn print_expr(expr: &Expr) -> String {
     let mut printer = ExprPrinter::new();
     printer
         .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
+        .expect("pretty-printer must succeed on valid expression"); // allow-anti-pattern
     printer.output()
 }
 /// Pretty print an expression without unicode symbols.
@@ -54,7 +54,7 @@ pub fn print_expr_ascii(expr: &Expr) -> String {
     let mut printer = ExprPrinter::new().with_unicode(false);
     printer
         .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
+        .expect("pretty-printer must succeed on valid expression"); // allow-anti-pattern
     printer.output()
 }
 /// Pretty print with a specific configuration.
@@ -62,7 +62,7 @@ pub fn print_expr_with_config(expr: &Expr, config: PrintConfig) -> String {
     let mut printer = ExprPrinter::with_config(config);
     printer
         .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
+        .expect("pretty-printer must succeed on valid expression"); // allow-anti-pattern
     printer.output()
 }
 /// Pretty print a level expression.
@@ -70,7 +70,7 @@ pub fn print_level(level: &Level) -> String {
     let mut printer = ExprPrinter::new();
     printer
         .print_level(level)
-        .expect("pretty-printer must succeed on valid level");
+        .expect("pretty-printer must succeed on valid level"); // allow-anti-pattern
     printer.output()
 }
 #[cfg(test)]

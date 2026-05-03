@@ -672,7 +672,7 @@ mod tests {
                 r#"import os, json; env = dict(os.environ); print(json.dumps({"jsonrpc":"2.0","id":1,"result":env}))"#.to_string(),
             ],
             user_envs,
-        ).expect("spawn python3 failed — env_clear may have dropped PATH");
+        ).expect("spawn python3 failed — env_clear may have dropped PATH"); // allow-anti-pattern
 
         // Give the child time to print and exit
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;

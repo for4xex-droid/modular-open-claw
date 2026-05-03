@@ -391,7 +391,7 @@ mod tests_erasure_extended {
         });
         assert_eq!(m.len(), 3);
         assert_eq!(
-            m.find("zero").expect("value should be present").name(),
+            m.find("zero").expect("value should be present").name(), // allow-anti-pattern
             "zero"
         );
         assert_eq!(m.function_names(), vec!["zero"]);

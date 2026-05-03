@@ -1525,7 +1525,7 @@ mod tests {
         let ts = std::sync::Arc::new(SqliteTrajectoryStore::new(pool.clone()));
         let _jq = UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("jq");
+            .expect("jq"); // allow-anti-pattern
         crate::job_queue::migrations::DbInitializer::init_db(&_jq)
             .await
             .unwrap();

@@ -21,7 +21,7 @@ mod tests {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
         let prop = Expr::Sort(Level::zero());
-        let prop_ty = tc.infer_type(&prop).expect("prop_ty should be present");
+        let prop_ty = tc.infer_type(&prop).expect("prop_ty should be present"); // allow-anti-pattern
         assert_eq!(prop_ty, Expr::Sort(Level::succ(Level::zero())));
     }
     #[test]
@@ -33,10 +33,10 @@ mod tests {
             univ_params: vec![],
             ty: nat_ty.clone(),
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let mut tc = TypeChecker::new(&env);
         let nat_const = Expr::Const(Name::str("Nat"), vec![]);
-        let result = tc.infer_type(&nat_const).expect("result should be present");
+        let result = tc.infer_type(&nat_const).expect("result should be present"); // allow-anti-pattern
         assert_eq!(result, nat_ty);
     }
     #[test]
@@ -51,7 +51,7 @@ mod tests {
             Box::new(ty.clone()),
             Box::new(body),
         );
-        let result = tc.infer_type(&lam).expect("result should be present");
+        let result = tc.infer_type(&lam).expect("result should be present"); // allow-anti-pattern
         assert!(matches!(result, Expr::Pi(_, _, _, _)));
     }
     #[test]
@@ -59,7 +59,7 @@ mod tests {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
         let nat_lit = Expr::Lit(Literal::Nat(42));
-        let result = tc.infer_type(&nat_lit).expect("result should be present");
+        let result = tc.infer_type(&nat_lit).expect("result should be present"); // allow-anti-pattern
         assert_eq!(result, Expr::Const(Name::str("Nat"), vec![]));
     }
     #[test]
@@ -67,7 +67,7 @@ mod tests {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
         let prop = Expr::Sort(Level::zero());
-        let level = tc.ensure_sort(&prop).expect("level should be present");
+        let level = tc.ensure_sort(&prop).expect("level should be present"); // allow-anti-pattern
         assert_eq!(level, Level::succ(Level::zero()));
     }
     #[test]
@@ -81,7 +81,7 @@ mod tests {
             val: val.clone(),
             hint: crate::ReducibilityHint::Regular(1),
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let mut tc = TypeChecker::new(&env);
         let answer = Expr::Const(Name::str("answer"), vec![]);
         assert!(tc.is_def_eq(&answer, &val));
@@ -97,7 +97,7 @@ mod tests {
             val: val.clone(),
             hint: crate::ReducibilityHint::Abbrev,
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let mut tc = TypeChecker::new(&env);
         let result = tc.whnf(&Expr::Const(Name::str("x"), vec![]));
         assert_eq!(result, val);
@@ -128,12 +128,12 @@ mod tests {
             },
             is_unsafe: false,
         });
-        env.add_constant(ci).expect("value should be present");
+        env.add_constant(ci).expect("value should be present"); // allow-anti-pattern
         let mut tc = TypeChecker::new(&env);
         let list_type1 = Expr::Const(Name::str("List"), vec![Level::zero()]);
         let result = tc
             .infer_type(&list_type1)
-            .expect("result should be present");
+            .expect("result should be present"); // allow-anti-pattern
         assert_eq!(result, Expr::Sort(Level::succ(Level::zero())));
     }
 }
@@ -149,7 +149,7 @@ mod extended_tests {
         let fvar = tc.fresh_fvar(Name::str("f"), nat_ty.clone());
         let result = tc.infer_app_chain(&Expr::FVar(fvar), &[]);
         assert!(result.is_ok());
-        assert_eq!(result.expect("result should be valid"), nat_ty);
+        assert_eq!(result.expect("result should be valid"), nat_ty); // allow-anti-pattern
     }
     #[test]
     fn test_telescope_type_no_pis() {
@@ -450,7 +450,7 @@ mod extra_infer_tests {
         );
         let result = pi_components(&pi);
         assert!(result.is_some());
-        let (_, name, _, _) = result.expect("result should be valid");
+        let (_, name, _, _) = result.expect("result should be valid"); // allow-anti-pattern
         assert_eq!(*name, Name::str("x"));
     }
     #[test]
@@ -478,16 +478,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -527,7 +527,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -537,7 +537,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -641,7 +641,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

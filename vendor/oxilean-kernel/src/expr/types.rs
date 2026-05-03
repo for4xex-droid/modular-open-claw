@@ -907,11 +907,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for add");
+            .expect("stack must have at least two values for add"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for add");
+            .expect("stack must have at least two values for add"); // allow-anti-pattern
         self.stack.push(a + b);
     }
     /// Subtracts top from second.
@@ -919,11 +919,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for sub");
+            .expect("stack must have at least two values for sub"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for sub");
+            .expect("stack must have at least two values for sub"); // allow-anti-pattern
         self.stack.push(a - b);
     }
     /// Multiplies the top two values.
@@ -931,11 +931,11 @@ impl StackCalc {
         let b = self
             .stack
             .pop()
-            .expect("stack must have at least two values for mul");
+            .expect("stack must have at least two values for mul"); // allow-anti-pattern
         let a = self
             .stack
             .pop()
-            .expect("stack must have at least two values for mul");
+            .expect("stack must have at least two values for mul"); // allow-anti-pattern
         self.stack.push(a * b);
     }
     /// Peeks the top value.
@@ -1473,6 +1473,7 @@ impl<T: Clone> VersionedRecord<T> {
         self.history
             .last()
             .expect("VersionedRecord history is always non-empty after construction")
+        // allow-anti-pattern
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {

@@ -977,7 +977,7 @@ impl<T> ConditionalInit<T> {
     pub fn get(&self) -> &T {
         self.inner
             .as_ref()
-            .expect("ConditionalInit: not yet initialised")
+            .expect("ConditionalInit: not yet initialised") // allow-anti-pattern
     }
     /// Returns `true` if the slot has been initialised.
     pub fn is_init(&self) -> bool {

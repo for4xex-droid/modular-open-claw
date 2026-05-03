@@ -928,7 +928,7 @@ mod extended_tests {
             Box::new(bv(0)),
             Box::new(bv(0)),
         );
-        let (ty, val, body) = decompose_let(&e).expect("value should be present");
+        let (ty, val, body) = decompose_let(&e).expect("value should be present"); // allow-anti-pattern
         assert_eq!(ty, &nat());
         assert_eq!(val, &bv(0));
         assert_eq!(body, &bv(0));
@@ -941,7 +941,7 @@ mod extended_tests {
             Box::new(nat()),
             Box::new(prop()),
         );
-        let (bi, dom, cod) = decompose_pi(&e).expect("value should be present");
+        let (bi, dom, cod) = decompose_pi(&e).expect("value should be present"); // allow-anti-pattern
         assert_eq!(bi, BinderInfo::Default);
         assert_eq!(dom, &nat());
         assert_eq!(cod, &prop());
@@ -954,7 +954,7 @@ mod extended_tests {
             Box::new(nat()),
             Box::new(bv(0)),
         );
-        let (bi, dom, body) = decompose_lam(&e).expect("value should be present");
+        let (bi, dom, body) = decompose_lam(&e).expect("value should be present"); // allow-anti-pattern
         assert_eq!(bi, BinderInfo::Implicit);
         assert_eq!(dom, &nat());
         assert_eq!(body, &bv(0));
@@ -971,7 +971,7 @@ mod extended_tests {
         let ret = bv(0);
         let result = mk_pi_n(&binders, ret);
         assert!(is_pi(&result));
-        let (_, _, inner) = decompose_pi(&result).expect("value should be present");
+        let (_, _, inner) = decompose_pi(&result).expect("value should be present"); // allow-anti-pattern
         assert!(is_pi(inner));
     }
     #[test]
@@ -1019,16 +1019,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1068,7 +1068,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1078,7 +1078,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1182,7 +1182,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

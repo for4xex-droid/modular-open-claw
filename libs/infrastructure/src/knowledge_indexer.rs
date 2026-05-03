@@ -355,7 +355,8 @@ impl ProjectKnowledgeIndexer {
                     if next_line.starts_with('#') {
                         break;
                     }
-                    content_lines.push(lines.next().expect("Peeked value exists")); // allow-anti-pattern
+                    let val = lines.next().expect("Peeked value exists"); // allow-anti-pattern
+                    content_lines.push(val);
                 }
 
                 if !content_lines.is_empty() {

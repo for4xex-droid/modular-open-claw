@@ -353,7 +353,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> SimpleLruCache<K, V> {
             let evict_idx = *self
                 .order
                 .last()
-                .expect("order list must be non-empty before eviction");
+                .expect("order list must be non-empty before eviction"); // allow-anti-pattern
             self.map.remove(&self.keys[evict_idx]);
             self.order.pop();
             self.keys[evict_idx] = key.clone();
@@ -1047,7 +1047,7 @@ impl<T: Clone> MemoSlot<T> {
         }
         self.cached
             .as_ref()
-            .expect("cached value must be initialized before access")
+            .expect("cached value must be initialized before access") // allow-anti-pattern
     }
     /// Invalidates the cached value.
     pub fn invalidate(&mut self) {
@@ -1262,7 +1262,7 @@ impl<T> Slot<T> {
         }
         self.inner
             .as_ref()
-            .expect("inner value must be initialized before access")
+            .expect("inner value must be initialized before access") // allow-anti-pattern
     }
 }
 /// Interns strings to save memory (each unique string stored once).

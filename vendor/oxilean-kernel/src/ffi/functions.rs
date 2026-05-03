@@ -208,7 +208,7 @@ mod tests {
             CallingConvention::C,
             FfiSignature::new(vec![FfiType::String], Box::new(FfiType::UInt64)),
         );
-        registry.register(decl).expect("value should be present");
+        registry.register(decl).expect("value should be present"); // allow-anti-pattern
         let found = registry.lookup(&Name::str("strlen"));
         assert!(found.is_ok());
     }
@@ -230,7 +230,7 @@ mod tests {
             CallingConvention::C,
             FfiSignature::new(vec![FfiType::String], Box::new(FfiType::UInt64)),
         );
-        registry.register(decl).expect("value should be present");
+        registry.register(decl).expect("value should be present"); // allow-anti-pattern
         let found = registry.lookup_by_symbol("libc", "strlen");
         assert!(found.is_ok());
     }
@@ -246,7 +246,7 @@ mod tests {
             CallingConvention::C,
             FfiSignature::new(vec![FfiType::String], Box::new(FfiType::UInt64)),
         );
-        registry.register(decl).expect("value should be present");
+        registry.register(decl).expect("value should be present"); // allow-anti-pattern
         assert!(registry.validate_all().is_ok());
     }
     #[test]
@@ -258,19 +258,19 @@ mod tests {
     #[test]
     fn test_builtin_externs_io() {
         let mut registry = ExternRegistry::new();
-        BuiltinExterns::register_io(&mut registry).expect("value should be present");
+        BuiltinExterns::register_io(&mut registry).expect("value should be present"); // allow-anti-pattern
         assert!(registry.lookup(&Name::str("builtin_print")).is_ok());
     }
     #[test]
     fn test_builtin_externs_string() {
         let mut registry = ExternRegistry::new();
-        BuiltinExterns::register_string(&mut registry).expect("value should be present");
+        BuiltinExterns::register_string(&mut registry).expect("value should be present"); // allow-anti-pattern
         assert!(registry.lookup(&Name::str("builtin_strlen")).is_ok());
     }
     #[test]
     fn test_builtin_externs_arithmetic() {
         let mut registry = ExternRegistry::new();
-        BuiltinExterns::register_arithmetic(&mut registry).expect("value should be present");
+        BuiltinExterns::register_arithmetic(&mut registry).expect("value should be present"); // allow-anti-pattern
         assert!(registry.lookup(&Name::str("builtin_abs")).is_ok());
     }
     #[test]
@@ -356,7 +356,7 @@ mod extra_ffi_tests {
         let expr = Expr::Lit(crate::Literal::Nat(42));
         let v = FfiValue::try_from_expr(&expr, &FfiType::UInt64);
         assert!(v.is_ok());
-        assert_eq!(v.expect("v should be valid"), FfiValue::UInt(42));
+        assert_eq!(v.expect("v should be valid"), FfiValue::UInt(42)); // allow-anti-pattern
     }
     #[test]
     fn test_ffi_value_try_from_expr_str() {
@@ -381,16 +381,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -430,7 +430,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -440,7 +440,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -544,7 +544,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

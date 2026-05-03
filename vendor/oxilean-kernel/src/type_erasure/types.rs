@@ -147,7 +147,7 @@ impl ErasedTupleOps {
         let mut iter = exprs.into_iter().rev();
         let last = iter
             .next()
-            .expect("iterator must have at least one element");
+            .expect("iterator must have at least one element"); // allow-anti-pattern
         iter.fold(last, |acc, e| Self::make_pair(e, acc))
     }
 }

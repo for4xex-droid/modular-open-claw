@@ -285,12 +285,18 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
     static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
         vec![
-            Regex::new(r"(?i)rm\s+-rf").expect("Invalid regex"),    // allow-anti-pattern
-            Regex::new(r"(?i)chmod\s+777").expect("Invalid regex"), // allow-anti-pattern
-            Regex::new(r"(?i)cat\s+/etc/shadow").expect("Invalid regex"), // allow-anti-pattern
-            Regex::new(r"(?i)shutdown").expect("Invalid regex"),    // allow-anti-pattern
-            Regex::new(r"(?i)reboot").expect("Invalid regex"),      // allow-anti-pattern
-            Regex::new(r#"(?i)":\s*".*";"#).expect("Invalid regex"), // allow-anti-pattern
+            Regex::new(r"(?i)rm\s+-rf")
+                .expect("Sentinel: rm -rf detection regex is a compile-time literal"), // allow-anti-pattern
+            Regex::new(r"(?i)chmod\s+777")
+                .expect("Sentinel: chmod 777 detection regex is a compile-time literal"), // allow-anti-pattern
+            Regex::new(r"(?i)cat\s+/etc/shadow")
+                .expect("Sentinel: shadow file access detection regex is a compile-time literal"), // allow-anti-pattern
+            Regex::new(r"(?i)shutdown")
+                .expect("Sentinel: shutdown detection regex is a compile-time literal"), // allow-anti-pattern
+            Regex::new(r"(?i)reboot")
+                .expect("Sentinel: reboot detection regex is a compile-time literal"), // allow-anti-pattern
+            Regex::new(r#"(?i)":\s*".*";"#)
+                .expect("Sentinel: JSON injection detection regex is a compile-time literal"), // allow-anti-pattern
         ]
     });
 

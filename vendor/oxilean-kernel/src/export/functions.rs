@@ -684,7 +684,7 @@ mod tests {
         module.add_dependency("base".to_string());
         let bytes = serialize_module(&module);
         let (name, version, _entries) =
-            deserialize_module_header(&bytes).expect("value should be present");
+            deserialize_module_header(&bytes).expect("value should be present"); // allow-anti-pattern
         assert_eq!(name, "test_mod");
         assert_eq!(version, FORMAT_VERSION);
     }
@@ -730,14 +730,14 @@ mod tests {
         };
         module.add_declaration(Name::str("myThm"), thm);
         let bytes = serialize_module(&module);
-        let decoded = deserialize_module(&bytes).expect("decoded should be present");
+        let decoded = deserialize_module(&bytes).expect("decoded should be present"); // allow-anti-pattern
         assert_eq!(decoded.name, "my_module");
         assert_eq!(decoded.dependencies, vec!["base"]);
         assert_eq!(
             decoded
                 .metadata
                 .get("author")
-                .expect("element at \'author\' should exist"),
+                .expect("element at \'author\' should exist"), // allow-anti-pattern
             "alice"
         );
         assert_eq!(decoded.declarations.len(), 3);
@@ -758,7 +758,7 @@ mod tests {
         );
         let mut buf = Vec::new();
         write_expr(&mut buf, &expr);
-        let decoded = read_expr(&buf, &mut 0).expect("decoded should be present");
+        let decoded = read_expr(&buf, &mut 0).expect("decoded should be present"); // allow-anti-pattern
         assert_eq!(decoded, expr);
     }
     #[test]
@@ -766,7 +766,7 @@ mod tests {
         let name = Name::str("Nat").append_str("add").append_num(3);
         let mut buf = Vec::new();
         write_name(&mut buf, &name);
-        let decoded = read_name(&buf, &mut 0).expect("decoded should be present");
+        let decoded = read_name(&buf, &mut 0).expect("decoded should be present"); // allow-anti-pattern
         assert_eq!(decoded, name);
     }
     #[test]
@@ -781,7 +781,7 @@ mod tests {
         for level in &levels {
             let mut buf = Vec::new();
             write_level(&mut buf, level);
-            let decoded = read_level(&buf, &mut 0).expect("decoded should be present");
+            let decoded = read_level(&buf, &mut 0).expect("decoded should be present"); // allow-anti-pattern
             assert_eq!(&decoded, level);
         }
     }
@@ -793,7 +793,7 @@ mod tests {
             module
                 .metadata
                 .get("author")
-                .expect("element at \'author\' should exist"),
+                .expect("element at \'author\' should exist"), // allow-anti-pattern
             "oxilean"
         );
     }
@@ -948,7 +948,7 @@ mod extra_tests {
         g.add_module("a".to_string());
         g.add_module("b".to_string());
         g.add_dep("b".to_string(), "a".to_string());
-        let order = g.topological_order().expect("order should be present");
+        let order = g.topological_order().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order.len(), 2);
         assert!(order.contains(&"a".to_string()));
         assert!(order.contains(&"b".to_string()));
@@ -1018,7 +1018,7 @@ mod version_tests {
     }
     #[test]
     fn test_version_parse_ok() {
-        let v = ModuleVersion::parse("2.3.4").expect("v should be present");
+        let v = ModuleVersion::parse("2.3.4").expect("v should be present"); // allow-anti-pattern
         assert_eq!(v.major, 2);
         assert_eq!(v.minor, 3);
         assert_eq!(v.patch, 4);
@@ -1073,7 +1073,7 @@ mod version_tests {
     fn test_version_roundtrip() {
         let v = ModuleVersion::new(3, 14, 159);
         let s = v.to_string();
-        let v2 = ModuleVersion::parse(&s).expect("v2 should be present");
+        let v2 = ModuleVersion::parse(&s).expect("v2 should be present"); // allow-anti-pattern
         assert_eq!(v, v2);
     }
 }
@@ -1087,16 +1087,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -1136,7 +1136,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -1146,7 +1146,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -1250,7 +1250,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

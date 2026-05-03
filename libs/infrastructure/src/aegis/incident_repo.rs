@@ -300,7 +300,7 @@ mod tests {
         );
         let _jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("Failed to create in-memory job queue");
+            .expect("Failed to create in-memory job queue"); // allow-anti-pattern
 
         pool
     }

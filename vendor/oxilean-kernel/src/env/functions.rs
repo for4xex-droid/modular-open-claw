@@ -29,12 +29,12 @@ mod tests {
             univ_params: vec![],
             ty: nat_ty,
         };
-        env.add(zero_decl).expect("value should be present");
+        env.add(zero_decl).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("Nat.zero")));
         assert_eq!(env.len(), 1);
         let retrieved = env
             .get(&Name::str("Nat.zero"))
-            .expect("retrieved should be present");
+            .expect("retrieved should be present"); // allow-anti-pattern
         assert_eq!(retrieved.name(), &Name::str("Nat.zero"));
     }
     #[test]
@@ -51,7 +51,7 @@ mod tests {
             univ_params: vec![],
             ty,
         };
-        env.add(decl1).expect("value should be present");
+        env.add(decl1).expect("value should be present"); // allow-anti-pattern
         let result = env.add(decl2);
         assert!(matches!(result, Err(EnvError::DuplicateDeclaration(_))));
     }
@@ -67,10 +67,10 @@ mod tests {
             val: val.clone(),
             hint: ReducibilityHint::Regular(1),
         };
-        env.add(decl).expect("value should be present");
+        env.add(decl).expect("value should be present"); // allow-anti-pattern
         let (defn_val, hint) = env
             .get_defn(&Name::str("answer"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert_eq!(defn_val, val);
         assert_eq!(hint, ReducibilityHint::Regular(1));
     }
@@ -85,11 +85,11 @@ mod tests {
             },
             is_unsafe: false,
         });
-        env.add_constant(ci).expect("value should be present");
+        env.add_constant(ci).expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("propext")));
         let found = env
             .find(&Name::str("propext"))
-            .expect("found should be present");
+            .expect("found should be present"); // allow-anti-pattern
         assert!(found.is_axiom());
     }
     #[test]
@@ -111,12 +111,12 @@ mod tests {
             is_reflexive: false,
             is_prop: false,
         });
-        env.add_constant(ind).expect("value should be present");
+        env.add_constant(ind).expect("value should be present"); // allow-anti-pattern
         assert!(env.is_inductive(&Name::str("Nat")));
         assert!(!env.is_constructor(&Name::str("Nat")));
         let iv = env
             .get_inductive_val(&Name::str("Nat"))
-            .expect("iv should be present");
+            .expect("iv should be present"); // allow-anti-pattern
         assert_eq!(iv.ctors.len(), 2);
     }
     #[test]
@@ -130,10 +130,10 @@ mod tests {
             },
             is_unsafe: false,
         });
-        env.add_constant(ci).expect("value should be present");
+        env.add_constant(ci).expect("value should be present"); // allow-anti-pattern
         let result = env
             .instantiate_const_type(&Name::str("List"), &[Level::succ(Level::zero())])
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert_eq!(result, Expr::Sort(Level::succ(Level::zero())));
     }
 }
@@ -184,9 +184,9 @@ mod extended_env_tests {
     fn test_environment_view_axiom_names() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom("ax1"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom("ax2"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let view = EnvironmentView::new(&env);
         let names = view.axiom_names();
         assert_eq!(names.len(), 2);
@@ -195,7 +195,7 @@ mod extended_env_tests {
     fn test_environment_view_counts() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom("a"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let view = EnvironmentView::new(&env);
         let counts = view.count_by_kind();
         assert_eq!(counts.axioms, 1);
@@ -205,7 +205,7 @@ mod extended_env_tests {
     fn test_env_builder_empty() {
         let builder = EnvironmentBuilder::new();
         assert!(builder.is_empty());
-        let env = builder.build().expect("env should be present");
+        let env = builder.build().expect("env should be present"); // allow-anti-pattern
         assert!(env.is_empty());
     }
     #[test]
@@ -218,7 +218,7 @@ mod extended_env_tests {
         let env = EnvironmentBuilder::new()
             .add_decl(decl)
             .build()
-            .expect("env should be present");
+            .expect("env should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("foo")));
     }
     #[test]
@@ -244,16 +244,16 @@ mod extended_env_tests {
         let env = EnvironmentBuilder::new()
             .add_constant(mk_axiom("myax"))
             .build()
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert!(env.contains(&Name::str("myax")));
     }
     #[test]
     fn test_filter_environment() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom("Nat.zero"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom("Bool.true"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let nat_only = filter_environment(&env, |name| name.to_string().starts_with("Nat"));
         assert!(nat_only.contains(&Name::str("Nat.zero")));
         assert!(!nat_only.contains(&Name::str("Bool.true")));
@@ -282,11 +282,11 @@ mod extended_env_tests {
     fn test_merge_environments_disjoint() {
         let mut env1 = Environment::new();
         env1.add_constant(mk_axiom("a"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let mut env2 = Environment::new();
         env2.add_constant(mk_axiom("b"))
-            .expect("value should be present");
-        let merged = merge_environments(env1, env2).expect("merged should be present");
+            .expect("value should be present"); // allow-anti-pattern
+        let merged = merge_environments(env1, env2).expect("merged should be present"); // allow-anti-pattern
         assert!(merged.contains(&Name::str("a")));
         assert!(merged.contains(&Name::str("b")));
     }
@@ -294,10 +294,10 @@ mod extended_env_tests {
     fn test_merge_environments_conflict() {
         let mut env1 = Environment::new();
         env1.add_constant(mk_axiom("shared"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let mut env2 = Environment::new();
         env2.add_constant(mk_axiom("shared"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let result = merge_environments(env1, env2);
         assert!(result.is_err());
     }
@@ -320,10 +320,10 @@ mod extended_env_tests {
             val: val.clone(),
             hint: ReducibilityHint::Regular(1),
         })
-        .expect("value should be present");
+        .expect("value should be present"); // allow-anti-pattern
         let (v, _) = env
             .get_defn(&Name::str("myval"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert_eq!(v, val);
     }
 }
@@ -392,9 +392,9 @@ mod env_new_tests {
     fn test_env_snapshot_basic() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("a"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom_ci("b"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let snap = EnvironmentSnapshot::from_env(&env);
         assert_eq!(snap.len(), 2);
         assert!(!snap.is_empty());
@@ -403,10 +403,10 @@ mod env_new_tests {
     fn test_env_snapshot_diff() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("a"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let snap1 = EnvironmentSnapshot::from_env(&env);
         env.add_constant(mk_axiom_ci("b"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let snap2 = EnvironmentSnapshot::from_env(&env);
         let added = snap1.diff(&snap2);
         assert_eq!(added.len(), 1);
@@ -422,9 +422,9 @@ mod env_new_tests {
     fn test_env_stats_with_axioms() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("x"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom_ci("y"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let stats = env_stats(&env);
         assert_eq!(stats.total, 2);
         assert_eq!(stats.axioms, 2);
@@ -440,11 +440,11 @@ mod env_new_tests {
     fn test_constants_with_prefix() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("Nat.zero"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom_ci("Nat.succ"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom_ci("Bool.true"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let nat_consts = constants_with_prefix(&env, "Nat");
         assert_eq!(nat_consts.len(), 2);
     }
@@ -452,7 +452,7 @@ mod env_new_tests {
     fn test_contains_any() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("foo"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert!(contains_any(&env, &[Name::str("foo"), Name::str("bar")]));
         assert!(!contains_any(&env, &[Name::str("baz")]));
     }
@@ -460,7 +460,7 @@ mod env_new_tests {
     fn test_missing_names() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("a"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let missing = missing_names(&env, &[Name::str("a"), Name::str("b"), Name::str("c")]);
         assert_eq!(missing.len(), 2);
         assert!(missing.contains(&Name::str("b")));
@@ -470,9 +470,9 @@ mod env_new_tests {
     fn test_present_names() {
         let mut env = Environment::new();
         env.add_constant(mk_axiom_ci("x"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         env.add_constant(mk_axiom_ci("y"))
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         let present = present_names(&env, &[Name::str("x"), Name::str("z")]);
         assert_eq!(present.len(), 1);
     }
@@ -502,16 +502,16 @@ mod tests_padding_infra {
         ss.record(20.0);
         ss.record(30.0);
         assert_eq!(ss.count(), 3);
-        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9);
-        assert_eq!(ss.min().expect("min should succeed") as i64, 10);
-        assert_eq!(ss.max().expect("max should succeed") as i64, 30);
+        assert!((ss.mean().expect("mean should succeed") - 20.0).abs() < 1e-9); // allow-anti-pattern
+        assert_eq!(ss.min().expect("min should succeed") as i64, 10); // allow-anti-pattern
+        assert_eq!(ss.max().expect("max should succeed") as i64, 30); // allow-anti-pattern
     }
     #[test]
     fn test_transform_stat() {
         let mut ts = TransformStat::new();
         ts.record_before(100.0);
         ts.record_after(80.0);
-        let ratio = ts.mean_ratio().expect("ratio should be present");
+        let ratio = ts.mean_ratio().expect("ratio should be present"); // allow-anti-pattern
         assert!((ratio - 0.8).abs() < 1e-9);
     }
     #[test]
@@ -551,7 +551,7 @@ mod tests_padding_infra {
         assert_eq!(*vr.current(), 2);
         assert_eq!(vr.version(), 2);
         assert!(vr.has_history());
-        assert_eq!(*vr.at_version(0).expect("value should be present"), 0);
+        assert_eq!(*vr.at_version(0).expect("value should be present"), 0); // allow-anti-pattern
     }
     #[test]
     fn test_simple_dag() {
@@ -561,7 +561,7 @@ mod tests_padding_infra {
         dag.add_edge(2, 3);
         assert!(dag.can_reach(0, 3));
         assert!(!dag.can_reach(3, 0));
-        let order = dag.topological_sort().expect("order should be present");
+        let order = dag.topological_sort().expect("order should be present"); // allow-anti-pattern
         assert_eq!(order, vec![0, 1, 2, 3]);
     }
     #[test]
@@ -665,7 +665,7 @@ mod tests_padding2 {
         assert!(rrs.get("beta").is_some());
         let disp = rrs
             .get("beta")
-            .expect("element at \'beta\' should exist")
+            .expect("element at \'beta\' should exist") // allow-anti-pattern
             .display();
         assert!(disp.contains("→"));
     }

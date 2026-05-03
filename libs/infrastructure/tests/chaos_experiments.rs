@@ -434,6 +434,7 @@ async fn chaos_rate_limiter_concurrent_burst() {
     let mut err_count = 0;
     for h in handles {
         if h.await.expect("Task panicked") {
+            // allow-anti-pattern
             ok_count += 1;
         } else {
             err_count += 1;
@@ -587,7 +588,7 @@ async fn chaos_expression_empty_response() {
     );
 
     // ── Learning: 空レスポンス時の安全なフォールバック ──
-    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok"); // allow-anti-pattern
     assert_eq!(expression.content, "");
     assert_eq!(
         expression.emotion, "reflective",
@@ -620,7 +621,7 @@ async fn chaos_expression_malformed_format() {
     );
 
     // ── Learning: フォーマット違反時はコンテンツをそのまま保持し感情をフォールバック ──
-    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok"); // allow-anti-pattern
     assert_eq!(expression.content, "{invalid json///"); // パースに失敗したコンテンツを維持する
     assert_eq!(
         expression.emotion, "reflective",

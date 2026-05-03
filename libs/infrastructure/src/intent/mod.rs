@@ -164,9 +164,14 @@ impl IntentFirewall {
 
     /// PII を除去する
     pub fn strip_pii(&self, text: &str) -> String {
-        let email_re = EMAIL_REGEX
-            .get_or_init(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").expect("Invalid email regex")); // allow-anti-pattern
-        let phone_re = PHONE_REGEX.get_or_init(|| Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})").expect("Invalid phone regex")); // allow-anti-pattern
+        let email_re = EMAIL_REGEX.get_or_init(|| {
+            Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+                .expect("Email PII detection regex is a compile-time literal") // allow-anti-pattern
+        }); // allow-anti-pattern
+        let phone_re = PHONE_REGEX.get_or_init(|| {
+            Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})")
+                .expect("Phone PII detection regex is a compile-time literal") // allow-anti-pattern
+        }); // allow-anti-pattern
 
         let mut cleaned = email_re.replace_all(text, "[EMAIL]").to_string();
         cleaned = phone_re.replace_all(&cleaned, "[PHONE]").to_string();

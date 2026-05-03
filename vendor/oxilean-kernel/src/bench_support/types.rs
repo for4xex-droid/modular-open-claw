@@ -579,12 +579,12 @@ impl ThroughputTracker {
         let duration = self
             .events
             .back()
-            .expect("events non-empty: checked len >= 2 above")
+            .expect("events non-empty: checked len >= 2 above") // allow-anti-pattern
             .0
             .duration_since(
                 self.events
                     .front()
-                    .expect("events non-empty: checked len >= 2 above")
+                    .expect("events non-empty: checked len >= 2 above") // allow-anti-pattern
                     .0,
             )
             .as_secs_f64();

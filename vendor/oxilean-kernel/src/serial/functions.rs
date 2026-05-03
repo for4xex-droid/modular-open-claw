@@ -73,8 +73,8 @@ mod tests {
         w.write_u32(0xDEAD_BEEF_u32);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        assert_eq!(r.read_u32().expect("read_u32 should succeed"), 42);
-        assert_eq!(r.read_u32().expect("read_u32 should succeed"), 0xDEAD_BEEF);
+        assert_eq!(r.read_u32().expect("read_u32 should succeed"), 42); // allow-anti-pattern
+        assert_eq!(r.read_u32().expect("read_u32 should succeed"), 0xDEAD_BEEF); // allow-anti-pattern
         assert_eq!(r.remaining(), 0);
     }
     #[test]
@@ -86,12 +86,12 @@ mod tests {
         let data = w.finish();
         let mut r = OleanReader::new(&data);
         assert_eq!(
-            r.read_string().expect("read_string should succeed"),
+            r.read_string().expect("read_string should succeed"), // allow-anti-pattern
             "Nat.add.comm"
         );
-        assert_eq!(r.read_string().expect("read_string should succeed"), "");
+        assert_eq!(r.read_string().expect("read_string should succeed"), ""); // allow-anti-pattern
         assert_eq!(
-            r.read_string().expect("read_string should succeed"),
+            r.read_string().expect("read_string should succeed"), // allow-anti-pattern
             "hello world"
         );
         assert_eq!(r.remaining(), 0);
@@ -109,7 +109,7 @@ mod tests {
         w.write_header(7);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let hdr = r.read_header().expect("hdr should be present");
+        let hdr = r.read_header().expect("hdr should be present"); // allow-anti-pattern
         assert_eq!(hdr.version, VERSION);
         assert_eq!(hdr.decl_count, 7);
         assert_eq!(hdr.metadata_offset, HEADER_SIZE as u64);
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_serialize_empty_names() {
         let data = serialize_decl_names(&[]);
-        let names = deserialize_decl_names(&data).expect("names should be present");
+        let names = deserialize_decl_names(&data).expect("names should be present"); // allow-anti-pattern
         assert!(names.is_empty());
     }
     #[test]
@@ -128,7 +128,7 @@ mod tests {
             "List.length".to_string(),
         ];
         let data = serialize_decl_names(&input);
-        let output = deserialize_decl_names(&data).expect("output should be present");
+        let output = deserialize_decl_names(&data).expect("output should be present"); // allow-anti-pattern
         assert_eq!(input, output);
     }
     #[test]
@@ -253,7 +253,7 @@ mod tests_serial_extended {
         hdr.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let hdr2 = SectionHeader::read(&mut r).expect("hdr2 should be present");
+        let hdr2 = SectionHeader::read(&mut r).expect("hdr2 should be present"); // allow-anti-pattern
         assert_eq!(hdr2.tag, 0x01);
         assert_eq!(hdr2.length, 256);
         assert_eq!(hdr2.offset, 1024);
@@ -267,11 +267,11 @@ mod tests_serial_extended {
         table.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let t2 = SectionTable::read(&mut r).expect("t2 should be present");
+        let t2 = SectionTable::read(&mut r).expect("t2 should be present"); // allow-anti-pattern
         assert_eq!(t2.len(), 2);
         let decl_hdr = t2
             .find(section_tags::DECLARATIONS)
-            .expect("decl_hdr should be present");
+            .expect("decl_hdr should be present"); // allow-anti-pattern
         assert_eq!(decl_hdr.length, 100);
     }
     #[test]
@@ -312,7 +312,7 @@ mod tests_serial_extended {
         t.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let t2 = NameTable::read(&mut r).expect("t2 should be present");
+        let t2 = NameTable::read(&mut r).expect("t2 should be present"); // allow-anti-pattern
         assert_eq!(t2.len(), 3);
         assert_eq!(t2.lookup_id(0), Some("a"));
         assert_eq!(t2.lookup_id(2), Some("c"));
@@ -327,7 +327,7 @@ mod tests_serial_extended {
         encode_decl(&mut w, &decl);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let d2 = decode_decl(&mut r).expect("d2 should be present");
+        let d2 = decode_decl(&mut r).expect("d2 should be present"); // allow-anti-pattern
         assert_eq!(d2.name(), "Nat.add_comm");
         assert_eq!(d2.kind_tag(), kind_tags::THEOREM);
     }
@@ -342,7 +342,7 @@ mod tests_serial_extended {
         encode_decl(&mut w, &decl);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let d2 = decode_decl(&mut r).expect("d2 should be present");
+        let d2 = decode_decl(&mut r).expect("d2 should be present"); // allow-anti-pattern
         assert_eq!(d2.name(), "List");
         if let SerialDecl::Inductive { ctor_count, .. } = d2 {
             assert_eq!(ctor_count, 2);
@@ -368,7 +368,7 @@ mod tests_serial_extended {
             },
         ];
         let data = serialize_decls(&decls);
-        let decoded = deserialize_decls(&data).expect("decoded should be present");
+        let decoded = deserialize_decls(&data).expect("decoded should be present"); // allow-anti-pattern
         assert_eq!(decoded.len(), 3);
         assert_eq!(decoded[0].name(), "propext");
         assert_eq!(decoded[1].kind_tag(), kind_tags::THEOREM);
@@ -446,7 +446,7 @@ mod tests_serial_extended2 {
         dl.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let dl2 = DeltaList::read(&mut r).expect("dl2 should be present");
+        let dl2 = DeltaList::read(&mut r).expect("dl2 should be present"); // allow-anti-pattern
         assert_eq!(dl2.decode(), values);
     }
     #[test]
@@ -462,7 +462,7 @@ mod tests_serial_extended2 {
         pool.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let p2 = StringPool::read(&mut r).expect("p2 should be present");
+        let p2 = StringPool::read(&mut r).expect("p2 should be present"); // allow-anti-pattern
         assert_eq!(p2.len(), 2);
         assert_eq!(p2.get(i1), Some("List.length"));
     }
@@ -473,7 +473,7 @@ mod tests_serial_extended2 {
         write_bools(&mut w, &bools);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let decoded = read_bools(&mut r).expect("decoded should be present");
+        let decoded = read_bools(&mut r).expect("decoded should be present"); // allow-anti-pattern
         assert_eq!(decoded, bools);
     }
     #[test]
@@ -491,7 +491,7 @@ mod tests_serial_extended2 {
         s.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let s2 = DeclKindSet::read(&mut r).expect("s2 should be present");
+        let s2 = DeclKindSet::read(&mut r).expect("s2 should be present"); // allow-anti-pattern
         assert_eq!(s2.mask(), s.mask());
     }
 }
@@ -538,7 +538,7 @@ mod tests_serial_extended3 {
         idx.write(&mut w);
         let data = w.finish();
         let mut r = OleanReader::new(&data);
-        let idx2 = DeclIndex::read(&mut r).expect("idx2 should be present");
+        let idx2 = DeclIndex::read(&mut r).expect("idx2 should be present"); // allow-anti-pattern
         assert_eq!(idx2.len(), 2);
         assert_eq!(idx2.find_offset("foo"), Some(10));
     }
@@ -550,8 +550,8 @@ mod tests_serial_extended3 {
         mw.write_bool_entry("verified", true);
         assert_eq!(mw.entry_count(), 3);
         let data = mw.finish();
-        let mut mr = MetadataReader::new(&data).expect("mr should be present");
-        let entries = mr.read_all().expect("entries should be present");
+        let mut mr = MetadataReader::new(&data).expect("mr should be present"); // allow-anti-pattern
+        let entries = mr.read_all().expect("entries should be present"); // allow-anti-pattern
         assert_eq!(entries.len(), 3);
         assert_eq!(entries[0].0, "author");
         assert!(matches!(entries[0].1, MetadataValue::Str(ref s) if s == "OxiLean"));
@@ -738,12 +738,12 @@ mod tests_serial_extended5 {
         let data = [1u8, 2, 3, 4, 5, 6, 7, 8];
         let mut cr = CheckpointedReader::new(&data);
         cr.save();
-        let _ = cr.read_u32().expect("_ should be present");
+        let _ = cr.read_u32().expect("_ should be present"); // allow-anti-pattern
         assert_eq!(cr.pos(), 4);
         let rolled = cr.rollback();
         assert!(rolled);
         assert_eq!(cr.pos(), 0);
-        assert_eq!(cr.read_u8().expect("read_u8 should succeed"), 1);
+        assert_eq!(cr.read_u8().expect("read_u8 should succeed"), 1); // allow-anti-pattern
     }
     #[test]
     fn test_checkpointed_reader_no_checkpoint() {
@@ -762,7 +762,7 @@ mod tests_serial_extended5 {
     #[test]
     fn test_with_context_ok() {
         let result = with_context("test", 0, || Ok::<u32, OleanError>(42));
-        assert_eq!(result.expect("result should be valid"), 42);
+        assert_eq!(result.expect("result should be valid"), 42); // allow-anti-pattern
     }
     #[test]
     fn test_with_context_err() {
@@ -1017,7 +1017,7 @@ mod tests_serial_extended7 {
         assert_eq!(archive.file_count(), 2);
         let (fname, decl) = archive
             .find_decl("List.length_eq")
-            .expect("value should be present");
+            .expect("value should be present"); // allow-anti-pattern
         assert_eq!(fname, "List.lean");
         assert_eq!(decl.kind_tag(), kind_tags::THEOREM);
         assert_eq!(archive.find_decl("Unknown"), None);
@@ -1074,7 +1074,7 @@ mod tests_serial_extended8 {
         let nat_group = groups
             .iter()
             .find(|(ns, _)| ns == "Nat")
-            .expect("nat_group should be present");
+            .expect("nat_group should be present"); // allow-anti-pattern
         assert_eq!(nat_group.1.len(), 2);
     }
 }

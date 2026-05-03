@@ -49,7 +49,7 @@ async fn test_postgres_job_queue_connection() -> anyhow::Result<()> {
     let job_id = jq
         .enqueue("Test", "PG Topic", "PG Style", None, None, None, 0)
         .await?;
-    let job = jq.fetch_job(&job_id).await?.expect("Job not found in PG");
+    let job = jq.fetch_job(&job_id).await?.expect("Job not found in PG"); // allow-anti-pattern
     assert_eq!(job.topic, "PG Topic");
 
     Ok(())
@@ -123,7 +123,7 @@ async fn test_postgres_soul_store_crud() -> anyhow::Result<()> {
 
     store.save_soul(&soul).await?;
 
-    let loaded = store.load_soul("pg-soul-1").await?.expect("Soul not found");
+    let loaded = store.load_soul("pg-soul-1").await?.expect("Soul not found"); // allow-anti-pattern
     assert_eq!(loaded.soul_hash, "hash-123");
 
     Ok(())
@@ -141,7 +141,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
 
     let store = UniversalArtifactStore::new(pool, std::path::PathBuf::from("/tmp/pg_artifacts"));
 
-    let jail = bastion::fs_guard::Jail::new("/tmp/pg_jail").expect("Failed to create jail");
+    let jail = bastion::fs_guard::Jail::new("/tmp/pg_jail").expect("Failed to create jail"); // allow-anti-pattern
     let req = CreateArtifactRequest {
         title: "PG Artifact Test".to_string(),
         category: aiome_core_contracts::traits::ArtifactCategory::Report,
@@ -162,7 +162,7 @@ async fn test_postgres_artifact_store_crud() -> anyhow::Result<()> {
     let id = ArtifactStore::save_artifact(&store, req, &jail).await?;
     let loaded = ArtifactStore::fetch_artifact(&store, &id)
         .await?
-        .expect("Artifact not found");
+        .expect("Artifact not found"); // allow-anti-pattern
     assert_eq!(loaded.title, "PG Artifact Test");
 
     Ok(())

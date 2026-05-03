@@ -132,9 +132,10 @@ mod tests_bench_extra {
         let mut ma = MovingAverage::new(0.5);
         assert!(ma.current().is_none());
         ma.update(100.0);
-        assert!((ma.current().expect("current should succeed") - 100.0).abs() < 1e-9);
+        assert!((ma.current().expect("current should succeed") - 100.0).abs() < 1e-9); // allow-anti-pattern
         ma.update(200.0);
         assert!((ma.current().expect("current should succeed") - 150.0).abs() < 1e-9);
+        // allow-anti-pattern
     }
     #[test]
     fn test_adaptive_warmup() {
@@ -159,7 +160,7 @@ mod tests_bench_extra {
         let c1 = m.add_col("metric_2");
         m.set(r0, c0, 1.23);
         m.set(r0, c1, 4.56);
-        assert!((m.get(r0, c0).expect("element at r0, c0 should exist") - 1.23).abs() < 1e-9);
+        assert!((m.get(r0, c0).expect("element at r0, c0 should exist") - 1.23).abs() < 1e-9); // allow-anti-pattern
         let md = m.to_markdown();
         assert!(md.contains("case_a"));
         assert!(md.contains("metric_1"));
@@ -170,7 +171,7 @@ mod tests_bench_extra {
         for i in 1..=100 {
             lp.record(i as f64);
         }
-        let (p50, p90, p99) = lp.summary().expect("summary should succeed");
+        let (p50, p90, p99) = lp.summary().expect("summary should succeed"); // allow-anti-pattern
         assert!(p50 <= p90 && p90 <= p99);
     }
     #[test]
@@ -237,7 +238,7 @@ mod tests_bench_metric {
         assert_eq!(ms.len(), 2);
         assert!(
             (ms.get("latency")
-                .expect("element at \'latency\' should exist")
+                .expect("element at \'latency\' should exist") // allow-anti-pattern
                 - 12.5)
                 .abs()
                 < 1e-9
@@ -277,7 +278,7 @@ mod tests_bench_extra2 {
         let mut st = ScalingTest::new();
         st.add_point(100, 100.0);
         st.add_point(1000, 1000.0);
-        let exp = st.scaling_exponent().expect("exp should be present");
+        let exp = st.scaling_exponent().expect("exp should be present"); // allow-anti-pattern
         assert!((exp - 1.0).abs() < 0.1, "expected ~1.0, got {}", exp);
         assert!(st.is_at_most_order(1.1));
     }
@@ -302,7 +303,7 @@ mod tests_bench_extra2 {
         assert!(names.contains(&"bench_1"));
         let found = reg.find_group("bench_2");
         assert!(found.is_some());
-        assert_eq!(found.expect("found should be valid").name, "group_a");
+        assert_eq!(found.expect("found should be valid").name, "group_a"); // allow-anti-pattern
     }
     #[test]
     fn test_sample_buffer() {
@@ -311,7 +312,7 @@ mod tests_bench_extra2 {
             buf.push(i as f64);
         }
         assert_eq!(buf.len(), 5);
-        let mean = buf.mean().expect("mean should be present");
+        let mean = buf.mean().expect("mean should be present"); // allow-anti-pattern
         assert!(mean > 0.0);
     }
     #[test]
@@ -354,7 +355,7 @@ mod tests_bench_result {
     #[test]
     fn test_bench_result_from_samples() {
         let samples = vec![10.0, 12.0, 11.0, 10.5, 11.5];
-        let r = BenchResultExt::from_samples("my_bench", &samples).expect("r should be present");
+        let r = BenchResultExt::from_samples("my_bench", &samples).expect("r should be present"); // allow-anti-pattern
         assert!((r.mean_us - 11.0).abs() < 1.0);
         assert_eq!(r.iterations, 5);
         let csv = r.to_csv();
@@ -416,15 +417,15 @@ mod tests_bench_final {
         let mut rep = BenchReporter::new("suite");
         rep.add(
             BenchResultExt::from_samples("alpha", &[10.0, 11.0, 10.5])
-                .expect("value should be present"),
+                .expect("value should be present"), // allow-anti-pattern
         );
         rep.add(
             BenchResultExt::from_samples("beta", &[20.0, 21.0, 20.5])
-                .expect("value should be present"),
+                .expect("value should be present"), // allow-anti-pattern
         );
         assert_eq!(rep.count(), 2);
-        assert_eq!(rep.fastest().expect("fastest should succeed").name, "alpha");
-        assert_eq!(rep.slowest().expect("slowest should succeed").name, "beta");
+        assert_eq!(rep.fastest().expect("fastest should succeed").name, "alpha"); // allow-anti-pattern
+        assert_eq!(rep.slowest().expect("slowest should succeed").name, "beta"); // allow-anti-pattern
         let csv = rep.to_csv();
         assert!(csv.contains("alpha"));
     }
@@ -461,7 +462,7 @@ mod tests_bench_final3 {
     #[test]
     fn test_confidence_interval() {
         let samples: Vec<f64> = (1..=100).map(|i| i as f64).collect();
-        let ci = ConfidenceInterval::compute_95(&samples).expect("ci should be present");
+        let ci = ConfidenceInterval::compute_95(&samples).expect("ci should be present"); // allow-anti-pattern
         assert!((ci.estimate - 50.5).abs() < 1.0);
         assert!(ci.upper > ci.lower);
         assert!(ci.half_width() > 0.0);
@@ -474,10 +475,10 @@ mod tests_bench_final3 {
         for i in 0..=10 {
             reg.add(i as f64, 2.0 * i as f64 + 1.0);
         }
-        let (a, b) = reg.fit().expect("fit should succeed");
+        let (a, b) = reg.fit().expect("fit should succeed"); // allow-anti-pattern
         assert!((a - 1.0).abs() < 1e-9, "intercept: {}", a);
         assert!((b - 2.0).abs() < 1e-9, "slope: {}", b);
-        let pred = reg.predict(5.0).expect("pred should be present");
+        let pred = reg.predict(5.0).expect("pred should be present"); // allow-anti-pattern
         assert!((pred - 11.0).abs() < 1e-9);
     }
     #[test]

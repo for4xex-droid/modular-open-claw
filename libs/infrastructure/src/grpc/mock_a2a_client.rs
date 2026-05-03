@@ -25,7 +25,10 @@ impl MockA2aClient {
 
     /// 次の execute_task 呼び出しで返すプログレスストリームの要素を登録する
     pub fn enqueue_responses(&self, response_stream: Vec<Result<A2aTaskProgress, AiomeError>>) {
-        self.responses.lock().expect("Lock poisoned").push(response_stream); // allow-anti-pattern
+        self.responses
+            .lock()
+            .expect("Lock poisoned") // allow-anti-pattern
+            .push(response_stream); // allow-anti-pattern
     }
 }
 

@@ -202,7 +202,7 @@ mod tests {
             crate::security::sqlite_vault_backend::GLOBAL_MASTER_KEY.set(MlockedVec::new(test_key));
 
         let plaintext = "sk-proj-abc123XYZ_super_secret_key";
-        let encrypted = encrypt_setting(plaintext).expect("encrypt_setting should succeed");
+        let encrypted = encrypt_setting(plaintext).expect("encrypt_setting should succeed"); // allow-anti-pattern
 
         assert!(
             encrypted.len() >= 80,
@@ -214,7 +214,7 @@ mod tests {
         );
 
         // Verify: decryption recovers original plaintext
-        let decrypted = decrypt_setting(&encrypted).expect("decrypt_setting should succeed");
+        let decrypted = decrypt_setting(&encrypted).expect("decrypt_setting should succeed"); // allow-anti-pattern
         assert_eq!(
             decrypted, plaintext,
             "Roundtrip must recover original plaintext"

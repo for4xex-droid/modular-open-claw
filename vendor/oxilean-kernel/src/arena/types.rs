@@ -35,7 +35,7 @@ impl ChainedArena {
         let mut block = ArenaBlock::new(new_block_size);
         let offset = block
             .try_alloc(bytes, align)
-            .expect("arena block allocation must succeed");
+            .expect("arena block allocation must succeed"); // allow-anti-pattern
         let block_idx = self.blocks.len();
         self.blocks.push(block);
         self.total_alloc += bytes;
@@ -586,7 +586,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> SimpleLruCache<K, V> {
             let evict_idx = *self
                 .order
                 .last()
-                .expect("order list must be non-empty before eviction");
+                .expect("order list must be non-empty before eviction"); // allow-anti-pattern
             self.map.remove(&self.keys[evict_idx]);
             self.order.pop();
             self.keys[evict_idx] = key.clone();
@@ -701,7 +701,7 @@ impl<T> TypedArena<T> {
     /// Allocates `val` and returns a reference with the arena's lifetime.
     pub fn alloc(&mut self, val: T) -> &T {
         self.items.push(val);
-        self.items.last().expect("items list must be non-empty")
+        self.items.last().expect("items list must be non-empty") // allow-anti-pattern
     }
     /// Returns the number of allocated items.
     pub fn len(&self) -> usize {
@@ -751,7 +751,7 @@ impl<T> Slot<T> {
         }
         self.inner
             .as_ref()
-            .expect("inner value must be initialized before access")
+            .expect("inner value must be initialized before access") // allow-anti-pattern
     }
 }
 /// A contiguous range of typed indices `[start, end)`.
@@ -929,7 +929,7 @@ impl<T: Clone> MemoSlot<T> {
         }
         self.cached
             .as_ref()
-            .expect("cached value must be initialized before access")
+            .expect("cached value must be initialized before access") // allow-anti-pattern
     }
     /// Invalidates the cached value.
     pub fn invalidate(&mut self) {
@@ -1420,7 +1420,7 @@ impl ScopedArenaExt {
     /// Pops a scope: resets allocation to the saved watermark.
     /// Panics if no scope is active.
     pub fn pop_scope(&mut self) {
-        let wm = self.watermarks.pop().expect("ScopedArena: no active scope");
+        let wm = self.watermarks.pop().expect("ScopedArena: no active scope"); // allow-anti-pattern
         self.inner.top = wm;
     }
     /// Allocates `size` bytes.

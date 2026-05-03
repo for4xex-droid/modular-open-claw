@@ -675,7 +675,7 @@ mod tests {
             "adversarial_personas": []
         }"#;
 
-        let config: SoTConfig = serde_json::from_str(json).expect("Should deserialize old config");
+        let config: SoTConfig = serde_json::from_str(json).expect("Should deserialize old config"); // allow-anti-pattern
         assert_eq!(config.act_convergence_threshold, 0.05);
         assert_eq!(config.spectral_divergence_threshold, 1.5);
     }

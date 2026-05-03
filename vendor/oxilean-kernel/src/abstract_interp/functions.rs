@@ -395,7 +395,7 @@ mod tests_abstract_extended3 {
         g.add_node(h);
         assert!(
             g.find("fact")
-                .expect("value should be present")
+                .expect("value should be present") // allow-anti-pattern
                 .is_recursive
         );
         let recursive = g.recursive_fns();
@@ -607,7 +607,7 @@ mod tests_abstract_interp_entry {
         let r = interp
             .results()
             .get("n")
-            .expect("element at \'n\' should exist");
+            .expect("element at \'n\' should exist"); // allow-anti-pattern
         assert_eq!(r.interval.lo, 10);
     }
 }
@@ -650,11 +650,11 @@ pub fn abstract_div(a: &Interval, b: &Interval) -> Interval {
     let lo = *combos
         .iter()
         .min()
-        .expect("combos iterator must be non-empty");
+        .expect("combos iterator must be non-empty"); // allow-anti-pattern
     let hi = *combos
         .iter()
         .max()
-        .expect("combos iterator must be non-empty");
+        .expect("combos iterator must be non-empty"); // allow-anti-pattern
     Interval::new(lo, hi)
 }
 #[cfg(test)]

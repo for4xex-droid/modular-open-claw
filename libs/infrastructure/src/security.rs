@@ -777,9 +777,9 @@ mod tests {
                 vec!["-c".into(), "import os; print(dict(os.environ))".into()],
                 SandboxProfile::Default,
             )
-            .expect("Failed to build command args");
+            .expect("Failed to build command args"); // allow-anti-pattern
 
-        let output = cmd.output().await.expect("Failed to run command");
+        let output = cmd.output().await.expect("Failed to run command"); // allow-anti-pattern
 
         std::env::remove_var("BASTION_SECRET_TEST");
 
@@ -808,9 +808,9 @@ mod tests {
             .arg("import os; print(os.environ.get('BASTION_TEST_PASSTHROUGH_SECRET', 'not_found'))")
             .env_passthrough(secret_key)
             .build_internal()
-            .expect("Failed to build command args");
+            .expect("Failed to build command args"); // allow-anti-pattern
 
-        let output = cmd.output().await.expect("Failed to run command");
+        let output = cmd.output().await.expect("Failed to run command"); // allow-anti-pattern
 
         std::env::remove_var(secret_key);
 
@@ -857,7 +857,7 @@ mod tests {
         // This should use the new McpServer profile logic
         let mut cmd = guard
             .build_safe_command_args("ls", vec![], SandboxProfile::McpServer)
-            .expect("Failed to build command args");
+            .expect("Failed to build command args"); // allow-anti-pattern
 
         // We just ensure it builds successfully.
         // The actual runsc profile validation is complex to test without runsc,

@@ -15,9 +15,9 @@ fn workspace_root() -> PathBuf {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(manifest_dir)
         .parent()
-        .expect("api-server parent (apps/)")
+        .expect("api-server parent (apps/)") // allow-anti-pattern
         .parent()
-        .expect("workspace root")
+        .expect("workspace root") // allow-anti-pattern
         .to_path_buf()
 }
 

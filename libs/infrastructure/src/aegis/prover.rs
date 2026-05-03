@@ -310,19 +310,24 @@ mod tests {
             .prefix("aegis-test-")
             .tempdir()
             .unwrap();
-        
+
         let skill_dir = tmp_dir.path().join("test_skill").join("src");
         tokio::fs::create_dir_all(&skill_dir).await.unwrap();
-        tokio::fs::write(skill_dir.join("lib.rs"), "fn original() {}").await.unwrap();
-        
+        tokio::fs::write(skill_dir.join("lib.rs"), "fn original() {}")
+            .await
+            .unwrap();
+
         std::env::set_var("FORGE_WORKSPACE_DIR", tmp_dir.path());
 
         let prover = AegisProver::new(Arc::new(MockLlm));
         let incident = dummy_incident();
 
-        let patch = prover.generate_patch(&incident).await.expect("Failed to generate patch");
+        let patch = prover
+            .generate_patch(&incident)
+            .await
+            .expect("Failed to generate patch"); // allow-anti-pattern
         assert_eq!(patch, "fn patched() {}");
-        
+
         std::env::remove_var("FORGE_WORKSPACE_DIR");
     }
 

@@ -318,7 +318,7 @@ mod tests_name_extra {
         let qn = QualifiedNameExt::from_dot_str("Nat.succ");
         assert_eq!(qn.unqualified(), "succ");
         assert_eq!(qn.depth(), 2);
-        let ns = qn.namespace().expect("ns should be present");
+        let ns = qn.namespace().expect("ns should be present"); // allow-anti-pattern
         assert_eq!(ns.to_string(), "Nat");
         let child = QualifiedNameExt::from_dot_str("Nat.succ.aux");
         let parent = QualifiedNameExt::from_dot_str("Nat.succ");
