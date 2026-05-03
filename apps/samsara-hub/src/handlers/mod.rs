@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 pub mod federation;
 pub mod ws;
 pub fn verify_bearer(auth_header: &str, secret: &secrecy::SecretString) -> bool {

@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
 use aiome_core::contracts::HubMessage;
 use std::sync::Arc;
 use tokio::sync::broadcast;
