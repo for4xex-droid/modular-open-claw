@@ -457,10 +457,15 @@ impl FederationOps for UniversalJobQueue {
                 reason: format!("Failed to build HTTP client: {}", e),
             })?;
 
-        let auth_token = self
-            .do_get_setting("federation_secret")
-            .await?
-            .unwrap_or_else(|| "mock_valid_token_user".to_string());
+        let auth_token = match self.do_get_setting("federation_secret").await? {
+            Some(secret) if !secret.trim().is_empty() => secret,
+            _ => {
+                tracing::warn!("⚠️ [Federation] federation_secret is not set; push will likely fail authentication.");
+                return Err(AiomeError::Infrastructure {
+                    reason: "federation_secret is not configured in system_settings".to_string(),
+                });
+            }
+        };
 
         let res = client
             .post(&url)
@@ -500,10 +505,15 @@ impl FederationOps for UniversalJobQueue {
             }
         };
 
-        let node_id = self
-            .do_get_setting("node_id")
-            .await?
-            .unwrap_or_else(|| "self".to_string());
+        let node_id = match self.do_get_setting("node_id").await? {
+            Some(id) if !id.trim().is_empty() => id,
+            _ => {
+                tracing::warn!(
+                    "⚠️ [Federation] node_id is not set in system_settings; using fallback 'self'."
+                );
+                "self".to_string()
+            }
+        };
 
         let since = self.do_get_peer_sync_time("hub").await?;
 
@@ -521,10 +531,15 @@ impl FederationOps for UniversalJobQueue {
                 reason: format!("Failed to build HTTP client: {}", e),
             })?;
 
-        let auth_token = self
-            .do_get_setting("federation_secret")
-            .await?
-            .unwrap_or_else(|| "mock_valid_token_user".to_string());
+        let auth_token = match self.do_get_setting("federation_secret").await? {
+            Some(secret) if !secret.trim().is_empty() => secret,
+            _ => {
+                tracing::warn!("⚠️ [Federation] federation_secret is not set; sync will likely fail authentication.");
+                return Err(AiomeError::Infrastructure {
+                    reason: "federation_secret is not configured in system_settings".to_string(),
+                });
+            }
+        };
 
         let res = client
             .post(&url)
@@ -544,16 +559,10 @@ impl FederationOps for UniversalJobQueue {
             });
         }
 
-        #[derive(serde::Deserialize)]
-        struct SyncResponse {
-            new_karmas: Vec<FederatedKarma>,
-            new_immune_rules: Vec<ImmuneRule>,
-            new_arena_matches: Vec<ArenaMatch>,
-        }
-
-        let sync_data: SyncResponse = res.json().await.map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to parse sync response: {}", e),
-        })?;
+        let sync_data: aiome_core::contracts::FederationSyncResponse =
+            res.json().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to parse sync response: {}", e),
+            })?;
 
         if !sync_data.new_karmas.is_empty()
             || !sync_data.new_immune_rules.is_empty()

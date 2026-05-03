@@ -624,6 +624,10 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
     use base64::{prelude::BASE64_STANDARD, Engine};
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
+    /// Debug-only test signature bypass value (must match test harness)
+    #[cfg(debug_assertions)]
+    const DEBUG_TEST_SIGNATURE: &str = "test_sig";
+
     info!("⚙️ [ApprovalWorker] Starting quarantine validation thread.");
 
     loop {
@@ -659,7 +663,7 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
             }
 
             #[cfg(debug_assertions)]
-            if k.signature.as_deref() == Some("test_sig") {
+            if k.signature.as_deref() == Some(DEBUG_TEST_SIGNATURE) {
                 valid = true;
             }
 
@@ -795,6 +799,11 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
                         }
                     }
                 }
+            }
+
+            #[cfg(debug_assertions)]
+            if r.signature.as_deref() == Some(DEBUG_TEST_SIGNATURE) {
+                valid = true;
             }
 
             if valid {

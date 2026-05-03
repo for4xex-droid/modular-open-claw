@@ -12,9 +12,14 @@ export RUST_LOG=info
 export CELL_ID="swarm-simulation-cell"
 export FEDERATION_SYNC_INTERVAL="5"
 export SAMSARA_HUB_SECRET="swarm_test_secret_2026"
-export FEDERATION_SECRET="swarm_test_secret_2026"
-
 # Setup DB for nodes to have feature flag enabled
+
+# Cleanup trap: ensure background processes are killed on exit/error
+cleanup() {
+    echo "\n🛑 [Simulation] Cleaning up background processes..."
+    kill $HUB_PID $NODE_A_PID $NODE_B_PID 2>/dev/null || true
+}
+trap cleanup EXIT
 
 pkill samsara-hub || true
 pkill api-server || true
@@ -109,7 +114,6 @@ else
     exit 1
 fi
 
-# Cleanup
+# Cleanup handled by trap EXIT
 echo "🛑 [Simulation] Shutting down nodes..."
-kill $HUB_PID $NODE_A_PID $NODE_B_PID || true
 echo "🏁 [Simulation] Test Finished."

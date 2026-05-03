@@ -39,6 +39,11 @@ mod tests {
             .await
             .unwrap();
 
+        sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('federation_secret', 'test_federation_secret', 'system', 1, datetime('now'))")
+            .execute(&db_pool)
+            .await
+            .unwrap();
+
         let pool = DatabasePool::Sqlite(db_pool);
 
         let traj_store = Arc::new(
