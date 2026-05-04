@@ -26,6 +26,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<string>('intermediate');
+    const [tosAccepted, setTosAccepted] = useState(false);
 
     const handleFinalize = async () => {
         setIsSaving(true);
@@ -40,6 +41,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
                 method: 'PUT',
                 body: JSON.stringify({ key: 'view_mode', value: viewMode, category: 'ui' })
+            });
+            // Save ToS Consent
+            await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
+                method: 'PUT',
+                body: JSON.stringify({ key: 'tos_accepted', value: 'true', category: 'legal' })
             });
             // Initialize SOUL.md with LLM
             await authenticatedFetch(`${API_BASE}/api/v1/soul/init`, {
@@ -263,28 +269,42 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                         </div>
 
                         <div style={{ marginTop: '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexDirection: 'column', alignItems: 'center' }}>
                                 {step === steps.length - 1 ? (
-                                    <button
-                                        onClick={handleFinalize}
-                                        disabled={isSaving}
-                                        style={{
-                                            padding: '0.8rem 2.5rem',
-                                            background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
-                                            color: 'var(--text-inverse)',
-                                            border: 'none',
-                                            borderRadius: 'var(--radius-md)',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            opacity: isSaving ? 0.7 : 1
-                                        }}
-                                    >
-                                        <Sparkles size={20} />
-                                        {isSaving ? t('onboarding.finalizing') : t('onboarding.awaken')}
-                                    </button>
+                                    <>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                id="tos-checkbox" 
+                                                checked={tosAccepted} 
+                                                onChange={(e) => setTosAccepted(e.target.checked)} 
+                                                style={{ cursor: 'pointer', accentColor: 'var(--accent-cyan)' }}
+                                            />
+                                            <label htmlFor="tos-checkbox" style={{ cursor: 'pointer' }}>
+                                                {t('onboarding.agreeTo')} <a href="/terms" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Terms of Service</a> & <a href="/privacy" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Privacy Policy</a>
+                                            </label>
+                                        </div>
+                                        <button
+                                            onClick={handleFinalize}
+                                            disabled={isSaving || !tosAccepted}
+                                            style={{
+                                                padding: '0.8rem 2.5rem',
+                                                background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                                                color: 'var(--text-inverse)',
+                                                border: 'none',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontWeight: 700,
+                                                cursor: (isSaving || !tosAccepted) ? 'not-allowed' : 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                opacity: (isSaving || !tosAccepted) ? 0.5 : 1
+                                            }}
+                                        >
+                                            <Sparkles size={20} />
+                                            {isSaving ? t('onboarding.finalizing') : t('onboarding.awaken')}
+                                        </button>
+                                    </>
                                 ) : !steps[step].hideNext ? (
                                     <button
                                         onClick={() => setStep(step + 1)}

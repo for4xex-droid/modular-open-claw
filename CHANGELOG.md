@@ -1,4 +1,11 @@
 ## [Unreleased]
+
+### Added
+- **Beta Launch Readiness (Phase 2)**: Added "Terms of Service" and "Privacy Policy" agreement requirement to the `OnboardingModal` in `management-console`. Users must explicitly consent before initializing their Agent Soul.
+- **Production Federation Configuration**: Restored `samsara-hub` definition and related environment variables (`SAMSARA_HUB_REST`, `SAMSARA_HUB_WS`) in `docker-compose.production.yml` to fully enable Federation v1.5 for Beta deployment.
+
+### Fixed
+- **Stripe Webhook Vulnerability Fix**: Hardened `libs/aiome-commerce/src/stripe.rs` to strictly reject the test secret bypass (`whsec_test`) when `AIOME_DEV_MODE` is disabled, preventing webhook forgery in production mode.
 ### Security
 - **Federation P2P Toxicity Pipeline (Phase 1.5)**:
   - `aiome/libs/infrastructure/src/job_queue/federation.rs` に `P2pSanitizer` 防御壁を新設。

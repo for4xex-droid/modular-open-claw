@@ -40,9 +40,9 @@ services:
     environment:
       - KEY_PROXY_URL=http://key-proxy:9999
       - VAULT_SECRET=${VAULT_SECRET}
-      # Deferred to v1.5
-      # - SAMSARA_HUB_REST=http://samsara-hub:3016
-      # - SAMSARA_HUB_WS=ws://samsara-hub:3016/api/v1/federation/ws
+      # Federation v1.5 activated
+      - SAMSARA_HUB_REST=http://samsara-hub:3016
+      - SAMSARA_HUB_WS=ws://samsara-hub:3016/api/v1/federation/ws
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - RURI_EMBED_URL=http://ruri-embed-server:8100
       - DISCORD_TOKEN=${DISCORD_TOKEN}
@@ -105,34 +105,34 @@ services:
     user: "1001:1001"
     restart: always
 
-  # samsara-hub:
-  #   build:
-  #     context: .
-  #     dockerfile: docker/production.Dockerfile
-  #     args:
-  #       BIN_NAME: samsara-hub
-  #   environment:
-  #     - PORT=3016
-  #     - DATABASE_URL=sqlite:///app/data/samsara_hub.db
-  #     - FEDERATION_SECRET=${FEDERATION_SECRET}
-  #     - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
-  #   volumes:
-  #     - ./data/hub:/app/data
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 1G
-  #   security_opt:
-  #     - no-new-privileges:true
-  #   user: "1001:1001"
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:3016/api/v1/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #   restart: always
-  #   ports:
-  #     - "0.0.0.0:3016:3016"
+  samsara-hub:
+    build:
+      context: .
+      dockerfile: docker/production.Dockerfile
+      args:
+        BIN_NAME: samsara-hub
+    environment:
+      - PORT=3016
+      - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+      - FEDERATION_SECRET=${FEDERATION_SECRET}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+    volumes:
+      - ./data/hub:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3016/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+    ports:
+      - "0.0.0.0:3016:3016"
 
   ruri-embed-server:
     # NOTE: This image is not publicly available on GHCR.

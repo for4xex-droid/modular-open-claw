@@ -38,8 +38,13 @@ impl StripeCommerceEngine {
             tracing::error!("🚨 [StripeCommerceEngine] Running in RELEASE mode without NURTURE_API_URL! Operations will write to local SQLite instead of Nurture API.");
         }
 
-        let is_mock = api_key.expose_secret().starts_with("sk_test_mock")
-            || webhook_secret.expose_secret() == "whsec_test";
+        let is_dev_mode = std::env::var("AIOME_DEV_MODE")
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(cfg!(debug_assertions));
+
+        let is_mock = is_dev_mode
+            && (api_key.expose_secret().starts_with("sk_test_mock")
+                || webhook_secret.expose_secret() == "whsec_test");
         let nurture_client = nurture_url
             .as_ref()
             .map(|_| aiome_core::http::get_http_client().clone());
@@ -482,6 +487,13 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
+        if !self.is_mock && self.webhook_secret.expose_secret() == "whsec_test" {
+            tracing::error!("🚨 [SECURITY] Stripe Webhook verification rejected: Test secret ('whsec_test') used in production mode!");
+            return Err(AiomeError::Infrastructure {
+                reason: "Stripe Webhook verification failed: Test secret used in production mode!"
+                    .into(),
+            });
+        }
         // NOTE: construct_event は strict な Event 型にデシリアライズするため、
         // テスト環境の部分ペイロードではパースエラーを返す場合がある。
         // ここでは HMAC 署名検証のみを目的とし、パース済み Event は意図的に破棄する。
@@ -1108,6 +1120,35 @@ mod tests {
 
         // 実装後はここを「Stripe API によって生成された ID」であることを検証するように変更する。
         // TDD としては、まず「Stripe 連携に必要な情報が不足している場合にエラーを返す」テストを書くのが安全。
+    }
+
+    #[tokio::test]
+    async fn test_production_mode_rejects_test_secrets_red() {
+        // AIOME_DEV_MODE=false の状態で、whsec_test を使ったモックモードが
+        // 無効化され、本番モードとして扱われること（または初期化エラーになること）を検証する。
+
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        std::env::set_var("AIOME_DEV_MODE", "false");
+
+        let engine = StripeCommerceEngine::new(
+            secrecy::SecretString::from("sk_test_mock".to_string()),
+            secrecy::SecretString::from("whsec_test".to_string()),
+            pool,
+            None,
+            None,
+        );
+
+        // DEV_MODE=false の場合は is_mock は false にならなければならない
+        assert!(
+            !engine.is_mock,
+            "In production mode, test secrets MUST NOT enable mock mode"
+        );
+
+        std::env::remove_var("AIOME_DEV_MODE");
     }
 
     #[tokio::test]

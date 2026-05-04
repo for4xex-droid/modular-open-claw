@@ -14,6 +14,10 @@ Aiome's core agentic loop and sandbox boundaries have been mathematically modele
 
 If you uncover a vector that allows an Agent to bypass the `AdaptiveImmuneSystem`, `Watchtower`, or break out of its `gVisor`/WASM constraints, please consider it a high-priority severity. 
 
+## Commerce Integrations (Stripe)
+For commerce and gig features, Aiome uses the `StripeCommerceEngine`. To ensure absolute security in production environments, the engine enforces a strict "Fail-Closed" policy.
+If the `AIOME_DEV_MODE` environment variable is not explicitly set to `true` (or when running in Release mode), using test webhook secrets (e.g., `whsec_test`) will actively block the webhook verification process. Ensure `AIOME_DEV_MODE="false"` is set or omitted in your production deployments to prevent test-bypass vulnerabilities.
+
 ## Reporting a Vulnerability
 
 **Please do not report security vulnerabilities through public GitHub issues.**
