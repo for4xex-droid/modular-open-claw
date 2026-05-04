@@ -204,14 +204,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_memory_crystallizer_initialization() {
+    async fn test_memory_crystallizer_initialization() -> Result<(), Box<dyn std::error::Error>> {
         let provider = Arc::new(MockLlm);
         // UniversalJobQueue の実体化（インメモリ）を試みる
         let pool = crate::db::DatabasePool::Sqlite(
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
-                .await
-                .unwrap(), // allow-anti-pattern
+                .await?,
         );
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -230,5 +229,7 @@ mod tests {
 
             assert!(crystallizer.slm_bridge.is_some());
         }
+
+        Ok(())
     }
 }
