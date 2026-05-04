@@ -22,7 +22,8 @@ import {
   Network,
   Crown,
   Play,
-  Library
+  Library,
+  Server
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
@@ -42,6 +43,7 @@ const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipel
 const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
+const McpDashboard = React.lazy(() => import("./components/McpDashboard"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
@@ -235,7 +237,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'nurture', 'biome', 'causal', 'lora', 'seo-pulse'];
+    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'nurture', 'biome', 'causal', 'lora', 'seo-pulse', 'mcp-dashboard'];
     const advanced = [...intermediate, 'graph', 'audit', 'prompt-stats', 'immune'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -468,6 +470,14 @@ function App() {
               onClick={() => setActiveTab("vault")}
             />
           )}
+          {isVisible("mcp-dashboard") && (
+            <NavItem
+              icon={<Server size={20} />}
+              label={t('nav.mcpDashboard')}
+              active={activeTab === "mcp-dashboard"}
+              onClick={() => setActiveTab("mcp-dashboard")}
+            />
+          )}
           {isVisible("prompt-stats") && (
             <NavItem
               icon={<Activity size={20} />}
@@ -567,6 +577,7 @@ function App() {
             {activeTab === "artifacts" && t('page.artifactVault')}
             {activeTab === "audit" && t('page.audit')}
             {activeTab === "prompt-stats" && t('page.promptStats')}
+            {activeTab === "mcp-dashboard" && t('page.mcpDashboard')}
             {activeTab === "expressions" && t('page.expressions')}
             {activeTab === "biome" && t('page.biomeLab')}
             {activeTab === "store" && t('page.voiceStore')}
@@ -604,6 +615,7 @@ function App() {
               {activeTab === "artifacts" && <ArtifactVault />}
               {activeTab === "audit" && <DiagnosticsHistory />}
               {activeTab === "prompt-stats" && <PromptStatsView />}
+              {activeTab === "mcp-dashboard" && <McpDashboard />}
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}

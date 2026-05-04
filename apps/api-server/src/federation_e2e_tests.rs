@@ -14,7 +14,7 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
     use std::sync::Arc;
     use std::time::Duration;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup_test_jq(mock_server_uri: String) -> (UniversalJobQueue, DatabasePool) {
@@ -62,6 +62,7 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path("/api/v1/federation/push"))
+            .and(header("Authorization", "Bearer test_federation_secret"))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({"status": "ok"})),
             )
@@ -123,5 +124,90 @@ mod tests {
             .unwrap();
 
         assert!(row.is_some(), "Federated karma should be saved to database");
+    }
+
+    #[tokio::test]
+    async fn test_sync_federated_data_makes_http_request_and_imports() {
+        let mock_server = MockServer::start().await;
+
+        let karma = aiome_core::contracts::FederatedKarma {
+            id: "sync_karma_1".to_string(),
+            job_id: None,
+            karma_type: "Technical".to_string(),
+            related_skill: "FederationSync".to_string(),
+            lesson: "Nodes must sync".to_string(),
+            weight: 100,
+            soul_version_hash: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            last_applied_at: None,
+            score: 1.0,
+            lamport_clock: 20,
+            node_id: "remote_node".to_string(),
+            signature: None,
+            clone_origin_id: None,
+            generation: Some(1),
+            somatic_valence: None,
+        };
+
+        let response_body = serde_json::json!({
+            "status": "ok",
+            "new_karmas": [karma],
+            "new_immune_rules": [],
+            "new_arena_matches": [],
+            "server_time": chrono::Utc::now().to_rfc3339(),
+            "next_cursor": null,
+            "has_more": false
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/federation/sync"))
+            .and(header("Authorization", "Bearer test_federation_secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response_body))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let (jq, db) = setup_test_jq(mock_server.uri()).await;
+
+        let result = jq.do_sync_federated_data().await;
+        assert!(
+            result.is_ok(),
+            "do_sync_federated_data should return Ok, got: {:?}",
+            result.err()
+        );
+
+        // Verify the synced karma was saved to DB
+        let q = "SELECT id FROM karma_logs WHERE id = 'sync_karma_1'";
+        let row = sqlx::query(q)
+            .fetch_optional(db.get_sqlite_pool_or_err().unwrap())
+            .await
+            .unwrap();
+
+        assert!(
+            row.is_some(),
+            "Synced federated karma should be saved to database"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_federation_push_fails_without_secret() {
+        let mock_server = MockServer::start().await;
+        let (jq, db) = setup_test_jq(mock_server.uri()).await;
+
+        // Intentionally delete the federation_secret from system_settings
+        sqlx::query("DELETE FROM system_settings WHERE key = 'federation_secret'")
+            .execute(db.get_sqlite_pool_or_err().unwrap())
+            .await
+            .unwrap();
+
+        let result = jq.do_push_federated_metrics().await;
+
+        // Assert: Push should fail because of missing authentication secret
+        assert!(
+            result.is_err(),
+            "do_push_federated_metrics should return Err when federation_secret is missing"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("federation_secret is not configured"));
     }
 }

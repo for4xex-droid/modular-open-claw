@@ -1,5 +1,16 @@
 # 🌊 Aiome Ripple Map
 
+## Sentinel Native Bindings Testing & CI/CD Hardening (Phase 2)
+### 1. Sentinel TDD Integration & Prompt Injection Protection
+- **変更内容**:
+    - `packages/sentinel/src/sentinel.test.ts` [NEW]: Jest テストスイートを作成し、Native バインディング (`napi-bridge`) の動作を直接検証。
+    - `libs/infrastructure/src/immune_system.rs` [MODIFY]: `BASELINE_REGEXES` に `(?i)ignore\s+all\s+previous\s+instructions` パターンを追加し、Sentinel 内部でのプロンプトインジェクションブロックを実装。
+    - `packages/sentinel/package.json` [MODIFY]: `test` コマンドで `AIOME_DB_PATH` を自動挿入し SQLite エラーを解消。冗長な JS テストスクリプトを削除。
+    - `.github/workflows/napi-release.yml` [NEW]: 3 OS での NAPI クロスコンパイルと自動テストの CI/CD を構築。
+- **波及効果**:
+    - Aiome Sentinel SDK のセキュリティと動作安定性が TDD によって確固たるものになり、ネイティブ層での未知のエラーによる CI の Flakiness を排除。
+    - プロンプトインジェクションに対する基本防壁が強化された。
+
 ## MCP Dynamic Registry & Federation Unstubbing (Phase 1.5)
 ### 1. MCP Lazy Loading Integration
 - **変更内容**:

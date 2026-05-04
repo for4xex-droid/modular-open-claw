@@ -22,6 +22,7 @@
     "loraAutotuner": "LoRA Autotuner",
     "promptStats": "LLM Provider Stats",
     "seoPulse": "SEO Pulse",
+    "mcpDashboard": "MCP Servers",
     "settings": "Settings"
   },
   "page": {
@@ -43,6 +44,7 @@
     "causalTrace": "Causal Reasoning Trace",
     "promptStats": "LLM Observability",
     "seoPulse": "SEO Pulse Dashboard",
+    "mcpDashboard": "MCP Server Management",
     "settings": "System Settings"
   },
   "status": {
@@ -518,5 +520,34 @@
   "common": {
     "loading": "Loading...",
     "refresh": "Refresh"
+  },
+  "mcp": {
+    "registeredServers": "Registered MCP Servers",
+    "configPath": "Servers configured in",
+    "addServer": "Add Server",
+    "registerNew": "Register New MCP Server",
+    "serverId": "Server ID",
+    "transport": "Transport",
+    "localCommand": "Local Command",
+    "remoteUrl": "Remote URL",
+    "command": "Command",
+    "args": "Args (comma separated)",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveRestart": "Save & Restart",
+    "removeServer": "Remove Server",
+    "envVars": "ENVIRONMENT VARIABLES",
+    "noServers": "No MCP Servers Registered",
+    "noServersDesc": "Add a server to grant Aiome new capabilities.",
+    "loadFailed": "Failed to load MCP configuration",
+    "connectionError": "Connection error. Is the API server running?",
+    "saveFailed": "Failed to save configuration.",
+    "saveConnectionError": "Connection error while saving.",
+    "confirmRemove": "Remove MCP server '{{id}}'?",
+    "errorIdRequired": "Server ID is required.",
+    "errorIdInvalid": "Server ID must contain only letters, numbers, hyphens, and underscores (max 64 chars).",
+    "errorIdExists": "A server with this ID already exists.",
+    "errorUrlInvalid": "A valid HTTP or HTTPS URL is required for HTTP transport.",
+    "errorCommandRequired": "Command is required for STDIO transport."
   }
 }

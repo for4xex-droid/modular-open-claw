@@ -22,6 +22,7 @@
     "loraAutotuner": "LoRA オートチューナー",
     "promptStats": "LLM コスト・遅延統計",
     "seoPulse": "SEO パルス",
+    "mcpDashboard": "MCPサーバー",
     "settings": "設定"
   },
   "page": {
@@ -43,6 +44,7 @@
     "causalTrace": "因果推論トレース",
     "promptStats": "LLM オブザーバビリティ",
     "seoPulse": "SEO パルスダッシュボード",
+    "mcpDashboard": "MCPサーバー管理",
     "settings": "システム設定"
   },
   "status": {
@@ -518,5 +520,34 @@
   "common": {
     "loading": "読み込み中...",
     "refresh": "更新"
+  },
+  "mcp": {
+    "registeredServers": "登録済みMCPサーバー",
+    "configPath": "設定ファイル",
+    "addServer": "サーバーを追加",
+    "registerNew": "新しいMCPサーバーを登録",
+    "serverId": "サーバーID",
+    "transport": "トランスポート",
+    "localCommand": "ローカルコマンド",
+    "remoteUrl": "リモートURL",
+    "command": "コマンド",
+    "args": "引数（カンマ区切り）",
+    "cancel": "キャンセル",
+    "saving": "保存中...",
+    "saveRestart": "保存して再起動",
+    "removeServer": "サーバーを削除",
+    "envVars": "環境変数",
+    "noServers": "MCPサーバーが登録されていません",
+    "noServersDesc": "サーバーを追加してAiomeに新しい機能を付与しましょう。",
+    "loadFailed": "MCP設定の読み込みに失敗しました",
+    "connectionError": "接続エラー。APIサーバーが起動しているか確認してください。",
+    "saveFailed": "設定の保存に失敗しました。",
+    "saveConnectionError": "保存中に接続エラーが発生しました。",
+    "confirmRemove": "MCPサーバー '{{id}}' を削除しますか？",
+    "errorIdRequired": "サーバーIDは必須です。",
+    "errorIdInvalid": "サーバーIDには英数字、ハイフン、アンダースコアのみ使用できます（最大64文字）。",
+    "errorIdExists": "このIDのサーバーは既に存在します。",
+    "errorUrlInvalid": "HTTPトランスポートには有効なHTTPまたはHTTPS URLが必要です。",
+    "errorCommandRequired": "STDIOトランスポートにはコマンドが必要です。"
   }
 }

@@ -206,6 +206,7 @@ impl AdaptiveImmuneSystem {
                 r"env\s+>\s+",
                 r"export\s+.*=.*",
                 r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
+                r"(?i)ignore\s+all\s+previous\s+instructions|以前の指示を(すべて)?無視|これまでのプロンプトを無視|すべての指示を忘れて",
             ]
             .iter()
             .map(|p| {

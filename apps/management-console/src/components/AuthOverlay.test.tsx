@@ -1,7 +1,5 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import AuthOverlay from './AuthOverlay';
-import { useTranslation } from '../i18n';
 
 jest.mock('../config', () => ({
   API_BASE: 'http://localhost:3015'
@@ -44,7 +42,7 @@ describe('AuthOverlay - Humanized UI', () => {
 
   it('shows humanized error message on failure', async () => {
     // Mock fetch to simulate 401
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 401
     }) as jest.Mock;

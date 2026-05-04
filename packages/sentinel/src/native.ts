@@ -44,7 +44,16 @@ const platform = os.platform();
 const arch = os.arch();
 
 try {
-    native = require(`../../index.${platform}-${arch}.node`) as AiomeNativeBridge;
+    const fs = require('fs');
+    const path = require('path');
+    const dir = path.join(__dirname, '..');
+    const files = fs.readdirSync(dir);
+    const nodeFile = files.find((f: string) => f.endsWith('.node') && f.includes(platform) && f.includes(arch));
+    
+    if (!nodeFile) {
+        throw new Error("No .node file found in " + dir);
+    }
+    native = require(path.join(dir, nodeFile)) as AiomeNativeBridge;
 } catch (e) {
     console.error("❌ [CRITICAL SECURITY ALERT] Aiome Native Bridge (Sentinel) binary NOT FOUND for platform: " + platform + "-" + arch);
     console.error("⚠️  Falling back to Safe-Mode (Blocking Mode). Security-critical operations will be RESTRICTED.");
@@ -66,7 +75,7 @@ try {
         },
         async karmaLearnFromTool() { },
         async karmaPreserveFacts() { },
-        async immuneScanInput() { },
+        async immuneScanInput() { throw new Error("Sentinel Native Bridge missing: immuneScanInput blocked (Fail-Closed)."); },
         async karmaFlushSession() { },
         async watchtowerTrackUsage() { },
         async watchtowerInit() { },

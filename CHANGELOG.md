@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- **MCP Server Management Dashboard**:
+  - `apps/management-console/src/components/McpDashboard.tsx` にて、MCP (Model Context Protocol) サーバーの登録・削除および設定管理をGUIで行うダッシュボードを実装。
+  - STDIO トランスポート（ローカルコマンド）および HTTP トランスポート（リモートURL）に完全対応し、IDパストラバーサルや `javascript:` スキーム混入を防ぐ厳格なセキュリティバリデーション (TDD) を導入。
+  - i18n 多言語対応 (`en.json`, `ja.json`) を完了し、管理コンソールのナビゲーションに統合。
+
+- **Sentinel Native Bindings TDD & CI/CD Hardening**:
+  - `packages/sentinel` 内部に Jest を導入し、NAPI バインディング (`index.darwin-arm64.node` 等) のネイティブセキュリティレイヤーに対する自動テスト (TDD) を実装。
+  - プロンプトインジェクション (`ignore all previous instructions`) を防ぐ新規 Baseline Regex ルールを `libs/infrastructure/src/immune_system.rs` に追加し、Jest での Negative Test 検証をパス。
+  - GitHub Actions `.github/workflows/napi-release.yml` を作成し、3大プラットフォーム (Linux, Windows, macOS) でのネイティブクロスコンパイルとテストの自動化を確立。
+
 - **Beta Launch Readiness (Phase 2)**: Added "Terms of Service" and "Privacy Policy" agreement requirement to the `OnboardingModal` in `management-console`. Users must explicitly consent before initializing their Agent Soul.
 - **Production Federation Configuration**: Restored `samsara-hub` definition and related environment variables (`SAMSARA_HUB_REST`, `SAMSARA_HUB_WS`) in `docker-compose.production.yml` to fully enable Federation v1.5 for Beta deployment.
 
