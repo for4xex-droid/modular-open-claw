@@ -100,6 +100,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "polar_api_key",
     "polar_webhook_secret",
     "lora_opt_out",
+    "csam_toxicity_forbidden_words",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[

@@ -373,6 +373,11 @@ const SettingsPage: React.FC = () => {
                             onUpdate={(v) => updateSetting('allowed_origins', v, 'security')}
                             saving={saving === 'allowed_origins'}
                         />
+                        <ToxicityConfig 
+                            value={getSetting('csam_toxicity_forbidden_words')}
+                            onUpdate={(v) => updateSetting('csam_toxicity_forbidden_words', v, 'security')}
+                            saving={saving === 'csam_toxicity_forbidden_words'}
+                        />
                     </div>
                 </section>
                 )}
@@ -543,6 +548,62 @@ const SecretUpdater: React.FC = () => {
                     {result.message}
                 </div>
             )}
+        </div>
+    );
+};
+
+const ToxicityConfig: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
+    const [draft, setDraft] = useState('');
+    const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    const addWord = () => {
+        if (!draft.trim()) return;
+        const newWords = draft.split(',').map(s => s.trim()).filter(Boolean);
+        if (newWords.length === 0) return;
+        const updated = Array.from(new Set([...items, ...newWords])).join(',');
+        onUpdate(updated);
+        setDraft('');
+    };
+
+    const removeWord = (idx: number) => {
+        const updated = items.filter((_, i) => i !== idx).join(',');
+        onUpdate(updated);
+    };
+
+    return (
+        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Toxicity Blocklist (CSAM/Malware)</label>
+                {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-amber)" />}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                Words added here will be blocked during AI generation and Federation P2P messaging.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
+                {items.map((item, i) => (
+                    <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        background: 'var(--accent-rose-glass)', border: '1px solid var(--accent-rose-20)',
+                        borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem',
+                        color: 'var(--accent-rose)'
+                    }}>
+                        <span>{item}</span>
+                        <X size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => removeWord(i)} />
+                    </div>
+                ))}
+                {items.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No blocked words.</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                    type="text" value={draft} placeholder="Enter a banned word..."
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') addWord(); }}
+                    style={{ ...inputStyle, flex: 1 }}
+                />
+                <button onClick={addWord} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
+                    <Plus size={14} /> Add
+                </button>
+            </div>
         </div>
     );
 };

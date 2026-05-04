@@ -96,17 +96,22 @@ pub async fn upload_avatar_handler(
         ));
     }
 
-    // NOTE: ImageHasher は非 Send なため、await ポイント前にドロップさせるためブロックで囲う
-    let (hash, is_csam_hit) = {
+    // NOTE: check_blacklist はDBアクセスを含むため await が必要。
+    // compute_hash は同期処理でブロックする可能性があるためブロックで囲う
+    let hash = {
         let hasher = ImageHasher::new();
-        let h = hasher.compute_hash(&content_bytes).map_err(|e| {
+        hasher.compute_hash(&content_bytes).map_err(|e| {
             AppError(aiome_core_contracts::error::AiomeError::Infrastructure {
                 reason: format!("Hash processing error: {}", e),
             })
-        })?;
-        let hit = hasher.is_blacklisted(&h);
-        (h, hit)
+        })?
     };
+    let is_csam_hit = ImageHasher::check_blacklist(state.db_pool.get_inner(), &hash)
+        .await
+        .map_err(|e| {
+            error!("🚨 [Avatar] CSAM Blacklist DB check failed: {}", e);
+            AppError::internal("Compliance verification service unavailable")
+        })?;
 
     let image_status = if is_csam_hit {
         "BLACKLISTED".to_string()

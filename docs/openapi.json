@@ -273,8 +273,8 @@
           "required": true
         },
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Started autonomous mode",
             "content": {
               "application/json": {
                 "schema": {}
@@ -296,8 +296,8 @@
         ],
         "operationId": "autonomous_status",
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Autonomous status",
             "content": {
               "application/json": {
                 "schema": {}
@@ -319,8 +319,8 @@
         ],
         "operationId": "autonomous_stop",
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Stopped autonomous mode",
             "content": {
               "application/json": {
                 "schema": {}
@@ -342,8 +342,8 @@
         ],
         "operationId": "list_messages",
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "List recent messages",
             "content": {
               "application/json": {
                 "schema": {}
@@ -375,8 +375,8 @@
           "required": true
         },
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Message sent",
             "content": {
               "application/json": {
                 "schema": {}
@@ -398,8 +398,8 @@
         ],
         "operationId": "biome_status",
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Status retrieved",
             "content": {
               "application/json": {
                 "schema": {}
@@ -421,8 +421,8 @@
         ],
         "operationId": "list_topics",
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "200": {
+            "description": "Topics retrieved",
             "content": {
               "application/json": {
                 "schema": {}
@@ -450,8 +450,8 @@
           "required": true
         },
         "responses": {
-          "501": {
-            "description": "Not Implemented",
+          "201": {
+            "description": "Topic created",
             "content": {
               "application/json": {
                 "schema": {}

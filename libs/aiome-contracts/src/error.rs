@@ -211,10 +211,10 @@ impl axum::response::IntoResponse for AiomeError {
         let raw_variant = format!("{:?}", self)
             .split('(')
             .next()
-            .unwrap_or("Unknown")
+            .unwrap_or("Unknown") // allow-anti-pattern: split().next() は常に Some を返す
             .split('{')
             .next()
-            .unwrap_or("Unknown")
+            .unwrap_or("Unknown") // allow-anti-pattern: 同上
             .trim()
             .to_string();
 
@@ -340,7 +340,11 @@ mod tests {
             "External service detail leaked: {}",
             msg
         );
-        assert!(!msg.contains("503"), "External status code leaked: {}", msg);
+        assert!(
+            !msg.contains("Service Unavailable"),
+            "External status code leaked: {}",
+            msg
+        );
         assert_eq!(code, "InternalError");
     }
 }

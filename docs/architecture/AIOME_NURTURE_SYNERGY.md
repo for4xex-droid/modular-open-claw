@@ -65,6 +65,7 @@ graph TB
             SAMSARA["SamsaraHub (Federation)"]
             SYNDICATE["SmartSyndicate"]
             IMMUNE["AdaptiveImmuneSystem"]
+            P2P_SAFE["P2pSanitizer (Toxicity Filter)"]
         end
 
         subgraph "Apps"
@@ -109,7 +110,6 @@ graph TB
             TIMESFM["timesfm-sidecar /health"]
             VRAM["VramArbiter"]
             CLONE["CloneManager"]
-            P2P_SAFE["P2PSanitizer"]
             RESIDENCY["ResidencyManager"]
         end
 
@@ -735,6 +735,7 @@ graph TB
         A4["IntentFirewall — MCP インテント検証"]
         A5["container_runtime — ランタイム検出 SSOT"]
         A6["ProofVerifier — OxiLean形式検証/Sandbox"]
+        A7["P2pSanitizer — Federation浄化"]
     end
 
     subgraph "Trust Zone B (NURTURE)"
@@ -743,7 +744,6 @@ graph TB
         B2["EconomyInterceptor — 予算超過防止"]
         B3["CsamPipeline — 3層コンテンツ安全"]
         B4["DrmEngine — オンメモリ暗号化"]
-        B5["P2PSanitizer — Federation浄化"]
         B6["PythonExecutor — サンドボックス実行 (Podman)"]
     end
 
@@ -757,7 +757,7 @@ graph TB
     A1 -->|認証トークン| B1
     A4 -->|MCP ツール呼び出し検証| B2
     B3 -->|アセット検査結果| A3
-    B5 -->|浄化済みデータ| A1
+    A7 -->|浄化済みデータ| A1
 
     B2 -->|決済| C1
     B2 -->|ギフト| C2

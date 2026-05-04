@@ -1,4 +1,14 @@
 ## [Unreleased]
+### Security
+- **Federation P2P Toxicity Pipeline (Phase 1.5)**:
+  - `aiome/libs/infrastructure/src/job_queue/federation.rs` に `P2pSanitizer` 防御壁を新設。
+  - `Project-Nurture` 内に残存していた未使用スタブ `p2p_sanitizer.rs` を完全に削除し、Aiome プロキシ層への責務の集約を完了。
+  - 管理コンソールの `SettingsPage.tsx` に Toxicity Blocklist の動的設定 UI を実装し、CSAM / マルウェア等への即時対応能力を提供。
+  - TDD により安全な実装を完了し、全ての既存および新規テスト（Positive/Negative）のグリーンを確認。
+- **Biome Proxy S2S Authentication Hardening**:
+  - `biome_status`, `list_topics`, `create_topic` の3ルートに欠落していた `Authorization: Bearer` ヘッダーを統一付与。全4プロキシルートが `hub_auth_header()` ヘルパー経由で Samsara Hub へ S2S 認証を行う設計に統一。
+  - `send_message` に Defense-in-Depth コンテンツバリデーション（8000文字上限 + `data:image/` / `data:video/` / `;base64,` バイナリデータ埋め込み禁止）を追加し、P2P ネットワークへの CSAM / インジェクション経路を閉塞。
+
 ### Added
 - **MCP Dynamic Registry & Lazy Loading (Phase 1.5 P0)**:
   - `apps/api-server/src/mcp/client.rs` の `McpProcessManager` に `McpRegistryEntry` と `register_server` を追加。

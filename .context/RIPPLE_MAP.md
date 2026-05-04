@@ -13,6 +13,16 @@
 - **波及効果**:
     - ハリボテだった P2P Federation のデータ抽出部分が実働コードに置き換わり、Samsara Hub などの外部ノードへ同期用ペイロードを渡す基盤が完成した。
 
+### 3. Federation Toxicity Defense Pipeline
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `P2pSanitizer` を実装し、CSAM および Toxicity の禁止ワードフィルタリング（O(n)文字列走査）を構築。
+    - `apps/api-server/src/routes/biome.rs` [MODIFY]: `/api/biome/send` エンドポイントに `P2pSanitizer` の検証ロジックを統合し、`csam_toxicity_forbidden_words` 設定を DB から動的注入。
+    - `apps/api-server/src/routes/settings.rs` [MODIFY]: `csam_toxicity_forbidden_words` を `ALLOWED_KEYS` のホワイトリストに追加し、UIからの動的編集を許可。
+    - `apps/management-console/src/components/SettingsPage.tsx` [MODIFY]: `ToxicityConfig` コンポーネントを新設し、コンマ区切りリストの重複排除とバリデーションを含む UI を統合。
+- **波及効果**:
+    - Aiome の発信ネットワーク層に強力な Toxicity 防御壁が確立し、Samsara Hub への悪意あるペイロードの伝播が構造的に遮断された。
+    - `P2PSanitizer` の責務が Nurture インフラから Aiome OSS 内の L3 インフラに完全に移行し、レガシースタブが Project-Nurture から削除された。
+
 ## Zero-Panic CI Enforcement & Guardrails Hardening
 ### 1. `enforce_unwrap_deny.py` Integration
 - **変更内容**:

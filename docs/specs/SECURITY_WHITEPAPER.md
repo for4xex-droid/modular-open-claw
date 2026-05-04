@@ -64,6 +64,7 @@ Aiome が実行するスキル（動的コード）は、用途に応じて2種�
 ## 3. P2P 通信プロトコルの安全性 (Content-Security Guardrails)
 Aiome は連邦学習（Federation）機能を備えていますが、この通信網を違法データの温床にさせないための強力なフィルタリング（Plan D）を実装しています。
 
+*   **動的 Toxicity / CSAM ブロック (Federation v1.5)**: 発信されるすべての P2P メッセージに対し、データベースで管理される動的な禁止ワードリスト (`csam_toxicity_forbidden_words`) に基づく文字列スキャンを事前実行します。不正な単語を含むメッセージはネットワークに送出される前にインフラ層で遮断され、Samsara Hub への有害コンテンツの伝播を根絶します。
 *   **バイナリ送信の構造的遮断**: P2P Hub (Samsara Hub) へのメッセージリレーにおいて、`data:image/`, `data:video/`, `;base64,` といったバイナリフォーマットを含むペイロードをプロトコルレベルで拒絶します。
 *   **アセット分離と 3層防御 (Asset Isolation & 3-Layer Defense)**: ユーザーがアップロードするカスタムアセットは以下の 3層 の防壁を通過しなければ Hub に同期されません。
     1. **eKYC 実名・年齢確認**: Stripe Identity を利用し、18歳以上の身元証明を必須化します。
@@ -103,7 +104,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-05-02 (Asia/Tokyo) - Reflexion Phase 4*
+*最終更新: 2026-05-04 (Asia/Tokyo) - Federation v1.5 P2pSanitizer added*
 
 ## 2.6. A2UI Generative Interface Guardrails (Phase 0)
 LLM が動的に UI を生成する A2UI プロトコルにおいて、不正なペイロードがブラウザ上で実行されることを防ぐため、厳格なバリデーション層を設けています。

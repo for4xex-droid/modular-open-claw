@@ -14,11 +14,12 @@ use tracing::info;
 
 pub struct CsamScanConductor {
     artifact_store: Option<Arc<dyn ArtifactStore>>,
+    pool: shared::db::DatabasePool,
 }
 
 impl CsamScanConductor {
-    pub fn new(artifact_store: Option<Arc<dyn ArtifactStore>>) -> Self {
-        Self { artifact_store }
+    pub fn new(artifact_store: Option<Arc<dyn ArtifactStore>>, pool: shared::db::DatabasePool) -> Self {
+        Self { artifact_store, pool }
     }
 }
 
@@ -54,25 +55,34 @@ impl TaskConductor for CsamScanConductor {
         // Real logic using tokio::task::spawn_blocking to prevent Tokio thread pool exhaustion.
         let artifact_id = job.topic.clone();
 
-        let (hash_b64, is_malicious) = tokio::task::spawn_blocking(move || {
-            let hasher = shared::csam::image_hash::ImageHasher::new();
+        let hash_b64 = tokio::task::spawn_blocking(move || {
+            let _hasher = shared::csam::image_hash::ImageHasher::new();
 
             // For testing, if the job topic equals a malicious hash string directly, treat it as a mock hit.
             // In reality, this would read from artifact_store by downloading the image to memory.
             if artifact_id == "dummy_malicious_hash_value_12345" {
-                return (artifact_id.clone(), hasher.is_blacklisted(&artifact_id));
+                return artifact_id.clone();
             }
 
             // A realistic implementation would load the image bytes and call:
             // let hash = hasher.compute_hash(image_bytes).unwrap(); // allow-anti-pattern
-            // let is_malicious = hasher.is_blacklisted(&hash);
+            // return hash;
 
-            ("dummy_clean_hash".to_string(), false)
+            "dummy_clean_hash".to_string()
         })
         .await
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("CSAM spawn_blocking failed: {}", e),
         })?;
+
+        let is_malicious = shared::csam::image_hash::ImageHasher::check_blacklist(&self.pool, &hash_b64)
+            .await
+            .map_err(|e| {
+                tracing::error!("🚨 [CSAM] Blacklist DB check failed: {}", e);
+                AiomeError::Infrastructure {
+                    reason: format!("CSAM blacklist verification unavailable: {}", e),
+                }
+            })?;
 
         if is_malicious {
             tracing::error!(
@@ -101,7 +111,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_csam_conductor_identifies_as_csam_scan() {
-        let conductor = CsamScanConductor::new(None);
+        let pool = shared::db::DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let conductor = CsamScanConductor::new(None, pool);
         // We expect it to handle "csam_scan" category
         assert_eq!(
             conductor.capable_categories(),
@@ -111,7 +122,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_csam_conductor_conducts_stub() {
-        let conductor = CsamScanConductor::new(None);
+        let pool = shared::db::DatabasePool::new_sqlite(":memory:").await.unwrap();
+        shared::sql_exec!(&pool, "CREATE TABLE csam_blacklist (image_hash TEXT PRIMARY KEY)").unwrap();
+        let conductor = CsamScanConductor::new(None, pool);
         let mut job = Job::default();
         job.id = "job-42".into();
         job.topic = "art-123".into();
@@ -137,8 +150,11 @@ mod tests {
         // Here we test that if ImageHasher detects a malicious image, it fails the job.
         // For testing, we don't have a real image artifact pipeline hooked up in the unit test yet,
         // but we expect CsamScanConductor to return an Error if it finds a malicious hash.
+        let pool = shared::db::DatabasePool::new_sqlite(":memory:").await.unwrap();
+        shared::sql_exec!(&pool, "CREATE TABLE csam_blacklist (image_hash TEXT PRIMARY KEY)").unwrap();
+        shared::sql_exec!(&pool, "INSERT INTO csam_blacklist (image_hash) VALUES ('dummy_malicious_hash_value_12345')").unwrap();
 
-        let conductor = CsamScanConductor::new(None);
+        let conductor = CsamScanConductor::new(None, pool);
         let mut job = Job::default();
         job.id = "csam-job-99".into();
         job.topic = "dummy_malicious_hash_value_12345".into(); // Trick the mock to think this artifact has this hash

@@ -853,7 +853,7 @@ async fn test_rate_limiting_per_agent() {
             .get("/api/biome/status")
             .add_header(axum::http::header::AUTHORIZATION, &bearer)
             .await;
-        assert_eq!(resp.status_code(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     let resp = server
@@ -1144,7 +1144,7 @@ async fn test_biome_routes_auth() {
         .get("/api/biome/status")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
-    assert_eq!(resp_auth.status_code(), StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(resp_auth.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[serial]
@@ -3244,4 +3244,101 @@ async fn test_aegis_sentinel_integration() {
         }
         _ => panic!("Expected AegisSentinel event, got another event"),
     }
+}
+
+#[serial]
+#[tokio::test]
+async fn test_biome_send_message_content_length() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let content = "a".repeat(8001);
+    let payload = serde_json::json!({
+        "recipient_pubkey": "dummy",
+        "topic_id": "dummy_topic",
+        "content": content
+    });
+
+    let resp = server
+        .post("/api/biome/send")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"].as_str().unwrap().contains("8000 bytes")); // allow-anti-pattern
+}
+
+#[serial]
+#[tokio::test]
+async fn test_biome_send_message_binary_data() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let content = "Hello data:image/png;base64,iVBORw0KGgo=";
+    let payload = serde_json::json!({
+        "recipient_pubkey": "dummy",
+        "topic_id": "dummy_topic",
+        "content": content
+    });
+
+    let resp = server
+        .post("/api/biome/send")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"].as_str().unwrap().contains("Binary data embedding")); // allow-anti-pattern
+}
+
+#[serial]
+#[tokio::test]
+async fn test_biome_autonomous_clamp() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "topic_id": "dummy_topic",
+        "peer_pubkey": "dummy_peer",
+        "interval_secs": 0, // Too small, should clamp to 10
+        "max_rounds": 0 // Too small, should clamp to 1
+    });
+
+    let resp = server
+        .post("/api/biome/autonomous/start")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    let status_resp = server
+        .get("/api/biome/autonomous/status")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(status_resp.status_code(), StatusCode::OK);
+    let json = status_resp.json::<serde_json::Value>();
+    assert_eq!(json["running"].as_bool(), Some(true));
+    let config = &json["config"];
+    assert_eq!(config["interval_secs"].as_u64(), Some(10));
+    assert_eq!(config["max_rounds"].as_u64(), Some(1));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_biome_hub_unreachable_error() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let resp = server
+        .get("/api/biome/topics")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    // Fails because the external Hub endpoint is not mocked and fails to connect
+    assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
 }

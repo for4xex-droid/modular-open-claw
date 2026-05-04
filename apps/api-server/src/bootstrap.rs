@@ -1204,9 +1204,10 @@ pub async fn init_core_services(
 
     // Register CsamScanConductor
     let csam_conductor = Arc::new(
-        infrastructure::task_orchestrator::csam::CsamScanConductor::new(Some(
-            artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>,
-        )),
+        infrastructure::task_orchestrator::csam::CsamScanConductor::new(
+            Some(artifact_store.clone() as Arc<dyn aiome_core::traits::ArtifactStore>),
+            db_pool.clone(),
+        ),
     );
     task_dispatcher.register_conductor(csam_conductor);
 

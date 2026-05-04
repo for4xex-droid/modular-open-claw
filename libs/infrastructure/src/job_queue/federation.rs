@@ -15,6 +15,24 @@ use async_trait::async_trait;
 use sqlx::Row;
 use tracing::{info, warn};
 
+pub struct P2pSanitizer;
+
+impl P2pSanitizer {
+    pub fn sanitize(content: &str, banned_words: &[String]) -> Result<(), AiomeError> {
+        let lower_content = content.to_lowercase();
+        for word in banned_words {
+            // Assume banned_words are already pre-processed (trimmed and lowercase)
+            if lower_content.contains(word) {
+                tracing::warn!("🚨 [Federation] Blocked P2P message containing forbidden word.");
+                return Err(AiomeError::SecurityViolation {
+                    reason: "Message contains forbidden content".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 #[async_trait]
 pub trait FederationOps {
     async fn do_export_federated_data(
@@ -650,5 +668,18 @@ mod tests {
             0,
             "Should fetch 0 unfederated rule after mark_as_federated"
         );
+    }
+
+    #[tokio::test]
+    async fn test_p2p_sanitizer_blocks_forbidden_words() {
+        let banned = vec!["csam".to_string(), "malware_payload".to_string()];
+        
+        let safe_content = "This is a safe message about federation.";
+        let result = crate::job_queue::federation::P2pSanitizer::sanitize(safe_content, &banned);
+        assert!(result.is_ok(), "Safe content should pass");
+
+        let unsafe_content = "Check out this CSAM link!";
+        let result = crate::job_queue::federation::P2pSanitizer::sanitize(unsafe_content, &banned);
+        assert!(result.is_err(), "Unsafe content should be blocked");
     }
 }

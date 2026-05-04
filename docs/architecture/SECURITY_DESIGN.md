@@ -125,6 +125,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 ### Layer 1: Guardrails (Input Validation & Content Filtering)
 - Detects prompt injections and command injections.
 - Sanitizes control characters and enforces length limits.
+- **Dynamic Toxicity/CSAM Defense (Federation v1.5)**: Implements `P2pSanitizer` in the `aiome-infrastructure` layer. It dynamically loads a toxicity blocklist (`csam_toxicity_forbidden_words`) from the database, pre-processes it to lowercase, and performs an O(n) string scan on all outgoing P2P Federation messages (`/api/biome/send`). Messages containing forbidden substrings are rejected prior to network dispatch, eliminating malicious payload propagation across the Samsara Hub.
 - **Binary/CSAM Blocking (Phase 7.1 & 8.1 & 2A-1 & 2A-3)**: Strictly prohibits `data:image/`, `data:video/`, and `;base64,` content in the Biome P2P protocol. Enforces a **3-Layer Defense** for custom avatar uploads: 1) eKYC Age Verification, 2) Perceptual Image Hashing (offloaded to `tokio::task::spawn_blocking` to prevent async thread starvation), and 3) Skeletal Proportion Rules (5.5-head ratio). Non-compliant assets are actively quarantined in `QuarantineStore`. A strict **Quarantine Release API** (`POST /api/v1/audit/quarantine/{id}/release`) is exposed with RBAC (System Admin only) to manage false positives under zero-trust guidelines.
 - **Sync Throttling**: Limits CRDT state blobs to 1MB to structurally block steganographic binary embedding.
 - **Global Payload Restriction (Phase 8.6)**: Enforces a system-wide 2MB limit on all request bodies to prevent OOM/DoS via oversized payloads. A strategic 50MB extension is granted exclusively to the `/upload` endpoint to support validated avatar assets.
@@ -209,8 +210,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-05-02*
-*Managed by: Aiome Sovereign Task Force (Ref: Phase 7 Hardening & Nurture Phase 3)*
+*Last Mutated: 2026-05-04*
+*Managed by: Aiome Sovereign Task Force (Ref: Federation v1.5 Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -239,4 +240,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-05-02 (Reflexion Phase 4)*
+*最終更新: 2026-05-04 (Reflexion Phase 4 + Federation v1.5)*

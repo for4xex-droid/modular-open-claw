@@ -59,11 +59,25 @@ impl ImageHasher {
         Ok(hash.to_base64())
     }
 
-    /// 既知の有害ハッシュリストとの照合 (初期実装はモック)
-    pub fn is_blacklisted(&self, hash_base64: &str) -> bool {
-        // TODO: 将来的にデータベースや外部API (PhotoDNA) と連携 // allow-anti-pattern
-        let mock_blacklist = ["dummy_malicious_hash_value_12345"];
-        mock_blacklist.contains(&hash_base64)
+    /// 既知の有害ハッシュリストとの照合
+    pub async fn check_blacklist(pool: &crate::db::DatabasePool, hash_base64: &str) -> Result<bool, CsamError> {
+        let q = format!(
+            "SELECT COUNT(*) FROM csam_blacklist WHERE image_hash = {}",
+            pool.ph(0)
+        );
+        let count: Option<i64> = match pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(hash_base64)
+                .fetch_optional(p)
+                .await
+                .map_err(|_| CsamError::HashError)?,
+            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(hash_base64)
+                .fetch_optional(p)
+                .await
+                .map_err(|_| CsamError::HashError)?,
+        };
+        Ok(count.unwrap_or(0) > 0)
     }
 
     /// 類似度（ハミング距離）の計算 (0.0 - 1.0)
@@ -100,5 +114,18 @@ mod tests {
         let hash1 = hasher.hasher.hash_image(&dynamic_img).to_base64();
         let hash2 = hasher.hasher.hash_image(&dynamic_img).to_base64();
         assert_eq!(hash1, hash2);
+    }
+
+    #[tokio::test]
+    async fn test_is_blacklisted_db() {
+        let pool = crate::db::DatabasePool::new_sqlite(":memory:").await.unwrap();
+        crate::sql_exec!(&pool, "CREATE TABLE csam_blacklist (image_hash TEXT PRIMARY KEY)").unwrap();
+        crate::sql_exec!(&pool, "INSERT INTO csam_blacklist (image_hash) VALUES ('malicious123')").unwrap();
+
+        let is_bad = ImageHasher::check_blacklist(&pool, "malicious123").await.unwrap();
+        assert!(is_bad);
+
+        let is_bad = ImageHasher::check_blacklist(&pool, "safe_hash").await.unwrap();
+        assert!(!is_bad);
     }
 }
