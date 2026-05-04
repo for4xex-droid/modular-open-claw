@@ -7,6 +7,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
+use aiome_core::traits::SettingsOps;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -14,7 +15,6 @@ use axum::{
     Json,
 };
 use secrecy::ExposeSecret;
-use aiome_core::traits::SettingsOps;
 
 /// Samsara Hub への S2S 認証ヘッダーを生成する。
 fn hub_auth_header(state: &AppState) -> String {
@@ -56,7 +56,7 @@ pub async fn biome_status(
         .send()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
-    
+
     let status = res.status();
     let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
         tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
@@ -85,7 +85,7 @@ pub async fn list_topics(
         .send()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
-    
+
     let status = res.status();
     let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
         tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
@@ -117,7 +117,7 @@ pub async fn create_topic(
         .send()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
-    
+
     let status = res.status();
     let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
         tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
@@ -144,7 +144,9 @@ pub async fn autonomous_start(
     let interval_secs = req.interval_secs.unwrap_or(60).clamp(10, 3600);
     // clamp: 最小1ラウンド(意味のない0を排除), 最大1000(リソース枯渇防止)
     let max_rounds = req.max_rounds.unwrap_or(10).clamp(1, 1000);
-    state.autonomous_running.store(true, std::sync::atomic::Ordering::SeqCst);
+    state
+        .autonomous_running
+        .store(true, std::sync::atomic::Ordering::SeqCst);
     let mut config = state.autonomous_config.write().await;
     *config = Some(aiome_core::biome::AutonomousConfig {
         topic_id: req.topic_id,
@@ -172,7 +174,9 @@ pub async fn autonomous_stop(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
-    state.autonomous_running.store(false, std::sync::atomic::Ordering::SeqCst);
+    state
+        .autonomous_running
+        .store(false, std::sync::atomic::Ordering::SeqCst);
     let mut config = state.autonomous_config.write().await;
     *config = None;
 
@@ -195,7 +199,9 @@ pub async fn autonomous_status(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
-    let is_running = state.autonomous_running.load(std::sync::atomic::Ordering::SeqCst);
+    let is_running = state
+        .autonomous_running
+        .load(std::sync::atomic::Ordering::SeqCst);
     let config = state.autonomous_config.read().await;
 
     let conf_val = match &*config {
@@ -205,7 +211,7 @@ pub async fn autonomous_status(
             "interval_secs": c.interval_secs,
             "max_rounds": c.max_rounds
         }),
-        None => serde_json::json!(null)
+        None => serde_json::json!(null),
     };
 
     Ok((
@@ -231,11 +237,7 @@ pub async fn list_messages(
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
     // MVP: Return empty list until Hub provides a dedicated messages endpoint
-    Ok((
-        StatusCode::OK,
-        Json(serde_json::json!([])),
-    )
-        .into_response())
+    Ok((StatusCode::OK, Json(serde_json::json!([]))).into_response())
 }
 
 #[utoipa::path(
@@ -299,7 +301,9 @@ pub async fn send_message(
         .filter(|s| !s.is_empty())
         .collect();
 
-    if let Err(e) = infrastructure::job_queue::federation::P2pSanitizer::sanitize(&req.content, &banned_words) {
+    if let Err(e) =
+        infrastructure::job_queue::federation::P2pSanitizer::sanitize(&req.content, &banned_words)
+    {
         return Err(AppError::bad_request(e.to_string()));
     }
 
@@ -325,7 +329,7 @@ pub async fn send_message(
         .send()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
-    
+
     let status = res.status();
     let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
         tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);

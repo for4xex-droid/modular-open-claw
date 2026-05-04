@@ -3291,7 +3291,10 @@ async fn test_biome_send_message_binary_data() {
 
     assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
     let json = resp.json::<serde_json::Value>();
-    assert!(json["error"].as_str().unwrap().contains("Binary data embedding")); // allow-anti-pattern
+    assert!(json["error"]
+        .as_str()
+        .unwrap()
+        .contains("Binary data embedding")); // allow-anti-pattern
 }
 
 #[serial]

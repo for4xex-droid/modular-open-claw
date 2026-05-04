@@ -60,7 +60,10 @@ impl ImageHasher {
     }
 
     /// 既知の有害ハッシュリストとの照合
-    pub async fn check_blacklist(pool: &crate::db::DatabasePool, hash_base64: &str) -> Result<bool, CsamError> {
+    pub async fn check_blacklist(
+        pool: &crate::db::DatabasePool,
+        hash_base64: &str,
+    ) -> Result<bool, CsamError> {
         let q = format!(
             "SELECT COUNT(*) FROM csam_blacklist WHERE image_hash = {}",
             pool.ph(0)
@@ -118,14 +121,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_blacklisted_db() {
-        let pool = crate::db::DatabasePool::new_sqlite(":memory:").await.unwrap();
-        crate::sql_exec!(&pool, "CREATE TABLE csam_blacklist (image_hash TEXT PRIMARY KEY)").unwrap();
-        crate::sql_exec!(&pool, "INSERT INTO csam_blacklist (image_hash) VALUES ('malicious123')").unwrap();
+        let pool = crate::db::DatabasePool::new_sqlite(":memory:")
+            .await
+            .unwrap();
+        crate::sql_exec!(
+            &pool,
+            "CREATE TABLE csam_blacklist (image_hash TEXT PRIMARY KEY)"
+        )
+        .unwrap();
+        crate::sql_exec!(
+            &pool,
+            "INSERT INTO csam_blacklist (image_hash) VALUES ('malicious123')"
+        )
+        .unwrap();
 
-        let is_bad = ImageHasher::check_blacklist(&pool, "malicious123").await.unwrap();
+        let is_bad = ImageHasher::check_blacklist(&pool, "malicious123")
+            .await
+            .unwrap();
         assert!(is_bad);
 
-        let is_bad = ImageHasher::check_blacklist(&pool, "safe_hash").await.unwrap();
+        let is_bad = ImageHasher::check_blacklist(&pool, "safe_hash")
+            .await
+            .unwrap();
         assert!(!is_bad);
     }
 }

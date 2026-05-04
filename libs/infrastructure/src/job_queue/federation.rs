@@ -673,7 +673,7 @@ mod tests {
     #[tokio::test]
     async fn test_p2p_sanitizer_blocks_forbidden_words() {
         let banned = vec!["csam".to_string(), "malware_payload".to_string()];
-        
+
         let safe_content = "This is a safe message about federation.";
         let result = crate::job_queue::federation::P2pSanitizer::sanitize(safe_content, &banned);
         assert!(result.is_ok(), "Safe content should pass");
