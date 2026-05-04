@@ -1,6 +1,17 @@
 ## [Unreleased]
 
 ### Added
+- **Agency Commerce Integration**:
+  - `apps/api-server/src/routes/commerce_webhook.rs` にて、Stripe の `invoice.paid` および `invoice.payment_failed` Webhook イベントのハンドリングを実装。
+  - サブスクリプション支払い状況に連動してエージェントの MCP サービス (`agency.{id}.mcp_suspended`) を自動的に解除・停止するライフサイクル制御を確立。
+  - TDD により決済連携に伴う Webhook 処理の正常系テストを構築し、システム全体の堅牢性を担保。
+- **Management Console Agency Dashboard**:
+  - `apps/management-console/src/components/AgentConsole.tsx` を拡張し、Agency 用のタブ型 UI (Copilot Chat / Scheduled Automations) を導入。
+  - エージェンシー（`agency` モード）のユーザー向けに、アクティブなブループリント数やタスク実行数、推定コスト削減額などを可視化する「Automations (ROI)」ダッシュボードを新設。
+- **Blueprint Agent Extension**:
+  - `apps/api-server/src/routes/blueprint.rs` に `deploy_blueprint` ハンドラ（`POST /api/v1/blueprints/:id/deploy`）を実装し、ブループリントをシステムへ展開するデプロイ機能を新設。
+  - `libs/infrastructure/src/mcp/server.rs` において、`ArtifactCategory::Blueprint` を処理する分岐を追加し、展開ロジックを統合。
+
 - **MCP Server Management Dashboard**:
   - `apps/management-console/src/components/McpDashboard.tsx` にて、MCP (Model Context Protocol) サーバーの登録・削除および設定管理をGUIで行うダッシュボードを実装。
   - STDIO トランスポート（ローカルコマンド）および HTTP トランスポート（リモートURL）に完全対応し、IDパストラバーサルや `javascript:` スキーム混入を防ぐ厳格なセキュリティバリデーション (TDD) を導入。
