@@ -559,11 +559,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_invoice_paid_unlocks_account() {
-        assert_eq!(true, true, "GREEN: implement invoice.paid");
+        assert!(true, "GREEN: implement invoice.paid");
     }
 
     #[tokio::test]
     async fn test_invoice_payment_failed_suspends_blueprint() {
-        assert_eq!(true, true, "GREEN: implement invoice.payment_failed");
+        assert!(true, "GREEN: implement invoice.payment_failed");
     }
 }
