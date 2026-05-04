@@ -516,6 +516,10 @@ pub fn build_app(
             get(routes::artifacts::get_artifact_edges_handler),
         )
         .route(
+            "/api/v1/blueprints/:id/deploy",
+            post(routes::blueprint::deploy_blueprint_handler),
+        )
+        .route(
             "/api/expression/auto",
             axum::routing::post(routes::expression::toggle_auto_expression),
         )

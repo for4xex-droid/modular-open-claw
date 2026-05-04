@@ -14,6 +14,8 @@ import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
 import { ProofPowerIndicator } from './common/ProofPowerIndicator';
 import ErrorBoundary from './common/ErrorBoundary';
 import { A2uiRenderer } from './A2uiRenderer';
+import { useWorkspacePersona } from '../hooks/useWorkspacePersona';
+import { Activity, Clock, DollarSign, TrendingUp } from 'lucide-react';
 
 export interface AgentConsoleProps {
     sessionSavedChars?: number;
@@ -37,6 +39,9 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
         setAutoTts,
         handleFeedback,
     } = useAgentChat();
+
+    const { mode } = useWorkspacePersona();
+    const [activeTab, setActiveTab] = React.useState<'chat' | 'automations'>('chat');
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +74,42 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         </div>
                     </div>
                 </div>
+
+                {mode === 'agency' && (
+                    <div style={{ display: 'flex', gap: '1rem', flex: 1, justifyContent: 'center' }}>
+                        <button
+                            onClick={() => setActiveTab('chat')}
+                            style={{
+                                background: activeTab === 'chat' ? 'var(--accent-cyan-20)' : 'transparent',
+                                border: 'none',
+                                color: activeTab === 'chat' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                                padding: '0.4rem 1rem',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            Copilot Chat
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('automations')}
+                            style={{
+                                background: activeTab === 'automations' ? 'var(--accent-cyan-20)' : 'transparent',
+                                border: 'none',
+                                color: activeTab === 'automations' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                                padding: '0.4rem 1rem',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            Automations (ROI)
+                        </button>
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
                     <button 
                         onClick={() => setAutoTts(!autoTts)}
@@ -94,6 +135,63 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                 </div>
             </div>
 
+            {activeTab === 'automations' && mode === 'agency' ? (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'var(--black-20)' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Activity size={24} color="var(--accent-cyan)" />
+                        Scheduled Automations
+                    </h2>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> Tasks Executed</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>1,432</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>+12% this week</div>
+                        </div>
+                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> Estimated Savings</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>$4,250</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>Based on 40h manual work</div>
+                        </div>
+                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><TrendingUp size={16} /> Active Blueprints</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-purple)' }}>3</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Running flawlessly</div>
+                        </div>
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
+                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Active Blueprint Instances</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {[
+                                { id: 'bp-lead', name: 'Lead Generation Sync', status: 'Running', nextRun: 'in 5 minutes', roi: '+$1,200/mo' },
+                                { id: 'bp-invoice', name: 'Invoice Processing', status: 'Running', nextRun: 'in 2 hours', roi: '+$2,500/mo' },
+                                { id: 'bp-social', name: 'Social Media Reporter', status: 'Paused (Billing)', nextRun: '-', roi: '-' },
+                            ].map(bp => (
+                                <div key={bp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--white-03)', borderRadius: 'var(--radius-md)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                        <div style={{ fontWeight: 600 }}>{bp.name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {bp.id} • Next: {bp.nextRun}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                                        <div style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>{bp.roi}</div>
+                                        <div style={{ 
+                                            padding: '0.2rem 0.6rem', 
+                                            borderRadius: '1rem', 
+                                            fontSize: '0.75rem',
+                                            background: bp.status.includes('Running') ? 'var(--accent-emerald-10)' : 'var(--accent-rose-10)',
+                                            color: bp.status.includes('Running') ? 'var(--accent-emerald)' : 'var(--accent-rose)'
+                                        }}>
+                                            {bp.status}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
             {/* Chat Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', background: 'var(--black-20)' }}>
                 {history.length === 0 && !streamingText && (
@@ -305,6 +403,8 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     </div>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 };

@@ -51,6 +51,7 @@ pub async fn list_artifacts_handler(
             "expression" => Some(ArtifactCategory::Expression),
             "data" => Some(ArtifactCategory::Data),
             "knowledge" => Some(ArtifactCategory::Knowledge),
+            "blueprint" => Some(ArtifactCategory::Blueprint),
             _ => None,
         });
 

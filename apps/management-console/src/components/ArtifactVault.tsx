@@ -103,6 +103,7 @@ const ArtifactVault = () => {
       case "audio": return <Music size={18} />;
       case "expression": return <Share2 size={18} />;
       case "data": return <Database size={18} />;
+      case "blueprint": return <Dna size={18} />;
       default: return <Box size={18} />;
     }
   };
@@ -138,7 +139,7 @@ const ArtifactVault = () => {
         </div>
 
         <div className="filter-chips">
-          {['all', 'report', 'code', 'image', 'audio', 'expression', 'data'].map((cat) => (
+          {['all', 'report', 'code', 'image', 'audio', 'expression', 'data', 'blueprint'].map((cat) => (
             <button
               key={cat}
               className={`chip ${cat === (filter || 'all') ? 'active' : ''}`}

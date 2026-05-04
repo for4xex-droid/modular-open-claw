@@ -23,7 +23,8 @@ import {
   Crown,
   Play,
   Library,
-  Server
+  Server,
+  Briefcase
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
@@ -52,6 +53,8 @@ import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
 import { SoTProgressBar } from "./components/SoTProgressBar";
+import { useWorkspacePersona } from "./hooks/useWorkspacePersona";
+import { AiaaOnboardingWizard } from "./components/AiaaOnboardingWizard";
 
 import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
@@ -79,7 +82,8 @@ function App() {
   const isConnected = connectionStatus === 'connected';
 
   const avatarState = useAvatarState();
-  const { mode } = useDisplayMode();
+  const { mode: displayMode } = useDisplayMode();
+  const workspacePersona = useWorkspacePersona();
 
   useEffect(() => {
     const isFirstVisit = localStorage.getItem("aiome_onboarding_done") !== "true";
@@ -214,21 +218,27 @@ function App() {
     }
 
     return (
-      <button
-        className={badgeClass}
-        onClick={toggleConnection}
-        style={{
-          cursor: 'pointer', border: '1px solid var(--white-05)', background: 'var(--black-40)',
-          outline: 'none', transition: 'all 0.2s', padding: '0.5rem 1rem'
-        }}
-        title="Click to toggle connection sync"
-      >
-        <div className={dotClass} style={{
-          background: connectionStatus === 'paused' ? 'var(--accent-amber)' : undefined,
-          boxShadow: connectionStatus === 'paused' ? 'var(--glow-amber)' : undefined
-        }} />
-        {text}
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="status-item persona-toggle" onClick={() => workspacePersona.setMode(workspacePersona.mode === 'agency' ? 'consumer' : 'agency')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--black-40)', borderRadius: '6px' }}>
+          <Briefcase size={14} color={workspacePersona.mode === 'agency' ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
+          <span>{workspacePersona.mode === 'agency' ? 'Agency Mode' : 'Consumer Mode'}</span>
+        </div>
+        <button
+          className={badgeClass}
+          onClick={toggleConnection}
+          style={{
+            cursor: 'pointer', border: '1px solid var(--white-05)', background: 'var(--black-40)',
+            outline: 'none', transition: 'all 0.2s', padding: '0.5rem 1rem'
+          }}
+          title="Click to toggle connection sync"
+        >
+          <div className={dotClass} style={{
+            background: connectionStatus === 'paused' ? 'var(--accent-amber)' : undefined,
+            boxShadow: connectionStatus === 'paused' ? 'var(--glow-amber)' : undefined
+          }} />
+          {text}
+        </button>
+      </div>
     );
   };
 
@@ -289,7 +299,7 @@ function App() {
       </AnimatePresence>
 
       {/* Digital Diorama — Resident Avatar */}
-      <DioramaView status={avatarState} mode={mode} activeTab={activeTab} />
+      <DioramaView status={avatarState} mode={displayMode} activeTab={activeTab} />
       
       {/* Society of Thought Visualization */}
       <SoTProgressBar />
@@ -332,10 +342,18 @@ function App() {
           <h4>{t('nav.section.synergyHub')}</h4>
           {isVisible("home-v2") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<Activity size={18} />}
               label={t('nav.homeV2')}
               active={activeTab === "home-v2"}
               onClick={() => setActiveTab("home-v2")}
+            />
+          )}
+          {workspacePersona.mode === 'agency' && (
+            <NavItem
+              icon={<Briefcase size={18} />}
+              label="Agency Onboarding"
+              active={activeTab === "agency"}
+              onClick={() => setActiveTab("agency")}
             />
           )}
           {isVisible("dashboard") && (
@@ -585,6 +603,7 @@ function App() {
             {activeTab === "causal" && t('page.causalTrace')}
             {activeTab === "lora" && t('page.loraAutotuner')}
             {activeTab === "settings" && t('page.settings')}
+            {activeTab === "agency" && "Agency Onboarding"}
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -623,6 +642,7 @@ function App() {
               {activeTab === "causal" && <CausalVisualizer />}
               {activeTab === "lora" && <LoraTrainingView />}
               {activeTab === "settings" && <SettingsPage />}
+              {activeTab === "agency" && <AiaaOnboardingWizard />}
             </motion.div>
           </React.Suspense>
         </AnimatePresence>

@@ -712,6 +712,7 @@ pub enum ArtifactCategory {
     Expression,
     Data,
     Knowledge,
+    Blueprint,
 }
 
 /// 個別ファイルのメタデータ
