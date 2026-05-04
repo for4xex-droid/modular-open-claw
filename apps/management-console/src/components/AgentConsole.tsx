@@ -145,16 +145,19 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> Tasks Executed</div>
+                            {/* TODO: Fetch real task executed count from task_orchestrator history */}
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>1,432</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>+12% this week</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> Estimated Savings</div>
+                            {/* TODO: Fetch real ROI calculation from economic module */}
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>$4,250</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>Based on 40h manual work</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><TrendingUp size={16} /> Active Blueprints</div>
+                            {/* TODO: Fetch active blueprints count from artifact_store */}
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-purple)' }}>3</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Running flawlessly</div>
                         </div>
@@ -163,6 +166,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
                         <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Active Blueprint Instances</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {/* TODO: Render real instances fetched from GET /api/v1/blueprints/active */}
                             {[
                                 { id: 'bp-lead', name: 'Lead Generation Sync', status: 'Running', nextRun: 'in 5 minutes', roi: '+$1,200/mo' },
                                 { id: 'bp-invoice', name: 'Invoice Processing', status: 'Running', nextRun: 'in 2 hours', roi: '+$2,500/mo' },
