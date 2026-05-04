@@ -80,6 +80,15 @@ pub trait CommerceEngine: Send + Sync {
         payload: &serde_json::Value,
     ) -> Result<(), AiomeError>;
 
+    /// チェックアウトセッションを作成する（自律エージェントのセットアップや追加課金用）
+    async fn create_checkout_session(
+        &self,
+        agent_id: Uuid,
+        price_id: &str,
+        success_url: &str,
+        cancel_url: &str,
+    ) -> Result<String, AiomeError>;
+
     /// サブスクリプションを作成する (P0-1)
     async fn create_subscription(
         &self,

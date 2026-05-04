@@ -153,6 +153,37 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 HookVerdict::Allow => si,
             };
 
+            // === MCP Billing Guard ===
+            // Apply only to MCP tools (not forge or describe_skill)
+            if !sn.starts_with("forge_") && sn != "describe_skill" {
+                use aiome_core::traits::SettingsOps;
+                let agent_id = state_rc.system_agent_id;
+                let key = format!("agency.{}.mcp_suspended", agent_id);
+                if let Ok(Some(val)) = state_rc.job_queue.get_setting_value(&key).await {
+                    if val == "true" {
+                        let _ = tx_clone
+                            .send(ToolExecutionEvent::Error(
+                                "[Billing] MCP access suspended. Please update payment method."
+                                    .to_string(),
+                            ))
+                            .await;
+                        return;
+                    }
+                }
+
+                if let Some(engine) = state_rc.commerce_engine.as_opt() {
+                    if let Err(e) = engine.validate_activity(agent_id, "mcp_tool", 1).await {
+                        let _ = tx_clone
+                            .send(ToolExecutionEvent::Error(format!(
+                                "[Billing] MCP tool access denied: {}",
+                                e
+                            )))
+                            .await;
+                        return;
+                    }
+                }
+            }
+
             // === Execution ===
             #[cfg(test)]
             let executor_output = format!("[Mock Executed] {}", sn);
@@ -423,5 +454,74 @@ mod tests {
 
         assert!(got_start);
         assert!(got_result);
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_router_mcp_suspended_guard() {
+        let router = DefaultToolCallRouter;
+        let mut state = setup_mock_state().await;
+
+        let mut chain = HookChain::new();
+        state.hook_chain = Component::new(Arc::new(chain));
+
+        use aiome_core::traits::SettingsOps;
+        let agent_id = state.system_agent_id;
+        let key = format!("agency.{}.mcp_suspended", agent_id);
+
+        // Suspend MCP
+        state
+            .job_queue
+            .update_setting(&key, "true", "billing", false)
+            .await
+            .unwrap();
+
+        // Run an MCP tool (not forge_, not describe_skill)
+        let mut rx = router.execute_skill("some_mcp_tool", "{}", &state).await;
+
+        let mut got_suspend_error = false;
+
+        while let Some(evt) = rx.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("[Billing] MCP access suspended") {
+                    got_suspend_error = true;
+                }
+            }
+        }
+
+        assert!(
+            got_suspend_error,
+            "MCP suspended guard should emit an error event"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_router_mcp_validate_activity() {
+        let router = DefaultToolCallRouter;
+        let mut state = setup_mock_state().await;
+
+        // Force agent_id to the one that fails in MockCommerceEngine
+        state.system_agent_id =
+            uuid::Uuid::parse_str("00000000-0000-0000-0000-fa1100000000").unwrap();
+
+        let mut chain = HookChain::new();
+        state.hook_chain = Component::new(Arc::new(chain));
+
+        // Run an MCP tool
+        let mut rx = router.execute_skill("some_mcp_tool", "{}", &state).await;
+
+        let mut got_billing_error = false;
+
+        while let Some(evt) = rx.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("Insufficient funds") {
+                    got_billing_error = true;
+                }
+            }
+        }
+
+        assert!(
+            got_billing_error,
+            "MCP validate_activity guard should emit a billing error event"
+        );
     }
 }

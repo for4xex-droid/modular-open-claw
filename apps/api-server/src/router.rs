@@ -108,6 +108,17 @@ pub fn build_app(
             ),
         )
         .route(
+            "/api/v1/commerce/checkout-session/create",
+            axum::routing::post(routes::commerce::create_checkout_session).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(5)), // 1 create per 5s
+            ),
+        )
+        .route(
             "/api/v1/commerce/subscription/create",
             axum::routing::post(routes::commerce::create_subscription).route_layer(
                 tower::ServiceBuilder::new()

@@ -159,6 +159,17 @@ async fn main() {
             ) -> Result<(), AiomeError> {
                 Self::err()
             }
+
+            async fn create_checkout_session(
+                &self,
+                _agent_id: uuid::Uuid,
+                _price_id: &str,
+                _success_url: &str,
+                _cancel_url: &str,
+            ) -> Result<String, aiome_core_contracts::error::AiomeError> {
+                Self::err()
+            }
+
             async fn create_subscription(&self, _a: Uuid, _p: &str) -> Result<String, AiomeError> {
                 Self::err()
             }

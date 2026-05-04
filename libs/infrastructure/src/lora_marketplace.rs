@@ -811,6 +811,15 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn create_checkout_session(
+            &self,
+            _: Uuid,
+            _: &str,
+            _: &str,
+            _: &str,
+        ) -> Result<String, AiomeError> {
+            Ok("cs_dummy".into())
+        }
         async fn create_subscription(&self, _: Uuid, _: &str) -> Result<String, AiomeError> {
             Ok("sub_mock".into())
         }

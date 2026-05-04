@@ -477,3 +477,68 @@ pub async fn release_escrow(
     engine.escrow_release(&escrow_id, req.recipient_id).await?;
     Ok(StatusCode::OK)
 }
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct CreateCheckoutSessionRequest {
+    #[schema(value_type = String)]
+    pub agent_id: Uuid,
+    pub price_id: String,
+    pub success_url: String,
+    pub cancel_url: String,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct CreateCheckoutSessionResponse {
+    pub url: String,
+}
+
+/// [POST] /api/v1/commerce/checkout-session/create
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/checkout-session/create",
+    request_body = CreateCheckoutSessionRequest,
+    responses(
+        (status = 200, description = "Checkout Session created", body = CreateCheckoutSessionResponse),
+        (status = 400, description = "Invalid URL scheme"),
+        (status = 403, description = "Unauthorized access")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn create_checkout_session(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Json(req): Json<CreateCheckoutSessionRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    tracing::info!(
+        "🛒 [Commerce] Checkout session create for agent: {}",
+        req.agent_id
+    );
+
+    if req.agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+
+    // Defensive URL validation: only allow https:// scheme
+    if !req.success_url.starts_with("https://") || !req.cancel_url.starts_with("https://") {
+        return Err(AppError::bad_request(
+            "success_url and cancel_url must use https:// scheme",
+        ));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    let url = engine
+        .create_checkout_session(
+            req.agent_id,
+            &req.price_id,
+            &req.success_url,
+            &req.cancel_url,
+        )
+        .await?;
+
+    Ok(Json(CreateCheckoutSessionResponse { url }))
+}

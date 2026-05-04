@@ -222,6 +222,16 @@ impl CommerceEngine for PolarCommerceEngine {
         Ok(())
     }
 
+    async fn create_checkout_session(
+        &self,
+        _agent_id: Uuid,
+        _price_id: &str,
+        _success_url: &str,
+        _cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("cs_test_polar".into())
+    }
+
     async fn create_subscription(
         &self,
         agent_id: Uuid,

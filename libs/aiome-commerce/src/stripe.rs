@@ -136,10 +136,55 @@ impl CommerceEngine for StripeCommerceEngine {
 
     async fn validate_activity(
         &self,
-        _agent_id: Uuid,
-        _activity_type: &str,
-        _amount: u64,
+        agent_id: Uuid,
+        activity_type: &str,
+        amount: u64,
     ) -> Result<(), AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/validate-activity", url);
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&serde_json::json!({
+                    "agent_id": agent_id.to_string(),
+                    "activity_type": activity_type,
+                    "amount": amount
+                }))
+                .timeout(std::time::Duration::from_secs(5));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            match req.send().await {
+                Ok(res) if res.status().is_success() => return Ok(()),
+                Ok(res) if res.status() == reqwest::StatusCode::PAYMENT_REQUIRED => {
+                    return Err(AiomeError::Infrastructure {
+                        reason: "Insufficient funds".into(),
+                    });
+                }
+                Ok(res) => {
+                    tracing::warn!(
+                        "⚠️ [Billing] validate_activity got unexpected status {} for agent {}. Allowing (fail-open).",
+                        res.status(),
+                        agent_id
+                    );
+                    return Ok(());
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "❌ [Billing] validate_activity network error for agent {}: {}. Allowing (fail-open).",
+                        agent_id,
+                        e
+                    );
+                    return Ok(());
+                }
+            }
+        }
         Ok(())
     }
 
@@ -546,6 +591,92 @@ impl CommerceEngine for StripeCommerceEngine {
                 Err(AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })
+            }
+        }
+    }
+
+    async fn create_checkout_session(
+        &self,
+        agent_id: Uuid,
+        price_id: &str,
+        success_url: &str,
+        cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        if self.is_mock {
+            return Ok("cs_test_mock".to_string());
+        }
+
+        let existing_customer: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+        let customer_id = if let Some(row) = existing_customer {
+            row.0
+                .parse::<stripe_core::CustomerId>()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+        } else {
+            let desc = format!("Agent Soul: {}", agent_id);
+            let create_customer = stripe_core::customer::CreateCustomer::new()
+                .description(desc)
+                .metadata(std::collections::HashMap::from([(
+                    "agent_id".to_string(),
+                    agent_id.to_string(),
+                )]));
+
+            let customer = create_customer.send(&self.client).await.map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to create Stripe customer: {}", e),
+                }
+            })?;
+
+            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
+                .bind(agent_id.to_string())
+                .bind(customer.id.as_str())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+            customer.id
+        };
+
+        let line_item = stripe_checkout::checkout_session::CreateCheckoutSessionLineItems {
+            price: Some(price_id.to_string()),
+            quantity: Some(1),
+            ..Default::default()
+        };
+
+        let create_session = stripe_checkout::checkout_session::CreateCheckoutSession::new()
+            .customer(customer_id)
+            .mode(stripe_checkout::CheckoutSessionMode::Subscription)
+            .success_url(success_url)
+            .cancel_url(cancel_url)
+            .line_items(vec![line_item]);
+
+        let session =
+            create_session
+                .send(&self.client)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to create Stripe checkout session: {}", e),
+                })?;
+
+        match session.url {
+            Some(url) => Ok(url),
+            None => {
+                tracing::warn!(
+                    "⚠️ [StripeCommerce] Checkout session {} has no URL. Returning session ID as fallback.",
+                    session.id
+                );
+                Ok(session.id.to_string())
             }
         }
     }
@@ -1293,5 +1424,72 @@ mod tests {
         let result = engine.get_points(agent_id).await.unwrap(); // allow-anti-pattern
         assert_eq!(result.balance, 150);
         assert_eq!(result.lifetime_earned, 500);
+    }
+
+    #[tokio::test]
+    async fn test_validate_activity() {
+        use aiome_core_contracts::commerce::CommerceEngine;
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            Some(mock_server.uri()),
+            Some("test_secret".to_string()),
+        );
+
+        let agent_id = Uuid::new_v4();
+
+        // 1. Valid request -> 200 OK
+        Mock::given(method("POST"))
+            .and(path("/internal/validate-activity"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&mock_server)
+            .await;
+
+        let res = engine.validate_activity(agent_id, "test_action", 100).await;
+        assert!(res.is_ok(), "Expected Ok for 200 OK response");
+
+        mock_server.reset().await;
+
+        // 2. Reject request -> 402 Payment Required
+        Mock::given(method("POST"))
+            .and(path("/internal/validate-activity"))
+            .respond_with(ResponseTemplate::new(402).set_body_string("Insufficient funds"))
+            .mount(&mock_server)
+            .await;
+
+        let res = engine.validate_activity(agent_id, "test_action", 100).await;
+        assert!(res.is_err(), "Expected Err for 402 response");
+
+        // 3. Fallback when nurture_url is None
+        let pool2 = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let engine_no_url = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool2,
+            None,
+            None,
+        );
+
+        let res2 = engine_no_url
+            .validate_activity(agent_id, "test_action", 100)
+            .await;
+        assert!(
+            res2.is_ok(),
+            "Expected Ok fallback when Nurture URL is not set"
+        );
     }
 }

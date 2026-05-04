@@ -5,6 +5,10 @@
   - `apps/api-server/src/routes/commerce_webhook.rs` にて、Stripe の `invoice.paid` および `invoice.payment_failed` Webhook イベントのハンドリングを実装。
   - サブスクリプション支払い状況に連動してエージェントの MCP サービス (`agency.{id}.mcp_suspended`) を自動的に解除・停止するライフサイクル制御を確立。
   - TDD により決済連携に伴う Webhook 処理の正常系テストを構築し、システム全体の堅牢性を担保。
+  - `CommerceEngine` トレイトに `create_checkout_session` メソッドを新設し、Stripe/Mock/Polar の全エンジン実装を完了。
+  - `POST /api/v1/commerce/checkout-session/create` エンドポイントを公開し、RBAC 所有権チェックおよび URL スキーム (`https://`) バリデーションによるインジェクション防御を実装。
+  - 決済連携の異常系（Zero-Panic、Fail-Open ログ）および URL 検証に対する TDD カバレッジを 100% 達成。
+
 - **Management Console Agency Dashboard**:
   - `apps/management-console/src/components/AgentConsole.tsx` を拡張し、Agency 用のタブ型 UI (Copilot Chat / Scheduled Automations) を導入。
   - エージェンシー（`agency` モード）のユーザー向けに、アクティブなブループリント数やタスク実行数、推定コスト削減額などを可視化する「Automations (ROI)」ダッシュボードを新設。

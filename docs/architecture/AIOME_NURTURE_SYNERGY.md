@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-04
+> **最終更新**: 2026-05-05
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -648,6 +648,7 @@ classDiagram
         +get_subscription_status(agent_id) Result~SubscriptionStatus~
         +transfer(from_id, to_id, amount) Result~String~
         +deduct_generation_cost(agent_id, asset_id, amount, generation_type) Result~()~
+        +create_checkout_session(agent_id, price_id, success_url, cancel_url) Result~String~
     }
 
     class GiftEngine {

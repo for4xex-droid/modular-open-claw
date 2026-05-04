@@ -125,10 +125,15 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     }
     async fn validate_activity(
         &self,
-        _agent_id: uuid::Uuid,
+        agent_id: uuid::Uuid,
         _activity_type: &str,
         _amount: u64,
     ) -> Result<(), aiome_core::error::AiomeError> {
+        if agent_id.to_string() == "00000000-0000-0000-0000-fa1100000000" {
+            return Err(aiome_core::error::AiomeError::Infrastructure {
+                reason: "Insufficient funds".into(),
+            });
+        }
         Ok(())
     }
     async fn execute_autonomous_purchase(
@@ -181,6 +186,16 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         _extra: &str,
     ) -> Result<String, aiome_core::error::AiomeError> {
         Ok("lic".into())
+    }
+
+    async fn create_checkout_session(
+        &self,
+        _agent_id: uuid::Uuid,
+        _price_id: &str,
+        _success_url: &str,
+        _cancel_url: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("cs_test_mock".into())
     }
 
     async fn create_subscription(
@@ -3028,6 +3043,71 @@ async fn test_whisper_monologue_api() {
         .await;
 
     assert_eq!(res.status_code(), reqwest::StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_create_checkout_session() {
+    let (server, _state, _tmp_dir) = create_test_server().await;
+
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+
+    // 正常系 (mock実装は "cs_test_mock" を返す)
+    let res = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .json(&serde_json::json!({
+            "agent_id": agent_id.to_string(),
+            "price_id": "price_123",
+            "success_url": "https://example.com/success",
+            "cancel_url": "https://example.com/cancel"
+        }))
+        .await;
+
+    assert_eq!(res.status_code(), 200);
+    let json: serde_json::Value = res.json();
+    assert_eq!(json["url"].as_str().unwrap(), "cs_test_mock");
+
+    // 異常系: 他人の agent_id で作成しようとする
+    let res_forbidden = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .json(&serde_json::json!({
+            "agent_id": uuid::Uuid::new_v4().to_string(), // another agent
+            "price_id": "price_123",
+            "success_url": "https://example.com/success",
+            "cancel_url": "https://example.com/cancel"
+        }))
+        .await;
+
+    assert_eq!(res_forbidden.status_code(), 403);
+
+    // 異常系: 不正なURLスキーム (http://)
+    let res_bad_url = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .json(&serde_json::json!({
+            "agent_id": agent_id.to_string(),
+            "price_id": "price_123",
+            "success_url": "http://example.com/success",
+            "cancel_url": "https://example.com/cancel"
+        }))
+        .await;
+
+    assert_eq!(res_bad_url.status_code(), 400);
+
+    // 異常系: cancel_url 側が不正なスキーム
+    let res_bad_cancel = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .json(&serde_json::json!({
+            "agent_id": agent_id.to_string(),
+            "price_id": "price_123",
+            "success_url": "https://example.com/success",
+            "cancel_url": "http://example.com/cancel"
+        }))
+        .await;
+
+    assert_eq!(res_bad_cancel.status_code(), 400);
 }
 
 #[serial]
