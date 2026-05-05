@@ -1,5 +1,55 @@
 ## [Unreleased]
 
+### Security
+- **Nurture Economy Infrastructure Hardening**:
+  - Replaced unsafe `as u64` type casting in `NurtureCommerceBridge::refund` and `purchase` with `u64::try_from()` to prevent negative amount truncation and overflow panics.
+  - Added strict negative value guards (`amount <= 0`) for financial operations.
+  - Eliminated silent failures in `skill.rs` and `blueprint.rs` directory/registry creation methods.
+
+### Changed
+- **Nurture & Aiome Synergy**:
+  - Whitelisted `"mcp_tool"` in `ALLOWED_ACTIVITY_TYPES` inside `validate_activity` to enable seamless Aiome tool-call orchestration within the Nurture economy.
+  - Implemented `create_checkout_session` (Fail-Closed) in `NurtureCommerceBridge` to satisfy `CommerceEngine` trait requirements and stabilize CI builds.
+  - Enhanced observability by adding `tracing::info!` transaction audit logs to Nurture `transfer` operations.
+  - Restored `MockJobQueue` and `TaskDispatcher` compatibility by implementing `fetch_arena_matches` and `fetch_job_cost`.
+
+### Changed
+- **CI/CD & Architecture Stability**:
+  - Fixed a structural analysis bug in `enforce_unwrap_deny.py` where inline `#[cfg(test)]` attributes caused premature exits from test block scanning, leading to false positives.
+  - Reclassified the `alloy/keyring` EVM integration in `aiome-commerce/x402.rs` from Phase 3 to Phase 4 (Federation v1.0) to prioritize core stability over premature Web3 coupling.
+
+### Security
+- **Elimination of Silent Failures (let _ =)**:
+  - Removed high-risk `let _ =` anti-patterns in `aiome-commerce/gig.rs` and `infrastructure/aiome_log.rs` (e.g. `create_dir_all`, DDL schema updates). Replaced with explicit error propagation and `tracing::warn!` to prevent untraceable infrastructure failures.
+
+### Added
+- **DPO Dataset Export UI**:
+  - `apps/management-console/src/components/DpoDatasetExport.tsx` を新設。Arena 対戦および手動フィードバックから生成された DPO (Direct Preference Optimization) データセットを JSONL 形式でダウンロードする管理コンソール UI を実装。
+  - `useTranslation` による i18n 多言語対応（en/ja）、`aria-busy` によるアクセシビリティ対応、`catch (err: unknown)` による型安全なエラーハンドリングを完備。
+  - `CortexView.tsx` の ForecastView 下部に統合。
+  - 6件の Jest テスト（正常系/API エラー/ネットワーク断/レンダリング/A11y）を追加。
+
+### Security
+- **REST API Defense-in-Depth**:
+  - `apps/api-server/src/routes/skill.rs`: Implemented strict `ALLOWED_MCP_PACKAGES` and `ALLOWED_MCP_PREFIXES` validation directly at the REST endpoint layer for `spawn_mcp_server`, preventing unauthorized package invocation prior to process instantiation.
+  - Resolved `let _ =` silent failure anti-patterns in `skill.rs` and `blueprint.rs` (e.g. `clear_mcp_servers`, `create_dir_all`), enforcing proper `tracing::warn!` observability to prevent ghost state.
+- **MCP Ecosystem Hardening**:
+  - `libs/shared/src/mcp_constants.rs` に `ALLOWED_MCP_PACKAGES` を導入し、スコープ無しの検証済みパッケージ（`firecrawl-mcp`, `exa-mcp-server` 等）のみを許可する厳密なホワイトリストを構築。
+  - `apps/api-server/src/mcp/client.rs` の `McpClient::spawn` におけるパッケージ検証ロジックを更新し、不正な Npm パッケージの実行を遮断。
+  - `apps/api-server/src/mcp/discovery.rs` にて、未認証の HTTP 型 MCP サーバー（Slack, Figma 等）を安全に無効化（`disabled: true`）する設定を導入し、OAuth 実装前のアクセスを保護。
+
+### Added
+- **Verified MCP Connectors Integration**:
+  - `discovery.rs` のデフォルト設定を拡張し、計14種類の公式・サードパーティ製 MCP サーバー（Firecrawl, Exa, BrightData, Context7, Playwright, Canva 等）をネイティブ統合。
+  - `server.rs` の `is_skill_whitelisted`（RBAC）に全ツールの実行権限を追加し、Aiome JobQueue 経由での自律的なツール呼び出しを可能に。
+  - `.env.example` に `FIRECRAWL_API_KEY`, `EXA_API_KEY`, `BRIGHTDATA_API_KEY` 等の MCP エコシステム向け環境変数を追加。
+
+### Security
+- **SSRF Redirect Bypass Prevention (robots.txt)**:
+  - `tool_call_router.rs` の `check_robots_txt_policy` において `reqwest::redirect::Policy::none()` を適用し、攻撃者が `robots.txt` のリダイレクト応答を悪用して内部ネットワーク (127.0.0.1 等) へ SSRF バイパスを行うベクトルを完全遮断。
+  - バイト境界パニックリスクを排除するため、`line[11..]` の固定オフセットスライスを `line.find(':')` ベースの安全なパーサーに書き換え。
+  - RFC 9309 §2.2.2 に基づき、空の `Disallow` 指示を「全許可」として正しく解釈する仕様に改善。
+
 ### Added
 - **Agency Commerce Integration**:
   - `apps/api-server/src/routes/commerce_webhook.rs` にて、Stripe の `invoice.paid` および `invoice.payment_failed` Webhook イベントのハンドリングを実装。

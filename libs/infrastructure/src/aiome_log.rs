@@ -51,9 +51,15 @@ impl AiomeLogClient {
         })?;
 
         // マイグレーション: hash カラムが存在しない場合に備えて
-        let _ = sqlx::query("ALTER TABLE logs ADD COLUMN hash TEXT")
+        if let Err(e) = sqlx::query("ALTER TABLE logs ADD COLUMN hash TEXT")
             .execute(&pool)
-            .await;
+            .await
+        {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column") {
+                tracing::warn!("Failed to add hash column to logs table: {}", msg);
+            }
+        }
 
         Ok(Self { db: pool })
     }

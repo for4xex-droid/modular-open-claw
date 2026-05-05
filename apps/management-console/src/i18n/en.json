@@ -549,5 +549,12 @@
     "errorIdExists": "A server with this ID already exists.",
     "errorUrlInvalid": "A valid HTTP or HTTPS URL is required for HTTP transport.",
     "errorCommandRequired": "Command is required for STDIO transport."
+  },
+  "dpoExport": {
+    "title": "DPO Dataset Export",
+    "description": "Download the Direct Preference Optimization (DPO) dataset generated from Arena matches and manual feedback.",
+    "downloadButton": "Download Dataset (JSONL)",
+    "exporting": "Exporting...",
+    "downloadFailed": "Failed to export dataset"
   }
 }

@@ -40,6 +40,14 @@ pub struct ContextBudget {
     /// 適応ウィンドウ: 直近N日のデータを考慮
     #[serde(default = "default_adaptation_window_days")]
     pub adaptation_window_days: u32,
+
+    /// ジョブ実行中の最大消費コスト（USドル）
+    #[serde(default = "default_max_job_cost_usd")]
+    pub max_job_cost_usd: f64,
+}
+
+fn default_max_job_cost_usd() -> f64 {
+    5.0 // Default to $5.0 cap per job to prevent runaway automation
 }
 
 fn default_cortex_chars() -> usize {
@@ -76,6 +84,7 @@ impl Default for ContextBudget {
             memory_curation_threshold: default_curation_threshold(),
             max_curated_entries: default_max_curated_entries(),
             adaptation_window_days: default_adaptation_window_days(),
+            max_job_cost_usd: default_max_job_cost_usd(),
         }
     }
 }

@@ -12,8 +12,8 @@ use reqwest;
 use std::str::FromStr;
 use thiserror::Error;
 
-// TODO(Phase3): Replace mock types below with real alloy/keyring crate imports.
-// Mock types for Phase 1b TDD (isolated without heavy EVM crates)
+// TODO(Phase4): Replace mock types below with real alloy/keyring crate imports. (Deferred to Federation v1.0)
+// Mock types for Phase 1b/3 TDD (isolated without heavy EVM crates)
 pub(crate) type U256 = u64;
 pub struct PrivateKeySigner {
     address: String,

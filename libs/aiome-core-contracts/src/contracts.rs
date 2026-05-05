@@ -420,6 +420,8 @@ pub struct ArenaMatch {
     pub skill_a: String,
     pub skill_b: String,
     pub topic: String,
+    pub output_a: Option<String>,
+    pub output_b: Option<String>,
     /// 勝利したスキル名
     pub winner: Option<String>,
     pub reasoning: String,

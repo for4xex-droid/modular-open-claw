@@ -304,6 +304,20 @@ pub async fn spawn_mcp_server(
         .into());
     }
 
+    // SEC: Package whitelist for npx/uvx commands (Defense-in-Depth)
+    if let Err(reason) =
+        shared::mcp_constants::validate_mcp_package(&payload.command, &payload.args)
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation { reason }.into());
+    }
+
+    // SEC: Block forbidden argument flags (CVE-2026-40933 Defense-in-Depth)
+    if payload.command == "npx" || payload.command == "uvx" {
+        if let Err(reason) = shared::mcp_constants::validate_mcp_arg_flags(&payload.args) {
+            return Err(aiome_core::error::AiomeError::SecurityViolation { reason }.into());
+        }
+    }
+
     // SEC: Block path traversal and injection in args
     let dangerous_parts = [
         "..", "$(", "`", "${", ";", "&&", "||", ">", "<", "|", "\n", "\r", "%0a", "%0d",
@@ -354,7 +368,12 @@ pub async fn update_mcp_config(
     let config_path = state.config.resolver.resolve(".aiome/mcp_servers.json");
 
     if let Some(parent) = config_path.parent() {
-        let _ = tokio::fs::create_dir_all(parent).await;
+        tokio::fs::create_dir_all(parent).await.map_err(|e| {
+            AppError::internal(format!(
+                "Failed to create parent directory for MCP config: {}",
+                e
+            ))
+        })?;
     }
 
     let serialized = serde_json::to_string_pretty(&payload)
@@ -365,7 +384,11 @@ pub async fn update_mcp_config(
         .map_err(|e| AppError::internal(format!("Failed to write config: {}", e)))?;
 
     state.mcp_manager.kill_all().await;
-    let _ = state.registry.clear_mcp_servers().await;
+    // NOTE: clear_mcp_servers failure is non-fatal — discover_and_connect will re-populate.
+    // This differs from create_dir_all (which is fatal) because missing dirs prevent writes.
+    if let Err(e) = state.registry.clear_mcp_servers().await {
+        tracing::warn!("Failed to clear MCP servers registry: {}", e);
+    }
 
     crate::mcp::discovery::discover_and_connect(&state.mcp_manager, &state.registry)
         .await

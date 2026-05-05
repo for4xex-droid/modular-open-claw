@@ -21,6 +21,21 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@stripe/",
     "@appsyogi/",
     "@secops/",
+    // Phase 1: MCP Ecosystem Expansion
+    "@brightdata/",
+    "@upstash/",
+    "@playwright/",
+    "@canva/",
+];
+
+/// Allowed unscoped npm packages for MCP (exact match).
+/// These packages don't have an @scope/ prefix, so prefix matching won't work.
+pub const ALLOWED_MCP_PACKAGES: &[&str] = &[
+    "firecrawl-mcp",
+    "exa-mcp-server",
+    "chrome-devtools-mcp",
+    "freee-mcp",
+    "mcp-remote",
 ];
 
 /// Forbidden argument flags for MCP endpoints to prevent command injection.
@@ -33,3 +48,73 @@ pub const FORBIDDEN_MCP_ARG_FLAGS: &[&str] = &[
     "--pre",
     "--post",
 ];
+
+/// Validates that the package name in a `npx`/`uvx` command is whitelisted.
+///
+/// Returns `Ok(())` if the package is allowed, or `Err(reason)` if not.
+///
+/// # Errors
+///
+/// Returns `Err(String)` if:
+/// - The first positional argument is not in `ALLOWED_MCP_PREFIXES` or `ALLOWED_MCP_PACKAGES`.
+/// - No positional argument (non-flag) is found in `args`.
+pub fn validate_mcp_package(command: &str, args: &[String]) -> Result<(), String> {
+    if command != "npx" && command != "uvx" {
+        return Ok(());
+    }
+
+    let pkg = args.iter().find(|a| !a.starts_with('-'));
+    if let Some(p) = pkg {
+        if !ALLOWED_MCP_PREFIXES
+            .iter()
+            .any(|prefix| p.starts_with(prefix))
+            && !ALLOWED_MCP_PACKAGES.iter().any(|pkg_name| {
+                p == *pkg_name
+                    || p.strip_prefix(pkg_name)
+                        .is_some_and(|rest| rest.starts_with('@'))
+            })
+        {
+            return Err(format!("MCP package '{}' is not whitelisted", p));
+        }
+    } else {
+        return Err(format!("Missing package name for command '{}'", command));
+    }
+    Ok(())
+}
+
+/// Validates that no forbidden argument flags are present in the args.
+///
+/// Returns `Ok(())` if clean, or `Err(reason)` with the offending flag.
+///
+/// # Errors
+///
+/// Returns `Err(String)` if any argument matches a pattern in `FORBIDDEN_MCP_ARG_FLAGS`.
+/// Matching handles both long flags (`--eval`, `--eval=code`) and
+/// short flags (`-c`, `-cVALUE`), while excluding false positives from
+/// long flags starting with `--` (e.g. `--env-file` does not match `-e`).
+pub fn validate_mcp_arg_flags(args: &[String]) -> Result<(), String> {
+    for arg in args {
+        let lower = arg.to_lowercase();
+        for flag in FORBIDDEN_MCP_ARG_FLAGS {
+            let matched = if flag.starts_with("--") {
+                // Long flags: match exact or --flag=value
+                lower == *flag
+                    || lower
+                        .strip_prefix(flag)
+                        .is_some_and(|rest| rest.starts_with('='))
+            } else {
+                // Short flags (-c, -e): match exact or -cVALUE
+                // Guard: exclude long flags (--env-file must NOT match -e)
+                !lower.starts_with("--")
+                    && (lower == *flag || (lower.starts_with(flag) && lower.len() > flag.len()))
+            };
+            if matched {
+                return Err(format!(
+                    "Forbidden argument flag '{}' in MCP command (matched: {})",
+                    arg, flag
+                ));
+            }
+        }
+    }
+    Ok(())
+}

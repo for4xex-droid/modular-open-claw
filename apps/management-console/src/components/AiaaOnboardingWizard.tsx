@@ -7,7 +7,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Briefcase, Link as LinkIcon, CheckCircle, ChevronRight } from 'lucide-react';
+import { Briefcase, Link as LinkIcon, CheckCircle, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { authenticatedFetch } from '../lib/auth';
+import { API_BASE } from '../config';
 // Remove useTranslation because it was unused
 
 interface DiscoveryData {
@@ -31,13 +33,39 @@ export const AiaaOnboardingWizard = () => {
   });
 
   const [stripeLink, setStripeLink] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const generateBlueprintAndLink = () => {
-    // Mocking the backend call to generate a Stripe Checkout link & Blueprint
-    setTimeout(() => {
-      setStripeLink(`https://checkout.stripe.com/pay/cs_test_${Math.random().toString(36).substr(2, 9)}`);
+  const generateBlueprintAndLink = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          agent_id: '00000000-0000-0000-0000-000000000000', // Dummy agent ID for onboarding
+          price_id: 'price_dummy',
+          success_url: `${window.location.origin}/checkout/success`,
+          cancel_url: `${window.location.origin}/checkout/cancel`
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const responseData = await res.json();
+      setStripeLink(responseData.url);
       setStep(3);
-    }, 1500);
+    } catch (err: any) {
+      console.error('Error generating checkout link:', err);
+      setError('Error generating checkout link: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleTask = (task: string) => {
@@ -174,12 +202,26 @@ export const AiaaOnboardingWizard = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
-              <button className="aiome-btn-secondary" onClick={() => setStep(1)}>
+              <button className="aiome-btn-secondary" onClick={() => setStep(1)} disabled={isLoading}>
                 Back
               </button>
-              <button className="aiome-btn-primary" onClick={generateBlueprintAndLink}>
-                Generate Blueprint & Checkout Link
-              </button>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {error && (
+                  <span style={{ color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+                    <AlertCircle size={14} /> {error}
+                  </span>
+                )}
+                <button className="aiome-btn-primary" onClick={generateBlueprintAndLink} disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={16} className="spinner" /> Generating...
+                    </>
+                  ) : (
+                    'Generate Blueprint & Checkout Link'
+                  )}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

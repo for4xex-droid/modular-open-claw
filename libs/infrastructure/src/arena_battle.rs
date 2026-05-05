@@ -158,6 +158,8 @@ impl ArenaBattle {
             skill_a: skill_a.to_string(),
             skill_b: skill_b.to_string(),
             topic: input.to_string(),
+            output_a: Some(out_a.clone()),
+            output_b: Some(out_b.clone()),
             winner: final_winner.clone(),
             reasoning: v["reasoning"]
                 .as_str()

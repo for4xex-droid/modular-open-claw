@@ -437,3 +437,71 @@ pub async fn synth_dataset_handler(
 
     Ok((StatusCode::ACCEPTED, "Generation started"))
 }
+
+#[derive(Deserialize)]
+pub struct DpoDatasetParams {
+    #[serde(default = "default_dpo_limit")]
+    pub limit: i64,
+}
+
+fn default_dpo_limit() -> i64 {
+    1000
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/cortex/dpo/dataset",
+    params(
+        ("limit" = Option<i64>, Query, description = "Maximum number of matches to export (default: 1000, max: 5000)")
+    ),
+    responses(
+        (status = 200, description = "Export DPO Dataset as JSONL", body = String)
+    ),
+    security(("api_key" = []))
+)]
+pub async fn export_dpo_dataset_handler(
+    State(state): State<crate::AppState>,
+    _auth: crate::auth::Authenticated,
+    axum::extract::Query(params): axum::extract::Query<DpoDatasetParams>,
+) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+    use aiome_core::traits::ImmuneSystemOps;
+
+    let limit = params.limit.clamp(1, 5000);
+    let matches = state.job_queue.fetch_arena_matches(limit).await?;
+
+    let mut jsonl = String::new();
+    for m in matches {
+        if let (Some(winner), Some(out_a), Some(out_b)) = (m.winner, m.output_a, m.output_b) {
+            let (chosen, rejected) = if winner == m.skill_a {
+                (out_a, out_b)
+            } else if winner == m.skill_b {
+                (out_b, out_a)
+            } else {
+                continue;
+            };
+
+            let row = serde_json::json!({
+                "prompt": m.topic,
+                "chosen": chosen,
+                "rejected": rejected,
+                "reasoning": m.reasoning,
+            });
+            if let Ok(line) = serde_json::to_string(&row) {
+                jsonl.push_str(&line);
+                jsonl.push('\n');
+            }
+        }
+    }
+
+    Ok((
+        axum::http::StatusCode::OK,
+        [
+            (axum::http::header::CONTENT_TYPE, "application/jsonl"),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                "attachment; filename=\"dpo_dataset.jsonl\"",
+            ),
+        ],
+        jsonl,
+    ))
+}

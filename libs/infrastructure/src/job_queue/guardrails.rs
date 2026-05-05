@@ -21,6 +21,7 @@ pub trait GuardrailOps {
     async fn do_fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError>;
     async fn do_get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError>;
     async fn do_record_arena_match(&self, match_data: &ArenaMatch) -> Result<(), AiomeError>;
+    async fn do_fetch_arena_matches(&self, limit: i64) -> Result<Vec<ArenaMatch>, AiomeError>;
 }
 
 #[async_trait]
@@ -227,8 +228,21 @@ impl GuardrailOps for UniversalJobQueue {
     }
 
     async fn do_record_arena_match(&self, match_data: &ArenaMatch) -> Result<(), AiomeError> {
-        let q = format!("INSERT INTO arena_history (id, skill_a, skill_b, topic, winner, reasoning, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}) ON CONFLICT(id) DO NOTHING",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6));
+        let q = format!(
+            "INSERT INTO arena_history \
+             (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at) \
+             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}) \
+             ON CONFLICT(id) DO NOTHING",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2),
+            self.pool.ph(3),
+            self.pool.ph(4),
+            self.pool.ph(5),
+            self.pool.ph(6),
+            self.pool.ph(7),
+            self.pool.ph(8)
+        );
         sql_exec!(
             &self.pool,
             &q,
@@ -236,6 +250,8 @@ impl GuardrailOps for UniversalJobQueue {
             &match_data.skill_a,
             &match_data.skill_b,
             &match_data.topic,
+            &match_data.output_a,
+            &match_data.output_b,
             &match_data.winner,
             &match_data.reasoning,
             &match_data.created_at
@@ -244,5 +260,61 @@ impl GuardrailOps for UniversalJobQueue {
             reason: e.to_string(),
         })?;
         Ok(())
+    }
+
+    async fn do_fetch_arena_matches(&self, limit: i64) -> Result<Vec<ArenaMatch>, AiomeError> {
+        let q = format!(
+            "SELECT id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at \
+             FROM arena_history ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0)
+        );
+        let mut matches = Vec::new();
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    matches.push(ArenaMatch {
+                        id: r.get("id"),
+                        skill_a: r.get("skill_a"),
+                        skill_b: r.get("skill_b"),
+                        topic: r.get("topic"),
+                        output_a: r.try_get::<Option<String>, _>("output_a").unwrap_or(None),
+                        output_b: r.try_get::<Option<String>, _>("output_b").unwrap_or(None),
+                        winner: r.try_get::<Option<String>, _>("winner").unwrap_or(None),
+                        reasoning: r.try_get::<String, _>("reasoning").unwrap_or_default(),
+                        created_at: r.get("created_at"),
+                    });
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    matches.push(ArenaMatch {
+                        id: r.get("id"),
+                        skill_a: r.get("skill_a"),
+                        skill_b: r.get("skill_b"),
+                        topic: r.get("topic"),
+                        output_a: r.try_get::<Option<String>, _>("output_a").unwrap_or(None),
+                        output_b: r.try_get::<Option<String>, _>("output_b").unwrap_or(None),
+                        winner: r.try_get::<Option<String>, _>("winner").unwrap_or(None),
+                        reasoning: r.try_get::<String, _>("reasoning").unwrap_or_default(),
+                        created_at: r.get("created_at"),
+                    });
+                }
+            }
+        }
+        Ok(matches)
     }
 }

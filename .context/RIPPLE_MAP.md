@@ -2022,3 +2022,40 @@ graph TD
 - Extracted `apps/samsara-hub/src/state.rs` containing `HubState`.
 - Extracted handlers to `apps/samsara-hub/src/handlers/federation.rs` and `ws.rs`.
 - Migrated hardcoded SQL DDLs to `sqlx::migrate!` in `migrations/sqlite/` and `migrations/postgres/`.
+
+## 2026-05-04: SSRF Redirect Bypass Prevention & DPO Dataset Export
+### 1. robots.txt SSRF Hardening
+- **変更内容**:
+    - `apps/api-server/src/tool_call_router.rs` [MODIFY]: `check_robots_txt_policy` に `reqwest::redirect::Policy::none()` を適用し、リダイレクト応答を悪用した内部ネットワークへの SSRF バイパスを遮断。`line[11..]` の固定オフセットスライスを `line.find(':')` ベースのパーサーに書き換え、バイト境界パニックを排除。空 `Disallow` を RFC 9309 §2.2.2 準拠で「全許可」として処理。
+- **波及効果**:
+    - `tool_call_router.rs` 内で完結。MCP ツールの URL アクセスガードレールが強化されるのみで、他モジュールへの波及なし。
+    - `reqwest::Client` の構築が呼び出し毎に行われるため、グローバル HTTP クライアントプールとの競合なし。
+
+### 2. DPO Dataset Export UI
+- **変更内容**:
+    - `apps/management-console/src/components/DpoDatasetExport.tsx` [NEW]: DPO データセットを JSONL 形式でダウンロードする管理コンソール UI。i18n 多言語対応、`aria-busy` アクセシビリティ、型安全エラーハンドリングを完備。
+    - `apps/management-console/src/components/DpoDatasetExport.test.tsx` [NEW]: 6件の Jest テスト（正常系/APIエラー/ネットワーク断/A11y）。
+    - `apps/management-console/src/components/cortex/CortexView.tsx` [MODIFY]: `DpoDatasetExport` コンポーネントを ForecastView 下部に統合。
+    - `apps/management-console/src/i18n/en.json` [MODIFY]: `dpoExport.*` キー5件を追加。
+    - `apps/management-console/src/i18n/ja.json` [MODIFY]: `dpoExport.*` キー5件を追加。
+    - `apps/api-server/src/routes/cortex.rs` [MODIFY]: `export_dpo_dataset_handler` エンドポイント実装。
+    - `apps/api-server/src/api.rs` [MODIFY]: OpenAPI への `export_dpo_dataset_handler` 登録。
+- **波及効果**:
+    - `CortexView.tsx` に新規 import が追加されるため、`CortexView.test.tsx` で `DpoDatasetExport` のモック/スタブが必要。
+    - `authenticatedFetch` (auth.ts) の利用パターンが DpoDatasetExport に拡張。
+    - `dpoExport.*` i18n キーの追加・変更時は `en.json` と `ja.json` の同期が必須。
+
+## 2026-05-05: MCP Ecosystem Security Overhaul
+### 1. Security Gate & Unscoped Package Support
+- **変更内容**:
+    - `libs/shared/src/mcp_constants.rs` [MODIFY]: `ALLOWED_MCP_PACKAGES` の追加と `ALLOWED_MCP_PREFIXES` 拡張 (`@brightdata/`, `@upstash/`, `@playwright/`, `@canva/`)。
+    - `apps/api-server/src/mcp/client.rs` [MODIFY]: `McpClient::spawn` でのパッケージ名検証に `ALLOWED_MCP_PACKAGES` を追加（スコープ無し完全一致）。
+- **波及効果**:
+    - 新たなスコープ無しMCPパッケージ（例: `firecrawl-mcp`, `exa-mcp-server`）のインストールが安全に実行可能になった。
+
+### 2. Ecosystem Discovery & Configuration
+- **変更内容**:
+    - `apps/api-server/src/mcp/discovery.rs` [MODIFY]: 14種類の検証済みMCPサーバーをデフォルトディスカバリに追加。HTTP 型サーバーに `disabled` フラグを導入し、`Slack`, `Figma`, `Ahrefs`, `freee-remote` をデフォルトで無効化。
+    - `apps/api-server/src/mcp/server.rs` [MODIFY]: `is_skill_whitelisted` に新規追加した全てのMCPツール名を登録し、RBACを通した自律実行を許可。
+- **波及効果**:
+    - システム起動時に14種のMCPが安全な状態で認識される。未認証のHTTP系ツールが不正アクセスを引き起こすリスクを防止。

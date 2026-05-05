@@ -87,7 +87,12 @@ pub async fn deploy_blueprint_handler(
     let config_path = state.config.resolver.resolve(".aiome/mcp_servers.json");
 
     if let Some(parent) = config_path.parent() {
-        let _ = tokio::fs::create_dir_all(parent).await;
+        tokio::fs::create_dir_all(parent).await.map_err(|e| {
+            AppError::internal(format!(
+                "Failed to create parent directory for MCP config: {}",
+                e
+            ))
+        })?;
     }
 
     let serialized = serde_json::to_string_pretty(&config)
@@ -98,7 +103,10 @@ pub async fn deploy_blueprint_handler(
         .map_err(|e| AppError::internal(format!("Failed to write config: {}", e)))?;
 
     state.mcp_manager.kill_all().await;
-    let _ = state.registry.clear_mcp_servers().await;
+    // NOTE: clear_mcp_servers failure is non-fatal — discover_and_connect will re-populate.
+    if let Err(e) = state.registry.clear_mcp_servers().await {
+        tracing::warn!("Failed to clear MCP servers registry: {}", e);
+    }
 
     crate::mcp::discovery::discover_and_connect(&state.mcp_manager, &state.registry)
         .await

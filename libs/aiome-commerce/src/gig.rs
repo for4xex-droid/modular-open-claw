@@ -40,7 +40,13 @@ impl UniversalGigEngine {
     ) -> Self {
         // Ensure artifact root exists
         if !artifact_root.exists() {
-            let _ = std::fs::create_dir_all(&artifact_root);
+            if let Err(e) = std::fs::create_dir_all(&artifact_root) {
+                tracing::warn!(
+                    "Failed to create artifact root directory at {}: {}",
+                    artifact_root.display(),
+                    e
+                );
+            }
         }
 
         Self {

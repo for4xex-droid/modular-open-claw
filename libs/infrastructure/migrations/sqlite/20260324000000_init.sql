@@ -228,6 +228,8 @@ CREATE TABLE IF NOT EXISTS arena_history (
     skill_a TEXT NOT NULL,
     skill_b TEXT NOT NULL,
     topic TEXT NOT NULL,
+    output_a TEXT,
+    output_b TEXT,
     winner TEXT,
     reasoning TEXT,
     created_at TEXT DEFAULT (datetime('now'))

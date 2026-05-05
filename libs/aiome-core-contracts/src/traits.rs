@@ -331,6 +331,7 @@ pub trait TaskRegistry: Send + Sync + std::fmt::Debug {
     async fn purge_old_jobs(&self, days: i64) -> Result<u64, AiomeError>;
     async fn heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
+    async fn fetch_job_cost(&self, job_id: &str) -> Result<f64, AiomeError>;
 }
 
 /// 2. 監査・実行軌跡 (AuditStore)
@@ -574,6 +575,11 @@ pub trait ImmuneSystemOps: Send + Sync + std::fmt::Debug {
         &self,
         match_data: &crate::contracts::ArenaMatch,
     ) -> Result<(), AiomeError>;
+
+    async fn fetch_arena_matches(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<crate::contracts::ArenaMatch>, AiomeError>;
     async fn get_immune_rules(&self) -> Result<Vec<crate::contracts::ImmuneRule>, AiomeError>;
 }
 

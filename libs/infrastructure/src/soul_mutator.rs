@@ -398,6 +398,9 @@ mod tests {
         async fn set_creative_rating(&self, _: &str, _: i32) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn fetch_job_cost(&self, _: &str) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
         async fn heartbeat_pulse(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -641,6 +644,9 @@ mod tests {
         }
         async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> {
             Ok(())
+        }
+        async fn fetch_arena_matches(&self, _limit: i64) -> Result<Vec<ArenaMatch>, AiomeError> {
+            Ok(vec![])
         }
         async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
             Ok(vec![])

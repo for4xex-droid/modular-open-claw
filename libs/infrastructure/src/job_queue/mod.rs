@@ -288,6 +288,9 @@ impl TaskRegistry for UniversalJobQueue {
     async fn set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError> {
         Box::pin(self.do_set_creative_rating(job_id, rating)).await
     }
+    async fn fetch_job_cost(&self, job_id: &str) -> Result<f64, AiomeError> {
+        Box::pin(self.do_fetch_job_cost(job_id)).await
+    }
 }
 
 #[async_trait]
@@ -608,6 +611,9 @@ impl ImmuneSystemOps for UniversalJobQueue {
     }
     async fn record_arena_match(&self, m: &ArenaMatch) -> Result<(), AiomeError> {
         Box::pin(self.do_record_arena_match(m)).await
+    }
+    async fn fetch_arena_matches(&self, limit: i64) -> Result<Vec<ArenaMatch>, AiomeError> {
+        Box::pin(self.do_fetch_arena_matches(limit)).await
     }
     async fn get_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
         Box::pin(self.do_get_immune_rules()).await

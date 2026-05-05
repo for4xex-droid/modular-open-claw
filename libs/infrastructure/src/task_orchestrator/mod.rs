@@ -592,6 +592,43 @@ impl TaskDispatcher {
                                 }
                             }
 
+                            // Phase B-4: Job-level Budget Check
+                            let max_job_cost =
+                                crate::context_engine::ContextBudget::default().max_job_cost_usd;
+                            let current_cost =
+                                job_queue_clone.fetch_job_cost(&job_id).await.unwrap_or(0.0);
+
+                            if current_cost >= max_job_cost {
+                                warn!("🚨 [TaskDispatcher] Job {} has exceeded the spending cap (${:.4} >= ${:.4}). Terminating job.", job_id, current_cost, max_job_cost);
+                                if let Err(e) = job_queue_clone
+                                    .fail_job(
+                                        &job_id,
+                                        &format!(
+                                            "Budget exceeded: ${:.4} >= ${:.4}",
+                                            current_cost, max_job_cost
+                                        ),
+                                    )
+                                    .await
+                                {
+                                    error!(
+                                        "Failed to mark job {} as failed due to budget overrun: {}",
+                                        job_id, e
+                                    );
+                                }
+                                if let Err(e) = progress_tx
+                                    .send(TaskEvent::Failed {
+                                        job_id: job_id.clone(),
+                                        error: format!(
+                                            "Budget exceeded: ${:.4} >= ${:.4}",
+                                            current_cost, max_job_cost
+                                        ),
+                                    })
+                                    .await
+                                {
+                                    tracing::warn!("Failed to send failed event: {}", e);
+                                }
+                                return; // Stop executing this job
+                            }
                             let karma_directives = job.karma_directives.clone();
                             let requires_review = job.requires_review;
                             tokio::select! {

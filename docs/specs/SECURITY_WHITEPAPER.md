@@ -12,6 +12,7 @@ APIキー（Gemini, OpenAI等）は、システムの生命線であり、最も
 *   **プロキシ分離アーキテクチャ**: メインの AI エンジンプロセスは API キーを一切保持しません。通信はすべて隔離された `key-proxy` プロセスを経由します。
 *   **Abyss Vault (メモリエントロピー保護)**: APIキー（Gemini, OpenAI）, `API_SERVER_SECRET`, `FEDERATION_SECRET` は起動直後に `secrecy::SecretString` へ展開され、環境変数からは即座に抹消 (`remove_var`) されます。これにより、万が一プロセスダンプを取得されても、平文のキーが露出するリスクを最小化します。
 *   **SSRF & リダイレクト防止**: 通信先はソースコードレベルでハードコードされており（ホワイトリスト制）、AI の誤操作や外部攻撃による不正なサーバーへのキー送信（SSRF）は構造的に発生しません。
+*   **robots.txt ガードレール SSRF 防御**: MCP ツールによる外部 URL へのアクセス前に行われる `robots.txt` ポリシーチェックにおいて、`reqwest::redirect::Policy::none()` を強制し、リダイレクト応答を利用した内部ネットワークへの SSRF バイパス（例: `302 → http://127.0.0.1/admin`）を構造的に遮断しています。robots.txt の取得が失敗した場合は Fail-Open ポリシーによりアクセスを許容し、可用性を維持します。
 *   **A2C ギフト安全制限 (Phase 7.2)**: 自律的なギフト送信（`GiftEngine`）は、$5.0USD の厳格な上限設定と `MASTER_EMAIL` による管理者認証を必須としており、AI の誤動作や悪意あるエージェントによる資産流出を物理的に防ぎます。
 
 ## 1.5. Governed Execution Layer (統治型実行レイヤー - Phase 2.1)

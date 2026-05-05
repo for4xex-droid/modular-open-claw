@@ -118,7 +118,7 @@ pub async fn sync_handler(
             .unwrap_or_default();
     let has_more = karmas.len() == 500 || rules.len() == 500;
 
-    let arena_sync_query = format!("SELECT id, skill_a, skill_b, topic, winner, reasoning, created_at FROM approved_arena_matches WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500", state.pool.ph(0));
+    let arena_sync_query = format!("SELECT id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at FROM approved_arena_matches WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500", state.pool.ph(0));
     let arena_rows: Vec<ArenaMatchRecord> =
         shared::sql_fetch_all!(&state.pool, ArenaMatchRecord, &arena_sync_query, &since)
             .unwrap_or_default();
@@ -186,7 +186,9 @@ pub async fn sync_handler(
                 skill_a: a.skill_a,
                 skill_b: a.skill_b,
                 topic: a.topic,
-                winner: Some(a.winner),
+                output_a: a.output_a,
+                output_b: a.output_b,
+                winner: a.winner,
                 reasoning: a.reasoning,
                 created_at: a.created_at,
             })
@@ -242,6 +244,14 @@ pub async fn push_handler(
         m.skill_a = shared::guardrails::strip_invisible_unicode(&m.skill_a).into_owned();
         m.skill_b = shared::guardrails::strip_invisible_unicode(&m.skill_b).into_owned();
         m.topic = shared::guardrails::strip_invisible_unicode(&m.topic).into_owned();
+        m.output_a = m
+            .output_a
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
+        m.output_b = m
+            .output_b
+            .take()
+            .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
         m.winner = m
             .winner
             .take()
@@ -510,11 +520,11 @@ pub async fn push_handler(
 
     for a in &payload.arena_matches {
         let quarantine_arena_query = format!(
-            "INSERT INTO quarantined_arena_matches (id, skill_a, skill_b, topic, winner, reasoning, created_at, received_at)
-             VALUES ({}, {}, {}, {}, {}, {}, {}, {})
+            "INSERT INTO quarantined_arena_matches (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at, received_at)
+             VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
              ON CONFLICT(id) DO NOTHING ",
              state.pool.ph(0), state.pool.ph(1), state.pool.ph(2), state.pool.ph(3), state.pool.ph(4),
-             state.pool.ph(5), state.pool.ph(6), state.pool.ph(7)
+             state.pool.ph(5), state.pool.ph(6), state.pool.ph(7), state.pool.ph(8), state.pool.ph(9)
         );
         let res = match &mut tx {
             shared::db::DatabaseTransaction::Sqlite(t) => {
@@ -523,6 +533,8 @@ pub async fn push_handler(
                     .bind(&a.skill_a)
                     .bind(&a.skill_b)
                     .bind(&a.topic)
+                    .bind(&a.output_a)
+                    .bind(&a.output_b)
                     .bind(&a.winner)
                     .bind(&a.reasoning)
                     .bind(&a.created_at)
@@ -537,6 +549,8 @@ pub async fn push_handler(
                     .bind(&a.skill_a)
                     .bind(&a.skill_b)
                     .bind(&a.topic)
+                    .bind(&a.output_a)
+                    .bind(&a.output_b)
                     .bind(&a.winner)
                     .bind(&a.reasoning)
                     .bind(&a.created_at)

@@ -20,6 +20,8 @@ pub trait CostOps: SettingsOps {
     async fn aggregate_cost_hours(&self, hours: i64) -> Result<f64, AiomeError>;
     /// 過去 N 日のコスト合計を取得する
     async fn aggregate_cost_days(&self, days: i64) -> Result<f64, AiomeError>;
+    /// 特定のジョブのコスト合計を取得する
+    async fn aggregate_cost_by_job(&self, job_id: &str) -> Result<f64, AiomeError>;
 }
 
 #[async_trait]
@@ -196,6 +198,31 @@ impl CostOps for UniversalJobQueue {
             .map(|opt| opt.unwrap_or(0.0))
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to aggregate days costs: {}", e),
+            })
+    }
+
+    async fn aggregate_cost_by_job(&self, job_id: &str) -> Result<f64, AiomeError> {
+        let res_opt = match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => sqlx::query(
+                "SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE job_id = ?",
+            )
+            .bind(job_id)
+            .fetch_one(p)
+            .await
+            .map(|row| row.get::<Option<f64>, _>(0)),
+            crate::db::DatabasePool::Postgres(p) => sqlx::query(
+                "SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE job_id = $1",
+            )
+            .bind(job_id)
+            .fetch_one(p)
+            .await
+            .map(|row| row.get::<Option<f64>, _>(0)),
+        };
+
+        res_opt
+            .map(|opt| opt.unwrap_or(0.0))
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to aggregate job costs: {}", e),
             })
     }
 }

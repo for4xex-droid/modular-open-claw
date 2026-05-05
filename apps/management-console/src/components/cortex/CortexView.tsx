@@ -11,6 +11,7 @@ type WikiArticleDetail = components['schemas']['WikiArticle'];
 import { useTranslation } from '../../i18n';
 import TrendView from './TrendView';
 import ForecastView from './ForecastView';
+import DpoDatasetExport from '../DpoDatasetExport';
 
 export default function CortexView() {
   const { t } = useTranslation();
@@ -78,9 +79,10 @@ export default function CortexView() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) minmax(250px, 1fr) minmax(400px, 2fr)', gap: 'var(--layout-panel-gap)', height: 'calc(100vh - 100px)' }}>
       {/* Trend & Forecast View Panel */}
-      <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', padding: 'var(--space-md)' }}>
-        <div style={{ flex: 1, minHeight: '50%' }}><TrendView /></div>
-        <div style={{ flex: 1, minHeight: '50%' }}><ForecastView /></div>
+      <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', padding: 'var(--space-md)', overflowY: 'auto' }}>
+        <div style={{ flex: 1, minHeight: '35%' }}><TrendView /></div>
+        <div style={{ flex: 1, minHeight: '35%' }}><ForecastView /></div>
+        <div style={{ marginTop: 'auto' }}><DpoDatasetExport /></div>
       </div>
 
       {/* Wiki List Panel */}

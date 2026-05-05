@@ -41,7 +41,9 @@ pub struct ArenaMatchRecord {
     pub skill_a: String,
     pub skill_b: String,
     pub topic: String,
-    pub winner: String,
+    pub output_a: Option<String>,
+    pub output_b: Option<String>,
+    pub winner: Option<String>,
     pub reasoning: String,
     pub created_at: String,
 }

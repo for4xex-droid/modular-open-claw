@@ -1721,6 +1721,43 @@
         ]
       }
     },
+    "/api/v1/cortex/dpo/dataset": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "export_dpo_dataset_handler",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of matches to export (default: 1000, max: 5000)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export DPO Dataset as JSONL",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/cortex/ingest": {
       "post": {
         "tags": [
@@ -4735,6 +4772,12 @@
           },
           "command": {
             "type": "string"
+          },
+          "disabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "env": {
             "type": "object",

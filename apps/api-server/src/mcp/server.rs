@@ -375,22 +375,34 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcRes
 }
 
 fn is_skill_whitelisted(name: &str) -> bool {
-    // Phase 17 Strict Review: RBAC Whitelist
     match name {
+        // Existing core tools
         "fs_reader" | "MarketDataFetcher" | "StringRepeater" | "transcribe" | "cortex_search" => {
             true
         }
+        // Phase 1: External MCP tools
+        "firecrawl_scrape" | "firecrawl_crawl" | "firecrawl_map"
+        | "exa_search" | "exa_contents"
+        | "browser_navigate" | "browser_screenshot" | "browser_click"
+        | "resolve_library_id" | "get_library_docs" // Context7
+        | "freee_api_get" | "freee_api_post" | "freee_authenticate" => true,
+
         "terminal_exec" | "fs_writer" | "forge_publish" => false, // Protected internal tools
         _ => false,
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::app_state::Component;
     use infrastructure::skills::hooks::HookChain;
     use std::sync::Arc;
+
+    /// Public test helper: exposes is_skill_whitelisted for cross-module testing.
+    pub fn check_whitelist(name: &str) -> bool {
+        is_skill_whitelisted(name)
+    }
 
     async fn setup_mock_state() -> AppState {
         let (_, state, _) = crate::api_integration_tests::create_test_server().await;
@@ -427,5 +439,34 @@ mod tests {
             "Expected Guardrail, Sentinel, or Hook block, got: {}",
             err.message
         );
+    }
+
+    /// [Verification Protocol — RBAC] New tools must be allowed, protected tools must be blocked.
+    #[tokio::test]
+    async fn test_rbac_new_tools_whitelisted() {
+        // Positive: new ecosystem tools
+        assert!(check_whitelist("firecrawl_scrape"));
+        assert!(check_whitelist("firecrawl_crawl"));
+        assert!(check_whitelist("firecrawl_map"));
+        assert!(check_whitelist("exa_search"));
+        assert!(check_whitelist("exa_contents"));
+        assert!(check_whitelist("browser_navigate"));
+        assert!(check_whitelist("browser_screenshot"));
+        assert!(check_whitelist("browser_click"));
+        assert!(check_whitelist("resolve_library_id"));
+        assert!(check_whitelist("get_library_docs"));
+        assert!(check_whitelist("freee_api_get"));
+        assert!(check_whitelist("freee_api_post"));
+        assert!(check_whitelist("freee_authenticate"));
+
+        // Negative: protected internal tools MUST remain blocked
+        assert!(!check_whitelist("terminal_exec"));
+        assert!(!check_whitelist("fs_writer"));
+        assert!(!check_whitelist("forge_publish"));
+
+        // Negative: arbitrary unknown tools
+        assert!(!check_whitelist("evil_tool"));
+        assert!(!check_whitelist(""));
+        assert!(!check_whitelist("firecrawl_scrape_backdoor"));
     }
 }

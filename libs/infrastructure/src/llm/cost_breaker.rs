@@ -141,30 +141,23 @@ impl CostCircuitBreaker {
         Ok(())
     }
 
-    /// セッション単位のコスト制限を確認 (GAP-6)
-    pub async fn enforce_session_limit(
+    /// ジョブ単位のコスト制限を確認 (GAP-6, B-4)
+    pub async fn enforce_job_limit(
         &self,
-        session_id: &str,
-        current_session_cost: f64,
+        job_id: &str,
+        max_job_cost_usd: f64,
     ) -> Result<(), AiomeError> {
-        let limit = self
-            .ops
-            .get_setting_value("cost_limit_per_session")
-            .await
-            .ok()
-            .flatten()
-            .and_then(|s| s.parse::<f64>().ok())
-            .unwrap_or(0.50); // デフォルト $0.50
+        let current_cost = self.ops.aggregate_cost_by_job(job_id).await?;
 
-        if current_session_cost >= limit {
+        if current_cost >= max_job_cost_usd {
             warn!(
-                "🚨 [CostCircuitBreaker] Session {} cost ${:.4} exceeds limit ${:.4}",
-                session_id, current_session_cost, limit
+                "🚨 [CostCircuitBreaker] Job {} cost ${:.4} exceeds limit ${:.4}",
+                job_id, current_cost, max_job_cost_usd
             );
             return Err(AiomeError::Infrastructure {
                 reason: format!(
-                    "Session cost limit exceeded: ${:.4} >= ${:.4}",
-                    current_session_cost, limit
+                    "Job cost limit exceeded: ${:.4} >= ${:.4}",
+                    current_cost, max_job_cost_usd
                 ),
             });
         }
@@ -216,7 +209,7 @@ mod tests {
     use crate::job_queue::UniversalJobQueue;
 
     #[tokio::test]
-    async fn test_session_cost_limit_green() {
+    async fn test_job_cost_limit_green() {
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
             .unwrap(); // allow-anti-pattern
@@ -228,14 +221,39 @@ mod tests {
                 .await
                 .unwrap(), // allow-anti-pattern
         );
+
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        let raw_pool = jq.pool.get_sqlite_pool().unwrap();
+
+        sqlx::query("INSERT INTO jobs (id, category, topic, style_name, karma_directives, status) VALUES ('job_123', 'cat', 'topic', 'style', '{}', 'Pending')")
+            .execute(raw_pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES ('job_123', 'p', 'm', 't', 1, 0.1, datetime('now'))")
+            .execute(raw_pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO jobs (id, category, topic, style_name, karma_directives, status) VALUES ('job_456', 'cat', 'topic', 'style', '{}', 'Pending')")
+            .execute(raw_pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES ('job_456', 'p', 'm', 't', 1, 0.6, datetime('now'))")
+            .execute(raw_pool)
+            .await
+            .unwrap();
+
         let breaker = CostCircuitBreaker::new(jq.clone(), 10.0);
 
         // 通常範囲内 ($0.10) は OK
-        let result = breaker.enforce_session_limit("session_123", 0.1).await;
+        let result = breaker.enforce_job_limit("job_123", 0.50).await;
         assert!(result.is_ok());
 
-        // デフォルト制限 ($0.50) を超えるとエラー
-        let result = breaker.enforce_session_limit("session_456", 0.6).await;
+        // 指定制限 ($0.50) を超えるとエラー
+        let result = breaker.enforce_job_limit("job_456", 0.50).await;
         assert!(result.is_err());
     }
 

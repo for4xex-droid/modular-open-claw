@@ -477,14 +477,49 @@ async fn test_sqlite_job_queue_arena_history() {
     let (jq, _tmp) = create_test_queue().await;
     let match_data = aiome_core::contracts::ArenaMatch {
         id: "match-1".into(),
-        skill_a: "A".into(),
-        skill_b: "B".into(),
-        topic: "Topic".into(),
-        winner: Some("A".into()),
+        skill_a: "Skill_A".to_string(),
+        skill_b: "Skill_B".to_string(),
+        topic: "Topic".to_string(),
+        output_a: Some("out A".to_string()),
+        output_b: Some("out B".to_string()),
+        winner: Some("Skill_A".to_string()),
         reasoning: "A is better".into(),
         created_at: Utc::now().to_rfc3339(),
     };
     jq.record_arena_match(&match_data).await.unwrap();
+
+    // Roundtrip: fetch and verify all fields including output_a/output_b
+    let fetched = jq.fetch_arena_matches(10).await.unwrap();
+    assert_eq!(fetched.len(), 1);
+    let m = &fetched[0];
+    assert_eq!(m.id, "match-1");
+    assert_eq!(m.skill_a, "Skill_A");
+    assert_eq!(m.skill_b, "Skill_B");
+    assert_eq!(m.topic, "Topic");
+    assert_eq!(m.output_a.as_deref(), Some("out A"));
+    assert_eq!(m.output_b.as_deref(), Some("out B"));
+    assert_eq!(m.winner.as_deref(), Some("Skill_A"));
+    assert_eq!(m.reasoning, "A is better");
+
+    // Verify None outputs are handled correctly
+    let match_no_output = aiome_core::contracts::ArenaMatch {
+        id: "match-2".into(),
+        skill_a: "X".into(),
+        skill_b: "Y".into(),
+        topic: "Topic2".into(),
+        output_a: None,
+        output_b: None,
+        winner: None,
+        reasoning: "Draw".into(),
+        created_at: Utc::now().to_rfc3339(),
+    };
+    jq.record_arena_match(&match_no_output).await.unwrap();
+    let fetched2 = jq.fetch_arena_matches(10).await.unwrap();
+    assert_eq!(fetched2.len(), 2);
+    let draw = fetched2.iter().find(|m| m.id == "match-2").unwrap();
+    assert!(draw.output_a.is_none());
+    assert!(draw.output_b.is_none());
+    assert!(draw.winner.is_none());
 }
 
 #[tokio::test]

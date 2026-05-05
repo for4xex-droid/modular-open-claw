@@ -252,10 +252,12 @@ impl DockerConductor {
         // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
         // This prevents API keys from being visible via `ps aux` on the host.
         let env_file_path = temp_dir.join(".env.shadow");
+        let max_job_cost = crate::context_engine::ContextBudget::default().max_job_cost_usd;
         let env_file_content = format!(
-            "A2A_AUTH_TOKEN={}\nGEMINI_API_KEY={}\n",
+            "A2A_AUTH_TOKEN={}\nGEMINI_API_KEY={}\nMAX_JOB_COST_USD={}\n",
             auth_token,
-            self.gemini_api_key.expose_secret()
+            self.gemini_api_key.expose_secret(),
+            max_job_cost
         );
         if let Err(e) = std::fs::write(&env_file_path, &env_file_content) {
             let _ = std::fs::remove_dir_all(&temp_dir);

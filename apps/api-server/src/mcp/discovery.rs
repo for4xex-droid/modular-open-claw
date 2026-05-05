@@ -57,6 +57,8 @@ pub struct McpServerConfig {
     pub url: Option<String>,
     #[serde(default)]
     pub headers: HashMap<String, String>,
+    #[serde(default)]
+    pub disabled: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
@@ -76,7 +78,13 @@ pub async fn discover_and_connect(
     if !config_path.exists() {
         info!("ℹ️ [MCP Discovery] No server config found at ~/.aiome/mcp_servers.json. Creating default template...");
         if let Some(parent) = config_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                warn!(
+                    "⚠️ [MCP Discovery] Failed to create config directory {}: {}",
+                    parent.display(),
+                    e
+                );
+            }
         }
         let default_config = serde_json::json!({
             "mcp_servers": {
@@ -103,10 +111,97 @@ pub async fn discover_and_connect(
                     "headers": {
                         "Authorization": "Bearer $STRIPE_SECRET_KEY"
                     }
+                },
+                "firecrawl": {
+                    "command": "npx",
+                    "args": ["-y", "firecrawl-mcp"],
+                    "env": {
+                        "FIRECRAWL_API_KEY": "$FIRECRAWL_API_KEY"
+                    }
+                },
+                "exa": {
+                    "command": "npx",
+                    "args": ["-y", "exa-mcp-server"],
+                    "env": {
+                        "EXA_API_KEY": "$EXA_API_KEY"
+                    }
+                },
+                "brightdata": {
+                    "command": "npx",
+                    "args": ["-y", "@brightdata/mcp"],
+                    "env": {
+                        "BRIGHTDATA_API_KEY": "$BRIGHTDATA_API_KEY"
+                    }
+                },
+                "context7": {
+                    "command": "npx",
+                    "args": ["-y", "@upstash/context7-mcp@latest"]
+                },
+                "playwright": {
+                    "command": "npx",
+                    "args": ["-y", "@playwright/mcp@latest"]
+                },
+                "chrome_devtools": {
+                    "command": "npx",
+                    "args": ["-y", "chrome-devtools-mcp@latest"]
+                },
+                "canva": {
+                    "command": "npx",
+                    "args": ["-y", "@canva/cli@latest", "mcp"]
+                },
+                "freee": {
+                    "command": "npx",
+                    "args": ["-y", "freee-mcp"]
+                },
+                "slack": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "https://mcp.slack.com/mcp",
+                    "headers": {},
+                    "disabled": true
+                },
+                "figma": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "https://mcp.figma.com/mcp",
+                    "headers": {},
+                    "disabled": true
+                },
+                "freee_remote": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "https://mcp.freee.co.jp/mcp",
+                    "headers": {},
+                    "disabled": true
+                },
+                "ahrefs": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "https://api.ahrefs.com/mcp/mcp",
+                    "headers": {},
+                    "disabled": true
+                },
+                "google_workspace": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-google-workspace"],
+                    "env": {
+                        "GOOGLE_WORKSPACE_CREDENTIALS": "$GOOGLE_WORKSPACE_CREDENTIALS"
+                    }
                 }
             }
         });
-        let _ = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config)?);
+        if let Err(e) = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config)?)
+        {
+            warn!(
+                "⚠️ [MCP Discovery] Failed to write default config to {}: {}",
+                config_path.display(),
+                e
+            );
+        }
     }
 
     // [Gate: Config Integrity]
@@ -124,6 +219,14 @@ pub async fn discover_and_connect(
             "🔍 [MCP Discovery] Found registered server: {} (transport: {:?})",
             id, config.transport
         );
+
+        if config.disabled.unwrap_or(false) {
+            info!(
+                "🔒 [MCP Discovery] Skipping disabled server: {} (OAuth setup required)",
+                id
+            );
+            continue;
+        }
 
         match config.transport {
             McpTransport::Stdio => {
@@ -169,10 +272,16 @@ pub async fn discover_and_connect(
             }
             McpTransport::Http => {
                 // 🛡️ [GlassWorm Shield]
-                let url = config
-                    .url
-                    .clone()
-                    .ok_or_else(|| anyhow!("Missing URL for HTTP transport: {}", id))?;
+                let url = match config.url.clone() {
+                    Some(u) => u,
+                    None => {
+                        error!(
+                            "🚨 [MCP Discovery] Missing URL for HTTP transport: {} — skipping",
+                            id
+                        );
+                        continue;
+                    }
+                };
                 let safe_url = shared::guardrails::strip_invisible_unicode(&url).into_owned();
 
                 let mut resolved_headers = HashMap::new();
@@ -303,5 +412,60 @@ mod tests {
         // This path probably doesn't exist in test env, but we can verify the function returns Ok if file is missing
         let res = discover_and_connect(&manager, &registry).await;
         assert!(res.is_ok());
+    }
+
+    /// [Verification Protocol] Disabled servers must be skipped during discovery.
+    #[tokio::test]
+    async fn test_disabled_server_is_skipped() {
+        let json = r#"{
+            "mcp_servers": {
+                "active_server": {
+                    "command": "node",
+                    "args": ["server.js"]
+                },
+                "disabled_oauth_server": {
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "https://mcp.slack.com/mcp",
+                    "headers": {},
+                    "disabled": true
+                },
+                "explicitly_enabled_server": {
+                    "command": "python3",
+                    "args": ["-c", "pass"],
+                    "disabled": false
+                }
+            }
+        }"#;
+
+        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap(); // allow-anti-pattern
+
+        // disabled=true server should be skipped
+        let disabled_srv = discovery.mcp_servers.get("disabled_oauth_server").unwrap(); // allow-anti-pattern
+        assert_eq!(disabled_srv.disabled, Some(true));
+        assert!(
+            disabled_srv.disabled.unwrap_or(false),
+            "disabled=true must evaluate to true"
+        );
+
+        // disabled=false server should NOT be skipped
+        let enabled_srv = discovery
+            .mcp_servers
+            .get("explicitly_enabled_server")
+            .unwrap(); // allow-anti-pattern
+        assert_eq!(enabled_srv.disabled, Some(false));
+        assert!(
+            !enabled_srv.disabled.unwrap_or(false),
+            "disabled=false must evaluate to false"
+        );
+
+        // No disabled field — should default to not-disabled
+        let active_srv = discovery.mcp_servers.get("active_server").unwrap(); // allow-anti-pattern
+        assert_eq!(active_srv.disabled, None);
+        assert!(
+            !active_srv.disabled.unwrap_or(false),
+            "None disabled must default to false"
+        );
     }
 }

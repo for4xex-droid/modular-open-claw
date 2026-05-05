@@ -135,6 +135,30 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 return;
             }
 
+            // === Security Guardrail: SSRF & robots.txt ===
+            if sn == "firecrawl_scrape" || sn == "browser_navigate" || sn == "fetch_url" {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&si) {
+                    if let Some(url_str) = json.get("url").and_then(|u| u.as_str()) {
+                        if let Ok(parsed_url) = url::Url::parse(url_str) {
+                            let host = parsed_url.host_str().unwrap_or("");
+                            if host == "localhost"
+                                || host == "127.0.0.1"
+                                || host.starts_with("192.168.")
+                                || host.starts_with("10.")
+                            {
+                                let _ = tx_clone.send(ToolExecutionEvent::Error("[Guardrail Block] SSRF attempt detected: internal networks are not allowed".to_string())).await;
+                                return;
+                            }
+                            // robots.txt check
+                            if !check_robots_txt_policy(url_str).await {
+                                let _ = tx_clone.send(ToolExecutionEvent::Error(format!("[Guardrail Block] Access to {} is prohibited by robots.txt policy", host))).await;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
             // === Pre-Hook ===
             use infrastructure::skills::hooks::HookVerdict;
             let pre_verdict = state_rc.hook_chain.execute_pre(&sn, &si).await;
@@ -391,6 +415,93 @@ impl ToolCallRouter for DefaultToolCallRouter {
     }
 }
 
+/// Checks if the given URL is allowed by the host's robots.txt policy.
+/// Returns `true` if allowed, `false` if explicitly blocked.
+///
+/// # Security
+/// - Redirects are disabled to prevent SSRF bypass (attacker's robots.txt redirecting to internal IPs).
+/// - Timeout is set to 3s to prevent DoS via slow responses.
+/// - Fails open (returns `true`) when robots.txt is unreachable or absent (RFC 9309 §2.3).
+async fn check_robots_txt_policy(url_str: &str) -> bool {
+    let parsed_url = match url::Url::parse(url_str) {
+        Ok(u) => u,
+        Err(_) => return false, // Invalid URL -> block
+    };
+
+    let host = match parsed_url.host_str() {
+        Some(h) => h,
+        None => return false, // No host -> block
+    };
+    let port = parsed_url
+        .port()
+        .map(|p| format!(":{}", p))
+        .unwrap_or_default();
+    let scheme = parsed_url.scheme();
+
+    let target_path = if parsed_url.path().is_empty() {
+        "/"
+    } else {
+        parsed_url.path()
+    };
+
+    let robots_url = format!("{}://{}{}/robots.txt", scheme, host, port);
+
+    // Build client with redirect disabled to prevent SSRF bypass via redirect chains.
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(3))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return true, // Client build failure -> fail open
+    };
+
+    let res = match client.get(&robots_url).send().await {
+        Ok(r) => r,
+        Err(_) => return true, // Connection error -> fail open
+    };
+
+    if !res.status().is_success() {
+        return true; // 404, 3xx redirect, etc -> fail open
+    }
+
+    let text = match res.text().await {
+        Ok(t) => t,
+        Err(_) => return true,
+    };
+
+    // Parse robots.txt (RFC 9309 simplified: wildcard User-agent only)
+    let mut in_wildcard_ua = false;
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        // Use find(':') instead of byte-index slicing to avoid panic on malformed input.
+        if let Some(colon_pos) = line.find(':') {
+            let directive = line[..colon_pos].trim().to_lowercase();
+            let value = line[colon_pos + 1..].trim();
+
+            match directive.as_str() {
+                "user-agent" => {
+                    in_wildcard_ua = value == "*";
+                }
+                "disallow" if in_wildcard_ua => {
+                    // Empty Disallow means "allow all" per RFC 9309 §2.2.2
+                    if !value.is_empty() && (value == "/" || target_path.starts_with(value)) {
+                        return false; // Blocked
+                    }
+                }
+                // Allow directives intentionally not handled in this simplified parser.
+                _ => {}
+            }
+        }
+    }
+
+    true
+}
+
 // ---------------------------------------------------------
 // Tests
 // ---------------------------------------------------------
@@ -523,5 +634,92 @@ mod tests {
             got_billing_error,
             "MCP validate_activity guard should emit a billing error event"
         );
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_router_ssrf_guard() {
+        let router = DefaultToolCallRouter;
+        let mut state = setup_mock_state().await;
+
+        let mut chain = HookChain::new();
+        state.hook_chain = Component::new(Arc::new(chain));
+
+        // 1. Test SSRF (localhost)
+        let input_ssrf = r#"{"url": "http://127.0.0.1:8080/admin"}"#;
+        let mut rx_ssrf = router
+            .execute_skill("firecrawl_scrape", input_ssrf, &state)
+            .await;
+        let mut got_ssrf_error = false;
+        while let Some(evt) = rx_ssrf.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("SSRF") {
+                    got_ssrf_error = true;
+                }
+            }
+        }
+        assert!(got_ssrf_error, "SSRF attempt should be blocked");
+    }
+
+    #[tokio::test]
+    async fn test_check_robots_txt_policy() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        // 1. Setup mock server
+        let mock_server = MockServer::start().await;
+
+        // 2. Setup mock robots.txt response
+        let robots_txt_content = "User-agent: *\nDisallow: /\n";
+        Mock::given(method("GET"))
+            .and(path("/robots.txt"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(robots_txt_content))
+            .mount(&mock_server)
+            .await;
+
+        // 3. Test blocked URL (Disallow: /)
+        let target_url = format!("{}/some-data", mock_server.uri());
+        let allowed = check_robots_txt_policy(&target_url).await;
+        assert!(!allowed, "URL should be blocked by robots.txt Disallow: /");
+
+        // 4. Test allowed URL (Disallow only /admin, requesting /public-data)
+        let robots_txt_allowed = "User-agent: *\nDisallow: /admin\n";
+        let mock_server_allowed = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/robots.txt"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(robots_txt_allowed))
+            .mount(&mock_server_allowed)
+            .await;
+
+        let target_url_allowed = format!("{}/public-data", mock_server_allowed.uri());
+        let allowed_ok = check_robots_txt_policy(&target_url_allowed).await;
+        assert!(allowed_ok, "URL outside Disallow path should be allowed");
+
+        // 5. Test empty Disallow (RFC 9309: means allow all)
+        let robots_txt_empty_disallow = "User-agent: *\nDisallow:\n";
+        let mock_server_empty = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/robots.txt"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(robots_txt_empty_disallow))
+            .mount(&mock_server_empty)
+            .await;
+
+        let target_url_empty = format!("{}/anything", mock_server_empty.uri());
+        let allowed_empty = check_robots_txt_policy(&target_url_empty).await;
+        assert!(
+            allowed_empty,
+            "Empty Disallow should allow all paths per RFC 9309"
+        );
+
+        // 6. Test 404 robots.txt (fail open)
+        let mock_server_404 = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/robots.txt"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server_404)
+            .await;
+
+        let target_url_404 = format!("{}/page", mock_server_404.uri());
+        let allowed_404 = check_robots_txt_policy(&target_url_404).await;
+        assert!(allowed_404, "Missing robots.txt should fail open");
     }
 }

@@ -99,8 +99,9 @@ def check_file(filepath: str) -> list:
 
         # #[cfg(test)] 検出 → 以降のブロックをテストとしてマーク
         if "#[cfg(test)]" in raw_line:
-            in_test_block = True
-            test_entry_depth = brace_depth
+            if not in_test_block:
+                in_test_block = True
+                test_entry_depth = brace_depth
             continue
 
         # テストブロック内はスキップ

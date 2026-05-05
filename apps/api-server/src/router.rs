@@ -394,6 +394,10 @@ pub fn build_app(
                     get(routes::cortex::suggest_questions_handler),
                 )
                 .route("/synth", post(routes::cortex::synth_dataset_handler))
+                .route(
+                    "/dpo/dataset",
+                    get(routes::cortex::export_dpo_dataset_handler),
+                )
                 .route_layer(
                     tower::ServiceBuilder::new()
                         .layer(axum::error_handling::HandleErrorLayer::new(

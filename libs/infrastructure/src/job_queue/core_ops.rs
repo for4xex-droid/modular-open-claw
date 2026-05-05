@@ -52,6 +52,7 @@ pub trait CoreOps {
     async fn do_fetch_job_retry_count(&self, job_id: &str) -> Result<i64, AiomeError>;
     async fn do_increment_job_retry_count(&self, job_id: &str) -> Result<bool, AiomeError>;
     async fn do_reset_job_retry_count(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn do_fetch_job_cost(&self, job_id: &str) -> Result<f64, AiomeError>;
     async fn do_storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError>;
     async fn do_publish(
         &self,
@@ -571,6 +572,11 @@ impl CoreOps for UniversalJobQueue {
         );
         sql_exec!(&self.pool, &q, job_id)?;
         Ok(())
+    }
+
+    async fn do_fetch_job_cost(&self, job_id: &str) -> Result<f64, AiomeError> {
+        // Delegate to CostOps implementation
+        crate::job_queue::settings::CostOps::aggregate_cost_by_job(self, job_id).await
     }
 
     async fn do_storage_gc(&self, threshold_gb: f64) -> Result<u64, AiomeError> {

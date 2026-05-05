@@ -112,6 +112,7 @@ use utoipa::OpenApi;
         crate::routes::cortex::query_handler,
         crate::routes::cortex::suggest_questions_handler,
         crate::routes::cortex::synth_dataset_handler,
+        crate::routes::cortex::export_dpo_dataset_handler,
         // LoRA Marketplace
         crate::routes::lora_market::list_market,
         crate::routes::lora_market::publish_listing,

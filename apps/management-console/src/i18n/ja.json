@@ -549,5 +549,12 @@
     "errorIdExists": "このIDのサーバーは既に存在します。",
     "errorUrlInvalid": "HTTPトランスポートには有効なHTTPまたはHTTPS URLが必要です。",
     "errorCommandRequired": "STDIOトランスポートにはコマンドが必要です。"
+  },
+  "dpoExport": {
+    "title": "DPO データセットエクスポート",
+    "description": "Arena 対戦および手動フィードバックから生成された Direct Preference Optimization (DPO) データセットをダウンロードします。",
+    "downloadButton": "データセットをダウンロード (JSONL)",
+    "exporting": "エクスポート中...",
+    "downloadFailed": "データセットのエクスポートに失敗しました"
   }
 }
