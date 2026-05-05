@@ -68,8 +68,8 @@ async fn chaos_sot_empty_llm_response() {
     );
 
     // ── Learning: 空レスポンスでもセッション自体は完了する（スコアは低い） ──
-    let (_, outcome, _) = chaos_result.expect("Chaos: SoT session should return Ok"); // allow-anti-pattern
-                                                                                      // 空文字は "passed" を含まないため AllCriteriaPassed にはならないはず
+    let (_, outcome, _) = chaos_result.expect("Chaos: SoT session should return Ok");
+    // 空文字は "passed" を含まないため AllCriteriaPassed にはならないはず
     assert_ne!(
         outcome,
         aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed,
@@ -107,8 +107,8 @@ async fn chaos_sot_malformed_json_response() {
     );
 
     // ── Learning: 不正JSONの場合はフォールバックする ──
-    let (_, _, scores) = result.expect("Chaos: SoT malformed JSON should return Ok"); // allow-anti-pattern
-                                                                                      // スコアはフォールバック値 (5.0) になるはず
+    let (_, _, scores) = result.expect("Chaos: SoT malformed JSON should return Ok");
+    // スコアはフォールバック値 (5.0) になるはず
     for (name, score) in &scores {
         assert!(
             *score >= 0.0 && *score <= 10.0,
@@ -152,7 +152,7 @@ async fn chaos_samsara_rebirth_llm_failure() {
         chaos_result.err()
     );
 
-    let new_soul = chaos_result.expect("Chaos: Rebirth should return Ok on LLM failure"); // allow-anti-pattern
+    let new_soul = chaos_result.expect("Chaos: Rebirth should return Ok on LLM failure");
     assert_eq!(
         new_soul.anamnesis.narrative_self,
         Some("Previous life narrative.".into()),
@@ -322,7 +322,7 @@ async fn chaos_sequential_empty_response_graceful_degradation() {
     );
 
     // ── Learning: 空レスポンスではスコアが低く AllCriteriaPassed にはならない ──
-    let (_, outcome, _) = result.expect("Chaos: Sequential empty should return Ok"); // allow-anti-pattern
+    let (_, outcome, _) = result.expect("Chaos: Sequential empty should return Ok");
     assert_ne!(
         outcome,
         aiome_core_contracts::contracts::SoTOutcome::AllCriteriaPassed,
@@ -419,7 +419,7 @@ async fn chaos_rate_limiter_concurrent_burst() {
     use infrastructure::rate_limiter::AgentRateLimiter;
     use uuid::Uuid;
 
-    let limiter = AgentRateLimiter::new(5).expect("Constant 5 is valid"); // allow-anti-pattern // 5 requests per minute
+    let limiter = AgentRateLimiter::new(5).expect("Constant 5 is valid"); // 5 requests per minute
     let agent_id = Uuid::new_v4();
 
     // ── Fault Injection: 10 リクエストを同時送信（limit の 2 倍） ──
@@ -434,7 +434,6 @@ async fn chaos_rate_limiter_concurrent_burst() {
     let mut err_count = 0;
     for h in handles {
         if h.await.expect("Task panicked") {
-            // allow-anti-pattern
             ok_count += 1;
         } else {
             err_count += 1;
@@ -588,7 +587,7 @@ async fn chaos_expression_empty_response() {
     );
 
     // ── Learning: 空レスポンス時の安全なフォールバック ──
-    let expression = result.expect("Chaos: ExpressionEngine should return Ok"); // allow-anti-pattern
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
     assert_eq!(expression.content, "");
     assert_eq!(
         expression.emotion, "reflective",
@@ -621,7 +620,7 @@ async fn chaos_expression_malformed_format() {
     );
 
     // ── Learning: フォーマット違反時はコンテンツをそのまま保持し感情をフォールバック ──
-    let expression = result.expect("Chaos: ExpressionEngine should return Ok"); // allow-anti-pattern
+    let expression = result.expect("Chaos: ExpressionEngine should return Ok");
     assert_eq!(expression.content, "{invalid json///"); // パースに失敗したコンテンツを維持する
     assert_eq!(
         expression.emotion, "reflective",

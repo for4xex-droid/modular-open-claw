@@ -274,14 +274,14 @@ mod tests {
 
     #[test]
     fn test_openapi_schema_generation() {
-        let schema = ApiDoc::openapi().to_pretty_json().unwrap(); // allow-anti-pattern
+        let schema = ApiDoc::openapi().to_pretty_json().unwrap();
         assert!(!schema.is_empty());
 
         let docs_dir = std::path::Path::new("../../docs");
         if !docs_dir.exists() {
-            std::fs::create_dir_all(docs_dir).unwrap(); // allow-anti-pattern
+            std::fs::create_dir_all(docs_dir).unwrap();
         }
         std::fs::write(docs_dir.join("openapi.json"), schema)
-            .expect("Failed to write OpenAPI schema"); // allow-anti-pattern
+            .expect("Failed to write OpenAPI schema");
     }
 }

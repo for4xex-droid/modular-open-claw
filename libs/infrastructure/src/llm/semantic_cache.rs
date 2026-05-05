@@ -281,7 +281,7 @@ mod tests {
     async fn test_semantic_cache_roundtrip() {
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
@@ -289,7 +289,7 @@ mod tests {
             crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(),
-        ); // allow-anti-pattern
+        );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await
             .unwrap();
@@ -307,7 +307,7 @@ mod tests {
         };
 
         // Initially empty
-        let cached = cache.get(prompt, system).await.unwrap(); // allow-anti-pattern
+        let cached = cache.get(prompt, system).await.unwrap();
         assert!(cached.is_none());
 
         // Cache it
@@ -321,12 +321,12 @@ mod tests {
                 3600,
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Retrieve it
-        let cached = cache.get(prompt, system).await.unwrap(); // allow-anti-pattern
+        let cached = cache.get(prompt, system).await.unwrap();
         assert!(cached.is_some());
-        let cached = cached.unwrap(); // allow-anti-pattern
+        let cached = cached.unwrap();
         assert_eq!(cached.content, "hi there");
     }
 }

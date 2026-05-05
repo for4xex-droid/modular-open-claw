@@ -1067,7 +1067,7 @@ async fn timeline_sync_handler(
 
     // Persist Hub Master Doc
     let timeline_persist_query = format!(
-        "INSERT INTO hub_timeline (id, automerge_blob) VALUES ({}, {}) 
+        "INSERT INTO hub_timeline (id, automerge_blob) VALUES ({}, {})
          ON CONFLICT(id) DO UPDATE SET automerge_blob = EXCLUDED.automerge_blob, updated_at = {}",
         state.pool.ph(0),
         state.pool.ph(1),

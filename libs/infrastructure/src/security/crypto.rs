@@ -141,8 +141,8 @@ mod tests {
     fn test_argon2id_derivation() {
         let password = "my_super_secret_master_password";
         let salt = b"some_random_salt_for_tests";
-        let key1 = derive_master_key_argon2id(password, salt).unwrap(); // allow-anti-pattern
-        let key2 = derive_master_key_argon2id(password, salt).unwrap(); // allow-anti-pattern
+        let key1 = derive_master_key_argon2id(password, salt).unwrap();
+        let key2 = derive_master_key_argon2id(password, salt).unwrap();
 
         assert_eq!(key1.len(), 32);
         assert_eq!(
@@ -151,7 +151,7 @@ mod tests {
         );
 
         let salt2 = b"different_salt_for_tests";
-        let key3 = derive_master_key_argon2id(password, salt2).unwrap(); // allow-anti-pattern
+        let key3 = derive_master_key_argon2id(password, salt2).unwrap();
         assert_ne!(*key1, *key3, "Different salt should derive different key");
     }
 
@@ -160,13 +160,13 @@ mod tests {
         let key = Zeroizing::new(rand::thread_rng().gen::<[u8; 32]>().to_vec());
         let data = b"Hello, Voice DRM via XChaCha20!";
 
-        let encrypted = encrypt_xchacha20poly1305(data, &key).unwrap(); // allow-anti-pattern
+        let encrypted = encrypt_xchacha20poly1305(data, &key).unwrap();
 
         // Nonce is 24 bytes, Auth Tag is 16 bytes.
         assert_eq!(encrypted.len(), data.len() + 24 + 16);
 
         // Decrypt
-        let decrypted = decrypt_xchacha20poly1305(&encrypted, &key).unwrap(); // allow-anti-pattern
+        let decrypted = decrypt_xchacha20poly1305(&encrypted, &key).unwrap();
         assert_eq!(decrypted, data);
     }
 
@@ -175,8 +175,8 @@ mod tests {
         let key = Zeroizing::new(rand::thread_rng().gen::<[u8; 32]>().to_vec());
         let data = b"Secret Voice Model";
 
-        let encrypted1 = encrypt_xchacha20poly1305(data, &key).unwrap(); // allow-anti-pattern
-        let encrypted2 = encrypt_xchacha20poly1305(data, &key).unwrap(); // allow-anti-pattern
+        let encrypted1 = encrypt_xchacha20poly1305(data, &key).unwrap();
+        let encrypted2 = encrypt_xchacha20poly1305(data, &key).unwrap();
 
         assert_ne!(
             encrypted1, encrypted2,
@@ -202,7 +202,7 @@ mod tests {
             crate::security::sqlite_vault_backend::GLOBAL_MASTER_KEY.set(MlockedVec::new(test_key));
 
         let plaintext = "sk-proj-abc123XYZ_super_secret_key";
-        let encrypted = encrypt_setting(plaintext).expect("encrypt_setting should succeed"); // allow-anti-pattern
+        let encrypted = encrypt_setting(plaintext).expect("encrypt_setting should succeed");
 
         assert!(
             encrypted.len() >= 80,
@@ -214,7 +214,7 @@ mod tests {
         );
 
         // Verify: decryption recovers original plaintext
-        let decrypted = decrypt_setting(&encrypted).expect("decrypt_setting should succeed"); // allow-anti-pattern
+        let decrypted = decrypt_setting(&encrypted).expect("decrypt_setting should succeed");
         assert_eq!(
             decrypted, plaintext,
             "Roundtrip must recover original plaintext"
@@ -256,7 +256,7 @@ mod tests {
             crate::security::sqlite_vault_backend::GLOBAL_MASTER_KEY.set(MlockedVec::new(test_key));
 
         if let Ok(encrypted) = encrypt_setting("secret-value") {
-            let mut tampered = hex::decode(&encrypted).expect("hex decode"); // allow-anti-pattern
+            let mut tampered = hex::decode(&encrypted).expect("hex decode");
             if tampered.len() > 30 {
                 tampered[30] ^= 0xFF;
             }

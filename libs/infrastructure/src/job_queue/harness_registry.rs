@@ -249,10 +249,10 @@ mod tests {
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         // Run migration manually (v2)
-        sqlx::query("CREATE TABLE harness_registry (id TEXT PRIMARY KEY, domain TEXT NOT NULL, description TEXT NOT NULL, code_payload TEXT NOT NULL, status TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0, agent_id TEXT, fire_count BIGINT DEFAULT 0, false_positive_count BIGINT DEFAULT 0, severity INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_fired_at DATETIME)").execute(sq_pool.get_sqlite_pool().unwrap()).await.unwrap(); // allow-anti-pattern
+        sqlx::query("CREATE TABLE harness_registry (id TEXT PRIMARY KEY, domain TEXT NOT NULL, description TEXT NOT NULL, code_payload TEXT NOT NULL, status TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 0, agent_id TEXT, fire_count BIGINT DEFAULT 0, false_positive_count BIGINT DEFAULT 0, severity INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_fired_at DATETIME)").execute(sq_pool.get_sqlite_pool().unwrap()).await.unwrap();
 
         let ts = Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(sq_pool.clone()),
@@ -275,25 +275,25 @@ mod tests {
             last_fired_at: None,
         };
 
-        jq.store_harness_record(&record).await.unwrap(); // allow-anti-pattern
+        jq.store_harness_record(&record).await.unwrap();
 
-        let fetched = jq.fetch_harness_records_by_status("Shadow").await.unwrap(); // allow-anti-pattern
+        let fetched = jq.fetch_harness_records_by_status("Shadow").await.unwrap();
         assert_eq!(fetched.len(), 1);
         assert_eq!(fetched[0].id, "harness_1");
 
         jq.update_harness_status("harness_1", "Active")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
-        let active = jq.fetch_harness_records_by_status("Active").await.unwrap(); // allow-anti-pattern
+        let active = jq.fetch_harness_records_by_status("Active").await.unwrap();
         assert_eq!(active.len(), 1);
 
-        let shadow = jq.fetch_harness_records_by_status("Shadow").await.unwrap(); // allow-anti-pattern
+        let shadow = jq.fetch_harness_records_by_status("Shadow").await.unwrap();
         assert_eq!(shadow.len(), 0);
 
-        jq.delete_harness_record("harness_1").await.unwrap(); // allow-anti-pattern
+        jq.delete_harness_record("harness_1").await.unwrap();
 
-        let empty = jq.fetch_harness_records_by_status("Active").await.unwrap(); // allow-anti-pattern
+        let empty = jq.fetch_harness_records_by_status("Active").await.unwrap();
         assert_eq!(empty.len(), 0);
     }
 }

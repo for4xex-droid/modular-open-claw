@@ -22,10 +22,10 @@ impl DbGigUpdater {
 impl GigMetadataUpdater for DbGigUpdater {
     async fn mark_as_verified(&self, skill_name: &str, oxp: u32) -> Result<(), String> {
         let update_query = r#"
-            UPDATE ai_artifacts 
-            SET 
+            UPDATE ai_artifacts
+            SET
                 file_manifest = json_set(file_manifest, '$.oxilean_verified', true, '$.oxilean_oxp', ?2)
-            WHERE 
+            WHERE
                 id = ?1
         "#;
 

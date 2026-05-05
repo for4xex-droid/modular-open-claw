@@ -82,7 +82,7 @@ impl IncidentRepository {
             DatabasePool::Sqlite(p) => {
                 let row = sqlx::query(
                     r#"
-                    SELECT 
+                    SELECT
                         (SELECT COUNT(*) FROM aegis_incidents WHERE created_at >= datetime('now', '-7 days')) as total,
                         (SELECT COUNT(DISTINCT skill_name) FROM aegis_incidents WHERE created_at >= datetime('now', '-7 days')) as distinct_skills,
                         (SELECT COUNT(*) FROM aegis_incidents WHERE status IN ('Open', 'Analyzing', 'PatchGenerated', 'KaniVerifying')) as unresolved,
@@ -104,7 +104,7 @@ impl IncidentRepository {
             DatabasePool::Postgres(p) => {
                 let row = sqlx::query(
                     r#"
-                    SELECT 
+                    SELECT
                         (SELECT COUNT(*) FROM aegis_incidents WHERE created_at >= NOW() - INTERVAL '7 days') as total,
                         (SELECT COUNT(DISTINCT skill_name) FROM aegis_incidents WHERE created_at >= NOW() - INTERVAL '7 days') as distinct_skills,
                         (SELECT COUNT(*) FROM aegis_incidents WHERE status IN ('Open', 'Analyzing', 'PatchGenerated', 'KaniVerifying')) as unresolved,
@@ -306,7 +306,7 @@ mod tests {
         );
         let _jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("Failed to create in-memory job queue"); // allow-anti-pattern
+            .expect("Failed to create in-memory job queue");
 
         pool
     }

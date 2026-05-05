@@ -62,8 +62,8 @@ impl ScoreTracker {
             }
 
             let q = format!(
-                "INSERT INTO score_snapshots (snapshot_date, metric_name, metric_value) 
-                 VALUES ({0}, {1}, {2}) 
+                "INSERT INTO score_snapshots (snapshot_date, metric_name, metric_value)
+                 VALUES ({0}, {1}, {2})
                  ON CONFLICT(snapshot_date, metric_name) DO UPDATE SET metric_value = excluded.metric_value",
                 self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)
             );

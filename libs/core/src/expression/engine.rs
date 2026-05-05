@@ -219,7 +219,7 @@ mod tests {
         // This should fail with ConnectionRefused if no local XTTS server is running,
         // which confirms the synthesis code is executed (GREEN for logic).
         let res =
-            ExpressionEngine::synthesize_audio_xtts("hello", "p225", "http://localhost:18020") // allow-anti-pattern
+            ExpressionEngine::synthesize_audio_xtts("hello", "p225", "http://localhost:18020")
                 .await;
 
         if let Err(AiomeError::Infrastructure { reason }) = res {

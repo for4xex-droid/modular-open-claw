@@ -242,7 +242,7 @@ mod tests {
             <item><title>  Clean   Title  </title></item>
         </channel></rss>"#;
 
-        let title_re = regex::Regex::new(r"<title>(.*?)</title>").unwrap(); // allow-anti-pattern
+        let title_re = regex::Regex::new(r"<title>(.*?)</title>").unwrap();
         let mut items = Vec::new();
         for cap in title_re.captures_iter(&xml) {
             let title_raw = cap[1].trim();

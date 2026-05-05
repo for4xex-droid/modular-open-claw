@@ -64,7 +64,7 @@ async fn test_generate_dataset_filters_low_quality() -> Result<(), Box<dyn std::
     // Insert a dummy article
     let sqlite_pool = pool.get_sqlite_pool_or_err()?;
     sqlx::query(
-        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) 
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
          VALUES ('art-1', 'Test Title', 'Test content', 'hash-1')",
     )
     .execute(sqlite_pool)
@@ -105,7 +105,7 @@ async fn test_generate_dataset_filters_contradicted_beliefs(
     let sqlite_pool = pool.get_sqlite_pool_or_err()?;
 
     sqlx::query(
-        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) 
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
          VALUES ('art-2', 'Secret Plan', 'We must destroy the humans.', 'hash-2')",
     )
     .execute(sqlite_pool)

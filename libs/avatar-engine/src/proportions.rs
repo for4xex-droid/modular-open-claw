@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn test_extract_from_binary_adult_vrm() {
-        let data = std::fs::read("tests/fixtures/adult.vrm").unwrap(); // allow-anti-pattern
+        let data = std::fs::read("tests/fixtures/adult.vrm").unwrap();
 
         let res = ProportionsChecker::extract_from_binary(&data);
         assert!(
@@ -239,7 +239,7 @@ mod tests {
             "Adult VRM should be parsed successfully. Err: {:?}",
             res.err()
         );
-        let dim = res.unwrap(); // allow-anti-pattern
+        let dim = res.unwrap();
         assert!(dim.is_humanoid);
 
         let ratio = dim.total_height_meters / dim.head_height_meters;
@@ -249,10 +249,10 @@ mod tests {
 
     #[test]
     fn test_extract_from_binary_child_vrm() {
-        let data = std::fs::read("tests/fixtures/child.vrm").unwrap(); // allow-anti-pattern
+        let data = std::fs::read("tests/fixtures/child.vrm").unwrap();
         let res = ProportionsChecker::extract_from_binary(&data);
         assert!(res.is_ok(), "Child VRM should be parsed successfully");
-        let dim = res.unwrap(); // allow-anti-pattern
+        let dim = res.unwrap();
 
         let res_val = ProportionsChecker::validate(&dim);
         assert!(res_val.is_err(), "Child VRM should fail validation");

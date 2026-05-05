@@ -346,7 +346,7 @@ impl CortexIngester {
         let pool = self.pool.get_sqlite_pool_or_err()?;
 
         let rows = sqlx::query(
-            "SELECT id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at 
+            "SELECT id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at
              FROM cortex_documents ORDER BY ingested_at DESC LIMIT ?"
         )
         .bind(limit)

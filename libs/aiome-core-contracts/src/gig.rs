@@ -184,7 +184,7 @@ mod tests {
         }
         "#;
 
-        let criteria: AcceptanceCriteria = serde_json::from_str(json_str).expect("Failed to parse"); // allow-anti-pattern
+        let criteria: AcceptanceCriteria = serde_json::from_str(json_str).expect("Failed to parse");
         if let AcceptanceCriteria::OxiLeanProof { required_oxp } = criteria {
             assert_eq!(required_oxp, 900);
         } else {

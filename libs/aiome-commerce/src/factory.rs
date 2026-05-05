@@ -91,7 +91,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let config = CommerceConfig {
             provider: ProviderType::Stripe,
@@ -110,7 +110,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let config = CommerceConfig {
             provider: ProviderType::Polar,
@@ -129,7 +129,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let config = CommerceConfig {
             provider: ProviderType::Mock,

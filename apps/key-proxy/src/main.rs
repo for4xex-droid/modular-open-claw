@@ -170,7 +170,7 @@ async fn main() -> anyhow::Result<()> {
                     shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
                     Arc::new(
                         infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                            .expect("Invalid JWT_PRIVATE_KEY_B64"), // allow-anti-pattern
+                            .map_err(|e| anyhow::anyhow!("Invalid JWT_PRIVATE_KEY_B64: {}", e))?,
                     )
                 }
                 #[cfg(debug_assertions)]

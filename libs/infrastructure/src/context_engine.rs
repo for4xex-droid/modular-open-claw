@@ -600,7 +600,7 @@ pub mod tests {
         let job_id: String = job_queue
             .enqueue("Security Test", "topic", "style", None, None, None, 0)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // 悪意のあるヘッダーを含むカルマを登録
         job_queue
@@ -616,13 +616,13 @@ pub mod tests {
                 false, // is_private
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Act
         let (context, _) = engine
             .get_context_with_facts(channel_id, category, 10)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Assert
         // 行頭の ### がエスケープされているべき
@@ -651,7 +651,7 @@ pub mod tests {
         let job_id: String = job_queue
             .enqueue("DoS Test", "topic", "style", None, None, None, 0)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // 巨大なカルマ（1000文字以上）を登録
         let huge_lesson = "A".repeat(2000);
@@ -668,13 +668,13 @@ pub mod tests {
                 false, // is_private
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Act
         let (context, _) = engine
             .get_context_with_facts(channel_id, category, 10)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Assert
         // デフォルトの max_karma_chars (2000) 程度に収まっているべき
@@ -705,7 +705,7 @@ pub mod tests {
         job_queue
             .store_chat_message(channel_id, "user", &huge_content, None)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Custom budget with 1000 char history limit
         let mut budget = ContextBudget::default();
@@ -716,7 +716,7 @@ pub mod tests {
         let (_, history) = engine
             .fetch_budgeted_context(channel_id, "Category", budget)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Assert
         assert!(
@@ -769,7 +769,7 @@ pub mod tests {
                     None,
                 )
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
         }
 
         // Act

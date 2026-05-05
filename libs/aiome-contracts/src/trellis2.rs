@@ -14,11 +14,11 @@ use serde::{Deserialize, Serialize};
 pub struct TrellisGenerateRequest {
     /// Base64 encoded or publicly accessible URL of the source 2D image
     pub image_source: String,
-    
+
     /// True if the input is a base64 encoded image, false if it's a URL
     #[serde(default)]
     pub is_base64: bool,
-    
+
     /// Expected output quality or generation preset (e.g., "high", "fast")
     #[serde(default = "default_preset")]
     pub preset: String,
@@ -33,10 +33,10 @@ fn default_preset() -> String {
 pub struct TrellisGenerateResponse {
     /// URL to the finalized `.glb` asset in the blob store
     pub asset_url: String,
-    
+
     /// Estimated polygon count of the generated model
     pub polygon_count: u32,
-    
+
     /// Time taken to generate the model in milliseconds
     pub generation_time_ms: u64,
 }

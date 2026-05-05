@@ -87,7 +87,7 @@ mod tests {
         let mut registry = CapabilityRegistry::new();
         registry.register(Arc::new(MockProvider));
 
-        let detail = registry.get_capability_detail("MockEngine").unwrap(); // allow-anti-pattern
+        let detail = registry.get_capability_detail("MockEngine").unwrap();
         assert_eq!(detail["name"], "MockEngine");
         assert_eq!(detail["schema"], json!({}));
 

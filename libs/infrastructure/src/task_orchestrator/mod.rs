@@ -1183,25 +1183,25 @@ mod tests {
         // Use timeout to assert events
         let event1 = timeout(Duration::from_secs(1), rx.recv())
             .await
-            .unwrap() // allow-anti-pattern
-            .unwrap(); // allow-anti-pattern
+            .unwrap()
+            .unwrap();
         assert!(matches!(event1, TaskEvent::Spawned { .. }));
 
         let event2 = timeout(Duration::from_secs(1), rx.recv())
             .await
-            .unwrap() // allow-anti-pattern
-            .unwrap(); // allow-anti-pattern
+            .unwrap()
+            .unwrap();
         assert!(matches!(event2, TaskEvent::Progress { .. }));
 
         let event3 = timeout(Duration::from_secs(1), rx.recv())
             .await
-            .unwrap() // allow-anti-pattern
-            .unwrap(); // allow-anti-pattern
+            .unwrap()
+            .unwrap();
         assert!(matches!(event3, TaskEvent::Completed { .. }));
 
         // Check if queue complete function was called (this uses async spawned code, so give it a tiny delay)
         tokio::time::sleep(Duration::from_millis(20)).await;
-        assert!(*job_queue.completed.lock().unwrap()); // allow-anti-pattern
+        assert!(*job_queue.completed.lock().unwrap());
 
         handle.abort();
     }
@@ -1401,7 +1401,7 @@ mod tests {
             intent_lock.is_some(),
             "GIG Intent should have been published"
         );
-        assert_eq!(intent_lock.as_ref().unwrap().max_budget_coins, 100); // allow-anti-pattern
+        assert_eq!(intent_lock.as_ref().unwrap().max_budget_coins, 100);
     }
 
     #[tokio::test]
@@ -1528,7 +1528,7 @@ mod tests {
             job_queue
                 .store_trajectory_step(step)
                 .await
-                .expect("store_trajectory_step should succeed in test"); // allow-anti-pattern
+                .expect("store_trajectory_step should succeed in test");
         }
 
         let diag_engine = Arc::new(crate::diagnostics::AgentRxDiagnostics::new(Arc::new(
@@ -1559,7 +1559,7 @@ mod tests {
         for _ in 0..40 {
             // Max 2 seconds (50ms * 40)
             tokio::time::sleep(Duration::from_millis(50)).await;
-            let current = job_queue.diagnosis.lock().unwrap().clone(); // allow-anti-pattern
+            let current = job_queue.diagnosis.lock().unwrap().clone();
             if current.is_some() {
                 diagnosis = current;
                 break;
@@ -1570,7 +1570,7 @@ mod tests {
             diagnosis.is_some(),
             "Watchtower should have generated a diagnosis within timeout"
         );
-        let diagnosis = diagnosis.unwrap(); // allow-anti-pattern
+        let diagnosis = diagnosis.unwrap();
         assert_eq!(diagnosis.self_repair_hint, "Try writing better code");
         assert_eq!(
             diagnosis.category,
@@ -1632,13 +1632,13 @@ mod tests {
         // Wait for it to fail the job
         tokio::time::sleep(Duration::from_millis(150)).await;
 
-        let lock = job_queue.failed_jobs.lock().unwrap(); // allow-anti-pattern
-                                                          // Since no conductor is available, the dispatcher should fail the job,
-                                                          // but with a message mentioning the suggested tools.
+        let lock = job_queue.failed_jobs.lock().unwrap();
+        // Since no conductor is available, the dispatcher should fail the job,
+        // but with a message mentioning the suggested tools.
         let failed_job = lock
             .iter()
             .find(|(id, _)| id == "unknown-job")
-            .expect("Job should be failed"); // allow-anti-pattern
+            .expect("Job should be failed");
         assert!(
             failed_job.1.contains("file_parser_tool"),
             "Message should contain tool name"
@@ -1779,7 +1779,7 @@ mod tests {
             elicit_event_received,
             "Dispatcher should have emitted an AwaitingInput event for elicitation"
         );
-        let status = job_queue.updated_status.lock().unwrap().clone(); // allow-anti-pattern
+        let status = job_queue.updated_status.lock().unwrap().clone();
         assert_eq!(
             status,
             Some(aiome_core_contracts::traits::JobStatus::AwaitingInput)

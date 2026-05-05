@@ -134,7 +134,7 @@ impl CostCircuitBreaker {
             // AS-1.8: (Future) Emit SSE event for UI notification when budget is exceeded.
             // This will be integrated with the api-server's event_sender in Phase 30.
             return Err(AiomeError::Infrastructure {
-                reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Monthly usage: ${:.4} / limit: ${:.4}. Please expand quota in settings.", 
+                reason: format!("Cost limit exceeded: 24h usage ${:.4} >= limit ${:.4}. Monthly usage: ${:.4} / limit: ${:.4}. Please expand quota in settings.",
                                  status.total_usd_24h, status.limit_usd, status.total_usd_30d.unwrap_or(0.0), status.monthly_limit_usd.unwrap_or(0.0)),
             });
         }
@@ -212,14 +212,14 @@ mod tests {
     async fn test_job_cost_limit_green() {
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
 
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
@@ -261,14 +261,14 @@ mod tests {
     async fn test_monthly_cost_limit() {
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
 
         // Initialize migrations to create resource_usage_logs table

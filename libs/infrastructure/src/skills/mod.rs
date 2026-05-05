@@ -226,9 +226,9 @@ impl WasmSkillManager {
             let maturity_str = new_maturity.to_string();
             let sqlite_pool = pool.get_sqlite_pool_or_err()?;
             sqlx::query(
-                "INSERT INTO skill_maturity (skill_name, maturity, promotion_count, last_promoted_at) 
+                "INSERT INTO skill_maturity (skill_name, maturity, promotion_count, last_promoted_at)
                  VALUES (?, ?, 1, datetime('now'))
-                 ON CONFLICT(skill_name) DO UPDATE SET 
+                 ON CONFLICT(skill_name) DO UPDATE SET
                     maturity=excluded.maturity,
                     promotion_count=skill_maturity.promotion_count+1,
                     last_promoted_at=datetime('now')"

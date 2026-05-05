@@ -230,7 +230,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_comfyui_engine_generate_artifact_green() {
-        let engine = ComfyUiGenerativeEngine::new("http://localhost:8188".into(), None); // allow-anti-pattern
+        let engine = ComfyUiGenerativeEngine::new("http://localhost:8188".into(), None);
         let result = engine
             .generate_artifact("test prompt", "sdxl_workflow", None)
             .await;
@@ -261,6 +261,6 @@ mod tests {
         let engine = mock::MockGenerativeEngine::default();
         let result = engine.health_check().await;
         assert!(result.is_ok());
-        assert_eq!(result.expect("health_check failed in test"), true); // allow-anti-pattern
+        assert_eq!(result.expect("health_check failed in test"), true);
     }
 }

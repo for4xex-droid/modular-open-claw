@@ -182,7 +182,7 @@ impl KarmaOps for UniversalJobQueue {
         let q = format!(
             "SELECT k.id, k.lesson, k.soul_version_hash, k.karma_embedding, {} AS sql_weight
              FROM karma_logs k
-             WHERE k.weight > 0 AND k.is_archived = 0 AND (k.related_skill = {1} OR k.related_skill = 'global') 
+             WHERE k.weight > 0 AND k.is_archived = 0 AND (k.related_skill = {1} OR k.related_skill = 'global')
              ORDER BY sql_weight DESC, k.created_at DESC LIMIT {2}",
             weight_expr, self.pool.ph(1), self.pool.ph(2)
         );

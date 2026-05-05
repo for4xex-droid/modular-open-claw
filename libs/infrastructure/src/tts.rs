@@ -265,7 +265,7 @@ mod tests {
         let res = provider.synthesize("こんにちは", "p225").await;
 
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().len(), 100); // allow-anti-pattern
+        assert_eq!(res.unwrap().len(), 100);
     }
 
     #[tokio::test]
@@ -273,7 +273,7 @@ mod tests {
         let provider = XttsProvider::new("http://invalid.local:18020".into());
         let res = provider.health_check().await;
         assert!(res.is_ok()); // Should return Ok(false) if server unreachable
-        assert_eq!(res.unwrap(), false); // allow-anti-pattern
+        assert_eq!(res.unwrap(), false);
     }
 
     #[tokio::test]

@@ -264,7 +264,7 @@ mod tests {
     #[cfg(feature = "native-inference")]
     async fn test_native_embedding_green() {
         // GREEN phase test
-        let provider = NativeEmbeddingProvider::new().expect("Should initialize"); // allow-anti-pattern
+        let provider = NativeEmbeddingProvider::new().expect("Should initialize");
         assert_eq!(provider.embedding_dim(), 384);
         assert_eq!(provider.name(), "Native(all-MiniLM-L6-v2)");
 
@@ -273,7 +273,7 @@ mod tests {
             let embed_res = provider
                 .embed("hello world", false)
                 .await
-                .expect("Should generate embedding"); // allow-anti-pattern
+                .expect("Should generate embedding");
             assert_eq!(embed_res.len(), 384);
 
             // Check that it's somewhat normalized

@@ -185,8 +185,8 @@ impl GiftEngine for TremendousGiftEngine {
         let agent_str = agent_id.to_string();
 
         let q = format!(
-            "SELECT 
-                COUNT(*) as count, 
+            "SELECT
+                COUNT(*) as count,
                 COALESCE(SUM(CAST(new_data->>'amount_usd' AS FLOAT)), 0.0) as total
              FROM audit_ledger_global
              WHERE table_name = 'gift_transactions'
@@ -252,16 +252,16 @@ mod tests {
             let pg_pool = sqlx::postgres::PgPoolOptions::new()
                 .connect(&pg_url)
                 .await
-                .unwrap(); // allow-anti-pattern
-            sqlx::query("CREATE TABLE IF NOT EXISTS audit_ledger_global (id SERIAL PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data JSONB, current_hash TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)").execute(&pg_pool).await.unwrap(); // allow-anti-pattern
+                .unwrap();
+            sqlx::query("CREATE TABLE IF NOT EXISTS audit_ledger_global (id SERIAL PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data JSONB, current_hash TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)").execute(&pg_pool).await.unwrap();
             sqlx::query("DELETE FROM audit_ledger_global")
                 .execute(&pg_pool)
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
             DatabasePool::Postgres(pg_pool)
         } else {
-            let p = SqlitePool::connect("sqlite::memory:").await.unwrap(); // allow-anti-pattern
-            sqlx::query("CREATE TABLE audit_ledger_global (id INTEGER PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data TEXT, current_hash TEXT, timestamp TEXT DEFAULT (datetime('now')))").execute(&p).await.unwrap(); // allow-anti-pattern
+            let p = SqlitePool::connect("sqlite::memory:").await.unwrap();
+            sqlx::query("CREATE TABLE audit_ledger_global (id INTEGER PRIMARY KEY, table_name TEXT, operation TEXT, record_id TEXT, new_data TEXT, current_hash TEXT, timestamp TEXT DEFAULT (datetime('now')))").execute(&p).await.unwrap();
             DatabasePool::Sqlite(p)
         };
 
@@ -300,7 +300,7 @@ mod tests {
             let pg_pool = sqlx::postgres::PgPoolOptions::new()
                 .connect(&pg_url)
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
             DatabasePool::Postgres(pg_pool)
         } else {
             DatabasePool::Sqlite(

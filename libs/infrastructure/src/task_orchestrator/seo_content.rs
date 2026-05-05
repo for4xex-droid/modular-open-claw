@@ -256,8 +256,8 @@ mod tests {
             prompt: &str,
             sys: Option<&str>,
         ) -> Result<LlmResponse, AiomeError> {
-            *self.last_user_prompt.lock().expect("lock poisoned") = Some(prompt.to_string()); // allow-anti-pattern
-            *self.last_sys_prompt.lock().expect("lock poisoned") = // allow-anti-pattern
+            *self.last_user_prompt.lock().expect("lock poisoned") = Some(prompt.to_string());
+            *self.last_sys_prompt.lock().expect("lock poisoned") =
                 Some(sys.unwrap_or("").to_string());
             Ok(LlmResponse {
                 content: "SEO content...".to_string(),
@@ -312,7 +312,7 @@ mod tests {
 
         let result = conductor.conduct(job, tx).await;
         assert!(result.is_ok());
-        let (content, karma) = result.expect("conduct should succeed"); // allow-anti-pattern
+        let (content, karma) = result.expect("conduct should succeed");
         assert_eq!(content, "SEO content...");
         assert!(karma.is_none());
 
@@ -351,22 +351,22 @@ mod tests {
         conductor
             .conduct(job, tx)
             .await
-            .expect("conduct should succeed before asserting prompt content"); // allow-anti-pattern
+            .expect("conduct should succeed before asserting prompt content");
 
-        let captured_sys = provider.last_sys_prompt.lock().expect("lock poisoned"); // allow-anti-pattern
+        let captured_sys = provider.last_sys_prompt.lock().expect("lock poisoned");
         let sys = captured_sys
             .as_deref()
-            .expect("system prompt must be passed"); // allow-anti-pattern
+            .expect("system prompt must be passed");
         assert!(
             sys.contains("SEO") && sys.contains("Content Strategist"),
             "System prompt must contain SEO domain expertise. Got: {}",
             sys
         );
 
-        let captured_user = provider.last_user_prompt.lock().expect("lock poisoned"); // allow-anti-pattern
+        let captured_user = provider.last_user_prompt.lock().expect("lock poisoned");
         let user = captured_user
             .as_deref()
-            .expect("user prompt must be passed"); // allow-anti-pattern
+            .expect("user prompt must be passed");
         assert!(
             user.contains("Rust Web Development"),
             "User prompt must include the job topic. Got: {}",

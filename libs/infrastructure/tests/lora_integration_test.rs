@@ -29,12 +29,12 @@ async fn test_autotuner_to_training_service_integration() {
     let suggested = LoraAutotuner::suggest_hyperparams(&metrics);
 
     // Use tempdir to avoid race conditions with parallel test execution
-    let tmp = tempdir().expect("Failed to create temp directory for test"); // allow-anti-pattern
+    let tmp = tempdir().expect("Failed to create temp directory for test");
     let workspace = tmp.path().join("workspace");
-    std::fs::create_dir_all(&workspace).expect("Failed to create workspace dir"); // allow-anti-pattern
+    std::fs::create_dir_all(&workspace).expect("Failed to create workspace dir");
 
     let dataset_path = workspace.join("test_dataset_mock.jsonl");
-    std::fs::write(&dataset_path, "{\"text\": \"hello\"}\n").expect("Failed to write mock dataset"); // allow-anti-pattern
+    std::fs::write(&dataset_path, "{\"text\": \"hello\"}\n").expect("Failed to write mock dataset");
 
     // Act: Convert autotuner output → training config
     let config = LoraAutotuner::create_training_config(
@@ -64,7 +64,7 @@ async fn test_autotuner_to_training_service_integration() {
 
     // Create mock MLX script that produces expected artifacts
     let scripts_dir = tmp.path().join("scripts");
-    std::fs::create_dir_all(&scripts_dir).expect("Failed to create scripts dir"); // allow-anti-pattern
+    std::fs::create_dir_all(&scripts_dir).expect("Failed to create scripts dir");
     let script_content = r#"
 import os, sys, argparse
 parser = argparse.ArgumentParser()
@@ -79,7 +79,7 @@ if args.adapter_file:
 print("mock MLX training complete")
 "#;
     std::fs::write(scripts_dir.join("mlx_train.py"), script_content)
-        .expect("Failed to write mock MLX script"); // allow-anti-pattern
+        .expect("Failed to write mock MLX script");
 
     let token = CancellationToken::new();
     let result = service.start_training("mock_job_id", config, token).await;

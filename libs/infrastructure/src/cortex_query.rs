@@ -172,8 +172,8 @@ impl CortexQueryEngine {
             let match_str = format!("\"{}\"", fts_kw);
 
             let fts_query = r#"
-                SELECT article_ids 
-                FROM cortex_concept_index 
+                SELECT article_ids
+                FROM cortex_concept_index
                 WHERE rowid IN (
                     SELECT rowid FROM cortex_concept_fts WHERE concept MATCH ?
                 )
@@ -452,21 +452,21 @@ mod tests {
 
     /// Seed test data into DB for richer tests
     async fn seed_test_data(pool: &DatabasePool) {
-        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, concepts, content_hash)
              VALUES ('art-1', 'Rust Async', 'Rust uses async/await for concurrency.', '[\"rust\",\"async\"]', 'hash1')"
-        ).execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        ).execute(sqlite_pool).await.unwrap();
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, concepts, content_hash)
              VALUES ('art-2', 'Cortex Overview', 'Cortex is the knowledge engine of Aiome.', '[\"cortex\",\"knowledge\"]', 'hash2')"
-        ).execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        ).execute(sqlite_pool).await.unwrap();
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids) VALUES ('rust', '[\"art-1\"]')"
-        ).execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        ).execute(sqlite_pool).await.unwrap();
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids) VALUES ('cortex', '[\"art-2\"]')"
-        ).execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+        ).execute(sqlite_pool).await.unwrap();
     }
 
     // ========================================================================
@@ -488,7 +488,7 @@ mod tests {
         // P-1: should be able to configure max chars via with_max_context_chars
         let engine = CortexQueryEngine::new(provider, pool).with_max_context_chars(100);
 
-        let ans = engine.query("What is rust?").await.unwrap(); // allow-anti-pattern
+        let ans = engine.query("What is rust?").await.unwrap();
         assert!(!ans.answer_md.is_empty());
     }
 
@@ -521,8 +521,8 @@ mod tests {
         });
         let engine = CortexQueryEngine::new(provider, pool);
 
-        let suggestions = engine.suggest_questions().await.unwrap(); // allow-anti-pattern
-                                                                     // Should contain at least the concepts from DB, not hardcoded
+        let suggestions = engine.suggest_questions().await.unwrap();
+        // Should contain at least the concepts from DB, not hardcoded
         assert!(
             suggestions.len() >= 2,
             "Should have at least 2 dynamic suggestions, got {}",
@@ -541,8 +541,8 @@ mod tests {
         });
         let engine = CortexQueryEngine::new(provider, pool);
 
-        let suggestions = engine.suggest_questions().await.unwrap(); // allow-anti-pattern
-                                                                     // Even with empty DB, should return at least 1 fallback suggestion
+        let suggestions = engine.suggest_questions().await.unwrap();
+        // Even with empty DB, should return at least 1 fallback suggestion
         assert!(
             !suggestions.is_empty(),
             "Should have fallback suggestions even with empty DB"
@@ -567,7 +567,7 @@ mod tests {
         });
         let engine = CortexQueryEngine::new(provider, pool);
 
-        let ans = engine.query("Tell me about Rust").await.unwrap(); // allow-anti-pattern
+        let ans = engine.query("Tell me about Rust").await.unwrap();
         assert_eq!(ans.confidence, 0.9);
         assert!(
             ans.source_articles.contains(&"Rust Async".to_string()),
@@ -589,7 +589,7 @@ mod tests {
         });
         let engine = CortexQueryEngine::new(provider, pool);
 
-        let ans = engine.query("What is something unknown?").await.unwrap(); // allow-anti-pattern
+        let ans = engine.query("What is something unknown?").await.unwrap();
         assert!(ans.source_articles.is_empty());
         assert!(ans.confidence <= 0.5);
     }
@@ -627,7 +627,7 @@ mod tests {
 
         let ans = engine.query("What is test concept?").await;
         assert!(ans.is_ok(), "Query should succeed for valid input");
-        let ans_val = ans.unwrap(); // allow-anti-pattern
+        let ans_val = ans.unwrap();
         assert_eq!(ans_val.answer_md, "This is a mock answer");
         assert_eq!(ans_val.confidence, 0.95);
     }
@@ -647,7 +647,7 @@ mod tests {
         });
 
         let engine = CortexQueryEngine::new(provider, pool);
-        let ans = engine.query("What is \"rust-\" async?").await.unwrap(); // allow-anti-pattern
+        let ans = engine.query("What is \"rust-\" async?").await.unwrap();
         assert_eq!(ans.answer_md, "Safe from syntax panics");
     }
 

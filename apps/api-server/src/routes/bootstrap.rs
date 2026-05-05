@@ -291,7 +291,7 @@ mod tests {
                 },
             ],
         };
-        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
+        let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"mode\":\"setup\""));
         assert!(json.contains("\"missing_items\":[\"LLM provider\"]"));
         assert!(json.contains("\"name\":\"geo-optimizer\",\"status\":\"ok\""));
@@ -306,7 +306,7 @@ mod tests {
             models: vec![],
             error: Some("Not found".to_string()),
         };
-        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
+        let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"available\":false"));
         assert!(json.contains("\"error\":\"Not found\""));
     }
@@ -320,7 +320,7 @@ mod tests {
             preserved_files: vec![".env".to_string()],
             errors: vec![],
         };
-        let json = serde_json::to_string(&resp).unwrap(); // allow-anti-pattern
+        let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"success\":true"));
     }
 }

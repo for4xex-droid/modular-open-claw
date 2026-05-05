@@ -1344,7 +1344,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await
@@ -1366,7 +1366,7 @@ mod tests {
                 cache_hit: false,
             })
             .await
-            .expect("test seed data insertion must succeed"); // allow-anti-pattern
+            .expect("test seed data insertion must succeed");
 
         #[derive(Debug)]
         struct MockLlm;
@@ -1469,7 +1469,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await
@@ -1531,7 +1531,7 @@ mod tests {
         let ts = std::sync::Arc::new(SqliteTrajectoryStore::new(pool.clone()));
         let _jq = UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("jq"); // allow-anti-pattern
+            .expect("jq");
         crate::job_queue::migrations::DbInitializer::init_db(&_jq)
             .await
             .unwrap();

@@ -22,7 +22,7 @@ mod tests {
         );
         let _jq = crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
             .await
-            .expect("Failed to create in-memory job queue"); // allow-anti-pattern
+            .expect("Failed to create in-memory job queue");
         pool
     }
 
@@ -42,7 +42,7 @@ mod tests {
         let loaded = store
             .load_soul("test-agent-1")
             .await?
-            .expect("Soul not found"); // allow-anti-pattern
+            .expect("Soul not found");
 
         assert_eq!(
             loaded.lora_adapter_path,
@@ -57,7 +57,7 @@ mod tests {
         let loaded2 = store
             .load_soul("test-agent-1")
             .await?
-            .expect("Soul not found"); // allow-anti-pattern
+            .expect("Soul not found");
         assert_eq!(loaded2.lora_adapter_path, None);
         assert_eq!(loaded2.lora_base_model, Some("llama-3-8b".to_string()));
 
@@ -82,7 +82,7 @@ mod tests {
         let loaded = store
             .load_soul("test-agent-begging")
             .await?
-            .expect("Soul not found"); // allow-anti-pattern
+            .expect("Soul not found");
 
         assert_eq!(loaded.last_begging_at, Some(begging_time));
 
@@ -106,7 +106,7 @@ mod tests {
         let snapshot = store
             .get_snapshot()
             .await
-            .expect("Snapshot should be in cache"); // allow-anti-pattern
+            .expect("Snapshot should be in cache");
 
         assert_eq!(snapshot.lora_hash, Some("sha256:lora789".to_string()));
         assert_eq!(

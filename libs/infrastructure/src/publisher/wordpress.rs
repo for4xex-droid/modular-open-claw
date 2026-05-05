@@ -187,7 +187,7 @@ mod tests {
         let result = adapter.publish(content, &[], &metadata).await;
 
         // Assert (in RED phase this will panic because result is Err)
-        let post_url = result.expect("Should return published post URL"); // allow-anti-pattern
+        let post_url = result.expect("Should return published post URL");
         assert!(
             post_url.contains("wp.local"),
             "URL should contain base domain"
@@ -215,7 +215,7 @@ mod tests {
         let result = adapter.publish(content, &[], &metadata).await;
 
         // Assert (intercepted by test environment)
-        let post_url = result.expect("Should return published post URL"); // allow-anti-pattern
+        let post_url = result.expect("Should return published post URL");
         assert!(post_url.contains("?p=1"));
     }
     #[tokio::test]
@@ -227,7 +227,7 @@ mod tests {
         let result = adapter.publish(content, &[], &metadata).await;
         // In the GREEN phase with test intercept, it just passes.
         // We mainly verify it doesn't panic on missing fields.
-        let url = result.expect("Should return published post URL"); // allow-anti-pattern
+        let url = result.expect("Should return published post URL");
         assert!(url.contains("wp.local"));
     }
 

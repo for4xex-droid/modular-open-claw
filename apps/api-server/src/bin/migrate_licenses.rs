@@ -54,8 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let events = sqlx::query(
         r#"
-        SELECT event_id, metadata 
-        FROM stripe_webhook_events 
+        SELECT event_id, metadata
+        FROM stripe_webhook_events
         WHERE event_type = 'checkout.session.completed'
         "#,
     )

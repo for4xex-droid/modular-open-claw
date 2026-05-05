@@ -148,11 +148,11 @@ mod tests {
         // Ensure RED phase TDD is executed?
         // Wait, TDD was requested, this will just pass. So we should break it first or commit?
         // Let's just create it and it will compile.
-        let (res, _) = conductor.conduct(job, tx).await.unwrap(); // allow-anti-pattern
+        let (res, _) = conductor.conduct(job, tx).await.unwrap();
         assert!(res.starts_with("Scan Complete (Clean):"));
 
         // Receive progress event
-        let evt = rx.recv().await.unwrap(); // allow-anti-pattern
+        let evt = rx.recv().await.unwrap();
         if let TaskEvent::Progress { percent, .. } = evt {
             assert_eq!(percent, Some(50));
         } else {

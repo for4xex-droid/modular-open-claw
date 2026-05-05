@@ -78,15 +78,15 @@ mod tests {
                 Request::builder()
                     .uri("/.well-known/agent.json")
                     .body(Body::empty())
-                    .unwrap(), // allow-anti-pattern
+                    .unwrap(),
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let body = response.into_body().collect().await.unwrap().to_bytes(); // allow-anti-pattern
-        let card: AgentCard = serde_json::from_slice(&body).expect("Failed to parse AgentCard"); // allow-anti-pattern
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let card: AgentCard = serde_json::from_slice(&body).expect("Failed to parse AgentCard");
 
         assert_eq!(card.name, "Aiome Node");
         assert_eq!(card.version, "1.0");

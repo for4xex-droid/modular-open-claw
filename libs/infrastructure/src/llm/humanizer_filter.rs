@@ -169,7 +169,7 @@ mod tests {
             should_fail: false,
         });
         let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
-        let res = filter.complete("prompt", None).await.unwrap(); // allow-anti-pattern
+        let res = filter.complete("prompt", None).await.unwrap();
         assert_eq!(res.content, "これはテスト、です");
     }
 
@@ -180,7 +180,7 @@ mod tests {
             should_fail: false,
         });
         let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
-        let res = filter.complete("prompt", None).await.unwrap(); // allow-anti-pattern
+        let res = filter.complete("prompt", None).await.unwrap();
         assert_eq!(res.content, "詳細は以下の通りです。");
     }
 
@@ -191,7 +191,7 @@ mod tests {
             should_fail: false,
         });
         let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
-        let res = filter.complete("prompt", None).await.unwrap(); // allow-anti-pattern
+        let res = filter.complete("prompt", None).await.unwrap();
         assert_eq!(res.content, "はい、可能です。");
     }
 
@@ -203,8 +203,8 @@ mod tests {
             should_fail: false,
         });
         let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
-        let res = filter.complete("prompt", None).await.unwrap(); // allow-anti-pattern
-                                                                  // JSON形式の場合はパース破壊を防ぐためにフィルタがスキップされることを期待
+        let res = filter.complete("prompt", None).await.unwrap();
+        // JSON形式の場合はパース破壊を防ぐためにフィルタがスキップされることを期待
         assert_eq!(res.content, json_str);
     }
 
@@ -216,7 +216,7 @@ mod tests {
             should_fail: false,
         });
         let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
-        let res = filter.complete("prompt", None).await.unwrap(); // allow-anti-pattern
+        let res = filter.complete("prompt", None).await.unwrap();
         assert_eq!(res.content, normal_text);
     }
 
@@ -230,20 +230,20 @@ mod tests {
         // 特定のルールのみのテスト
         let rules = vec![HumanizerRule {
             name: "em_dash_replacement",
-            pattern: Regex::new(r"——").unwrap(), // allow-anti-pattern
+            pattern: Regex::new(r"——").unwrap(),
             action: HumanizerAction::Replace("、".to_string()),
             active_contexts: vec![WritingContext::Chat], // Chatのみ有効
         }];
 
         let filter_manifesto =
             HumanizerFilter::new(base.clone(), rules.clone(), WritingContext::Manifesto);
-        let res1 = filter_manifesto.complete("prompt", None).await.unwrap(); // allow-anti-pattern
-                                                                             // Manifestoではルール適用されない
+        let res1 = filter_manifesto.complete("prompt", None).await.unwrap();
+        // Manifestoではルール適用されない
         assert_eq!(res1.content, text);
 
         let filter_chat = HumanizerFilter::new(base.clone(), rules, WritingContext::Chat);
-        let res2 = filter_chat.complete("prompt", None).await.unwrap(); // allow-anti-pattern
-                                                                        // Chatでは適用される
+        let res2 = filter_chat.complete("prompt", None).await.unwrap();
+        // Chatでは適用される
         assert_eq!(res2.content, "これはテスト、です");
     }
 }

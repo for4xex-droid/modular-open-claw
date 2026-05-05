@@ -455,7 +455,7 @@ mod tests {
         });
 
         let sonar = ExternalTrendSonar::new(vec![adapter1, adapter2], None);
-        let results = sonar.get_trends("tech").await.unwrap(); // allow-anti-pattern
+        let results = sonar.get_trends("tech").await.unwrap();
 
         assert_eq!(results.len(), 2);
         assert!(results.iter().any(|t| t.keyword == "rust"));
@@ -479,7 +479,7 @@ mod tests {
         let result = adapter.fetch("organic coffee").await;
 
         // Assert: In RED phase this will fail because the method returns Err. We expect Ok with parsed gaps.
-        let trends = result.expect("fetch should return Ok"); // allow-anti-pattern
+        let trends = result.expect("fetch should return Ok");
         assert!(!trends.is_empty(), "Trends should not be empty");
         // We expect structured SEO intent gaps as trends
         assert_eq!(trends[0].source, "SerpAnalysisAdapter");
@@ -495,7 +495,7 @@ mod tests {
 
         assert!(second_call.is_ok());
         assert_eq!(
-            second_call.expect("Should be ok").len(), // allow-anti-pattern
+            second_call.expect("Should be ok").len(),
             0,
             "Second call should be rate limited and return empty vec"
         );

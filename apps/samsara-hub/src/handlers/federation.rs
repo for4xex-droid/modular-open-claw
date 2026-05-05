@@ -109,7 +109,7 @@ pub async fn sync_handler(
         shared::sql_fetch_all!(&state.pool, FederatedKarmaRecord, &karma_sync_query, &since)
             .unwrap_or_default();
     let rule_sync_query = format!(
-        "SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM approved_rules 
+        "SELECT id, pattern, severity, action, created_at, lamport_clock, node_id, signature FROM approved_rules
          WHERE approved_at > {} ORDER BY approved_at ASC LIMIT 500",
          state.pool.ph(0)
     );

@@ -533,7 +533,7 @@ mod tests {
         let gateway = SecureGigGateway::new(
             Arc::new(DummyGigEngine),
             Arc::new(DummyValidator),
-            infrastructure::rate_limiter::AgentRateLimiter::new(10).expect("Constant 10 is valid"), // allow-anti-pattern
+            infrastructure::rate_limiter::AgentRateLimiter::new(10).expect("Constant 10 is valid"),
         );
 
         let server = McpServer::new(gateway)

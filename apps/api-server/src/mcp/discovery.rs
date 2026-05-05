@@ -385,25 +385,25 @@ mod tests {
             "localhost"
         );
 
-        let discovery: McpDiscoveryFile = serde_json::from_str(&json).unwrap(); // allow-anti-pattern
+        let discovery: McpDiscoveryFile = serde_json::from_str(&json).unwrap();
 
-        let stdio = discovery.mcp_servers.get("stdio_server").unwrap(); // allow-anti-pattern
+        let stdio = discovery.mcp_servers.get("stdio_server").unwrap();
         assert!(matches!(stdio.transport, McpTransport::Stdio));
         assert_eq!(stdio.command, "node");
 
-        let http = discovery.mcp_servers.get("http_server").unwrap(); // allow-anti-pattern
+        let http = discovery.mcp_servers.get("http_server").unwrap();
         assert!(matches!(http.transport, McpTransport::Http));
-        assert_eq!(http.url.as_ref().unwrap(), "http://localhost:8080/mcp"); // allow-anti-pattern
-        assert_eq!(http.headers.get("x-api-key").unwrap(), "secret"); // allow-anti-pattern
+        assert_eq!(http.url.as_ref().unwrap(), "http://localhost:8080/mcp");
+        assert_eq!(http.headers.get("x-api-key").unwrap(), "secret");
     }
 
     #[tokio::test]
     async fn test_discover_and_connect_mock() {
         let manager = McpProcessManager::new();
         // Use in-memory sqlite for test registry
-        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap(); // allow-anti-pattern
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query("CREATE TABLE IF NOT EXISTS registry (id TEXT PRIMARY KEY, asset_type TEXT, description TEXT, metadata TEXT, created_at DATETIME, updated_at DATETIME)")
-            .execute(&pool).await.unwrap(); // allow-anti-pattern
+            .execute(&pool).await.unwrap();
 
         let registry = infrastructure::registry::RegistryManager::new(
             infrastructure::db::DatabasePool::Sqlite(pool),
@@ -439,10 +439,10 @@ mod tests {
             }
         }"#;
 
-        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap(); // allow-anti-pattern
+        let discovery: McpDiscoveryFile = serde_json::from_str(json).unwrap();
 
         // disabled=true server should be skipped
-        let disabled_srv = discovery.mcp_servers.get("disabled_oauth_server").unwrap(); // allow-anti-pattern
+        let disabled_srv = discovery.mcp_servers.get("disabled_oauth_server").unwrap();
         assert_eq!(disabled_srv.disabled, Some(true));
         assert!(
             disabled_srv.disabled.unwrap_or(false),
@@ -453,7 +453,7 @@ mod tests {
         let enabled_srv = discovery
             .mcp_servers
             .get("explicitly_enabled_server")
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert_eq!(enabled_srv.disabled, Some(false));
         assert!(
             !enabled_srv.disabled.unwrap_or(false),
@@ -461,7 +461,7 @@ mod tests {
         );
 
         // No disabled field — should default to not-disabled
-        let active_srv = discovery.mcp_servers.get("active_server").unwrap(); // allow-anti-pattern
+        let active_srv = discovery.mcp_servers.get("active_server").unwrap();
         assert_eq!(active_srv.disabled, None);
         assert!(
             !active_srv.disabled.unwrap_or(false),

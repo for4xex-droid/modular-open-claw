@@ -342,7 +342,7 @@ mod tests {
         let stats = arena_loaded
             .get_stats("persisted_skill")
             .await
-            .expect("Stats should be loaded"); // allow-anti-pattern
+            .expect("Stats should be loaded");
 
         // Assert
         assert_eq!(stats.success_count, 1);

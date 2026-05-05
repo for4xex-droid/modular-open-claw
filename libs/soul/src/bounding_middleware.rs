@@ -174,7 +174,7 @@ mod tests {
             }
         }
 
-        guard.process(&mut ctx, &MockNext).await.unwrap(); // allow-anti-pattern
+        guard.process(&mut ctx, &MockNext).await.unwrap();
 
         assert!(ctx.is_rejected);
         assert!(!ctx.should_continue);

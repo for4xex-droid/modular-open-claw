@@ -221,7 +221,7 @@ mod tests {
     async fn test_successful_command() {
         let result = run_with_timeout("echo", &["hello"], Duration::from_secs(5)).await;
         assert!(result.is_ok());
-        let output = result.unwrap(); // allow-anti-pattern
+        let output = result.unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("hello"));
     }
@@ -286,7 +286,7 @@ mod tests {
         std::env::remove_var("ZOMBIE_SECRET_TEST");
 
         assert!(result.is_ok(), "Python command failed: {:?}", result.err());
-        let output = result.unwrap(); // allow-anti-pattern
+        let output = result.unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         assert!(

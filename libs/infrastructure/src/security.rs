@@ -777,9 +777,9 @@ mod tests {
                 vec!["-c".into(), "import os; print(dict(os.environ))".into()],
                 SandboxProfile::Default,
             )
-            .expect("Failed to build command args"); // allow-anti-pattern
+            .expect("Failed to build command args");
 
-        let output = cmd.output().await.expect("Failed to run command"); // allow-anti-pattern
+        let output = cmd.output().await.expect("Failed to run command");
 
         std::env::remove_var("BASTION_SECRET_TEST");
 
@@ -808,9 +808,9 @@ mod tests {
             .arg("import os; print(os.environ.get('BASTION_TEST_PASSTHROUGH_SECRET', 'not_found'))")
             .env_passthrough(secret_key)
             .build_internal()
-            .expect("Failed to build command args"); // allow-anti-pattern
+            .expect("Failed to build command args");
 
-        let output = cmd.output().await.expect("Failed to run command"); // allow-anti-pattern
+        let output = cmd.output().await.expect("Failed to run command");
 
         std::env::remove_var(secret_key);
 
@@ -857,7 +857,7 @@ mod tests {
         // This should use the new McpServer profile logic
         let mut cmd = guard
             .build_safe_command_args("ls", vec![], SandboxProfile::McpServer)
-            .expect("Failed to build command args"); // allow-anti-pattern
+            .expect("Failed to build command args");
 
         // We just ensure it builds successfully.
         // The actual runsc profile validation is complex to test without runsc,
@@ -1067,7 +1067,7 @@ mod tests {
                 res_internal.is_ok(),
                 "Internal system processes must have Vault access."
             );
-            assert_eq!(res_internal.unwrap().trim(), "SENSITIVE_DATA"); // allow-anti-pattern
+            assert_eq!(res_internal.unwrap().trim(), "SENSITIVE_DATA");
 
             // Cleanup
             let _ = std::fs::remove_file(&vault_file);
@@ -1113,7 +1113,7 @@ mod tests {
     fn test_security_config_canonicalization_vulnerability() {
         // 環境変数に相対パスやシンボリックリンクを含むパスを設定した場合の挙動確認
         // 実際に存在するディレクトリを指定することで canonicalize() を成功させる
-        let temp = std::env::current_dir().unwrap().join("test_vault_tmp"); // allow-anti-pattern
+        let temp = std::env::current_dir().unwrap().join("test_vault_tmp");
         let _ = std::fs::create_dir_all(&temp);
 
         std::env::set_var("VAULT_PATH", "./test_vault_tmp");

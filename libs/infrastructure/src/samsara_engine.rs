@@ -445,7 +445,7 @@ mod tests {
         // Initial narrative is None
         assert_eq!(soul.anamnesis.narrative_self, None);
 
-        let new_soul = engine.rebirth(soul).await.unwrap(); // allow-anti-pattern
+        let new_soul = engine.rebirth(soul).await.unwrap();
         assert_eq!(
             new_soul.anamnesis.narrative_self,
             Some("I am a synthesized narrative.".into())
@@ -464,7 +464,7 @@ mod tests {
         soul.anamnesis.narrative_self = Some("Old narrative.".into());
         soul.experience_buffer.push(Experience::default());
 
-        let new_soul = engine.rebirth(soul).await.unwrap(); // allow-anti-pattern
+        let new_soul = engine.rebirth(soul).await.unwrap();
 
         // Should fallback to old narrative because LLM failed
         assert_eq!(
@@ -486,7 +486,7 @@ mod tests {
         soul.lora_adapter_path = Some("/path/to/adapter".to_string());
         soul.lora_base_model = Some("llama-3".to_string());
 
-        let new_soul = engine.rebirth(soul.clone()).await.expect("Rebirth failed"); // allow-anti-pattern
+        let new_soul = engine.rebirth(soul.clone()).await.expect("Rebirth failed");
 
         // The old implementation inherited them. We now expect them to be reset (None).
         assert_eq!(new_soul.lora_hash, None, "LoRA hash should be reset");

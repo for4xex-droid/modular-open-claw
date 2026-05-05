@@ -56,7 +56,7 @@ async fn create_test_queue() -> UniversalJobQueue {
     );
     UniversalJobQueue::new(pool.clone(), None, ts)
         .await
-        .expect("Failed to create test job queue") // allow-anti-pattern
+        .expect("Failed to create test job queue")
 }
 
 #[tokio::test]

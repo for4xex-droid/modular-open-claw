@@ -229,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_audit_merkle_chain() {
-        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap(); // allow-anti-pattern
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
 
         let schema = "CREATE TABLE audit_ledger_global (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -241,7 +241,7 @@ mod tests {
             current_hash TEXT,
             timestamp TEXT
         )";
-        sql_exec!(&pool, schema).unwrap(); // allow-anti-pattern
+        sql_exec!(&pool, schema).unwrap();
 
         let pool_arc = Arc::new(pool.clone());
         let logger = AsyncAuditLogger::new(pool_arc.clone(), 100);
@@ -272,7 +272,7 @@ mod tests {
             &*pool_arc,
             (String, String, String, String),
             "SELECT new_data, prev_hash, current_hash, record_id FROM audit_ledger_global ORDER BY id ASC"
-        ).unwrap(); // allow-anti-pattern
+        ).unwrap();
 
         assert_eq!(rows.len(), 2, "Should have 2 audit records");
 

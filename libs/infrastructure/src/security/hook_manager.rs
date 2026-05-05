@@ -210,7 +210,7 @@ mod tests {
         manager
             .trigger_pre_execute(&request)
             .await
-            .expect("Hook should pass"); // allow-anti-pattern
+            .expect("Hook should pass");
         assert!(hook.pre_called.load(std::sync::atomic::Ordering::SeqCst));
     }
 
@@ -228,7 +228,7 @@ mod tests {
         manager
             .trigger_job_completed("job-42", "completed")
             .await
-            .expect("Hook should pass"); // allow-anti-pattern
+            .expect("Hook should pass");
         assert!(hook
             .job_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));
@@ -248,7 +248,7 @@ mod tests {
         manager
             .trigger_proof_completed("test_skill", true)
             .await
-            .expect("Hook should pass"); // allow-anti-pattern
+            .expect("Hook should pass");
         assert!(hook
             .proof_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));
@@ -268,7 +268,7 @@ mod tests {
         manager
             .trigger_transaction_completed("polar", 1000, "actor-1", "tx-42")
             .await
-            .expect("Hook should pass"); // allow-anti-pattern
+            .expect("Hook should pass");
         assert!(hook
             .transaction_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));

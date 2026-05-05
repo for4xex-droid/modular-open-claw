@@ -431,7 +431,7 @@ pub(crate) mod tests {
             response.error.is_some(),
             "Expected an error due to security block"
         );
-        let err = response.error.unwrap(); // allow-anti-pattern
+        let err = response.error.unwrap();
         assert!(
             err.message.contains("GUARDRAIL")
                 || err.message.contains("SENTINEL")

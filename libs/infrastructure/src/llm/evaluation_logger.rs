@@ -161,7 +161,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
         let sql_modifier = format!("-{} days", days);
 
         let query = format!(
-            "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls, 
+            "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls,
              COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
              COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
              FROM prompt_evaluation_log
@@ -180,7 +180,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
                     .await
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls, 
+                let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
                     COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
                     FROM prompt_evaluation_log
@@ -222,7 +222,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
         let stats = match pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 let sql_modifier = format!("-{} days", days);
-                let query = "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls, 
+                let query = "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
                     COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
                     FROM prompt_evaluation_log
@@ -235,7 +235,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
                     .await
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls, 
+                let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
                     COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
                     FROM prompt_evaluation_log
@@ -314,7 +314,7 @@ mod tests {
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -322,7 +322,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
 
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
@@ -371,7 +371,7 @@ mod tests {
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -379,7 +379,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await
@@ -415,7 +415,7 @@ mod tests {
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -423,7 +423,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await
@@ -483,7 +483,7 @@ mod tests {
             sqlx::sqlite::SqlitePoolOptions::new()
                 .connect("sqlite::memory:")
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
@@ -491,7 +491,7 @@ mod tests {
         let jq = Arc::new(
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         crate::job_queue::migrations::DbInitializer::init_db(&*jq)
             .await

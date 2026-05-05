@@ -242,7 +242,7 @@ mod tests {
             .mount(&_server)
             .await;
 
-        let tools = client.list_tools().await.unwrap(); // allow-anti-pattern
+        let tools = client.list_tools().await.unwrap();
         assert_eq!(tools.len(), 1);
         assert_eq!(tools[0].name, "test_tool");
     }
@@ -250,62 +250,62 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_http_client_ssrf_protection() {
         // Should allow localhost in debug mode
-        assert!(is_safe_url("http://localhost:8080/mcp").await.is_ok()); // allow-anti-pattern
-        assert!(is_safe_url("http://127.0.0.1:8080/mcp").await.is_ok()); // allow-anti-pattern
+        assert!(is_safe_url("http://localhost:8080/mcp").await.is_ok());
+        assert!(is_safe_url("http://127.0.0.1:8080/mcp").await.is_ok());
 
         // Should block private IPs if in release mode (simulated)
-        assert!(is_private_ip("10.0.0.1".parse().unwrap())); // allow-anti-pattern
-        assert!(is_private_ip("192.168.1.1".parse().unwrap())); // allow-anti-pattern
-        assert!(!is_private_ip("8.8.8.8".parse().unwrap())); // allow-anti-pattern
+        assert!(is_private_ip("10.0.0.1".parse().unwrap()));
+        assert!(is_private_ip("192.168.1.1".parse().unwrap()));
+        assert!(!is_private_ip("8.8.8.8".parse().unwrap()));
 
         // [Gate: IPv4 link-local / cloud metadata]
-        assert!(is_private_ip("169.254.169.254".parse().unwrap())); // allow-anti-pattern
-        assert!(is_private_ip("169.254.1.1".parse().unwrap())); // allow-anti-pattern
+        assert!(is_private_ip("169.254.169.254".parse().unwrap()));
+        assert!(is_private_ip("169.254.1.1".parse().unwrap()));
 
         // [Gate: IPv4-mapped IPv6 normalization]
-        let mapped_loopback = normalize_ip("::ffff:127.0.0.1".parse().unwrap()); // allow-anti-pattern
+        let mapped_loopback = normalize_ip("::ffff:127.0.0.1".parse().unwrap());
         assert!(
             mapped_loopback.is_loopback(),
             "::ffff:127.0.0.1 must normalize to loopback"
         );
 
-        let mapped_private = normalize_ip("::ffff:10.0.0.1".parse().unwrap()); // allow-anti-pattern
+        let mapped_private = normalize_ip("::ffff:10.0.0.1".parse().unwrap());
         assert!(
             is_private_ip(mapped_private),
             "::ffff:10.0.0.1 must normalize to private"
         );
 
-        let mapped_meta = normalize_ip("::ffff:169.254.169.254".parse().unwrap()); // allow-anti-pattern
+        let mapped_meta = normalize_ip("::ffff:169.254.169.254".parse().unwrap());
         assert!(
             is_private_ip(mapped_meta),
             "::ffff:169.254.169.254 must be blocked (cloud metadata)"
         );
 
         // [Gate: IPv6 link-local]
-        assert!(is_private_ip("fe80::1".parse().unwrap())); // allow-anti-pattern
+        assert!(is_private_ip("fe80::1".parse().unwrap()));
 
         // [Gate: IPv6 ULA]
-        assert!(is_private_ip("fc00::1".parse().unwrap())); // allow-anti-pattern
-        assert!(is_private_ip("fd12::1".parse().unwrap())); // allow-anti-pattern
+        assert!(is_private_ip("fc00::1".parse().unwrap()));
+        assert!(is_private_ip("fd12::1".parse().unwrap()));
 
         // Public IPs should pass
-        assert!(!is_private_ip("2001:db8::1".parse().unwrap())); // allow-anti-pattern
+        assert!(!is_private_ip("2001:db8::1".parse().unwrap()));
 
         // [Gate: IPv4-compatible IPv6 (deprecated ::x.x.x.x)]
-        let compat_private = normalize_ip("::10.0.0.1".parse().unwrap()); // allow-anti-pattern
+        let compat_private = normalize_ip("::10.0.0.1".parse().unwrap());
         assert!(
             is_private_ip(compat_private),
             "::10.0.0.1 (IPv4-compatible) must normalize to private"
         );
 
-        let compat_meta = normalize_ip("::169.254.169.254".parse().unwrap()); // allow-anti-pattern
+        let compat_meta = normalize_ip("::169.254.169.254".parse().unwrap());
         assert!(
             is_private_ip(compat_meta),
             "::169.254.169.254 (IPv4-compatible) must be blocked"
         );
 
         // ::0.0.0.0 should NOT be normalized (it's the unspecified address)
-        let unspecified = normalize_ip("::".parse().unwrap()); // allow-anti-pattern
+        let unspecified = normalize_ip("::".parse().unwrap());
         assert!(
             unspecified.is_unspecified(),
             ":: must remain as unspecified, not normalized"

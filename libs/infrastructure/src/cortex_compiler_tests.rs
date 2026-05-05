@@ -171,19 +171,19 @@ async fn test_update_backlinks_and_typed_links() {
     let a_b = links
         .iter()
         .find(|l| l.source == "art1" && l.target == "art2")
-        .expect("A -> B exists"); // allow-anti-pattern
+        .expect("A -> B exists");
     assert_eq!(a_b.link_type, "references");
 
     let c_a = links
         .iter()
         .find(|l| l.source == "art3" && l.target == "art1")
-        .expect("C -> A exists"); // allow-anti-pattern
+        .expect("C -> A exists");
     assert_eq!(c_a.link_type, "contradicts");
 
     let c_b = links
         .iter()
         .find(|l| l.source == "art3" && l.target == "art2")
-        .expect("C -> B exists"); // allow-anti-pattern
+        .expect("C -> B exists");
     assert_eq!(c_b.link_type, "extends");
 }
 

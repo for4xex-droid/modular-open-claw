@@ -120,6 +120,6 @@ mod tests {
 
         let res = engine.find_by_hash("sha256:12345");
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().id, "m1"); // allow-anti-pattern
+        assert_eq!(res.unwrap().id, "m1");
     }
 }

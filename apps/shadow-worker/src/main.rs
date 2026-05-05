@@ -191,8 +191,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = env::var("SHADOW_CLONE_GRPC_PORT").unwrap_or_else(|_| "50051".to_string());
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
 
-    let auth_token =
-        env::var("A2A_AUTH_TOKEN").expect("A2A_AUTH_TOKEN environment variable is required"); // allow-anti-pattern
+    let auth_token = env::var("A2A_AUTH_TOKEN")
+        .map_err(|_| "A2A_AUTH_TOKEN environment variable is required")?;
     shared::security::scrub_env("A2A_AUTH_TOKEN");
 
     let gemini_api_key = env::var("GEMINI_API_KEY")

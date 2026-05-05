@@ -89,7 +89,7 @@ async fn migrate_table_souls(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
         let generation: i64 = row.get("generation");
 
         sqlx::query(
-            "INSERT INTO souls (id, hash, soul_id, parent_hash, somatic_markers, created_at, attachment_style, narrative_self, prompt_fragment, generation) 
+            "INSERT INTO souls (id, hash, soul_id, parent_hash, somatic_markers, created_at, attachment_style, narrative_self, prompt_fragment, generation)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)
@@ -127,7 +127,7 @@ async fn migrate_table_karma_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
         let signature: Option<String> = row.get("signature");
 
         sqlx::query(
-            "INSERT INTO karma_ledger (id, action, actor, amount, created_at, details, signature) 
+            "INSERT INTO karma_ledger (id, action, actor, amount, created_at, details, signature)
              VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING",
         )
         .bind(id)
@@ -164,7 +164,7 @@ async fn migrate_table_audit_ledger(sqlite: &SqlitePool, pg: &PgPool) -> Result<
         let recorded_at: chrono::DateTime<chrono::Utc> = row.get("recorded_at");
 
         sqlx::query(
-            "INSERT INTO audit_ledger_global (event_id, table_name, operation, source_node, diff_payload, recorded_at) 
+            "INSERT INTO audit_ledger_global (event_id, table_name, operation, source_node, diff_payload, recorded_at)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (event_id) DO NOTHING"
         )
         .bind(event_id)
@@ -206,7 +206,7 @@ async fn migrate_table_approved_karma(sqlite: &SqlitePool, pg: &PgPool) -> Resul
         let somatic_valence: Option<f64> = row.get("somatic_valence");
 
         sqlx::query(
-            "INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, tier, clone_origin_id, generation, somatic_valence) 
+            "INSERT INTO approved_karma (id, node_id, karma_type, related_skill, lesson, weight, soul_version_hash, lamport_clock, signature, created_at, approved_at, tier, clone_origin_id, generation, somatic_valence)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)
@@ -251,7 +251,7 @@ async fn migrate_table_approved_rules(sqlite: &SqlitePool, pg: &PgPool) -> Resul
         let signature: Option<String> = row.get("signature");
 
         sqlx::query(
-            "INSERT INTO approved_rules (id, pattern, severity, action, created_at, approved_at, node_id, lamport_clock, signature) 
+            "INSERT INTO approved_rules (id, pattern, severity, action, created_at, approved_at, node_id, lamport_clock, signature)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)
@@ -293,7 +293,7 @@ async fn migrate_table_approved_arena_matches(sqlite: &SqlitePool, pg: &PgPool) 
         let approved_at: chrono::DateTime<chrono::Utc> = row.get("approved_at");
 
         sqlx::query(
-            "INSERT INTO approved_arena_matches (id, node_id, skill_a, skill_b, topic, winner, reasoning, prompt_payload, analysis_payload, model_id, created_at, approved_at) 
+            "INSERT INTO approved_arena_matches (id, node_id, skill_a, skill_b, topic, winner, reasoning, prompt_payload, analysis_payload, model_id, created_at, approved_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)

@@ -340,10 +340,10 @@ mod tests {
 
         let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB"); // allow-anti-pattern
+            .expect("Should create in-memory DB");
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool"); // allow-anti-pattern
+            .expect("Should get sqlite pool");
 
         // Seed test data
         sqlx::query(
@@ -352,7 +352,7 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert article"); // allow-anti-pattern
+        .expect("Should insert article");
 
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids, summary)
@@ -360,13 +360,13 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert concept"); // allow-anti-pattern
+        .expect("Should insert concept");
 
         let projector = CortexFileProjector::new(pool, tmp_dir.clone());
         let report = projector
             .project_to_filesystem()
             .await
-            .expect("Projection should succeed"); // allow-anti-pattern
+            .expect("Projection should succeed");
 
         assert_eq!(report.categories_count, 1);
         assert!(report.files_created + report.files_updated > 0);
@@ -393,10 +393,10 @@ mod tests {
 
         let pool = crate::test_utils::cortex_mock::setup_db_pool()
             .await
-            .expect("Should create in-memory DB"); // allow-anti-pattern
+            .expect("Should create in-memory DB");
         let sqlite_pool = pool
             .get_sqlite_pool_or_err()
-            .expect("Should get sqlite pool"); // allow-anti-pattern
+            .expect("Should get sqlite pool");
 
         sqlx::query(
             "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
@@ -404,7 +404,7 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert article"); // allow-anti-pattern
+        .expect("Should insert article");
 
         sqlx::query(
             "INSERT INTO cortex_concept_index (concept, article_ids)
@@ -412,7 +412,7 @@ mod tests {
         )
         .execute(sqlite_pool)
         .await
-        .expect("Should insert concept"); // allow-anti-pattern
+        .expect("Should insert concept");
 
         let projector = CortexFileProjector::new(pool, tmp_dir.clone());
 
@@ -420,14 +420,14 @@ mod tests {
         let report1 = projector
             .project_to_filesystem()
             .await
-            .expect("First projection should succeed"); // allow-anti-pattern
+            .expect("First projection should succeed");
         assert!(report1.files_created + report1.files_updated > 0);
 
         // Second projection (no changes)
         let report2 = projector
             .project_to_filesystem()
             .await
-            .expect("Second projection should succeed"); // allow-anti-pattern
+            .expect("Second projection should succeed");
         assert_eq!(
             report2.files_skipped, 1,
             "Unchanged article should be skipped"

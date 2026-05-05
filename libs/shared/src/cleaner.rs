@@ -110,10 +110,10 @@ mod tests {
     #[test]
     fn test_cleanup_files() {
         let temp_dir = std::env::temp_dir().join("aiome_core_test_cleanup");
-        fs::create_dir_all(&temp_dir).unwrap(); // allow-anti-pattern
+        fs::create_dir_all(&temp_dir).unwrap();
 
         let file_path = temp_dir.join("temp_file.txt");
-        fs::write(&file_path, "trash").unwrap(); // allow-anti-pattern
+        fs::write(&file_path, "trash").unwrap();
         assert!(file_path.exists());
 
         let target = CleanupTarget {
@@ -121,9 +121,9 @@ mod tests {
             recursive: false,
         };
         let cleaner = StorageCleaner::new(vec![target], 90.0);
-        cleaner.cleanup().unwrap(); // allow-anti-pattern
+        cleaner.cleanup().unwrap();
 
         assert!(!file_path.exists());
-        fs::remove_dir(temp_dir).unwrap(); // allow-anti-pattern
+        fs::remove_dir(temp_dir).unwrap();
     }
 }

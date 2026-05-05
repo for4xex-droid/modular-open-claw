@@ -210,7 +210,7 @@ mod tests {
             }
         }
 
-        recaller.process(&mut ctx, &MockNext).await.unwrap(); // allow-anti-pattern
+        recaller.process(&mut ctx, &MockNext).await.unwrap();
 
         // 3. 検証
         assert_eq!(ctx.recalled_experiences.len(), 1);

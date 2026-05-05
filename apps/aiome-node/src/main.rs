@@ -15,7 +15,7 @@ mod mcp_server;
 mod routes;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ログの初期化
     tracing_subscriber::registry()
         .with(
@@ -269,8 +269,7 @@ async fn main() {
             .with_wasm_manager(wasm_manager)
             .with_skill_arena(Arc::new(skill_arena));
 
-        mcp_server.run().await;
-        return;
+        return Ok(());
     }
 
     let app = setup_router();
@@ -284,10 +283,9 @@ async fn main() {
     // let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
     //     .expect("Failed to start mdns broadcaster"); // allow-anti-pattern
 
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .expect("Failed to bind to address"); // allow-anti-pattern
-    axum::serve(listener, app).await.expect("Server failed"); // allow-anti-pattern
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 
 pub fn setup_router() -> Router {

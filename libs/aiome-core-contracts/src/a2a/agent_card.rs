@@ -80,7 +80,7 @@ mod tests {
             },
         };
 
-        let json_value = serde_json::to_value(&card).unwrap(); // allow-anti-pattern
+        let json_value = serde_json::to_value(&card).unwrap();
 
         let expected = json!({
             "name": "Aiome Shadow Worker",
@@ -108,7 +108,7 @@ mod tests {
         assert_eq!(json_value, expected);
 
         // Deserialization test
-        let deserialized: AgentCard = serde_json::from_value(expected).unwrap(); // allow-anti-pattern
+        let deserialized: AgentCard = serde_json::from_value(expected).unwrap();
         assert_eq!(card, deserialized);
     }
 }

@@ -195,7 +195,7 @@ mod tests {
 
         let processed = TtsWorker::process_pending_tts(&queue, &provider, "p225", &artifacts_root)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         assert_eq!(processed, 1);
         assert_eq!(call_count.load(Ordering::SeqCst), 1);

@@ -331,7 +331,7 @@ mod tests {
         let patch = prover
             .generate_patch(&incident)
             .await
-            .expect("Failed to generate patch"); // allow-anti-pattern
+            .expect("Failed to generate patch");
         assert_eq!(patch, "fn patched() {}");
 
         std::env::remove_var("FORGE_WORKSPACE_DIR");

@@ -265,7 +265,7 @@ mod tests {
             "authorization",
             format!("Bearer {}", TEST_TOKEN)
                 .parse()
-                .expect("valid header"), // allow-anti-pattern
+                .expect("valid header"),
         );
         req
     }
@@ -287,7 +287,7 @@ mod tests {
             .await;
 
         assert!(response.is_ok(), "Service should return OK");
-        let inner = response.expect("checked above").into_inner(); // allow-anti-pattern
+        let inner = response.expect("checked above").into_inner();
         assert!(inner.is_valid);
         assert_eq!(inner.message, "Q.E.D.");
     }
@@ -303,7 +303,7 @@ mod tests {
             response.is_err(),
             "Unauthenticated request must be rejected"
         );
-        let status = response.expect_err("Unauthenticated request must be rejected"); // allow-anti-pattern
+        let status = response.expect_err("Unauthenticated request must be rejected");
         assert_eq!(status.code(), tonic::Code::Unauthenticated);
     }
 
@@ -317,7 +317,7 @@ mod tests {
         });
         req.metadata_mut().insert(
             "authorization",
-            "Bearer wrong_token".parse().expect("valid header"), // allow-anti-pattern
+            "Bearer wrong_token".parse().expect("valid header"),
         );
         let response = service.verify_proof(req).await;
 
@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(
             response.expect_err("Wrong token must be rejected").code(),
             tonic::Code::Unauthenticated
-        ); // allow-anti-pattern
+        );
     }
 
     #[tokio::test]
@@ -342,7 +342,7 @@ mod tests {
             response.is_ok(),
             "Neither timeout nor success should crash the service"
         );
-        let inner = response.expect("checked above").into_inner(); // allow-anti-pattern
+        let inner = response.expect("checked above").into_inner();
 
         if inner.is_valid {
             assert_eq!(inner.message, "Q.E.D.");
@@ -358,7 +358,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_semaphore_exhaustion() {
         let shared_sema = Arc::new(Semaphore::new(1));
-        let _hold = shared_sema.acquire().await.expect("should acquire"); // allow-anti-pattern
+        let _hold = shared_sema.acquire().await.expect("should acquire");
 
         let service = OxiLeanProofService::new(
             TEST_TOKEN.to_string(),

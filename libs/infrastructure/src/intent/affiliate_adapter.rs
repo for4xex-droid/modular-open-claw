@@ -132,7 +132,7 @@ mod tests {
         let adapter = MockAffiliateAdapter::new();
 
         // 許可リスト外のドメイン
-        let malicious_url = "http://localhost:16379/secret"; // allow-anti-pattern
+        let malicious_url = "http://localhost:16379/secret";
         let result = adapter.validate_url(malicious_url);
 
         assert!(result.is_err());

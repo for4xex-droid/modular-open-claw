@@ -18,9 +18,9 @@ async fn spawn_test_hub() -> (SocketAddr, Arc<HubState>) {
     let pool = SqlitePoolOptions::new()
         .connect("sqlite::memory:")
         .await
-        .expect("Failed to create memory db"); // allow-anti-pattern
+        .expect("Failed to create memory db");
     let db_pool = shared::db::DatabasePool::Sqlite(pool);
-    init_hub_db(&db_pool).await.expect("Failed to init db"); // allow-anti-pattern
+    init_hub_db(&db_pool).await.expect("Failed to init db");
 
     let (tx, _) = broadcast::channel(100);
     let state = Arc::new(HubState {
@@ -66,7 +66,7 @@ async fn test_ws_authentication_authorized_and_ping() {
         axum::http::HeaderValue::from_static("Bearer test_secret"),
     );
 
-    let (mut ws_stream, _) = connect_async(request).await.expect("Failed to connect"); // allow-anti-pattern
+    let (mut ws_stream, _) = connect_async(request).await.expect("Failed to connect");
 
     assert_eq!(
         state

@@ -216,9 +216,9 @@ mod tests {
 
     #[test]
     fn test_intent_firewall_strips_pii() {
-        let _tmp = tempdir().unwrap(); // allow-anti-pattern
+        let _tmp = tempdir().unwrap();
         let firewall = IntentFirewall {
-            _sandbox: PathSandbox::new(_tmp.path()).unwrap(), // allow-anti-pattern
+            _sandbox: PathSandbox::new(_tmp.path()).unwrap(),
         };
 
         let raw_text =
@@ -235,17 +235,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_intent_generator_generates_intent_green() {
-        let _tmp = tempdir().unwrap(); // allow-anti-pattern
+        let _tmp = tempdir().unwrap();
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ce = Arc::new(crate::context_engine::ContextEngine::new(
             Arc::new(MockLlm {
@@ -270,10 +270,10 @@ mod tests {
         let result = generator
             .generate_from_summary(requester_id, summary)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         assert!(result.is_some());
-        let intent = result.unwrap(); // allow-anti-pattern
+        let intent = result.unwrap();
         assert_eq!(intent.category, IntentCategory::Tool);
         assert!(intent.description.contains("Build a tool"));
         assert_eq!(intent.max_budget_coins, 50);
@@ -317,17 +317,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_intent_generation_reflects_soul_state() {
-        let _tmp = tempdir().unwrap(); // allow-anti-pattern
+        let _tmp = tempdir().unwrap();
         let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         let ts = std::sync::Arc::new(
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
         );
         let jq = Arc::new(
             crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
-                .unwrap(), // allow-anti-pattern
+                .unwrap(),
         );
         let ce = Arc::new(crate::context_engine::ContextEngine::new(
             Arc::new(MockLlm {
@@ -352,7 +352,7 @@ mod tests {
         );
 
         let agent_id = Uuid::new_v4();
-        let intent = generator.generate_for_agent(agent_id).await.unwrap(); // allow-anti-pattern
+        let intent = generator.generate_for_agent(agent_id).await.unwrap();
 
         // This will fail initially because the logic is static
         assert!(

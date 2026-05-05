@@ -46,7 +46,7 @@ impl UniversalVaultBackend {
             pool,
             cache: Mutex::new(LruCache::new(
                 NonZeroUsize::new(1000).expect("Capacity must be > 0"), // allow-anti-pattern
-            )), // allow-anti-pattern
+            )),
         }
     }
 

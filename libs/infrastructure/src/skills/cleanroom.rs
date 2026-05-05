@@ -118,15 +118,15 @@ impl Cleanroom {
         source: &str,
     ) -> anyhow::Result<bool> {
         let prompt = format!(
-            "Analyze the following Rust code for security vulnerabilities, malicious intent, or hidden 'Vampire Attacks' (exfiltrating node private keys, access tokens, or unauthorized network calls). 
+            "Analyze the following Rust code for security vulnerabilities, malicious intent, or hidden 'Vampire Attacks' (exfiltrating node private keys, access tokens, or unauthorized network calls).
             Code is intended to run in a WASM sandbox but we must be sure about its logic.
-            
-            Respond ONLY in JSON format: 
+
+            Respond ONLY in JSON format:
             {{
                 \"safe\": true/false,
                 \"reason\": \"Your reasoning\"
             }}
-            
+
             Code:
             ```rust
             {}

@@ -167,13 +167,13 @@ mod tests {
 
         // 1. Enabled=true But Binary Missing -> should be false
         let adapter = WhisperTranscriptionAdapter::new(jail.clone(), true);
-        let status = adapter.health_check().await.unwrap(); // allow-anti-pattern
-                                                            // ここでは false か true かは環境に依存するが、panic しないことを確認
+        let status = adapter.health_check().await.unwrap();
+        // ここでは false か true かは環境に依存するが、panic しないことを確認
         info!("Health status (Enabled=true): {}", status);
 
         // 2. Enabled=false -> Must be false
         let adapter_disabled = WhisperTranscriptionAdapter::new(jail, false);
-        assert!(!adapter_disabled.health_check().await.unwrap()); // allow-anti-pattern
+        assert!(!adapter_disabled.health_check().await.unwrap());
     }
 
     // Note: 実機テスト (test_whisper_transcribe_live) は

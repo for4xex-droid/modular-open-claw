@@ -784,11 +784,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_soul_transmutation() {
-        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf(); // allow-anti-pattern
+        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf();
         let _ = fs::create_dir_all(&temp_dir).await;
         fs::write(temp_dir.join("SOUL.md"), "A B C D E")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let llm = Arc::new(MockLlm {
             mutation_response: "X Y Z".to_string(),
@@ -802,13 +802,13 @@ mod tests {
         let res = mutator.transmute(&jq).await;
         assert!(res.is_ok());
 
-        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap(); // allow-anti-pattern
+        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap();
         assert_eq!(content, "X Y Z");
     }
 
     #[tokio::test]
     async fn test_generate_initial_soul() {
-        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf(); // allow-anti-pattern
+        let temp_dir = tempfile::tempdir().unwrap().path().to_path_buf();
         let _ = fs::create_dir_all(&temp_dir).await;
 
         let llm = Arc::new(MockLlm {
@@ -823,7 +823,7 @@ mod tests {
         assert!(res.is_ok());
 
         // SOUL.md should now exist and contain the LLM output (or template + LLM)
-        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap(); // allow-anti-pattern
+        let content = fs::read_to_string(temp_dir.join("SOUL.md")).await.unwrap();
         assert!(content.contains("Genesis"));
     }
 }

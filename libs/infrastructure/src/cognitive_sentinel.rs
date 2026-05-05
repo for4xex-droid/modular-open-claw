@@ -147,13 +147,13 @@ mod tests {
 
         // Only 3 karmas (Threshold is 5)
         *mock_queue.karmas.lock().unwrap() /* allow-anti-pattern */ = vec![
-            // allow-anti-pattern
+
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": -0.2}),
             json!({"somatic_valence": 0.1}),
         ];
 
-        let result = sentinel.diagnose(&mock_queue, "agent_1").await.unwrap(); // allow-anti-pattern
+        let result = sentinel.diagnose(&mock_queue, "agent_1").await.unwrap();
         assert_eq!(result, None);
     }
 
@@ -164,7 +164,7 @@ mod tests {
 
         // 5 karmas with exact same valence (variance = 0.0) -> flatline
         *mock_queue.karmas.lock().unwrap() /* allow-anti-pattern */ = vec![
-            // allow-anti-pattern
+
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),
@@ -172,9 +172,9 @@ mod tests {
             json!({"somatic_valence": 0.5}),
         ];
 
-        let result = sentinel.diagnose(&mock_queue, "agent_1").await.unwrap(); // allow-anti-pattern
+        let result = sentinel.diagnose(&mock_queue, "agent_1").await.unwrap();
         assert!(result.is_some());
-        assert!(result.unwrap().contains("catatonic")); // allow-anti-pattern
+        assert!(result.unwrap().contains("catatonic"));
     }
 
     #[tokio::test]

@@ -93,7 +93,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         sqlx::query(
             r#"
@@ -109,7 +109,7 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         shared::db::DatabasePool::Sqlite(pool)
     }
@@ -123,21 +123,21 @@ mod tests {
         let platform_fee_pct = 0.15; // 15%
 
         // TDD Act: Execute split inside a transaction
-        let mut tx = pool.begin().await.unwrap(); // allow-anti-pattern
+        let mut tx = pool.begin().await.unwrap();
         RevenueSplitter::split_revenue(&mut tx, tx_id, total_amount, creator_id, platform_fee_pct)
             .await
-            .unwrap(); // allow-anti-pattern
-        tx.commit().await.unwrap(); // allow-anti-pattern
+            .unwrap();
+        tx.commit().await.unwrap();
 
         // TDD Assert: Verify the records in the database
-        let inner_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let inner_pool = pool.get_sqlite_pool_or_err().unwrap();
         let splits: Vec<(String, String, i64)> = sqlx::query_as(
             "SELECT recipient_id, role, amount FROM revenue_splits WHERE tx_id = ? ORDER BY role ASC"
         )
         .bind(tx_id)
         .fetch_all(inner_pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         assert_eq!(splits.len(), 2, "There should be exactly two split records");
 

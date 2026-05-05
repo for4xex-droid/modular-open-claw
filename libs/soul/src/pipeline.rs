@@ -525,7 +525,7 @@ mod tests {
             DefenseTrigger::Tag(t) => assert!(updated_soul
                 .experience_buffer
                 .last()
-                .unwrap() // allow-anti-pattern
+                .unwrap()
                 .content
                 .contains(t)),
             _ => panic!("Expected Tag fallback trigger"),
@@ -585,7 +585,7 @@ mod tests {
             }
         }
 
-        middleware.process(&mut ctx, &MockNext).await.unwrap(); // allow-anti-pattern
+        middleware.process(&mut ctx, &MockNext).await.unwrap();
 
         assert!(
             !ctx.should_continue,
@@ -622,7 +622,7 @@ mod tests {
         let middleware = DeliberativeMiddleware::<DummyAdapter, DummyEngine> {
             _phantom: std::marker::PhantomData,
         };
-        middleware.process(&mut ctx, &MockNext).await.unwrap(); // allow-anti-pattern
+        middleware.process(&mut ctx, &MockNext).await.unwrap();
 
         // 失敗することを期待: 現在の DeliberativeMiddleware は予測値を計算するだけで
         // LLM による深い推論（プロンプト生成）を行っていない。
@@ -684,7 +684,7 @@ mod tests {
         let middleware = MetaCognitiveMiddleware::<DummyAdapter, ShockEngine> {
             _phantom: std::marker::PhantomData,
         };
-        middleware.process(&mut ctx, &MockNext).await.unwrap(); // allow-anti-pattern
+        middleware.process(&mut ctx, &MockNext).await.unwrap();
 
         assert!(
             ctx.rebirth_required,

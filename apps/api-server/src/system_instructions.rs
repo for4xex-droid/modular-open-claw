@@ -261,9 +261,9 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap(); // allow-anti-pattern
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
+        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
 
         let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
             .await
@@ -275,17 +275,17 @@ mod tests {
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(),
-        ); // allow-anti-pattern
+        );
         let registry = Arc::new(RegistryManager::new(pool.clone()));
 
         let skills_dir = tmp_dir.path().join("skills");
         let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap(); // allow-anti-pattern
-        std::fs::create_dir_all(&sandbox_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&skills_dir).unwrap();
+        std::fs::create_dir_all(&sandbox_dir).unwrap();
 
         let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap()) // allow-anti-pattern
-                .unwrap(), // allow-anti-pattern
+            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
+                .unwrap(),
         );
 
         let mut config = shared::config::AiomeConfig::default();
@@ -321,7 +321,7 @@ mod tests {
             safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
             metadata: Some(serde_json::json!({"command": "echo"})),
         };
-        state.registry.register_asset(mcp_manifest).await.unwrap(); // allow-anti-pattern
+        state.registry.register_asset(mcp_manifest).await.unwrap();
 
         let instructions = build_system_instructions(
             &state,
@@ -345,9 +345,9 @@ mod tests {
         let resolver = &state.config.get_inner().resolver;
         let user_md_path = resolver.resolve("USER.md");
         if let Some(parent) = user_md_path.parent() {
-            std::fs::create_dir_all(parent).unwrap(); // allow-anti-pattern
+            std::fs::create_dir_all(parent).unwrap();
         }
-        std::fs::write(&user_md_path, "Special User Instruction 123").unwrap(); // allow-anti-pattern
+        std::fs::write(&user_md_path, "Special User Instruction 123").unwrap();
 
         let instructions = build_system_instructions(
             &state,
@@ -372,10 +372,10 @@ mod tests {
         let (state, tmp_dir) = setup_test_state().await;
 
         let sub_dir = tmp_dir.path().join("sub");
-        std::fs::create_dir_all(&sub_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&sub_dir).unwrap();
 
-        std::fs::write(sub_dir.join(".aiome.md"), "aiome md content").unwrap(); // allow-anti-pattern
-        std::fs::write(sub_dir.join(".cursorrules"), "cursorrules content").unwrap(); // allow-anti-pattern
+        std::fs::write(sub_dir.join(".aiome.md"), "aiome md content").unwrap();
+        std::fs::write(sub_dir.join(".cursorrules"), "cursorrules content").unwrap();
 
         let rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
         assert_eq!(rules, "[Project Rules (.aiome.md)]\naiome md content\n");
@@ -388,7 +388,7 @@ mod tests {
         );
 
         // Remove .aiome.md and verify cache still returns the same
-        std::fs::remove_file(sub_dir.join(".aiome.md")).unwrap(); // allow-anti-pattern
+        std::fs::remove_file(sub_dir.join(".aiome.md")).unwrap();
         let cached_rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
         assert_eq!(
             cached_rules,
@@ -402,7 +402,7 @@ mod tests {
 
         // Deep nested directory with NO rule files.
         let sub_dir = tmp_dir.path().join("sub1").join("sub2").join("sub3");
-        std::fs::create_dir_all(&sub_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&sub_dir).unwrap();
 
         let rules = resolve_project_rules_from_path(&state, sub_dir.clone()).await;
 

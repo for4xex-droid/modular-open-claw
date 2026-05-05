@@ -541,7 +541,7 @@ mod tests {
             "GREEN Phase: calculate_importance should return a valid result"
         );
 
-        let importance = res.unwrap(); // allow-anti-pattern
+        let importance = res.unwrap();
         assert!(
             importance >= 0.0 && importance <= 1.0,
             "Importance should be in [0.0, 1.0]"

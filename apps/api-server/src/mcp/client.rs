@@ -443,7 +443,7 @@ mod tests {
                     HashMap::new(),
                 )
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
         }
         let clients = manager.active_client_ids().await;
         assert!(
@@ -463,7 +463,7 @@ mod tests {
                 HashMap::new(),
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // artificially age the client's last_activity
         if let McpEndpoint::Stdio(client) = &*endpoint {
@@ -490,7 +490,7 @@ mod tests {
                 HashMap::new(),
             )
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         assert_eq!(manager.active_client_ids().await.len(), 1);
 
@@ -703,7 +703,7 @@ mod tests {
                 r#"import os, json; env = dict(os.environ); print(json.dumps({"jsonrpc":"2.0","id":1,"result":env}))"#.to_string(),
             ],
             user_envs,
-        ).expect("spawn python3 failed — env_clear may have dropped PATH"); // allow-anti-pattern
+        ).expect("spawn python3 failed — env_clear may have dropped PATH");
 
         // Give the child time to print and exit
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -836,7 +836,7 @@ mod tests {
                 "Unlisted package '{}' should be rejected",
                 pkg
             );
-            let err = res.err().unwrap().to_string(); // allow-anti-pattern
+            let err = res.err().unwrap().to_string();
             assert!(
                 err.contains("not whitelisted"),
                 "Unlisted package '{}' must produce 'not whitelisted' error, got: {}",
@@ -869,7 +869,7 @@ mod tests {
                 "Suffix-attack package '{}' should be rejected",
                 pkg
             );
-            let err = res.err().unwrap().to_string(); // allow-anti-pattern
+            let err = res.err().unwrap().to_string();
             assert!(
                 err.contains("not whitelisted"),
                 "Suffix-attack package '{}' must be caught with 'not whitelisted', got: {}",

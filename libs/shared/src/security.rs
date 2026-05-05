@@ -297,7 +297,7 @@ mod tests {
         // Positive: PATH が再注入されていることを確認
         let mut cmd = std::process::Command::new("env");
         harden_command(&mut cmd);
-        let output = cmd.output().expect("failed to run env"); // allow-anti-pattern
+        let output = cmd.output().expect("failed to run env");
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
             stdout.contains("PATH="),
@@ -317,7 +317,7 @@ mod tests {
 
         let mut cmd = std::process::Command::new("env");
         harden_command(&mut cmd);
-        let output = cmd.output().expect("failed to run env"); // allow-anti-pattern
+        let output = cmd.output().expect("failed to run env");
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         // Revert
@@ -339,7 +339,7 @@ mod tests {
         // PROCESS_SAFE_ENV_VARS 以外の変数が一切注入されないことを確認
         let mut cmd = std::process::Command::new("env");
         harden_command(&mut cmd);
-        let output = cmd.output().expect("failed to run env"); // allow-anti-pattern
+        let output = cmd.output().expect("failed to run env");
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         for line in stdout.lines() {
@@ -357,7 +357,7 @@ mod tests {
     async fn test_harden_command_async_injects_path() {
         let mut cmd = tokio::process::Command::new("env");
         harden_command_async(&mut cmd);
-        let output = cmd.output().await.expect("failed to run env"); // allow-anti-pattern
+        let output = cmd.output().await.expect("failed to run env");
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(
             stdout.contains("PATH="),
@@ -376,7 +376,7 @@ mod tests {
 
         let mut cmd = tokio::process::Command::new("env");
         harden_command_async(&mut cmd);
-        let output = cmd.output().await.expect("failed to run env"); // allow-anti-pattern
+        let output = cmd.output().await.expect("failed to run env");
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         #[allow(unsafe_code, deprecated)]
@@ -416,8 +416,8 @@ mod tests {
     #[tokio::test]
     async fn test_default_policy_allows_local_hosts() -> Result<()> {
         let policy = SecurityPolicy::default();
-        assert!(policy.validate_url("http://127.0.0.1:8188").await.is_ok()); // allow-anti-pattern
-        assert!(policy.validate_url("http://localhost:11434").await.is_ok()); // allow-anti-pattern
+        assert!(policy.validate_url("http://127.0.0.1:8188").await.is_ok());
+        assert!(policy.validate_url("http://localhost:11434").await.is_ok());
         assert!(policy.validate_url("http://[::1]:8188").await.is_ok());
         Ok(())
     }

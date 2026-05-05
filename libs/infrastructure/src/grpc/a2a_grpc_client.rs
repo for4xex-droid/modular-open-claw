@@ -206,7 +206,7 @@ mod tests {
                     result_hash: "".into(),
                 }))
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
 
                 tx.send(Ok(ProtoTaskProgress {
                     message: "Done".into(),
@@ -218,7 +218,7 @@ mod tests {
                     result_hash: "abcd1234hash".into(),
                 }))
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
             });
 
             Ok(Response::new(ReceiverStream::new(rx)))
@@ -228,8 +228,8 @@ mod tests {
     #[tokio::test]
     async fn test_grpc_client_execute_task_success() {
         // Start Mock Server on arbitrary port
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap(); // allow-anti-pattern
-        let addr: SocketAddr = listener.local_addr().unwrap(); // allow-anti-pattern
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr: SocketAddr = listener.local_addr().unwrap();
         let endpoint_url = format!("http://{}", addr);
 
         tokio::spawn(async move {
@@ -237,7 +237,7 @@ mod tests {
                 .add_service(DockerConductorServer::new(MockDockerConductor))
                 .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener))
                 .await
-                .unwrap(); // allow-anti-pattern
+                .unwrap();
         });
 
         // Test Client
@@ -261,22 +261,22 @@ mod tests {
         let result = client.execute_task(req).await;
         assert!(result.is_ok(), "execute_task failed to connect");
 
-        let mut stream = result.unwrap(); // allow-anti-pattern
+        let mut stream = result.unwrap();
 
         // Receive first message
-        let msg1_result = stream.next().await.expect("Expected stream message 1"); // allow-anti-pattern
-        let msg1 = msg1_result.expect("Expected successful progress"); // allow-anti-pattern
+        let msg1_result = stream.next().await.expect("Expected stream message 1");
+        let msg1 = msg1_result.expect("Expected successful progress");
         assert_eq!(msg1.percent, 10);
         assert_eq!(msg1.message, "Starting");
         assert!(!msg1.is_completed);
 
         // Receive second message
-        let msg2_result = stream.next().await.expect("Expected stream message 2"); // allow-anti-pattern
-        let msg2 = msg2_result.expect("Expected successful progress"); // allow-anti-pattern
+        let msg2_result = stream.next().await.expect("Expected stream message 2");
+        let msg2 = msg2_result.expect("Expected successful progress");
         assert_eq!(msg2.percent, 100);
         assert_eq!(msg2.message, "Done");
         assert!(msg2.is_completed);
-        assert_eq!(msg2.result.unwrap(), "Success"); // allow-anti-pattern
+        assert_eq!(msg2.result.unwrap(), "Success");
 
         // End of stream
         assert!(stream.next().await.is_none());
@@ -323,7 +323,7 @@ mod tests {
         // Poll the stream. This should trigger the gRPC call and the assertion on the server.
         // If the server panics or returns an error due to wrong token, this should fail.
         while let Some(item) = stream.next().await {
-            item.expect("Stream item should be successful"); // allow-anti-pattern
+            item.expect("Stream item should be successful");
         }
     }
 }

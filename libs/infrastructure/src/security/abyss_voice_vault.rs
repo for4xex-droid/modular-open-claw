@@ -126,7 +126,7 @@ mod tests {
 
     /// テスト用 master key のバイト列を返す
     fn test_master_key_bytes() -> Vec<u8> {
-        hex::decode(TEST_MASTER_KEY_HEX).unwrap() // allow-anti-pattern
+        hex::decode(TEST_MASTER_KEY_HEX).unwrap()
     }
 
     /// 共通セットアップ: メモリ DB + テーブル作成 + master key 注入済み Vault を返す
@@ -135,19 +135,19 @@ mod tests {
             .max_connections(5)
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         sqlx::query(
             "CREATE TABLE vault_keys (asset_id TEXT PRIMARY KEY, encrypted_key BLOB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
-        ).execute(&pool).await.unwrap(); // allow-anti-pattern
+        ).execute(&pool).await.unwrap();
 
         sqlx::query(
             "CREATE TABLE stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT, processed_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
-        ).execute(&pool).await.unwrap(); // allow-anti-pattern
+        ).execute(&pool).await.unwrap();
 
         sqlx::query(
             "CREATE TABLE licenses (id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, asset_id TEXT NOT NULL, original_event_id TEXT, status TEXT NOT NULL DEFAULT 'active', granted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-        ).execute(&pool).await.unwrap(); // allow-anti-pattern
+        ).execute(&pool).await.unwrap();
 
         let registry = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
         let vault = AbyssVoiceVault::new_with_master_key(
@@ -171,7 +171,7 @@ mod tests {
         vault1
             .register_asset_key(asset_id, Zeroizing::new(test_key.clone()))
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // 2. 同一プールを共有する別 Vault インスタンスを作成
         let registry2 = Arc::new(RegistryManager::new(DatabasePool::Sqlite(pool.clone())));
@@ -186,13 +186,13 @@ mod tests {
         registry2
             .grant_license(agent_id, asset_id, "evt_test_grant".to_string())
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // 4. 別 Vault から鍵を取得し、元と一致することを確認
         let fetched = vault2
             .fetch_decryption_key(agent_id, asset_id)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert_eq!(*fetched, test_key);
     }
 }

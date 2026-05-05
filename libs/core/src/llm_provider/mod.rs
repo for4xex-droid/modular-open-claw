@@ -1794,7 +1794,7 @@ mod tests {
         let client = crate::http::get_http_client().clone();
 
         let ollama =
-            OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string()); // allow-anti-pattern
+            OllamaProvider::new("http://localhost:11434".to_string(), "llama3".to_string());
         assert_eq!(LlmProvider::name(&ollama), "Ollama");
 
         let gemini = GeminiProvider::new(
@@ -1820,7 +1820,7 @@ mod tests {
 
         let lmstudio = LmStudioProvider::new(
             client.clone(),
-            "http://localhost:1234".to_string(), // allow-anti-pattern
+            "http://localhost:1234".to_string(),
             "local".to_string(),
         );
         assert_eq!(lmstudio.name(), "LMStudio");
@@ -1848,7 +1848,7 @@ mod tests {
 
         let result = provider.complete("Say hello", Some("System prompt")).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().content, "Hello from mock LM Studio"); // allow-anti-pattern
+        assert_eq!(result.unwrap().content, "Hello from mock LM Studio");
     }
 
     #[tokio::test]
@@ -1904,7 +1904,7 @@ mod tests {
             "Request should succeed if matched, but will fail (404) if logic is missing: {:?}",
             result.err()
         );
-        assert_eq!(result.unwrap().content, "{\"status\": \"ok\"}"); // allow-anti-pattern
+        assert_eq!(result.unwrap().content, "{\"status\": \"ok\"}");
     }
 
     #[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -1936,7 +1936,7 @@ mod tests {
             result.err()
         );
         assert_eq!(
-            result.unwrap(), // allow-anti-pattern
+            result.unwrap(),
             TestData {
                 name: "Alice".into(),
                 score: 100
@@ -1979,7 +1979,7 @@ mod tests {
             result.err()
         );
         assert_eq!(
-            result.unwrap(), // allow-anti-pattern
+            result.unwrap(),
             TestData {
                 name: "Bob".into(),
                 score: 200
@@ -2108,6 +2108,6 @@ mod tests {
         // which only extracts the last user message and calls complete("Who are you?", Some("...")).
         // The mock expects the full array in "contents".
         assert!(result.is_ok(), "Request failed: {:?}", result.err());
-        assert_eq!(result.unwrap().content, "I am Aiome."); // allow-anti-pattern
+        assert_eq!(result.unwrap().content, "I am Aiome.");
     }
 }

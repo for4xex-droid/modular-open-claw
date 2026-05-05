@@ -312,10 +312,10 @@ mod tests {
         let amount = 100;
 
         // 1. Create escrow
-        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000); // allow-anti-pattern
-        let escrow_id = engine.escrow_create(agent_id, amount).await.unwrap(); // allow-anti-pattern
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000);
+        let escrow_id = engine.escrow_create(agent_id, amount).await.unwrap();
         assert!(escrow_id.starts_with("escrow-"));
-        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 900); // allow-anti-pattern
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 900);
 
         // 2. Refund escrow (Expected to return balance to 1000)
         let refund_result = engine.escrow_refund(&escrow_id).await;
@@ -335,13 +335,13 @@ mod tests {
         let agent_id = Uuid::new_v4();
         let plan_id = "premium_monthly";
 
-        let sub_id = engine.create_subscription(agent_id, plan_id).await.unwrap(); // allow-anti-pattern
+        let sub_id = engine.create_subscription(agent_id, plan_id).await.unwrap();
         assert!(!sub_id.is_empty());
 
-        let status = engine.get_subscription_status(agent_id).await.unwrap(); // allow-anti-pattern
+        let status = engine.get_subscription_status(agent_id).await.unwrap();
         assert_eq!(status, aiome_core::commerce::SubscriptionStatus::Active);
 
-        engine.cancel_subscription(agent_id, &sub_id).await.unwrap(); // allow-anti-pattern
+        engine.cancel_subscription(agent_id, &sub_id).await.unwrap();
     }
 
     #[tokio::test]
@@ -352,10 +352,10 @@ mod tests {
         let amount = 300;
 
         // 初期残高は 1000
-        engine.transfer(from_id, to_id, amount).await.unwrap(); // allow-anti-pattern
+        engine.transfer(from_id, to_id, amount).await.unwrap();
 
-        assert_eq!(engine.get_balance(from_id).await.unwrap(), 700); // allow-anti-pattern
-        assert_eq!(engine.get_balance(to_id).await.unwrap(), 1300); // allow-anti-pattern
+        assert_eq!(engine.get_balance(from_id).await.unwrap(), 700);
+        assert_eq!(engine.get_balance(to_id).await.unwrap(), 1300);
     }
 
     #[tokio::test]
@@ -377,15 +377,15 @@ mod tests {
         let amount = 200;
 
         // 1. エスクロー作成 (sender: 1000 -> 800)
-        let escrow_id = engine.escrow_create(sender_id, amount).await.unwrap(); // allow-anti-pattern
-        assert_eq!(engine.get_balance(sender_id).await.unwrap(), 800); // allow-anti-pattern
+        let escrow_id = engine.escrow_create(sender_id, amount).await.unwrap();
+        assert_eq!(engine.get_balance(sender_id).await.unwrap(), 800);
 
         // 2. エスクロー解放 (recipient: 1000 -> 1200)
         engine
             .escrow_release(&escrow_id, recipient_id)
             .await
-            .unwrap(); // allow-anti-pattern
-        assert_eq!(engine.get_balance(recipient_id).await.unwrap(), 1200); // allow-anti-pattern
+            .unwrap();
+        assert_eq!(engine.get_balance(recipient_id).await.unwrap(), 1200);
     }
 
     #[tokio::test]
@@ -394,16 +394,16 @@ mod tests {
         let agent_id = Uuid::new_v4();
 
         // 生成コストの天引き前: 1000
-        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000); // allow-anti-pattern
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 1000);
 
         // 50コイン天引きする (GenerativeEngine使用時などを想定)
         engine
             .deduct_generation_cost(agent_id, None, 50, "image_generation")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // 天引き後: 950
-        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 950); // allow-anti-pattern
+        assert_eq!(engine.get_balance(agent_id).await.unwrap(), 950);
 
         // 残高不足エラーの確認
         let result = engine

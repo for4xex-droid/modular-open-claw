@@ -76,9 +76,9 @@ impl EvaluationOps for UniversalJobQueue {
     ) -> Result<Vec<Job>, AiomeError> {
         let now_interval = self.pool.now_with_dynamic_days_interval(0);
         let q = format!(
-            "SELECT * FROM jobs 
-              WHERE sns_platform IS NOT NULL 
-              AND sns_content_id IS NOT NULL 
+            "SELECT * FROM jobs
+              WHERE sns_platform IS NOT NULL
+              AND sns_content_id IS NOT NULL
               AND published_at IS NOT NULL
               AND published_at <= {0}
               AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = {1})

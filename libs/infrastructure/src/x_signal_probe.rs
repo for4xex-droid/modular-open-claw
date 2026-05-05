@@ -174,7 +174,7 @@ mod tests {
         let result = probe.fetch("test query").await;
 
         assert!(result.is_ok());
-        let items = result.unwrap(); // allow-anti-pattern
+        let items = result.unwrap();
         assert!(
             items.is_empty(),
             "Rate limited call should return empty vector"
@@ -203,7 +203,7 @@ mod tests {
         // Now verify the DashMap was updated correctly by inspecting its cooldown
         let entry = X_API_RATE_LIMITER
             .get("retry_token_429")
-            .expect("Rate limiter should be set"); // allow-anti-pattern
+            .expect("Rate limiter should be set");
         assert_eq!(
             entry.1.as_secs(),
             3600,

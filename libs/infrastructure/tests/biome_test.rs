@@ -18,7 +18,7 @@ async fn test_biome_dialogue_limit() {
                 sqlx::sqlite::SqlitePoolOptions::new()
                     .connect("sqlite::memory:")
                     .await
-                    .unwrap(), // allow-anti-pattern
+                    .unwrap(),
             ),
         ),
     );
@@ -27,12 +27,12 @@ async fn test_biome_dialogue_limit() {
         .unwrap();
     let queue = UniversalJobQueue::new(pool.clone(), None, ts)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
     let topic_id = "test_dialogue_topic";
 
     // Simulate 10 turns
     for i in 0..10 {
-        let count = queue.advance_biome_turn(topic_id, 0).await.unwrap(); // allow-anti-pattern
+        let count = queue.advance_biome_turn(topic_id, 0).await.unwrap();
         assert_eq!(count, i + 1);
 
         let msg = BiomeMessage {
@@ -46,26 +46,26 @@ async fn test_biome_dialogue_limit() {
             timestamp: chrono::Utc::now().to_rfc3339(),
             encryption: "none".to_string(),
         };
-        queue.store_biome_message(&msg).await.unwrap(); // allow-anti-pattern
+        queue.store_biome_message(&msg).await.unwrap();
     }
 
     let status = queue
         .get_biome_topic_status(topic_id)
         .await
-        .unwrap() // allow-anti-pattern
-        .unwrap(); // allow-anti-pattern
+        .unwrap()
+        .unwrap();
     assert_eq!(status.0, 10); // 10 turns reached
 
     // Archive it
-    queue.archive_biome_topic(topic_id).await.unwrap(); // allow-anti-pattern
+    queue.archive_biome_topic(topic_id).await.unwrap();
 
     // Verify it's archived
     let archived_status: String =
         sqlx::query_scalar::<_, String>("SELECT status FROM biome_topics WHERE topic_id = ?")
             .bind(topic_id)
-            .fetch_one(pool.get_sqlite_pool_or_err().unwrap()) // allow-anti-pattern
+            .fetch_one(pool.get_sqlite_pool_or_err().unwrap())
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
     assert_eq!(archived_status, "Archived");
 }

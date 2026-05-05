@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_agent_rate_limiting() {
-        let limiter = AgentRateLimiter::new(2).expect("Constant 2 is valid"); // allow-anti-pattern
+        let limiter = AgentRateLimiter::new(2).expect("Constant 2 is valid");
         let agent_id = Uuid::new_v4();
 
         // 1回目 OK

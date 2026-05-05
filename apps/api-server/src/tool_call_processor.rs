@@ -156,9 +156,9 @@ mod tests {
     use std::sync::Arc;
 
     async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap(); // allow-anti-pattern
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap()); // allow-anti-pattern
+        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
 
         let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
             .await
@@ -170,17 +170,17 @@ mod tests {
             UniversalJobQueue::new(pool.clone(), None, ts)
                 .await
                 .unwrap(),
-        ); // allow-anti-pattern
+        );
         let registry = Arc::new(RegistryManager::new(pool.clone()));
 
         let skills_dir = tmp_dir.path().join("skills");
         let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap(); // allow-anti-pattern
-        std::fs::create_dir_all(&sandbox_dir).unwrap(); // allow-anti-pattern
+        std::fs::create_dir_all(&skills_dir).unwrap();
+        std::fs::create_dir_all(&sandbox_dir).unwrap();
 
         let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap()) // allow-anti-pattern
-                .unwrap(), // allow-anti-pattern
+            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
+                .unwrap(),
         );
 
         let mut config = shared::config::AiomeConfig::default();
@@ -363,7 +363,7 @@ some_skill { "data": "hello" }"#;
         let job_id = jq
             .enqueue("test", "test_topic", "default", None, None, None, 1)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // process tool calls with a job_id
         let _ =
@@ -376,7 +376,7 @@ some_skill { "data": "hello" }"#;
             .trajectory_store
             .fetch_trajectory(&job_id)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert_eq!(trajectory.len(), 1);
 
         let step = &trajectory[0];

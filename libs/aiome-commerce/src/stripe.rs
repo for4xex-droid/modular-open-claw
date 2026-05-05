@@ -1098,7 +1098,7 @@ mod tests {
         let pool = SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // テーブル作成
         sqlx::query(
@@ -1110,7 +1110,7 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         StripeCommerceEngine::new(
             SecretString::from("sk_test_mock".to_string()),
@@ -1151,14 +1151,14 @@ mod tests {
         // 現在時刻の取得 (tolerance 対策)
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap() // allow-anti-pattern
+            .unwrap()
             .as_secs();
         let timestamp = now.to_string();
 
         // Stripe 方式の署名生成: HMAC-SHA256(secret, "timestamp.payload")
         let signed_payload = format!("{}.{}", timestamp, payload);
         type HmacSha256 = Hmac<Sha256>;
-        let mut mac = HmacSha256::new_from_slice("whsec_test".as_bytes()).unwrap(); // allow-anti-pattern
+        let mut mac = HmacSha256::new_from_slice("whsec_test".as_bytes()).unwrap();
         mac.update(signed_payload.as_bytes());
         let result_code = mac.finalize();
         let signature = hex::encode(result_code.into_bytes());
@@ -1245,8 +1245,8 @@ mod tests {
         let result = engine.create_subscription(agent_id, plan_id).await;
 
         assert!(result.is_ok());
-        let sub_id = result.unwrap(); // allow-anti-pattern
-                                      // 現在の実装は "sub_mock_stripe" を返す
+        let sub_id = result.unwrap();
+        // 現在の実装は "sub_mock_stripe" を返す
         assert_eq!(sub_id, "sub_mock_stripe");
 
         // 実装後はここを「Stripe API によって生成された ID」であることを検証するように変更する。
@@ -1309,12 +1309,12 @@ mod tests {
         )
         .execute(&engine.pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         let agent_id = Uuid::new_v4();
         let result = engine.escrow_create(agent_id, 500).await;
         assert!(result.is_ok());
-        let escrow_id = result.unwrap(); // allow-anti-pattern
+        let escrow_id = result.unwrap();
         assert!(escrow_id.starts_with("escrow_"));
         assert_ne!(escrow_id, "escrow_mock");
     }
@@ -1335,10 +1335,10 @@ mod tests {
         )
         .execute(&engine.pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         let agent_id = Uuid::new_v4();
-        let escrow_id = engine.escrow_create(agent_id, 500).await.unwrap(); // allow-anti-pattern
+        let escrow_id = engine.escrow_create(agent_id, 500).await.unwrap();
 
         // test release
         let recipient_id = Uuid::new_v4();
@@ -1351,7 +1351,7 @@ mod tests {
         assert!(refund_result.is_err());
 
         // create another for refund
-        let escrow_id2 = engine.escrow_create(agent_id, 500).await.unwrap(); // allow-anti-pattern
+        let escrow_id2 = engine.escrow_create(agent_id, 500).await.unwrap();
         let refund_result2 = engine.escrow_refund(&escrow_id2).await;
         assert!(refund_result2.is_ok());
     }
@@ -1383,7 +1383,7 @@ mod tests {
 
         let from_id = Uuid::new_v4();
         let to_id = Uuid::new_v4();
-        let result = engine.transfer(from_id, to_id, 100).await.unwrap(); // allow-anti-pattern
+        let result = engine.transfer(from_id, to_id, 100).await.unwrap();
         assert_eq!(
             result, "tx_http_123",
             "Must return transaction ID from Nurture API"
@@ -1421,7 +1421,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let result = engine.get_points(agent_id).await.unwrap(); // allow-anti-pattern
+        let result = engine.get_points(agent_id).await.unwrap();
         assert_eq!(result.balance, 150);
         assert_eq!(result.lifetime_earned, 500);
     }

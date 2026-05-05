@@ -15,7 +15,7 @@ async fn test_proxy_llm_provider_flow() {
     // This test assumes key-proxy is running locally for integration testing
     // In CI, we would mock the key-proxy or start a test instance
     let provider = ProxyLlmProvider::new(
-        "http://127.0.0.1:9999".to_string(), // allow-anti-pattern
+        "http://127.0.0.1:9999".to_string(),
         "daemon".to_string(),
         "gemini".to_string(),
         None,
@@ -31,7 +31,7 @@ async fn test_proxy_llm_provider_flow() {
 #[tokio::test]
 async fn test_unauthorized_caller() {
     let provider = ProxyLlmProvider::new(
-        "http://127.0.0.1:9999".to_string(), // allow-anti-pattern
+        "http://127.0.0.1:9999".to_string(),
         "hacker".to_string(),
         "gemini".to_string(),
         None,

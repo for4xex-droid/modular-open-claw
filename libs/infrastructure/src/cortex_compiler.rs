@@ -95,7 +95,7 @@ impl CortexCompiler {
         // 1. SELECT unprocessed documents & close transaction implicitly by fetching to memory
         // Query limits to 10 to avoid OOM or too many LLM calls per cycle
         let rows = sqlx::query(
-            "SELECT id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at 
+            "SELECT id, title, source_url, content_md, content_hash, source_type, tags, summary, wiki_article_refs, ingested_at
              FROM cortex_documents WHERE compiled = 0 OR compiled IS NULL LIMIT 10"
         )
         .fetch_all(pool)
@@ -397,13 +397,13 @@ impl CortexCompiler {
                 };
 
                 let index_res = sqlx::query(
-                    "INSERT INTO cortex_concept_index (concept, document_ids, article_ids, summary) 
+                    "INSERT INTO cortex_concept_index (concept, document_ids, article_ids, summary)
                      VALUES (?, ?, ?, ?)
-                     ON CONFLICT(concept) DO UPDATE SET 
+                     ON CONFLICT(concept) DO UPDATE SET
                         document_ids = ?,
                         article_ids = ?,
                         summary = ?,
-                        updated_at = CURRENT_TIMESTAMP"
+                        updated_at = CURRENT_TIMESTAMP",
                 )
                 .bind(&concept_name_norm)
                 .bind(&merged_doc_ids)
@@ -451,12 +451,12 @@ impl CortexCompiler {
                 };
 
                 let _ = sqlx::query(
-                    "INSERT INTO cortex_concept_index (concept, document_ids, article_ids, summary) 
+                    "INSERT INTO cortex_concept_index (concept, document_ids, article_ids, summary)
                      VALUES (?, ?, '[]', ?)
-                     ON CONFLICT(concept) DO UPDATE SET 
+                     ON CONFLICT(concept) DO UPDATE SET
                         document_ids = ?,
                         summary = ?,
-                        updated_at = CURRENT_TIMESTAMP"
+                        updated_at = CURRENT_TIMESTAMP",
                 )
                 .bind(&concept_name_norm)
                 .bind(&merged_doc_ids)
@@ -606,7 +606,7 @@ impl CortexCompiler {
 
         let combined_sources = sample_texts.join("\n\n---\n\n");
         let prompt = format!(
-            "Generate a comprehensive wiki article about the concept '{}'. 
+            "Generate a comprehensive wiki article about the concept '{}'.
 Description: {}
 
 Base your article strictly on the following source texts. Use Markdown formatting.

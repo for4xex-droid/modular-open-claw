@@ -22,7 +22,7 @@ mod tests {
         std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
 
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
-            .expect("Failed to create manager") // allow-anti-pattern
+            .expect("Failed to create manager")
             .with_limits(1024 * 1024, std::time::Duration::from_millis(500));
 
         let verified = crate::skills::VerifiedSkill::new_for_test("hello_skill".to_string());
@@ -57,7 +57,7 @@ mod tests {
         }
 
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
-            .expect("Failed to create manager") // allow-anti-pattern
+            .expect("Failed to create manager")
             .with_limits(1024 * 1024, std::time::Duration::from_millis(500))
             .with_db_pool(pool.clone());
 
@@ -86,7 +86,7 @@ mod tests {
         std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
 
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
-            .expect("Failed to create manager"); // allow-anti-pattern
+            .expect("Failed to create manager");
 
         let mut configs = std::collections::HashMap::new();
         configs.insert("api_key".to_string(), "SECRET_TOKEN_123".to_string());
@@ -95,7 +95,7 @@ mod tests {
         let result = manager
             .call_skill(&verified, "test_config", "", Some(configs))
             .await
-            .expect("Execution failed"); // allow-anti-pattern
+            .expect("Execution failed");
         assert_eq!(result, "Key: SECRET_TOKEN_123");
     }
 
@@ -108,7 +108,7 @@ mod tests {
         let wasm_bytes = include_bytes!("test_data/hello_skill.wasm");
         std::fs::write(skills_dir.join("hello_skill.wasm"), wasm_bytes).unwrap();
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
-            .expect("Failed to create manager"); // allow-anti-pattern
+            .expect("Failed to create manager");
 
         // Dry-run should execute without system-level error and validate the execution.
         let result = manager.dry_run_skill("hello_skill", "{}").await;
@@ -126,7 +126,7 @@ mod tests {
         let skills_dir = temp_dir.path().join("skills");
         std::fs::create_dir(&skills_dir).unwrap();
         let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
-            .expect("Failed to create manager"); // allow-anti-pattern
+            .expect("Failed to create manager");
 
         let result = manager.dry_run_skill("non_existent_skill", "{}").await;
         assert!(result.is_err());

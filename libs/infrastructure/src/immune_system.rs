@@ -872,9 +872,9 @@ mod tests {
     async fn test_verify_intent_baseline() {
         let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
         let jq = MockJQ { rules: vec![] };
-        let res = system.verify_intent("rm -rf /", &jq).await.unwrap(); // allow-anti-pattern
+        let res = system.verify_intent("rm -rf /", &jq).await.unwrap();
         assert!(res.is_some());
-        assert_eq!(res.unwrap().id, "sentinel-baseline"); // allow-anti-pattern
+        assert_eq!(res.unwrap().id, "sentinel-baseline");
     }
 
     #[tokio::test]
@@ -884,12 +884,12 @@ mod tests {
 
         // 1. 低いスコアを 9 回注入 (平均 1.0)
         for _ in 0..9 {
-            let res = system.record_drift(agent_id, 1.0).await.unwrap(); // allow-anti-pattern
+            let res = system.record_drift(agent_id, 1.0).await.unwrap();
             assert!(res.is_none(), "Should not trigger with < 10 samples");
         }
 
         // 2. 10 回目、平均が 1.5 未満
-        let res = system.record_drift(agent_id, 1.4).await.unwrap(); // allow-anti-pattern
+        let res = system.record_drift(agent_id, 1.4).await.unwrap();
         assert!(
             res.is_none(),
             "Should not trigger with avg <= 1.5 (avg=1.04)"
@@ -898,12 +898,12 @@ mod tests {
         // 3. 高いスコアを連続注入して平均を 1.5 超えさせる
         // 現在の履歴: [1.0, 1.0, ..., 1.4]
         for _ in 0..10 {
-            system.record_drift(agent_id, 2.5).await.unwrap(); // allow-anti-pattern
+            system.record_drift(agent_id, 2.5).await.unwrap();
         }
 
-        let res = system.record_drift(agent_id, 2.5).await.unwrap(); // allow-anti-pattern
+        let res = system.record_drift(agent_id, 2.5).await.unwrap();
         assert!(res.is_some(), "Should trigger Purge when avg > 1.5");
-        assert_eq!(res.unwrap().action, "Purge"); // allow-anti-pattern
+        assert_eq!(res.unwrap().action, "Purge");
     }
 
     #[tokio::test]
@@ -940,7 +940,7 @@ mod tests {
         let res = system
             .verify_tool_call("google_search", &input, &jq)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert!(
             res.is_some(),
             "Should block call with forbidden key 'password'"
@@ -953,7 +953,7 @@ mod tests {
         let res2 = system
             .verify_tool_call("google_search", &input2, &jq)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert!(res2.is_some(), "Should block non-https URL");
 
         // Test 3: Safe call
@@ -964,7 +964,7 @@ mod tests {
         let res3 = system
             .verify_tool_call("google_search", &input3, &jq)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
         assert!(res3.is_none(), "Should allow safe input");
     }
 }

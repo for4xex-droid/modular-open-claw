@@ -92,7 +92,7 @@ async fn test_soul_pipeline_with_whisper_integration() {
     let processed_exp = soul
         .experience_buffer
         .last()
-        .expect("Experience should be in buffer"); // allow-anti-pattern
+        .expect("Experience should be in buffer");
     assert!(
         processed_exp.content.contains("Whisper:"),
         "Processed experience should contain whisper thought"

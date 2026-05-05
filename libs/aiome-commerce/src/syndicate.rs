@@ -437,14 +437,14 @@ mod tests {
     async fn setup_test_db() -> shared::db::DatabasePool {
         let pool = shared::db::DatabasePool::new_sqlite("sqlite::memory:")
             .await
-            .expect("Failed to create memory DB"); // allow-anti-pattern
+            .expect("Failed to create memory DB");
 
-        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
 
         sqlx::query("CREATE TABLE guilds (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, owner_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
-            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+            .execute(sqlite_pool).await.unwrap();
         sqlx::query("CREATE TABLE guild_members (guild_id TEXT NOT NULL, agent_id TEXT NOT NULL, role TEXT NOT NULL, joined_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (guild_id, agent_id))")
-            .execute(sqlite_pool).await.unwrap(); // allow-anti-pattern
+            .execute(sqlite_pool).await.unwrap();
 
         pool
     }
@@ -458,15 +458,15 @@ mod tests {
         let guild_id = store
             .create_guild("Test Guild".into(), Some("Desc".into()), owner_id)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
-        let guilds = store.fetch_guilds().await.unwrap(); // allow-anti-pattern
+        let guilds = store.fetch_guilds().await.unwrap();
         assert_eq!(guilds.len(), 1);
         assert_eq!(guilds[0].name, "Test Guild");
         assert_eq!(guilds[0].id, guild_id);
 
         // Check initial member
-        let members = store.fetch_members(guild_id).await.unwrap(); // allow-anti-pattern
+        let members = store.fetch_members(guild_id).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].agent_id, owner_id);
         assert_eq!(members[0].role, "admin");
@@ -483,14 +483,14 @@ mod tests {
         let guild_id = store
             .create_guild("Syndicate Alpha".into(), None, owner_id)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         // Add member
         store
             .add_member(guild_id, other_agent_id, "worker".into(), owner_id)
             .await
-            .unwrap(); // allow-anti-pattern
-        let members = store.fetch_members(guild_id).await.unwrap(); // allow-anti-pattern
+            .unwrap();
+        let members = store.fetch_members(guild_id).await.unwrap();
         assert_eq!(members.len(), 2);
 
         // Unauthorized add
@@ -503,8 +503,8 @@ mod tests {
         store
             .remove_member(guild_id, other_agent_id, other_agent_id)
             .await
-            .unwrap(); // allow-anti-pattern
-        let members = store.fetch_members(guild_id).await.unwrap(); // allow-anti-pattern
+            .unwrap();
+        let members = store.fetch_members(guild_id).await.unwrap();
         assert_eq!(members.len(), 1);
 
         // Delete guild (unauthorized)
@@ -512,8 +512,8 @@ mod tests {
         assert!(result.is_err());
 
         // Delete guild (authorized)
-        store.delete_guild(guild_id, owner_id).await.unwrap(); // allow-anti-pattern
-        let guilds = store.fetch_guilds().await.unwrap(); // allow-anti-pattern
+        store.delete_guild(guild_id, owner_id).await.unwrap();
+        let guilds = store.fetch_guilds().await.unwrap();
         assert_eq!(guilds.len(), 0);
     }
 
@@ -542,11 +542,11 @@ mod tests {
         let store = UniversalSyndicateStore::new(pool.clone());
 
         // Directly insert a bad UUID using raw SQL to bypass the create_guild logic
-        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
         sqlx::query("INSERT INTO guilds (id, name, description, owner_id) VALUES ('invalid-uuid', 'Bad Guild', 'Desc', 'another-invalid')")
             .execute(sqlite_pool)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let res = store.fetch_guilds().await;
         assert!(
@@ -563,7 +563,7 @@ mod tests {
         let store = UniversalSyndicateStore::new(pool.clone());
 
         // Insert a valid guild first, then corrupt guild_members
-        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap(); // allow-anti-pattern
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
         let guild_id = Uuid::new_v4();
         let guild_id_str = guild_id.to_string();
         sqlx::query(
@@ -573,14 +573,14 @@ mod tests {
         .bind(&guild_id_str)
         .execute(sqlite_pool)
         .await
-        .unwrap(); // allow-anti-pattern
+        .unwrap();
 
         // Insert corrupted member record with invalid agent_id
         sqlx::query("INSERT INTO guild_members (guild_id, agent_id, role) VALUES (?, 'not-a-uuid', 'worker')")
             .bind(&guild_id_str)
             .execute(sqlite_pool)
             .await
-            .unwrap(); // allow-anti-pattern
+            .unwrap();
 
         let res = store.fetch_members(guild_id).await;
         assert!(
