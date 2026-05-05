@@ -172,7 +172,7 @@ mod tests {
     async fn test_secure_gig_gateway_success() {
         let engine = Arc::new(MockGigEngine);
         let validator = Arc::new(MockValidator);
-        let limiter = AgentRateLimiter::new(10); // 10 req/min
+        let limiter = AgentRateLimiter::new(10).expect("Constant 10 is valid"); // allow-anti-pattern // 10 req/min
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let req = ExternalTaskRequest {
@@ -189,7 +189,7 @@ mod tests {
     async fn test_secure_gig_gateway_zero_budget_rejected() {
         let engine = Arc::new(MockGigEngine);
         let validator = Arc::new(MockValidator);
-        let limiter = AgentRateLimiter::new(10);
+        let limiter = AgentRateLimiter::new(10).expect("Constant 10 is valid"); // allow-anti-pattern
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let req = ExternalTaskRequest {
@@ -211,7 +211,7 @@ mod tests {
     async fn test_secure_gig_gateway_malicious_pattern_rejected() {
         let engine = Arc::new(MockGigEngine);
         let validator = Arc::new(MockValidator);
-        let limiter = AgentRateLimiter::new(10);
+        let limiter = AgentRateLimiter::new(10).expect("Constant 10 is valid"); // allow-anti-pattern
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let req = ExternalTaskRequest {
@@ -228,7 +228,7 @@ mod tests {
     async fn test_secure_gig_gateway_constitutional_rejection() {
         let engine = Arc::new(MockGigEngine);
         let validator = Arc::new(MockValidator);
-        let limiter = AgentRateLimiter::new(10);
+        let limiter = AgentRateLimiter::new(10).expect("Constant 10 is valid"); // allow-anti-pattern
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let req = ExternalTaskRequest {
@@ -245,7 +245,7 @@ mod tests {
     async fn test_secure_gig_gateway_rate_limit() {
         let engine = Arc::new(MockGigEngine);
         let validator = Arc::new(MockValidator);
-        let limiter = AgentRateLimiter::new(1); // 1 req/min limit
+        let limiter = AgentRateLimiter::new(1).expect("Constant 1 is valid"); // allow-anti-pattern // 1 req/min limit
         let gateway = SecureGigGateway::new(engine, validator, limiter);
         let agent_id = Uuid::new_v4();
 

@@ -539,7 +539,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let commerce_engine = Arc::new(MockCommerceEngine);
 
-    let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(5);
+    let rate_limiter =
+        infrastructure::rate_limiter::AgentRateLimiter::new(5).expect("Constant 5 is valid"); // allow-anti-pattern
 
     let soul_adapter = infrastructure::soul_adapter::CoreDomainAdapter::new(
         job_queue.clone(),

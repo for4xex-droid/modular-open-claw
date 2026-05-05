@@ -419,7 +419,7 @@ async fn chaos_rate_limiter_concurrent_burst() {
     use infrastructure::rate_limiter::AgentRateLimiter;
     use uuid::Uuid;
 
-    let limiter = AgentRateLimiter::new(5); // 5 requests per minute
+    let limiter = AgentRateLimiter::new(5).expect("Constant 5 is valid"); // allow-anti-pattern // 5 requests per minute
     let agent_id = Uuid::new_v4();
 
     // ── Fault Injection: 10 リクエストを同時送信（limit の 2 倍） ──

@@ -21,13 +21,16 @@ pub struct AgentRateLimiter {
 use std::sync::Arc;
 
 impl AgentRateLimiter {
-    /// 1分あたりの許可リクエスト数を指定して作成
-    pub fn new(requests_per_minute: u32) -> Self {
-        let quota =
-            Quota::per_minute(NonZeroU32::new(requests_per_minute).expect("Limit must be > 0")); // allow-anti-pattern
-        Self {
+    pub fn new(requests_per_minute: u32) -> Result<Self, aiome_core::error::AiomeError> {
+        let nz = NonZeroU32::new(requests_per_minute).ok_or_else(|| {
+            aiome_core::error::AiomeError::Infrastructure {
+                reason: "Rate limit must be > 0".to_string(),
+            }
+        })?;
+        let quota = Quota::per_minute(nz);
+        Ok(Self {
             limiter: Arc::new(GovRateLimiter::dashmap(quota)),
-        }
+        })
     }
 
     /// リクエストを試行し、許可されたかどうかを返す
@@ -46,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_agent_rate_limiting() {
-        let limiter = AgentRateLimiter::new(2);
+        let limiter = AgentRateLimiter::new(2).expect("Constant 2 is valid"); // allow-anti-pattern
         let agent_id = Uuid::new_v4();
 
         // 1回目 OK
@@ -56,7 +59,12 @@ mod tests {
         // 3回目 NG (限度 2/min)
         assert!(limiter.check(agent_id).is_err());
 
-        // 別エージェントは OK
         assert!(limiter.check(Uuid::new_v4()).is_ok());
+    }
+
+    #[test]
+    fn test_agent_rate_limiting_zero_quota() {
+        let result = AgentRateLimiter::new(0);
+        assert!(result.is_err());
     }
 }

@@ -431,15 +431,15 @@ Content 2
         let tree = ProjectKnowledgeIndexer::build_tree(md, "test-doc");
         assert_eq!(tree.title, "Root");
         assert_eq!(tree.children.len(), 1); // "Root Title" is level 1
-        
+
         let root_title = &tree.children[0];
         assert_eq!(root_title.title, "Root Title");
         assert_eq!(root_title.children.len(), 2);
-        
+
         assert_eq!(root_title.children[0].title, "Section 1");
         assert_eq!(root_title.children[0].content.as_deref(), Some("Content 1"));
         assert_eq!(root_title.children[0].children[0].title, "Subsection 1.1");
-        
+
         assert_eq!(root_title.children[1].title, "Section 2");
     }
 
@@ -456,7 +456,7 @@ Content 2
         assert_eq!(tree.children.len(), 1);
         assert_eq!(tree.children[0].title, "");
     }
-    
+
     #[test]
     fn test_build_tree_edge_case_abrupt_eof() {
         let md = "# ";

@@ -476,7 +476,7 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
     ));
 
     // G-2: Per-Agent Rate Limiter (60 requests per minute)
-    let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(60);
+    let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(60)?;
 
     let slo_engine = Arc::new(infrastructure::slo_engine::SloEngine::new(
         infrastructure::slo_engine::SloConfig {

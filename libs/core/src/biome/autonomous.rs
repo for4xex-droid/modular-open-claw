@@ -246,7 +246,11 @@ impl AutonomousBiomeEngine {
             };
 
             // Phase 6.9: Cryptographic enforcement
-            let key = shared::crypto::derive_biome_key(hub_secret);
+            let key = shared::crypto::derive_biome_key(hub_secret).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Key derivation failed: {}", e),
+                }
+            })?;
 
             m.encrypt(&key).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to encrypt biome telemetry: {}", e),

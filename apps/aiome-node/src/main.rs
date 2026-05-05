@@ -251,7 +251,7 @@ async fn main() {
         ));
 
         let validator = Arc::new(BasicValidator);
-        let limiter = AgentRateLimiter::new(60);
+        let limiter = AgentRateLimiter::new(60).expect("Constant 60 is valid"); // allow-anti-pattern
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let path = std::path::Path::new(&workspace_dir);

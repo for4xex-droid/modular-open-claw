@@ -69,11 +69,9 @@ pub fn expand_home<P: AsRef<Path>>(path: P) -> std::path::PathBuf {
             if path == Path::new("~") {
                 expanded
             } else {
-                // `starts_with("~")` ガード済みのため strip_prefix は常に成功する
-                let stripped = path
-                    .strip_prefix("~")
-                    .expect("strip_prefix(~) must succeed after starts_with(~) guard"); // allow-anti-pattern
-                expanded.push(stripped);
+                if let Ok(stripped) = path.strip_prefix("~") {
+                    expanded.push(stripped);
+                }
                 expanded
             }
         }
