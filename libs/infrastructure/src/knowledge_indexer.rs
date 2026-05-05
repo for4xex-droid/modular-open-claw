@@ -332,7 +332,7 @@ impl ProjectKnowledgeIndexer {
                     break;
                 }
 
-                let header_line = lines.next().expect("Peeked value exists"); // allow-anti-pattern
+                let header_line = lines.next().unwrap_or_default();
                 let title = header_line.trim_start_matches('#').trim();
 
                 if level > max_depth || *node_count >= max_nodes {
@@ -355,7 +355,7 @@ impl ProjectKnowledgeIndexer {
                     if next_line.starts_with('#') {
                         break;
                     }
-                    let val = lines.next().expect("Peeked value exists"); // allow-anti-pattern
+                    let val = lines.next().unwrap_or_default();
                     content_lines.push(val);
                 }
 
@@ -409,5 +409,59 @@ impl ProjectKnowledgeIndexer {
         }
 
         chunks
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_tree_valid_markdown() {
+        let md = "\
+# Root Title
+Some root content
+## Section 1
+Content 1
+### Subsection 1.1
+Content 1.1
+## Section 2
+Content 2
+";
+        let tree = ProjectKnowledgeIndexer::build_tree(md, "test-doc");
+        assert_eq!(tree.title, "Root");
+        assert_eq!(tree.children.len(), 1); // "Root Title" is level 1
+        
+        let root_title = &tree.children[0];
+        assert_eq!(root_title.title, "Root Title");
+        assert_eq!(root_title.children.len(), 2);
+        
+        assert_eq!(root_title.children[0].title, "Section 1");
+        assert_eq!(root_title.children[0].content.as_deref(), Some("Content 1"));
+        assert_eq!(root_title.children[0].children[0].title, "Subsection 1.1");
+        
+        assert_eq!(root_title.children[1].title, "Section 2");
+    }
+
+    #[test]
+    fn test_build_tree_edge_case_empty_headers() {
+        let md = "\
+#
+##
+###
+";
+        let tree = ProjectKnowledgeIndexer::build_tree(md, "test-doc");
+        assert_eq!(tree.title, "Root");
+        // Should not panic, should just parse empty titles
+        assert_eq!(tree.children.len(), 1);
+        assert_eq!(tree.children[0].title, "");
+    }
+    
+    #[test]
+    fn test_build_tree_edge_case_abrupt_eof() {
+        let md = "# ";
+        let tree = ProjectKnowledgeIndexer::build_tree(md, "test-doc");
+        assert_eq!(tree.children.len(), 1);
+        assert_eq!(tree.children[0].title, "");
     }
 }

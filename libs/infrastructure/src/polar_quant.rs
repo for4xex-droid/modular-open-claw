@@ -29,7 +29,7 @@ impl PolarQuantEncoder {
 
     /// 射影行列を取得（キャッシュ利用）
     pub(crate) fn get_projection_matrix(&self, dim: usize) -> Arc<Vec<Vec<f64>>> {
-        let mut cache = PROJECTION_CACHE.lock().expect("Lock poisoned"); // allow-anti-pattern
+        let mut cache = PROJECTION_CACHE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(matrix) = cache.get(&dim) {
             return matrix.clone();
         }
