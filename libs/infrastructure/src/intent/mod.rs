@@ -150,16 +150,17 @@ pub struct IntentFirewall {
 }
 
 impl IntentFirewall {
-    /// 新規インスタンスを生成
-    pub fn new() -> Self {
-        Self {
-            _sandbox: PathSandbox::new(".intent_tmp")
-                .or_else(|_| {
-                    let _ = std::fs::create_dir_all(".intent_tmp");
-                    PathSandbox::new(".intent_tmp")
-                })
-                .expect("Failed to create intent sandbox"), // allow-anti-pattern
-        }
+    pub fn new() -> Result<Self, AiomeError> {
+        let sandbox = PathSandbox::new(".intent_tmp")
+            .or_else(|_| {
+                let _ = std::fs::create_dir_all(".intent_tmp");
+                PathSandbox::new(".intent_tmp")
+            })
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to create intent sandbox: {}", e),
+            })?;
+
+        Ok(Self { _sandbox: sandbox })
     }
 
     /// PII を除去する
@@ -253,7 +254,7 @@ mod tests {
             jq,
             Arc::new(Semaphore::new(1)),
         ));
-        let firewall = Arc::new(IntentFirewall::new());
+        let firewall = Arc::new(IntentFirewall::new().unwrap());
         let generator = IntentGenerator::new(
             ce,
             Arc::new(MockLlm {
@@ -335,7 +336,7 @@ mod tests {
             jq,
             Arc::new(Semaphore::new(1)),
         ));
-        let firewall = Arc::new(IntentFirewall::new());
+        let firewall = Arc::new(IntentFirewall::new().unwrap());
 
         // Test Anxious style
         let anxious_store = Arc::new(MockSoulStore {

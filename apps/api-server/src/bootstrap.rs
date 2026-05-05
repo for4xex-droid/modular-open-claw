@@ -755,7 +755,7 @@ pub async fn init_core_services(
     let soul_pipeline = Arc::new(soul_pipeline);
 
     // AgentSense (AS-1)
-    let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
+    let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new()?);
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
         provider.clone(),
         job_queue.clone(),

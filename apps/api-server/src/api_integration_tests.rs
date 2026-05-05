@@ -514,7 +514,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ));
     let autonomous_running = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let autonomous_config = Arc::new(tokio::sync::RwLock::new(None));
-    let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new());
+    let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new().unwrap());
     let soul_store = Arc::new(infrastructure::soul_store::UniversalSoulStore::new(
         pool.clone(),
     ));

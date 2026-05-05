@@ -164,7 +164,10 @@ impl HierarchicalRouter {
                 doc_hash: current_hash,
                 expires_at: Utc::now() + chrono::Duration::hours(1),
             };
-            let cache_json = serde_json::to_string(&cache_entry).expect("Serialization failed"); // allow-anti-pattern
+            let cache_json =
+                serde_json::to_string(&cache_entry).map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Serialization failed: {}", e),
+                })?;
 
             sqlx::query("INSERT INTO system_state (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
                 .bind(&cache_key)

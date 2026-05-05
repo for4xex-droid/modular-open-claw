@@ -142,7 +142,9 @@ impl TrendCacheRepository for SqlTrendCacheRepository {
         items: &[TrendItem],
         ttl_sec: i64,
     ) -> Result<(), AiomeError> {
-        let json = serde_json::to_string(items).expect("Serialization failed"); // allow-anti-pattern
+        let json = serde_json::to_string(items).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Serialization failed: {}", e),
+        })?;
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 sqlx::query("INSERT OR REPLACE INTO trend_cache (source_url, content, expires_at) VALUES (?, ?, datetime('now', '+' || ? || ' seconds'))")
