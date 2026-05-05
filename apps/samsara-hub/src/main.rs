@@ -326,35 +326,6 @@ async fn create_topic_handler(
         .summary
         .map(|s| shared::guardrails::strip_invisible_unicode(&s).into_owned());
 
-    // Auth Check
-    let auth_header = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-
-    // Try JWT (AuthManager) first
-    let mut authenticated = false;
-    if auth_header.starts_with("Bearer ") {
-        let token = auth_header.trim_start_matches("Bearer ");
-        if let Ok(claims) = state.auth_manager.validate_token(token).await {
-            if claims.agent_id != uuid::Uuid::nil() {
-                authenticated = true;
-            }
-        }
-    }
-
-    // Fallback to Legacy Shared Secret
-    if !authenticated && verify_bearer(auth_header, &state.secret) {
-        authenticated = true;
-    }
-
-    if !authenticated {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "Unauthorized"})),
-        );
-    }
-
     // 2. Proof of Karma (PoK) Verification
     // Requirement: Technical Karma weight sum >= 500
     // 2. Proof of Karma (PoK) Verification
@@ -429,21 +400,6 @@ async fn biome_relay_handler(
     // 🛡️ [GlassWorm Shield] Sanitize text fields
     msg.content = shared::guardrails::strip_invisible_unicode(&msg.content).into_owned();
 
-    // 1. Auth Check
-    if !verify_bearer(
-        headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or(""),
-        &state.secret,
-    ) {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "Unauthorized"})),
-        );
-    }
-
-    // 1.5 Topic Existence / Status Check
     // 1.5 Topic Existence / Status Check
     let topic_check_query = format!(
         "SELECT COUNT(*) FROM biome_topics WHERE topic_id = {} AND status = 'Active'",
@@ -909,6 +865,9 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
         let karma_evict_query = "DELETE FROM approved_karma WHERE id NOT IN (SELECT id FROM approved_karma ORDER BY approved_at DESC LIMIT 1000000)";
         let rule_evict_query = "DELETE FROM approved_rules WHERE id NOT IN (SELECT id FROM approved_rules ORDER BY approved_at DESC LIMIT 1000000)";
 
+        let q_karma_prune = "DELETE FROM quarantined_karma WHERE id NOT IN (SELECT id FROM quarantined_karma ORDER BY received_at DESC LIMIT 100000)";
+        let q_rules_prune = "DELETE FROM quarantined_rules WHERE id NOT IN (SELECT id FROM quarantined_rules ORDER BY received_at DESC LIMIT 100000)";
+
         let res_k = shared::sql_exec!(&pool, karma_evict_query);
         if let Err(e) = res_k {
             warn!("⚠️ [SamsaraHub] Karma eviction failed: {}", e);
@@ -917,6 +876,16 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
         let res_r = shared::sql_exec!(&pool, rule_evict_query);
         if let Err(e) = res_r {
             warn!("⚠️ [SamsaraHub] Rule eviction failed: {}", e);
+        }
+
+        let res_qk = shared::sql_exec!(&pool, q_karma_prune);
+        if let Err(e) = res_qk {
+            warn!("⚠️ [SamsaraHub] Quarantined Karma prune failed: {}", e);
+        }
+
+        let res_qr = shared::sql_exec!(&pool, q_rules_prune);
+        if let Err(e) = res_qr {
+            warn!("⚠️ [SamsaraHub] Quarantined Rule prune failed: {}", e);
         }
 
         // Dynamic Polling (Component 2: Backpressure Tuning)
@@ -965,7 +934,7 @@ async fn auth_middleware(
                 warn!("⛔ [Hub] Access denied for roles: {:?}", claims.roles);
             }
         } else {
-            warn!("⛔ [Hub] validate_token failed for token: {}", token);
+            warn!("⛔ [Hub] validate_token failed (token redacted)");
         }
     } else {
         warn!(
@@ -978,11 +947,7 @@ async fn auth_middleware(
         if verify_bearer(auth_header, &state.secret) {
             authenticated = true;
         } else {
-            use secrecy::ExposeSecret;
-            warn!(
-                "⛔ [Hub] verify_bearer failed. expected_secret: {}",
-                state.secret.expose_secret()
-            );
+            warn!("⛔ [Hub] verify_bearer failed (secret redacted)");
         }
     }
 
@@ -1000,21 +965,6 @@ async fn timeline_sync_handler(
     Json(payload): Json<TimelineSyncRequest>,
 ) -> impl IntoResponse {
     use subtle::ConstantTimeEq;
-
-    let auth = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let expected = format!("Bearer {}", state.secret.expose_secret());
-    let is_auth_valid = if auth.len() == expected.len() {
-        bool::from(auth.as_bytes().ct_eq(expected.as_bytes()))
-    } else {
-        false
-    };
-
-    if !is_auth_valid {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
 
     // Load or Init Hub Master Doc
     let timeline_fetch_query = format!(
@@ -1138,7 +1088,6 @@ pub fn build_app(state: Arc<HubState>) -> Router {
     Router::new()
         .route("/api/v1/federation/sync", post(sync_handler))
         .route("/api/v1/federation/push", post(push_handler))
-        .route("/api/v1/health", get(health_handler))
         .route("/api/v1/registry/agents", get(list_agents_handler))
         .route(
             "/api/v1/biome/topics",
@@ -1146,13 +1095,14 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         )
         .route("/api/v1/biome/relay", post(biome_relay_handler))
         .route("/api/v1/biome/ws", get(biome_ws_handler))
+        .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
         ))
-        // WS and Sync handled inside their handlers for manual auth/handshake
+        // WS and Health handled outside middleware
         .route("/api/v1/federation/ws", get(ws_handler))
-        .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
+        .route("/api/v1/health", get(health_handler))
         .layer(cors)
         .layer(DefaultBodyLimit::max(5 * 1024 * 1024)) // 5MB limit
         .layer(

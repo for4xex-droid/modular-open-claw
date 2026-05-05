@@ -283,6 +283,7 @@ dependencies = [
  "http-body-util",
  "infrastructure",
  "mdns-sd",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "shared",

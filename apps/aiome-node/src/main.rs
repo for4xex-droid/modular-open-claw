@@ -289,5 +289,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn setup_router() -> Router {
-    Router::new().nest("/.well-known", routes::well_known_routes())
+    let config = shared::config::AiomeConfig::load().unwrap_or_default();
+    Router::new()
+        .nest("/.well-known", routes::well_known_routes())
+        .nest(
+            "/api/v1/federation",
+            routes::federation::router().with_state(std::sync::Arc::new(config)),
+        )
 }

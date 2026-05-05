@@ -26,6 +26,8 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@upstash/",
     "@playwright/",
     "@canva/",
+    "@crewai/",
+    "@autogen/",
 ];
 
 /// Allowed unscoped npm packages for MCP (exact match).
@@ -47,6 +49,7 @@ pub const FORBIDDEN_MCP_ARG_FLAGS: &[&str] = &[
     "--shell-cmd",
     "--pre",
     "--post",
+    "--yes",
 ];
 
 /// Validates that the package name in a `npx`/`uvx` command is whitelisted.
@@ -95,6 +98,12 @@ pub fn validate_mcp_package(command: &str, args: &[String]) -> Result<(), String
 pub fn validate_mcp_arg_flags(args: &[String]) -> Result<(), String> {
     for arg in args {
         let lower = arg.to_lowercase();
+
+        // Exact match for -y to prevent npx/uvx dynamic install while avoiding false positives like -yaml
+        if lower == "-y" {
+            return Err("Forbidden argument flag '-y' in MCP command".to_string());
+        }
+
         for flag in FORBIDDEN_MCP_ARG_FLAGS {
             let matched = if flag.starts_with("--") {
                 // Long flags: match exact or --flag=value

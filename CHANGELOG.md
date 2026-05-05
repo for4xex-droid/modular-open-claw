@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Added
+- **Phase 1: Federation v1.0 Infrastructure Integration**:
+  - `samsara-hub`: Enabled OOM (Out-of-Memory) defense logic for `quarantined_karma` and `quarantined_rules` tables by implementing a rigorous truncation (pruning) query that guarantees row caps (100,000 maximum limits).
+  - `aiome-node`: Actively deployed and un-stubbed the P2P federation router. Transitioned off the deferred "todo" state to directly mounting the `federation` API interface onto the main HTTP pipeline.
+  - `aiome-node`: Transformed proxy stub implementations into functional HTTP-based cross-node communication logic utilizing `reqwest::Client`. This natively bridges synchronization payloads (push, broadcast, karma CRDT syncs) securely to the main `samsara-hub`.
+
+### Security
+- **Phase 1: Zero-Trust Ecosystem Security**:
+  - `samsara-hub`: Eliminated unsecure, redundant handler-level token authentication in favor of utilizing the unified `auth_middleware` proxy gate. Fixes inconsistent 401 propagation errors and prevents authentication bypass vectors.
+  - `samsara-hub`: Mitigated Cross-Node Replay Attacks (BFT / Byzantine Fault Tolerance) by extending `NodeReputation` persistence and integrating a `last_seen_lamport_clock` validation sequence for incoming P2P CRDT sync operations.
+  - `shared::mcp_constants`: Added `@crewai/` and `@autogen/` prefixes to the allowed `ALLOWED_MCP_PREFIXES` ecosystem whitelist.
+  - `shared::mcp_constants`: Enforced strict Command Injection safeguards by integrating precise exact-match heuristics to prevent the execution of the dynamic `-y` or `--yes` auto-installation flags in `npx` / `uvx` executions, thus blocking untrusted binary payloads from infiltrating the MCP sandbox dynamically, while completely avoiding false-positives matching valid sub-flags like `-yaml`.
 ### Security
 - **Nurture Economy Infrastructure Hardening**:
   - Replaced unsafe `as u64` type casting in `NurtureCommerceBridge::refund` and `purchase` with `u64::try_from()` to prevent negative amount truncation and overflow panics.

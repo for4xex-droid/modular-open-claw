@@ -1,5 +1,22 @@
 # 🌊 Aiome Ripple Map
 
+## Federation v1.0 & Zero-Trust MCP Ecosystem (Phase 1)
+### 1. P2P Sync Routing & Replay Attack Defense
+- **変更内容**:
+    - `apps/samsara-hub/src/main.rs` [MODIFY]: `quarantined_karma` と `quarantined_rules` の100,000行制限パージ（OOM Defense）を新設。
+    - `apps/samsara-hub/src/handlers/federation.rs` [MODIFY]: ハンドラ内での認証処理を撤廃し `auth_middleware` へ集約。`push_handler` にて `NodeReputation` と `last_seen_lamport_clock` による Replay 攻撃（BFT）防御を実装。
+    - `apps/aiome-node/src/routes/mod.rs` & `main.rs` [MODIFY]: `federation` モジュールを `router` に正式マウントし、`AiomeConfig` 状態を DI。
+    - `apps/aiome-node/src/routes/federation.rs` [MODIFY]: スタブ実装を排し、`reqwest::Client` を利用した HTTP プロキシ（Samsara Hub への透過的同期）を構築。
+- **波及効果**:
+    - Node <-> Hub 間のフェデレーションプロトコルが稼働可能になり、不正な古いトランザクションの再送信（Replay Attack）やフェデレーション用ポートからの認証バイパスが構造的に防がれた。
+
+### 2. MCP Ecosystem Hardening (Strict Arbitrary Execution Prevention)
+- **変更内容**:
+    - `libs/shared/src/mcp_constants.rs` [MODIFY]: `@crewai/` と `@autogen/` を `ALLOWED_MCP_PREFIXES` に追加。
+    - `libs/shared/src/mcp_constants.rs` [MODIFY]: `--yes` を `FORBIDDEN_MCP_ARG_FLAGS` に追加し、さらに `validate_mcp_arg_flags` にて動的なインストールを誘発する短縮フラグ `-y` に対する完全一致ブロック（`lower == "-y"`）を追加（`-yaml` などの正規フラグを誤検知させない防護）。
+- **波及効果**:
+    - `npx` や `uvx` を悪用してサンドボックス外の不正コマンドを実行させるインジェクション脆弱性が物理レイヤーで遮断された。
+
 ## Sentinel Native Bindings Testing & CI/CD Hardening (Phase 2)
 ### 1. Sentinel TDD Integration & Prompt Injection Protection
 - **変更内容**:

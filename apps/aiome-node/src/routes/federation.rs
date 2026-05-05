@@ -5,7 +5,6 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use axum::{routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,7 +20,10 @@ pub struct HandshakeResponse {
     pub server_time: String,
 }
 
-pub fn router() -> Router {
+use axum::{extract::State, http::HeaderMap, routing::post, Json, Router};
+use std::sync::Arc;
+
+pub fn router() -> Router<Arc<shared::config::AiomeConfig>> {
     Router::new()
         .route("/handshake", post(handle_handshake))
         .route("/sync", post(handle_sync))
@@ -35,20 +37,48 @@ async fn handle_handshake(Json(_payload): Json<FederationHandshake>) -> Json<Han
 }
 
 /// Proxy the CRDT sync payload to the core samsara-hub (Smart Edge Pattern).
-/// For MVP, we return a mock success response instead of full reqwest proxy logic.
 async fn handle_sync(
-    Json(_payload): Json<aiome_core_contracts::contracts::FederationSyncRequest>,
-) -> Json<aiome_core_contracts::contracts::FederationSyncResponse> {
-    // In production, this proxies to http://samsara-hub/api/v1/federation/sync
-    Json(aiome_core_contracts::contracts::FederationSyncResponse {
-        new_karmas: vec![],
-        new_immune_rules: vec![],
-        new_arena_matches: vec![],
-        automerge_snapshot: None,
-        server_time: "2026-04-23T00:00:00Z".to_string(),
-        next_cursor: None,
-        has_more: false,
-    })
+    State(config): State<Arc<shared::config::AiomeConfig>>,
+    headers: HeaderMap,
+    Json(payload): Json<aiome_core_contracts::contracts::FederationSyncRequest>,
+) -> axum::response::Response {
+    use axum::http::StatusCode;
+    use axum::response::IntoResponse;
+
+    let target_url = format!("{}/api/v1/federation/sync", config.samsara_hub_url);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+
+    let mut req_builder = client.post(&target_url).json(&payload);
+
+    if let Some(auth) = headers.get(axum::http::header::AUTHORIZATION) {
+        req_builder = req_builder.header(reqwest::header::AUTHORIZATION, auth);
+    }
+
+    match req_builder.send().await {
+        Ok(res) => {
+            let status = res.status();
+            match res.bytes().await {
+                Ok(body) => (
+                    StatusCode::from_u16(status.as_u16())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                    body,
+                )
+                    .into_response(),
+                Err(e) => {
+                    tracing::error!("Proxy error reading body: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Proxy Error").into_response()
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Proxy request failed: {}", e);
+            (StatusCode::BAD_GATEWAY, "Hub Unreachable").into_response()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -62,7 +92,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_handshake() {
-        let app = router();
+        let config = Arc::new(shared::config::AiomeConfig::default());
+        let app = router().with_state(config);
 
         let payload = FederationHandshake {
             node_id: "node-123".to_string(),
@@ -93,8 +124,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_handle_sync() {
-        let app = router();
+    async fn test_handle_sync_proxy_failure() {
+        let config = Arc::new(shared::config::AiomeConfig {
+            samsara_hub_url: "http://localhost:1".to_string(), // Unreachable
+            ..Default::default()
+        });
+
+        let app = router().with_state(config);
 
         let payload = aiome_core_contracts::contracts::FederationSyncRequest {
             node_id: "node-123".to_string(),
@@ -114,15 +150,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let res: aiome_core_contracts::contracts::FederationSyncResponse =
-            serde_json::from_slice(&body).unwrap();
-
-        // As a mock, we expect empty arrays
-        assert!(res.new_karmas.is_empty());
+        // Expect BAD_GATEWAY because http://localhost:1 is unreachable
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
     }
 }

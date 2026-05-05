@@ -4,7 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-use crate::handlers::verify_bearer;
+
 use crate::mdns_listener::AgentInfo;
 use crate::models::*;
 use crate::state::HubState;
@@ -30,38 +30,6 @@ pub async fn sync_handler(
     headers: HeaderMap,
     Json(payload): Json<FederationSyncRequest>,
 ) -> impl IntoResponse {
-    // Auth Wall
-    let auth_header = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-
-    let mut authenticated = false;
-    if auth_header.starts_with("Bearer ") {
-        let token = auth_header.trim_start_matches("Bearer ");
-        if let Ok(claims) = state.auth_manager.validate_token(token).await {
-            if claims.agent_id != uuid::Uuid::nil() {
-                authenticated = true;
-            }
-        }
-    }
-
-    if !authenticated && verify_bearer(auth_header, &state.secret) {
-        authenticated = true;
-    }
-
-    if !authenticated {
-        warn!(
-            "🔒 Unauthorized sync attempt from node: {}",
-            payload.node_id
-        );
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "Unauthorized"})),
-        )
-            .into_response();
-    }
-
     // BFT: BAN Check
     // BFT: BAN Check
     let ban_check_query = format!(
@@ -259,48 +227,15 @@ pub async fn push_handler(
         m.reasoning = shared::guardrails::strip_invisible_unicode(&m.reasoning).into_owned();
     }
 
-    // Auth Wall
-    let auth_header = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-
-    let mut authenticated = false;
-    if auth_header.starts_with("Bearer ") {
-        let token = auth_header.trim_start_matches("Bearer ");
-        if let Ok(claims) = state.auth_manager.validate_token(token).await {
-            if claims.agent_id != uuid::Uuid::nil() {
-                authenticated = true;
-            }
-        }
-    }
-
-    if !authenticated && verify_bearer(auth_header, &state.secret) {
-        authenticated = true;
-    }
-
-    if !authenticated {
-        warn!(
-            "🔒 Unauthorized push attempt from node: {}",
-            payload.node_id
-        );
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "Unauthorized"})),
-        )
-            .into_response();
-    }
-
-    // BFT: BAN Check
+    // BFT: BAN & Lamport Clock Check
     let ban_check_query = format!(
-        "SELECT is_banned FROM node_reputation WHERE node_id = {}",
+        "SELECT is_banned, last_seen_lamport_clock FROM node_reputation WHERE node_id = {}",
         state.pool.ph(0)
     );
-    let is_banned =
-        shared::sql_fetch_optional!(&state.pool, (bool,), &ban_check_query, &payload.node_id)
-            .unwrap_or(Some((false,)))
-            .unwrap_or((false,))
-            .0;
+    let (is_banned, last_clock) =
+        shared::sql_fetch_optional!(&state.pool, (bool, i64), &ban_check_query, &payload.node_id)
+            .unwrap_or(Some((false, 0)))
+            .unwrap_or((false, 0));
 
     if is_banned {
         warn!(
@@ -310,6 +245,26 @@ pub async fn push_handler(
         return (
             StatusCode::FORBIDDEN,
             Json(serde_json::json!({"error": "Node is banned"})),
+        )
+            .into_response();
+    }
+
+    let max_incoming_clock = payload
+        .karmas
+        .iter()
+        .map(|k| k.lamport_clock)
+        .chain(payload.rules.iter().map(|r| r.lamport_clock))
+        .max()
+        .unwrap_or(0);
+
+    if max_incoming_clock > 0 && max_incoming_clock <= last_clock as u64 {
+        warn!(
+            "🛡️ [BFT] Rejecting push from node {}: Replay detected (incoming clock {} <= last seen {})",
+            payload.node_id, max_incoming_clock, last_clock
+        );
+        return (
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({"error": "Replay attack detected: lamport clock stale"})),
         )
             .into_response();
     }
@@ -647,15 +602,16 @@ pub async fn push_handler(
 
     // BFT: Update reputation / last_seen
     let reputation_query = format!(
-        "INSERT INTO node_reputation (node_id, last_seen_at) VALUES ({}, {})
-         ON CONFLICT(node_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, reputation_score = node_reputation.reputation_score + 1",
-         state.pool.ph(0), state.pool.ph(1)
+        "INSERT INTO node_reputation (node_id, last_seen_at, last_seen_lamport_clock) VALUES ({}, {}, {})
+         ON CONFLICT(node_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, reputation_score = node_reputation.reputation_score + 1, last_seen_lamport_clock = excluded.last_seen_lamport_clock",
+         state.pool.ph(0), state.pool.ph(1), state.pool.ph(2)
     );
     let res = shared::sql_exec!(
         &state.pool,
         &reputation_query,
         &payload.node_id,
-        &received_at_dt
+        &received_at_dt,
+        &(max_incoming_clock as i64)
     );
     if let Err(e) = res {
         warn!(

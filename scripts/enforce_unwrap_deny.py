@@ -92,8 +92,8 @@ def check_file(filepath: str) -> list:
         code_only = _strip_trailing_comment(raw_line)
         brace_depth += code_only.count("{") - code_only.count("}")
 
-        # テストブロック終了判定
-        if in_test_block and brace_depth <= test_entry_depth:
+        # テストブロック終了判定 (波括弧がテスト開始時の深さを下回ったら終了)
+        if in_test_block and test_entry_depth != -1 and brace_depth < test_entry_depth:
             in_test_block = False
             test_entry_depth = -1
 
@@ -101,8 +101,13 @@ def check_file(filepath: str) -> list:
         if "#[cfg(test)]" in raw_line:
             if not in_test_block:
                 in_test_block = True
-                test_entry_depth = brace_depth
+                # The depth of the scope that CONTAINS the test module is the current depth minus any '{' on this line
+                test_entry_depth = brace_depth - code_only.count("{")
             continue
+        
+        # If we are in test block but haven't entered the module body yet (e.g. annotations)
+        if in_test_block and test_entry_depth != -1 and brace_depth == test_entry_depth and "{" not in code_only:
+            pass # still waiting for the module block to start
 
         # テストブロック内はスキップ
         if in_test_block:
