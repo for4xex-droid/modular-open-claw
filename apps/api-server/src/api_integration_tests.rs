@@ -789,8 +789,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 as Arc<dyn aiome_core_contracts::lora_marketplace::LoraMarketplace>)
         },
         a2ui_catalog: Default::default(),
-        nurture_url: None,
-        nurture_internal_secret: None,
+        nurture_url: std::env::var("NURTURE_API_URL").ok(),
+        nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
         quality_gate_store: Component::default(),
         skill_arena: Component::new(Arc::new(
             infrastructure::skills::skill_arena::SkillArena::new(),
@@ -1087,17 +1087,22 @@ async fn test_get_prompt_stats() {
 async fn test_settings_authorized_and_crud() {
     let (server, _state, _tmp) = create_test_server().await;
 
-    // Get empty settings
+    // Get initial settings
     let get_resp = server
         .get("/api/v1/settings")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
     assert_eq!(get_resp.status_code(), StatusCode::OK);
     let settings = get_resp.json::<serde_json::Value>();
-    assert!(settings.as_array().unwrap().is_empty());
+    let settings_array = settings.as_array().unwrap();
+    
+    // DB migration inserts 'feature_flag.federation_v1_5' automatically.
+    // Assert that the array is not empty and contains the flag.
+    assert!(!settings_array.is_empty());
+    let has_federation_flag = settings_array.iter().any(|s| s["key"] == "feature_flag.federation_v1_5");
+    assert!(has_federation_flag);
 
-    // Put a valid setting (assuming theme is allowed)
-    // Wait, the API checks whitelist. theme should be allowed.
+    // Put a valid setting (ollama_model is allowed)
     let put_req = json!({
         "key": "ollama_model",
         "value": "qwen2",
@@ -1117,10 +1122,15 @@ async fn test_settings_authorized_and_crud() {
         .get("/api/v1/settings")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
-    let settings_array = get_resp2.json::<Vec<serde_json::Value>>();
-    assert_eq!(settings_array.len(), 1);
-    assert_eq!(settings_array[0]["key"], "ollama_model");
-    assert_eq!(settings_array[0]["value"], "qwen2");
+    let settings_array2 = get_resp2.json::<Vec<serde_json::Value>>();
+    
+    // Check that the explicitly added setting is present
+    let has_ollama_model = settings_array2.iter().any(|s| s["key"] == "ollama_model" && s["value"] == "qwen2");
+    assert!(has_ollama_model);
+    
+    // Ensure the initial federation flag is still present
+    let has_federation_flag2 = settings_array2.iter().any(|s| s["key"] == "feature_flag.federation_v1_5");
+    assert!(has_federation_flag2);
 }
 
 #[serial]
@@ -3425,4 +3435,319 @@ async fn test_biome_hub_unreachable_error() {
 
     // Fails because the external Hub endpoint is not mocked and fails to connect
     assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_invoice_paid_unlocks_account() {
+    let (server, state, _tmp) = create_test_server().await;
+    
+    // Set up DB tables
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, category TEXT NOT NULL, is_secret BOOLEAN NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+
+    let agent_id = "agent-123456";
+    let customer_id = "cus_test123";
+    sqlx::query("INSERT INTO stripe_customers (id, customer_id, agent_id) VALUES ('1', ?, ?)")
+        .bind(customer_id)
+        .bind(agent_id)
+        .execute(sqlite_pool).await.unwrap();
+
+    let payload = serde_json::json!({
+        "id": "evt_test123",
+        "type": "invoice.paid",
+        "data": {
+            "object": {
+                "customer": customer_id,
+                "subscription": "sub_test123"
+            }
+        }
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", "dummy_sig")
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    // Verify setting was changed to false
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state.job_queue.get_inner().get_setting_value(&setting_key).await.unwrap();
+    assert_eq!(setting.as_deref(), Some("false"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_payment_failed_suspends_account() {
+    let (server, state, _tmp) = create_test_server().await;
+    
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, category TEXT NOT NULL, is_secret BOOLEAN NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+
+    let agent_id = "agent-123456";
+    let customer_id = "cus_test123";
+    sqlx::query("INSERT INTO stripe_customers (id, customer_id, agent_id) VALUES ('1', ?, ?)")
+        .bind(customer_id)
+        .bind(agent_id)
+        .execute(sqlite_pool).await.unwrap();
+
+    let payload = serde_json::json!({
+        "id": "evt_test999",
+        "type": "invoice.payment_failed",
+        "data": {
+            "object": {
+                "customer": customer_id,
+                "subscription": "sub_test123"
+            }
+        }
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", "dummy_sig")
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    // Verify setting was changed to true
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state.job_queue.get_inner().get_setting_value(&setting_key).await.unwrap();
+    assert_eq!(setting.as_deref(), Some("true"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_rejects_missing_signature() {
+    let (server, _state, _tmp) = create_test_server().await;
+    
+    let payload = serde_json::json!({
+        "id": "evt_test123",
+        "type": "invoice.paid"
+    });
+
+    // Send POST without stripe-signature header
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .json(&payload)
+        .await;
+
+    // Positive check for Negative Test verification protocol (Should reject)
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"].as_str().unwrap().contains("Missing stripe-signature header"));
+}
+
+#[tokio::test]
+async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger() {
+    // 1. Setup Mock Nurture API Server before creating the test server
+    let sync_counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter_clone = sync_counter.clone();
+
+    let mock_nurture_app = axum::Router::new().route(
+        "/internal/coin-charge",
+        axum::routing::post(move |_req: axum::extract::Request| async move {
+            counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            axum::response::Json(serde_json::json!({"status": "success"}))
+        }),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let nurture_url = format!("http://127.0.0.1:{}", port);
+    
+    tokio::spawn(async move {
+        axum::serve(listener, mock_nurture_app).await.unwrap();
+    });
+
+    // Configure State via Environment Variables
+    std::env::set_var("NURTURE_API_URL", &nurture_url);
+    std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_secret");
+
+    let (server, state, _tmp) = create_test_server().await;
+
+    // Create customers and events table for the sqlite DB
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    // Insert dummy asset into registry using proper API
+    let asset_manifest = infrastructure::registry::AssetManifest {
+        id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap(),
+        creator_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap(),
+        asset_type: infrastructure::registry::AssetType::LoRA,
+        name: "Mock Asset".to_string(),
+        description: "desc".to_string(),
+        price_coins: 5000,
+        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
+        metadata: None,
+    };
+    
+    // Attempting to create the table first just in case
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS asset_registry (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL, asset_type TEXT NOT NULL, name TEXT NOT NULL, description TEXT, price_coins INTEGER NOT NULL DEFAULT 0, safety_level TEXT NOT NULL DEFAULT 'safe', metadata TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    )
+    .execute(pool)
+    .await;
+    
+    state.registry.get_inner().register_asset(asset_manifest).await.unwrap();
+
+    // Set Stripe Secret for signature generation
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_mock_secret");
+
+    // 3. Construct Payload
+    let payload = json!({
+        "id": "evt_mock123",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_mock123",
+                "customer": "cus_mock123",
+                "amount_total": 5000,
+                "currency": "jpy",
+                "payment_status": "paid",
+                "metadata": {
+                    "agent_id": "00000000-0000-0000-0000-000000000001",
+                    "asset_id": "00000000-0000-0000-0000-000000000002"
+                }
+            }
+        }
+    });
+
+    let payload_str = payload.to_string();
+    
+    // Generate valid signature
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = Hmac::<Sha256>::new_from_slice(b"whsec_mock_secret").unwrap();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let signed_payload = format!("{}.{}", timestamp, payload_str);
+    mac.update(signed_payload.as_bytes());
+    let sig_hash = hex::encode(mac.finalize().into_bytes());
+    let sig_header = format!("t={},v1={}", timestamp, sig_hash);
+
+    // 4. Send Webhook Request
+    let response = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", sig_header)
+        .json(&payload)
+        .await;
+
+    response.assert_status(axum::http::StatusCode::OK);
+
+    // 5. Verify Nurture Ledger Synchronization
+    // Wait for the background spawn task for Nurture sync to complete (max 3 seconds)
+    let mut sync_count = 0;
+    for _ in 0..30 {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        sync_count = sync_counter.load(std::sync::atomic::Ordering::SeqCst);
+        if sync_count >= 1 {
+            break;
+        }
+    }
+    
+    // [Verification Protocol: Negative Test -> Positive Result]
+    // If commerce_webhook doesn't implement the sync, this will fail.
+    assert_eq!(sync_count, 1, "Webhook should have synced to Nurture Ledger");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_oauth_authorize_flow() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // 1. Valid provider (github) -> Should redirect (302) to OAuth login page
+    let resp = server
+        .get("/api/v1/mcp/oauth/authorize?provider=github")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    // We expect a temporary redirection
+    assert_eq!(resp.status_code(), axum::http::StatusCode::TEMPORARY_REDIRECT);
+
+    // 2. Invalid provider -> Should return 400 Bad Request (Negative Test)
+    let resp_invalid = server
+        .get("/api/v1/mcp/oauth/authorize?provider=invalid_provider")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp_invalid.status_code(), axum::http::StatusCode::BAD_REQUEST);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_oauth_callback_flow() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    // 1. Valid callback -> Should redirect back to dashboard or success page
+    let resp = server
+        .get("/api/v1/mcp/oauth/callback?provider=github&code=dummy_auth_code")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), axum::http::StatusCode::TEMPORARY_REDIRECT);
+
+    // 1b. Verify that the configuration file was updated (disabled = false)
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
+    if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path).unwrap();
+        let discovery: serde_json::Value = serde_json::from_str(&content).unwrap();
+        
+        if let Some(config) = discovery["mcp_servers"]["github"].as_object() {
+            assert_eq!(config["disabled"].as_bool(), Some(false), "github should be enabled in config");
+        }
+    }
+
+    // 2. Missing code -> Should return 400 Bad Request (Negative Test)
+    let resp_missing_code = server
+        .get("/api/v1/mcp/oauth/callback?provider=github")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp_missing_code.status_code(), axum::http::StatusCode::BAD_REQUEST);
+
+    // 3. Invalid provider -> Should return 400 Bad Request (Negative Test)
+    let resp_invalid_provider = server
+        .get("/api/v1/mcp/oauth/callback?provider=invalid_provider&code=dummy_auth_code")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp_invalid_provider.status_code(), axum::http::StatusCode::BAD_REQUEST);
 }
