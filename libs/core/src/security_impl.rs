@@ -16,23 +16,43 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
-static URL_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"https?://\S+").expect("URL regex is valid") // allow-anti-pattern
-}); // allow-anti-pattern
-static HTML_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"<[^>]+>").expect("HTML regex is valid") // allow-anti-pattern
-}); // allow-anti-pattern
-static WS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\s+").expect("WS regex is valid") // allow-anti-pattern
-}); // allow-anti-pattern
-static SCRIPT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?is)<script\b[^>]*>.*?</script>")
-        .expect("Script tag stripping regex is a compile-time literal") // allow-anti-pattern
-}); // allow-anti-pattern
-static STYLE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?is)<style\b[^>]*>.*?</style>")
-        .expect("Style tag stripping regex is a compile-time literal") // allow-anti-pattern
-}); // allow-anti-pattern
+static URL_RE: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"https?://\S+") {
+    Ok(re) => re,
+    Err(e) => {
+        tracing::error!("FATAL: Failed to compile URL regex: {}", e);
+        std::process::exit(1);
+    }
+});
+static HTML_RE: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"<[^>]+>") {
+    Ok(re) => re,
+    Err(e) => {
+        tracing::error!("FATAL: Failed to compile HTML regex: {}", e);
+        std::process::exit(1);
+    }
+});
+static WS_RE: LazyLock<Regex> = LazyLock::new(|| match Regex::new(r"\s+") {
+    Ok(re) => re,
+    Err(e) => {
+        tracing::error!("FATAL: Failed to compile WS regex: {}", e);
+        std::process::exit(1);
+    }
+});
+static SCRIPT_RE: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new(r"(?is)<script\b[^>]*>.*?</script>") {
+        Ok(re) => re,
+        Err(e) => {
+            tracing::error!("FATAL: Failed to compile Script stripping regex: {}", e);
+            std::process::exit(1);
+        }
+    });
+static STYLE_RE: LazyLock<Regex> =
+    LazyLock::new(|| match Regex::new(r"(?is)<style\b[^>]*>.*?</style>") {
+        Ok(re) => re,
+        Err(e) => {
+            tracing::error!("FATAL: Failed to compile Style stripping regex: {}", e);
+            std::process::exit(1);
+        }
+    });
 
 /// [G-21] Unified Response Purger (Entity-Level Sanitization)
 ///

@@ -146,8 +146,7 @@ mod tests {
         let mock_queue = GlobalMockJobQueue::default();
 
         // Only 3 karmas (Threshold is 5)
-        *mock_queue.karmas.lock().unwrap() /* allow-anti-pattern */ = vec![
-
+        *mock_queue.karmas.lock().unwrap() = vec![
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": -0.2}),
             json!({"somatic_valence": 0.1}),
@@ -163,8 +162,7 @@ mod tests {
         let mock_queue = GlobalMockJobQueue::default();
 
         // 5 karmas with exact same valence (variance = 0.0) -> flatline
-        *mock_queue.karmas.lock().unwrap() /* allow-anti-pattern */ = vec![
-
+        *mock_queue.karmas.lock().unwrap() = vec![
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),
@@ -188,7 +186,7 @@ mod tests {
         let mock_queue = GlobalMockJobQueue::default();
 
         // 5 karmas with low variety, but variance > -1.0
-        *mock_queue.karmas.lock().unwrap() /* allow-anti-pattern */ = vec![
+        *mock_queue.karmas.lock().unwrap() = vec![
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),
             json!({"somatic_valence": 0.5}),

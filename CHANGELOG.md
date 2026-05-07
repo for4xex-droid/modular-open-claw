@@ -17,7 +17,10 @@
 
 ### Changed
 - **Error Type Unification (Phase 4 P2)**:
+  - Hardened `AppError` in `api-server` by manually implementing `std::error::Error` (`source()`), `Display`, and `Debug` to ensure transparent error chains and full compatibility with error tracking middleware.
+  - Refined `From<anyhow::Error>` for `AppError` to attempt `downcast::<AiomeError>()` prior to fallback, preserving domain error variants and preventing masking of critical business logic errors.
   - Implemented `From<FactoryResetError>` for `AppError` in `api-server`, eliminating boilerplate mapping code (`.map_err()`) in the `factory_reset` handler and fortifying error type standardization.
+  - Added `AppError::unauthorized` helper for `401 Unauthorized` responses to complete the standard REST HTTP status code mappings.
   - Refactored brittle fixed-length assertions (`len() == 1`) in `job_queue::tests` to flexible inclusion checks (`.any()`), completely eliminating CI failures caused by automated DB migrations inserting `federation_v1_5`.
 
 ### Added

@@ -239,10 +239,10 @@ pub struct FactoryResetResponse {
 )]
 pub async fn factory_reset(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
 ) -> Result<Json<FactoryResetResponse>, crate::error::AppError> {
     // System Admin 権限チェック
-    let agent_id = _auth.agent_id;
+    let agent_id = auth.agent_id;
     if agent_id != state.system_agent_id {
         return Err(crate::error::AppError::forbidden(
             "Factory reset requires System Admin privileges",
@@ -252,19 +252,15 @@ pub async fn factory_reset(
     let config = state.config.get_inner();
     let root = config.resolver.root();
 
-    match shared::bootstrap_detector::FactoryReset::execute(root) {
-        Ok(report) => Ok(Json(FactoryResetResponse {
-            success: report.errors.is_empty(),
-            deleted_files: report.deleted_files,
-            deleted_dirs: report.deleted_dirs,
-            preserved_files: report.preserved_files,
-            errors: report.errors,
-        })),
-        Err(e) => Err(crate::error::AppError::internal(format!(
-            "Factory reset failed: {}",
-            e
-        ))),
-    }
+    let report = shared::bootstrap_detector::FactoryReset::execute(root)?;
+
+    Ok(Json(FactoryResetResponse {
+        success: report.errors.is_empty(),
+        deleted_files: report.deleted_files,
+        deleted_dirs: report.deleted_dirs,
+        preserved_files: report.preserved_files,
+        errors: report.errors,
+    }))
 }
 
 #[cfg(test)]

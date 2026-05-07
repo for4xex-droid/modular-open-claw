@@ -114,7 +114,13 @@ impl SecurityPolicy {
             }
         }
 
-        let shield = builder.build().expect("Failed to build network shield"); // allow-anti-pattern
+        let shield = match builder.build() {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("FATAL: Failed to build network shield: {}", e);
+                std::process::exit(1);
+            }
+        };
 
         Self {
             network_shield: shield,

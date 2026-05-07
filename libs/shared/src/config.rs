@@ -139,7 +139,7 @@ impl Default for AiomeConfig {
             wp_api_url: None,
             wp_sdk_enabled: false,
             a2a_node_url: "http://127.0.0.1:50051".to_string(), // allow-anti-pattern
-            geo_optimizer_url: "http://geo-optimizer:8080".to_string(), // allow-anti-pattern
+            geo_optimizer_url: "http://geo-optimizer:8080".to_string(),
             geo_citability_threshold: 60,
             rlm_api_url: "http://localhost:3026".to_string(), // allow-anti-pattern
             comfyui_url: "http://localhost:8188".to_string(), // allow-anti-pattern
@@ -147,7 +147,7 @@ impl Default for AiomeConfig {
             timesfm_sidecar_url: "http://timesfm-sidecar:8000".to_string(),
             a2a_auth_token: None,
             a2a_node_token: None,
-            shadow_clone_grpc_host: "localhost".to_string(),
+            shadow_clone_grpc_host: "localhost".to_string(), // allow-anti-pattern
             shadow_clone_grpc_port: "50051".to_string(),
         }
     }
@@ -260,25 +260,25 @@ impl AiomeConfig {
             wp_api_url: env::var("WP_API_URL").ok(),
             wp_sdk_enabled: env::var("WP_SDK_ENABLED").is_ok(),
             a2a_node_url: env::var("A2A_NODE_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 50051)),
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 50051)), // allow-anti-pattern
             geo_optimizer_url: env::var("GEO_OPTIMIZER_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8080)),
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8080)), // allow-anti-pattern
             geo_citability_threshold: env::var("GEO_CITABILITY_THRESHOLD")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60),
             rlm_api_url: env::var("RLM_API_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3026)),
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3026)), // allow-anti-pattern
             comfyui_url: env::var("COMFYUI_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8188)),
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8188)), // allow-anti-pattern
             abyss_vault_url: env::var("ABYSS_VAULT_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)),
+                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)), // allow-anti-pattern
             timesfm_sidecar_url: env::var("TIMESFM_SIDECAR_URL")
                 .unwrap_or_else(|_| "http://timesfm-sidecar:8000".to_string()),
             a2a_auth_token,
             a2a_node_token,
             shadow_clone_grpc_host: env::var("SHADOW_CLONE_GRPC_HOST")
-                .unwrap_or_else(|_| "localhost".to_string()),
+                .unwrap_or_else(|_| "localhost".to_string()), // allow-anti-pattern
             shadow_clone_grpc_port: env::var("SHADOW_CLONE_GRPC_PORT")
                 .unwrap_or_else(|_| "50051".to_string()),
         })

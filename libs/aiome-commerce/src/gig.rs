@@ -66,14 +66,13 @@ impl GigEngine for UniversalGigEngine {
                 reason: format!("Criteria serialization failed: {}", e),
             })?;
 
-        let q = format!(
-            "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, 'Open')",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6)
-        );
+        const Q_PUBLISH_SQLITE: &str = "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')";
+        const Q_PUBLISH_PG: &str = "INSERT INTO gig_intents (id, requester_id, description, criteria, max_budget_coins, category, deadline, status) VALUES ($1, $2, $3, $4, $5, $6, $7, 'Open')";
 
-        sql_exec!(
+        shared::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: Q_PUBLISH_SQLITE,
+            pg: Q_PUBLISH_PG,
             intent.id.to_string(),
             intent.requester_id.to_string(),
             intent.description,
@@ -95,14 +94,13 @@ impl GigEngine for UniversalGigEngine {
     }
 
     async fn submit_bid(&self, bid: GigBid) -> Result<(), AiomeError> {
-        let q = format!(
-            "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, 'Pending')",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5)
-        );
+        const Q_SUBMIT_SQLITE: &str = "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')";
+        const Q_SUBMIT_PG: &str = "INSERT INTO gig_bids (id, intent_id, bidder_id, price_coins, est_duration_sec, deposit_amount, status) VALUES ($1, $2, $3, $4, $5, $6, 'Pending')";
 
-        sql_exec!(
+        shared::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: Q_SUBMIT_SQLITE,
+            pg: Q_SUBMIT_PG,
             bid.id.to_string(),
             bid.intent_id.to_string(),
             bid.bidder_id.to_string(),
@@ -128,39 +126,17 @@ impl GigEngine for UniversalGigEngine {
 
         // 1. Fetch and Verify Intent
         let intent_id_str = intent_id.to_string();
-        let q_intent = format!(
-            "SELECT requester_id, status FROM gig_intents WHERE id = {}",
-            self.pool.ph(0)
-        );
 
-        let (requester_id_str, status) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_intent)
-                    .bind(&intent_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    row.get::<String, _>("requester_id"),
-                    row.get::<String, _>("status"),
-                )
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_intent)
-                    .bind(&intent_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    row.get::<String, _>("requester_id"),
-                    row.get::<String, _>("status"),
-                )
-            }
-        };
+        const Q_INTENT_SQLITE: &str = "SELECT requester_id, status FROM gig_intents WHERE id = ?";
+        const Q_INTENT_PG: &str = "SELECT requester_id, status FROM gig_intents WHERE id = $1";
+
+        let (requester_id_str, status) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String),
+            sqlite: Q_INTENT_SQLITE,
+            pg: Q_INTENT_PG,
+            &intent_id_str
+        )?;
 
         if status != "Open" {
             return Err(AiomeError::Infrastructure {
@@ -175,42 +151,20 @@ impl GigEngine for UniversalGigEngine {
 
         // 2. Fetch and Verify Bid
         let bid_id_str = bid_id.to_string();
-        let q_bid = format!(
-            "SELECT bidder_id, price_coins FROM gig_bids WHERE id = {0} AND intent_id = {1}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
 
-        let (bidder_id_str, price) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_bid)
-                    .bind(&bid_id_str)
-                    .bind(&intent_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    row.get::<String, _>("bidder_id"),
-                    row.get::<i64, _>("price_coins"),
-                )
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_bid)
-                    .bind(&bid_id_str)
-                    .bind(&intent_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    row.get::<String, _>("bidder_id"),
-                    row.get::<i64, _>("price_coins"),
-                )
-            }
-        };
+        const Q_BID_SQLITE: &str =
+            "SELECT bidder_id, price_coins FROM gig_bids WHERE id = ? AND intent_id = ?";
+        const Q_BID_PG: &str =
+            "SELECT bidder_id, price_coins FROM gig_bids WHERE id = $1 AND intent_id = $2";
+
+        let (bidder_id_str, price) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, i64),
+            sqlite: Q_BID_SQLITE,
+            pg: Q_BID_PG,
+            &bid_id_str,
+            &intent_id_str
+        )?;
 
         let bidder_id =
             Uuid::parse_str(&bidder_id_str).map_err(|_| AiomeError::Infrastructure {
@@ -229,68 +183,37 @@ impl GigEngine for UniversalGigEngine {
             .await?;
 
         // 4. Record Escrow in DB
-        let q_escrow = format!(
-            "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status) VALUES ({0}, {1}, {2}, {3}, {4}, 'Locked')",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
-        );
+        const Q_ESCROW_SQLITE: &str = "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status) VALUES (?, ?, ?, ?, ?, 'Locked')";
+        const Q_ESCROW_PG: &str = "INSERT INTO escrows (id, payer_id, recipient_id, order_id, amount, status) VALUES ($1, $2, $3, $4, $5, 'Locked')";
 
-        match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_escrow)
-                    .bind(&escrow_id)
-                    .bind(requester_id.to_string())
-                    .bind(bidder_id.to_string())
-                    .bind(&intent_id_str)
-                    .bind(price)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_escrow)
-                    .bind(&escrow_id)
-                    .bind(requester_id.to_string())
-                    .bind(bidder_id.to_string())
-                    .bind(&intent_id_str)
-                    .bind(price)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_ESCROW_SQLITE,
+            pg: Q_ESCROW_PG,
+            escrow_id,
+            requester_id.to_string(),
+            bidder_id.to_string(),
+            &intent_id_str,
+            price
+        )?;
 
         // 5. Update Statuses with Optimistic Locking (G-46 Mitigation)
-        let q_upd_intent = format!(
-            "UPDATE gig_intents SET status = 'Accepted' WHERE id = {0} AND status = 'Open'",
-            self.pool.ph(0)
-        );
-        let q_upd_bid = format!(
-            "UPDATE gig_bids SET status = 'Accepted' WHERE id = {0} AND status = 'Pending'",
-            self.pool.ph(0)
-        );
+        const Q_UPD_INTENT_SQLITE: &str =
+            "UPDATE gig_intents SET status = 'Accepted' WHERE id = ? AND status = 'Open'";
+        const Q_UPD_INTENT_PG: &str =
+            "UPDATE gig_intents SET status = 'Accepted' WHERE id = $1 AND status = 'Open'";
 
-        let intent_rows = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => sqlx::query(&q_upd_intent)
-                .bind(&intent_id_str)
-                .execute(&mut **itx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .rows_affected(),
-            DatabaseTransaction::Postgres(itx) => sqlx::query(&q_upd_intent)
-                .bind(&intent_id_str)
-                .execute(&mut **itx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .rows_affected(),
-        };
+        const Q_UPD_BID_SQLITE: &str =
+            "UPDATE gig_bids SET status = 'Accepted' WHERE id = ? AND status = 'Pending'";
+        const Q_UPD_BID_PG: &str =
+            "UPDATE gig_bids SET status = 'Accepted' WHERE id = $1 AND status = 'Pending'";
+
+        let intent_rows = shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_UPD_INTENT_SQLITE,
+            pg: Q_UPD_INTENT_PG,
+            &intent_id_str
+        )?;
 
         if intent_rows == 0 {
             // Race condition lost!
@@ -300,26 +223,12 @@ impl GigEngine for UniversalGigEngine {
             });
         }
 
-        match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_upd_bid)
-                    .bind(&bid_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_upd_bid)
-                    .bind(&bid_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_UPD_BID_SQLITE,
+            pg: Q_UPD_BID_PG,
+            &bid_id_str
+        )?;
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),
@@ -333,33 +242,16 @@ impl GigEngine for UniversalGigEngine {
         let order_id_str = deliverable.order_id.to_string();
 
         // 1. Verify Status and Assignee
-        let q_lookup = format!(
-            "SELECT i.status, b.bidder_id FROM gig_intents i JOIN gig_bids b ON b.intent_id = i.id AND b.status = 'Accepted' WHERE i.id = {}",
-            self.pool.ph(0)
-        );
+        const Q_LOOKUP_SQLITE: &str = "SELECT i.status, b.bidder_id FROM gig_intents i JOIN gig_bids b ON b.intent_id = i.id AND b.status = 'Accepted' WHERE i.id = ?";
+        const Q_LOOKUP_PG: &str = "SELECT i.status, b.bidder_id FROM gig_intents i JOIN gig_bids b ON b.intent_id = i.id AND b.status = 'Accepted' WHERE i.id = $1";
 
-        let (status, accepted_bidder_id_str) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_lookup)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_lookup)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-        };
+        let (status, accepted_bidder_id_str) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String),
+            sqlite: Q_LOOKUP_SQLITE,
+            pg: Q_LOOKUP_PG,
+            &order_id_str
+        )?;
 
         if status != "Accepted" {
             return Err(AiomeError::Infrastructure {
@@ -396,63 +288,29 @@ impl GigEngine for UniversalGigEngine {
             }
         })?;
 
-        let q_deliv = format!(
-            "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata) VALUES ({0}, {1}, {2}, {3})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
-        );
+        const Q_DELIV_SQLITE: &str = "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata) VALUES (?, ?, ?, ?)";
+        const Q_DELIV_PG: &str = "INSERT INTO gig_deliveries (order_id, deliverer_id, artifact_path, metadata) VALUES ($1, $2, $3, $4)";
 
-        match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_deliv)
-                    .bind(&order_id_str)
-                    .bind(deliverable.deliverer_id.to_string())
-                    .bind(safe_artifact_path.to_string_lossy().to_string())
-                    .bind(&metadata_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_deliv)
-                    .bind(&order_id_str)
-                    .bind(deliverable.deliverer_id.to_string())
-                    .bind(safe_artifact_path.to_string_lossy().to_string())
-                    .bind(&metadata_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_DELIV_SQLITE,
+            pg: Q_DELIV_PG,
+            &order_id_str,
+            deliverable.deliverer_id.to_string(),
+            safe_artifact_path.to_string_lossy().to_string(),
+            metadata_str
+        )?;
 
         // 4. Update Status
-        let q_upd = format!(
-            "UPDATE gig_intents SET status = 'Delivered' WHERE id = {}",
-            self.pool.ph(0)
-        );
-        match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_upd)
-                    .bind(&order_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_upd)
-                    .bind(&order_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        const Q_UPD_SQLITE: &str = "UPDATE gig_intents SET status = 'Delivered' WHERE id = ?";
+        const Q_UPD_PG: &str = "UPDATE gig_intents SET status = 'Delivered' WHERE id = $1";
+
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_UPD_SQLITE,
+            pg: Q_UPD_PG,
+            &order_id_str
+        )?;
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),
@@ -466,32 +324,16 @@ impl GigEngine for UniversalGigEngine {
         let order_id_str = order_id.to_string();
 
         // 1. Fetch Intent, Criteria and Delivery
-        let q_intent = format!(
-            "SELECT status, criteria FROM gig_intents WHERE id = {}",
-            self.pool.ph(0)
-        );
-        let (status, criteria_json) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_intent)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_intent)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-        };
+        const Q_INTENT_SQLITE: &str = "SELECT status, criteria FROM gig_intents WHERE id = ?";
+        const Q_INTENT_PG: &str = "SELECT status, criteria FROM gig_intents WHERE id = $1";
+
+        let (status, criteria_json) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String),
+            sqlite: Q_INTENT_SQLITE,
+            pg: Q_INTENT_PG,
+            &order_id_str
+        )?;
 
         if status != "Delivered" {
             return Err(AiomeError::Infrastructure {
@@ -504,32 +346,18 @@ impl GigEngine for UniversalGigEngine {
                 reason: format!("Criteria parsing failed: {}", e),
             })?;
 
-        let q_deliv = format!(
-            "SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = {}",
-            self.pool.ph(0)
-        );
-        let (artifact_path, metadata_json) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_deliv)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_deliv)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-        };
+        const Q_DELIV_SQLITE: &str =
+            "SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = ?";
+        const Q_DELIV_PG: &str =
+            "SELECT artifact_path, metadata FROM gig_deliveries WHERE order_id = $1";
+
+        let (artifact_path, metadata_json) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String),
+            sqlite: Q_DELIV_SQLITE,
+            pg: Q_DELIV_PG,
+            &order_id_str
+        )?;
 
         let metadata: serde_json::Value =
             serde_json::from_str(&metadata_json).unwrap_or(serde_json::Value::Null);
@@ -658,32 +486,16 @@ impl GigEngine for UniversalGigEngine {
         }
 
         // 3. Settle Escrow
-        let q_escrow = format!(
-            "SELECT id, recipient_id FROM escrows WHERE order_id = {}",
-            self.pool.ph(0)
-        );
-        let (escrow_id, recipient_id_str) = match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                let row = sqlx::query(&q_escrow)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                let row = sqlx::query(&q_escrow)
-                    .bind(&order_id_str)
-                    .fetch_one(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (row.get::<String, _>(0), row.get::<String, _>(1))
-            }
-        };
+        const Q_ESCROW_SQLITE: &str = "SELECT id, recipient_id FROM escrows WHERE order_id = ?";
+        const Q_ESCROW_PG: &str = "SELECT id, recipient_id FROM escrows WHERE order_id = $1";
+
+        let (escrow_id, recipient_id_str) = shared::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String),
+            sqlite: Q_ESCROW_SQLITE,
+            pg: Q_ESCROW_PG,
+            &order_id_str
+        )?;
 
         let recipient_id =
             Uuid::parse_str(&recipient_id_str).map_err(|_| AiomeError::Infrastructure {
@@ -700,60 +512,31 @@ impl GigEngine for UniversalGigEngine {
 
         // 4. Update Status and Log
         let final_status = if passed { "Completed" } else { "Rejected" };
-        let q_upd_intent = format!(
-            "UPDATE gig_intents SET status = {} WHERE id = {}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
-        let q_log = format!(
-            "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail) VALUES ({0}, {1}, 'Combined', {2}, {3}, {4})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4)
-        );
 
-        match &mut tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(&q_upd_intent)
-                    .bind(final_status)
-                    .bind(&order_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                sqlx::query(&q_log)
-                    .bind(Uuid::new_v4().to_string())
-                    .bind(&order_id_str)
-                    .bind(i32::from(passed))
-                    .bind(overall_score)
-                    .bind(&detail)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query(&q_upd_intent)
-                    .bind(final_status)
-                    .bind(&order_id_str)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                sqlx::query(&q_log)
-                    .bind(Uuid::new_v4().to_string())
-                    .bind(&order_id_str)
-                    .bind(i32::from(passed))
-                    .bind(overall_score)
-                    .bind(&detail)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        const Q_UPD_INTENT_SQLITE: &str = "UPDATE gig_intents SET status = ? WHERE id = ?";
+        const Q_UPD_INTENT_PG: &str = "UPDATE gig_intents SET status = $1 WHERE id = $2";
+
+        const Q_LOG_SQLITE: &str = "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail) VALUES (?, ?, 'Combined', ?, ?, ?)";
+        const Q_LOG_PG: &str = "INSERT INTO verification_logs (id, order_id, criteria_type, passed, score, detail) VALUES ($1, $2, 'Combined', $3, $4, $5)";
+
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_UPD_INTENT_SQLITE,
+            pg: Q_UPD_INTENT_PG,
+            final_status,
+            &order_id_str
+        )?;
+
+        shared::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q_LOG_SQLITE,
+            pg: Q_LOG_PG,
+            Uuid::new_v4().to_string(),
+            &order_id_str,
+            i32::from(passed),
+            overall_score,
+            &detail
+        )?;
 
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Transaction commit failed: {}", e),

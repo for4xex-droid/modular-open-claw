@@ -21,4 +21,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/sse", get(server::sse_handler))
         .route("/messages", post(server::message_handler))
+        .route("/oauth/authorize", get(discovery::oauth_authorize))
+        .route("/oauth/callback", get(discovery::oauth_callback))
 }

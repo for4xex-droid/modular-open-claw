@@ -146,6 +146,14 @@
 - **波及効果**:
     - メモリダンプや不用意なロギングによって API キーが平文のまま漏洩するリスク（CWE-532, CWE-316）を完全に排除した。
 
+### 3. API Server Error Handling Hardening (Zero-Panic)
+- **変更内容**:
+    - `apps/api-server/src/error.rs` [MODIFY]: `AppError` の実装からマクロ依存を排除し、`std::error::Error` (sourceチェーン公開), `Display`, `Debug` トレイトを標準で手動実装するように刷新。
+    - `apps/api-server/src/error.rs` [MODIFY]: `anyhow::Error` からのダウンキャストロジックを最適化し、`AiomeError` 等のドメインエラー情報を欠落させずに HTTP 層へ透過的に伝搬させる機構を確立。
+- **波及効果**:
+    - Aiome API サーバーのエラー機構が `tracing` 等の Observability ツールと互換性を持ち、かつ「Zero-Panic Quality Gate」を完全に遵守する状態となった。
+    - 本番環境での情報漏洩防御（CWE-209防止）とエラーの透明性が安全に両立されるようになった。
+
 ## Phase P3: Infrastructure Stabilization & Edge Integration
 ### 1. UniversalGigEngine Migration
 - **変更内容**:

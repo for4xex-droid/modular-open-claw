@@ -36,49 +36,31 @@ impl RevenueSplitter {
         let platform_amount = total_amount.saturating_mul(fee_bps) / 10000;
         let creator_amount = total_amount - platform_amount;
 
+        // 2つの定数でクエリを定義 (Dual-Const 戦略)
+        const Q_CREATOR_SQLITE: &str = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, ?, 'creator', ?)";
+        const Q_CREATOR_PG: &str = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, $2, 'creator', $3)";
+
+        const Q_PLATFORM_SQLITE: &str = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, 'platform', 'platform', ?)";
+        const Q_PLATFORM_PG: &str = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, 'platform', 'platform', $2)";
+
         // クリエイターへの分配
-        let q_creator = "INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, ?, 'creator', ?)";
-        // Note: RevenueSplitter doesn't have access to pool for placeholders,
-        // but for SQLite/Postgres simple INSERTs, '?' often works if using Any,
-        // however our DatabaseTransaction variants use specific drivers.
-        // For simplicity, we assume '?' currently, but let's be robust.
+        shared::sql_tx_exec!(
+            tx,
+            sqlite: Q_CREATOR_SQLITE,
+            pg: Q_CREATOR_PG,
+            tx_id,
+            creator_id.to_string(),
+            creator_amount
+        )?;
 
-        match tx {
-            DatabaseTransaction::Sqlite(itx) => {
-                sqlx::query(q_creator)
-                    .bind(tx_id)
-                    .bind(creator_id.to_string())
-                    .bind(creator_amount)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-
-                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES (?, 'platform', 'platform', ?)")
-                    .bind(tx_id)
-                    .bind(platform_amount)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-            }
-            DatabaseTransaction::Postgres(itx) => {
-                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, $2, 'creator', $3)")
-                    .bind(tx_id)
-                    .bind(creator_id.to_string())
-                    .bind(creator_amount)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-
-                sqlx::query("INSERT INTO revenue_splits (tx_id, recipient_id, role, amount) VALUES ($1, 'platform', 'platform', $2)")
-                    .bind(tx_id)
-                    .bind(platform_amount)
-                    .execute(&mut **itx)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
-            }
-        }
+        // プラットフォーム手数料の分配
+        shared::sql_tx_exec!(
+            tx,
+            sqlite: Q_PLATFORM_SQLITE,
+            pg: Q_PLATFORM_PG,
+            tx_id,
+            platform_amount
+        )?;
 
         Ok(())
     }

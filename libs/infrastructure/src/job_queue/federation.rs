@@ -237,16 +237,32 @@ impl FederationOps for UniversalJobQueue {
         Ok(())
     }
 
-    async fn do_get_peer_sync_time(&self, _peer_url: &str) -> Result<Option<String>, AiomeError> {
-        Ok(None)
+    async fn do_get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError> {
+        let q = format!(
+            "SELECT last_sync_at FROM peer_sync_times WHERE peer_url = {}",
+            self.pool.ph(0)
+        );
+        let opt: Option<(String,)> =
+            crate::sql_fetch_optional!(&self.pool, (String,), &q, peer_url)?;
+        Ok(opt.map(|r| r.0))
     }
 
     async fn do_update_peer_sync_time(
         &self,
-        _peer_url: &str,
-        _sync_time: &str,
+        peer_url: &str,
+        sync_time: &str,
     ) -> Result<(), AiomeError> {
-        Ok(())
+        let q = match &self.pool {
+            crate::db::DatabasePool::Sqlite(_) => format!(
+                "INSERT OR REPLACE INTO peer_sync_times (peer_url, last_sync_at) VALUES ({}, {})",
+                self.pool.ph(0), self.pool.ph(1)
+            ),
+            crate::db::DatabasePool::Postgres(_) => format!(
+                "INSERT INTO peer_sync_times (peer_url, last_sync_at) VALUES ({}, {}) ON CONFLICT(peer_url) DO UPDATE SET last_sync_at = EXCLUDED.last_sync_at",
+                self.pool.ph(0), self.pool.ph(1)
+            ),
+        };
+        crate::sql_exec!(&self.pool, &q, peer_url, sync_time).map(|_| ())
     }
 
     async fn do_fetch_unfederated_data(

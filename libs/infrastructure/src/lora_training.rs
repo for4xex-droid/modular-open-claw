@@ -808,12 +808,12 @@ mod tests {
         // RED test: Should assert that weights are moved to the vault.
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, None, None, None, None);
-        let tmp = tempdir().unwrap(); // allow-anti-pattern
+        let tmp = tempdir().unwrap();
         let output_dir = tmp.path().join("output").to_string_lossy().to_string();
         let vault_path = tmp.path().join("vault").to_string_lossy().to_string();
 
         let dataset_path = tmp.path().join("dataset.jsonl");
-        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap(); // allow-anti-pattern
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
 
         let config = LoraTrainingConfig {
             base_model: "test-model".into(),
@@ -853,12 +853,12 @@ mod tests {
         // RED test: Should assert that Modelfile is created for auto-registration
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, None, None, None, None);
-        let tmp = tempdir().unwrap(); // allow-anti-pattern
+        let tmp = tempdir().unwrap();
         let output_dir = tmp.path().join("output").to_string_lossy().to_string();
         let vault_path = tmp.path().join("vault").to_string_lossy().to_string();
 
         let dataset_path = tmp.path().join("dataset.jsonl");
-        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap(); // allow-anti-pattern
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
 
         let config = LoraTrainingConfig {
             base_model: "test-model".into(),
@@ -895,9 +895,9 @@ mod tests {
         use crate::test_utils::job_queue_mock::{GlobalMockJobQueue, GlobalMockLlm};
 
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
-        let tmp = tempdir().unwrap(); // allow-anti-pattern
+        let tmp = tempdir().unwrap();
         let soul_path = tmp.path().join("SOUL.md");
-        std::fs::write(&soul_path, "Initial Soul").unwrap(); // allow-anti-pattern
+        std::fs::write(&soul_path, "Initial Soul").unwrap();
 
         // Setup mock LLM that returns a specific mutation
         let mutator = Arc::new(SoulMutator::new(
@@ -914,16 +914,16 @@ mod tests {
 
         let dataset_dir = &datasets_dir;
         let dataset_path = dataset_dir.join("test_dataset");
-        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap(); // allow-anti-pattern
+        std::fs::write(&dataset_path, "{\"text\": \"hello\"}").unwrap();
 
         // When implemented, this should trigger SoulMutator
         let res = service.train("test", "test_dataset", serde_json::json!({}));
-        res.await.unwrap(); // allow-anti-pattern
+        res.await.unwrap();
 
         // Give it enough time to spawn python and execute (which should be fast as it's mocked, but still)
         tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
 
-        let mutated_content = std::fs::read_to_string(&soul_path).unwrap(); // allow-anti-pattern
+        let mutated_content = std::fs::read_to_string(&soul_path).unwrap();
 
         let _ = std::fs::remove_file(&dataset_path);
 
@@ -947,7 +947,7 @@ mod tests {
         let core = Arc::new(aiome_core::lora::engine::LoraEngine::new());
         let service = LoraTrainingService::new(core, Some(mutator), Some(jq), None, None);
 
-        let health = service.health_check().await.unwrap(); // allow-anti-pattern
+        let health = service.health_check().await.unwrap();
         assert!(
             health,
             "Health check should pass in test environment (STUB mode)"

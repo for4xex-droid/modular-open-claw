@@ -6,18 +6,13 @@
  */
 
 use aiome_core::error::AiomeError;
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    Json,
-};
-use serde_json::json;
+use axum::response::{IntoResponse, Response};
 
 pub struct AppError(pub AiomeError);
 
 impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -27,7 +22,26 @@ impl std::fmt::Debug for AppError {
     }
 }
 
+impl std::error::Error for AppError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl From<AiomeError> for AppError {
+    fn from(err: AiomeError) -> Self {
+        Self(err)
+    }
+}
+
 impl AppError {
+    /// Unauthorized (401 Unauthorized)
+    pub fn unauthorized(reason: impl Into<String>) -> Self {
+        Self(AiomeError::Unauthorized {
+            reason: reason.into(),
+        })
+    }
+
     /// SEC-2: IDOR/ Authorization error (403 Forbidden)
     pub fn forbidden(reason: impl Into<String>) -> Self {
         Self(AiomeError::SecurityViolation {
@@ -57,15 +71,12 @@ impl AppError {
     }
 }
 
-impl From<AiomeError> for AppError {
-    fn from(err: AiomeError) -> Self {
-        Self(err)
-    }
-}
-
 impl From<anyhow::Error> for AppError {
     fn from(err: anyhow::Error) -> Self {
-        Self(AiomeError::OsError { source: err })
+        match err.downcast::<AiomeError>() {
+            Ok(aiome_err) => Self(aiome_err),
+            Err(err) => Self(AiomeError::OsError { source: err }),
+        }
     }
 }
 
@@ -73,6 +84,14 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {
     fn from(err: Box<dyn std::error::Error + Send + Sync>) -> Self {
         Self(AiomeError::OsError {
             source: anyhow::anyhow!("{}", err),
+        })
+    }
+}
+
+impl From<shared::bootstrap_detector::FactoryResetError> for AppError {
+    fn from(err: shared::bootstrap_detector::FactoryResetError) -> Self {
+        Self(AiomeError::Infrastructure {
+            reason: format!("Factory reset failed: {}", err),
         })
     }
 }

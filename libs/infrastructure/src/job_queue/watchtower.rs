@@ -79,17 +79,22 @@ impl WatchtowerOps for UniversalJobQueue {
         metadata: Option<serde_json::Value>,
     ) -> Result<(), AiomeError> {
         let meta_str = metadata.map(|m| m.to_string());
-        let q = format!(
-            "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES ({0}, {1}, {2}, {3})",
-            self.pool.ph(0),
-            self.pool.ph(1),
-            self.pool.ph(2),
-            self.pool.ph(3)
-        );
-        sql_exec!(&self.pool, &q, channel_id, role, content, meta_str).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: format!("Failed to insert chat history: {}", e),
-            }
+
+        const Q_INSERT_SQLITE: &str =
+            "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, ?, ?, ?)";
+        const Q_INSERT_PG: &str = "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES ($1, $2, $3, $4)";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_INSERT_SQLITE,
+            pg: Q_INSERT_PG,
+            channel_id,
+            role,
+            content,
+            meta_str
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to insert chat history: {}", e),
         })?;
         Ok(())
     }
@@ -99,41 +104,23 @@ impl WatchtowerOps for UniversalJobQueue {
         channel_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        let q = format!("SELECT id, role, content, metadata FROM chat_history WHERE channel_id = {0} AND is_distilled = 0 ORDER BY id DESC LIMIT {1}", self.pool.ph(0), self.pool.ph(1));
+        const Q_FETCH_SQLITE: &str = "SELECT id, role, content, metadata FROM chat_history WHERE channel_id = ? AND is_distilled = 0 ORDER BY id DESC LIMIT ?";
+        const Q_FETCH_PG: &str = "SELECT id, role, content, metadata FROM chat_history WHERE channel_id = $1 AND is_distilled = 0 ORDER BY id DESC LIMIT $2";
+
+        let rows: Vec<(i64, String, String, Option<String>)> = crate::sql_fetch_all!(
+            &self.pool,
+            (i64, String, String, Option<String>),
+            sqlite: Q_FETCH_SQLITE,
+            pg: Q_FETCH_PG,
+            channel_id,
+            limit
+        )?;
+
         let mut messages = Vec::new();
-        match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(channel_id)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                for row in rows {
-                    let meta_str: Option<String> = row.try_get("metadata").ok().flatten();
-                    let metadata: Option<serde_json::Value> =
-                        meta_str.and_then(|s| serde_json::from_str(&s).ok());
-                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content"), "metadata": metadata }));
-                }
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(channel_id)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                for row in rows {
-                    let meta_str: Option<String> = row.try_get("metadata").ok().flatten();
-                    let metadata: Option<serde_json::Value> =
-                        meta_str.and_then(|s| serde_json::from_str(&s).ok());
-                    messages.push(serde_json::json!({ "id": row.get::<i64, _>("id"), "role": row.get::<String, _>("role"), "content": row.get::<String, _>("content"), "metadata": metadata }));
-                }
-            }
+        for row in rows {
+            let metadata: Option<serde_json::Value> =
+                row.3.and_then(|s| serde_json::from_str(&s).ok());
+            messages.push(serde_json::json!({ "id": row.0, "role": row.1, "content": row.2, "metadata": metadata }));
         }
         messages.reverse();
         Ok(messages)
@@ -143,13 +130,19 @@ impl WatchtowerOps for UniversalJobQueue {
         &self,
         channel_id: &str,
     ) -> Result<Option<(String, Option<String>)>, AiomeError> {
-        let q = format!(
-            "SELECT summary, last_interaction_id FROM chat_memory_summaries WHERE channel_id = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<(String, Option<String>)> =
-            crate::sql_fetch_optional!(&self.pool, (String, Option<String>), &q, channel_id)
-                .unwrap_or(None);
+        const Q_SUM_SQLITE: &str =
+            "SELECT summary, last_interaction_id FROM chat_memory_summaries WHERE channel_id = ?";
+        const Q_SUM_PG: &str =
+            "SELECT summary, last_interaction_id FROM chat_memory_summaries WHERE channel_id = $1";
+
+        let opt: Option<(String, Option<String>)> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String, Option<String>),
+            sqlite: Q_SUM_SQLITE,
+            pg: Q_SUM_PG,
+            channel_id
+        )
+        .unwrap_or(None);
         Ok(opt)
     }
 
@@ -159,56 +152,38 @@ impl WatchtowerOps for UniversalJobQueue {
         summary: &str,
         last_interaction_id: Option<&str>,
     ) -> Result<(), AiomeError> {
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ({0}, {1}, {2}, {3}) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, last_interaction_id = EXCLUDED.last_interaction_id, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.now_fn()),
-        };
-        sql_exec!(&self.pool, &q, channel_id, summary, last_interaction_id)?;
+        const SQLITE_Q: &str = "INSERT OR REPLACE INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES (?, ?, ?, datetime('now'))";
+        const PG_Q: &str = "INSERT INTO chat_memory_summaries (channel_id, summary, last_interaction_id, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (channel_id) DO UPDATE SET summary = EXCLUDED.summary, last_interaction_id = EXCLUDED.last_interaction_id, updated_at = EXCLUDED.updated_at";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: SQLITE_Q,
+            pg: PG_Q,
+            channel_id,
+            summary,
+            last_interaction_id
+        )?;
         Ok(())
     }
 
     async fn do_fetch_undistilled_chats_by_channel(
         &self,
     ) -> Result<HashMap<String, Vec<(i64, String, String)>>, AiomeError> {
-        let q = "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC";
+        const Q_UND_SQLITE: &str = "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC";
+        const Q_UND_PG: &str = "SELECT id, channel_id, role, content FROM chat_history WHERE is_distilled = 0 ORDER BY channel_id ASC, id ASC";
+
         let mut map = HashMap::new();
-        match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let rows =
-                    sqlx::query(q)
-                        .fetch_all(p)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                for row in rows {
-                    let id: i64 = row.get("id");
-                    let channel_id: String = row.get("channel_id");
-                    let role: String = row.get("role");
-                    let content: String = row.get("content");
-                    map.entry(channel_id)
-                        .or_insert_with(Vec::new)
-                        .push((id, role, content));
-                }
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let rows =
-                    sqlx::query(q)
-                        .fetch_all(p)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                for row in rows {
-                    let id: i64 = row.get("id");
-                    let channel_id: String = row.get("channel_id");
-                    let role: String = row.get("role");
-                    let content: String = row.get("content");
-                    map.entry(channel_id)
-                        .or_insert_with(Vec::new)
-                        .push((id, role, content));
-                }
-            }
+        let rows: Vec<(i64, String, String, String)> = crate::sql_fetch_all!(
+            &self.pool,
+            (i64, String, String, String),
+            sqlite: Q_UND_SQLITE,
+            pg: Q_UND_PG
+        )?;
+
+        for row in rows {
+            map.entry(row.1)
+                .or_insert_with(Vec::new)
+                .push((row.0, row.2, row.3));
         }
         Ok(map)
     }
@@ -218,22 +193,33 @@ impl WatchtowerOps for UniversalJobQueue {
         channel_id: &str,
         up_to_id: i64,
     ) -> Result<(), AiomeError> {
-        let q = format!(
-            "UPDATE chat_history SET is_distilled = 1 WHERE channel_id = {0} AND id <= {1}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
-        sql_exec!(&self.pool, &q, channel_id, up_to_id)?;
+        const Q_MARK_SQLITE: &str =
+            "UPDATE chat_history SET is_distilled = 1 WHERE channel_id = ? AND id <= ?";
+        const Q_MARK_PG: &str =
+            "UPDATE chat_history SET is_distilled = 1 WHERE channel_id = $1 AND id <= $2";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_MARK_SQLITE,
+            pg: Q_MARK_PG,
+            channel_id,
+            up_to_id
+        )?;
         Ok(())
     }
 
     async fn do_purge_old_distilled_chats(&self, days: i64) -> Result<u64, AiomeError> {
         let ts_expr = self.pool.now_with_dynamic_days_interval(0);
-        let q = format!(
+        let sqlite_q = format!(
             "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < {}",
             ts_expr
         );
-        let res = sql_exec!(&self.pool, &q, -days)?;
+        let pg_q = format!(
+            "DELETE FROM chat_history WHERE is_distilled = 1 AND created_at < {}",
+            ts_expr
+        );
+
+        let res = crate::sql_exec!(&self.pool, sqlite: &sqlite_q, pg: &pg_q, -days)?;
         Ok(res)
     }
 
@@ -241,15 +227,22 @@ impl WatchtowerOps for UniversalJobQueue {
         &self,
         threshold: i64,
     ) -> Result<Vec<String>, AiomeError> {
-        let q = format!(
-            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > {}",
-            self.pool.ph(0)
-        );
-        let keys: Vec<String> = crate::sql_fetch_all!(&self.pool, (String,), &q, threshold)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|r| r.0)
-            .collect();
+        const Q_FETCH_SKILLS_SQLITE: &str =
+            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > ?";
+        const Q_FETCH_SKILLS_PG: &str =
+            "SELECT related_skill FROM karma_logs GROUP BY related_skill HAVING COUNT(id) > $1";
+
+        let keys: Vec<String> = crate::sql_fetch_all!(
+            &self.pool,
+            (String,),
+            sqlite: Q_FETCH_SKILLS_SQLITE,
+            pg: Q_FETCH_SKILLS_PG,
+            threshold
+        )
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| r.0)
+        .collect();
         Ok(keys)
     }
 
@@ -257,18 +250,33 @@ impl WatchtowerOps for UniversalJobQueue {
         &self,
         skill: &str,
     ) -> Result<Vec<(String, String)>, AiomeError> {
-        let q = format!(
-            "SELECT id, lesson FROM karma_logs WHERE related_skill = {}",
-            self.pool.ph(0)
-        );
-        let pairs: Vec<(String, String)> =
-            crate::sql_fetch_all!(&self.pool, (String, String), &q, skill).unwrap_or_default();
+        const Q_RAW_SQLITE: &str = "SELECT id, lesson FROM karma_logs WHERE related_skill = ?";
+        const Q_RAW_PG: &str = "SELECT id, lesson FROM karma_logs WHERE related_skill = $1";
+
+        let pairs: Vec<(String, String)> = crate::sql_fetch_all!(
+            &self.pool,
+            (String, String),
+            sqlite: Q_RAW_SQLITE,
+            pg: Q_RAW_PG,
+            skill
+        )
+        .unwrap_or_default();
         Ok(pairs)
     }
 
     async fn do_adjust_karma_weight(&self, karma_id: &str, delta: i32) -> Result<(), AiomeError> {
-        let q = format!("UPDATE karma_logs SET weight = CASE WHEN weight + {0} < 0 THEN 0 WHEN weight + {1} > 100 THEN 100 ELSE weight + {2} END WHERE id = {3}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3));
-        sql_exec!(&self.pool, &q, delta, delta, delta, karma_id)?;
+        const Q_ADJ_SQLITE: &str = "UPDATE karma_logs SET weight = CASE WHEN weight + ? < 0 THEN 0 WHEN weight + ? > 100 THEN 100 ELSE weight + ? END WHERE id = ?";
+        const Q_ADJ_PG: &str = "UPDATE karma_logs SET weight = CASE WHEN weight + $1 < 0 THEN 0 WHEN weight + $2 > 100 THEN 100 ELSE weight + $3 END WHERE id = $4";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_ADJ_SQLITE,
+            pg: Q_ADJ_PG,
+            delta,
+            delta,
+            delta,
+            karma_id
+        )?;
         Ok(())
     }
 
@@ -333,15 +341,19 @@ impl WatchtowerOps for UniversalJobQueue {
 
                     if !targets.is_empty() {
                         // 該当するコンテンツをアーカイブ。
-                        let q_slm = format!(
+                        let q_slm_sqlite = format!(
                             "UPDATE karma_logs SET is_archived = 1 WHERE content IN ({}) AND is_archived = 0",
-                            targets.iter().map(|_| self.pool.ph(0)).collect::<Vec<_>>().join(", ")
+                            targets.iter().map(|_| "?").collect::<Vec<_>>().join(", ")
+                        );
+                        let q_slm_pg = format!(
+                            "UPDATE karma_logs SET is_archived = 1 WHERE content IN ({}) AND is_archived = 0",
+                            targets.iter().enumerate().map(|(i, _)| format!("${}", i + 1)).collect::<Vec<_>>().join(", ")
                         );
 
                         // 動的バインドが必要なため、各 db 実装に合わせて処理
                         match &self.pool {
                             crate::db::DatabasePool::Sqlite(p) => {
-                                let mut query = sqlx::query(&q_slm);
+                                let mut query = sqlx::query(&q_slm_sqlite);
                                 for t in &targets {
                                     query = query.bind(t);
                                 }
@@ -352,7 +364,7 @@ impl WatchtowerOps for UniversalJobQueue {
                                     .unwrap_or(0);
                             }
                             crate::db::DatabasePool::Postgres(p) => {
-                                let mut query = sqlx::query(&q_slm);
+                                let mut query = sqlx::query(&q_slm_pg);
                                 for t in &targets {
                                     query = query.bind(t);
                                 }
@@ -396,68 +408,35 @@ impl WatchtowerOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let q1 = format!(
-            "UPDATE karma_logs SET is_archived = 1 WHERE id = {}",
-            self.pool.ph(0)
-        );
+        const Q1_SQLITE: &str = "UPDATE karma_logs SET is_archived = 1 WHERE id = ?";
+        const Q1_PG: &str = "UPDATE karma_logs SET is_archived = 1 WHERE id = $1";
+
         for id in old_karma_ids {
-            match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => {
-                    sqlx::query(&q1)
-                        .bind(id)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-                crate::db::DatabaseTransaction::Postgres(t) => {
-                    sqlx::query(&q1)
-                        .bind(id)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-            }
+            crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q1_SQLITE,
+                pg: Q1_PG,
+                id
+            )?;
         }
+
         let new_id = uuid::Uuid::new_v4().to_string();
         let domain = domain.unwrap_or("general");
-        let q2 = format!("INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id) VALUES ({0}, 'Synthesized', {1}, {2}, 100, {3}, {4}, {5}, {6}, {7})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn(), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6));
-        match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q2)
-                    .bind(&new_id)
-                    .bind(skill)
-                    .bind(distilled_lesson)
-                    .bind(soul_hash)
-                    .bind(domain)
-                    .bind(subtopic)
-                    .bind(clone_origin_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q2)
-                    .bind(&new_id)
-                    .bind(skill)
-                    .bind(distilled_lesson)
-                    .bind(soul_hash)
-                    .bind(domain)
-                    .bind(subtopic)
-                    .bind(clone_origin_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        const Q2_SQLITE: &str = "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id) VALUES (?, 'Synthesized', ?, ?, 100, ?, datetime('now'), ?, ?, ?)";
+        const Q2_PG: &str = "INSERT INTO karma_logs (id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic, clone_origin_id) VALUES ($1, 'Synthesized', $2, $3, 100, $4, NOW(), $5, $6, $7)";
+
+        crate::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q2_SQLITE,
+            pg: Q2_PG,
+            &new_id,
+            skill,
+            distilled_lesson,
+            soul_hash,
+            domain,
+            subtopic,
+            clone_origin_id
+        )?;
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),
         })?;
@@ -472,57 +451,42 @@ impl WatchtowerOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let q1 = format!(
-            "UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = {}",
-            self.pool.ph(0)
-        );
-        let q2 = format!(
-            "SELECT retry_count FROM sns_metrics_history WHERE id = {}",
-            self.pool.ph(0)
-        );
-        let count: i64 = match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q1)
-                    .bind(record_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                sqlx::query(&q2)
-                    .bind(record_id)
-                    .fetch_one(&mut **t)
-                    .await
-                    .map(|r| r.get("retry_count"))
-                    .unwrap_or(0)
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q1)
-                    .bind(record_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                sqlx::query(&q2)
-                    .bind(record_id)
-                    .fetch_one(&mut **t)
-                    .await
-                    .map(|r| r.get("retry_count"))
-                    .unwrap_or(0)
-            }
-        };
+        const Q1_SQLITE: &str =
+            "UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = ?";
+        const Q1_PG: &str =
+            "UPDATE sns_metrics_history SET retry_count = retry_count + 1 WHERE id = $1";
+
+        crate::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            record_id
+        )?;
+
+        const Q2_SQLITE: &str = "SELECT retry_count FROM sns_metrics_history WHERE id = ?";
+        const Q2_PG: &str = "SELECT retry_count FROM sns_metrics_history WHERE id = $1";
+
+        let count: i64 = crate::sql_tx_fetch_one!(
+            &mut tx,
+            (i64,),
+            sqlite: Q2_SQLITE,
+            pg: Q2_PG,
+            record_id
+        )
+        .map(|r| r.0)
+        .unwrap_or(0);
 
         if count >= 3 {
-            let q3 = format!("UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = {}", self.pool.ph(0));
-            match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => {
-                    let _ = sqlx::query(&q3).bind(record_id).execute(&mut **t).await;
-                }
-                crate::db::DatabaseTransaction::Postgres(t) => {
-                    let _ = sqlx::query(&q3).bind(record_id).execute(&mut **t).await;
-                }
-            }
+            const Q3_SQLITE: &str = "UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?";
+            const Q3_PG: &str = "UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = $1";
+
+            let _ = crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q3_SQLITE,
+                pg: Q3_PG,
+                record_id
+            );
+
             let _ = tx.commit().await;
             Ok(true)
         } else {

@@ -27,8 +27,11 @@ impl MockA2aClient {
     pub fn enqueue_responses(&self, response_stream: Vec<Result<A2aTaskProgress, AiomeError>>) {
         self.responses
             .lock()
-            .expect("Lock poisoned") // allow-anti-pattern
-            .push(response_stream); // allow-anti-pattern
+            .unwrap_or_else(|_| {
+                tracing::error!("FATAL: Lock poisoned in mock A2aClient");
+                std::process::exit(1);
+            })
+            .push(response_stream);
     }
 }
 
@@ -38,7 +41,12 @@ impl A2aClient for MockA2aClient {
         &self,
         request: A2aTaskRequest,
     ) -> Result<BoxStream<'static, Result<A2aTaskProgress, AiomeError>>, AiomeError> {
-        let mut responses = self.responses.lock().expect("Lock poisoned"); // allow-anti-pattern
+        let mut responses = self
+            .responses
+            .lock()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Lock poisoned in mock A2aClient: {}", e),
+            })?;
         let stream_items = if !responses.is_empty() {
             responses.remove(0)
         } else {

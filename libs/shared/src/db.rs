@@ -255,8 +255,32 @@ impl DatabasePool {
 }
 
 /// Helper macro to execute a query against either SQLite or PostgreSQL
+/// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]
 macro_rules! sql_exec {
+    // Dual dialect mode
+    ($pool:expr, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res = sqlx::query($sql_sqlite)
+                    $(.bind($arg))*
+                    .execute(p)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res = sqlx::query($sql_pg)
+                    $(.bind($arg))*
+                    .execute(p)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+
+    // Single query mode
     ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
         match $pool {
             $crate::db::DatabasePool::Sqlite(p) => {
@@ -280,8 +304,30 @@ macro_rules! sql_exec {
 }
 
 /// Helper macro to fetch multiple rows
+/// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]
 macro_rules! sql_fetch_all {
+    // Dual dialect mode
+    ($pool:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_all(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_all(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+
+    // Single query mode
     ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
         match $pool {
             $crate::db::DatabasePool::Sqlite(p) => {
@@ -303,8 +349,30 @@ macro_rules! sql_fetch_all {
 }
 
 /// Helper macro to fetch exactly one row
+/// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]
 macro_rules! sql_fetch_one {
+    // Dual dialect mode
+    ($pool:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_one(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_one(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+
+    // Single query mode
     ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
         match $pool {
             $crate::db::DatabasePool::Sqlite(p) => {
@@ -326,8 +394,30 @@ macro_rules! sql_fetch_one {
 }
 
 /// Helper macro to fetch an optional row
+/// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]
 macro_rules! sql_fetch_optional {
+    // Dual dialect mode
+    ($pool:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $pool {
+            $crate::db::DatabasePool::Sqlite(p) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_optional(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabasePool::Postgres(p) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_optional(p)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+
+    // Single query mode
     ($pool:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
         match $pool {
             $crate::db::DatabasePool::Sqlite(p) => {
@@ -348,6 +438,178 @@ macro_rules! sql_fetch_optional {
     }};
 }
 
+/// Helper macro to execute a query against a DatabaseTransaction.
+/// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
+#[macro_export]
+macro_rules! sql_tx_exec {
+    // Dual dialect mode (to avoid format! allocation overhead with different placeholders)
+    ($tx:expr, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res = sqlx::query($sql_sqlite)
+                    $(.bind($arg))*
+                    .execute(&mut **itx)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res = sqlx::query($sql_pg)
+                    $(.bind($arg))*
+                    .execute(&mut **itx)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+
+    // Single query mode
+    ($tx:expr, $sql:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res = sqlx::query($sql)
+                    $(.bind($arg))*
+                    .execute(&mut **itx)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res = sqlx::query($sql)
+                    $(.bind($arg))*
+                    .execute(&mut **itx)
+                    .await;
+                res.map(|r| r.rows_affected())
+                   .map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+/// Helper macro to fetch multiple rows using a DatabaseTransaction
+#[macro_export]
+macro_rules! sql_tx_fetch_all {
+    ($tx:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_all(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_all(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+    ($tx:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_all(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<Vec<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_all(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+/// Helper macro to fetch an optional row using a DatabaseTransaction
+#[macro_export]
+macro_rules! sql_tx_fetch_optional {
+    ($tx:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_optional(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_optional(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+    ($tx:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_optional(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<Option<$output_type>, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_optional(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
+/// Helper macro to fetch exactly one row using a DatabaseTransaction
+#[macro_export]
+macro_rules! sql_tx_fetch_one {
+    ($tx:expr, $output_type:ty, sqlite: $sql_sqlite:expr, pg: $sql_pg:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql_sqlite)
+                    $(.bind($arg))*
+                    .fetch_one(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql_pg)
+                    $(.bind($arg))*
+                    .fetch_one(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+    ($tx:expr, $output_type:ty, $sql:expr $(, $arg:expr)*) => {{
+        match $tx {
+            $crate::db::DatabaseTransaction::Sqlite(itx) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_one(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+            $crate::db::DatabaseTransaction::Postgres(itx) => {
+                let res: Result<$output_type, sqlx::Error> = sqlx::query_as($sql)
+                    $(.bind($arg))*
+                    .fetch_one(&mut **itx)
+                    .await;
+                res.map_err(|e: sqlx::Error| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+            }
+        }
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,5 +623,36 @@ mod tests {
     async fn test_sql_exec_macro_exists_in_shared() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
         let _ = sql_exec!(&pool, "CREATE TABLE test_table (id INTEGER PRIMARY KEY)");
+    }
+
+    #[tokio::test]
+    async fn test_sql_tx_exec_macro_dual_const() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+
+        // Setup table
+        let _ = sql_exec!(
+            &pool,
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)"
+        );
+
+        // Test transaction macros
+        let mut tx = pool.begin().await.unwrap();
+
+        const Q_INSERT_SQLITE: &str = "INSERT INTO users (name) VALUES (?)";
+        const Q_INSERT_PG: &str = "INSERT INTO users (name) VALUES ($1)";
+
+        let res =
+            sql_tx_exec!(&mut tx, sqlite: Q_INSERT_SQLITE, pg: Q_INSERT_PG, "alice".to_string());
+        assert!(res.is_ok());
+
+        // Test optional fetch
+        const Q_SELECT_SQLITE: &str = "SELECT name FROM users WHERE id = ?";
+        const Q_SELECT_PG: &str = "SELECT name FROM users WHERE id = $1";
+
+        // Since we are running tests with SQLite, it will use the sqlite: arm
+        let fetch_res: Result<Option<(String,)>, _> = sql_tx_fetch_optional!(&mut tx, (String,), sqlite: Q_SELECT_SQLITE, pg: Q_SELECT_PG, 1_i64);
+        assert_eq!(fetch_res.unwrap().unwrap().0, "alice");
+
+        tx.commit().await.unwrap();
     }
 }

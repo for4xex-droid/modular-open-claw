@@ -73,7 +73,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-05-04 (Asia/Tokyo) - MCP Server Management Dashboard added*
+*最終更新: 2026-05-08 (Asia/Tokyo) - Error Handling Zero-Panic Hardening*
 
 ## Phase 6 Integration Notes
 

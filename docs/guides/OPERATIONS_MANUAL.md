@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-08
 
 ---
 
@@ -57,6 +57,14 @@ SEARCH_API_KEY=your_brave_search_or_tavily_api_key
 X_BEARER_TOKEN=your_x_twitter_bearer_token
 WP_API_URL=https://your-wordpress-site.com
 WP_API_TOKEN=your_jwt_or_app_password
+
+# --- MCP Tool API Keys ---
+DISCORD_TOKEN=your_discord_bot_token
+NOTION_API_KEY=your_notion_integration_token
+X_API_KEY=your_x_api_key
+X_API_SECRET=your_x_api_secret
+X_ACCESS_TOKEN=your_x_access_token
+X_ACCESS_TOKEN_SECRET=your_x_access_token_secret
 
 # --- オプション (デフォルト値あり) ---
 AIOME_DB_PATH=sqlite://workspace/aiome.db       # DBパス

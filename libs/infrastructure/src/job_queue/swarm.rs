@@ -55,12 +55,18 @@ impl SwarmOps for UniversalJobQueue {
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
-        let q = format!(
-            "SELECT turn_count, status FROM biome_topics WHERE topic_id = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<(i32, String)> =
-            crate::sql_fetch_optional!(&self.pool, (i32, String), &q, topic_id).unwrap_or(None);
+        const Q_STATUS_SQLITE: &str =
+            "SELECT turn_count, status FROM biome_topics WHERE topic_id = ?";
+        const Q_STATUS_PG: &str = "SELECT turn_count, status FROM biome_topics WHERE topic_id = $1";
+
+        let opt: Option<(i32, String)> = crate::sql_fetch_optional!(
+            &self.pool,
+            (i32, String),
+            sqlite: Q_STATUS_SQLITE,
+            pg: Q_STATUS_PG,
+            topic_id
+        )
+        .unwrap_or(None);
         Ok(opt.map(|(c, s)| (c, Some(s))))
     }
 
@@ -69,24 +75,36 @@ impl SwarmOps for UniversalJobQueue {
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError> {
-        let q_check = format!(
-            "SELECT turn_count FROM biome_topics WHERE topic_id = {}",
-            self.pool.ph(0)
-        );
-        let current: i32 = crate::sql_fetch_optional!(&self.pool, (i32,), &q_check, topic_id)
-            .unwrap_or(None)
-            .map(|r| r.0)
-            .unwrap_or(0);
+        const Q_CHECK_SQLITE: &str = "SELECT turn_count FROM biome_topics WHERE topic_id = ?";
+        const Q_CHECK_PG: &str = "SELECT turn_count FROM biome_topics WHERE topic_id = $1";
+
+        let current: i32 = crate::sql_fetch_optional!(
+            &self.pool,
+            (i32,),
+            sqlite: Q_CHECK_SQLITE,
+            pg: Q_CHECK_PG,
+            topic_id
+        )
+        .unwrap_or(None)
+        .map(|r| r.0)
+        .unwrap_or(0);
 
         let next = current + 1;
         let cooldown_ts =
             (chrono::Utc::now() + chrono::Duration::minutes(cooldown_minutes)).to_rfc3339();
 
-        let q_upsert = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, {2}) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = {2}", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ({0}, 'peer', 'Active', {1}, {2}::timestamptz) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = {2}::timestamptz", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2)),
-        };
-        crate::sql_exec!(&self.pool, &q_upsert, topic_id, 1, cooldown_ts)?;
+        const Q_UPSERT_SQLITE: &str = "INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES (?, 'peer', 'Active', ?, ?) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = ?";
+        const Q_UPSERT_PG: &str = "INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ($1, 'peer', 'Active', $2, $3::timestamptz) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = $3::timestamptz";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_UPSERT_SQLITE,
+            pg: Q_UPSERT_PG,
+            topic_id,
+            1,
+            &cooldown_ts,
+            &cooldown_ts
+        )?;
         Ok(next)
     }
 
@@ -112,22 +130,31 @@ impl SwarmOps for UniversalJobQueue {
     }
 
     async fn do_archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
-        let q = format!(
-            "UPDATE biome_topics SET status = 'Archived' WHERE topic_id = {}",
-            self.pool.ph(0)
-        );
-        crate::sql_exec!(&self.pool, &q, topic_id)?;
+        const Q_ARC_SQLITE: &str = "UPDATE biome_topics SET status = 'Archived' WHERE topic_id = ?";
+        const Q_ARC_PG: &str = "UPDATE biome_topics SET status = 'Archived' WHERE topic_id = $1";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_ARC_SQLITE,
+            pg: Q_ARC_PG,
+            topic_id
+        )?;
         Ok(())
     }
 
     async fn do_get_node_id(&self) -> Result<String, AiomeError> {
-        let q1 = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<String> = crate::sql_fetch_optional!(&self.pool, (String,), &q1, "node_id")
-            .unwrap_or(None)
-            .map(|r| r.0);
+        const Q1_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q1_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let opt: Option<String> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String,),
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            "node_id"
+        )
+        .unwrap_or(None)
+        .map(|r| r.0);
 
         if let Some(val) = opt {
             Ok(val)
@@ -144,49 +171,24 @@ impl SwarmOps for UniversalJobQueue {
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: e.to_string(),
                 })?;
-            let q2 = format!(
-                "INSERT INTO system_state (key, value) VALUES ({}, {})",
-                self.pool.ph(0),
-                self.pool.ph(1)
-            );
-            match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => {
-                    sqlx::query(&q2)
-                        .bind("node_id")
-                        .bind(&pubkey_b64)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                    sqlx::query(&q2)
-                        .bind("node_privkey")
-                        .bind(&privkey_b64)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-                crate::db::DatabaseTransaction::Postgres(t) => {
-                    sqlx::query(&q2)
-                        .bind("node_id")
-                        .bind(&pubkey_b64)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                    sqlx::query(&q2)
-                        .bind("node_privkey")
-                        .bind(&privkey_b64)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-            }
+            const Q2_SQLITE: &str = "INSERT INTO system_state (key, value) VALUES (?, ?)";
+            const Q2_PG: &str = "INSERT INTO system_state (key, value) VALUES ($1, $2)";
+
+            crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q2_SQLITE,
+                pg: Q2_PG,
+                "node_id",
+                &pubkey_b64
+            )?;
+
+            crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q2_SQLITE,
+                pg: Q2_PG,
+                "node_privkey",
+                &privkey_b64
+            )?;
             tx.commit().await.map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
@@ -196,26 +198,18 @@ impl SwarmOps for UniversalJobQueue {
 
     async fn do_sign_swarm_payload(&self, payload: &str) -> Result<String, AiomeError> {
         let _ = self.do_get_node_id().await?;
-        let q = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind("node_privkey")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind("node_privkey")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        const Q_KEY_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q_KEY_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let opt: Option<String> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String,),
+            sqlite: Q_KEY_SQLITE,
+            pg: Q_KEY_PG,
+            "node_privkey"
+        )
+        .unwrap_or(None)
+        .map(|r| r.0);
 
         if let Some(privkey_b64) = opt {
             let priv_bytes =
@@ -249,63 +243,31 @@ impl SwarmOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let q1 = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let current: i64 = match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => sqlx::query(&q1)
-                .bind("logical_clock")
-                .fetch_one(&mut **t)
-                .await
-                .map(|r| {
-                    r.try_get::<String, _>("value")
-                        .unwrap_or_default()
-                        .parse()
-                        .unwrap_or(0)
-                })
-                .unwrap_or(0),
-            crate::db::DatabaseTransaction::Postgres(t) => sqlx::query(&q1)
-                .bind("logical_clock")
-                .fetch_one(&mut **t)
-                .await
-                .map(|r| {
-                    r.try_get::<String, _>("value")
-                        .unwrap_or_default()
-                        .parse()
-                        .unwrap_or(0)
-                })
-                .unwrap_or(0),
-        };
+        const Q1_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q1_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let current: i64 = crate::sql_tx_fetch_one!(
+            &mut tx,
+            (String,),
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            "logical_clock"
+        )
+        .map(|r| r.0.parse().unwrap_or(0))
+        .unwrap_or(0);
 
         let next = current + 1;
-        let q2 = format!(
-            "UPDATE system_state SET value = {} WHERE key = {}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
-        match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q2)
-                    .bind(next.to_string())
-                    .bind("logical_clock")
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q2)
-                    .bind(next.to_string())
-                    .bind("logical_clock")
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+
+        const Q2_SQLITE: &str = "UPDATE system_state SET value = ? WHERE key = ?";
+        const Q2_PG: &str = "UPDATE system_state SET value = $1 WHERE key = $2";
+
+        crate::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q2_SQLITE,
+            pg: Q2_PG,
+            next.to_string(),
+            "logical_clock"
+        )?;
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),
         })?;
@@ -320,34 +282,18 @@ impl SwarmOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let q1 = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let current: i64 = match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => sqlx::query(&q1)
-                .bind("logical_clock")
-                .fetch_one(&mut **t)
-                .await
-                .map(|r| {
-                    r.try_get::<String, _>("value")
-                        .unwrap_or_default()
-                        .parse()
-                        .unwrap_or(0)
-                })
-                .unwrap_or(0),
-            crate::db::DatabaseTransaction::Postgres(t) => sqlx::query(&q1)
-                .bind("logical_clock")
-                .fetch_one(&mut **t)
-                .await
-                .map(|r| {
-                    r.try_get::<String, _>("value")
-                        .unwrap_or_default()
-                        .parse()
-                        .unwrap_or(0)
-                })
-                .unwrap_or(0),
-        };
+        const Q1_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q1_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let current: i64 = crate::sql_tx_fetch_one!(
+            &mut tx,
+            (String,),
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            "logical_clock"
+        )
+        .map(|r| r.0.parse().unwrap_or(0))
+        .unwrap_or(0);
 
         if remote_clock > (current as u64) + 100_000 {
             warn!(
@@ -359,33 +305,17 @@ impl SwarmOps for UniversalJobQueue {
         }
 
         let next = std::cmp::max(current as u64, remote_clock) + 1;
-        let q2 = format!(
-            "UPDATE system_state SET value = {} WHERE key = {}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
-        match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q2)
-                    .bind(next.to_string())
-                    .bind("logical_clock")
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q2)
-                    .bind(next.to_string())
-                    .bind("logical_clock")
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+
+        const Q2_SQLITE: &str = "UPDATE system_state SET value = ? WHERE key = ?";
+        const Q2_PG: &str = "UPDATE system_state SET value = $1 WHERE key = $2";
+
+        crate::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q2_SQLITE,
+            pg: Q2_PG,
+            next.to_string(),
+            "logical_clock"
+        )?;
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
             reason: e.to_string(),
         })?;
@@ -393,70 +323,67 @@ impl SwarmOps for UniversalJobQueue {
     }
 
     async fn do_get_global_api_failures(&self) -> Result<i64, AiomeError> {
-        let q = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind("consecutive_api_failures")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind("consecutive_api_failures")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        const Q_FAIL_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q_FAIL_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let opt: Option<String> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String,),
+            sqlite: Q_FAIL_SQLITE,
+            pg: Q_FAIL_PG,
+            "consecutive_api_failures"
+        )
+        .unwrap_or(None)
+        .map(|r| r.0);
         Ok(opt.map(|v| v.parse().unwrap_or(0)).unwrap_or(0))
     }
 
     async fn do_record_global_api_failure(&self) -> Result<i64, AiomeError> {
         let current = self.do_get_global_api_failures().await?;
         let next = current + 1;
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
-        };
-        sql_exec!(&self.pool, &q, "consecutive_api_failures", next.to_string())?;
+        const SQLITE_Q: &str = "INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, datetime('now'))";
+        const PG_Q: &str = "INSERT INTO system_state (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: SQLITE_Q,
+            pg: PG_Q,
+            "consecutive_api_failures",
+            next.to_string()
+        )?;
         Ok(next)
     }
 
     async fn do_record_global_api_success(&self) -> Result<(), AiomeError> {
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2})", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_state (key, value, updated_at) VALUES ({0}, {1}, {2}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.now_fn()),
-        };
-        sql_exec!(&self.pool, &q, "consecutive_api_failures", "0")?;
+        let sqlite_q = format!(
+            "INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, {})",
+            self.pool.now_fn()
+        );
+        let pg_q = format!("INSERT INTO system_state (key, value, updated_at) VALUES ($1, $2, {}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.now_fn());
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: &sqlite_q,
+            pg: &pg_q,
+            "consecutive_api_failures",
+            "0"
+        )?;
         Ok(())
     }
 
     async fn do_get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError> {
-        let q1 = format!(
-            "SELECT value FROM system_state WHERE key = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<String> = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => sqlx::query_scalar(&q1)
-                .bind("system_agent_id")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q1)
-                .bind("system_agent_id")
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        const Q1_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
+        const Q1_PG: &str = "SELECT value FROM system_state WHERE key = $1";
+
+        let opt: Option<String> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String,),
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            "system_agent_id"
+        )
+        .unwrap_or(None)
+        .map(|r| r.0);
 
         if let Some(val) = opt {
             uuid::Uuid::parse_str(&val).map_err(|e| AiomeError::Infrastructure {
@@ -465,12 +392,17 @@ impl SwarmOps for UniversalJobQueue {
         } else {
             let new_id = uuid::Uuid::new_v4();
             let val = new_id.to_string();
-            let q2 = format!(
-                "INSERT INTO system_state (key, value) VALUES ({}, {})",
-                self.pool.ph(0),
-                self.pool.ph(1)
-            );
-            sql_exec!(&self.pool, &q2, "system_agent_id", &val)?;
+
+            const Q2_SQLITE: &str = "INSERT INTO system_state (key, value) VALUES (?, ?)";
+            const Q2_PG: &str = "INSERT INTO system_state (key, value) VALUES ($1, $2)";
+
+            crate::sql_exec!(
+                &self.pool,
+                sqlite: Q2_SQLITE,
+                pg: Q2_PG,
+                "system_agent_id",
+                &val
+            )?;
             Ok(new_id)
         }
     }

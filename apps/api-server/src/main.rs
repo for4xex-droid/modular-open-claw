@@ -129,15 +129,18 @@ async fn main() -> anyhow::Result<()> {
                 Ok(v) => v,
                 Err(_) => {
                     tracing::warn!(
-                        "⚠️ [Federation] FEDERATION_SYNC_INTERVAL='{}' is not a valid u64; defaulting to 3600s.",
+                        "⚠️ [Federation] FEDERATION_SYNC_INTERVAL='{}' is not a valid u64; defaulting to 300s.",
                         val
                     );
-                    3600
+                    300
                 }
             },
-            Err(_) => 3600,
+            Err(_) => 300,
         };
-        let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
+        // Thundering herd mitigation: jitter is computed once at startup.
+        // Each process gets a stable offset (0–29s), ensuring nodes don't synchronize in lockstep.
+        let jitter = rand::random::<u64>() % 30;
+        let mut interval = tokio::time::interval(Duration::from_secs(interval_secs + jitter));
         loop {
             tokio::select! {
                 _ = cancel_bg.cancelled() => {

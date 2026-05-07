@@ -71,7 +71,7 @@ impl TaskConductor for CsamScanConductor {
             }
 
             // A realistic implementation would load the image bytes and call:
-            // let hash = hasher.compute_hash(image_bytes).unwrap(); // allow-anti-pattern
+            // let hash = hasher.compute_hash(image_bytes).unwrap_or_default();
             // return hash;
 
             "dummy_clean_hash".to_string()

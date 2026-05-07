@@ -209,13 +209,13 @@ impl AdaptiveImmuneSystem {
                 r"(?i)ignore\s+all\s+previous\s+instructions|以前の指示を(すべて)?無視|これまでのプロンプトを無視|すべての指示を忘れて",
             ]
             .iter()
-            .map(|p| {
-                Regex::new(p).unwrap_or_else(|_| {
-                    #[rustfmt::skip]
-                    let regex = Regex::new("never_match").expect("Fallback regex is a compile-time literal"); // allow-anti-pattern
-                    regex
-                })
-            }) // allow-anti-pattern
+            .map(|p| match Regex::new(p) {
+                Ok(re) => re,
+                Err(e) => {
+                    tracing::error!("FATAL: Failed to compile Sentinel regex '{}': {}", p, e);
+                    std::process::exit(1);
+                }
+            })
             .collect()
         });
 

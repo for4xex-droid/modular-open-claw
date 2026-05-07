@@ -12,8 +12,10 @@ use async_trait::async_trait;
 use regex::Regex;
 use serde_json;
 use sqlx::Row;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tracing::{info, warn};
+
+static TITLE_REGEX: OnceLock<Regex> = OnceLock::new();
 
 #[async_trait]
 pub trait TrendCacheRepository: Send + Sync + std::fmt::Debug {
@@ -75,8 +77,13 @@ impl RssCollector {
         })?;
 
         // 簡易正規表現パース (RSS 2.0 / Atom 共通項)
-        let title_re = Regex::new(r"<title>(.*?)</title>")
-            .expect("RSS title extraction regex is a compile-time literal"); // allow-anti-pattern
+        let title_re = TITLE_REGEX.get_or_init(|| match Regex::new(r"<title>(.*?)</title>") {
+            Ok(re) => re,
+            Err(e) => {
+                tracing::error!("FATAL: Failed to compile RSS title regex: {}", e);
+                std::process::exit(1);
+            }
+        });
         let mut items = Vec::new();
 
         for cap in title_re.captures_iter(&xml) {

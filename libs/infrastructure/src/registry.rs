@@ -81,14 +81,13 @@ impl RegistryManager {
             aiome_core_contracts::contracts::ToolSafetyLevel::Destructive => "destructive",
         };
 
-        let q = format!(
-            "INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, safety_level, metadata) VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7)
-        );
+        const Q_REG_SQLITE: &str = "INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, safety_level, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        const Q_REG_PG: &str = "INSERT INTO asset_registry (id, creator_id, asset_type, name, description, price_coins, safety_level, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
 
         crate::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: Q_REG_SQLITE,
+            pg: Q_REG_PG,
             manifest.id.to_string(),
             manifest.creator_id.to_string(),
             type_str,
@@ -108,10 +107,8 @@ impl RegistryManager {
 
     /// アセットのメタデータを取得する
     pub async fn get_asset(&self, asset_id: Uuid) -> Result<AssetManifest, AiomeError> {
-        let q = format!(
-            "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE id = {}",
-            self.pool.ph(0)
-        );
+        const Q_GET_SQLITE: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE id = ?";
+        const Q_GET_PG: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE id = $1";
 
         let row: (
             String,
@@ -134,7 +131,8 @@ impl RegistryManager {
                 String,
                 Option<String>
             ),
-            &q,
+            sqlite: Q_GET_SQLITE,
+            pg: Q_GET_PG,
             asset_id.to_string()
         )?;
 
@@ -184,17 +182,19 @@ impl RegistryManager {
             Option<String>,
         )> = if scope == "owned" {
             if let Some(agent) = agent_id {
-                let q = format!(
-                    r#"
+                const Q_OWNED_SQLITE: &str = r#"
                     SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.safety_level, a.metadata
                     FROM asset_registry a
-                    LEFT JOIN licenses l ON a.id = l.asset_id AND l.agent_id = {0} AND l.status = 'active'
-                    WHERE a.asset_type = {1} AND (a.creator_id = {2} OR l.id IS NOT NULL)
-                    "#,
-                    self.pool.ph(0),
-                    self.pool.ph(1),
-                    self.pool.ph(2)
-                );
+                    LEFT JOIN licenses l ON a.id = l.asset_id AND l.agent_id = ? AND l.status = 'active'
+                    WHERE a.asset_type = ? AND (a.creator_id = ? OR l.id IS NOT NULL)
+                "#;
+                const Q_OWNED_PG: &str = r#"
+                    SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.safety_level, a.metadata
+                    FROM asset_registry a
+                    LEFT JOIN licenses l ON a.id = l.asset_id AND l.agent_id = $1 AND l.status = 'active'
+                    WHERE a.asset_type = $2 AND (a.creator_id = $3 OR l.id IS NOT NULL)
+                "#;
+
                 crate::sql_fetch_all!(
                     &self.pool,
                     (
@@ -207,7 +207,8 @@ impl RegistryManager {
                         String,
                         Option<String>
                     ),
-                    &q,
+                    sqlite: Q_OWNED_SQLITE,
+                    pg: Q_OWNED_PG,
                     agent.to_string(),
                     type_str,
                     agent.to_string()
@@ -218,10 +219,9 @@ impl RegistryManager {
                 });
             }
         } else {
-            let q = format!(
-                "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = {}",
-                self.pool.ph(0)
-            );
+            const Q_PUB_SQLITE: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = ?";
+            const Q_PUB_PG: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = $1";
+
             crate::sql_fetch_all!(
                 &self.pool,
                 (
@@ -234,7 +234,8 @@ impl RegistryManager {
                     String,
                     Option<String>
                 ),
-                &q,
+                sqlite: Q_PUB_SQLITE,
+                pg: Q_PUB_PG,
                 type_str
             )?
         };
@@ -268,16 +269,16 @@ impl RegistryManager {
         agent_id: Uuid,
         asset_id: Uuid,
     ) -> Result<bool, AiomeError> {
-        let q_creator = format!(
-            "SELECT COUNT(*) FROM asset_registry WHERE id = {0} AND creator_id = {1}",
-            self.pool.ph(0),
-            self.pool.ph(1)
-        );
+        const Q_CREATOR_SQLITE: &str =
+            "SELECT COUNT(*) FROM asset_registry WHERE id = ? AND creator_id = ?";
+        const Q_CREATOR_PG: &str =
+            "SELECT COUNT(*) FROM asset_registry WHERE id = $1 AND creator_id = $2";
 
         let is_creator: (i64,) = crate::sql_fetch_one!(
             &self.pool,
             (i64,),
-            &q_creator,
+            sqlite: Q_CREATOR_SQLITE,
+            pg: Q_CREATOR_PG,
             asset_id.to_string(),
             agent_id.to_string()
         )
@@ -287,15 +288,14 @@ impl RegistryManager {
             return Ok(true);
         }
 
-        let q_license = format!(
-            "SELECT COUNT(*) FROM licenses WHERE agent_id = {0} AND asset_id = {1} AND status = 'active'",
-            self.pool.ph(0), self.pool.ph(1)
-        );
+        const Q_LICENSE_SQLITE: &str = "SELECT COUNT(*) FROM licenses WHERE agent_id = ? AND asset_id = ? AND status = 'active'";
+        const Q_LICENSE_PG: &str = "SELECT COUNT(*) FROM licenses WHERE agent_id = $1 AND asset_id = $2 AND status = 'active'";
 
         let license_count: (i64,) = crate::sql_fetch_one!(
             &self.pool,
             (i64,),
-            &q_license,
+            sqlite: Q_LICENSE_SQLITE,
+            pg: Q_LICENSE_PG,
             agent_id.to_string(),
             asset_id.to_string()
         )
@@ -315,14 +315,13 @@ impl RegistryManager {
         asset_id: Uuid,
         original_event_id: String,
     ) -> Result<(), AiomeError> {
-        let q = format!(
-            "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES ({}, {}, {}, {}, 'active')",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
-        );
+        const Q_LIC_SQLITE: &str = "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES (?, ?, ?, ?, 'active')";
+        const Q_LIC_PG: &str = "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES ($1, $2, $3, $4, 'active')";
 
         crate::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: Q_LIC_SQLITE,
+            pg: Q_LIC_PG,
             Uuid::new_v4().to_string(),
             agent_id.to_string(),
             asset_id.to_string(),
@@ -345,35 +344,18 @@ impl RegistryManager {
         asset_id: Uuid,
         original_event_id: String,
     ) -> Result<(), AiomeError> {
-        let q = format!(
-            "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES ({}, {}, {}, {}, 'active')",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3)
-        );
+        const Q_LIC_TX_SQLITE: &str = "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES (?, ?, ?, ?, 'active')";
+        const Q_LIC_TX_PG: &str = "INSERT INTO licenses (id, agent_id, asset_id, original_event_id, status) VALUES ($1, $2, $3, $4, 'active')";
 
-        match tx {
-            DatabaseTransaction::Sqlite(itx) => sqlx::query(&q)
-                .bind(Uuid::new_v4().to_string())
-                .bind(agent_id.to_string())
-                .bind(asset_id.to_string())
-                .bind(original_event_id)
-                .execute(&mut **itx)
-                .await
-                .map(|_| ())
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            DatabaseTransaction::Postgres(itx) => sqlx::query(&q)
-                .bind(Uuid::new_v4().to_string())
-                .bind(agent_id.to_string())
-                .bind(asset_id.to_string())
-                .bind(original_event_id)
-                .execute(&mut **itx)
-                .await
-                .map(|_| ())
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-        };
+        crate::sql_tx_exec!(
+            tx,
+            sqlite: Q_LIC_TX_SQLITE,
+            pg: Q_LIC_TX_PG,
+            Uuid::new_v4().to_string(),
+            agent_id.to_string(),
+            asset_id.to_string(),
+            original_event_id
+        )?;
 
         tracing::info!(
             "🎫 [Registry] Granted license to agent {} for asset {} (tx)",
@@ -418,11 +400,15 @@ impl RegistryManager {
 
     /// (P-8) 登録済みの MCP サーバーエントリーを全てクリアする（ゴーストエントリ防止用）
     pub async fn clear_mcp_servers(&self) -> Result<(), AiomeError> {
-        let q = format!(
-            "DELETE FROM asset_registry WHERE asset_type = {}",
-            self.pool.ph(0)
-        );
-        crate::sql_exec!(&self.pool, &q, AssetType::McpServer.as_ref())?;
+        const Q_CLEAR_SQLITE: &str = "DELETE FROM asset_registry WHERE asset_type = ?";
+        const Q_CLEAR_PG: &str = "DELETE FROM asset_registry WHERE asset_type = $1";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_CLEAR_SQLITE,
+            pg: Q_CLEAR_PG,
+            AssetType::McpServer.as_ref()
+        )?;
 
         tracing::info!("🧹 [Registry] Cleared all previously registered MCP servers.");
         Ok(())

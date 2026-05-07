@@ -240,4 +240,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-05-04 (Reflexion Phase 4 + Federation v1.5)*
+*最終更新: 2026-05-08 (Error Handling Hardening + Zero-Panic)*

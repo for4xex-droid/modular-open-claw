@@ -17,7 +17,7 @@ pub struct BudgetExhaustedError {
 }
 
 /// Framework のドメインエラー
-#[derive(Debug, Error)]
+#[derive(Debug, Error, strum_macros::AsRefStr)]
 pub enum AiomeError {
     // === コンテキスト調査 (旧 トレンド調査) ===
     #[error("コンテキスト取得に失敗: {source}")]
@@ -211,10 +211,10 @@ impl axum::response::IntoResponse for AiomeError {
         let raw_variant = format!("{:?}", self)
             .split('(')
             .next()
-            .unwrap_or("Unknown") // allow-anti-pattern: split().next() は常に Some を返す
+            .unwrap_or("Unknown")
             .split('{')
             .next()
-            .unwrap_or("Unknown") // allow-anti-pattern: 同上
+            .unwrap_or("Unknown")
             .trim()
             .to_string();
 

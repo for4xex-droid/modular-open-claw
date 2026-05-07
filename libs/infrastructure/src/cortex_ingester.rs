@@ -9,7 +9,9 @@ use aiome_core::error::AiomeError;
 use aiome_core_contracts::llm::LlmProvider;
 use sha2::{Digest, Sha256};
 use shared::security::SecurityPolicy;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
+
+static TITLE_REGEX: OnceLock<regex::Regex> = OnceLock::new();
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub enum SourceType {
@@ -130,8 +132,16 @@ impl CortexIngester {
             sample_for_llm.truncate(8000);
         }
 
-        let title_regex = regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>")
-            .expect("HTML title regex is a compile-time literal"); // allow-anti-pattern
+        let title_regex =
+            TITLE_REGEX.get_or_init(
+                || match regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>") {
+                    Ok(re) => re,
+                    Err(e) => {
+                        tracing::error!("FATAL: Failed to compile HTML title regex: {}", e);
+                        std::process::exit(1);
+                    }
+                },
+            );
         let html_title = title_regex
             .captures(&clean_html)
             .and_then(|c| c.get(1))

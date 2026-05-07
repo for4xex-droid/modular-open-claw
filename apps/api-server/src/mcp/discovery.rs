@@ -424,9 +424,10 @@ pub struct OauthAuthQuery {
 pub async fn oauth_authorize(
     Query(query): Query<OauthAuthQuery>,
 ) -> Result<impl IntoResponse, crate::error::AppError> {
-    let auth_url = oauth_auth_url(&query.provider)
-        .ok_or_else(|| crate::error::AppError::bad_request("Invalid or unsupported OAuth provider"))?;
-    
+    let auth_url = oauth_auth_url(&query.provider).ok_or_else(|| {
+        crate::error::AppError::bad_request("Invalid or unsupported OAuth provider")
+    })?;
+
     Ok(Redirect::temporary(&auth_url))
 }
 
@@ -440,39 +441,53 @@ pub async fn oauth_authorize(
 /// # Concurrency Note (TOCTOU)
 /// This function reads and writes the config file without file locking.
 /// In a multi-process deployment, use `flock` or equivalent to prevent races.
-pub async fn enable_oauth_provider(provider: &str, access_token: &str, override_path: Option<&std::path::Path>) -> anyhow::Result<()> {
+pub async fn enable_oauth_provider(
+    provider: &str,
+    access_token: &str,
+    override_path: Option<&std::path::Path>,
+) -> anyhow::Result<()> {
     let config_path = if let Some(p) = override_path {
         p.to_path_buf()
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(home).join(".aiome/mcp_servers.json")
     };
-    
+
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
         let mut discovery: McpDiscoveryFile = serde_json::from_str(&content)?;
-        
+
         if let Some(config) = discovery.mcp_servers.get_mut(provider) {
             config.disabled = Some(false);
-            
+
             // ⚠️ Plaintext token storage — see doc comment for migration plan
             match provider {
                 "github" => {
-                    config.env.insert("GITHUB_PERSONAL_ACCESS_TOKEN".to_string(), access_token.to_string());
+                    config.env.insert(
+                        "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
+                        access_token.to_string(),
+                    );
                 }
                 "notion" => {
-                    config.env.insert("NOTION_API_KEY".to_string(), access_token.to_string());
+                    config
+                        .env
+                        .insert("NOTION_API_KEY".to_string(), access_token.to_string());
                 }
                 "discord" => {
-                    config.env.insert("DISCORD_TOKEN".to_string(), access_token.to_string());
+                    config
+                        .env
+                        .insert("DISCORD_TOKEN".to_string(), access_token.to_string());
                 }
                 "slack" | "figma" => {
-                    config.headers.insert("Authorization".to_string(), format!("Bearer {}", access_token));
+                    config.headers.insert(
+                        "Authorization".to_string(),
+                        format!("Bearer {}", access_token),
+                    );
                 }
                 _ => {}
             }
         }
-        
+
         std::fs::write(&config_path, serde_json::to_string_pretty(&discovery)?)?;
     }
     Ok(())
@@ -491,11 +506,15 @@ pub async fn oauth_callback(
     Query(query): Query<OauthCallbackQuery>,
 ) -> Result<impl IntoResponse, crate::error::AppError> {
     if !ALLOWED_OAUTH_PROVIDERS.contains(&query.provider.as_str()) {
-        return Err(crate::error::AppError::bad_request("Invalid or unsupported OAuth provider"));
+        return Err(crate::error::AppError::bad_request(
+            "Invalid or unsupported OAuth provider",
+        ));
     }
 
     if query.code.is_none() {
-        return Err(crate::error::AppError::bad_request("Missing authorization code"));
+        return Err(crate::error::AppError::bad_request(
+            "Missing authorization code",
+        ));
     }
 
     // TODO: Exchange authorization code for access token via provider's token endpoint.
@@ -506,14 +525,21 @@ pub async fn oauth_callback(
     } else {
         // Reload MCP discovery to activate the newly enabled provider
         if let Err(e) = discover_and_connect(&state.mcp_manager, &state.registry).await {
-            tracing::error!("Failed to reload MCP manager after OAuth for {}: {}", query.provider, e);
+            tracing::error!(
+                "Failed to reload MCP manager after OAuth for {}: {}",
+                query.provider,
+                e
+            );
         }
     }
 
     // SAFETY: provider is already validated against ALLOWED_OAUTH_PROVIDERS,
     // which are all ASCII-only identifiers. No encoding needed.
-    let dashboard_url = format!("https://localhost:3000/dashboard?provider={}&status=success", query.provider);
-    
+    let dashboard_url = format!(
+        "https://localhost:3000/dashboard?provider={}&status=success",
+        query.provider
+    );
+
     Ok(Redirect::temporary(&dashboard_url))
 }
 
@@ -633,7 +659,7 @@ mod tests {
         let temp_dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         std::fs::create_dir_all(temp_dir.join(".aiome")).unwrap();
         let config_path = temp_dir.join(".aiome/mcp_servers.json");
-        
+
         let initial_json = r#"{
             "mcp_servers": {
                 "github": {
@@ -645,16 +671,22 @@ mod tests {
             }
         }"#;
         std::fs::write(&config_path, initial_json).unwrap();
-        
+
         let result = enable_oauth_provider("github", "ghp_dummy123", Some(&config_path)).await;
         assert!(result.is_ok());
 
         let content = std::fs::read_to_string(&config_path).unwrap();
         let discovery: McpDiscoveryFile = serde_json::from_str(&content).unwrap();
-        
+
         let github = discovery.mcp_servers.get("github").unwrap();
         assert_eq!(github.disabled, Some(false));
-        assert_eq!(github.env.get("GITHUB_PERSONAL_ACCESS_TOKEN").map(|s| s.as_str()), Some("ghp_dummy123"));
+        assert_eq!(
+            github
+                .env
+                .get("GITHUB_PERSONAL_ACCESS_TOKEN")
+                .map(|s| s.as_str()),
+            Some("ghp_dummy123")
+        );
     }
 
     #[tokio::test]
@@ -662,7 +694,7 @@ mod tests {
         // Run discover_and_connect with an empty/mocked home directory to trigger default generation
         let temp_dir = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
         std::env::set_var("HOME", temp_dir.to_str().unwrap());
-        
+
         let manager = McpProcessManager::new();
         let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query("CREATE TABLE IF NOT EXISTS registry (id TEXT PRIMARY KEY, asset_type TEXT, description TEXT, metadata TEXT, created_at DATETIME, updated_at DATETIME)")
@@ -674,16 +706,27 @@ mod tests {
         let _ = discover_and_connect(&manager, &registry).await;
 
         let config_path = temp_dir.join(".aiome/mcp_servers.json");
-        let content = std::fs::read_to_string(&config_path).expect("Default config should be created");
-        let discovery: McpDiscoveryFile = serde_json::from_str(&content).expect("Should be valid JSON");
+        let content =
+            std::fs::read_to_string(&config_path).expect("Default config should be created");
+        let discovery: McpDiscoveryFile =
+            serde_json::from_str(&content).expect("Should be valid JSON");
 
         // [Verification Protocol: Negative Test]
         // This will FAIL initially because github is missing from the default template!
-        let github = discovery.mcp_servers.get("github").expect("GitHub MCP server must be in the default template");
-        
-        assert_eq!(github.disabled, Some(true), "GitHub should be disabled by default (requires OAuth)");
+        let github = discovery
+            .mcp_servers
+            .get("github")
+            .expect("GitHub MCP server must be in the default template");
+
+        assert_eq!(
+            github.disabled,
+            Some(true),
+            "GitHub should be disabled by default (requires OAuth)"
+        );
         assert_eq!(github.command, "npx");
-        assert!(github.args.contains(&"@modelcontextprotocol/server-github".to_string()));
+        assert!(github
+            .args
+            .contains(&"@modelcontextprotocol/server-github".to_string()));
         assert!(github.env.contains_key("GITHUB_PERSONAL_ACCESS_TOKEN"));
     }
 }

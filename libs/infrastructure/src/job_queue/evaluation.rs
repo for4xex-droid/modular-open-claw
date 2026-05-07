@@ -58,14 +58,17 @@ impl EvaluationOps for UniversalJobQueue {
         platform: &str,
         content_id: &str,
     ) -> Result<(), AiomeError> {
-        let q = format!(
-            "UPDATE jobs SET sns_platform = {0}, sns_content_id = {1}, published_at = {2} WHERE id = {3}",
-            self.pool.ph(0),
-            self.pool.ph(1),
-            self.pool.now_fn(),
-            self.pool.ph(2)
-        );
-        sql_exec!(&self.pool, &q, platform, content_id, job_id)?;
+        const Q_SQLITE: &str = "UPDATE jobs SET sns_platform = ?, sns_content_id = ?, published_at = datetime('now') WHERE id = ?";
+        const Q_PG: &str = "UPDATE jobs SET sns_platform = $1, sns_content_id = $2, published_at = NOW() WHERE id = $3";
+
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: Q_SQLITE,
+            pg: Q_PG,
+            platform,
+            content_id,
+            job_id
+        )?;
         Ok(())
     }
 
@@ -74,25 +77,26 @@ impl EvaluationOps for UniversalJobQueue {
         milestone_days: i64,
         limit: i64,
     ) -> Result<Vec<Job>, AiomeError> {
-        let now_interval = self.pool.now_with_dynamic_days_interval(0);
-        let q = format!(
-            "SELECT * FROM jobs
+        const Q_SQLITE: &str = "SELECT * FROM jobs
               WHERE sns_platform IS NOT NULL
               AND sns_content_id IS NOT NULL
               AND published_at IS NOT NULL
-              AND published_at <= {0}
-              AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = {1})
-              ORDER BY published_at ASC LIMIT {2}",
-            now_interval,
-            self.pool.ph(1),
-            self.pool.ph(2)
-        );
+              AND published_at <= datetime('now', ? || ' days')
+              AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = ?)
+              ORDER BY published_at ASC LIMIT ?";
+
+        const Q_PG: &str = "SELECT * FROM jobs
+              WHERE sns_platform IS NOT NULL
+              AND sns_content_id IS NOT NULL
+              AND published_at IS NOT NULL
+              AND published_at <= NOW() + ($1 * INTERVAL '1 day')
+              AND id NOT IN (SELECT job_id FROM sns_metrics_history WHERE milestone_days = $1)
+              ORDER BY published_at ASC LIMIT $2";
 
         let mut jobs = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(format!("-{}", milestone_days))
+                let rows = sqlx::query(Q_SQLITE)
                     .bind(milestone_days)
                     .bind(limit)
                     .fetch_all(p)
@@ -133,8 +137,7 @@ impl EvaluationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(-(milestone_days as i32))
+                let rows = sqlx::query(Q_PG)
                     .bind(milestone_days)
                     .bind(limit)
                     .fetch_all(p)
@@ -202,13 +205,13 @@ impl EvaluationOps for UniversalJobQueue {
             -0.5
         };
 
-        let q = format!(
-            "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.now_fn()
-        );
-        sql_exec!(
+        const Q_SQLITE: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))";
+        const Q_PG: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())";
+
+        crate::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: Q_SQLITE,
+            pg: Q_PG,
             job_id,
             milestone_days,
             views,
@@ -225,7 +228,9 @@ impl EvaluationOps for UniversalJobQueue {
         &self,
         limit: i64,
     ) -> Result<Vec<SnsMetricsRecord>, AiomeError> {
-        let q = format!("SELECT id, job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate FROM sns_metrics_history WHERE is_finalized = 0 ORDER BY recorded_at ASC LIMIT {}", self.pool.ph(0));
+        const Q_SQLITE: &str = "SELECT id, job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate FROM sns_metrics_history WHERE is_finalized = 0 ORDER BY recorded_at ASC LIMIT ?";
+        const Q_PG: &str = "SELECT id, job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate FROM sns_metrics_history WHERE is_finalized = 0 ORDER BY recorded_at ASC LIMIT $1";
+
         let mut records = Vec::new();
         let rows = crate::sql_fetch_all!(
             &self.pool,
@@ -240,7 +245,8 @@ impl EvaluationOps for UniversalJobQueue {
                 Option<f64>,
                 Option<f64>
             ),
-            &q,
+            sqlite: Q_SQLITE,
+            pg: Q_PG,
             limit
         )
         .unwrap_or_default();
@@ -273,71 +279,32 @@ impl EvaluationOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let q1 = format!("UPDATE sns_metrics_history SET alignment_score = {0}, growth_score = {1}, lesson = {2}, should_evolve = {3}, oracle_reason = {4}, is_finalized = 1 WHERE id = {5}",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5));
+        const Q1_SQLITE: &str = "UPDATE sns_metrics_history SET alignment_score = ?, growth_score = ?, lesson = ?, should_evolve = ?, oracle_reason = ?, is_finalized = 1 WHERE id = ?";
+        const Q1_PG: &str = "UPDATE sns_metrics_history SET alignment_score = $1, growth_score = $2, lesson = $3, should_evolve = $4, oracle_reason = $5, is_finalized = 1 WHERE id = $6";
 
-        match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                sqlx::query(&q1)
-                    .bind(verdict.alignment_score)
-                    .bind(verdict.growth_score)
-                    .bind(&verdict.lesson)
-                    .bind(verdict.should_evolve as i32)
-                    .bind(&verdict.reasoning)
-                    .bind(record_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                sqlx::query(&q1)
-                    .bind(verdict.alignment_score)
-                    .bind(verdict.growth_score)
-                    .bind(&verdict.lesson)
-                    .bind(verdict.should_evolve as i32)
-                    .bind(&verdict.reasoning)
-                    .bind(record_id)
-                    .execute(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        crate::sql_tx_exec!(
+            &mut tx,
+            sqlite: Q1_SQLITE,
+            pg: Q1_PG,
+            verdict.alignment_score,
+            verdict.growth_score,
+            &verdict.lesson,
+            verdict.should_evolve as i32,
+            &verdict.reasoning,
+            record_id
+        )?;
 
-        let q2 = format!("SELECT j.id, j.topic, j.style_name, h.milestone_days FROM jobs j JOIN sns_metrics_history h ON j.id = h.job_id WHERE h.id = {}", self.pool.ph(0));
-        let (job_id, style_name, milestone_days) = match &mut tx {
-            crate::db::DatabaseTransaction::Sqlite(t) => {
-                let r = sqlx::query(&q2)
-                    .bind(record_id)
-                    .fetch_one(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    r.get::<String, _>("id"),
-                    r.get::<String, _>("style_name"),
-                    r.get::<i64, _>("milestone_days"),
-                )
-            }
-            crate::db::DatabaseTransaction::Postgres(t) => {
-                let r = sqlx::query(&q2)
-                    .bind(record_id)
-                    .fetch_one(&mut **t)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                (
-                    r.get::<String, _>("id"),
-                    r.get::<String, _>("style_name"),
-                    r.get::<i64, _>("milestone_days"),
-                )
-            }
-        };
+        const Q2_SQLITE: &str = "SELECT j.id, j.topic, j.style_name, h.milestone_days FROM jobs j JOIN sns_metrics_history h ON j.id = h.job_id WHERE h.id = ?";
+        const Q2_PG: &str = "SELECT j.id, j.topic, j.style_name, h.milestone_days FROM jobs j JOIN sns_metrics_history h ON j.id = h.job_id WHERE h.id = $1";
+
+        let (job_id, style_name, milestone_days) = crate::sql_tx_fetch_one!(
+            &mut tx,
+            (String, String, String, i64),
+            sqlite: Q2_SQLITE,
+            pg: Q2_PG,
+            record_id
+        )
+        .map(|r| (r.0, r.2, r.3))?;
 
         if milestone_days == 30 {
             let avg_score = (verdict.alignment_score + verdict.growth_score) / 2.0;
@@ -348,65 +315,35 @@ impl EvaluationOps for UniversalJobQueue {
                 .as_ref()
                 .map(|c| (Some(c.domain.as_str()), Some(c.subtopic.as_str())))
                 .unwrap_or((None, None));
-            let q3 = format!("INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
-                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.now_fn(), self.pool.ph(7), self.pool.ph(8));
-            match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => {
-                    sqlx::query(&q3)
-                        .bind(&karma_id)
-                        .bind(&job_id)
-                        .bind("Synthesized")
-                        .bind(&style_name)
-                        .bind(&verdict.lesson)
-                        .bind(weight)
-                        .bind(soul_hash)
-                        .bind(domain.unwrap_or("general"))
-                        .bind(subtopic)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-                crate::db::DatabaseTransaction::Postgres(t) => {
-                    sqlx::query(&q3)
-                        .bind(&karma_id)
-                        .bind(&job_id)
-                        .bind("Synthesized")
-                        .bind(&style_name)
-                        .bind(&verdict.lesson)
-                        .bind(weight)
-                        .bind(soul_hash)
-                        .bind(domain.unwrap_or("general"))
-                        .bind(subtopic)
-                        .execute(&mut **t)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                }
-            }
+            const Q3_SQLITE: &str = "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?)";
+            const Q3_PG: &str = "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, created_at, domain, subtopic) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)";
+
+            crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q3_SQLITE,
+                pg: Q3_PG,
+                &karma_id,
+                &job_id,
+                "Synthesized",
+                &style_name,
+                &verdict.lesson,
+                weight,
+                soul_hash,
+                domain.unwrap_or("general"),
+                subtopic
+            )?;
         }
 
         if verdict.should_evolve {
-            let q4 = format!("UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = {} WHERE id = 1", self.pool.now_fn());
-            match &mut tx {
-                crate::db::DatabaseTransaction::Sqlite(t) => {
-                    if let Err(e) = sqlx::query(&q4).execute(&mut **t).await {
-                        tracing::warn!(
-                            "⚠️ [Evaluation] Failed to update agent_stats (SQLite): {:?}",
-                            e
-                        );
-                    }
-                }
-                crate::db::DatabaseTransaction::Postgres(t) => {
-                    if let Err(e) = sqlx::query(&q4).execute(&mut **t).await {
-                        tracing::warn!(
-                            "⚠️ [Evaluation] Failed to update agent_stats (Postgres): {:?}",
-                            e
-                        );
-                    }
-                }
+            const Q4_SQLITE: &str = "UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = datetime('now') WHERE id = 1";
+            const Q4_PG: &str = "UPDATE agent_stats SET exp = exp + 10, resonance = resonance + 5, updated_at = NOW() WHERE id = 1";
+
+            if let Err(e) = crate::sql_tx_exec!(
+                &mut tx,
+                sqlite: Q4_SQLITE,
+                pg: Q4_PG
+            ) {
+                tracing::warn!("⚠️ [Evaluation] Failed to update agent_stats: {:?}", e);
             }
         }
         tx.commit().await.map_err(|e| AiomeError::Infrastructure {
@@ -416,11 +353,13 @@ impl EvaluationOps for UniversalJobQueue {
     }
 
     async fn do_fetch_top_performing_jobs(&self, limit: i64) -> Result<Vec<Job>, AiomeError> {
-        let q = format!("SELECT j.* FROM jobs j JOIN sns_metrics_history s ON j.id = s.job_id WHERE s.is_finalized = 1 ORDER BY s.views DESC LIMIT {}", self.pool.ph(0));
+        const Q_SQLITE: &str = "SELECT j.* FROM jobs j JOIN sns_metrics_history s ON j.id = s.job_id WHERE s.is_finalized = 1 ORDER BY s.views DESC LIMIT ?";
+        const Q_PG: &str = "SELECT j.* FROM jobs j JOIN sns_metrics_history s ON j.id = s.job_id WHERE s.is_finalized = 1 ORDER BY s.views DESC LIMIT $1";
+
         let mut jobs = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
+                let rows = sqlx::query(Q_SQLITE)
                     .bind(limit)
                     .fetch_all(p)
                     .await
@@ -460,7 +399,7 @@ impl EvaluationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
+                let rows = sqlx::query(Q_PG)
                     .bind(limit)
                     .fetch_all(p)
                     .await

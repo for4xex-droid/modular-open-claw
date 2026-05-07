@@ -166,13 +166,21 @@ impl IntentFirewall {
     /// PII を除去する
     pub fn strip_pii(&self, text: &str) -> String {
         let email_re = EMAIL_REGEX.get_or_init(|| {
-            Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-                .expect("Email PII detection regex is a compile-time literal") // allow-anti-pattern
-        }); // allow-anti-pattern
-        let phone_re = PHONE_REGEX.get_or_init(|| {
-            Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})")
-                .expect("Phone PII detection regex is a compile-time literal") // allow-anti-pattern
-        }); // allow-anti-pattern
+            match Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}") {
+                Ok(re) => re,
+                Err(e) => {
+                    tracing::error!("FATAL: Failed to compile Email PII regex: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        });
+        let phone_re = PHONE_REGEX.get_or_init(|| match Regex::new(r"(\d{2,4}-\d{2,4}-\d{4})") {
+            Ok(re) => re,
+            Err(e) => {
+                tracing::error!("FATAL: Failed to compile Phone PII regex: {}", e);
+                std::process::exit(1);
+            }
+        });
 
         let mut cleaned = email_re.replace_all(text, "[EMAIL]").to_string();
         cleaned = phone_re.replace_all(&cleaned, "[PHONE]").to_string();

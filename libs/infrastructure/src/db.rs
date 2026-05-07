@@ -40,3 +40,31 @@ macro_rules! sql_fetch_optional {
         ::shared::sql_fetch_optional!($($arg)*)
     };
 }
+
+#[macro_export]
+macro_rules! sql_tx_exec {
+    ($($arg:tt)*) => {
+        ::shared::sql_tx_exec!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_tx_fetch_all {
+    ($($arg:tt)*) => {
+        ::shared::sql_tx_fetch_all!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_tx_fetch_one {
+    ($($arg:tt)*) => {
+        ::shared::sql_tx_fetch_one!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_tx_fetch_optional {
+    ($($arg:tt)*) => {
+        ::shared::sql_tx_fetch_optional!($($arg)*)
+    };
+}

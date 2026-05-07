@@ -52,12 +52,18 @@ impl ConstitutionalValidator {
     /// テキストコンテンツ（例: SOUL.mdの内容）を検証し、公理的安全性（Axiomatic Safety）を保証する。
     pub async fn validate_text(&self, text: &str) -> Result<(), AiomeError> {
         static FORBIDDEN_RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-            regex::RegexBuilder::new(
+            match regex::RegexBuilder::new(
                 r"kill all humans|destroy the system|ignore all previous instructions",
             )
             .case_insensitive(true)
             .build()
-            .expect("Failed to compile forbidden words regex") // allow-anti-pattern
+            {
+                Ok(re) => re,
+                Err(e) => {
+                    tracing::error!("FATAL: Failed to compile forbidden words regex: {}", e);
+                    std::process::exit(1);
+                }
+            }
         });
 
         if let Some(mat) = FORBIDDEN_RE.find(text) {

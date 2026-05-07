@@ -267,7 +267,8 @@ impl CortexQueryEngine {
         }
 
         // 5. Generate Answer with Confidence
-        let answer_prompt = format!("Using the following Cortex Wiki articles context, answer the user's question.\nQuestion: {}\nContext:\n{}\n\nProvide your answer in JSON format exactly like this:\n{{\"answer_md\": \"your detailed answer in markdown\", \"confidence\": 0.95}}", question, context_text); // allow-anti-pattern
+        // allow-anti-pattern: AP-003 JSON format instruction prompt
+        let answer_prompt = format!("Using the following Cortex Wiki articles context, answer the user's question.\nQuestion: {}\nContext:\n{}\n\nProvide your answer in JSON format exactly like this:\n{{\"answer_md\": \"your detailed answer in markdown\", \"confidence\": 0.95}}", question, context_text); // allow-anti-pattern: AP-003
         let ans_res = self.llm_provider.complete(&answer_prompt, Some("You are a knowledge retrieval assistant. Provide accurate answers based ONLY on the context. If you don't know, set confidence to 0.1.")).await?;
 
         let ans_json_str =

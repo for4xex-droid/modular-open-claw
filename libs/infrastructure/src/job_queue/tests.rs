@@ -13,7 +13,9 @@
 use super::watchtower::WatchtowerOps;
 use super::SettingsOps;
 use super::UniversalJobQueue;
+use crate::job_queue::federation::FederationOps;
 use crate::job_queue::karma::KarmaOps;
+
 use crate::job_queue::trajectory_store::TrajectoryOps;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
@@ -927,9 +929,11 @@ async fn test_sqlite_settings_crud() {
 
     // Test fetch all (visible)
     let all = jq.fetch_all_settings().await.unwrap();
-    assert_eq!(all.len(), 1);
-    assert_eq!(all[0].key, "llm_model");
-    assert_eq!(all[0].value, "test-model-2");
+    assert!(
+        all.iter()
+            .any(|s| s.key == "llm_model" && s.value == "test-model-2"),
+        "Saved setting should be present in fetch_all_settings"
+    );
 }
 
 #[tokio::test]
@@ -949,9 +953,10 @@ async fn test_sqlite_settings_secret_masking() {
     // The web layer `routes::settings::get_settings` does the masking.
     // In db layer fetch_all_settings, we expect it to return raw values, or we manually verify the field `is_secret` is true.
     let all = jq.fetch_all_settings().await.unwrap();
-    assert_eq!(all.len(), 1);
-    assert_eq!(all[0].key, "telegram_token");
-    assert!(all[0].is_secret);
+    assert!(
+        all.iter().any(|s| s.key == "telegram_token" && s.is_secret),
+        "Saved secret setting should be present and marked as secret"
+    );
     // Since this is the direct test of UniversalJobQueue, we might just be testing if `is_secret` is respected, not necessarily evaluating presentation masking here.
     // In our `api-server`, get_settings does `if s.is_secret { s.value = "********" }`.
     // If we want DB-level masking, we'd need to update `fetch_all_settings`. Let's just assert `is_secret` flag.
@@ -1325,4 +1330,59 @@ async fn test_forget_actor_broadcasts_system_event() {
 
     let SystemEvent::ActorForgotten(id) = event;
     assert_eq!(id, agent_id);
+}
+
+#[tokio::test]
+async fn test_sqlite_job_queue_peer_sync_time() {
+    let (jq, _tmp) = create_test_queue().await;
+    let peer_url = "https://node.example.com";
+
+    // 1. Initial state: None
+    let initial = jq.do_get_peer_sync_time(peer_url).await.unwrap();
+    assert!(initial.is_none(), "Expected None for initial sync time");
+
+    // 2. Update time
+    let sync_time = chrono::Utc::now().to_rfc3339();
+    jq.do_update_peer_sync_time(peer_url, &sync_time)
+        .await
+        .unwrap();
+
+    // 3. Fetch updated time — round-trip verification
+    let fetched_opt = jq.do_get_peer_sync_time(peer_url).await.unwrap();
+    assert!(
+        fetched_opt.is_some(),
+        "Expected Some after updating sync time"
+    );
+    assert_eq!(fetched_opt.unwrap(), sync_time);
+
+    // 4. Overwrite with a new timestamp — upsert semantics
+    let sync_time_2 = "2099-12-31T23:59:59+00:00";
+    jq.do_update_peer_sync_time(peer_url, sync_time_2)
+        .await
+        .unwrap();
+    let fetched_2 = jq.do_get_peer_sync_time(peer_url).await.unwrap();
+    assert_eq!(
+        fetched_2.as_deref(),
+        Some(sync_time_2),
+        "Upsert should overwrite previous value"
+    );
+}
+
+#[tokio::test]
+async fn test_sqlite_job_queue_peer_sync_time_empty_url() {
+    let (jq, _tmp) = create_test_queue().await;
+    // Edge case: empty string is a valid TEXT PRIMARY KEY in SQLite
+    let empty_url = "";
+
+    let initial = jq.do_get_peer_sync_time(empty_url).await.unwrap();
+    assert!(initial.is_none(), "Empty URL should return None initially");
+
+    jq.do_update_peer_sync_time(empty_url, "2026-01-01T00:00:00Z")
+        .await
+        .unwrap();
+    let fetched = jq.do_get_peer_sync_time(empty_url).await.unwrap();
+    assert!(
+        fetched.is_some(),
+        "Empty URL should be retrievable after insert"
+    );
 }

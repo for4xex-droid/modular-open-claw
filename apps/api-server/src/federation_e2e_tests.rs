@@ -210,4 +210,127 @@ mod tests {
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("federation_secret is not configured"));
     }
+
+    #[tokio::test]
+    async fn test_federation_sync_respects_lamport_clock_ordering() {
+        let mock_server = MockServer::start().await;
+        let (jq, db) = setup_test_jq(mock_server.uri()).await;
+
+        let karma1 = aiome_core::contracts::FederatedKarma {
+            id: "sync_karma_clock_test".to_string(),
+            job_id: None,
+            karma_type: "Technical".to_string(),
+            related_skill: "ClockSync".to_string(),
+            lesson: "Newer version".to_string(),
+            weight: 100,
+            soul_version_hash: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            last_applied_at: None,
+            score: 1.0,
+            lamport_clock: 10,
+            node_id: "node_A".to_string(),
+            signature: None,
+            clone_origin_id: None,
+            generation: Some(1),
+            somatic_valence: None,
+        };
+
+        // First import (clock 10)
+        let response_body1 = serde_json::json!({
+            "status": "ok",
+            "new_karmas": [karma1],
+            "new_immune_rules": [],
+            "new_arena_matches": [],
+            "server_time": chrono::Utc::now().to_rfc3339(),
+            "next_cursor": null,
+            "has_more": false
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/federation/sync"))
+            .and(header("Authorization", "Bearer test_federation_secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response_body1))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        jq.do_sync_federated_data().await.unwrap();
+
+        // Check it was saved
+        let q = "SELECT lesson, lamport_clock FROM karma_logs WHERE id = 'sync_karma_clock_test'";
+        let row1 = sqlx::query_as::<_, (String, i64)>(q)
+            .fetch_one(db.get_sqlite_pool_or_err().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(row1.0, "Newer version");
+        assert_eq!(row1.1, 10);
+
+        mock_server.reset().await; // Clear previous mock expectations
+
+        // Second import (clock 5 - OLDER data, should be ignored)
+        let mut karma2 = karma1.clone();
+        karma2.lesson = "Older version".to_string();
+        karma2.lamport_clock = 5;
+
+        let response_body2 = serde_json::json!({
+            "status": "ok",
+            "new_karmas": [karma2],
+            "new_immune_rules": [],
+            "new_arena_matches": [],
+            "server_time": chrono::Utc::now().to_rfc3339(),
+            "next_cursor": null,
+            "has_more": false
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/federation/sync"))
+            .and(header("Authorization", "Bearer test_federation_secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response_body2))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        jq.do_sync_federated_data().await.unwrap();
+
+        // Check it was NOT overwritten
+        let row2 = sqlx::query_as::<_, (String, i64)>(q)
+            .fetch_one(db.get_sqlite_pool_or_err().unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            row2.0, "Newer version",
+            "Older lamport clock data should not overwrite newer data"
+        );
+        assert_eq!(row2.1, 10);
+    }
+
+    #[tokio::test]
+    async fn test_federation_sync_handles_server_errors_gracefully() {
+        let mock_server = MockServer::start().await;
+        let (jq, _) = setup_test_jq(mock_server.uri()).await;
+
+        // Simulate a 500 Internal Server Error from the Samsara Hub
+        Mock::given(method("POST"))
+            .and(path("/api/v1/federation/sync"))
+            .and(header("Authorization", "Bearer test_federation_secret"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let result = jq.do_sync_federated_data().await;
+
+        // Assert: The sync operation should gracefully return an error without panicking
+        assert!(
+            result.is_err(),
+            "Sync should return Err on 500 response, but got Ok"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("500") || err_msg.contains("Internal Server Error"),
+            "Error message should contain HTTP status code or server error description. Got: {}",
+            err_msg
+        );
+    }
 }
