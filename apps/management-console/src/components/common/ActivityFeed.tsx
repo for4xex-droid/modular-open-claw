@@ -89,6 +89,7 @@ const EventIcon: React.FC<{ type: string }> = ({ type }) => {
 
 const EventContent: React.FC<{ event: VitalityEvent }> = ({ event }) => {
     const data = event.data as any;
+    if (!data) return <div style={{ fontSize: '0.8rem' }}>{event.type}</div>;
     
     switch (event.type) {
         case 'commerce_event':

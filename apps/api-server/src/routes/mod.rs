@@ -17,6 +17,7 @@ pub mod bootstrap;
 pub mod commerce;
 pub mod commerce_webhook;
 pub mod cortex;
+#[cfg(any(debug_assertions, feature = "demo"))]
 pub mod demo;
 pub mod ekyc;
 pub mod expression;

@@ -63,6 +63,7 @@ mod app_state;
 #[cfg(test)]
 mod audit_auth_tests;
 mod auth;
+#[cfg(any(debug_assertions, feature = "demo"))]
 mod autonomous_demo;
 pub mod bootstrap;
 pub mod bootstrap_builder;
