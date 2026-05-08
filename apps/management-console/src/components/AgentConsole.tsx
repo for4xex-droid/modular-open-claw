@@ -16,6 +16,7 @@ import ErrorBoundary from './common/ErrorBoundary';
 import { A2uiRenderer } from './A2uiRenderer';
 import { useWorkspacePersona } from '../hooks/useWorkspacePersona';
 import { Activity, Clock, DollarSign, TrendingUp } from 'lucide-react';
+import { ActivityFeed } from './common/ActivityFeed';
 
 export interface AgentConsoleProps {
     sessionSavedChars?: number;
@@ -102,7 +103,8 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
     useEffect(scrollToBottom, [history, streamingText]);
 
     return (
-        <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+        <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', position: 'relative' }}>
+            <ActivityFeed maxItems={5} />
             {/* Header */}
             <div className="panel-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-glass)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>

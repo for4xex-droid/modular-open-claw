@@ -175,7 +175,58 @@ pub async fn stripe_webhook(
 
     let job_queue: std::sync::Arc<dyn aiome_core::traits::JobQueue> =
         state.job_queue.get_inner().clone();
-    apply_pending_agent_states(&job_queue, pending_unlock_agent, pending_suspend_agent).await;
+    apply_pending_agent_states(
+        &job_queue,
+        pending_unlock_agent.clone(),
+        pending_suspend_agent.clone(),
+    )
+    .await;
+
+    // 📢 Broadcast invoice events to SSE
+    if let Some(agent_id_str) = pending_unlock_agent {
+        match uuid::Uuid::parse_str(&agent_id_str) {
+            Ok(agent_id) => {
+                if let Some(sender) = state.event_sender.as_opt() {
+                    let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                        event_type: "invoice.paid".to_string(),
+                        agent_id,
+                        amount: 0, // Invoices don't directly add coins here
+                        currency: "jpy".to_string(),
+                        description: format!("Stripe event ID: {}", event_id),
+                    });
+                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.paid").increment(1);
+                }
+            }
+            Err(e) => {
+                error!(
+                    "❌ [StripeWebhook] Failed to parse agent_id UUID '{}': {}",
+                    agent_id_str, e
+                );
+            }
+        }
+    }
+    if let Some(agent_id_str) = pending_suspend_agent {
+        match uuid::Uuid::parse_str(&agent_id_str) {
+            Ok(agent_id) => {
+                if let Some(sender) = state.event_sender.as_opt() {
+                    let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                        event_type: "invoice.payment_failed".to_string(),
+                        agent_id,
+                        amount: 0,
+                        currency: "jpy".to_string(),
+                        description: format!("Stripe event ID: {}", event_id),
+                    });
+                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
+                }
+            }
+            Err(e) => {
+                error!(
+                    "❌ [StripeWebhook] Failed to parse agent_id UUID '{}': {}",
+                    agent_id_str, e
+                );
+            }
+        }
+    }
 
     // 6c. Nurture へのコインチャージ転送 (結果整合性保証)
     if let Some((agent_uuid, amount, ev_id)) = pending_coin_charge {
@@ -187,9 +238,21 @@ pub async fn stripe_webhook(
             state.nurture_internal_secret.clone(),
             agent_uuid,
             amount,
-            ev_id,
+            ev_id.clone(),
         )
         .await;
+
+        // 📢 Broadcast CommerceEvent to SSE (Phase B)
+        if let Some(sender) = state.event_sender.as_opt() {
+            let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                event_type: "checkout.session.completed".to_string(),
+                agent_id: agent_uuid,
+                amount,
+                currency: "jpy".to_string(),
+                description: format!("Stripe event ID: {}", ev_id),
+            });
+            metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "checkout.session.completed").increment(1);
+        }
     }
 
     Ok(StatusCode::OK)

@@ -212,16 +212,6 @@ impl CommerceEngine for PolarCommerceEngine {
         }
     }
 
-    async fn process_webhook(
-        &self,
-        _event_id: &str,
-        _event_type: &str,
-        _payload: &serde_json::Value,
-    ) -> Result<(), AiomeError> {
-        // Implement webhook logic here (e.g. updating escrow state in DB)
-        Ok(())
-    }
-
     async fn create_checkout_session(
         &self,
         _agent_id: Uuid,

@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Fixed
+- **Commerce Architecture (Transaction Integrity)**:
+  - Pruned the `process_webhook` trait method from `CommerceEngine` and all its implementations (`StripeCommerceEngine`, `PolarCommerceEngine`, `MockCommerceEngine`, `StubCommerceEngine`, and `NurtureCommerceBridge`) to completely eliminate architectural discrepancies and force infrastructure-level atomic transaction handling.
+  - Refactored `StripeCommerceEngine` test initializers to incorporate `metadata` columns into test DB schemas, ensuring parity with production idempotency tracking.
+- **Observability & Error Handling**:
+  - Strengthened error handling in `api-server/src/routes/commerce_webhook/stripe.rs` by adding robust `tracing::error!` logging for `uuid::Uuid::parse_str` failures, preventing silent drops of malformed webhooks.
+- **Test Environment & Cleanup**:
+  - Purged the hardcoded configuration `config.ollama_host = "http://127.0.0.1:11434".to_string();` from `api_integration_tests.rs`, substituting it with dynamic mock injection using `SettingsOps` to ensure clean SSRF policy compliance and prevent test environment pollution.
+  - Cleaned up unused artifact references by deleting `docker/grafana/provisioning/dashboards/aiome_commerce.json`.
+
+### Fixed
 - **CI/CD Quality Gates**:
   - Expanded `scripts/enforce_unwrap_deny.py` to detect `panic!`, `todo!`, `unimplemented!`, and `unreachable!` macros, eliminating loopholes in the zero-panic mandate.
   - Eliminated hardcoded panic usages during lazy initializations across `libs/core/src/http.rs`, `libs/shared/src/app_data.rs`, and `apps/api-server/src/app_state.rs` by replacing them with `.expect()` and properly documenting them with `// allow-anti-pattern: fatal configuration error at boot` opt-outs for legitimate boot-time safety.

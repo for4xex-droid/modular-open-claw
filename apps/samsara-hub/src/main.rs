@@ -1159,15 +1159,16 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         );
     }
 
-    let cors = CorsLayer::new()
-        .allow_origin(allowed_origins)
+    let is_any = state.config.allowed_origins.contains(&"*".to_string());
+
+    let cors_base = CorsLayer::new()
         .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
         .allow_headers([
             axum::http::header::CONTENT_TYPE,
             axum::http::header::AUTHORIZATION,
         ]);
 
-    Router::new()
+    let router = Router::new()
         .route("/api/v1/federation/sync", post(sync_handler))
         .route("/api/v1/federation/push", post(push_handler))
         .route("/api/v1/registry/agents", get(list_agents_handler))
@@ -1184,8 +1185,15 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         ))
         // WS and Health handled outside middleware
         .route("/api/v1/federation/ws", get(ws_handler))
-        .route("/api/v1/health", get(health_handler))
-        .layer(cors)
+        .route("/api/v1/health", get(health_handler));
+
+    let router = if is_any {
+        router.layer(cors_base.allow_origin(tower_http::cors::Any))
+    } else {
+        router.layer(cors_base.allow_origin(allowed_origins))
+    };
+
+    router
         .layer(DefaultBodyLimit::max(5 * 1024 * 1024)) // 5MB limit
         .layer(
             ServiceBuilder::new()

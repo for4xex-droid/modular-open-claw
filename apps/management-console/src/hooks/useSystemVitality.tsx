@@ -16,7 +16,8 @@ export interface SystemVitality {
 }
 
 export type VitalityEvent = {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input' | 'quality_gate';
+    id?: string;
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input' | 'quality_gate' | 'commerce_event';
     data: AgentStats | Karma | SoTEvent | unknown;
 };
 
@@ -43,7 +44,7 @@ export const SystemVitalityProvider: React.FC<{ children: ReactNode }> = ({ chil
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const addEvent = useCallback((type: VitalityEvent['type'], data: VitalityEvent['data']) => {
-        const newEvent = { type, data };
+        const newEvent = { id: crypto.randomUUID(), type, data };
         setEvents(prev => [newEvent, ...prev].slice(0, 50));
         setLastEvent(newEvent);
     }, []);
@@ -103,7 +104,7 @@ export const SystemVitalityProvider: React.FC<{ children: ReactNode }> = ({ chil
                             'job_started', 'job_completed',
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
-                            'immune_alert', 'aegis_sentinel', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input', 'quality_gate'
+                            'immune_alert', 'aegis_sentinel', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input', 'quality_gate', 'commerce_event'
                         ];
 
                         if (validEvents.includes(msg.event)) {

@@ -1,5 +1,20 @@
 # 🌊 Aiome Ripple Map
 
+## Commerce Webhook Architecture Cleanup
+### 1. Pruning `process_webhook` from CommerceEngine
+- **変更内容**:
+    - `libs/aiome-contracts/src/commerce.rs` [MODIFY]: `CommerceEngine` トレイトから `process_webhook` のシグネチャを完全に削除。
+    - 各エンジン実装 (`StripeCommerceEngine`, `PolarCommerceEngine`, `MockCommerceEngine`, `StubCommerceEngine`) および `Project-Nurture` の `NurtureCommerceBridge` からメソッドの実装と依存テストを一掃。
+- **波及効果**:
+    - トランザクション処理の境界がインフラ層（コントローラー・ハンドラ）に移動し、ビジネスロジックトレイト内での不適切なDB操作や冪等性チェック漏れなどの車輪の再開発リスクが排除された。
+    - アーキテクチャの責務がより明確になり、Webhook 処理は完全に HTTP レイヤーのアトミックなトランザクションとして扱われるようになった。
+
+### 2. TDD Environment Stabilization
+- **変更内容**:
+    - `apps/api-server/src/api_integration_tests.rs` [MODIFY]: テスト環境構築用関数から `ollama_host` のハードコードを削除。該当テスト内でのみ `SettingsOps` を用いて設定を注入する方式へ移行。
+- **波及効果**:
+    - 環境変数の漏洩によるテストの汚染や、Trust-DNS ベースの SSRF フィルターに対する誤検知・テスト間干渉が解消され、よりクリーンなテストライフサイクルが確保された。
+
 ## Aiome Infrastructure & Automation (ScoreTracker & Heartbeat)
 ### 1. Autonomous LoRA Training & ScoreTracker Edge Case Testing
 - **変更内容**:

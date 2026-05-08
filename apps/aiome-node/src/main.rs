@@ -151,14 +151,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             fn verify_signature(&self, _p: &str, _s: &str) -> Result<(), AiomeError> {
                 Self::err()
             }
-            async fn process_webhook(
-                &self,
-                _id: &str,
-                _t: &str,
-                _p: &serde_json::Value,
-            ) -> Result<(), AiomeError> {
-                Self::err()
-            }
 
             async fn create_checkout_session(
                 &self,

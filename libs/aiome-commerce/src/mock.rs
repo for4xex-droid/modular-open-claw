@@ -175,19 +175,6 @@ impl CommerceEngine for MockCommerceEngine {
         Ok(()) // モックなので常に成功
     }
 
-    async fn process_webhook(
-        &self,
-        event_id: &str,
-        _event_type: &str,
-        _payload: &serde_json::Value,
-    ) -> Result<(), AiomeError> {
-        info!(
-            "💡 [MockCommerceEngine] Mock processing webhook event: {}",
-            event_id
-        );
-        Ok(())
-    }
-
     async fn create_checkout_session(
         &self,
         _agent_id: Uuid,

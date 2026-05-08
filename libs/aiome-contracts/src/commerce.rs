@@ -72,14 +72,6 @@ pub trait CommerceEngine: Send + Sync {
     /// Webhook 署名の検証
     fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError>;
 
-    /// Webhook イベントの冪等処理
-    async fn process_webhook(
-        &self,
-        event_id: &str,
-        event_type: &str,
-        payload: &serde_json::Value,
-    ) -> Result<(), AiomeError>;
-
     /// チェックアウトセッションを作成する（自律エージェントのセットアップや追加課金用）
     async fn create_checkout_session(
         &self,

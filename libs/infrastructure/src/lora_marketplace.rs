@@ -803,14 +803,7 @@ mod tests {
         fn verify_signature(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn process_webhook(
-            &self,
-            _: &str,
-            _: &str,
-            _: &serde_json::Value,
-        ) -> Result<(), AiomeError> {
-            Ok(())
-        }
+
         async fn create_checkout_session(
             &self,
             _: Uuid,

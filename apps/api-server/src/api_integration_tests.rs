@@ -246,15 +246,6 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         Ok(())
     }
 
-    async fn process_webhook(
-        &self,
-        _event_id: &str,
-        _event_type: &str,
-        _payload: &serde_json::Value,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-
     async fn escrow_release(
         &self,
         _escrow_id: &str,
@@ -629,9 +620,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         config: Component::new({
             let mut config = AiomeConfig::default();
             config.resolver = shared::app_data::AppDataResolver::new();
-            config.log_level = "info".to_string();
-            // config.ollama_host = "".to_string();
-            // config.ollama_model = "".to_string();
+
             config.gemini_api_key = None;
             config.openai_api_key = None;
             config.anthropic_api_key = None;
@@ -2942,9 +2931,15 @@ async fn test_model_status_unauthorized() {
 #[tokio::test]
 async fn test_model_status_authorized() {
     let (server, state, _tmp) = create_test_server().await;
+    use aiome_core::traits::SettingsOps;
+    let _ = state
+        .job_queue
+        .get_inner()
+        .update_setting("ollama_host", "http://127.0.0.1:11434", "llm", false)
+        .await;
+
     let bearer = test_bearer();
 
-    // We expect 501 Not Implemented because of TDD RED phase
     let response = server
         .get("/api/v1/models/status")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
@@ -3706,6 +3701,9 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
     let sig_hash = hex::encode(mac.finalize().into_bytes());
     let sig_header = format!("t={},v1={}", timestamp, sig_hash);
 
+    // Subscribe to event_sender BEFORE sending the webhook
+    let mut rx = state.event_sender.get_inner().subscribe();
+
     // 4. Send Webhook Request
     let response = server
         .post("/api/v1/commerce/webhook")
@@ -3732,6 +3730,26 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
         sync_count, 1,
         "Webhook should have synced to Nurture Ledger"
     );
+
+    // 6. Verify SSE Broadcast via CoreEvent::CommerceEvent
+    let event = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv())
+        .await
+        .expect("Timeout waiting for CommerceEvent event")
+        .expect("Failed to receive event");
+
+    match event {
+        aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            event_type,
+            amount,
+            currency,
+            ..
+        } => {
+            assert_eq!(event_type, "checkout.session.completed");
+            assert_eq!(amount, 5000);
+            assert_eq!(currency, "jpy");
+        }
+        _ => panic!("Expected CommerceEvent event, got another event"),
+    }
 }
 
 #[serial]

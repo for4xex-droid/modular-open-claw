@@ -76,13 +76,8 @@ pub async fn polar_webhook(
         event_id, event_type
     );
 
-    if let Err(e) = engine
-        .process_webhook(event_id, event_type, &event_val)
-        .await
-    {
-        error!("❌ [PolarWebhook] Event processing failed: {}", e);
-        return Err(AppError::internal("Event processing failed"));
-    }
+    // INFO: process_webhook was removed from the CommerceEngine trait to enforce transaction boundaries.
+    // Polar webhook state mutation must be implemented directly via infrastructure layers (like Stripe does).
 
     Ok(StatusCode::OK)
 }

@@ -107,6 +107,14 @@ pub enum CoreEvent {
         passed: bool,
         conductor: String,
     },
+    /// Nurture Ledger Transaction Events (Commerce Integration)
+    CommerceEvent {
+        event_type: String,
+        agent_id: Uuid,
+        amount: u64,
+        currency: String,
+        description: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

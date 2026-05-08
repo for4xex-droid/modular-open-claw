@@ -551,50 +551,6 @@ impl CommerceEngine for StripeCommerceEngine {
             })
     }
 
-    async fn process_webhook(
-        &self,
-        event_id: &str,
-        event_type: &str,
-        _payload: &serde_json::Value,
-    ) -> Result<(), AiomeError> {
-        // Stripe Webhook 冪等性保証: イベント ID でユニーク制約をかける
-        let result =
-            sqlx::query("INSERT INTO stripe_webhook_events (event_id, event_type) VALUES (?, ?)")
-                .bind(event_id)
-                .bind(event_type)
-                .execute(&self.pool)
-                .await;
-
-        match result {
-            Ok(_) => {
-                // 正常に記録された場合は処理を継続
-                tracing::info!(
-                    "✅ [StripeCommerce] Webhook event {} processed successfully.",
-                    event_id
-                );
-                Ok(())
-            }
-            Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
-                // 既に処理済みの場合は、安全のため再度正常終了
-                tracing::info!(
-                    "💡 [StripeCommerce] Webhook event {} was already processed. Skipping.",
-                    event_id
-                );
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!(
-                    "❌ [StripeCommerce] Database error evaluating idempotency for event {}: {}",
-                    event_id,
-                    e
-                );
-                Err(AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })
-            }
-        }
-    }
-
     async fn create_checkout_session(
         &self,
         agent_id: Uuid,
@@ -1105,6 +1061,7 @@ mod tests {
             "CREATE TABLE IF NOT EXISTS stripe_webhook_events (
                 event_id TEXT PRIMARY KEY,
                 event_type TEXT NOT NULL,
+                metadata TEXT,
                 processed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );",
         )
@@ -1196,40 +1153,6 @@ mod tests {
         if let Err(AiomeError::Infrastructure { reason }) = result {
             assert!(reason.contains("Stripe Webhook verification failed"));
         }
-    }
-
-    #[tokio::test]
-    async fn test_process_webhook_idempotency_red() {
-        let engine = get_test_engine().await;
-        let event_id = "evt_idempotency_test_1";
-        let event_type = "payment_intent.succeeded";
-        let payload = serde_json::json!({"test": true});
-
-        // 初回の処理は成功するはず
-        let result1 = engine.process_webhook(event_id, event_type, &payload).await;
-        assert!(result1.is_ok(), "First process should succeed");
-
-        // 二回目の処理は冪等性により無視 (Ok) されるか、あるいはエラー（AlreadyProcessed等）を返すか。
-        // ここでは「既に処理済みだが、正常終了として扱う（＝2度目はスキップ）」仕様とする。
-        // DBの状態を確認し、レコードが1つだけであることを確認。
-        let result2 = engine.process_webhook(event_id, event_type, &payload).await;
-        assert!(
-            result2.is_ok(),
-            "Second process should also return Ok (idempotent skipped)"
-        );
-
-        // 実際の DB 登録数を確認
-        let count: (i64,) =
-            sqlx::query_as("SELECT count(*) FROM stripe_webhook_events WHERE event_id = ?")
-                .bind(event_id)
-                .fetch_one(&engine.pool)
-                .await
-                .unwrap_or((0,));
-
-        assert_eq!(
-            count.0, 1,
-            "There should be exactly one record in the DB for this event_id"
-        );
     }
 
     #[tokio::test]

@@ -710,6 +710,16 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("aegis_sentinel").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::CommerceEvent { event_type, agent_id, amount, currency, description } => {
+                            let data = serde_json::json!({
+                                "event_type": event_type,
+                                "agent_id": agent_id,
+                                "amount": amount,
+                                "currency": currency,
+                                "description": description,
+                            });
+                            yield Ok(Event::default().event("commerce_event").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

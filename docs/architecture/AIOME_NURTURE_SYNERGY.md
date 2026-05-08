@@ -672,7 +672,7 @@ classDiagram
         +slash(agent_id, amount, reason) Result~()~
         +register_license(agent_id, asset_id, license_type) Result~String~
         +verify_signature(payload, sig_header) Result~()~
-        +process_webhook(event_id, event_type, payload) Result~()~
+
         +create_subscription(agent_id, plan_id) Result~String~
         +cancel_subscription(agent_id, subscription_id) Result~()~
         +get_subscription_status(agent_id) Result~SubscriptionStatus~
