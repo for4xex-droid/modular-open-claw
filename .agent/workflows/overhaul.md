@@ -13,8 +13,8 @@ Before executing this workflow, the user must define the scope of the overhaul. 
 
 Before making any structural changes, you MUST map the dependencies and potential blast radius:
 
-1. **Impact Query**: Run `python3 scripts/impact_query.py <SymbolName>` for the main structures you plan to overhaul.
-2. **Nurture Auditor**: Run `python3 scripts/nurture_auditor.py` to ensure you aren't violating implicit module isolation.
+1. **Impact Query**: Run `grep_search` for the main structures you plan to overhaul to find all usages and dependencies.
+2. **Architecture Audit**: Review `docs/architecture/ARCHITECTURE.md` to ensure you aren't violating implicit module isolation.
 3. Review `.context/RIPPLE_MAP.md` to identify any previously recorded architectural invariants for the target modules.
 
 ### Step 1: Baseline Analysis

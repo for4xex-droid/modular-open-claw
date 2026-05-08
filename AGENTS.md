@@ -32,13 +32,14 @@
 10. **DESIGN.md** — `tokens.css` / `animations.css` 変更時、DESIGN.md も同期。
 11. **SYNERGY.md** — トレイト/クレート/MCP ツール追加・変更時、`docs/architecture/AIOME_NURTURE_SYNERGY.md` の該当セクション（クラス図・シーケンス図・依存マップ）も同期。
 
-## 🚨 AST Impact Analysis
+## 🚨 Impact Analysis (影響範囲の特定)
 
-本番コード変更時は事前に物理依存ネットワークで被害半径を特定すること。
+本番コード変更時は事前に影響範囲（被害半径）を特定すること。
+廃止された AST パーサ（nurture_auditor.py 等）への依存は禁止されています。
 
-1. `python3 scripts/nurture_auditor.py`
-2. `python3 scripts/impact_query.py <SymbolName>`
-3. `.context/RIPPLE_MAP.md` を確認
+1. `grep_search` ツールを用いて、変更対象のシンボル（構造体・関数・モジュール）の `use` 参照箇所を特定する。
+2. `docs/architecture/ARCHITECTURE.md` で最新のコンポーネント依存関係を確認する。
+3. `.context/RIPPLE_MAP.md` で意味的依存関係を確認する。
 
 記憶や推測のみに頼った変更は厳禁。
 

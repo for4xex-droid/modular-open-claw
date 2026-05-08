@@ -12,7 +12,7 @@ description: 負債となったシステム・コードを体系的に非推奨�
 ## 🔄 実行プロセス
 
 ### Step 1: 依存関係と影響の可視化
-- `python3 scripts/impact_query.py` による物理波及分析と、`.context/RIPPLE_MAP.md` による意味依存分析を使用し、非推奨対象を利用しているすべてのコンシューマを特定する。
+- `grep_search` による参照元（`use` 等）の物理波及分析と、`.context/RIPPLE_MAP.md` による意味依存分析を使用し、非推奨対象を利用しているすべてのコンシューマを特定する。
 - 完全に使われていない Zombie Code （6ヶ月以上更新がなく、メンテナ不在のもの）かどうかを確認する。
 // turbo
 ```bash

@@ -11,24 +11,24 @@ description: 攻撃者視点（Red Team）による容赦ないセキュリテ�
 
 **Sequential Thinking** を使用して、攻撃と防御のシミュレーションを行ってください。
 
-### Phase 0: 構造マップ注入 (AST Deep Structure Map) 📡
+### Phase 0: 構造マップ注入 (Architecture Deep Structure Map) 📡
 // turbo
-コードを「読む」前に、まずAST構造マップを生成し、攻撃対象の「地図」を手に入れる。
+コードを「読む」前に、まず自動生成されたアーキテクチャ定義を読み込み、攻撃対象の「地図」を手に入れる。
 ```bash
-python3 scripts/nurture_auditor.py
+# ツール (view_file) で docs/architecture/ARCHITECTURE.md を読み込む
 ```
 
-生成された `docs/architecture/deep_scan_matrix.md` と `.context/impact_graph.json` を読み込み、以下を把握する：
+`ARCHITECTURE.md` と `grep_search` の走査結果から以下を把握する：
 - 全APIエンドポイント（Source = 外部入力の侵入口）の一覧
-- 全構造体・トレイトの依存グラフ（Propagator = データの伝播経路）
+- 全構造体・トレイトの依存関係（Propagator = データの伝播経路）
 
 ### Phase 1: Taint Analysis (Source → Sink 追跡) 🎯
 // turbo
-自動化されたTaint Scannerを実行し、汚染経路（Source → Sink）を特定する。
+自動化されたアンチパターン検出を実行し、潜在的な汚染経路や脆弱なコードパターンを特定する。
 ```bash
-python3 scripts/taint_scanner.py
+bash scripts/pattern-enforcer.sh
 ```
-実行後、`docs/architecture/taint_analysis_report.md` を確認して Unsanitized Routes を特定する。
+実行後、その標準出力を確認して Unsanitized Routes を特定する。
 
 上記で特定された Source と Sink のペアについて、データが**サニタイズ（バリデーション）なしに到達可能か**を論理的に検証する。以下の「汚染方程式」を適用：
 - Source（入力）が変数に入る → その変数がサニタイズなしに関数間を移動 → Sink（危険関数）に到達 = **脆弱性**
