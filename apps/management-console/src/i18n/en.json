@@ -548,7 +548,11 @@
     "errorIdInvalid": "Server ID must contain only letters, numbers, hyphens, and underscores (max 64 chars).",
     "errorIdExists": "A server with this ID already exists.",
     "errorUrlInvalid": "A valid HTTP or HTTPS URL is required for HTTP transport.",
-    "errorCommandRequired": "Command is required for STDIO transport."
+    "errorCommandRequired": "Command is required for STDIO transport.",
+    "enable": "Enable",
+    "securityWarning": "Security Warning",
+    "tokenRecommendation": "You are about to enable a third-party MCP server. We strongly recommend using Read-Only or minimum privilege tokens to prevent unauthorized data access or modification.",
+    "confirmEnable": "I understand, Enable"
   },
   "dpoExport": {
     "title": "DPO Dataset Export",

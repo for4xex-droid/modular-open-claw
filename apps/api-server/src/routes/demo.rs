@@ -11,7 +11,7 @@ use aiome_core_contracts::error::AiomeError;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "demo"))]
 /// デモの開始要請
 #[utoipa::path(
     post,

@@ -116,6 +116,7 @@ const CausalVisualizer: React.FC = () => {
 
     const getStepColor = (category: string) => {
         switch (category) {
+            case 'Economic': return { background: cssVar('--accent-emerald-20', '#10B98133'), border: cssVar('--accent-emerald', '#10B981') };
             case 'Planning': return { background: cssVar('--bg-dark'), border: cssVar('--accent-purple') };
             case 'WasmTool': return { background: cssVar('--accent-blue'), border: cssVar('--accent-cyan') };
             case 'DockerTool': return { background: cssVar('--bg-glass'), border: cssVar('--text-muted') };

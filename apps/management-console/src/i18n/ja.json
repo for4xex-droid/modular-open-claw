@@ -548,7 +548,11 @@
     "errorIdInvalid": "サーバーIDには英数字、ハイフン、アンダースコアのみ使用できます（最大64文字）。",
     "errorIdExists": "このIDのサーバーは既に存在します。",
     "errorUrlInvalid": "HTTPトランスポートには有効なHTTPまたはHTTPS URLが必要です。",
-    "errorCommandRequired": "STDIOトランスポートにはコマンドが必要です。"
+    "errorCommandRequired": "STDIOトランスポートにはコマンドが必要です。",
+    "enable": "有効化",
+    "securityWarning": "セキュリティ警告",
+    "tokenRecommendation": "サードパーティ製のMCPサーバーを有効にしようとしています。不正なデータアクセスや改ざんを防ぐため、読み取り専用（Read-Only）または最小権限のトークンを使用することを強く推奨します。",
+    "confirmEnable": "理解して有効化する"
   },
   "dpoExport": {
     "title": "DPO データセットエクスポート",

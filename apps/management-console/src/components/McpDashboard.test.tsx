@@ -22,12 +22,14 @@ const I18N_KEYS: Record<string, string> = {
   'common.refresh': 'Refresh'
 };
 
+const mockT = (key: string, opts?: { defaultValue?: string }) => {
+  if (opts?.defaultValue) return opts.defaultValue;
+  return I18N_KEYS[key] || key;
+};
+
 jest.mock('../i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => {
-      if (opts?.defaultValue) return opts.defaultValue;
-      return I18N_KEYS[key] || key;
-    }
+    t: mockT
   })
 }));
 
@@ -54,7 +56,7 @@ describe('McpDashboard', () => {
   // ============================================================
 
   it('renders header with translated title', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -65,7 +67,7 @@ describe('McpDashboard', () => {
   });
 
   it('shows empty state when no servers exist', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -79,7 +81,7 @@ describe('McpDashboard', () => {
   });
 
   it('displays STDIO server with command and args', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         mcp_servers: {
@@ -104,7 +106,7 @@ describe('McpDashboard', () => {
   });
 
   it('displays HTTP server with URL', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         mcp_servers: {
@@ -129,7 +131,7 @@ describe('McpDashboard', () => {
   });
 
   it('masks non-variable env values with ***', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         mcp_servers: {
@@ -151,12 +153,80 @@ describe('McpDashboard', () => {
     expect(screen.getByText('$MY_VAR')).toBeInTheDocument();
   });
 
+  it('displays disabled server with Enable button and muted styling', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        mcp_servers: {
+          "disabled-srv": {
+            command: "npx",
+            args: ["-y", "disabled-pkg"],
+            disabled: true
+          }
+        }
+      })
+    } as Response);
+
+    render(<McpDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('disabled-srv')).toBeInTheDocument();
+    });
+    
+    // The Enable button should be present
+    expect(screen.getByText('Enable')).toBeInTheDocument();
+  });
+
+  it('shows security modal when Enable is clicked and updates config on confirm', async () => {
+    let savedConfig: Record<string, unknown> = {};
+
+    mockFetch.mockImplementation(async (_url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') {
+        savedConfig = JSON.parse(opts.body as string);
+        return { ok: true } as Response;
+      }
+      return { ok: true, json: async () => ({
+        mcp_servers: {
+          "disabled-srv": {
+            command: "npx",
+            args: ["-y", "disabled-pkg"],
+            disabled: true
+          }
+        }
+      })} as Response;
+    });
+
+    render(<McpDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('disabled-srv')).toBeInTheDocument();
+    });
+
+    // Click Enable
+    fireEvent.click(screen.getByText('Enable'));
+
+    // Modal should appear
+    expect(screen.getByText('Security Warning')).toBeInTheDocument();
+
+    // Confirm enable
+    fireEvent.click(screen.getByText('I understand, Enable'));
+
+    // Verify API call
+    await waitFor(() => {
+      const postCall = mockFetch.mock.calls.find(call => call[1]?.method === 'POST');
+      expect(postCall).toBeDefined();
+    });
+
+    const servers = (savedConfig as any).mcp_servers;
+    expect(servers['disabled-srv'].disabled).toBe(false);
+  });
+
   // ============================================================
   // Error Handling Tests
   // ============================================================
 
   it('shows error banner when API fails', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: false,
       status: 500
     } as Response);
@@ -183,7 +253,7 @@ describe('McpDashboard', () => {
   // ============================================================
 
   it('rejects empty server ID', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -197,11 +267,11 @@ describe('McpDashboard', () => {
     fireEvent.click(screen.getByText('Add Server'));
     fireEvent.click(screen.getByText('Save & Restart'));
 
-    expect(screen.getByText('Server ID is required.')).toBeInTheDocument();
+    expect(await screen.findByText('Server ID is required.')).toBeInTheDocument();
   });
 
   it('rejects server ID with path traversal characters', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -222,11 +292,11 @@ describe('McpDashboard', () => {
 
     fireEvent.click(screen.getByText('Save & Restart'));
 
-    expect(screen.getByText('Server ID must contain only letters, numbers, hyphens, and underscores (max 64 chars).')).toBeInTheDocument();
+    expect(await screen.findByText('Server ID must contain only letters, numbers, hyphens, and underscores (max 64 chars).')).toBeInTheDocument();
   });
 
   it('rejects duplicate server ID', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: { "existing-server": { command: "test", args: [] } } })
     } as Response);
@@ -247,11 +317,11 @@ describe('McpDashboard', () => {
 
     fireEvent.click(screen.getByText('Save & Restart'));
 
-    expect(screen.getByText('A server with this ID already exists.')).toBeInTheDocument();
+    expect(await screen.findByText('A server with this ID already exists.')).toBeInTheDocument();
   });
 
   it('rejects javascript: URL scheme (XSS prevention)', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -276,11 +346,11 @@ describe('McpDashboard', () => {
 
     fireEvent.click(screen.getByText('Save & Restart'));
 
-    expect(screen.getByText('A valid HTTP or HTTPS URL is required for HTTP transport.')).toBeInTheDocument();
+    expect(await screen.findByText('A valid HTTP or HTTPS URL is required for HTTP transport.')).toBeInTheDocument();
   });
 
   it('rejects STDIO transport with empty command', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ mcp_servers: {} })
     } as Response);
@@ -298,7 +368,7 @@ describe('McpDashboard', () => {
 
     fireEvent.click(screen.getByText('Save & Restart'));
 
-    expect(screen.getByText('Command is required for STDIO transport.')).toBeInTheDocument();
+    expect(await screen.findByText('Command is required for STDIO transport.')).toBeInTheDocument();
   });
 
   // ============================================================

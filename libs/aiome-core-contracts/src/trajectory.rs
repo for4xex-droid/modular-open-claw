@@ -86,6 +86,8 @@ pub enum StepCategory {
     Review,
     /// 最終判断
     Decision,
+    /// 経済活動（X402 トランザクション、エスクローなど）
+    Economic,
 }
 
 /// 📉 軌跡（Trajectory）の1ステップ

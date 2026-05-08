@@ -68,6 +68,8 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
             if (d?.message) msg = String(d.message);
             return { id: `sys-${index}`, type: 'system', title: 'SOCIETY OF THOUGHT', content: msg, timestamp: ts };
         }
+        case 'commerce_event':
+            return { id: `sys-${index}`, type: 'system', title: '💰 COMMERCE', content: `${String(d?.description ?? 'Commerce transaction processed')} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
         default:
             return null;
     }

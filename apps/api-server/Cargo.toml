@@ -71,6 +71,7 @@ async-stripe-checkout = { version = "1.0.0-rc.5", features = ["deserialize", "fu
 default = ["dev-routes"]
 dev-routes = []
 nurture = ["dep:nurture-api", "dep:nurture-core", "dep:nurture-infra", "dep:commerce-protocol", "aiome_core/nurture"]
+demo = []
 
 [dev-dependencies]
 axum-test = "16"

@@ -29,6 +29,8 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@crewai/",
     "@autogen/",
     "@iflow-mcp/", // X(Twitter) MCP Server
+    "@anthropic/",
+    "@openai/",
 ];
 
 /// Allowed unscoped npm packages for MCP (exact match).
@@ -41,6 +43,9 @@ pub const ALLOWED_MCP_PACKAGES: &[&str] = &[
     "mcp-remote",
     "discord-mcp-server",
     "notion-mcp-server",
+    "tavily-mcp",
+    "linear-mcp-server",
+    "sentry-mcp-server",
 ];
 
 /// Forbidden argument flags for MCP endpoints to prevent command injection.
@@ -130,4 +135,20 @@ pub fn validate_mcp_arg_flags(args: &[String]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_mcp_packages_are_whitelisted() {
+        assert!(validate_mcp_package("npx", &["-y".into(), "tavily-mcp".into()]).is_ok());
+        assert!(validate_mcp_package("npx", &["-y".into(), "linear-mcp-server".into()]).is_ok());
+        assert!(validate_mcp_package("npx", &["-y".into(), "sentry-mcp-server".into()]).is_ok());
+        assert!(
+            validate_mcp_package("npx", &["-y".into(), "@anthropic/mcp-server".into()]).is_ok()
+        );
+        assert!(validate_mcp_package("npx", &["-y".into(), "@openai/mcp-server".into()]).is_ok());
+    }
 }

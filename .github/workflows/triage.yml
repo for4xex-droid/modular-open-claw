@@ -1,0 +1,39 @@
+name: Issue Triage
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Welcome New Contributor
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueBody = context.payload.issue.body || '';
+            const isGoodFirstIssue = context.payload.issue.labels.some(label => label.name === 'good first issue') || 
+                                     context.payload.issue.title.includes('[GOOD FIRST ISSUE]');
+            
+            if (isGoodFirstIssue) {
+              const body = `Hi @${context.payload.issue.user.login}! 👋
+
+Welcome to the Aiome project! Thank you for your interest in contributing.
+This issue is marked as a **Good First Issue**, which means it's a great starting point for new contributors.
+
+### How to get started:
+1. Make sure you've read our [Contribution Guidelines](CONTRIBUTING.md).
+2. Look at the \`Checklist before PR\` in the issue description. We take our **Zero-Panic Policy** and **Negative Testing** very seriously!
+3. If you would like to work on this issue, please leave a comment saying \`I would like to work on this!\`.
+4. If you need help with MCP integration, check out the [Model Context Protocol Docs](https://modelcontextprotocol.io).
+
+If you have any questions, feel free to ask here. Happy coding! 🚀`;
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }

@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Added
+- **MCP Ecosystem Expansion (Phase 1)**:
+  - Extended CausalVisualizer with the `Economic` step category to natively visualize autonomous `commerce_event` transactions within the causality graph.
+  - Added dedicated ActivityFeed integration for `commerce_event`, visualizing ledger transactions (amount, currency, and event type) directly in the UI.
+- **OSS Community Onboarding**:
+  - Created `.github/ISSUE_TEMPLATE/good_first_issue.md` template enforcing Zero-Panic Policy and Negative Testing for new Skill/MCP tool contributions.
+  - Introduced `.github/workflows/triage.yml` to automatically welcome new contributors and link them to proper documentation upon opening "good first issue" requests.
+
+### Changed
+- **P3 Demo Module Modularization**:
+  - Decoupled `demo.rs` behind a new Cargo feature flag (`demo`), explicitly securing test and demonstration endpoints (`/api/v1/demo/start`) from being bundled into generic production release builds without explicit opt-in.
+  - Safely split debug routing block in `router.rs` to maintain internal API access for testing tools while isolating demo logic.
+
 ### Fixed
 - **Commerce Architecture (Transaction Integrity)**:
   - Pruned the `process_webhook` trait method from `CommerceEngine` and all its implementations (`StripeCommerceEngine`, `PolarCommerceEngine`, `MockCommerceEngine`, `StubCommerceEngine`, and `NurtureCommerceBridge`) to completely eliminate architectural discrepancies and force infrastructure-level atomic transaction handling.

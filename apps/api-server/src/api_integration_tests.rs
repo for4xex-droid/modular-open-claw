@@ -3881,6 +3881,8 @@ async fn test_mcp_oauth_token_exchange_success() {
     );
 
     std::env::remove_var("TEST_OAUTH_TOKEN_URL_OVERRIDE");
+    std::env::remove_var("GITHUB_CLIENT_ID");
+    std::env::remove_var("GITHUB_CLIENT_SECRET");
 }
 
 #[serial]
@@ -3927,6 +3929,8 @@ async fn test_mcp_oauth_token_exchange_failure() {
     );
 
     std::env::remove_var("TEST_OAUTH_TOKEN_URL_OVERRIDE");
+    std::env::remove_var("GITHUB_CLIENT_ID");
+    std::env::remove_var("GITHUB_CLIENT_SECRET");
 }
 
 #[derive(Debug)]

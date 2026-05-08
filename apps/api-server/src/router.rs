@@ -318,6 +318,10 @@ pub fn build_app(
             post(routes::a2ui::submit_a2ui_action),
         );
 
+    #[cfg(any(debug_assertions, feature = "demo"))]
+    let internal_router =
+        internal_router.route("/api/v1/demo/start", post(routes::demo::start_demo));
+
     #[cfg(debug_assertions)]
     let internal_router = internal_router
         .route(
@@ -332,7 +336,6 @@ pub fn build_app(
             "/api/synergy/test/federation",
             post(routes::karma::trigger_federation_demo),
         )
-        .route("/api/v1/demo/start", post(routes::demo::start_demo))
         .route(
             "/api/v1/bootstrap/factory-reset",
             post(routes::bootstrap::factory_reset),

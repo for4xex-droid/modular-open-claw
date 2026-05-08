@@ -18,6 +18,7 @@ interface McpServerConfig {
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
+  disabled?: boolean;
 }
 
 interface McpDiscoveryFile {
@@ -58,6 +59,7 @@ export default function McpDashboard() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [enablingServerId, setEnablingServerId] = useState<string | null>(null);
 
   // New server form state
   const [newServerId, setNewServerId] = useState('');
@@ -114,6 +116,25 @@ export default function McpDashboard() {
     const newConfig = { ...config, mcp_servers: { ...config.mcp_servers } };
     delete newConfig.mcp_servers[id];
     await handleSaveConfig(newConfig);
+  };
+
+  const handleEnableServer = async () => {
+    if (!enablingServerId) return;
+    const serverToEnable = config.mcp_servers[enablingServerId];
+    if (!serverToEnable) return;
+    
+    const newConfig = {
+      ...config,
+      mcp_servers: {
+        ...config.mcp_servers,
+        [enablingServerId]: {
+          ...serverToEnable,
+          disabled: false
+        }
+      }
+    };
+    await handleSaveConfig(newConfig);
+    setEnablingServerId(null);
   };
 
   const handleAddServer = async () => {
@@ -322,14 +343,15 @@ export default function McpDashboard() {
               animate={{ opacity: 1, y: 0 }}
               className="card-hover"
               style={{
-                background: 'var(--bg-glass-heavy)',
+                background: server.disabled ? 'var(--bg-glass-light)' : 'var(--bg-glass-heavy)',
                 border: '1px solid var(--border-glass)',
                 borderRadius: 'var(--radius-md)',
                 padding: '1.5rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                boxShadow: 'var(--shadow-medium)'
+                boxShadow: server.disabled ? 'none' : 'var(--shadow-medium)',
+                opacity: server.disabled ? 0.7 : 1
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -359,14 +381,25 @@ export default function McpDashboard() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleRemoveServer(id)}
-                  className="secondary-button"
-                  style={{ color: 'var(--accent-rose)', borderColor: 'var(--accent-rose-30)', background: 'var(--accent-rose-10)' }}
-                  title={t('mcp.removeServer', { defaultValue: 'Remove Server' }) as string}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {server.disabled && (
+                    <button
+                      onClick={() => setEnablingServerId(id)}
+                      className="primary-button"
+                      style={{ background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                    >
+                      {t('mcp.enable', { defaultValue: 'Enable' }) as string}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRemoveServer(id)}
+                    className="secondary-button"
+                    style={{ color: 'var(--accent-rose)', borderColor: 'var(--accent-rose-30)', background: 'var(--accent-rose-10)' }}
+                    title={t('mcp.removeServer', { defaultValue: 'Remove Server' }) as string}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               {server.env && Object.keys(server.env).length > 0 && (
@@ -387,6 +420,52 @@ export default function McpDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Security Warning Modal */}
+      <AnimatePresence>
+        {enablingServerId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-lg)', padding: '2rem', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <AlertTriangle size={24} color="var(--accent-amber)" />
+                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('mcp.securityWarning', { defaultValue: 'Security Warning' }) as string}</h3>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
+                {t('mcp.tokenRecommendation', { defaultValue: 'You are about to enable a third-party MCP server. We strongly recommend using Read-Only or minimum privilege tokens to prevent unauthorized data access or modification.' }) as string}
+              </p>
+              <div style={{ background: 'var(--black-20)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <strong>Server:</strong> <span style={{ color: 'var(--text-primary)' }}>{enablingServerId}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button
+                  onClick={() => setEnablingServerId(null)}
+                  className="secondary-button"
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  {t('mcp.cancel', { defaultValue: 'Cancel' }) as string}
+                </button>
+                <button
+                  onClick={handleEnableServer}
+                  className="primary-button"
+                  style={{ background: 'var(--accent-amber)', color: '#000', padding: '0.5rem 1rem' }}
+                >
+                  {t('mcp.confirmEnable', { defaultValue: 'I understand, Enable' }) as string}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
