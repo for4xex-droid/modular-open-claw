@@ -235,12 +235,16 @@ pub struct ApiDoc;
         crate::routes::karma::trigger_failure_demo,
         crate::routes::karma::trigger_security_demo,
         crate::routes::karma::trigger_federation_demo,
-        crate::routes::demo::start_demo,
         crate::routes::settings::test_connection,
         crate::routes::bootstrap::factory_reset,
     ),
     components(schemas(crate::routes::bootstrap::FactoryResetResponse))
 )]
+pub struct DebugApiDoc;
+
+#[cfg(any(debug_assertions, feature = "demo"))]
+#[derive(OpenApi)]
+#[openapi(paths(crate::routes::demo::start_demo))]
 pub struct DemoApiDoc;
 
 struct SecurityAddon;
@@ -260,6 +264,21 @@ impl utoipa::Modify for SecurityAddon {
         }
 
         #[cfg(debug_assertions)]
+        {
+            let mut debug_doc = DebugApiDoc::openapi();
+            for (path, item) in debug_doc.paths.paths {
+                openapi.paths.paths.insert(path, item);
+            }
+            if let (Some(mut debug_components), Some(components)) =
+                (debug_doc.components.take(), openapi.components.as_mut())
+            {
+                for (name, schema) in debug_components.schemas {
+                    components.schemas.insert(name, schema);
+                }
+            }
+        }
+
+        #[cfg(any(debug_assertions, feature = "demo"))]
         {
             let mut demo_doc = DemoApiDoc::openapi();
             for (path, item) in demo_doc.paths.paths {

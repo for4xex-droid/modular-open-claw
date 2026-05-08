@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';

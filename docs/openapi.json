@@ -4020,6 +4020,51 @@
           }
         }
       },
+      "FactoryResetResponse": {
+        "type": "object",
+        "description": "Factory Reset レスポンス",
+        "required": [
+          "success",
+          "deleted_files",
+          "deleted_dirs",
+          "preserved_files",
+          "errors"
+        ],
+        "properties": {
+          "deleted_dirs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "削除されたディレクトリ"
+          },
+          "deleted_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "削除されたファイル"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "エラーメッセージ"
+          },
+          "preserved_files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "保持されたファイル"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "成功したか"
+          }
+        }
+      },
       "FailureCategory": {
         "type": "string",
         "description": "🛡️ AgentRx 失敗カテゴリ (Taxonomy)",

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DpoDatasetExport from './DpoDatasetExport';
@@ -12,15 +12,15 @@ jest.mock('../lib/auth', () => ({
 // Mock i18n: t() returns the key, which enables the fallback `||` operator in the component
 jest.mock('../i18n', () => ({
   useTranslation: () => ({
-    t: (key: string) => '' // Return empty string so the fallback english text is used
+    t: (_key: string) => '' // Return empty string so the fallback english text is used
   })
 }));
 
 // Mock window.URL
 const mockCreateObjectURL = jest.fn();
 const mockRevokeObjectURL = jest.fn();
-global.URL.createObjectURL = mockCreateObjectURL;
-global.URL.revokeObjectURL = mockRevokeObjectURL;
+window.URL.createObjectURL = mockCreateObjectURL;
+window.URL.revokeObjectURL = mockRevokeObjectURL;
 
 describe('DpoDatasetExport', () => {
   beforeEach(() => {
