@@ -40,11 +40,8 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
 
     // 2. HeartbeatWakeupService の初期化
     // state.job_queue は AgentEvolver を継承しているため、そのまま渡せる。
-    let lora_service = state.lora_engine.as_opt().and_then(|_e| {
-        // LoraEngine を LoraTrainingService にダウンキャストすることはできないが、
-        // 実際には main.rs で LoraTrainingService が注入されている。
-        None
-    });
+    let lora_service: Option<Arc<dyn aiome_core_contracts::traits::LoraEngine>> =
+        state.lora_engine.as_opt().cloned();
 
     let evolver: Arc<dyn AgentEvolver> = state.job_queue.get_inner().clone();
 
@@ -63,9 +60,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         info!("💓 [Heartbeat] Running periodic heartbeat check...");
 
         // A. Snapshot 記録
-        if let Err(e) = score_tracker.record_daily_snapshot(&evolver).await {
-            error!("❌ [Heartbeat] Failed to record score snapshot: {:?}", e);
-        }
+        // Removed: snapshot is already recorded inside wakeup_service.run_wakeup_ping()
 
         // B. Wakeup Ping (自律的な話しかけ)
         if let Some(message) = wakeup_service.run_wakeup_ping().await {

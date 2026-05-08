@@ -134,7 +134,7 @@ impl LlmProvider for DynamicLlmProvider {
             }
             "lmstudio" => {
                 let host = self
-                    .get_host("lm_studio_host", "http://127.0.0.1:1234") // allow-anti-pattern
+                    .get_host("lm_studio_host", shared::config::DEFAULT_LM_STUDIO_HOST)
                     .await;
                 let provider = aiome_core::llm_provider::LmStudioProvider::new(
                     self.client.clone(),
@@ -274,7 +274,7 @@ impl LlmProvider for DynamicLlmProvider {
             }
             "lmstudio" => {
                 let host = self
-                    .get_host("lm_studio_host", "http://127.0.0.1:1234") // allow-anti-pattern
+                    .get_host("lm_studio_host", shared::config::DEFAULT_LM_STUDIO_HOST)
                     .await;
                 aiome_core::llm_provider::LmStudioProvider::new(self.client.clone(), host, model)
                     .stream_complete(prompt, system)
@@ -377,7 +377,7 @@ impl LlmProvider for DynamicLlmProvider {
             }
             "lmstudio" => {
                 let host = self
-                    .get_host("lm_studio_host", "http://127.0.0.1:1234") // allow-anti-pattern
+                    .get_host("lm_studio_host", shared::config::DEFAULT_LM_STUDIO_HOST)
                     .await;
                 let provider = aiome_core::llm_provider::LmStudioProvider::new(
                     self.client.clone(),

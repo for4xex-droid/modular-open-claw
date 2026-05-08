@@ -198,7 +198,13 @@ pub async fn generate_expression(
                 .get_setting_value("tts_endpoint")
                 .await
                 .unwrap_or(None)
-                .unwrap_or_else(|| "http://localhost:8020".to_string()); // allow-anti-pattern
+                .unwrap_or_else(|| {
+                    state
+                        .config
+                        .xtts_endpoint
+                        .clone()
+                        .unwrap_or_else(|| "http://127.0.0.1:8020".to_string())
+                });
 
             tracing::info!(
                 "🗣️ [TTS] Synthesizing XTTS audio for Expression {} with speaker '{}'",

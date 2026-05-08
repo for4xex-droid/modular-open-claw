@@ -21,7 +21,7 @@ pub struct HeartbeatWakeupService {
     workspace_dir: PathBuf,
     score_tracker: Option<Arc<ScoreTracker>>,
     agent_evolver: Option<Arc<dyn AgentEvolver>>,
-    lora_service: Option<Arc<crate::lora_training::LoraTrainingService>>,
+    lora_service: Option<Arc<dyn aiome_core_contracts::traits::LoraEngine>>,
 }
 
 impl HeartbeatWakeupService {
@@ -47,7 +47,7 @@ impl HeartbeatWakeupService {
         mut self,
         tracker: Arc<ScoreTracker>,
         registry: Arc<dyn AgentEvolver>,
-        lora_service: Option<Arc<crate::lora_training::LoraTrainingService>>,
+        lora_service: Option<Arc<dyn aiome_core_contracts::traits::LoraEngine>>,
     ) -> Self {
         self.score_tracker = Some(tracker);
         self.agent_evolver = Some(registry);
@@ -108,38 +108,20 @@ impl HeartbeatWakeupService {
                             if can_trigger {
                                 if let Some(ref lora) = self.lora_service {
                                     info!("🚀 [Heartbeat] Triggering Autonomous LoRA Training due to plateau!");
-                                    let mut config =
-                                        crate::lora_training::LoraTrainingConfig::default();
-                                    config.base_model = "autonomous-recovery".into();
-                                    let resolver = shared::app_data::AppDataResolver::new();
-                                    config.dataset_path = resolver
-                                        .resolve("datasets/auto_exp")
-                                        .to_string_lossy()
-                                        .to_string();
-                                    config.output_dir =
-                                        resolver.resolve("output").to_string_lossy().to_string();
-                                    config.vault_path = resolver
-                                        .resolve("vault/auto_recovery")
-                                        .to_string_lossy()
-                                        .to_string();
-
-                                    let lora_clone = lora.clone();
-                                    tokio::spawn(async move {
-                                        let dummy_id = format!(
-                                            "auto_recovery_{}",
-                                            chrono::Utc::now().timestamp()
-                                        );
-                                        let cancel_token =
-                                            tokio_util::sync::CancellationToken::new();
-                                        if let Err(e) = lora_clone
-                                            .start_training(&dummy_id, config, cancel_token)
-                                            .await
-                                        {
-                                            tracing::error!("❌ [Heartbeat] Autonomous LoRA Training failed: {:?}", e);
-                                        } else {
-                                            tracing::info!("✅ [Heartbeat] Autonomous LoRA Training completed successfully.");
-                                        }
+                                    let params = serde_json::json!({
+                                        "agent_id": null
                                     });
+                                    match lora
+                                        .train("autonomous-recovery", "auto_exp", params)
+                                        .await
+                                    {
+                                        Ok(job_id) => {
+                                            tracing::info!("✅ [Heartbeat] Autonomous LoRA Training scheduled with Job ID: {}", job_id);
+                                        }
+                                        Err(e) => {
+                                            tracing::error!("❌ [Heartbeat] Autonomous LoRA Training failed to start: {:?}", e);
+                                        }
+                                    }
                                     // Touch cooldown file
                                     if let Err(e) =
                                         fs::write(&cooldown_file, chrono::Utc::now().to_rfc3339())
@@ -255,5 +237,252 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
             return false;
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::DatabasePool;
+    use aiome_core::error::AiomeError;
+    use aiome_core_contracts::error::AiomeError as ContractError;
+    use aiome_core_contracts::forecast::{
+        AnomalyResult, ForecastConfig, ForecastProvider, ForecastResult,
+    };
+    use aiome_core_contracts::llm::{LlmProvider, LlmResponse, StopReason};
+    use aiome_core_contracts::traits::{AgentEvolver, LoraEngine};
+    use aiome_core_contracts::AgentStats;
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[derive(Default, Debug)]
+    struct MockLoraEngine {
+        pub train_called: Arc<AtomicBool>,
+    }
+
+    #[async_trait]
+    impl LoraEngine for MockLoraEngine {
+        async fn complete_with_lora(
+            &self,
+            _prompt: &str,
+            _lora_id: &str,
+        ) -> Result<LlmResponse, ContractError> {
+            Err(ContractError::Infrastructure {
+                reason: "Mock complete_with_lora not implemented".to_string(),
+            })
+        }
+
+        async fn train(
+            &self,
+            _base_model: &str,
+            _dataset_id: &str,
+            _params: serde_json::Value,
+        ) -> Result<String, ContractError> {
+            self.train_called.store(true, Ordering::SeqCst);
+            Ok("job_test".to_string())
+        }
+
+        async fn health_check(&self) -> Result<bool, ContractError> {
+            Ok(true)
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct MockLlmProvider;
+
+    #[async_trait]
+    impl LlmProvider for MockLlmProvider {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system_prompt: Option<&str>,
+        ) -> Result<LlmResponse, ContractError> {
+            Ok(LlmResponse {
+                content: "HEARTBEAT_OK".to_string(),
+                stop_reason: StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
+        }
+        async fn test_connection(&self) -> Result<(), ContractError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "Mock"
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct MockForecastProvider;
+
+    #[async_trait]
+    impl ForecastProvider for MockForecastProvider {
+        async fn forecast(
+            &self,
+            series: Vec<Vec<f64>>,
+            horizon: usize,
+            _config: ForecastConfig,
+        ) -> Result<ForecastResult, AiomeError> {
+            // Predict a very small growth (stagnation)
+            let point_forecast: Vec<Vec<f64>> = series
+                .iter()
+                .map(|s| {
+                    let last_val = s.last().copied().unwrap_or(0.0);
+                    (0..horizon).map(|i| last_val + (i as f64 * 0.01)).collect()
+                })
+                .collect();
+            Ok(ForecastResult {
+                point_forecast,
+                quantile_forecast: None,
+                model_version: "mock".to_string(),
+            })
+        }
+        async fn detect_anomaly(
+            &self,
+            _historical: Vec<f64>,
+            _recent: Vec<f64>,
+            _threshold_sigma: f64,
+        ) -> Result<AnomalyResult, AiomeError> {
+            Err(AiomeError::Infrastructure {
+                reason: "Mock detect_anomaly not implemented".to_string(),
+            })
+        }
+        fn name(&self) -> &str {
+            "MockForecast"
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct MockAgentEvolver;
+
+    #[async_trait]
+    impl AgentEvolver for MockAgentEvolver {
+        async fn get_agent_stats(&self) -> Result<AgentStats, ContractError> {
+            Ok(AgentStats {
+                level: 1,
+                resonance: 100,
+                creativity: 100,
+                exp: 1000,
+                fatigue: 0,
+            })
+        }
+        async fn add_resonance(&self, _amount: i32) -> Result<(), ContractError> {
+            Ok(())
+        }
+        async fn add_tech_exp(&self, _amount: i32) -> Result<(), ContractError> {
+            Ok(())
+        }
+        async fn add_creativity(&self, _amount: i32) -> Result<(), ContractError> {
+            Ok(())
+        }
+        async fn sync_samsara_level(
+            &self,
+        ) -> Result<Option<aiome_core_contracts::contracts::SamsaraEvent>, ContractError> {
+            Ok(None)
+        }
+        async fn record_evolution_event(
+            &self,
+            _level: i32,
+            _event_type: &str,
+            _description: &str,
+            _inspiration: Option<&str>,
+            _karma_json: Option<&str>,
+        ) -> Result<(), ContractError> {
+            Ok(())
+        }
+        async fn fetch_evolution_history(
+            &self,
+            _limit: i64,
+        ) -> Result<Vec<serde_json::Value>, ContractError> {
+            Ok(vec![])
+        }
+        async fn record_soul_mutation(
+            &self,
+            _old_hash: &str,
+            _new_hash: &str,
+            _reason: &str,
+        ) -> Result<(), ContractError> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_heartbeat_triggers_train_on_plateau_e2e() -> Result<(), Box<dyn std::error::Error>>
+    {
+        // 1. Setup in-memory DB
+        let sqlite_pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await?;
+        sqlx::query("CREATE TABLE score_snapshots (snapshot_date TEXT NOT NULL, metric_name TEXT NOT NULL, metric_value REAL NOT NULL, PRIMARY KEY (snapshot_date, metric_name))")
+            .execute(&sqlite_pool).await?;
+
+        // 2. Insert 15 days of historical data (simulating a recent plateau)
+        for i in 0..15 {
+            let date = (chrono::Utc::now() - chrono::Duration::days(15 - i))
+                .format("%Y-%m-%d")
+                .to_string();
+            // Up to day 10, steady growth. Day 10-15, plateau.
+            let val = if i <= 10 {
+                (i * 10) as f64
+            } else {
+                100.0 + ((i - 10) as f64 * 0.1)
+            };
+            sqlx::query("INSERT INTO score_snapshots (snapshot_date, metric_name, metric_value) VALUES (?, ?, ?)")
+                .bind(date)
+                .bind("exp")
+                .bind(val)
+                .execute(&sqlite_pool).await?;
+        }
+
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+
+        // 3. Setup Mocks
+        let mock_forecast = Arc::new(MockForecastProvider::default());
+        let tracker = Arc::new(ScoreTracker::new(Some(mock_forecast), pool));
+        let mock_lora = Arc::new(MockLoraEngine::default());
+        let train_called = mock_lora.train_called.clone();
+        let evolver = Arc::new(MockAgentEvolver::default());
+
+        // 4. Setup Service
+        let temp_dir = tempfile::tempdir()?;
+        let workspace = temp_dir.path().to_path_buf();
+
+        // Create HEARTBEAT.md to ensure ping triggers
+        std::fs::write(
+            workspace.join("HEARTBEAT.md"),
+            "# Status\nAll systems operational.\nSome actual text here.",
+        )?;
+
+        let service = HeartbeatWakeupService::new(
+            Arc::new(MockLlmProvider::default()),
+            Arc::new(Semaphore::new(1)),
+            workspace.clone(),
+        )
+        .with_evolution_tools(
+            tracker.clone(),
+            evolver.clone(),
+            Some(mock_lora as Arc<dyn LoraEngine>),
+        );
+
+        // 5. Execution
+        let _ = service.run_wakeup_ping().await;
+
+        // 6. Verification (Positive Test)
+        // It should have detected plateau and called train()
+        assert!(
+            train_called.load(Ordering::SeqCst),
+            "LoraEngine::train was NOT called during plateau!"
+        );
+
+        // 7. Negative Test: Cooldown constraint
+        // Reset call tracker
+        train_called.store(false, Ordering::SeqCst);
+        let _ = service.run_wakeup_ping().await;
+        assert!(
+            !train_called.load(Ordering::SeqCst),
+            "LoraEngine::train was called repeatedly within cooldown period!"
+        );
+
+        Ok(())
     }
 }

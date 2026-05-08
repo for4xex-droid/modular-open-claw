@@ -1,11 +1,24 @@
 ## [Unreleased]
 
 ### Added
+- **MCP Ecosystem (Phase 1)**:
+  - Implemented full OAuth 2.0 Authorization Code flow for MCP providers (`/mcp/oauth/authorize` & `/mcp/oauth/callback`) with RFC 6749 compliance.
+  - Added robust CSRF defense via PKCE state parameter caching and one-time consumption.
+  - Implemented `wiremock`-based E2E test suite for OAuth token exchange, achieving 100% test coverage for success and failure paths.
+- **X402 Architecture (Phase 0)**:
+  - Established Single Source of Truth (SSOT) by deduplicating `U256` and `X402Negotiator` definitions, migrating to `aiome_core_contracts`.
+  - Migrated legacy mock `PrivateKeySigner` types to `alloy-primitives` and `alloy-signer-local` in `aiome-commerce`, enforcing production-grade cryptographic boundaries for the Federation v1.5 infrastructure.
+- **DevRel Onboarding (Phase 5.1)**:
+  - Created `.github/ISSUE_TEMPLATE/good_first_issue.md` with bilingual support and rigorous Zero-Panic/Negative Test validation checklists to streamline OSS community contributions.
+  - Expanded `CONTRIBUTING.md` with a dedicated `MCP エコシステム` section, detailing the automated GitHub Issue management and requiring `GITHUB_PERSONAL_ACCESS_TOKEN` configuration in `.env`.
+  - Added `GITHUB_PERSONAL_ACCESS_TOKEN` to `.env.example` to resolve the silent startup failure of the GitHub MCP server in local environments.
 - **E2E Testing**: Established robust Stripe Webhook to Nurture Ledger E2E integration test suite, ensuring reliable cross-service data synchronization.
+- **Testing**: Added edge-case test suite (`score_tracker_tdd.rs`) for `ScoreTracker::detect_plateau` logic, verifying early plateau detection, healthy growth scenarios, and `NaN/Inf` data sanitization against an in-memory SQLite database.
 - **CI/CD**: Integrated `enforce_unwrap_deny.py` as a strict Zero-Panic quality gate in GitHub Actions.
 - **E2E Testing**: Implemented mock Nurture API server with environment variable injection for robust `api_integration_tests.rs` execution.
 
 ### Fixed
+- **Zero-Panic / Error Handling (Phase 1.5)**: Added empty string fallback mechanisms to all `AppError` helper methods to prevent malformed HTTP responses. Achieved 100% test coverage for `error.rs` including downcasting and edge-case behavior.
 - **MCP Discovery**: Added the official GitHub MCP server template to default discovery settings, resolving silent configuration failures upon first boot.
 - **Test Stability**: Fixed mock database schema mismatches (`registry` to `asset_registry`) and implemented async polling wait loops for Nurture Ledger background sync verification.
 - **Settings Integration Test Assertion Fix (Phase 4 P0)**:

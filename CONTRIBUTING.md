@@ -83,4 +83,13 @@ Aiome はモジュールによって異なるライセンスが適用されて�
 
 脆弱性を発見した場合は、GitHub Issue で公開せず、[CTOへの直接連絡手段（設定されたセキュリティメールなど）] へ報告してください。
 
+## 8. MCP エコシステムと自動化
+
+Aiome では、GitHub 上の Issue 管理や情報収集を Model Context Protocol (MCP) を通じて自動化しています。
+
+### GitHub MCP のセットアップ
+1. `.env` ファイルに `GITHUB_PERSONAL_ACCESS_TOKEN` を設定してください（`.env.example` の `MCP Integrations` セクション参照）。
+2. Aiome を起動すると、`discovery.rs` により `mcp_servers.json` が自動生成され、GitHub MCP が利用可能になります。
+3. エージェントはこれを利用して、Issue の作成、コードレビューの自動化、およびタスクのトラッキングを自律的に行います。
+
 ご不明な点があれば、Issue や Discussions でお気軽にご質問ください！

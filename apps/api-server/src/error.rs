@@ -37,36 +37,61 @@ impl From<AiomeError> for AppError {
 impl AppError {
     /// Unauthorized (401 Unauthorized)
     pub fn unauthorized(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
         Self(AiomeError::Unauthorized {
-            reason: reason.into(),
+            reason: if reason.is_empty() {
+                "Unauthorized".to_string()
+            } else {
+                reason
+            },
         })
     }
 
     /// SEC-2: IDOR/ Authorization error (403 Forbidden)
     pub fn forbidden(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
         Self(AiomeError::SecurityViolation {
-            reason: reason.into(),
+            reason: if reason.is_empty() {
+                "Forbidden".to_string()
+            } else {
+                reason
+            },
         })
     }
 
     /// Validation / Bad Request (400 Bad Request)
     pub fn bad_request(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
         Self(AiomeError::Validation {
-            reason: reason.into(),
+            reason: if reason.is_empty() {
+                "Bad Request".to_string()
+            } else {
+                reason
+            },
         })
     }
 
     /// Not Found (404 Not Found)
     pub fn not_found(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
         Self(AiomeError::NotFound {
-            reason: reason.into(),
+            reason: if reason.is_empty() {
+                "Not Found".to_string()
+            } else {
+                reason
+            },
         })
     }
 
     /// Internal Server Error (500)
     pub fn internal(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
         Self(AiomeError::Infrastructure {
-            reason: reason.into(),
+            reason: if reason.is_empty() {
+                "Internal Server Error".to_string()
+            } else {
+                reason
+            },
         })
     }
 }
@@ -75,16 +100,40 @@ impl From<anyhow::Error> for AppError {
     fn from(err: anyhow::Error) -> Self {
         match err.downcast::<AiomeError>() {
             Ok(aiome_err) => Self(aiome_err),
-            Err(err) => Self(AiomeError::OsError { source: err }),
+            Err(err) => {
+                // CWE-532: Log only the root cause to prevent credential leakage
+                // from anyhow error chains. Full chain is available at DEBUG level.
+                tracing::warn!(
+                    "anyhow::Error could not be downcast to AiomeError, wrapping as Infrastructure"
+                );
+                tracing::debug!(error = %err, "Full anyhow error chain for diagnostics");
+                Self(AiomeError::Infrastructure {
+                    reason: format!("Unexpected application error: {}", err),
+                })
+            }
         }
     }
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {
     fn from(err: Box<dyn std::error::Error + Send + Sync>) -> Self {
-        Self(AiomeError::OsError {
-            source: anyhow::anyhow!("{}", err),
-        })
+        // Attempt to downcast to AiomeError to preserve domain-specific HTTP status codes.
+        // Without this, errors like NotFound (404) or Validation (400) would be silently
+        // converted to Infrastructure (500), losing critical client-facing semantics.
+        match err.downcast::<AiomeError>() {
+            Ok(aiome_err) => Self(*aiome_err),
+            Err(err) => {
+                // CWE-532: Log only the root cause to prevent credential leakage.
+                // Full error details are available at DEBUG level.
+                tracing::warn!(
+                    "Box<dyn Error> could not be downcast to AiomeError, wrapping as Infrastructure"
+                );
+                tracing::debug!(error = %err, "Full Box<dyn Error> details for diagnostics");
+                Self(AiomeError::Infrastructure {
+                    reason: format!("Unexpected dynamic error: {}", err),
+                })
+            }
+        }
     }
 }
 
@@ -99,5 +148,235 @@ impl From<shared::bootstrap_detector::FactoryResetError> for AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         self.0.into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_aiome_error_preserves_variant() {
+        let err = AiomeError::NotFound {
+            reason: "User not found".to_string(),
+        };
+        let app_err = AppError::from(err);
+        assert!(
+            matches!(app_err.0, AiomeError::NotFound { .. }),
+            "Expected NotFound variant, got: {:?}",
+            app_err.0
+        );
+    }
+
+    #[test]
+    fn test_from_anyhow_with_aiome_error_preserves_variant() {
+        let aiome_err = AiomeError::Validation {
+            reason: "Invalid email".to_string(),
+        };
+        let anyhow_err: anyhow::Error = aiome_err.into();
+        let app_err = AppError::from(anyhow_err);
+        assert!(
+            matches!(app_err.0, AiomeError::Validation { .. }),
+            "Expected Validation variant after downcast, got: {:?}",
+            app_err.0
+        );
+    }
+
+    #[test]
+    fn test_from_anyhow_without_aiome_error_falls_back_to_infrastructure() {
+        let generic_err = anyhow::anyhow!("something went wrong");
+        let app_err = AppError::from(generic_err);
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(
+                    reason.contains("something went wrong"),
+                    "Expected original message in reason, got: {}",
+                    reason
+                );
+            }
+            other => panic!("Expected Infrastructure variant, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_from_box_dyn_error_with_aiome_error_preserves_variant() {
+        let aiome_err = AiomeError::NotFound {
+            reason: "resource missing".to_string(),
+        };
+        let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(aiome_err);
+        let app_err = AppError::from(boxed);
+        assert!(
+            matches!(app_err.0, AiomeError::NotFound { .. }),
+            "Expected NotFound variant after Box downcast, got: {:?}",
+            app_err.0
+        );
+    }
+
+    #[test]
+    fn test_from_box_dyn_error_non_aiome_falls_back_to_infrastructure() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(io_err);
+        let app_err = AppError::from(boxed);
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(
+                    reason.contains("file not found"),
+                    "Expected original message in reason, got: {}",
+                    reason
+                );
+            }
+            other => panic!("Expected Infrastructure variant, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_into_response_bad_request() {
+        let err = AppError::bad_request("missing field");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::BAD_REQUEST,
+            "Expected 400 Bad Request"
+        );
+    }
+
+    #[test]
+    fn test_into_response_unauthorized() {
+        let err = AppError::unauthorized("no token");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::UNAUTHORIZED,
+            "Expected 401 Unauthorized"
+        );
+    }
+
+    #[test]
+    fn test_into_response_forbidden() {
+        let err = AppError::forbidden("access denied");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::FORBIDDEN,
+            "Expected 403 Forbidden"
+        );
+    }
+
+    #[test]
+    fn test_into_response_not_found() {
+        let err = AppError::not_found("resource missing");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::NOT_FOUND,
+            "Expected 404 Not Found"
+        );
+    }
+
+    #[test]
+    fn test_into_response_internal_server_error() {
+        let err = AppError::internal("db crashed");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "Expected 500 Internal Server Error"
+        );
+    }
+
+    #[test]
+    fn test_helper_methods_produce_correct_variants() {
+        assert!(matches!(
+            AppError::unauthorized("no token").0,
+            AiomeError::Unauthorized { .. }
+        ));
+        assert!(matches!(
+            AppError::forbidden("access denied").0,
+            AiomeError::SecurityViolation { .. }
+        ));
+        assert!(matches!(
+            AppError::not_found("missing").0,
+            AiomeError::NotFound { .. }
+        ));
+        assert!(matches!(
+            AppError::internal("crash").0,
+            AiomeError::Infrastructure { .. }
+        ));
+        assert!(matches!(
+            AppError::bad_request("invalid").0,
+            AiomeError::Validation { .. }
+        ));
+    }
+
+    #[test]
+    fn test_helper_methods_empty_reason_fallback() {
+        if let AiomeError::Infrastructure { reason } = AppError::internal("").0 {
+            assert_eq!(reason, "Internal Server Error");
+        } else {
+            panic!("Expected Infrastructure variant");
+        }
+
+        if let AiomeError::Validation { reason } = AppError::bad_request("").0 {
+            assert_eq!(reason, "Bad Request");
+        } else {
+            panic!("Expected Validation variant");
+        }
+
+        if let AiomeError::NotFound { reason } = AppError::not_found("").0 {
+            assert_eq!(reason, "Not Found");
+        } else {
+            panic!("Expected NotFound variant");
+        }
+
+        if let AiomeError::SecurityViolation { reason } = AppError::forbidden("").0 {
+            assert_eq!(reason, "Forbidden");
+        } else {
+            panic!("Expected SecurityViolation variant");
+        }
+
+        if let AiomeError::Unauthorized { reason } = AppError::unauthorized("").0 {
+            assert_eq!(reason, "Unauthorized");
+        } else {
+            panic!("Expected Unauthorized variant");
+        }
+    }
+
+    #[test]
+    fn test_display_delegates_to_inner() {
+        let err = AppError::bad_request("bad input");
+        let display = format!("{}", err);
+        assert!(
+            display.contains("bad input"),
+            "Display should contain inner message, got: {}",
+            display
+        );
+    }
+
+    #[test]
+    fn test_source_returns_inner_error() {
+        let err = AppError::internal("db down");
+        let source = std::error::Error::source(&err);
+        assert!(
+            source.is_some(),
+            "source() should return the inner AiomeError"
+        );
+    }
+
+    #[test]
+    fn test_from_factory_reset_error() {
+        let err = shared::bootstrap_detector::FactoryResetError::DirectoryNotFound(
+            "/dummy/path".to_string(),
+        );
+        let app_err = AppError::from(err);
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(
+                    reason.contains("Factory reset failed"),
+                    "Expected original message in reason, got: {}",
+                    reason
+                );
+            }
+            other => panic!("Expected Infrastructure variant, got: {:?}", other),
+        }
     }
 }

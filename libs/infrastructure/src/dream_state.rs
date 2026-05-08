@@ -1580,6 +1580,7 @@ mod tests {
         );
     }
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_aegis_sentinel_dream_batch_loop() {
         use crate::aegis::incident_repo::IncidentRepository;
         use crate::aegis::types::IncidentStatus;

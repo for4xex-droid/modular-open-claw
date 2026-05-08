@@ -107,9 +107,25 @@ impl McpClient {
 
         let mut command = builder.build(manifest)?;
 
+        // (S-1) Prevent CWE-114 Process Hijacking: Blacklist dangerous dynamic linker variables
+        let mut safe_user_envs = envs;
+        let dangerous_keys = [
+            "LD_PRELOAD",
+            "DYLD_INSERT_LIBRARIES",
+            "DYLD_PRELOAD",
+            "PROG_ENV",
+            "BASH_ENV",
+            "ENV",
+        ];
+        for key in dangerous_keys {
+            if safe_user_envs.remove(key).is_some() {
+                warn!("⚠️ [SECURITY] Removed dangerous environment variable '{}' from MCP spawn request for {}", key, id);
+            }
+        }
+
         // (P-3) User-defined envs applied LAST so they can override system defaults
         // (e.g., custom PATH for a specific Python venv)
-        command.envs(envs);
+        command.envs(safe_user_envs);
 
         let mut child = command
             .stdin(Stdio::piped())
@@ -140,7 +156,13 @@ impl McpClient {
         tokio::spawn(async move {
             let mut reader = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
-                warn!("⚠️ [MCP:{}] stderr: {}", client_id, line);
+                // E-1 fix: Truncate stderr to prevent log spam (CWE-117/CWE-400 mitigation)
+                let truncated_line: String = line.chars().take(256).collect();
+                let suffix = if line.len() > 256 { "..." } else { "" };
+                warn!(
+                    "⚠️ [MCP:{}] stderr: {}{}",
+                    client_id, truncated_line, suffix
+                );
             }
         });
 
@@ -158,7 +180,13 @@ impl McpClient {
                         }
                     }
                 } else {
-                    info!("📖 [MCP:{}] raw line: {}", client_id_for_stdout, line);
+                    // E-1 fix: Truncate raw unparseable lines to prevent log spam
+                    let truncated_line: String = line.chars().take(256).collect();
+                    let suffix = if line.len() > 256 { "..." } else { "" };
+                    info!(
+                        "📖 [MCP:{}] raw line: {}{}",
+                        client_id_for_stdout, truncated_line, suffix
+                    );
                 }
             }
             info!(

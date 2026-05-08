@@ -559,7 +559,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         infrastructure::disk_quota::DiskQuotaManager::new(pool.clone(), 500 * 1024 * 1024);
     let _ = disk_quota_mgr.init().await;
 
+    let vault_backend = Arc::new(
+        infrastructure::security::sqlite_vault_backend::UniversalVaultBackend::new(pool.clone()),
+    ) as Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>;
+
     let state = AppState {
+        vault_backend: Component::new(vault_backend),
         db_pool: Component::new(Arc::new(pool.clone())),
         oxilean_power: Arc::new(std::sync::atomic::AtomicU32::new(0)),
         hook_chain: Default::default(),
@@ -813,6 +818,22 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 .max_capacity(10_000)
                 .build(),
         )),
+        mcp_oauth_secrets: {
+            let mut m = std::collections::HashMap::new();
+            if let (Ok(id), Ok(secret)) = (
+                std::env::var("GITHUB_CLIENT_ID"),
+                std::env::var("GITHUB_CLIENT_SECRET"),
+            ) {
+                m.insert(
+                    "github".to_string(),
+                    crate::mcp::discovery::OAuthCredentials {
+                        client_id: id,
+                        client_secret: secrecy::SecretString::from(secret),
+                    },
+                );
+            }
+            m
+        },
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());
@@ -3719,16 +3740,17 @@ async fn test_mcp_oauth_authorize_flow() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
-    // 1. Valid provider (github) -> Should redirect (302) to OAuth login page
+    // 1. Valid provider but NO credentials configured -> 400 Bad Request
+    //    (Security: no more insecure 'dummy' fallback)
     let resp = server
         .get("/api/v1/mcp/oauth/authorize?provider=github")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
 
-    // We expect a temporary redirection
     assert_eq!(
         resp.status_code(),
-        axum::http::StatusCode::TEMPORARY_REDIRECT
+        axum::http::StatusCode::BAD_REQUEST,
+        "Unconfigured provider credentials must be rejected (no dummy fallback)"
     );
 
     // 2. Invalid provider -> Should return 400 Bad Request (Negative Test)
@@ -3749,7 +3771,7 @@ async fn test_mcp_oauth_callback_flow() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
-    // 1. Valid callback -> Should redirect back to dashboard or success page
+    // 1. Valid provider + code but missing state param -> 400 (CSRF protection)
     let resp = server
         .get("/api/v1/mcp/oauth/callback?provider=github&code=dummy_auth_code")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
@@ -3757,26 +3779,23 @@ async fn test_mcp_oauth_callback_flow() {
 
     assert_eq!(
         resp.status_code(),
-        axum::http::StatusCode::TEMPORARY_REDIRECT
+        axum::http::StatusCode::BAD_REQUEST,
+        "Missing state parameter must be rejected for CSRF protection"
     );
 
-    // 1b. Verify that the configuration file was updated (disabled = false)
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let config_path = std::path::PathBuf::from(home).join(".aiome/mcp_servers.json");
-    if config_path.exists() {
-        let content = std::fs::read_to_string(&config_path).unwrap();
-        let discovery: serde_json::Value = serde_json::from_str(&content).unwrap();
+    // 2. Valid provider + code + invalid state -> 400 (CSRF mismatch)
+    let resp_bad_state = server
+        .get("/api/v1/mcp/oauth/callback?provider=github&code=dummy_auth_code&state=invalid_state")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
 
-        if let Some(config) = discovery["mcp_servers"]["github"].as_object() {
-            assert_eq!(
-                config["disabled"].as_bool(),
-                Some(false),
-                "github should be enabled in config"
-            );
-        }
-    }
+    assert_eq!(
+        resp_bad_state.status_code(),
+        axum::http::StatusCode::BAD_REQUEST,
+        "Invalid state parameter must be rejected as possible CSRF"
+    );
 
-    // 2. Missing code -> Should return 400 Bad Request (Negative Test)
+    // 3. Missing code -> Should return 400 Bad Request (Negative Test)
     let resp_missing_code = server
         .get("/api/v1/mcp/oauth/callback?provider=github")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
@@ -3787,7 +3806,7 @@ async fn test_mcp_oauth_callback_flow() {
         axum::http::StatusCode::BAD_REQUEST
     );
 
-    // 3. Invalid provider -> Should return 400 Bad Request (Negative Test)
+    // 4. Invalid provider -> Should return 400 Bad Request (Negative Test)
     let resp_invalid_provider = server
         .get("/api/v1/mcp/oauth/callback?provider=invalid_provider&code=dummy_auth_code")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
@@ -3797,4 +3816,233 @@ async fn test_mcp_oauth_callback_flow() {
         resp_invalid_provider.status_code(),
         axum::http::StatusCode::BAD_REQUEST
     );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_oauth_token_exchange_success() {
+    let mock_server = wiremock::MockServer::start().await;
+    std::env::set_var(
+        "TEST_OAUTH_TOKEN_URL_OVERRIDE",
+        format!("{}/token", mock_server.uri()),
+    );
+
+    std::env::set_var("GITHUB_CLIENT_ID", "test_client_id");
+    std::env::set_var("GITHUB_CLIENT_SECRET", "test_secret");
+
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    state
+        .pkce_cache
+        .get_inner()
+        .insert("valid_state_123".to_string(), (None, "dummy".to_string()))
+        .await;
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    Mock::given(method("POST"))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "access_token": "mock_access_token_123",
+            "token_type": "bearer",
+            "scope": "repo"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let resp = server
+        .get("/api/v1/mcp/oauth/callback?provider=github&code=auth_code_xyz&state=valid_state_123")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::TEMPORARY_REDIRECT
+    );
+
+    std::env::remove_var("TEST_OAUTH_TOKEN_URL_OVERRIDE");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_mcp_oauth_token_exchange_failure() {
+    let mock_server = wiremock::MockServer::start().await;
+    std::env::set_var(
+        "TEST_OAUTH_TOKEN_URL_OVERRIDE",
+        format!("{}/token", mock_server.uri()),
+    );
+
+    std::env::set_var("GITHUB_CLIENT_ID", "test_client_id");
+    std::env::set_var("GITHUB_CLIENT_SECRET", "test_secret");
+
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    state
+        .pkce_cache
+        .get_inner()
+        .insert("valid_state_123".to_string(), (None, "dummy".to_string()))
+        .await;
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    Mock::given(method("POST"))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "error": "invalid_client",
+            "error_description": "The client authentication failed"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let resp = server
+        .get("/api/v1/mcp/oauth/callback?provider=github&code=auth_code_xyz&state=valid_state_123")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+    );
+
+    std::env::remove_var("TEST_OAUTH_TOKEN_URL_OVERRIDE");
+}
+
+#[derive(Debug)]
+struct E2eMockForecastProvider;
+#[async_trait::async_trait]
+impl aiome_core_contracts::forecast::ForecastProvider for E2eMockForecastProvider {
+    async fn forecast(
+        &self,
+        series: Vec<Vec<f64>>,
+        horizon: usize,
+        _config: aiome_core_contracts::forecast::ForecastConfig,
+    ) -> Result<aiome_core_contracts::forecast::ForecastResult, aiome_core::error::AiomeError> {
+        let point_forecast: Vec<Vec<f64>> = series
+            .iter()
+            .map(|s| {
+                let last_val = s.last().copied().unwrap_or(0.0);
+                (0..horizon).map(|i| last_val + (i as f64 * 0.01)).collect()
+            })
+            .collect();
+        Ok(aiome_core_contracts::forecast::ForecastResult {
+            point_forecast,
+            quantile_forecast: None,
+            model_version: "mock".to_string(),
+        })
+    }
+    async fn detect_anomaly(
+        &self,
+        _historical: Vec<f64>,
+        _recent: Vec<f64>,
+        _threshold_sigma: f64,
+    ) -> Result<aiome_core_contracts::forecast::AnomalyResult, aiome_core::error::AiomeError> {
+        Ok(aiome_core_contracts::forecast::AnomalyResult {
+            is_anomaly: false,
+            deviation_sigma: 0.0,
+            predicted_values: vec![],
+        })
+    }
+    fn name(&self) -> &str {
+        "E2eMockForecast"
+    }
+}
+
+#[derive(Default, Debug)]
+struct E2eMockLoraEngine {
+    pub train_called: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+#[async_trait::async_trait]
+impl aiome_core_contracts::traits::LoraEngine for E2eMockLoraEngine {
+    async fn complete_with_lora(
+        &self,
+        _prompt: &str,
+        _lora_id: &str,
+    ) -> Result<aiome_core_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
+        Ok(aiome_core_contracts::llm::LlmResponse {
+            content: "LlmResponse from E2eMockLoraEngine".to_string(),
+            stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+            reasoning: None,
+            metadata: None,
+        })
+    }
+    async fn train(
+        &self,
+        _base_model: &str,
+        _dataset_id: &str,
+        _params: serde_json::Value,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        self.train_called
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        Ok("job_test".to_string())
+    }
+    async fn health_check(&self) -> Result<bool, aiome_core::error::AiomeError> {
+        Ok(true)
+    }
+}
+
+#[serial]
+#[tokio::test]
+async fn test_heartbeat_dpo_e2e_integration() -> Result<(), Box<dyn std::error::Error>> {
+    let (_server, state, _tmp) = create_test_server().await;
+    let pool = (*state.db_pool.get_inner()).clone();
+
+    // 1. Prepare score_snapshots data simulating plateau
+    let sqlite_pool = pool.get_sqlite_pool().unwrap();
+    let _ = sqlx::query("CREATE TABLE IF NOT EXISTS score_snapshots (snapshot_date TEXT NOT NULL, metric_name TEXT NOT NULL, metric_value REAL NOT NULL, PRIMARY KEY (snapshot_date, metric_name))")
+        .execute(sqlite_pool).await?;
+
+    for i in 0..15 {
+        let date = (chrono::Utc::now() - chrono::Duration::days(15 - i))
+            .format("%Y-%m-%d")
+            .to_string();
+        let val = if i <= 10 {
+            (i * 10) as f64
+        } else {
+            100.0 + ((i - 10) as f64 * 0.1)
+        };
+        sqlx::query("INSERT OR REPLACE INTO score_snapshots (snapshot_date, metric_name, metric_value) VALUES (?, ?, ?)")
+            .bind(date)
+            .bind("exp")
+            .bind(val)
+            .execute(sqlite_pool).await?;
+    }
+
+    // 2. Setup Trackers and Engines
+    let forecast_provider = std::sync::Arc::new(E2eMockForecastProvider);
+    let score_tracker = std::sync::Arc::new(infrastructure::score_tracker::ScoreTracker::new(
+        Some(forecast_provider),
+        (**state.db_pool.get_inner()).clone(),
+    ));
+
+    let mock_lora = std::sync::Arc::new(E2eMockLoraEngine::default());
+    let train_called = mock_lora.train_called.clone();
+
+    // Setup dummy HEARTBEAT.md in workspace so it doesn't fail
+    let workspace = _tmp.path().to_path_buf();
+    std::fs::write(workspace.join("HEARTBEAT.md"), "# Status\nSystem nominal.")?;
+
+    let evolver: std::sync::Arc<dyn aiome_core_contracts::traits::AgentEvolver> =
+        state.job_queue.get_inner().clone();
+
+    let wakeup_service = infrastructure::heartbeat_wakeup::HeartbeatWakeupService::new(
+        state.provider.get_inner().clone(),
+        state.llm_semaphore.get_inner().clone(),
+        workspace,
+    )
+    .with_evolution_tools(score_tracker.clone(), evolver, Some(mock_lora));
+
+    // 3. Act
+    let _ = wakeup_service.run_wakeup_ping().await;
+
+    // 4. Assert
+    assert!(
+        train_called.load(std::sync::atomic::Ordering::SeqCst),
+        "LoraEngine::train was not called during plateau in integration test!"
+    );
+
+    Ok(())
 }

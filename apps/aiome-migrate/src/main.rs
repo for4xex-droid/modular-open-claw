@@ -75,7 +75,7 @@ async fn migrate_table_souls(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
     for row in rows {
         let id: i64 = row.get("id");
         let hash: String = row.get("hash");
-        let soul_id: String = row.get("soul_id"); // Or uuid::Uuid? In SQLite it's parsed as String if text, UUID if it's binary. Let's try String first and parse it: `uuid::Uuid::parse_str(&soul_id).unwrap()` // allow-anti-pattern
+        let soul_id: String = row.get("soul_id"); // Or uuid::Uuid? In SQLite it's parsed as String if text, UUID if it's binary.
         let soul_uuid = uuid::Uuid::parse_str(&soul_id).unwrap_or_default();
         let parent_hash: Option<String> = row.get("parent_hash");
         let sm_str: Option<String> = row.get("somatic_markers");

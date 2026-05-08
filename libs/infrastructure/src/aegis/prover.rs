@@ -311,6 +311,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_generate_patch() {
         let tmp_dir = tempfile::Builder::new()
             .prefix("aegis-test-")
@@ -338,12 +339,57 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_verify_with_kani() {
         std::env::set_var("KANI_STUB_MODE", "true");
         let prover = AegisProver::new(Arc::new(MockLlm));
 
         let result = prover.verify_with_kani("fn patched() {}").await.unwrap();
         assert!(result);
+
+        // Cleanup to prevent leaking to other tests
+        std::env::remove_var("KANI_STUB_MODE");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_verify_with_kani_stub_disabled_proceeds_to_podman() {
+        // Ensure stub mode is explicitly disabled
+        std::env::set_var("KANI_STUB_MODE", "false");
+
+        let prover = AegisProver::new(Arc::new(MockLlm));
+
+        // When stub mode is false, verify_with_kani proceeds to execute podman.
+        // In the test environment, podman or aiome/kani-verifier is typically absent,
+        // causing a subprocess failure. We verify that it attempts to spawn the process
+        // rather than returning early with Ok(true).
+        let result = prover.verify_with_kani("fn patched() {}").await;
+
+        match result {
+            Ok(false) => {
+                // If podman is installed and spawned, it will fail because the image or kani
+                // is missing, returning Ok(false).
+            }
+            Err(aiome_core::error::AiomeError::SubprocessFailed { reason }) => {
+                assert!(
+                    reason.contains("Podman"),
+                    "Expected Podman failure, got: {}",
+                    reason
+                );
+            }
+            Err(aiome_core::error::AiomeError::Infrastructure { reason }) => {
+                assert!(
+                    reason.to_lowercase().contains("podman"),
+                    "Expected Podman-related failure, got: {}",
+                    reason
+                );
+            }
+            Ok(true) => panic!("Stub mode was not skipped! Returned Ok(true)"),
+            other => panic!("Unexpected result: {:?}", other),
+        }
+
+        // Cleanup
+        std::env::remove_var("KANI_STUB_MODE");
     }
 
     #[test]
@@ -382,6 +428,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_verify_rejects_oversized_patch() {
         // Size check runs before KANI_STUB_MODE check, so env var state doesn't matter
         let prover = AegisProver::new(Arc::new(MockLlm));

@@ -6,8 +6,8 @@
  */
 
 #[doc(hidden)]
-/// Phase 1b モック型。Phase 3 で alloy_primitives::U256 に置換予定。
-pub type U256 = u64;
+/// Phase 3: Migrated to alloy_primitives::U256
+pub use alloy_primitives::U256;
 
 use anyhow::Result;
 use async_trait::async_trait;

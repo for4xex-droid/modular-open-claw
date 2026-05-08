@@ -251,7 +251,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ));
 
         let validator = Arc::new(BasicValidator);
-        let limiter = AgentRateLimiter::new(60).expect("Constant 60 is valid"); // allow-anti-pattern
+        let limiter =
+            AgentRateLimiter::new(60).map_err(|e| format!("Rate limiter init failed: {}", e))?;
         let gateway = SecureGigGateway::new(engine, validator, limiter);
 
         let path = std::path::Path::new(&workspace_dir);
@@ -281,7 +282,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Federation features (including mDNS P2P discovery) are deferred to v1.5
     // let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
     // let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
-    //     .expect("Failed to start mdns broadcaster"); // allow-anti-pattern
+    //     .unwrap_or_else(|e| panic!("Failed to start mdns broadcaster: {}", e));
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;

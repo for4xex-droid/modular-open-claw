@@ -75,12 +75,17 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
             || visitor.message.to_lowercase().contains("secret")
             || visitor.message.to_lowercase().contains("password")
         {
-            // More comprehensive regex for physical filtering of credentials
-            let re =
+            static RE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
+                std::sync::OnceLock::new();
+            let re = RE.get_or_init(|| {
                 regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY|Bearer\s+|secret|password|VAULT_MASTER_PASSWORD)[=: ]*[\x21-\x7E]+")
-                    .expect("Credential masking regex is a compile-time literal"); // allow-anti-pattern
-            re.replace_all(&visitor.message, "$1***MASKED***")
-                .to_string()
+            });
+            match re.as_ref() {
+                Ok(regex) => regex
+                    .replace_all(&visitor.message, "$1***MASKED***")
+                    .to_string(),
+                Err(_) => "***MASKING ERROR - REDACTED FOR SAFETY***".to_string(),
+            }
         } else {
             visitor.message
         };

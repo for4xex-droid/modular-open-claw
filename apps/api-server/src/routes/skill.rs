@@ -390,9 +390,13 @@ pub async fn update_mcp_config(
         tracing::warn!("Failed to clear MCP servers registry: {}", e);
     }
 
-    crate::mcp::discovery::discover_and_connect(&state.mcp_manager, &state.registry)
-        .await
-        .map_err(|e| AppError::internal(format!("Failed to reload Discovery: {}", e)))?;
+    crate::mcp::discovery::discover_and_connect(
+        &state.mcp_manager,
+        &state.registry,
+        Some(state.vault_backend.get_inner().clone()),
+    )
+    .await
+    .map_err(|e| AppError::internal(format!("Failed to reload Discovery: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "status": "success",

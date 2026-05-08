@@ -483,6 +483,36 @@ sequenceDiagram
     AgentHook-->>Webhook: ✅
 ```
 
+### 5.7 MCP OAuth 2.0 Authorization Code Flow (RFC 6749)
+
+```mermaid
+sequenceDiagram
+    participant User as User / Browser
+    participant API as ApiServer (Aiome)
+    participant OAuth as OAuth Provider (GitHub/Slack)
+    participant Cache as PKCE Cache (moka)
+    participant Env as Boot/Env (scrubbed)
+
+    Env-->>API: Boot: Load Client ID/Secret (then scrub_env)
+    User->>API: GET /api/v1/mcp/oauth/authorize?provider=github
+    API->>Cache: Generate & Store CSRF state token
+    API-->>User: 302 Redirect to OAuth Provider auth_url
+    
+    User->>OAuth: Authorize Application
+    OAuth-->>User: 302 Redirect with ?code=xyz&state=...
+    
+    User->>API: GET /api/v1/mcp/oauth/callback?code=xyz&state=...
+    API->>Cache: Validate & Consume state token
+    alt Invalid/Missing state
+        API-->>User: 400 Bad Request (CSRF Protection)
+    else Valid state
+        API->>OAuth: POST /token (grant_type=authorization_code, code, redirect_uri)
+        OAuth-->>API: 200 OK { access_token }
+        API->>API: enable_oauth_provider(provider, access_token)
+        API-->>User: 302 Redirect to Management Console
+    end
+```
+
 ---
 
 ## 6. 主要データ構造（クラス図）
@@ -656,6 +686,12 @@ classDiagram
         +send_gift_code(recipient_email, amount_usd, reason) Result~String~
         +validate_gift_policy(agent_id, amount_usd) Result~()~
         +get_policy_context(agent_id) Result~GiftPolicyContext~
+    }
+
+    class X402Negotiator {
+        <<trait / aiome-core-contracts>>
+        +negotiate(response: &reqwest::Response) Result~PaymentProof~
+        +balance() Result~U256~
     }
 
     class AiomePlugin {

@@ -1,5 +1,34 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome Infrastructure & Automation (ScoreTracker & Heartbeat)
+### 1. Autonomous LoRA Training & ScoreTracker Edge Case Testing
+- **変更内容**:
+    - `libs/infrastructure/tests/score_tracker_tdd.rs` [ADD]: `ScoreTracker::detect_plateau` のエッジケースをカバーする新規テストモジュールを作成。
+    - インメモリ SQLite と `TestForecastProvider` を使用し、データ不足、順調な成長、停滞状態、NaN/Inf データの除外（SQL レベルでの挿入テスト）を検証。
+- **波及効果**:
+    - NaN/Inf データによる予測エンジンの汚染リスクを TDD によって確実に防止した。
+    - 停滞検知ロジックの判定基準が単体テストによって文書化され、自律学習機能の信頼性が向上した。
+
+## MCP OAuth Integration & X402 SSOT (Phase 0 & 1)
+### 1. MCP OAuth 2.0 Authorization Code Flow
+- **変更内容**:
+    - `apps/api-server/src/mcp/discovery.rs` [MODIFY]: `OAuthCredentials` の構造体定義、`oauth_token_url()`、`exchange_code_for_token()` の追加。`OAUTH_REDIRECT_URI` の動的化。
+    - `apps/api-server/src/app_state.rs` [MODIFY]: `mcp_oauth_secrets` フィールドを追加。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: 環境変数から OAuth 認証情報を読み込み、`scrub_env` により読み込み後即削除（パージ）を実施。
+    - `apps/api-server/src/api_integration_tests.rs` [MODIFY]: `wiremock` を用いた E2E テスト（成功系・失敗系）の追加。
+- **波及効果**:
+    - MCP エコシステムにおける安全な認証基盤が確立された。
+    - CSRF 脆弱性に対する防御（PKCE state token の一回限り消費）が追加された。
+
+### 2. X402 Architecture SSOT
+- **変更内容**:
+    - `libs/aiome-commerce/src/x402.rs` [MODIFY]: 重複定義されていた `U256` と `X402Negotiator` を削除し、`aiome_core_contracts` クレートからのインポートに統一。
+    - `libs/aiome-commerce/Cargo.toml` [MODIFY]: `alloy-primitives` および `alloy-signer-local` の依存関係を追加。
+    - `libs/aiome-commerce/src/x402.rs` [MODIFY]: モック実装の `PrivateKeySigner` を `alloy_signer_local::PrivateKeySigner` に移行し、X402 マイグレーションを完了。
+- **波及効果**:
+    - 契約ロジックと取引ロジックの依存関係が整理され、SSOT（Single Source of Truth）が確保された。
+    - Federation v1.5 におけるクリプトグラフィックな境界防御が本番環境仕様に昇格した。
+
 ## Federation v1.0 & Zero-Trust MCP Ecosystem (Phase 1)
 ### 1. P2P Sync Routing & Replay Attack Defense
 - **変更内容**:

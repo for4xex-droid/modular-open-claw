@@ -152,6 +152,7 @@ pub struct CoreServicesResult {
     pub api_server_secret_raw: String,
     pub stripe_key_raw: Option<String>,
     pub tts_openai_api_key_raw: Option<String>,
+    pub vault_backend: Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>,
 }
 
 pub struct BootContext {
@@ -258,7 +259,7 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 0. Initialize Metrics EXPORTER (Q-5)
     let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
-        .expect("Failed to install Prometheus recorder"); // allow-anti-pattern
+        .map_err(|e| anyhow::anyhow!("Failed to install Prometheus recorder: {}", e))?;
     tracing::info!("📊 Prometheus Metrics initialized at /api/v1/metrics");
 
     let health_monitor = shared::health::HealthMonitor::new();
@@ -953,7 +954,7 @@ pub async fn init_core_services(
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
                 key,
                 std::env::var("EKYC_CALLBACK_URL")
-                    .unwrap_or_else(|_| "http://localhost:1420/verify-callback".to_string()), // allow-anti-pattern
+                    .unwrap_or_else(|_| "http://127.0.0.1:1420/verify-callback".to_string()),
                 http_client.clone(),
             )) as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
         } else {
@@ -998,6 +999,11 @@ pub async fn init_core_services(
             }
         }
     };
+
+    // Initialize UniversalVaultBackend for secret management
+    let vault_backend = Arc::new(
+        infrastructure::security::sqlite_vault_backend::UniversalVaultBackend::new(db_pool.clone()),
+    ) as Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>;
     // === 🏗️ STAGE 5/7: Registry & Core Orchestration ===
     let registry = Arc::new(infrastructure::registry::RegistryManager::new(
         db_pool.clone(),
@@ -1007,10 +1013,12 @@ pub async fn init_core_services(
     {
         let mcp_manager = mcp_manager.clone();
         let registry = registry.clone();
+        let vault_backend = vault_backend.clone();
         let supervisor = infrastructure::supervisor::TaskSupervisor::new(5, 60);
         struct McpDiscoveryTask {
             mcp_manager: Arc<mcp::client::McpProcessManager>,
             registry: Arc<infrastructure::registry::RegistryManager>,
+            vault_backend: Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>,
         }
         impl infrastructure::supervisor::SupervisedTask for McpDiscoveryTask {
             fn name(&self) -> &'static str {
@@ -1022,19 +1030,25 @@ pub async fn init_core_services(
             ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
                 let mcp_manager = self.mcp_manager.clone();
                 let registry = self.registry.clone();
+                let vault = self.vault_backend.clone();
                 Box::pin(async move {
                     tracing::info!("🔍 [MCP Discovery] Starting automated server discovery...");
-                    let has_error =
-                        match mcp::discovery::discover_and_connect(&mcp_manager, &registry).await {
-                            Err(e) => {
-                                tracing::error!(
-                                    "🚨 [MCP Discovery] Failed during initial discovery: {}",
-                                    e
-                                );
-                                true
-                            }
-                            Ok(_) => false,
-                        };
+                    let has_error = match mcp::discovery::discover_and_connect(
+                        &mcp_manager,
+                        &registry,
+                        Some(vault),
+                    )
+                    .await
+                    {
+                        Err(e) => {
+                            tracing::error!(
+                                "🚨 [MCP Discovery] Failed during initial discovery: {}",
+                                e
+                            );
+                            true
+                        }
+                        Ok(_) => false,
+                    };
                     if has_error {
                         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     }
@@ -1045,6 +1059,7 @@ pub async fn init_core_services(
             McpDiscoveryTask {
                 mcp_manager,
                 registry,
+                vault_backend: vault_backend.clone(),
             },
             cancel_token.clone(),
         );
@@ -1084,7 +1099,7 @@ pub async fn init_core_services(
     let validator = Arc::new(
         infrastructure::validator::DefaultConstitutionalValidator::new(
             bg_provider.clone(),
-            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入 // allow-anti-pattern
+            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入
         ),
     );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
@@ -1186,7 +1201,7 @@ pub async fn init_core_services(
     );
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
-        endpoint_url: "http://127.0.0.1:50051".to_string(), // dynamically overwritten in conduct() // allow-anti-pattern
+        endpoint_url: config.a2a_node_url.clone(), // dynamically overwritten in conduct()
         connect_timeout: std::time::Duration::from_secs(5),
         auth_token: "".to_string(), // dynamically overwritten in conduct()
     };
@@ -1358,6 +1373,7 @@ pub async fn init_core_services(
         api_server_secret_raw,
         stripe_key_raw: stripe_key_raw.clone(),
         tts_openai_api_key_raw: preflight.secrets.tts_openai_key.clone(),
+        vault_backend,
     })
 }
 pub async fn assemble_app_state(
@@ -1664,6 +1680,28 @@ pub async fn assemble_app_state(
                 .max_capacity(10_000)
                 .build(),
         )),
+        mcp_oauth_secrets: {
+            let mut secrets = std::collections::HashMap::new();
+            for provider in crate::mcp::discovery::ALLOWED_OAUTH_PROVIDERS {
+                let id_env = format!("{}_CLIENT_ID", provider.to_uppercase());
+                let sec_env = format!("{}_CLIENT_SECRET", provider.to_uppercase());
+                if let (Ok(client_id), Ok(client_secret)) =
+                    (std::env::var(&id_env), std::env::var(&sec_env))
+                {
+                    shared::security::scrub_env(&id_env);
+                    shared::security::scrub_env(&sec_env);
+                    secrets.insert(
+                        provider.to_string(),
+                        crate::mcp::discovery::OAuthCredentials {
+                            client_id,
+                            client_secret: secrecy::SecretString::from(client_secret),
+                        },
+                    );
+                }
+            }
+            secrets
+        },
+        vault_backend: Component::new(core.vault_backend.clone()),
     };
 
     Ok(state)

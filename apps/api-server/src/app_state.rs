@@ -168,6 +168,9 @@ pub struct AppState {
     pub formal_proof_gate: Component<Arc<dyn aiome_contracts::proof::FormalProofGate>>,
     pub gig_updater: Component<Arc<dyn aiome_contracts::gig_metadata::GigMetadataUpdater>>,
     pub pkce_cache: Component<Arc<moka::future::Cache<String, (Option<String>, String)>>>,
+    pub mcp_oauth_secrets:
+        std::collections::HashMap<String, crate::mcp::discovery::OAuthCredentials>,
+    pub vault_backend: Component<Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>>,
 }
 
 impl AppState {

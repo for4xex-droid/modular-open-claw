@@ -5,32 +5,13 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core_contracts::PaymentProof;
+use aiome_core_contracts::{PaymentProof, X402Negotiator, U256};
+use alloy_signer_local::PrivateKeySigner;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest;
 use std::str::FromStr;
 use thiserror::Error;
-
-// TODO(Phase4): Replace mock types below with real alloy/keyring crate imports. (Deferred to Federation v1.0)
-// Mock types for Phase 1b/3 TDD (isolated without heavy EVM crates)
-pub(crate) type U256 = u64;
-pub struct PrivateKeySigner {
-    address: String,
-}
-impl PrivateKeySigner {
-    pub fn address(&self) -> &str {
-        &self.address
-    }
-}
-impl FromStr for PrivateKeySigner {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self> {
-        Ok(Self {
-            address: "0xMock".to_string(),
-        })
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum X402Error {
@@ -40,14 +21,6 @@ pub enum X402Error {
     InvalidPaymentResponse,
     #[error("No valid payment headers found in 402 response")]
     MissingHeaders,
-}
-
-#[async_trait]
-pub trait X402Negotiator: Send + Sync {
-    /// HTTP 402 レスポンスを解釈し、自動決済を試みる
-    async fn negotiate(&self, response: &reqwest::Response) -> Result<PaymentProof>;
-    /// ウォレット残高を照会する
-    async fn balance(&self) -> Result<U256>;
 }
 
 pub struct X402Client {
@@ -209,8 +182,8 @@ mod tests {
         assert!(matches!(aiome_err, AiomeError::Infrastructure { .. }));
 
         let err = X402Error::BudgetExhausted {
-            requested: 100u64,
-            remaining: 50u64,
+            requested: U256::from(100u64),
+            remaining: U256::from(50u64),
         };
         let aiome_err: AiomeError = err.into();
         assert!(matches!(aiome_err, AiomeError::Infrastructure { .. }));

@@ -74,18 +74,7 @@ impl ScoreTracker {
         Ok(())
     }
 
-    /// Check if the metric growth is plateauing
-    pub async fn detect_plateau(
-        &self,
-        metric: &str,
-        min_days: i64,
-    ) -> Result<Option<PlateauReport>, AiomeError> {
-        let provider = match &self.forecast_provider {
-            Some(p) => p,
-            None => return Ok(None),
-        };
-
-        // 1. Fetch history order by date ascending
+    pub async fn fetch_metric_history(&self, metric: &str) -> Result<Vec<f64>, AiomeError> {
         let q = format!(
             "SELECT metric_value FROM score_snapshots WHERE metric_name = {} ORDER BY snapshot_date ASC",
             self.pool.ph(0)
@@ -120,21 +109,30 @@ impl ScoreTracker {
             }
         }
 
-        if history.len() < min_days as usize {
-            info!(
-                "ScoreTracker: Not enough data points ({}/{}) to detect plateau for {}",
-                history.len(),
-                min_days,
-                metric
-            );
-            return Ok(None);
-        }
-
-        // RT-4 FIX: Filter out any NaN/Inf that may have existed before the guard was added
+        // RT-4 FIX: Filter out any NaN/Inf
         history.retain(|v| v.is_finite());
+        Ok(history)
+    }
+
+    /// Check if the metric growth is plateauing
+    pub async fn detect_plateau(
+        &self,
+        metric: &str,
+        min_days: i64,
+    ) -> Result<Option<PlateauReport>, AiomeError> {
+        let provider = match &self.forecast_provider {
+            Some(p) => p,
+            None => return Ok(None),
+        };
+
+        // 1. Fetch history order by date ascending
+        let history = self.fetch_metric_history(metric).await?;
+
         if history.len() < min_days as usize {
             warn!(
-                "ScoreTracker: After NaN/Inf filtering, insufficient data points for {}",
+                "ScoreTracker: Insufficient data points ({}/{}) to detect plateau for {}",
+                history.len(),
+                min_days,
                 metric
             );
             return Ok(None);
