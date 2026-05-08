@@ -277,12 +277,21 @@ async fn health_handler() -> (StatusCode, Json<serde_json::Value>) {
 
 async fn list_topics_handler(
     State(state): State<Arc<HubState>>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let query =
         "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
             .to_string();
     let rows: Vec<TopicRecord> =
-        sql_fetch_all!(&state.pool, TopicRecord, &query).unwrap_or_default();
+        match sql_fetch_all!(&state.pool, TopicRecord, &query) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to fetch topics: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Database error while fetching topics"})),
+                ));
+            }
+        };
 
     let topics: Vec<serde_json::Value> = rows
         .into_iter()
@@ -297,7 +306,7 @@ async fn list_topics_handler(
         })
         .collect();
 
-    (StatusCode::OK, Json(serde_json::json!(topics)))
+    Ok((StatusCode::OK, Json(serde_json::json!(topics))))
 }
 
 async fn list_agents_handler(
@@ -335,10 +344,17 @@ async fn create_topic_handler(
         state.pool.ph(0)
     );
     let karma_sum =
-        shared::sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey)
-            .unwrap_or(Some((0,)))
-            .unwrap_or((0,))
-            .0;
+        match shared::sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey) {
+            Ok(Some((k,))) => k,
+            Ok(None) => 0,
+            Err(e) => {
+                tracing::error!("Failed to fetch karma: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Database error during Karma verification"})),
+                );
+            }
+        };
 
     info!(
         "🛡️ [Hub] PoK Check for {}: Technical Karma = {}",
@@ -406,11 +422,17 @@ async fn biome_relay_handler(
         state.pool.ph(0)
     );
     let topic_exists =
-        shared::sql_fetch_optional!(&state.pool, (i64,), &topic_check_query, &msg.topic_id)
-            .unwrap_or(Some((0,)))
-            .unwrap_or((0,))
-            .0
-            > 0;
+        match shared::sql_fetch_optional!(&state.pool, (i64,), &topic_check_query, &msg.topic_id) {
+            Ok(Some((count,))) => count > 0,
+            Ok(None) => false,
+            Err(e) => {
+                tracing::error!("Failed to check topic existence: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Database error checking topic existence"})),
+                );
+            }
+        };
 
     if !topic_exists {
         return (
@@ -475,7 +497,16 @@ async fn biome_relay_handler(
     );
 
     // Buffer in DB
-    let payload_json = serde_json::to_string(&msg).unwrap_or_default();
+    let payload_json = match serde_json::to_string(&msg) {
+        Ok(j) => j,
+        Err(e) => {
+            error!("🛡️ [Relay] Failed to serialize biome message for {}: {}", msg.recipient_pubkey, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Message serialization failed"})),
+            );
+        }
+    };
     let relay_insert_query = format!(
         "INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES ({}, {})",
         state.pool.ph(0),
@@ -561,7 +592,13 @@ async fn handle_biome_ws(mut socket: WebSocket, state: Arc<HubState>, node_id: S
                     if biome_msg.recipient_pubkey != node_id {
                         continue;
                     }
-                    let text = serde_json::to_string(&HubMessage::BiomeRelay(biome_msg)).unwrap_or_default();
+                    let text = match serde_json::to_string(&HubMessage::BiomeRelay(biome_msg)) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            tracing::error!("Failed to serialize BiomeRelay message: {}", e);
+                            continue;
+                        }
+                    };
                     if socket.send(Message::Text(text)).await.is_err() {
                         break;
                     }
@@ -594,8 +631,14 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
         // 1. Process Quarantined Karma
         let karma_fetch_query = "SELECT * FROM quarantined_karma LIMIT 50";
         let karmas: Vec<FederatedKarmaRecord> =
-            shared::sql_fetch_all!(&pool, FederatedKarmaRecord, karma_fetch_query)
-                .unwrap_or_default();
+            match shared::sql_fetch_all!(&pool, FederatedKarmaRecord, karma_fetch_query) {
+                Ok(k) => k,
+                Err(e) => {
+                    tracing::error!("Failed to fetch quarantined karma: {}", e);
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    continue;
+                }
+            };
 
         for k in &karmas {
             let mut valid = false;
@@ -734,7 +777,14 @@ async fn approval_worker(pool: shared::db::DatabasePool, token: CancellationToke
         // 2. Process Quarantined Rules
         let rule_fetch_query = "SELECT * FROM quarantined_rules LIMIT 50";
         let rules: Vec<ImmuneRuleRecord> =
-            shared::sql_fetch_all!(&pool, ImmuneRuleRecord, rule_fetch_query).unwrap_or_default();
+            match shared::sql_fetch_all!(&pool, ImmuneRuleRecord, rule_fetch_query) {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!("Failed to fetch quarantined rules: {}", e);
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    continue;
+                }
+            };
 
         for r in &rules {
             let mut valid = false;
@@ -973,23 +1023,50 @@ async fn timeline_sync_handler(
     );
     let blob_opt = match &state.pool {
         shared::db::DatabasePool::Sqlite(p) => {
-            sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
+            match sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
                 .bind(&payload.hub_id)
                 .fetch_optional(p)
                 .await
-                .unwrap_or(None)
+            {
+                Ok(b) => b,
+                Err(e) => {
+                    tracing::error!("Failed to fetch timeline blob: {}", e);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "Database error fetching timeline"})),
+                    ).into_response();
+                }
+            }
         }
         shared::db::DatabasePool::Postgres(p) => {
-            sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
+            match sqlx::query_scalar::<_, Vec<u8>>(&timeline_fetch_query)
                 .bind(&payload.hub_id)
                 .fetch_optional(p)
                 .await
-                .unwrap_or(None)
+            {
+                Ok(b) => b,
+                Err(e) => {
+                    tracing::error!("Failed to fetch timeline blob: {}", e);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "Database error fetching timeline"})),
+                    ).into_response();
+                }
+            }
         }
     };
 
     let mut hub_doc = match blob_opt {
-        Some(blob) => AutoCommit::load(&blob).unwrap_or_else(|_| AutoCommit::new()),
+        Some(blob) => match AutoCommit::load(&blob) {
+            Ok(doc) => doc,
+            Err(e) => {
+                tracing::error!("Failed to load AutoCommit CRDT blob: {}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Failed to decode CRDT timeline blob"})),
+                ).into_response();
+            }
+        },
         None => AutoCommit::new(),
     };
 
