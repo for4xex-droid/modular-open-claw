@@ -203,7 +203,7 @@ pub async fn generate_expression(
                         .config
                         .xtts_endpoint
                         .clone()
-                        .unwrap_or_else(|| "http://127.0.0.1:8020".to_string())
+                        .unwrap_or_else(|| "http://xtts:8020".to_string())
                 });
 
             tracing::info!(

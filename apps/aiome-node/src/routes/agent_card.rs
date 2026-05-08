@@ -36,8 +36,8 @@ pub async fn get_agent_card() -> (StatusCode, Json<AgentCard>) {
             "profile/info".to_string(),
         ],
         endpoints: Endpoints {
-            grpc: Some("grpc://localhost:50051".to_string()),
-            rest: Some("http://localhost:8080".to_string()),
+            grpc: Some("grpc://a2a-node:50051".to_string()),
+            rest: Some("http://aiome-node:8080".to_string()),
         },
         security: SecurityProfile {
             auth: vec!["mcp".to_string(), "oauth2".to_string()],

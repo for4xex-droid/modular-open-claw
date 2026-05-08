@@ -93,18 +93,17 @@ pub struct AiomeConfig {
 }
 
 /// OllamaサーバーのデフォルトURL
-pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+pub const DEFAULT_OLLAMA_HOST: &str = "http://ollama:11434";
 /// Key ProxyのデフォルトURL
-pub const DEFAULT_KEY_PROXY_URL: &str = "http://127.0.0.1:3017";
+pub const DEFAULT_KEY_PROXY_URL: &str = "http://key-proxy:3017";
 /// Samsara HubのデフォルトURL
-pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://127.0.0.1:3016";
+pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://samsara-hub:3016";
 /// CORS許可オリジンのデフォルト値
-pub const DEFAULT_ALLOWED_ORIGINS: &str =
-    "http://localhost:1420,http://localhost:5173,http://127.0.0.1:3015";
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "*";
 /// LM StudioのデフォルトURL
-pub const DEFAULT_LM_STUDIO_HOST: &str = "http://127.0.0.1:1234";
+pub const DEFAULT_LM_STUDIO_HOST: &str = "http://lm-studio:1234";
 /// Ruri埋め込みサーバーのデフォルトURL
-pub const DEFAULT_RURI_EMBED_URL: &str = "http://127.0.0.1:8100";
+pub const DEFAULT_RURI_EMBED_URL: &str = "http://ruri-embed:8100";
 /// Abyss Vaultのデフォルトパス
 pub const DEFAULT_ABYSS_VAULT_PATH: &str = "~/.aiome/abyss_vault";
 /// 隔離領域のデフォルトパス
@@ -125,12 +124,12 @@ impl Default for AiomeConfig {
             key_proxy_url: DEFAULT_KEY_PROXY_URL.to_string(),
             vault_secret: None,
             samsara_hub_url: DEFAULT_SAMSARA_HUB_URL.to_string(),
-            allowed_origins: vec!["http://localhost:1420".to_string()],
+            allowed_origins: vec!["*".to_string()],
             abyss_vault_path: DEFAULT_ABYSS_VAULT_PATH.to_string(),
             vault_path: resolver.resolve("vault"),
             tremendous_api_key: None,
             master_email: None,
-            xtts_endpoint: Some("http://localhost:18020".to_string()),
+            xtts_endpoint: Some("http://xtts:18020".to_string()),
             xtts_speaker: Some("p225".to_string()),
             mcp: McpConfig::default(),
             resolver,
@@ -138,12 +137,12 @@ impl Default for AiomeConfig {
             max_project_rules_chars: 3000,
             wp_api_url: None,
             wp_sdk_enabled: false,
-            a2a_node_url: "http://127.0.0.1:50051".to_string(),
+            a2a_node_url: "http://a2a-node:50051".to_string(),
             geo_optimizer_url: "http://geo-optimizer:8080".to_string(),
             geo_citability_threshold: 60,
-            rlm_api_url: "http://localhost:3026".to_string(),
-            comfyui_url: "http://localhost:8188".to_string(),
-            abyss_vault_url: "http://localhost:3016".to_string(),
+            rlm_api_url: "http://rlm-api:3026".to_string(),
+            comfyui_url: "http://comfyui:8188".to_string(),
+            abyss_vault_url: "http://samsara-hub:3016".to_string(),
             timesfm_sidecar_url: "http://timesfm-sidecar:8000".to_string(),
             a2a_auth_token: None,
             a2a_node_token: None,
@@ -260,19 +259,19 @@ impl AiomeConfig {
             wp_api_url: env::var("WP_API_URL").ok(),
             wp_sdk_enabled: env::var("WP_SDK_ENABLED").is_ok(),
             a2a_node_url: env::var("A2A_NODE_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 50051)),
+                .unwrap_or_else(|_| format!("http://a2a-node:{}", 50051)),
             geo_optimizer_url: env::var("GEO_OPTIMIZER_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8080)),
+                .unwrap_or_else(|_| format!("http://geo-optimizer:{}", 8080)),
             geo_citability_threshold: env::var("GEO_CITABILITY_THRESHOLD")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60),
             rlm_api_url: env::var("RLM_API_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3026)),
+                .unwrap_or_else(|_| format!("http://rlm-api:{}", 3026)),
             comfyui_url: env::var("COMFYUI_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 8188)),
+                .unwrap_or_else(|_| format!("http://comfyui:{}", 8188)),
             abyss_vault_url: env::var("ABYSS_VAULT_URL")
-                .unwrap_or_else(|_| format!("http://127.0.0.1:{}", 3016)),
+                .unwrap_or_else(|_| format!("http://samsara-hub:{}", 3016)),
             timesfm_sidecar_url: env::var("TIMESFM_SIDECAR_URL")
                 .unwrap_or_else(|_| "http://timesfm-sidecar:8000".to_string()),
             a2a_auth_token,

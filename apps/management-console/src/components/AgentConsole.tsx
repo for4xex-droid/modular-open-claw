@@ -29,6 +29,12 @@ interface RoiStats {
     instances: Array<{ id: string, name: string, status: string, nextRun: string, roi: string }>;
 }
 
+interface ArtifactRecord {
+    id: string;
+    category?: string;
+    name?: string;
+}
+
 const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const {
@@ -70,14 +76,14 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     const artifacts = artifactsRes.ok ? await artifactsRes.json() : [];
                     const ledger = ledgerRes.ok ? await ledgerRes.json() : [];
                     
-                    const blueprints = artifacts.filter((a: any) => a.category === 'Blueprint' || a.category === 'blueprint');
+                    const blueprints = (artifacts as ArtifactRecord[]).filter(a => a.category === 'Blueprint' || a.category === 'blueprint');
                     const tasksCount = ledger.length || 0;
                     
                     setStats({
                         tasksExecuted: tasksCount,
                         savings: tasksCount * 5, // Simple $5 saving per automated task
                         activeBlueprints: blueprints.length,
-                        instances: blueprints.map((bp: any) => ({
+                        instances: blueprints.map(bp => ({
                             id: bp.id,
                             name: bp.name || 'Untitled Blueprint',
                             status: 'Running',

@@ -108,7 +108,7 @@ pub async fn discover_and_connect(
                     "transport": "http",
                     "command": "",
                     "args": [],
-                    "url": "http://127.0.0.1:3000/mcp",
+                    "url": "http://mcp-server:3000/mcp",
                     "headers": {
                         "Authorization": "Bearer $STRIPE_SECRET_KEY"
                     }
@@ -471,7 +471,7 @@ fn oauth_token_url(provider: &str) -> Option<String> {
 /// This MUST match the redirect URI registered with each provider's OAuth App.
 fn get_oauth_redirect_uri() -> String {
     std::env::var("OAUTH_REDIRECT_URI")
-        .unwrap_or_else(|_| "http://localhost:3015/api/v1/mcp/oauth/callback".to_string())
+        .unwrap_or_else(|_| "http://api-server:3015/api/v1/mcp/oauth/callback".to_string())
 }
 
 /// Static mapping from provider name to OAuth authorization URL template.

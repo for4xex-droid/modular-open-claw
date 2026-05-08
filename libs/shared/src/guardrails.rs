@@ -104,31 +104,31 @@ pub fn sanitize_input(input: &str) -> String {
 use regex::Regex;
 use std::sync::OnceLock;
 
-static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
-static CREDIT_CARD_REGEX: OnceLock<Regex> = OnceLock::new();
+static EMAIL_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
+static PHONE_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
+static CREDIT_CARD_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
 
 /// ログ出力前などに PII (個人特定情報) をマスキングする (GDPR P-2-C)
 pub fn mask_pii(text: &str) -> String {
     let mut masked = text.to_string();
 
-    let email_re = EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").expect("valid regex")
-        // allow-anti-pattern: literal regex
-    });
-    let cc_re = CREDIT_CARD_REGEX.get_or_init(|| {
-        Regex::new(r"\b(?:\d[ -\.]*?){13,16}\b").expect("valid regex") // allow-anti-pattern: literal regex
-    });
+    let email_re =
+        EMAIL_REGEX.get_or_init(|| Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").ok());
+    let cc_re = CREDIT_CARD_REGEX.get_or_init(|| Regex::new(r"\b(?:\d[ -\.]*?){13,16}\b").ok());
     let phone_re = PHONE_REGEX.get_or_init(|| {
         let pattern = r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}\b";
-        Regex::new(pattern).expect("valid regex") // allow-anti-pattern: literal regex
+        Regex::new(pattern).ok()
     });
 
-    masked = email_re.replace_all(&masked, "[EMAIL_MASKED]").into_owned();
-    masked = cc_re
-        .replace_all(&masked, "[CREDIT_CARD_MASKED]")
-        .into_owned();
-    masked = phone_re.replace_all(&masked, "[PHONE_MASKED]").into_owned();
+    if let Some(re) = email_re {
+        masked = re.replace_all(&masked, "[EMAIL_MASKED]").into_owned();
+    }
+    if let Some(re) = cc_re {
+        masked = re.replace_all(&masked, "[CREDIT_CARD_MASKED]").into_owned();
+    }
+    if let Some(re) = phone_re {
+        masked = re.replace_all(&masked, "[PHONE_MASKED]").into_owned();
+    }
 
     masked
 }

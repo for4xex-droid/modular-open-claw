@@ -988,8 +988,9 @@ pub async fn init_core_services(
         if let Some(key) = stripe_key {
             Arc::new(aiome_commerce::ekyc::StripeEkycEngine::new(
                 key,
-                std::env::var("EKYC_CALLBACK_URL")
-                    .unwrap_or_else(|_| "http://127.0.0.1:1420/verify-callback".to_string()),
+                std::env::var("EKYC_CALLBACK_URL").unwrap_or_else(|_| {
+                    "http://management-console:1420/verify-callback".to_string()
+                }),
                 http_client.clone(),
             )) as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
         } else {

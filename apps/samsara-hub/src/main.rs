@@ -281,17 +281,16 @@ async fn list_topics_handler(
     let query =
         "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
             .to_string();
-    let rows: Vec<TopicRecord> =
-        match sql_fetch_all!(&state.pool, TopicRecord, &query) {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("Failed to fetch topics: {}", e);
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": "Database error while fetching topics"})),
-                ));
-            }
-        };
+    let rows: Vec<TopicRecord> = match sql_fetch_all!(&state.pool, TopicRecord, &query) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to fetch topics: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error while fetching topics"})),
+            ));
+        }
+    };
 
     let topics: Vec<serde_json::Value> = rows
         .into_iter()
@@ -500,7 +499,10 @@ async fn biome_relay_handler(
     let payload_json = match serde_json::to_string(&msg) {
         Ok(j) => j,
         Err(e) => {
-            error!("🛡️ [Relay] Failed to serialize biome message for {}: {}", msg.recipient_pubkey, e);
+            error!(
+                "🛡️ [Relay] Failed to serialize biome message for {}: {}",
+                msg.recipient_pubkey, e
+            );
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "Message serialization failed"})),
@@ -1034,7 +1036,8 @@ async fn timeline_sync_handler(
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(serde_json::json!({"error": "Database error fetching timeline"})),
-                    ).into_response();
+                    )
+                        .into_response();
                 }
             }
         }
@@ -1050,7 +1053,8 @@ async fn timeline_sync_handler(
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(serde_json::json!({"error": "Database error fetching timeline"})),
-                    ).into_response();
+                    )
+                        .into_response();
                 }
             }
         }
@@ -1064,7 +1068,8 @@ async fn timeline_sync_handler(
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(serde_json::json!({"error": "Failed to decode CRDT timeline blob"})),
-                ).into_response();
+                )
+                    .into_response();
             }
         },
         None => AutoCommit::new(),

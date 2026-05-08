@@ -156,10 +156,7 @@ pub async fn detect_ollama() -> Json<OllamaDetectionResponse> {
     let client = aiome_core::http::get_http_client().clone();
 
     // 候補 URL を順に試す
-    let candidates = [
-        shared::config::DEFAULT_OLLAMA_HOST,
-        "http://localhost:11434",
-    ];
+    let candidates = [shared::config::DEFAULT_OLLAMA_HOST, "http://ollama:11434"];
 
     for url in &candidates {
         let version_url = format!("{}/api/version", url);
