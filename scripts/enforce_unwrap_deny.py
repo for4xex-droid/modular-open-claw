@@ -67,6 +67,11 @@ def check_line(line: str) -> bool:
     if ".unwrap()" in code_part or ".expect(" in code_part:
         return True
 
+    # 抜け道（パニック誘発マクロ）の検出
+    for macro in ("panic!(", "todo!(", "unimplemented!(", "unreachable!("):
+        if macro in code_part:
+            return True
+
     return False
 
 

@@ -154,9 +154,7 @@ export type SoTEventPayload =
     | { type: "ProtocolSelected"; data: { session_id: string; protocol: string; reason: string } }
     | { type: "SessionEnd"; data: { session_id: string; outcome: SoTOutcome; total_tokens: number } };
 
-export interface SoTEvent {
-    event: SoTEventPayload;
-}
+export type SoTEvent = SoTEventPayload;
 
 // --- A2UI Types ---
 // These MUST match the Rust serde output from infrastructure::a2ui::schema exactly.

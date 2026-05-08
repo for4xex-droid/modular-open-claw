@@ -51,8 +51,23 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
             return { id: `sys-${index}`, type: 'tool_exec', title: 'EXECUTING', content: `${String(d?.name ?? 'Tool')}`, timestamp: ts };
         case 'proactive_talk':
             return { id: `sys-${index}`, type: 'chat_assistant', title: 'AIOME (PROACTIVE)', content: `${String(d?.message ?? '')}`, timestamp: ts };
-        case 'sot_progress':
-            return { id: `sys-${index}`, type: 'system', title: 'SOCIETY OF THOUGHT', content: `${String(d?.message ?? 'Deliberation in progress')}`, timestamp: ts };
+        case 'sot_progress': {
+            let msg = 'Deliberation in progress';
+            if (d && d.type) {
+                const innerData = d.data as any;
+                switch (d.type) {
+                    case 'SessionStart': msg = `Started deliberation session`; break;
+                    case 'RoleStart': msg = `Role '${innerData?.role}' started thinking (Round ${innerData?.round})`; break;
+                    case 'RoleOutput': msg = `Role '${innerData?.role}' finished thinking (Round ${innerData?.round})`; break;
+                    case 'Score': msg = `Evaluation scores received (Round ${innerData?.round})`; break;
+                    case 'ThinkerAbstained': msg = `A thinker voluntarily abstained (Round ${innerData?.round})`; break;
+                    case 'ProtocolSelected': msg = `Protocol selected: ${innerData?.protocol}`; break;
+                    case 'SessionEnd': msg = `Session ended`; break;
+                }
+            }
+            if (d?.message) msg = String(d.message);
+            return { id: `sys-${index}`, type: 'system', title: 'SOCIETY OF THOUGHT', content: msg, timestamp: ts };
+        }
         default:
             return null;
     }

@@ -241,6 +241,22 @@ pub fn init_cors() -> anyhow::Result<CorsLayer> {
     Ok(layer)
 }
 
+/// 本番環境で API_SERVER_SECRET がセキュアな要件を満たしているか判定する
+pub fn is_secure_production_secret(secret: &str) -> bool {
+    let s = secret.trim();
+    if s.len() < 16 {
+        return false;
+    }
+
+    let blocklist = [
+        "dev_secret_donotuseinprod",
+        "dev_secret_change_me_immediately",
+        "quickstart_secret_change_in_production",
+        "mock_valid_token_tester",
+    ];
+    !blocklist.contains(&s)
+}
+
 pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
@@ -709,19 +725,38 @@ pub async fn init_core_services(
     };
 
     let api_server_secret_raw = match std::env::var("API_SERVER_SECRET") {
-        Ok(s) => s,
-        Err(_) => {
-            #[cfg(debug_assertions)]
-            {
-                tracing::warn!("⚠️ [api-server] API_SERVER_SECRET not set. Using insecure default for development.");
-                "dev_secret_donotuseinprod".to_string()
-            }
+        Ok(s) => {
             #[cfg(not(debug_assertions))]
-            {
+            if !is_secure_production_secret(&s) {
                 tracing::error!(
-                    "🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET MUST be set in production!"
+                    "🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET is either an insecure default or too short (< 16 chars). Please set a strong, random secret in production!"
                 );
                 std::process::exit(1);
+            }
+            s
+        }
+        Err(_) => {
+            let diagnosis = shared::bootstrap_detector::BootstrapDetector::diagnose(
+                resolver.root(),
+                None,
+                None,
+            );
+            if diagnosis.mode == shared::bootstrap_detector::BootMode::Setup {
+                tracing::warn!("⚠️ [api-server] Entering Setup Mode. Using temporary secret for initialization. MUST be configured via WebUI.");
+                "setup_mode_temporary_secret_do_not_use".to_string()
+            } else {
+                #[cfg(debug_assertions)]
+                {
+                    tracing::warn!("⚠️ [api-server] API_SERVER_SECRET not set. Using insecure default for development.");
+                    "dev_secret_donotuseinprod".to_string()
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    tracing::error!(
+                        "🚨 [FATAL SECURITY ERROR] API_SERVER_SECRET MUST be set in production!"
+                    );
+                    std::process::exit(1);
+                }
             }
         }
     };
@@ -1818,5 +1853,24 @@ mod tests {
         std::env::set_var("ALLOWED_ORIGINS", "invalid\nuri");
         let result = init_cors();
         assert!(result.is_err(), "init_cors should fail with invalid URI");
+    }
+
+    #[test]
+    fn test_is_secure_production_secret() {
+        assert!(!is_secure_production_secret("")); // Too short
+        assert!(!is_secure_production_secret("short")); // Too short (5)
+        assert!(!is_secure_production_secret("123456789012345")); // Too short (15)
+
+        assert!(!is_secure_production_secret("dev_secret_donotuseinprod")); // Blocklist
+        assert!(!is_secure_production_secret(
+            "dev_secret_change_me_immediately"
+        )); // Blocklist
+        assert!(!is_secure_production_secret(
+            "quickstart_secret_change_in_production"
+        )); // Blocklist
+        assert!(!is_secure_production_secret("mock_valid_token_tester")); // Blocklist
+
+        assert!(is_secure_production_secret("my_super_secret_key_123!@#")); // Valid (26 chars)
+        assert!(is_secure_production_secret("1234567890123456")); // Valid (16 chars)
     }
 }

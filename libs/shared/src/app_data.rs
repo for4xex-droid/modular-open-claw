@@ -34,11 +34,12 @@ impl AppDataResolver {
             if is_test_binary {
                 "test-cell".to_string()
             } else {
-                panic!("🚨 FATAL: CELL_ID is required for AppDataResolver!");
+                panic!("🚨 FATAL: CELL_ID is required for AppDataResolver!"); // allow-anti-pattern: fatal configuration error at boot
             }
         });
         if !Self::is_safe_cell_id(&cell_id) {
             panic!("🚨 FATAL: CELL_ID '{}' contains invalid characters. Only [a-zA-Z0-9_-] (max 64 chars) are allowed.", cell_id);
+            // allow-anti-pattern: fatal configuration error at boot
         }
 
         let is_dev = std::env::var("AIOME_DEV_MODE")

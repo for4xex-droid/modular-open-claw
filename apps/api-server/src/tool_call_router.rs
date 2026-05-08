@@ -575,6 +575,9 @@ mod tests {
         let mut chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 
+        // Assign a unique UUID for this test to avoid parallel DB race conditions
+        state.system_agent_id = uuid::Uuid::new_v4();
+
         use aiome_core::traits::SettingsOps;
         let agent_id = state.system_agent_id;
         let key = format!("agency.{}.mcp_suspended", agent_id);

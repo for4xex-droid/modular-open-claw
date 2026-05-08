@@ -10,6 +10,7 @@ test.describe('UI Wave 1 Features (TDD)', () => {
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
       window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
+      window.localStorage.setItem('aiome_test_mode', 'true');
     });
 
     // Mock the Soul Status API
@@ -63,14 +64,17 @@ test.describe('UI Wave 1 Features (TDD)', () => {
       window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
         detail: {
           type: 'sot_progress',
-          message: 'Society of Thought deliberation: evaluating branch A vs B.',
+          data: {
+             type: 'SessionStart',
+             data: { session_id: 'test-session-123', config: {}, trigger: 'Manual' }
+          },
           timestamp: new Date().toISOString()
         }
       }));
     });
 
     // We expect the new SoT styled event to appear in the StoryFlow feed
-    const sotMessage = page.locator('text=Society of Thought deliberation: evaluating branch A vs B.');
+    const sotMessage = page.getByText(/Started deliberation session/i);
     await expect(sotMessage).toBeVisible({ timeout: 4000 }); 
   });
 });

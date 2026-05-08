@@ -47,7 +47,7 @@ cp .env.example .env
 GEMINI_API_KEY=your_gemini_key_here
 BG_LLM_PROVIDER=ollama
 BG_LLM_MODEL=qwen3.5:9b
-API_SERVER_SECRET=your_random_secret_here
+API_SERVER_SECRET=your_random_secret_here_must_be_16_chars_min
 VAULT_SECRET=your_vault_secret
 FEDERATION_SECRET=your_hub_secret # [Deferred to v1.5]
 TTS_PROVIDER=openai

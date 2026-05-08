@@ -44,10 +44,21 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3015',
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Run your local dev servers before starting the tests */
+  webServer: [
+    {
+      command: 'npm run build && cargo run -p api-server --bin api-server',
+      url: 'http://localhost:3015/health',
+      reuseExistingServer: !process.env.CI,
+      cwd: '../../', // Run from workspace root
+      timeout: 180 * 1000, // Wait up to 3 minutes for compilation
+      env: {
+        API_SERVER_SECRET: 'dev_secret_change_me_immedately',
+        KANI_STUB_MODE: 'true',
+        RUST_LOG: 'info',
+        AIOME_DEV_MODE: '1',
+        CELL_ID: 'cell_001',
+      }
+    }
+  ],
 });

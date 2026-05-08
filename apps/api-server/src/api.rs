@@ -134,7 +134,6 @@ use utoipa::OpenApi;
             crate::routes::settings::UpdateSettingsRequest,
             crate::routes::settings::TestConnectionRequest,
             crate::routes::settings::TestConnectionResponse,
-            crate::routes::bootstrap::FactoryResetResponse,
             crate::routes::commerce::ReleaseEscrowRequest,
             aiome_core_contracts::commerce::EscrowRecord,
             crate::routes::skill::SkillSummary,
@@ -231,14 +230,17 @@ pub struct ApiDoc;
 
 #[cfg(debug_assertions)]
 #[derive(OpenApi)]
-#[openapi(paths(
-    crate::routes::karma::trigger_failure_demo,
-    crate::routes::karma::trigger_security_demo,
-    crate::routes::karma::trigger_federation_demo,
-    crate::routes::demo::start_demo,
-    crate::routes::settings::test_connection,
-    crate::routes::bootstrap::factory_reset,
-))]
+#[openapi(
+    paths(
+        crate::routes::karma::trigger_failure_demo,
+        crate::routes::karma::trigger_security_demo,
+        crate::routes::karma::trigger_federation_demo,
+        crate::routes::demo::start_demo,
+        crate::routes::settings::test_connection,
+        crate::routes::bootstrap::factory_reset,
+    ),
+    components(schemas(crate::routes::bootstrap::FactoryResetResponse))
+)]
 pub struct DemoApiDoc;
 
 struct SecurityAddon;

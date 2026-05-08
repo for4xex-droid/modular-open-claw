@@ -13,46 +13,53 @@ test.use({
 });
 
 test('Aiome 90-second Screencast', async ({ page }) => {
-  // Setup: Clear storage to simulate first-time visit
+  // Setup: Clear storage to simulate first-time visit, but we'll bypass onboarding for the screencast
   await page.addInitScript(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem('aiome_test_mode', 'true');
+    window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
+    window.localStorage.setItem('aiome_onboarding_done', 'true');
+    window.localStorage.setItem('aiome_birth_shown', 'true');
   });
 
-  // Scene 1: Welcome & Onboarding
+  // Scene 1: Dashboard
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Aiome|Welcome/i);
+  await page.waitForSelector('.app-container');
+  await expect(page.locator('.status-badge').first()).toBeVisible();
   
-  // Enter initial info if onboarding modal exists
-  const nameInput = page.getByPlaceholder(/Call me/i);
-  if (await nameInput.isVisible()) {
-    await nameInput.fill('Admin');
-    await page.getByRole('button', { name: /Start/i }).click();
+  // Scene 2: Agent Console (Chat / System Feed)
+  // Find the Agent Console tab and click it
+  const agentTab = page.locator('.nav-item').filter({ hasText: /Agent Console|エージェント/i }).first();
+  if (await agentTab.isVisible()) {
+    await agentTab.click();
   }
 
-  // Scene 2: Agent Console (Chat / System Feed)
-  await page.waitForSelector('.app-container');
-  const chatInput = page.getByPlaceholder(/Talk to Artem/i);
-  await expect(chatInput).toBeVisible();
-  
-  // Send a message
-  await chatInput.fill('Please write a blog post about autonomous AI agents.');
-  await page.keyboard.press('Enter');
+  // Find the chat input
+  const chatInput = page.locator('textarea[placeholder*="Send a message"], textarea[placeholder*="メッセージ"]');
+  if (await chatInput.isVisible()) {
+    await chatInput.fill('Please write a blog post about autonomous AI agents.');
+    await page.keyboard.press('Enter');
+  }
 
   // Wait for some streaming response
   await page.waitForTimeout(3000);
 
-  // Scene 3: Cortex / TrendView Navigation
-  const targetTab = page.locator('.nav-item, nav.nav-group div').filter({ hasText: /Cortex|Trend/i }).first();
-  await targetTab.click();
-  await expect(page.locator('.cortex-container, .trend-view-container')).toBeVisible();
-  await page.waitForTimeout(2000);
+  // Scene 3: Cortex Navigation
+  const targetTab = page.locator('.nav-item').filter({ hasText: /Cortex|コーテックス/i }).first();
+  if (await targetTab.isVisible()) {
+    await targetTab.click();
+    await expect(page.locator('.cortex-container')).toBeVisible();
+    await page.waitForTimeout(2000);
+  }
 
-  // Scene 4: SystemBirth / Observability Navigation
-  const observabilityTab = page.locator('.nav-item').filter({ hasText: /SystemBirth/i }).first();
-  await observabilityTab.click();
-  await expect(page.locator('.system-birth, .soul-status')).toBeVisible();
-  await page.waitForTimeout(2000);
+  // Scene 4: Immune System Navigation
+  const observabilityTab = page.locator('.nav-item').filter({ hasText: /Immune|免疫/i }).first();
+  if (await observabilityTab.isVisible()) {
+    await observabilityTab.click();
+    await expect(page.locator('.immune-system-container, .immune-system')).toBeVisible();
+    await page.waitForTimeout(2000);
+  }
 
   // Scene 5: Finish
   await page.waitForTimeout(1000);

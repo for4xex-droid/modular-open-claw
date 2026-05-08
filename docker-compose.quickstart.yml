@@ -37,7 +37,7 @@ services:
       OLLAMA_MODEL: "gemma4:e4b"  # Gemma4 — multimodal, ~6GB RAM
       RUST_LOG: "info,aiome=debug"
       WORKSPACE_DIR: "/data"
-      API_SERVER_SECRET: "quickstart_secret_change_in_production"
+      API_SERVER_SECRET: "aiome_quickstart_demo_secret_2026"
       VAULT_MASTER_KEY: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
       # JWT key for auth (release builds require this; generate your own for production)
       JWT_PRIVATE_KEY_B64: "MC4CAQAwBQYDK2VwBCIEIO5u8FRMowHdVD/soQOD6TivIP1Ovb6Wm161FW6NmkYK" # gitleaks:allow

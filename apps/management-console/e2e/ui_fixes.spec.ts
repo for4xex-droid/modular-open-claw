@@ -16,6 +16,7 @@ test.describe('UI Endpoint Fixes (TDD)', () => {
       window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
       window.localStorage.setItem('aiome_view_mode', 'advanced');
       window.localStorage.setItem('i18nextLng', 'en-US');
+      window.localStorage.setItem('aiome_test_mode', 'true');
     });
     await page.goto('/');
   });
@@ -31,7 +32,7 @@ test.describe('UI Endpoint Fixes (TDD)', () => {
     );
 
     // Send a message
-    const textarea = page.getByPlaceholder('Type a command or ask a question...');
+    const textarea = page.getByPlaceholder('Send a message...');
     await textarea.fill('Hello AI');
     await page.keyboard.press('Enter');
 

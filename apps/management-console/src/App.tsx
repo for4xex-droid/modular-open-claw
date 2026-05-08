@@ -150,7 +150,7 @@ function App() {
       }
       case 'sot_progress': {
         const d = data as SoTEvent;
-        addEvent(t('event.societyOfThought'), t('event.deliberationUpdate', { type: d.event.type }), 'var(--accent-purple)', <BrainCircuit size={16} />);
+        addEvent(t('event.societyOfThought'), t('event.deliberationUpdate', { type: d.type }), 'var(--accent-purple)', <BrainCircuit size={16} />);
         break;
       }
       case 'token_saved': {
@@ -648,21 +648,23 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <OnboardingModal
-        isOpen={showOnboarding}
-        onClose={() => {
-          setShowOnboarding(false);
-          localStorage.setItem("aiome_onboarding_done", "true");
-          setShowBirth(true);
-        }}
-      />
+      <React.Suspense fallback={null}>
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={() => {
+            setShowOnboarding(false);
+            localStorage.setItem("aiome_onboarding_done", "true");
+            setShowBirth(true);
+          }}
+        />
 
-      {showBirth && (
-        <SystemBirth onComplete={() => {
-          setShowBirth(false);
-          localStorage.setItem("aiome_birth_shown", "true");
-        }} />
-      )}
+        {showBirth && (
+          <SystemBirth onComplete={() => {
+            setShowBirth(false);
+            localStorage.setItem("aiome_birth_shown", "true");
+          }} />
+        )}
+      </React.Suspense>
 
       <React.Suspense fallback={null}>
         <TaskApprovalOverlay />

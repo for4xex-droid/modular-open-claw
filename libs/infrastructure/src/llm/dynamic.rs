@@ -638,14 +638,18 @@ impl LlmProvider for BackgroundLlmProvider {
         let provider_type = self
             .ops
             .get_setting_value("bg_llm_provider")
-            .await?
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
             .ops
             .get_setting_value("bg_llm_model")
-            .await?
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
             .unwrap_or_else(|| self.fallback_model.clone());
 
@@ -782,14 +786,18 @@ impl LlmProvider for BackgroundLlmProvider {
         let provider_type = self
             .ops
             .get_setting_value("bg_llm_provider")
-            .await?
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
             .unwrap_or_else(|| "ollama".to_string());
 
         let model = self
             .ops
             .get_setting_value("bg_llm_model")
-            .await?
+            .await
+            .ok()
+            .flatten()
             .or_else(|| std::env::var("BG_LLM_MODEL").ok())
             .unwrap_or_else(|| self.fallback_model.clone());
 

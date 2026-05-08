@@ -95,9 +95,15 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                     {!isViewerOpen && mode !== 'off' && (
                         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                             <ErrorBoundary fallback={null}>
-                                {mode === 'vrm' && <VrmRenderer modelUrl={modelUrl} avatarState={avatarState} />}
-                                {mode === 'glb' && <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />}
-                                {mode === 'inx' && <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />}
+                                {localStorage.getItem('aiome_test_mode') === 'true' ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>[Mock 3D View]</div>
+                                ) : (
+                                    <>
+                                        {mode === 'vrm' && <VrmRenderer modelUrl={modelUrl} avatarState={avatarState} />}
+                                        {mode === 'glb' && <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />}
+                                        {mode === 'inx' && <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />}
+                                    </>
+                                )}
                             </ErrorBoundary>
                         </div>
                     )}

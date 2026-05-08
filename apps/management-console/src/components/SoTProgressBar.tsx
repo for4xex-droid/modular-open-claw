@@ -32,7 +32,8 @@ export const SoTProgressBar: React.FC = () => {
             .reverse();
 
         for (const se of sotEvents) {
-            const { type, data } = se.event;
+            if (!se) continue;
+            const { type, data } = se;
             switch(type) {
                 case 'SessionStart':
                     if (!activeSession || activeSession.id !== data.session_id) {

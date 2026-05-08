@@ -165,26 +165,21 @@ pub async fn update_setting(
 
     // 2. Category validation
     if !ALLOWED_CATEGORIES.contains(&payload.category.as_str()) {
-        return Err(
-            aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-                reason: "Invalid category".to_string(),
-            }
-            .into(),
-        );
+        return Err(AppError::bad_request("Invalid category"));
     }
 
     // 3. Value length limit (DoS protection)
-    if payload.value.len() > 1024 {
-        return Err(
-            aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-                reason: "Value too long (max 1024 chars)".to_string(),
-            }
-            .into(),
-        );
+    if payload.value.len() > 4096 {
+        return Err(AppError::bad_request("Value too long (max 4096 chars)"));
     }
 
     // 4. Server-side is_secret determination
     let is_secret = SECRETS.contains(&payload.key.as_str());
+
+    // Prevent the frontend from accidentally overwriting secrets with the placeholder mask
+    if is_secret && payload.value == "••••••••" {
+        return Ok(Json(serde_json::json!({"status": "ignored_masked_secret"})));
+    }
 
     // 5. Audit Logging (Global Ledger)
     let details = serde_json::json!({

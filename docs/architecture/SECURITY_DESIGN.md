@@ -45,7 +45,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 22 | **Unauthorized Demo Access** | **Unauthenticated demo trigger** | 🔴 High | **Bearer Auth + MockAuthManager (Phase 25)** |
 | 23 | **SQLite Pool Exhaustion** | **Multi-tab SSE + gig_engine Transactions** | 🔴 High | **Transaction-free Demo SQL (ADR-014) + Audit Trigger Suspension (Phase 25.5)** |
 | 24 | **Testing Mocks in Production** | **Mock object leakage (e.g. MockLlmProvider)** | 🔴 High | **Conditional Compilation (#[cfg]) Isolation (Phase 27)** |
-| 25 | **Insecure Default Secrets** | **Fallback API_SERVER_SECRET** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 27)** |
+| 25 | **Insecure Default Secrets** | **Fallback API_SERVER_SECRET** | 🔴 High | **Mandatory Release-build Env Check (Fail-safe) (Phase 27) + 16-char Enforced Minimum (v1.0 Beta)** |
+| 25.1| **Setup Lockout (Secret Gate)** | **Mandatory secret gate blocking initial boot** | 🟡 Mid | **BootstrapDetector::diagnose BootMode::Setup Temporary Token Bypass (v1.0 Beta)** |
 | 26 | **Unauthorized Frontend Requests**| **CORS misconfiguration (AllowOrigin::any)** | 🔴 High | **Strict ALLOWED_ORIGINS Enforcement (Phase 27)** |
 | 27 | **Runtime Database Panic** | **unwrap() on Pool in PG mode** | 🟡 Mid | **Safe DatabasePool Getters (Phase 31)** |
 | 28 | LLM Format Mismatch | JSON expected, Text received | 🟡 Mid | **LLM Structured Output (format: json) (Phase 31)** |
@@ -210,8 +211,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-05-04*
-*Managed by: Aiome Sovereign Task Force (Ref: Federation v1.5 Hardening)*
+*Last Mutated: 2026-05-08*
+*Managed by: Aiome Sovereign Task Force (Ref: Hardening Aiome Security Infrastructure / Federation v1.5 Hardening)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 

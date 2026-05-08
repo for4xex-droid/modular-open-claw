@@ -518,10 +518,26 @@ pub async fn create_checkout_session(
         return Err(AppError::forbidden("Unauthorized access to this agent"));
     }
 
-    // Defensive URL validation: only allow https:// scheme
-    if !req.success_url.starts_with("https://") || !req.cancel_url.starts_with("https://") {
+    // Defensive URL validation: only allow https:// scheme in production
+    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1"
+        || std::env::var("KANI_STUB_MODE").unwrap_or_default() == "true";
+
+    let is_valid_scheme = |url: &str| -> bool {
+        if url.starts_with("https://") {
+            return true;
+        }
+        if is_dev
+            && url.starts_with("http://")
+            && (url.contains("localhost") || url.contains("127.0.0.1"))
+        {
+            return true;
+        }
+        false
+    };
+
+    if !is_valid_scheme(&req.success_url) || !is_valid_scheme(&req.cancel_url) {
         return Err(AppError::bad_request(
-            "success_url and cancel_url must use https:// scheme",
+            "success_url and cancel_url must use https:// scheme (http://localhost allowed in dev mode)",
         ));
     }
 
