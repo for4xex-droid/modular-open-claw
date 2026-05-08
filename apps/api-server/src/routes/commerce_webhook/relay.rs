@@ -3,6 +3,7 @@ use infrastructure::db::DatabasePool;
 use tracing::{error, info, Instrument};
 use uuid::Uuid;
 
+// auth-exempt: Helper function (Not an endpoint)
 pub async fn enqueue_coin_charge_to_nurture(
     http_client: reqwest::Client,
     dlq_pool: std::sync::Arc<DatabasePool>,

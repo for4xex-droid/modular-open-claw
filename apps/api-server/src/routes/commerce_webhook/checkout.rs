@@ -8,6 +8,7 @@ use uuid::Uuid;
 /// Change this value to adjust the Aiome platform commission percentage.
 const PLATFORM_FEE_RATE: f64 = 0.15;
 
+// auth-exempt: Helper function (Not an endpoint)
 pub async fn handle_checkout_completed<'a>(
     tx: &mut DatabaseTransaction<'a>,
     registry: &std::sync::Arc<RegistryManager>,

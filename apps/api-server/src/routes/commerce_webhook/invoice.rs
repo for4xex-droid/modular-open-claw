@@ -3,6 +3,7 @@ use aiome_core::traits::SettingsOps;
 use infrastructure::db::DatabaseTransaction;
 use tracing::{error, info, warn};
 
+// auth-exempt: Helper function (Not an endpoint)
 pub async fn handle_invoice_paid<'a>(
     tx: &mut DatabaseTransaction<'a>,
     customer_id: &str,
@@ -44,6 +45,7 @@ pub async fn handle_invoice_paid<'a>(
     }
 }
 
+// auth-exempt: Helper function (Not an endpoint)
 pub async fn handle_invoice_payment_failed<'a>(
     tx: &mut DatabaseTransaction<'a>,
     customer_id: &str,
@@ -85,6 +87,7 @@ pub async fn handle_invoice_payment_failed<'a>(
     }
 }
 
+// auth-exempt: Helper function (Not an endpoint)
 pub async fn apply_pending_agent_states(
     job_queue: &std::sync::Arc<dyn aiome_core::traits::JobQueue>,
     pending_unlock_agent: Option<String>,
