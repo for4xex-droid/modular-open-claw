@@ -12,15 +12,16 @@ mod tests {
     use std::path::PathBuf;
 
     fn setup_verifier() -> BoundaryVerifier {
+        use crate::security::ExecPolicy;
         BoundaryVerifier::new(
             PathBuf::from("/mnt/aiome-workspace"),
             Some(PathBuf::from("/mnt/aiome-vault")),
-            vec![
+            ExecPolicy::new(vec![
                 "ls".to_string(),
                 "cat".to_string(),
                 "cargo".to_string(),
                 "echo".to_string(),
-            ],
+            ]),
         )
     }
 
@@ -109,5 +110,13 @@ mod tests {
             matches!(result, Err(AiomeError::Infrastructure { .. })),
             "Expected rejection for large payload"
         );
+    }
+
+    #[test]
+    fn test_binary_deny_prefix_reject() {
+        let verifier = setup_verifier();
+        // "../../bin/sh" のようにホワイトリストにないバイナリ名
+        let result = verifier.verify_command("../../bin/sh", false);
+        assert!(matches!(result, Err(AiomeError::Infrastructure { .. })));
     }
 }

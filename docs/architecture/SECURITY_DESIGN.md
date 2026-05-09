@@ -142,6 +142,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Outbound Payload Strict Bounds (Phase B/C)**: Prevents an autonomous conductor from successfully executing an HTTP request with 0-byte or 10MB+ parameters. Evaluated upstream within infrastructure adapters (e.g. `WordPressAdapter`, `SerpAnalysisAdapter`) natively prior to creating network traces to mitigate WAF bans and network bandwidth exhaustion.
 - **Constitutional Core Defense (Phase 2B-2 Reflexion)**: Employs an ultra-fast O(1) `LazyLock` regex implementation inside `ConstitutionalValidator` for real-time text analysis. Blocks prompt injections targeting foundational principles. Eliminates fallback-vector bypasses by strictly decoupling user inputs (e.g. `ai_name`) from immutable static fallback templates.
 - **Governed Execution Layer (Phase 2.1)**: Implements "Atomic Security Gating" within the `TaskDispatcher`. Before any sub-job of a decomposed plan is enqueued, the system verifies all planned steps against the `AdaptiveImmuneSystem`. If any high-severity violation is detected, the entire job is suspended into an `AwaitingInput` state, preventing partial execution of unsafe plans. A semantic `TaskAwaitingInput` event is issued to allow management consoles to distinguish security suspensions from system failures. Furthermore, physical operators can issue an `IMMUNE_BYPASS_APPROVED` override to authorize and unblock necessary high-risk execution paths.
+- **Dynamic Spec Export Isolation (Phase 4)**: The `FsSpecProvider` enforces strict path traversal validation (`canonicalize` + `starts_with`), Explicit symlink rejection to prevent sandbox escapes, and O(1) regex-based secret redaction (`SECRET_PATTERN`) before generating `.specify` templates, ensuring internal specifications can be exported safely without leaking the host filesystem or hardcoded credentials.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.
@@ -200,6 +201,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Resilient Webhook Parsing**: Applies the "Parse-What-You-Need" pattern for Stripe webhooks, isolating standard deserialization panics. Enforces early idempotency rejection to prevent duplicate or tampered replay attacks on financial transactions.
 - **Frontend Type Hardening**: Eradicates the use of `any` types in global Catch blocks across the Management Console and deeply nested Trajectory records. Enforces TypeScript's safe `err: unknown` pattern with explicit `instanceof Error` boundaries, mathematically neutralizing runtime TypeErrors caused by unhandled upstream panics.
 - **Cell-Based Architecture (CBA) Namespacing (Stage 0)**: Implements the 1-process=1-cell invariant. `AppDataResolver` strictly validates the `CELL_ID` environment variable using `is_safe_cell_id` (alphanumeric, max 64 chars) to prevent path traversal risks. Additionally, infrastructure scripts (e.g. `backup.sh`) are fortified with robust regex guards to neutralize any shell injection vectors before reaching OS execution.
+- **Production Fallback Safety (Phase 4)**: Renamed test mocks (`MockPromptRegistry`) to explicit production fallbacks (`NoopPromptRegistry`), eliminating the risk of `cfg(test)` conditional compilation bugs breaking production boot sequences, thus aligning with fail-graceful operations.
 
 ## 5. Comparison with Traditional Systems
 
@@ -211,8 +213,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-05-08*
-*Managed by: Aiome Sovereign Task Force (Ref: Hardening Aiome Security Infrastructure / Federation v1.5 Hardening)*
+*Last Mutated: 2026-05-10*
+*Managed by: Aiome Sovereign Task Force (Ref: Hardening Aiome Security Infrastructure / Federation v1.5 Hardening / Dynamic Spec Export)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 
@@ -241,4 +243,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-05-09 (Zero-Panic Policy Hardening & Chaos Engineering)*
+*最終更新: 2026-05-10 (Zero-Panic Policy Hardening & Chaos Engineering & Dynamic Spec Export)*

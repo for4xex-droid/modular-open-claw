@@ -154,6 +154,10 @@ mod tests {
                     .time_to_live(std::time::Duration::from_secs(30))
                     .build(),
             )),
+            prompt_registry: Component::new(Arc::new(
+                infrastructure::prompt_registry::MockPromptRegistry,
+            )
+                as Arc<dyn infrastructure::prompt_registry::PromptRegistry>),
             ..Default::default()
         };
 

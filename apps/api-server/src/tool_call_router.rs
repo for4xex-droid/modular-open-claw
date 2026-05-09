@@ -173,6 +173,16 @@ impl ToolCallRouter for DefaultToolCallRouter {
                         .await;
                     return;
                 }
+                HookVerdict::Ask { reason, .. } => {
+                    tracing::warn!("Hook requested user approval for tool `{}`: {}", sn, reason);
+                    let _ = tx_clone
+                        .send(ToolExecutionEvent::Error(format!(
+                            "[Hook Ask] Requires User Approval: {}",
+                            reason
+                        )))
+                        .await;
+                    return;
+                }
                 HookVerdict::Transform(new_input) => new_input,
                 HookVerdict::Allow => si,
             };
@@ -365,6 +375,16 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 HookVerdict::Deny(reason) => {
                     tracing::warn!("Hook blocked tool `{}` post-execution: {}", sn, reason);
                     let block_msg = format!("[Hook Post-Block] {}", reason);
+                    let _ = tx_clone.send(ToolExecutionEvent::Error(block_msg)).await;
+                    return;
+                }
+                HookVerdict::Ask { reason, .. } => {
+                    tracing::warn!(
+                        "Hook requested user approval post-execution for `{}`: {}",
+                        sn,
+                        reason
+                    );
+                    let block_msg = format!("[Hook Post-Ask] Requires User Approval: {}", reason);
                     let _ = tx_clone.send(ToolExecutionEvent::Error(block_msg)).await;
                     return;
                 }

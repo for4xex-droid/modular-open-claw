@@ -15,6 +15,9 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+pub mod exec_policy;
+pub use exec_policy::ExecPolicy;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// `SecurityConfig` 構造体
 pub struct SecurityConfig {
@@ -322,42 +325,29 @@ impl RuntimeJail for BastionGuard {
         // Dynamic Sandbox Wrapping
         let (program, mut sandbox_args) = if cfg!(target_os = "macos") && !self.is_system_internal {
             if std::path::Path::new("/usr/bin/sandbox-exec").exists() {
-                let profile_str = match profile {
-                    SandboxProfile::Strict => "(version 1)
-                         (allow default)
-                         (deny network*)
-                         (deny file-write*)"
-                        .to_string(),
-                    SandboxProfile::PythonForge | SandboxProfile::WasmRun => "(version 1)
-                         (allow default)
-                         (deny network*)"
-                        .to_string(),
-                    SandboxProfile::WasmBuild | SandboxProfile::ForgeBuild => "(version 1)
-                         (allow default)"
-                        .to_string(),
-                    SandboxProfile::McpServer => {
-                        let mut profile =
-                            String::from("(version 1)\n                         (allow default)");
-                        if !self.manifest.allow_network {
-                            profile.push_str("\n                         (deny network*)");
-                        }
-                        if !self.manifest.allow_filesystem_write {
-                            profile.push_str("\n                         (deny file-write*)");
-                        }
-                        profile
+                let mut s_profile = shared::sandbox::seatbelt::SeatbeltProfile::default();
+                match profile {
+                    SandboxProfile::Strict => {}
+                    SandboxProfile::PythonForge | SandboxProfile::WasmRun => {
+                        // ネットワークのみ拒否、ファイル書き込みは許可
+                        s_profile.allow_fs_write = true;
                     }
-                    _ => "(version 1) (allow default)".to_string(),
-                };
-                (
-                    "sandbox-exec",
-                    vec![
-                        "-p".to_string(),
-                        profile_str.to_string(),
-                        binary.to_string(),
-                    ],
-                )
+                    SandboxProfile::WasmBuild | SandboxProfile::ForgeBuild => {
+                        s_profile.allow_network = true;
+                        s_profile.allow_fs_write = true;
+                    }
+                    SandboxProfile::McpServer => {
+                        s_profile.allow_network = self.manifest.allow_network;
+                        s_profile.allow_fs_write = self.manifest.allow_filesystem_write;
+                    }
+                    _ => {
+                        s_profile.allow_network = true;
+                        s_profile.allow_fs_write = true;
+                    }
+                }
+                shared::sandbox::seatbelt::create_seatbelt_command_args(binary, &s_profile)
             } else {
-                (binary, vec![])
+                (binary.to_string(), vec![])
             }
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
             let runsc_exists = BastionGuard::binary_exists_on_path("runsc");
@@ -369,12 +359,12 @@ impl RuntimeJail for BastionGuard {
                 }
                 args.push("do".to_string());
                 args.push(binary.to_string());
-                ("runsc", args)
+                ("runsc".to_string(), args)
             } else {
-                (binary, vec![])
+                (binary.to_string(), vec![])
             }
         } else {
-            (binary, vec![])
+            (binary.to_string(), vec![])
         };
 
         for a in args {
@@ -382,7 +372,7 @@ impl RuntimeJail for BastionGuard {
         }
 
         let output = crate::security_zombie::run_with_timeout_vec(
-            program,
+            &program,
             sandbox_args,
             std::time::Duration::from_secs(60),
         )
@@ -455,30 +445,21 @@ impl BastionGuard {
             let sandbox_exists = Self::binary_exists_on_path("sandbox-exec");
 
             if sandbox_exists {
-                let profile_str = match profile {
+                let mut s_profile = shared::sandbox::seatbelt::SeatbeltProfile::default();
+                match profile {
                     SandboxProfile::LoraTraining => {
-                        "(version 1)\n                         (allow default)\n                         (allow network-outbound (remote tcp \"*:443\"))\n                         (allow network-outbound (remote tcp \"*:80\"))\n                         (deny file-write* (regex #\"^/etc\"))\n                         (deny file-write* (regex #\"^/var\"))".to_string()
+                        s_profile.is_lora_training = true;
                     }
                     SandboxProfile::McpServer => {
-                        let mut p = String::from("(version 1)\n                         (allow default)");
-                        if !self.manifest.allow_network {
-                            p.push_str("\n                         (deny network*)");
-                        }
-                        if !self.manifest.allow_filesystem_write {
-                            p.push_str("\n                         (deny file-write*)");
-                        }
-                        p
+                        s_profile.allow_network = self.manifest.allow_network;
+                        s_profile.allow_fs_write = self.manifest.allow_filesystem_write;
                     }
-                    _ => "(version 1) (allow default)".to_string(),
-                };
-                return (
-                    "sandbox-exec".to_string(),
-                    vec![
-                        "-p".to_string(),
-                        profile_str.to_string(),
-                        binary.to_string(),
-                    ],
-                );
+                    _ => {
+                        s_profile.allow_network = true;
+                        s_profile.allow_fs_write = true;
+                    }
+                }
+                return shared::sandbox::seatbelt::create_seatbelt_command_args(binary, &s_profile);
             }
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
             let runsc_exists = Self::binary_exists_on_path("runsc");

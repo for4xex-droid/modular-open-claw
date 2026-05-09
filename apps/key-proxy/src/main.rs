@@ -73,6 +73,8 @@ pub(crate) struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    shared::process_hardening::pre_main_hardening();
+
     tracing_subscriber::fmt::init();
     info!("🔐 [KeyProxy] Starting the Abyss Vault...");
 

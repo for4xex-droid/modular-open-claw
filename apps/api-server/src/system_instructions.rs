@@ -151,23 +151,34 @@ pub(crate) async fn build_system_instructions(
         }
     }
 
-    let final_prompt = format!(
-        "# IDENTITY: \n{}{}{}{}{}{}\n\
-        [ユーザー情報]\n{}\n[利用可能なスキル]\n{}\n[システム]\n{}\n教訓: {}\n要約: {}\n{}{}",
-        name_prompt,
-        economy_prompt,
-        soul_md,
-        evolving_soul_md,
-        soul_dynamic,
-        repair_prompt,
-        user_md,
-        skill_list,
-        project_rules,
-        karma_str,
-        summary.unwrap_or("なし"),
-        agents_md,
-        a2ui_prompt
-    );
+    let context = serde_json::json!({
+        "name_prompt": name_prompt,
+        "economy_prompt": economy_prompt,
+        "soul_md": soul_md,
+        "evolving_soul_md": evolving_soul_md,
+        "soul_dynamic": soul_dynamic,
+        "repair_prompt": repair_prompt,
+        "user_md": user_md,
+        "skill_list": skill_list,
+        "project_rules": project_rules,
+        "karma_str": karma_str,
+        "summary": summary.unwrap_or("なし"),
+        "agents_md": agents_md,
+        "a2ui_prompt": a2ui_prompt
+    });
+
+    let final_prompt = if let Some(registry) = state.prompt_registry.as_opt() {
+        registry
+            .render("system/core.md", context)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to render system/core.md: {:?}", e);
+                String::new()
+            })
+    } else {
+        tracing::error!("PromptRegistry not available in AppState!");
+        String::new()
+    };
 
     tracing::debug!(
         "⚙️ [SystemPrompt] Total size: {} chars (soul: {}, user: {}, rules: {}, skills: {}, karma: {}, agents: {}, a2ui: {})",
@@ -301,6 +312,10 @@ mod tests {
                     .time_to_live(std::time::Duration::from_secs(30))
                     .build(),
             )),
+            prompt_registry: Component::new(Arc::new(
+                infrastructure::prompt_registry::MockPromptRegistry,
+            )
+                as Arc<dyn infrastructure::prompt_registry::PromptRegistry>),
             ..Default::default()
         };
 

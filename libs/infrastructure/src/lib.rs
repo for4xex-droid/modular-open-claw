@@ -140,6 +140,7 @@ pub mod oss_type_matcher;
 pub mod output_filter;
 /// TurboQuant PolarQuant エンコーダ (Phase 39)
 pub mod polar_quant;
+pub mod prompt_registry;
 /// 成果物のSNS自動投稿
 pub mod publisher;
 pub mod quality_gate_store;
@@ -167,6 +168,7 @@ pub mod soul_adapter;
 pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
+pub mod spec_provider;
 /// Let It Crash / Supervision Tree (Phase 1.5)
 pub mod supervisor;
 

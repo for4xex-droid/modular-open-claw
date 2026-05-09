@@ -16,6 +16,8 @@ mod routes;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    shared::process_hardening::pre_main_hardening();
+
     // ログの初期化
     tracing_subscriber::registry()
         .with(

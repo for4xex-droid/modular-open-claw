@@ -41,6 +41,7 @@ pub mod csam;
 pub mod db;
 /// ファイルの Magic Bytes 検証
 pub mod file_validator;
+pub mod process_hardening;
 
 /// ガードレール機能
 pub mod guardrails;

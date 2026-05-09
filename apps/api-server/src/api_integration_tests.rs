@@ -790,6 +790,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::skills::skill_arena::SkillArena::new(),
         )),
         rlm_client: Component::default(),
+        prompt_registry: Component::new(Arc::new(
+            infrastructure::prompt_registry::MockPromptRegistry,
+        )
+            as Arc<dyn infrastructure::prompt_registry::PromptRegistry>),
         formal_proof_gate: Component::new(
             Arc::new(MockFormalProofGate) as Arc<dyn aiome_contracts::proof::FormalProofGate>
         ),
@@ -807,6 +811,10 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 .max_capacity(10_000)
                 .build(),
         )),
+        spec_provider: Component::new(Arc::new(infrastructure::spec_provider::FsSpecProvider::new(
+            tmp_dir.path().join("workflows"),
+        ))
+            as Arc<dyn infrastructure::spec_provider::SpecProvider>),
         mcp_oauth_secrets: {
             let mut m = std::collections::HashMap::new();
             if let (Ok(id), Ok(secret)) = (
@@ -4067,4 +4075,23 @@ async fn test_heartbeat_dpo_e2e_integration() -> Result<(), Box<dyn std::error::
     );
 
     Ok(())
+}
+
+#[tokio::test]
+async fn test_spec_export_endpoint() {
+    let (server, _state, _tmp_dir) = create_test_server().await;
+
+    // Use admin token to hit the endpoint
+    let response = server
+        .get("/api/v1/system/spec-export")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            axum::http::HeaderValue::from_static("Bearer mock_valid_token_admin"),
+        )
+        .await;
+
+    assert_eq!(response.status_code(), 200);
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["status"], "success");
+    assert_eq!(json["export_path"], ".specify-export-tmp");
 }

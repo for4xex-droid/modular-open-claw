@@ -198,3 +198,38 @@ pub async fn get_trends(
         },
     }))
 }
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/system/spec-export",
+    responses(
+        (status = 200, description = "Export internal specifications to spec-kit format"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn export_spec_kit(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if let Some(spec_provider) = state.spec_provider.as_opt() {
+        let export_dir = std::path::Path::new(&state.docs_path)
+            .join(".specify-export-tmp")
+            .to_string_lossy()
+            .to_string();
+        match spec_provider.export_to_spec_kit(&export_dir).await {
+            Ok(_) => Ok(Json(serde_json::json!({
+                "status": "success",
+                "export_path": ".specify-export-tmp"
+            }))),
+            Err(e) => {
+                tracing::error!("Failed to export spec-kit: {:?}", e);
+                Err(AppError::internal(e.to_string()))
+            }
+        }
+    } else {
+        Err(AppError::internal(
+            "SpecProvider not initialized".to_string(),
+        ))
+    }
+}

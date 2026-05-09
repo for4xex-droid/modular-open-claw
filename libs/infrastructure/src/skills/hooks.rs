@@ -14,6 +14,12 @@ pub enum HookVerdict {
     Allow,
     /// Deny the tool execution and abort.
     Deny(String),
+    /// ユーザーに実行可否を確認する（タイムアウト付き）
+    Ask {
+        reason: String,
+        timeout_ms: u64,
+        allow_default: bool,
+    },
     /// Transform the input payload before proceeding.
     Transform(String),
 }
@@ -50,6 +56,17 @@ impl HookChain {
         for hook in &self.hooks {
             match hook.pre_exec(tool_name, &current_input).await {
                 HookVerdict::Deny(reason) => return HookVerdict::Deny(reason),
+                HookVerdict::Ask {
+                    reason,
+                    timeout_ms,
+                    allow_default,
+                } => {
+                    return HookVerdict::Ask {
+                        reason,
+                        timeout_ms,
+                        allow_default,
+                    };
+                }
                 HookVerdict::Transform(new_input) => {
                     current_input = std::borrow::Cow::Owned(new_input);
                     transformed = true;
@@ -72,6 +89,17 @@ impl HookChain {
         for hook in &self.hooks {
             match hook.post_exec(tool_name, &current_output).await {
                 HookVerdict::Deny(reason) => return HookVerdict::Deny(reason),
+                HookVerdict::Ask {
+                    reason,
+                    timeout_ms,
+                    allow_default,
+                } => {
+                    return HookVerdict::Ask {
+                        reason,
+                        timeout_ms,
+                        allow_default,
+                    };
+                }
                 HookVerdict::Transform(new_output) => {
                     current_output = std::borrow::Cow::Owned(new_output);
                     transformed = true;
@@ -195,5 +223,44 @@ mod tests {
             verdict,
             HookVerdict::Transform("base + transformed".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn test_hook_chain_ask_aborts() {
+        let count1 = Arc::new(AtomicUsize::new(0));
+        let hook1 = TestHook {
+            pre_result: HookVerdict::Ask {
+                reason: "Needs approval".to_string(),
+                timeout_ms: 5000,
+                allow_default: false,
+            },
+            post_result: HookVerdict::Allow,
+            call_count: count1.clone(),
+        };
+
+        let count2 = Arc::new(AtomicUsize::new(0));
+        let hook2 = TestHook {
+            pre_result: HookVerdict::Allow,
+            post_result: HookVerdict::Allow,
+            call_count: count2.clone(),
+        };
+
+        let mut chain = HookChain::new();
+        chain.add_hook(Box::new(hook1));
+        chain.add_hook(Box::new(hook2));
+
+        let verdict = chain.execute_pre("test_tool", "input_data").await;
+        assert_eq!(
+            verdict,
+            HookVerdict::Ask {
+                reason: "Needs approval".to_string(),
+                timeout_ms: 5000,
+                allow_default: false,
+            }
+        );
+
+        // Ask が返されたら後続のフックは実行されない
+        assert_eq!(count1.load(Ordering::SeqCst), 1);
+        assert_eq!(count2.load(Ordering::SeqCst), 0);
     }
 }

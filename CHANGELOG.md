@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+### Added
+- **Dynamic Spec Export (Phase 4)**:
+  - Implemented `GET /api/v1/system/spec-export` endpoint for automated `.specify` prompt set generation, protected by `admin_only_middleware`.
+  - Integrated `SpecProvider` into `AppState` and the infrastructure bootstrap pipeline (`CoreServicesResult`) to dynamically export workflows into isolated `.specify-export-tmp` directories.
+
+### Changed
+- **System Instructions Rendering (Phase 4)**:
+  - Cleaned up legacy manual formatting in `build_system_instructions`. Completely transitioned to the `PromptRegistry` rendering engine (`system/core.md`), establishing a single source of truth for prompt structure.
+  - Achieved zero-panic CI compliance and 100% test coverage for the prompt template migration.
+
+### Fixed
+- **Dynamic Spec Export Security Hardening**:
+  - `FsSpecProvider`: Implemented strict path traversal validation (`canonicalize`), explicit symlink rejection to prevent sandbox escapes, and an O(1) regex-based secret redaction engine for templates.
+  - `FsSpecProvider`: Replaced blocking `std::fs` operations with asynchronous `tokio::fs` to prevent Tokio worker thread starvation during mass template exports.
+  - `MockPromptRegistry`: Renamed to `NoopPromptRegistry` to eliminate the Golden Rule B-004 violation where a `cfg(test)` mocked object was incorrectly utilized as a production fallback during bootstrap sequences.
+  - `api-server`: Prevented internal path disclosure by restricting the `spec-export` API response to return only relative `.specify-export-tmp` paths instead of absolute host server paths.
+
 ## [1.0.0-beta.1] - 2026-05-09
 
 ### Added

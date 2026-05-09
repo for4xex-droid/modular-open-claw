@@ -177,6 +177,8 @@ impl DockerConductor for ShadowWorkerService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    shared::process_hardening::pre_main_hardening();
+
     if std::env::var("CELL_ID").unwrap_or_default().is_empty() {
         panic!(
             "🚨 FATAL: CELL_ID is not set! The Sovereign Verifier architecture requires strict cellular isolation. No identity = No survival."

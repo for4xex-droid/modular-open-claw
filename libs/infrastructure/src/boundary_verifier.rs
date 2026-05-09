@@ -8,11 +8,13 @@
 use aiome_core_contracts::error::AiomeError;
 use std::path::PathBuf;
 
+use crate::security::ExecPolicy;
+
 /// O(1) で境界トートロジー（不変条件）を検証するエンジン
 pub struct BoundaryVerifier {
     workspace_root: PathBuf,
     vault_path: Option<PathBuf>,
-    allowed_binaries: Vec<String>,
+    exec_policy: ExecPolicy,
 }
 
 impl BoundaryVerifier {
@@ -20,12 +22,12 @@ impl BoundaryVerifier {
     pub fn new(
         workspace_root: PathBuf,
         vault_path: Option<PathBuf>,
-        allowed_binaries: Vec<String>,
+        exec_policy: ExecPolicy,
     ) -> Self {
         Self {
             workspace_root,
             vault_path,
-            allowed_binaries,
+            exec_policy,
         }
     }
 
@@ -35,7 +37,7 @@ impl BoundaryVerifier {
         Self::new(
             GLOBAL_SECURITY_CONFIG.workspace_root.clone(),
             GLOBAL_SECURITY_CONFIG.vault_path.clone(),
-            GLOBAL_SECURITY_CONFIG.allowed_binaries.clone(),
+            ExecPolicy::new(GLOBAL_SECURITY_CONFIG.allowed_binaries.clone()),
         )
     }
 
@@ -74,7 +76,12 @@ impl BoundaryVerifier {
         // 2. バイナリ・ホワイトリスト
         // (簡易実装: 最初の単語をチェック)
         let binary = cmd.split_whitespace().next().unwrap_or("");
-        if !is_system_internal && !self.allowed_binaries.contains(&binary.to_string()) {
+        if !is_system_internal
+            && !self
+                .exec_policy
+                .allowed_binaries
+                .contains(&binary.to_string())
+        {
             return Err(AiomeError::Infrastructure {
                 reason: format!(
                     "Boundary Invariant Violation: Binary '{}' is not in the allowed whitelist",

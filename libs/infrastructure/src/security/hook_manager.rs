@@ -98,6 +98,39 @@ impl HookManager {
         }
     }
 
+    /// ユーザーへのツール実行許可要求を全フックに伝搬する。
+    /// **注意**: 1つのフックが `false` を返しても他のフックへの問い合わせを続行し、
+    /// 最終的に「全員が許可した場合のみ `true`」を返す（保守的なAND結合）。
+    pub async fn trigger_permission_request(
+        &self,
+        tool: &str,
+        reason: &str,
+    ) -> Result<bool, AiomeError> {
+        let mut allowed = true;
+        for hook in &self.hooks {
+            if !hook.on_permission_request(tool, reason).await? {
+                allowed = false;
+            }
+        }
+        Ok(allowed)
+    }
+
+    /// セッション開始時のフック通知。
+    pub async fn trigger_session_start(&self) -> Result<(), AiomeError> {
+        for hook in &self.hooks {
+            hook.on_session_start().await?;
+        }
+        Ok(())
+    }
+
+    /// 停止時のフック通知。
+    pub async fn trigger_stop(&self, reason: &str) -> Result<(), AiomeError> {
+        for hook in &self.hooks {
+            hook.on_stop(reason).await?;
+        }
+        Ok(())
+    }
+
     /// 決済イベント完了時のフック通知（ベストエフォート）。
     /// Nurture側のKarmaForge等へ経済的貢献を伝搬するために使用される。
     pub async fn trigger_transaction_completed(
@@ -272,5 +305,57 @@ mod tests {
         assert!(hook
             .transaction_completed_called
             .load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_permission_request_default_allows() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        let result = manager
+            .trigger_permission_request("run_command", "needs approval")
+            .await
+            .expect("Hook should pass");
+        assert!(result, "Default implementation should allow");
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_session_start() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        manager
+            .trigger_session_start()
+            .await
+            .expect("Session start hook should pass");
+    }
+
+    #[tokio::test]
+    async fn test_hook_manager_stop() {
+        let mut manager = HookManager::new();
+        let hook = Arc::new(MockHook {
+            pre_called: std::sync::atomic::AtomicBool::new(false),
+            job_completed_called: std::sync::atomic::AtomicBool::new(false),
+            proof_completed_called: std::sync::atomic::AtomicBool::new(false),
+            transaction_completed_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        manager.add_hook(hook.clone());
+
+        manager
+            .trigger_stop("shutdown")
+            .await
+            .expect("Stop hook should pass");
     }
 }

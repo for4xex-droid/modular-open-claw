@@ -172,6 +172,8 @@ pub struct AppState {
     pub mcp_oauth_secrets:
         std::collections::HashMap<String, crate::mcp::discovery::OAuthCredentials>,
     pub vault_backend: Component<Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>>,
+    pub prompt_registry: Component<Arc<dyn infrastructure::prompt_registry::PromptRegistry>>,
+    pub spec_provider: Component<Arc<dyn infrastructure::spec_provider::SpecProvider>>,
 }
 
 impl AppState {

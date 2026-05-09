@@ -36,7 +36,7 @@ sysinfo = "0.33"
 config = "0.14"
 schemars = "0.8"
 unicode-normalization = "0.1"
-nix = { version = "0.27", features = ["process", "signal", "user", "fs", "ptrace"] }
+nix = { version = "0.27", features = ["process", "signal", "user", "fs", "ptrace", "resource"] }
 tokio-util = { version = "0.7", features = ["codec", "io", "rt"] }
 secrecy = { version = "0.8", features = ["serde"] }
 jsonschema = { version = "0.17", default-features = false, features = ["resolve-file"] }

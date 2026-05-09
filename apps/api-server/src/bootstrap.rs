@@ -153,6 +153,8 @@ pub struct CoreServicesResult {
     pub stripe_key_raw: Option<String>,
     pub tts_openai_api_key_raw: Option<String>,
     pub vault_backend: Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>,
+    pub prompt_registry: Arc<dyn infrastructure::prompt_registry::PromptRegistry>,
+    pub spec_provider: Arc<dyn infrastructure::spec_provider::SpecProvider>,
 }
 
 pub struct BootContext {
@@ -1410,6 +1412,24 @@ pub async fn init_core_services(
         stripe_key_raw: stripe_key_raw.clone(),
         tts_openai_api_key_raw: preflight.secrets.tts_openai_key.clone(),
         vault_backend,
+        prompt_registry: {
+            let base_dir = resolver.resolve("prompts");
+            std::fs::create_dir_all(&base_dir).ok();
+            match infrastructure::prompt_registry::MinijinjaPromptRegistry::new(&base_dir) {
+                Ok(pr) => Arc::new(pr) as Arc<dyn infrastructure::prompt_registry::PromptRegistry>,
+                Err(e) => {
+                    tracing::warn!("⚠️ [PromptRegistry] Failed to init Minijinja PromptRegistry: {}. Using Mock.", e);
+                    Arc::new(infrastructure::prompt_registry::NoopPromptRegistry)
+                        as Arc<dyn infrastructure::prompt_registry::PromptRegistry>
+                }
+            }
+        },
+        spec_provider: {
+            let workflows_dir = resolver.resolve(".agent/workflows");
+            Arc::new(infrastructure::spec_provider::FsSpecProvider::new(
+                workflows_dir,
+            )) as Arc<dyn infrastructure::spec_provider::SpecProvider>
+        },
     })
 }
 pub async fn assemble_app_state(
@@ -1738,6 +1758,8 @@ pub async fn assemble_app_state(
             secrets
         },
         vault_backend: Component::new(core.vault_backend.clone()),
+        prompt_registry: Component::new(core.prompt_registry.clone()),
+        spec_provider: Component::new(core.spec_provider.clone()),
     };
 
     Ok(state)

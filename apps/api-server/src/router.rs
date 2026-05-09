@@ -152,6 +152,12 @@ pub fn build_app(
             )),
         )
         .route(
+            "/api/v1/system/spec-export",
+            get(routes::general::export_spec_kit).route_layer(
+                axum::middleware::from_fn_with_state(state.clone(), auth::admin_only_middleware),
+            ),
+        )
+        .route(
             "/api/v1/quality-gate/history",
             get(routes::quality_gate::get_quality_gate_history),
         )
