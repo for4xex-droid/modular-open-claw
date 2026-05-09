@@ -6,9 +6,9 @@
  */
 
 use image::GenericImageView;
-use img_hash::{HashAlg, HasherConfig};
 use std::io::Cursor;
 use thiserror::Error;
+use visual_hash::{HashAlg, HasherConfig};
 
 /// CSAM画像ハッシュ生成に関連するエラー
 #[derive(Error, Debug)]
@@ -31,7 +31,7 @@ impl From<CsamError> for aiome_core_contracts::error::AiomeError {
 
 /// 知覚ハッシュ生成器 (PhotoDNA 互換アプローチ)
 pub struct ImageHasher {
-    hasher: img_hash::Hasher,
+    hasher: visual_hash::Hasher,
 }
 
 impl Default for ImageHasher {
@@ -85,7 +85,7 @@ impl ImageHasher {
 
     /// 類似度（ハミング距離）の計算 (0.0 - 1.0)
     pub fn calculate_similarity(&self, hash_a: &str, hash_b: &str) -> f64 {
-        use img_hash::ImageHash;
+        use visual_hash::ImageHash;
         let a = ImageHash::<Vec<u8>>::from_base64(hash_a).ok();
         let b = ImageHash::<Vec<u8>>::from_base64(hash_b).ok();
 

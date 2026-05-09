@@ -12,7 +12,6 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "libs/aiome-contracts", "libs/aiome-core-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node",
-    "libs/aiome-commerce", "scripts/clippy_test",
 ]
 exclude = ["vendor/*"]
 resolver = "2"
@@ -56,8 +55,8 @@ serial_test = "3.1"
 utoipa = { version = "5", features = ["chrono", "uuid"] }
 sha2 = "0.10"
 proptest = "1.6.0"
-img_hash = "3.2"
-image = "0.23"
+visual-hash = "3.3"
+image = "0.24"
 stripe = { version = "1.0.0-rc.5", package = "async-stripe", features = ["rustls-tls-webpki-roots", "rustls-aws-lc-rs"] }
 hkdf = "0.12"
 metrics = "0.24"

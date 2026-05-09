@@ -47,5 +47,20 @@ ignore = [
     "RUSTSEC-2025-0100", # unic-ucd-ident (pinned by tauri -> urlpattern)
     "RUSTSEC-2025-0134", # rustls-pemfile (pinned by reqwest / bastion-core)
     "RUSTSEC-2025-0017", # trust-dns-proto (pinned by bastion-core)
-    "RUSTSEC-2026-0114"  # new vulnerability
+    "RUSTSEC-2026-0114", # new vulnerability
+    "RUSTSEC-2024-0370", # proc-macro-error (unmaintained)
+    "RUSTSEC-2024-0388", # derivative (unmaintained)
+    "RUSTSEC-2024-0436", # paste (unmaintained)
+    "RUSTSEC-2025-0057", # fxhash (unmaintained)
+    "RUSTSEC-2024-0411", # gdkwayland-sys (unmaintained via tauri)
+    "RUSTSEC-2024-0417", # gdkx11 (unmaintained via tauri)
+    "RUSTSEC-2024-0414", # gdkx11-sys (unmaintained via tauri)
+    "RUSTSEC-2024-0415", # gtk (unmaintained via tauri)
+    "RUSTSEC-2024-0420", # gtk-sys (unmaintained via tauri)
+    "RUSTSEC-2024-0419", # gtk3-macros (unmaintained via tauri)
+    "RUSTSEC-2024-0413", # atk (unmaintained via tauri)
+    "RUSTSEC-2024-0416", # atk-sys (unmaintained via tauri)
+    "RUSTSEC-2024-0412", # gdk (unmaintained via tauri)
+    "RUSTSEC-2024-0418", # gdk-sys (unmaintained via tauri)
+    "RUSTSEC-2025-0119"  # number_prefix (unmaintained via indicatif)
 ]

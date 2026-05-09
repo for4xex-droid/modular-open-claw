@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Security
+- **CVE & Tech Debt Resolution (Phase 2)**:
+  - Resolved `RUSTSEC-2023-0080` (`img_hash`) and `RUSTSEC-2025-0056` (`adler` via `image`) by safely migrating `img_hash` to `visual-hash` and upgrading the workspace `image` crate from `0.23` to `0.24`.
+  - Harmonized `extism` and `extism-convert` explicit versions to `1.21.0` in Cargo.toml to match the exact resolved Cargo.lock tree.
+  - Added 11 downstream unmaintained dependencies to `.cargo/audit.toml` to strictly resolve all `cargo audit` failures while isolating immutable legacy GTK3/Tauri dependency chains.
+
 ### Added
 - **Technical Debt Audit Workflow**:
   - Introduced the `/tech-debt-audit` workflow to perform comprehensive repository-wide architectural and consistency audits.
