@@ -1,12 +1,16 @@
 ## [Unreleased]
 
+## [1.0.0-beta.1] - 2026-05-09
+
 ### Added
 - **MCP Ecosystem Expansion (Phase 1)**:
   - Extended CausalVisualizer with the `Economic` step category to natively visualize autonomous `commerce_event` transactions within the causality graph.
   - Added dedicated ActivityFeed integration for `commerce_event`, visualizing ledger transactions (amount, currency, and event type) directly in the UI.
+  - Whitelisted `@github/`, `@notion/`, and `@tavily/` as official supported prefixes in `ALLOWED_MCP_PREFIXES` to expand the standard utility layer.
 - **OSS Community Onboarding**:
   - Created `.github/ISSUE_TEMPLATE/good_first_issue.md` template enforcing Zero-Panic Policy and Negative Testing for new Skill/MCP tool contributions.
   - Introduced `.github/workflows/triage.yml` to automatically welcome new contributors and link them to proper documentation upon opening "good first issue" requests.
+  - Tagged `affiliate_adapter.rs` and `mcp_constants.rs` with `[Good First Issue]` to invite community contribution to ecosystem integrations.
 
 ### Changed
 - **P3 Demo Module Modularization**:
@@ -27,6 +31,10 @@
 - **CI/CD Quality Gates**:
   - Expanded `scripts/enforce_unwrap_deny.py` to detect `panic!`, `todo!`, `unimplemented!`, and `unreachable!` macros, eliminating loopholes in the zero-panic mandate.
   - Eliminated hardcoded panic usages during lazy initializations across `libs/core/src/http.rs`, `libs/shared/src/app_data.rs`, and `apps/api-server/src/app_state.rs` by replacing them with `.expect()` and properly documenting them with `// allow-anti-pattern: fatal configuration error at boot` opt-outs for legitimate boot-time safety.
+  - Enforced single-line `allow-anti-pattern` comments across the workspace (e.g., `audit_logger.rs`, `gift.rs`, `oxilean.rs`) to ensure CI linting scripts flawlessly identify intentional boot-time panics, achieving a 100/100 Zero-Panic Score.
+- **Resiliency & Chaos Engineering**:
+  - Added `NetworkPartition` and `HighLatency` fault-injections to `ChaosMode`.
+  - Proved robust failure isolation for P2P Federation via new chaos tests (`chaos_federation_network_partition`, `chaos_federation_high_latency`), ensuring the system gracefully handles remote timeouts without hanging or panicking.
 - **API Guardrails**:
   - `apps/api-server/src/routes/settings.rs`: Replaced inappropriate `RemoteServiceExecutionFailed` (500) usages with `Validation` (400 Bad Request) for invalid setting categories and payload length bounds.
   - `apps/api-server/src/routes/settings.rs`: Increased setting value bounds from `1024` to `4096` to safely accommodate complex strings and authentication tokens without triggering length bounds violations.

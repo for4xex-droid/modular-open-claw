@@ -21,6 +21,7 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@stripe/",
     "@appsyogi/",
     "@secops/",
+    // [Good First Issue]: TODO - Add official support for more MCP server namespaces here (e.g., @google/, @atlassian/).
     // Phase 1: MCP Ecosystem Expansion
     "@brightdata/",
     "@upstash/",
@@ -31,6 +32,9 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@iflow-mcp/", // X(Twitter) MCP Server
     "@anthropic/",
     "@openai/",
+    "@github/",
+    "@notion/",
+    "@tavily/",
 ];
 
 /// Allowed unscoped npm packages for MCP (exact match).
@@ -150,5 +154,7 @@ mod tests {
             validate_mcp_package("npx", &["-y".into(), "@anthropic/mcp-server".into()]).is_ok()
         );
         assert!(validate_mcp_package("npx", &["-y".into(), "@openai/mcp-server".into()]).is_ok());
+        assert!(validate_mcp_package("npx", &["-y".into(), "@github/mcp-server".into()]).is_ok());
+        assert!(validate_mcp_package("npx", &["-y".into(), "@notion/mcp-server".into()]).is_ok());
     }
 }

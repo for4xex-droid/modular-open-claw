@@ -81,8 +81,9 @@ impl TrendAdapter for MockAffiliateAdapter {
 
     async fn fetch(&self, _query: &str) -> Result<Vec<TrendItem>, AiomeError> {
         info!("🏷️ [Affiliate] Fetching items for query: {}", _query);
-        // AS-1.3 integration: In a real scenario, this would call Amazon/Rakuten API.
-        // For now, it returns an empty vector, satisfying the trait without raw TODOs.
+        // [Good First Issue]: TODO - Implement actual Amazon/Rakuten API integration.
+        // Use reqwest to fetch data and map it to TrendItem. Remember to handle errors gracefully!
+        // For now, it returns an empty vector.
         Ok(vec![])
     }
 }

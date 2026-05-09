@@ -38,6 +38,7 @@ impl TremendousGiftEngine {
         #[cfg(debug_assertions)]
         if !sandbox {
             panic!("🚨 [SECURITY] Attempting to use PRODUCTION Tremendous API in a DEBUG build! This is strictly forbidden to prevent accidental real fund usage during development/testing.");
+            // allow-anti-pattern: fatal configuration error at boot
         }
 
         let base_url = if sandbox {

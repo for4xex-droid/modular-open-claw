@@ -713,3 +713,171 @@ async fn chaos_user_learner_giant_output() {
         "UserLearner should return false (rejected)"
     );
 }
+
+// ============================================================
+//  Experiment 19: FederationSync + NetworkPartition (Chaos)
+// ============================================================
+/// 仮説: ネットワーク断絶（NetworkPartition）が発生した場合、FederationOps の do_sync_federated_data は
+///       panic せずに Error(AiomeError::Infrastructure) として安全に伝搬する
+#[tokio::test]
+async fn chaos_federation_network_partition() {
+    use infrastructure::job_queue::federation::FederationOps;
+    use infrastructure::job_queue::UniversalJobQueue;
+    use sqlx::sqlite::SqlitePoolOptions;
+    use std::sync::Arc;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    // Simulate Network Partition by dropping the connection
+    Mock::given(method("POST"))
+        .and(path("/api/v1/federation/sync"))
+        .respond_with(ResponseTemplate::new(502))
+        .mount(&mock_server)
+        .await;
+
+    let db_pool = SqlitePoolOptions::new()
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    sqlx::query("CREATE TABLE agent_profiles (id TEXT, name TEXT, level INTEGER, exp INTEGER, resonance INTEGER, creativity INTEGER, fatigue INTEGER);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("CREATE TABLE system_settings (key TEXT PRIMARY KEY, value TEXT, category TEXT, is_secret INTEGER, updated_at DATETIME);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('samsara_hub_url', ?, 'system', 0, datetime('now'))")
+        .bind(mock_server.uri())
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('federation_secret', 'test_secret', 'system', 1, datetime('now'))")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('node_id', 'test_node', 'system', 0, datetime('now'))")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    // Create trajectory table
+    sqlx::query("CREATE TABLE trajectory_logs (id TEXT PRIMARY KEY, job_id TEXT, step_id INTEGER, action TEXT, input TEXT, output TEXT, metrics TEXT, timestamp TEXT);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    let pool = infrastructure::db::DatabasePool::Sqlite(db_pool);
+
+    let traj_store = Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+    );
+    let jq = UniversalJobQueue::new(pool.clone(), None, traj_store)
+        .await
+        .unwrap();
+
+    // Verification: Network Partition MUST propagate as Error, not panic
+    let result = jq.do_sync_federated_data().await;
+
+    assert!(
+        result.is_err(),
+        "do_sync_federated_data MUST return Error on network partition"
+    );
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("502 Bad Gateway") || err_msg.contains("error sending request"),
+        "Error should be a network infrastructure error, got: {}",
+        err_msg
+    );
+}
+
+// ============================================================
+//  Experiment 20: FederationSync + HighLatency (Chaos)
+// ============================================================
+/// 仮説: 高レイテンシ（HighLatency）が発生した場合、FederationOps はタイムアウトにより
+///       panic せずに Error として中断し、システムをブロックさせない
+#[tokio::test]
+async fn chaos_federation_high_latency() {
+    use infrastructure::job_queue::federation::FederationOps;
+    use infrastructure::job_queue::UniversalJobQueue;
+    use sqlx::sqlite::SqlitePoolOptions;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    // Simulate High Latency (15 seconds, exceeding reqwest 10s timeout)
+    let delay = Duration::from_secs(15);
+    Mock::given(method("POST"))
+        .and(path("/api/v1/federation/sync"))
+        .respond_with(ResponseTemplate::new(200).set_delay(delay))
+        .mount(&mock_server)
+        .await;
+
+    let db_pool = SqlitePoolOptions::new()
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    sqlx::query("CREATE TABLE agent_profiles (id TEXT, name TEXT, level INTEGER, exp INTEGER, resonance INTEGER, creativity INTEGER, fatigue INTEGER);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("CREATE TABLE system_settings (key TEXT PRIMARY KEY, value TEXT, category TEXT, is_secret INTEGER, updated_at DATETIME);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('samsara_hub_url', ?, 'system', 0, datetime('now'))")
+        .bind(mock_server.uri())
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('federation_secret', 'test_secret', 'system', 1, datetime('now'))")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ('node_id', 'test_node', 'system', 0, datetime('now'))")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    // Create trajectory table
+    sqlx::query("CREATE TABLE trajectory_logs (id TEXT PRIMARY KEY, job_id TEXT, step_id INTEGER, action TEXT, input TEXT, output TEXT, metrics TEXT, timestamp TEXT);")
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    let pool = infrastructure::db::DatabasePool::Sqlite(db_pool);
+
+    let traj_store = Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+    );
+    let jq = UniversalJobQueue::new(pool.clone(), None, traj_store)
+        .await
+        .unwrap();
+
+    // Verification: Timeout MUST propagate as Error, not hang indefinitely
+    let result = jq.do_sync_federated_data().await;
+
+    assert!(
+        result.is_err(),
+        "do_sync_federated_data MUST return Error on high latency timeout"
+    );
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("timeout") || err_msg.contains("error sending request"),
+        "Error should indicate a timeout, got: {}",
+        err_msg
+    );
+}

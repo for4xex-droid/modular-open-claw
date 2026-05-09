@@ -39,6 +39,10 @@ pub enum ChaosMode {
     GiantOutput(usize),
     /// 全操作で Err を返す
     AlwaysFail,
+    /// ネットワーク分断（通信エラー）
+    NetworkPartition,
+    /// 高レイテンシ（遅延）
+    HighLatency(Duration),
 }
 
 // ─────────────────────────────────────────────────
@@ -95,6 +99,13 @@ impl LlmProvider for ChaosLlmProvider {
             ChaosMode::AlwaysFail => Err(AiomeError::Infrastructure {
                 reason: "Chaos: Forced failure".into(),
             }),
+            ChaosMode::NetworkPartition => Err(AiomeError::Infrastructure {
+                reason: "Chaos: Network partition".into(),
+            }),
+            ChaosMode::HighLatency(dur) => {
+                tokio::time::sleep(*dur).await;
+                self.inner.complete(prompt, system).await
+            }
         }
     }
 

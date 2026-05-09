@@ -60,6 +60,7 @@ export default function McpDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [enablingServerId, setEnablingServerId] = useState<string | null>(null);
+  const [activeMcpSkills, setActiveMcpSkills] = useState<Record<string, any>>({});
 
   // New server form state
   const [newServerId, setNewServerId] = useState('');
@@ -69,12 +70,25 @@ export default function McpDashboard() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`);
-      if (res.ok) {
-        const data = await res.json();
+      const [resConfig, resSkills] = await Promise.all([
+        authenticatedFetch(`${API_BASE}/api/skills/mcp/config`),
+        authenticatedFetch(`${API_BASE}/api/skills`)
+      ]);
+      if (resConfig.ok) {
+        const data = await resConfig.json();
         setConfig(data);
       } else {
         setLoadError(t('mcp.loadFailed', { defaultValue: 'Failed to load MCP configuration' }) as string);
+      }
+      if (resSkills.ok) {
+        const skillsData = await resSkills.json();
+        if (Array.isArray(skillsData)) {
+          const activeMcp = skillsData.filter((s: any) => s.source === 'mcp').reduce((acc: any, s: any) => {
+            acc[s.name] = s;
+            return acc;
+          }, {});
+          setActiveMcpSkills(activeMcp);
+        }
       }
     } catch {
       setLoadError(t('mcp.connectionError', { defaultValue: 'Connection error. Is the API server running?' }) as string);
@@ -381,7 +395,17 @@ export default function McpDashboard() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {!server.disabled && (
+                    <span style={{ 
+                      fontSize: '0.65rem', fontWeight: 800, padding: '4px 8px', borderRadius: '4px', height: 'fit-content',
+                      background: activeMcpSkills[id] ? 'var(--accent-emerald-10)' : 'var(--accent-amber-10)', 
+                      color: activeMcpSkills[id] ? 'var(--accent-emerald)' : 'var(--accent-amber)', 
+                      border: `1px solid ${activeMcpSkills[id] ? 'var(--accent-emerald-20)' : 'var(--accent-amber-20)'}` 
+                    }}>
+                      {activeMcpSkills[id] ? `● ACTIVE (${activeMcpSkills[id].tools?.length || 0} TOOLS)` : '● CONNECTING...'}
+                    </span>
+                  )}
                   {server.disabled && (
                     <button
                       onClick={() => setEnablingServerId(id)}

@@ -333,6 +333,17 @@ pub async fn spawn_mcp_server(
         }
     }
 
+    // SEC: Billing Guard - Validate financial safety limit for MCP Execution
+    if let Some(commerce) = state.commerce_engine.as_opt() {
+        // Require at least 1 coin balance to prevent abuse from completely unfunded accounts
+        commerce
+            .validate_activity(_auth.agent_id, "mcp_spawn", 1)
+            .await
+            .map_err(|e| aiome_core::error::AiomeError::SecurityViolation {
+                reason: format!("MCP Billing Guard rejected spawn: {}", e),
+            })?;
+    }
+
     state
         .mcp_manager
         .spawn_stdio_server(

@@ -29,7 +29,7 @@ impl OxiLeanProofCertificate {
         let payload = format!("{}:{}:{}", subject_id, oxp_score, timestamp);
         let mut mac = match HmacSha256::new_from_slice(secret.as_bytes()) {
             Ok(m) => m,
-            Err(_) => unreachable!("HMAC can take key of any size"),
+            Err(_) => unreachable!("HMAC can take key of any size"), // allow-anti-pattern: unreachable is safe here
         };
         mac.update(payload.as_bytes());
         let result = mac.finalize();

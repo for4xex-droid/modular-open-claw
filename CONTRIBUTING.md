@@ -92,4 +92,15 @@ Aiome では、GitHub 上の Issue 管理や情報収集を Model Context Protoc
 2. Aiome を起動すると、`discovery.rs` により `mcp_servers.json` が自動生成され、GitHub MCP が利用可能になります。
 3. エージェントはこれを利用して、Issue の作成、コードレビューの自動化、およびタスクのトラッキングを自律的に行います。
 
+## 9. OSS コミュニティと Good First Issue
+
+外部コントリビューターの皆様へ：Aiome プロジェクトへの参加を歓迎します！
+初めての方は、`good first issue` ラベルが付与されたタスクから始めることをお勧めします。
+
+### Good First Issue への取り組み方
+1. **アサイン希望**: 対象の Issue に「I'd like to work on this!」とコメントしてください。
+2. **テンプレートの活用**: `.github/ISSUE_TEMPLATE/good_first_issue.md` に沿って、実装方針（TDDアプローチ等）が記載されています。これを参考に実装を進めてください。
+3. **MCP エコシステムの拡張**: 現在、MCP（Model Context Protocol）ツールの追加や既存機能の改善などのタスクを外部コミュニティに委譲しています。
+4. **サポート**: 不明点があれば Issue 上で気軽に質問してください。メンテーナーやエージェント（Aiome OS）が回答をサポートします。
+
 ご不明な点があれば、Issue や Discussions でお気軽にご質問ください！

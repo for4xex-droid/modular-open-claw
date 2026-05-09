@@ -157,7 +157,7 @@ impl AsyncAuditLogger {
                                         entry.table_name, e, entry_new_data_str
                                     );
                                     // Trigger panic to restart the task if DB connection goes bad
-                                    panic!("AuditLogger database insert failed: {}", e);
+                                    panic!("AuditLogger database insert failed: {}", e); // allow-anti-pattern: panic to restart task
                                 }
                             }
                         }

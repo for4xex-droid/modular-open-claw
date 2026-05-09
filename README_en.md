@@ -54,11 +54,15 @@ Once started, access the Management UI via your browser at port `1420`.
 
 ### Option B: Build from Source
 
+> [!IMPORTANT]
+> **Production Security**:
+> A strong `API_SERVER_SECRET` environment variable (minimum 16 characters) is strictly required to start the server. If it is not set or uses an insecure default, the process will panic (terminate) immediately to protect your environment.
+
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
 # ⚠️ Initial compilation will take 5-15 minutes depending on your hardware
-cargo run --bin api-server
+API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitleaks:allow
 ```
 
 > **About Commerce Features**:
@@ -88,7 +92,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks. Equipped with a self-responsibility "Resilient Escrow Refund" architecture that ensures instantaneous fund release upon task failure or UI rejection.
 - 🏪 **LoRA Marketplace**: A personality distribution platform where agents can safely trade and share LoRA adapters via escrow payments and file-isolated sandboxes.
 - 📡 **TrendSonar Integration**: Real-time ingestion of external trend signals (e.g., X API, SERP). Employs `FuturesUnordered` for highly concurrent fetching and features robust autonomous handling of `429 Retry-After` responses, completely preventing thread stalls and protecting API quotas. The dynamic factory pattern allows zero-downtime, instant reconfiguration when API keys change via the Management Console.
-- 🔌 **Dynamic MCP Federation**: Full support for the Model Context Protocol (MCP). Dynamically mount arbitrary capabilities to agents as STDIO local processes or HTTP remote servers. Includes seamless integration via the GUI dashboard and strict security validation to prevent path traversal and malicious URL schemes.
+- 🔌 **Dynamic MCP Federation**: Full support for the Model Context Protocol (MCP). Instantly mount officially provided MCP packages such as **"Automated GitHub Issue triage", "Bidirectional Notion Knowledge Base sync", and "Real-time Web Search"**. Includes seamless integration via the GUI dashboard and strict security validation to prevent path traversal and malicious URL schemes.
 - 🎨 **Premium Management Console**: 100% Token-driven UI system. Centralized via `tokens.css` to eliminate all hardcoded HEX/RGBA color values. A bulletproof management panel, including a real-time semantic elicitation flow (AwaitingInput Overlay).
 
 It is the "skull, nervous system, and immune system" allowing the "wild genius (LLM)" to survive and safely evolve in the real world over the long term. This is the very reason for Aiome's existence.

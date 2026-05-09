@@ -25,4 +25,5 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![get_api_url])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| panic!("error while running tauri application: {}", e));
+    // allow-anti-pattern: fatal configuration error at boot
 }

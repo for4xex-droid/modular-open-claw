@@ -206,8 +206,7 @@ pub async fn discover_and_connect(
                     "args": ["-y", "notion-mcp-server"],
                     "env": {
                         "NOTION_API_KEY": "$NOTION_API_KEY"
-                    },
-                    "disabled": true
+                    }
                 },
                 "x_twitter": {
                     "command": "npx",
@@ -225,8 +224,14 @@ pub async fn discover_and_connect(
                     "args": ["-y", "@modelcontextprotocol/server-github"],
                     "env": {
                         "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
-                    },
-                    "disabled": true
+                    }
+                },
+                "tavily": {
+                    "command": "npx",
+                    "args": ["-y", "tavily-mcp"],
+                    "env": {
+                        "TAVILY_API_KEY": "$TAVILY_API_KEY"
+                    }
                 }
             }
         });
@@ -967,11 +972,7 @@ mod tests {
             .get("github")
             .expect("GitHub MCP server must be in the default template");
 
-        assert_eq!(
-            github.disabled,
-            Some(true),
-            "GitHub should be disabled by default (requires OAuth)"
-        );
+        assert_eq!(github.disabled, None, "GitHub should be enabled by default");
         assert_eq!(github.command, "npx");
         assert!(github
             .args

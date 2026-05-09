@@ -62,6 +62,8 @@ impl Default for SecurityConfig {
                 "docker".to_string(),
                 "podman".to_string(),
                 "slm".to_string(),
+                "npx".to_string(),
+                "uvx".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()
                 .root()
