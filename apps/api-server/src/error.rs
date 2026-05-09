@@ -145,6 +145,54 @@ impl From<shared::bootstrap_detector::FactoryResetError> for AppError {
     }
 }
 
+impl From<soul::error::SoulError> for AppError {
+    fn from(err: soul::error::SoulError) -> Self {
+        match err {
+            soul::error::SoulError::Internal(reason) => AppError::internal(reason),
+            soul::error::SoulError::InvalidTransition(reason) => AppError::bad_request(reason),
+            soul::error::SoulError::DistillationFailed(reason) => {
+                AppError::internal(format!("DistillationFailed: {}", reason))
+            }
+            soul::error::SoulError::RebirthFailed(reason) => {
+                AppError::internal(format!("RebirthFailed: {}", reason))
+            }
+            soul::error::SoulError::AdapterError(reason) => {
+                AppError::internal(format!("AdapterError: {}", reason))
+            }
+        }
+    }
+}
+
+impl From<avatar_engine::loader::LoaderError> for AppError {
+    fn from(err: avatar_engine::loader::LoaderError) -> Self {
+        Self(err.into())
+    }
+}
+
+impl From<avatar_engine::proportions::ProportionError> for AppError {
+    fn from(err: avatar_engine::proportions::ProportionError) -> Self {
+        Self(err.into())
+    }
+}
+
+impl From<infrastructure::security_zombie::ProcessError> for AppError {
+    fn from(err: infrastructure::security_zombie::ProcessError) -> Self {
+        Self(err.into())
+    }
+}
+
+impl From<shared::csam::image_hash::CsamError> for AppError {
+    fn from(err: shared::csam::image_hash::CsamError) -> Self {
+        Self(err.into())
+    }
+}
+
+impl From<aiome_commerce::x402::X402Error> for AppError {
+    fn from(err: aiome_commerce::x402::X402Error) -> Self {
+        Self(err.into())
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         self.0.into_response()
@@ -377,6 +425,97 @@ mod tests {
                 );
             }
             other => panic!("Expected Infrastructure variant, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_from_soul_error_preserves_semantics() {
+        let soul_internal = soul::error::SoulError::Internal("db timeout".to_string());
+        let app_err_internal = AppError::from(soul_internal);
+
+        match &app_err_internal.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(reason.contains("db timeout"));
+            }
+            _ => panic!("Expected Infrastructure variant"),
+        }
+
+        let soul_invalid = soul::error::SoulError::InvalidTransition("state mismatch".to_string());
+        let app_err_invalid = AppError::from(soul_invalid);
+
+        match &app_err_invalid.0 {
+            AiomeError::Validation { reason } => {
+                assert!(reason.contains("state mismatch"));
+            }
+            _ => panic!("Expected Validation variant, got {:?}", app_err_invalid.0),
+        }
+    }
+
+    #[test]
+    fn test_from_loader_error_preserves_semantics() {
+        let loader_invalid = avatar_engine::loader::LoaderError::InvalidHeader;
+        let app_err_invalid = AppError::from(loader_invalid);
+
+        match &app_err_invalid.0 {
+            AiomeError::Validation { reason } => {
+                assert!(reason.contains("Invalid INX header"));
+            }
+            _ => panic!("Expected Validation variant"),
+        }
+    }
+
+    #[test]
+    fn test_from_proportion_error_preserves_semantics() {
+        let prop_err = avatar_engine::proportions::ProportionError::TooYoung(4.0);
+        let app_err = AppError::from(prop_err);
+
+        match &app_err.0 {
+            AiomeError::SecurityViolation { reason } => {
+                assert!(reason.contains("young"));
+            }
+            _ => panic!("Expected SecurityViolation variant"),
+        }
+    }
+
+    #[test]
+    fn test_from_process_error_preserves_semantics() {
+        let proc_err = infrastructure::security_zombie::ProcessError::TimedOut {
+            command: "test".into(),
+            timeout_secs: 5,
+        };
+        let app_err = AppError::from(proc_err);
+
+        match &app_err.0 {
+            AiomeError::RemoteServiceTimeout { timeout_secs } => {
+                assert_eq!(*timeout_secs, 5);
+            }
+            _ => panic!("Expected RemoteServiceTimeout variant"),
+        }
+    }
+
+    #[test]
+    fn test_from_csam_error_preserves_semantics() {
+        let csam_err = shared::csam::image_hash::CsamError::HashError;
+        let app_err = AppError::from(csam_err);
+
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(reason.contains("CSAM") || reason.contains("Hash"));
+            }
+            _ => panic!("Expected Infrastructure variant"),
+        }
+    }
+
+    #[test]
+    fn test_from_x402_error_preserves_semantics() {
+        let x402_err = aiome_commerce::x402::X402Error::MissingHeaders;
+        let app_err = AppError::from(x402_err);
+
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert!(reason.contains("Missing") || reason.contains("headers"));
+            }
+            _ => panic!("Expected Infrastructure variant"),
         }
     }
 }

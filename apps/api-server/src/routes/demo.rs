@@ -24,7 +24,7 @@ use serde_json::json;
 pub async fn start_demo(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<impl IntoResponse, AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     // デモをバックグラウンドで開始
     tokio::spawn(AutonomousDemo::run(state));
 

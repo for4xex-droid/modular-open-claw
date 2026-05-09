@@ -136,7 +136,19 @@ bash scripts/deep-scan.sh 2>&1 | tail -20
 
 ### Phase 3: 総合レポート生成
 
-以下のフォーマットで結果をアーティファクトとして出力します。
+以下の2つの形式で結果をアーティファクトとして出力します。
+
+#### 1. Markdown サマリー (Provenance 用)
+標準的な Markdown 形式で概要、スコア、主要アクションを記述します。
+
+#### 2. インタラクティブ HTML レポート (閲覧用)
+`biz_value_report.html` という名前で、以下の要素を含む HTML アーティファクトを生成してください。
+- **レーダーチャート (SVG)**: 7軸のスコアを視覚化したレーダーチャート。
+- **インタラクティブ・マトリクス**: 競合比較をタブやホバーエフェクトで詳細表示。
+- **デザイントークン準拠**: `tokens.css` で定義されたカラー変数（`var(--accent-cyan)` 等）を使用し、Aiome のデザインシステムと一貫性を持たせること。
+- **アニメーション**: レポート表示時にフェードインやバーの伸長アニメーション（CSS）を含めること。
+- **Interactive Feedback (JS Bridge)**: 「ROI最大のアクション」の横に、修正作業をエージェントに自動実行させるためのボタンを配置してください。以下のHTML属性を使用して、Management Console のチャットへ直接プロンプトを送信できます：
+  `<button class="aiome-feedback-btn" data-aiome-feedback="アクション [X] の詳細な実装計画を作成してください。" data-autosend="true">Auto-Plan Action X</button>`
 
 ```markdown
 # 💎 Aiome ビジネスバリュー・レポート

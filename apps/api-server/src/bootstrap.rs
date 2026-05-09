@@ -155,6 +155,7 @@ pub struct CoreServicesResult {
     pub vault_backend: Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>,
     pub prompt_registry: Arc<dyn infrastructure::prompt_registry::PromptRegistry>,
     pub spec_provider: Arc<dyn infrastructure::spec_provider::SpecProvider>,
+    pub tokens_css: String,
 }
 
 pub struct BootContext {
@@ -843,6 +844,34 @@ pub async fn init_core_services(
         ),
     );
 
+    // --- Phase HTML Report: Load Design Tokens ---
+    let tokens_css = {
+        let tokens_path = resolver.resolve("tokens_css");
+        // Fallback path check (development mode)
+        let path = if tokens_path.exists() {
+            tokens_path
+        } else {
+            // Check apps/management-console/src/styles/tokens.css relative to workspace
+            resolver
+                .root()
+                .join("../../apps/management-console/src/styles/tokens.css")
+        };
+
+        match std::fs::read_to_string(&path) {
+            Ok(css) => {
+                tracing::info!(
+                    "💎 [Bootstrap] Successfully loaded design tokens from {}",
+                    path.display()
+                );
+                css
+            }
+            Err(e) => {
+                tracing::warn!("⚠️ [Bootstrap] Failed to load design tokens from {}: {}. HTML reports will have limited styling.", path.display(), e);
+                "/* Fallback tokens missing */".to_string()
+            }
+        }
+    };
+
     // Initialize MemoryCrystallizer Background Loop (Phase 49)
     let crystallizer = Arc::new(
         infrastructure::memory_crystallizer::MemoryCrystallizer::new(
@@ -1412,6 +1441,7 @@ pub async fn init_core_services(
         stripe_key_raw: stripe_key_raw.clone(),
         tts_openai_api_key_raw: preflight.secrets.tts_openai_key.clone(),
         vault_backend,
+        tokens_css,
         prompt_registry: {
             let base_dir = resolver.resolve("prompts");
             std::fs::create_dir_all(&base_dir).ok();
@@ -1760,6 +1790,7 @@ pub async fn assemble_app_state(
         vault_backend: Component::new(core.vault_backend.clone()),
         prompt_registry: Component::new(core.prompt_registry.clone()),
         spec_provider: Component::new(core.spec_provider.clone()),
+        tokens_css: core.tokens_css.clone(),
     };
 
     Ok(state)

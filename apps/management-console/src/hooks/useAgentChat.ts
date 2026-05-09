@@ -10,7 +10,7 @@
  * SSE ストリーミング、TTS 自動再生、Karma フィードバックを一元管理する。
  * AgentConsole（既存）と StoryFlow（新規）の両方で共用可能。
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '../config';
 import { ChatMessage } from '../types';
 import { authenticatedFetch } from '../lib/auth';
@@ -35,7 +35,7 @@ export interface AgentChatState {
 
 export interface UseAgentChatReturn extends AgentChatState {
     setInput: (value: string) => void;
-    sendMessage: () => Promise<void>;
+    sendMessage: (overridePrompt?: string) => Promise<void>;
     setAutoTts: (value: boolean) => void;
     handleFeedback: (index: number, type: 'positive' | 'negative') => Promise<void>;
     clearHistory: () => void;
@@ -62,6 +62,25 @@ export const useAgentChat = (): UseAgentChatReturn => {
         return newId;
     });
 
+    // We must declare sendMessage before the ref if we want to initialize it, but since sendMessage uses many states, we'll initialize the ref as null or use a separate ref update.
+    const sendMessageRef = useRef<(overridePrompt?: string) => Promise<void>>();
+
+    // Listen for JS bridge feedback from HTML artifacts
+    useEffect(() => {
+        const handleInjectPrompt = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail && customEvent.detail.prompt) {
+                const text = customEvent.detail.prompt;
+                setInput(text);
+                if (customEvent.detail.autoSend && sendMessageRef.current) {
+                    sendMessageRef.current(text);
+                }
+            }
+        };
+        window.addEventListener('aiome_inject_prompt', handleInjectPrompt);
+        return () => window.removeEventListener('aiome_inject_prompt', handleInjectPrompt);
+    }, []);
+
     const playTts = useCallback(async (text: string) => {
         if (!text) return;
         try {
@@ -79,10 +98,9 @@ export const useAgentChat = (): UseAgentChatReturn => {
         }
     }, []);
 
-    const sendMessage = useCallback(async () => {
-        if (!input.trim() || isTyping) return;
-
-        const currentPrompt = input;
+    const sendMessage = useCallback(async (overridePrompt?: string) => {
+        const currentPrompt = overridePrompt || input;
+        if (!currentPrompt.trim() || isTyping) return;
         const userMsg: ChatMessage = { role: "user", content: currentPrompt };
         setHistory(prev => [...prev, userMsg]);
         setInput("");
@@ -216,6 +234,10 @@ export const useAgentChat = (): UseAgentChatReturn => {
             setStatus("IDLE");
         }
     }, [input, isTyping, history, channelId, playTts]);
+
+    useEffect(() => {
+        sendMessageRef.current = sendMessage;
+    }, [sendMessage]);
 
     const handleFeedback = useCallback(async (_index: number, type: 'positive' | 'negative') => {
         if (!relevantKarmaData || !relevantKarmaData.entries || relevantKarmaData.entries.length === 0) return;

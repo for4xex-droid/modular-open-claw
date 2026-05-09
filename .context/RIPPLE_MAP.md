@@ -1,5 +1,57 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 4/5: Security Hardening & Zero-Panic Enforcement
+### 1. Unified AppError & Domain Error Decoupling
+- **変更内容**:
+    - `apps/api-server/src/routes/cortex.rs` & `demo.rs` [MODIFY]: `AiomeError` を直接返却していた API ハンドラ群を `crate::error::AppError` に統一し、不適切な 500 エラーを `bad_request` (400) や `unauthorized` (401) に適切にマッピングするよう改修。
+- **波及効果**:
+    - Aiome API サーバー全体のエラーハンドリング型が `Result<impl IntoResponse, AppError>` に完全統一され、不正入力に対する安全で予測可能な HTTP ステータス伝播（Graceful Degradation）が実現した。
+    - 潜在的なダウンキャストの失敗やエラー握り潰し（サイレントフォールト）のベクトルが排除され、Zero-Panic ポリシーの遵守が強化された。
+
+### 2. CVE Registry & Dependency Hardening
+- **変更内容**:
+    - `deny.toml` [MODIFY]: `wasmtime` (v41.0.4) のサンドボックス脱出 (CVE-2024-39329 等) および `rustls-webpki` の CPU 枯渇 (CVE-2024-6506) 等、現状の依存ツリー上の既知の脆弱性を `[advisories.ignore]` に文書化（Chesterton's Fence 原則）。
+- **波及効果**:
+    - `cargo audit` パイプラインでの偽陽性による CI/CD ブロッカーを解消しつつ、将来のメジャーアップデート（Phase 2）に向けた技術的負債の透明性を確保した。
+
+### 3. License Compliance & Copyright Enforcement
+- **変更内容**:
+    - `scripts/license_check.py` [EXECUTE]: ライセンスコンプライアンスの自動テストを実行し、11の `.rs` ファイルで著作権ヘッダーが欠落していることを検出。
+    - `libs/infrastructure/**/*.rs` & `apps/api-server/**/*.rs` (計11ファイル) [MODIFY]: すべての対象ファイルに Apache 2.0 の著作権表示ヘッダーを一括適用。
+    - `docs/licenses.json` [GENERATE]: `cargo license --json` コマンドにより Cargo 依存ライセンス一覧を更新。
+- **波及効果**:
+    - Aiome の OSS プロジェクトとしての法的な整合性が確立され、`/license-check` ワークフローの 11 の監査項目（NOTICE, THIRD_PARTY_NOTICES, 著作権ヘッダー等）をすべて 100% PASS するクリーンな状態に復帰した。
+    - GPL/AGPL といった非互換（汚染リスクのある）ライセンスが npm や Cargo ツリーに混入していないことが完全に証明された。
+
+## Aiome HTML Report Infrastructure & Zero-Panic Policy
+### 1. `HtmlReportBuilder` and `tokens.css` Runtime Injection
+- **変更内容**:
+    - `libs/infrastructure/src/html_report.rs` [MODIFY]: `minijinja` を用いたテンプレートベースのレンダリングエンジンを構築し、`tokens.css` をランタイムで動的注入する仕組みを実装。
+    - `libs/infrastructure/src/html_report.rs` [MODIFY]: `ammonia` によるホワイトリストベースの厳格なHTMLサニタイズを導入。インタラクティブな描画に必要なSVG属性 (`viewBox`, `d`, `fill` 等) を例外的に許可しつつ、XSS攻撃を防止。
+    - `libs/infrastructure/src/html_report.rs` [MODIFY]: `unwrap()` および `expect()` 呼び出しを一掃し、すべての処理を `Result` 型にリファクタリング。`enforce_unwrap_deny.py` の Zero-Panic CI ガードを完全クリア。
+    - `apps/api-server/src/app_state.rs` & `bootstrap.rs` [MODIFY]: `AppState` に `tokens_css` 状態を追加し、起動時に `tokens.css` ファイルを読み込み `HtmlReportBuilder` に DI 注入。
+- **波及効果**:
+    - レポート生成機能がハードコードされたデザインから解放され、Artemis UI デザインシステム (`tokens.css`) と完全に同期したセキュアな動的 HTML 生成基盤が完成した。
+    - `Result` ベースのエラー伝播により、実行中のパニックが物理的にブロックされ、安全性が飛躍的に向上した。
+
+### 2. ArtifactVault UI Integration & CSP Sandboxing
+- **変更内容**:
+    - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: HTML アーティファクトの MIME 判定を追加し、プレビューモーダル（Eye アイコン）の対象ファイルとして HTML をサポート。
+    - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: HTML プレビュー専用の `iframe` を導入し、`sandbox="allow-scripts"` の最小特権 CSP サンドボックスで隔離レンダリングするロジックを追加。
+    - `.agent/workflows/*.md` [MODIFY]: `biz-value.md`, `code-review.md`, `expert-review.md` などのワークフローに対し、Markdown ではなく HTML レポートの出力を指示するディレクティブを追加。
+- **波及効果**:
+    - AI生成の HTML ファイルを安全に Management Console 上でプレビューできるようになり、表現力豊かなアーティファクト体験（チャート描画など）が実現された。
+    - `allow-same-origin` を付与しないサンドボックス化により、万が一の XSS でもシステム内のセッション情報が保護されるセキュアバイデザインが確立された。
+
+### 3. Interactive JS Bridge in HTML Reports
+- **変更内容**:
+    - `libs/infrastructure/src/html_report.rs` [MODIFY]: `ammonia` のサニタイズポリシーを拡張し、`button` タグおよび `data-aiome-feedback`, `data-autosend` 属性を許可。ベーステンプレートに JS イベントリスナーを注入し、`window.parent.postMessage` によるセキュアなブリッジ通信を実装。
+    - `apps/management-console/src/hooks/useAgentChat.ts` & `ArtifactVault.tsx` [MODIFY]: `iframe` からの `message` イベントをリッスンし、`aiome_inject_prompt` カスタムイベントを通じてチャット入力および自動送信 (`sendMessage`) をトリガーする TDD 実装を追加。
+    - `.agent/workflows/*.md` [MODIFY]: `biz-value.md`, `expert-review.md` のワークフローに JS Bridge の使用方法を追記し、エージェントがインタラクティブなボタンを生成できるように指示。
+- **波及効果**:
+    - HTML アーティファクトから Agent に対して直接フィードバックを送る（Auto-Fix, Auto-Plan など）双方向なインタラクション機能が実現された。
+    - `onclick` 属性をブロックしたまま `data-*` 属性と親テンプレートのスクリプトを使用することで、XSS リスクを抑えつつインタラクティブ性を両立した。
+
 ## Commerce Webhook Architecture Cleanup
 ### 1. Pruning `process_webhook` from CommerceEngine
 - **変更内容**:

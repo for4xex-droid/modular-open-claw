@@ -180,6 +180,240 @@
     "description": "Mirror of Rust's allocator API"
   },
   {
+    "name": "alloy-consensus",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Ethereum consensus interface"
+  },
+  {
+    "name": "alloy-consensus-any",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Consensus interface for any network"
+  },
+  {
+    "name": "alloy-eip2124",
+    "version": "0.2.0",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/eips",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Fork identifier for chain compatibility checks"
+  },
+  {
+    "name": "alloy-eip2930",
+    "version": "0.2.3",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/eips",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Implementation of EIP-2930 type definitions"
+  },
+  {
+    "name": "alloy-eip7702",
+    "version": "0.6.3",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/eips",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Implementation of EIP-7702 type definitions"
+  },
+  {
+    "name": "alloy-eip7928",
+    "version": "0.3.5",
+    "authors": "Ishika Choudhury <ishikac720@gmail.com>|Soubhik Singha Mahapatra <soubhiksinghamahapatra@gmail.com>",
+    "repository": "https://github.com/alloy-rs/eips",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Implementation of EIP-7928 type definitions"
+  },
+  {
+    "name": "alloy-eips",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Ethereum Improvement Proprosal (EIP) implementations"
+  },
+  {
+    "name": "alloy-json-abi",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Full Ethereum JSON-ABI implementation"
+  },
+  {
+    "name": "alloy-json-rpc",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Core types for JSON-RPC 2.0 clients"
+  },
+  {
+    "name": "alloy-network",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Ethereum blockchain RPC behavior abstraction"
+  },
+  {
+    "name": "alloy-network-primitives",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Primitive types for Alloy network abstraction"
+  },
+  {
+    "name": "alloy-primitives",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Ethereum primitive types"
+  },
+  {
+    "name": "alloy-rlp",
+    "version": "0.3.15",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/rlp",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Implementation of Ethereum RLP serialization"
+  },
+  {
+    "name": "alloy-rlp-derive",
+    "version": "0.3.15",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/rlp",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Derive macros for alloy-rlp"
+  },
+  {
+    "name": "alloy-rpc-types-any",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Types for any network"
+  },
+  {
+    "name": "alloy-rpc-types-eth",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Types for the `eth` Ethereum JSON-RPC namespace"
+  },
+  {
+    "name": "alloy-serde",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Alloy serde helpers"
+  },
+  {
+    "name": "alloy-signer",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Ethereum signer abstraction"
+  },
+  {
+    "name": "alloy-signer-local",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "sepc256k1 ECDSA and YubiHSM signer implementations"
+  },
+  {
+    "name": "alloy-sol-macro",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Solidity to Rust procedural macro"
+  },
+  {
+    "name": "alloy-sol-macro-expander",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Expander used in the Solidity to Rust procedural macro"
+  },
+  {
+    "name": "alloy-sol-macro-input",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Input types for sol!-like macros"
+  },
+  {
+    "name": "alloy-sol-type-parser",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Simple and light-weight Solidity type strings parser"
+  },
+  {
+    "name": "alloy-sol-types",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Compile-time ABI and EIP-712 implementations"
+  },
+  {
+    "name": "alloy-trie",
+    "version": "0.9.5",
+    "authors": "rkrasiuk <rokrassyuk@gmail.com>|gakonst <me@gakonst.com>|DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/alloy-rs/trie",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Fast Merkle-Patricia Trie (MPT) state root calculator and proof generator for prefix-sorted nibbles"
+  },
+  {
+    "name": "alloy-tx-macros",
+    "version": "2.0.4",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/alloy",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Derive macro for transaction envelopes"
+  },
+  {
     "name": "ambient-authority",
     "version": "0.0.2",
     "authors": "Dan Gohman <dev@sunfishcode.online>",
@@ -295,6 +529,141 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Pure Rust implementation of the Argon2 password hashing function with support for the Argon2d, Argon2i, and Argon2id algorithmic variants"
+  },
+  {
+    "name": "ark-ff",
+    "version": "0.3.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for finite fields"
+  },
+  {
+    "name": "ark-ff",
+    "version": "0.4.2",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for finite fields"
+  },
+  {
+    "name": "ark-ff",
+    "version": "0.5.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for finite fields"
+  },
+  {
+    "name": "ark-ff-asm",
+    "version": "0.3.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-ff-asm",
+    "version": "0.4.2",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-ff-asm",
+    "version": "0.5.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-ff-macros",
+    "version": "0.3.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-ff-macros",
+    "version": "0.4.2",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-ff-macros",
+    "version": "0.5.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for generating x86-64 assembly for finite field multiplication"
+  },
+  {
+    "name": "ark-serialize",
+    "version": "0.3.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for serializing types in the arkworks ecosystem"
+  },
+  {
+    "name": "ark-serialize",
+    "version": "0.4.2",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for serializing types in the arkworks ecosystem"
+  },
+  {
+    "name": "ark-serialize",
+    "version": "0.5.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/algebra",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for serializing types in the arkworks ecosystem"
+  },
+  {
+    "name": "ark-std",
+    "version": "0.3.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/utils",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for no_std compatibility"
+  },
+  {
+    "name": "ark-std",
+    "version": "0.4.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/std",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for no_std compatibility"
+  },
+  {
+    "name": "ark-std",
+    "version": "0.5.0",
+    "authors": "arkworks contributors",
+    "repository": "https://github.com/arkworks-rs/std",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for no_std compatibility"
   },
   {
     "name": "arraydeque",
@@ -603,6 +972,15 @@
     "description": "For quickly making a struct into a future via an async fn"
   },
   {
+    "name": "auto_impl",
+    "version": "1.3.0",
+    "authors": "Ashley Mannix <ashleymannix@live.com.au>|Lukas Kalbertodt <lukas.kalbertodt@gmail.com>",
+    "repository": "https://github.com/auto-impl-rs/auto_impl/",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Automatically implement traits for common smart pointers and closures"
+  },
+  {
     "name": "autocfg",
     "version": "1.5.0",
     "authors": "Josh Stone <cuviper@gmail.com>",
@@ -711,6 +1089,15 @@
     "description": "For spinning up and testing Axum servers"
   },
   {
+    "name": "base16ct",
+    "version": "0.2.0",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/base16ct",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of Base16 a.k.a hexadecimal (RFC 4648) which avoids any usages of data-dependent branches/LUTs and thereby provides portable \"best effort\" constant-time operation and embedded-friendly no_std support"
+  },
+  {
     "name": "base64",
     "version": "0.13.1",
     "authors": "Alice Maz <alice@alicemaz.com>|Marshall Pierce <marshall@mpierce.org>",
@@ -792,6 +1179,24 @@
     "description": "A vector of bits"
   },
   {
+    "name": "bitcoin-io",
+    "version": "0.1.4",
+    "authors": "Matt Corallo <birchneutea@mattcorallo.com>",
+    "repository": "https://github.com/rust-bitcoin/rust-bitcoin",
+    "license": "CC0-1.0",
+    "license_file": null,
+    "description": "Simple I/O traits for no-std (and std) environments"
+  },
+  {
+    "name": "bitcoin_hashes",
+    "version": "0.14.1",
+    "authors": "Andrew Poelstra <apoelstra@wpsoftware.net>",
+    "repository": "https://github.com/rust-bitcoin/rust-bitcoin",
+    "license": "CC0-1.0",
+    "license_file": null,
+    "description": "Hash functions used by the rust-bitcoin eccosystem"
+  },
+  {
     "name": "bitflags",
     "version": "1.3.2",
     "authors": "The Rust Project Developers",
@@ -817,6 +1222,15 @@
     "license": "MPL-2.0+",
     "license_file": null,
     "description": "Fixed size boolean arrays"
+  },
+  {
+    "name": "bitvec",
+    "version": "1.0.1",
+    "authors": null,
+    "repository": "https://github.com/bitvecto-rs/bitvec",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Addresses memory by bits, for packed collections and bitfields"
   },
   {
     "name": "blake2",
@@ -864,11 +1278,29 @@
     "description": "A thread pool for isolating blocking I/O in async programs"
   },
   {
+    "name": "blst",
+    "version": "0.3.16",
+    "authors": "sean-sn <sean@supranational.net>",
+    "repository": "https://github.com/supranational/blst",
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "Bindings for blst BLS12-381 library"
+  },
+  {
     "name": "borsh",
     "version": "1.6.1",
     "authors": "Near Inc <hello@near.org>",
     "repository": "https://github.com/near/borsh-rs",
     "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Binary Object Representation Serializer for Hashing"
+  },
+  {
+    "name": "borsh-derive",
+    "version": "1.6.1",
+    "authors": "Near Inc <hello@nearprotocol.com>",
+    "repository": "https://github.com/near/borsh-rs",
+    "license": "Apache-2.0",
     "license_file": null,
     "description": "Binary Object Representation Serializer for Hashing"
   },
@@ -898,6 +1330,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "A fast bump allocation arena for Rust."
+  },
+  {
+    "name": "byte-slice-cast",
+    "version": "1.2.3",
+    "authors": "Sebastian Dröge <sebastian@centricular.com>",
+    "repository": "https://github.com/sdroege/bytes-num-slice-cast",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Safely cast bytes slices from/to slices of built-in fundamental numeric types"
   },
   {
     "name": "bytecount",
@@ -952,6 +1393,15 @@
     "license": "Apache-2.0",
     "license_file": null,
     "description": "an utility for human-readable bytes representations"
+  },
+  {
+    "name": "c-kzg",
+    "version": "2.1.7",
+    "authors": null,
+    "repository": null,
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "A minimal implementation of the Polynomial Commitments API for EIP-4844 and EIP-7594, written in C."
   },
   {
     "name": "cairo-rs",
@@ -1323,6 +1773,15 @@
     "description": "A terminal and console abstraction for Rust"
   },
   {
+    "name": "const-hex",
+    "version": "1.19.0",
+    "authors": "DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/danipopes/const-hex",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Fast byte array to hex string conversion"
+  },
+  {
     "name": "const-oid",
     "version": "0.9.6",
     "authors": "RustCrypto Developers",
@@ -1350,6 +1809,24 @@
     "description": "Provides the procedural macro used by const-random"
   },
   {
+    "name": "const_format",
+    "version": "0.2.36",
+    "authors": "rodrimati1992 <rodrimatt1985@gmail.com>",
+    "repository": "https://github.com/rodrimati1992/const_format_crates/",
+    "license": "Zlib",
+    "license_file": null,
+    "description": "Compile-time string formatting"
+  },
+  {
+    "name": "const_format_proc_macros",
+    "version": "0.2.34",
+    "authors": "rodrimati1992 <rodrimatt1985@gmail.com>",
+    "repository": "https://github.com/rodrimati1992/const_format_crates/",
+    "license": "Zlib",
+    "license_file": null,
+    "description": "Implementation detail of the `const_format` crate"
+  },
+  {
     "name": "contracts",
     "version": "0.6.7",
     "authors": "karroffel <therzog@mail.de>",
@@ -1371,6 +1848,15 @@
     "name": "convert_case",
     "version": "0.6.0",
     "authors": "Rutrum <dave@rutrum.net>",
+    "repository": "https://github.com/rutrum/convert-case",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Convert strings into any case"
+  },
+  {
+    "name": "convert_case",
+    "version": "0.10.0",
+    "authors": "rutrum <dave@rutrum.net>",
     "repository": "https://github.com/rutrum/convert-case",
     "license": "MIT",
     "license_file": null,
@@ -1764,6 +2250,15 @@
     "description": "Crunchy unroller: deterministically unroll constant loops"
   },
   {
+    "name": "crypto-bigint",
+    "version": "0.5.5",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/crypto-bigint",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of a big integer library which has been designed from the ground-up for use in cryptographic applications. Provides constant-time, no_std-friendly implementations of modern formulas using const generics."
+  },
+  {
     "name": "crypto-common",
     "version": "0.1.7",
     "authors": "RustCrypto Developers",
@@ -1971,6 +2466,15 @@
     "description": "Ranged integers"
   },
   {
+    "name": "derivative",
+    "version": "2.2.0",
+    "authors": "mcarton <cartonmartin+git@gmail.com>",
+    "repository": "https://github.com/mcarton/rust-derivative",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A set of alternative `derive` attributes for Rust"
+  },
+  {
     "name": "derive_arbitrary",
     "version": "1.4.2",
     "authors": "The Rust-Fuzz Project Developers|Nick Fitzgerald <fitzgen@gmail.com>|Manish Goregaokar <manishsmail@gmail.com>|Andre Bogus <bogusandre@gmail.com>|Corey Farwell <coreyf@rwell.org>",
@@ -2014,6 +2518,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "An LCS based slice and string diffing implementation."
+  },
+  {
+    "name": "digest",
+    "version": "0.9.0",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/traits",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Traits for cryptographic hash functions"
   },
   {
     "name": "digest",
@@ -2214,6 +2727,15 @@
     "description": "Electronic Codebook (ECB) block cipher mode of operation"
   },
   {
+    "name": "ecdsa",
+    "version": "0.16.9",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/signatures/tree/master/ecdsa",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of the Elliptic Curve Digital Signature Algorithm (ECDSA) as specified in FIPS 186-4 (Digital Signature Standard), providing RFC6979 deterministic signatures as well as support for added entropy"
+  },
+  {
     "name": "ed25519",
     "version": "2.2.3",
     "authors": "RustCrypto Developers",
@@ -2232,6 +2754,15 @@
     "description": "Fast and efficient ed25519 EdDSA key generations, signing, and verification in pure Rust."
   },
   {
+    "name": "educe",
+    "version": "0.6.0",
+    "authors": "Magic Len <len@magiclen.org>",
+    "repository": "https://github.com/magiclen/educe",
+    "license": "MIT",
+    "license_file": null,
+    "description": "This crate offers procedural macros designed to facilitate the swift implementation of Rust's built-in traits."
+  },
+  {
     "name": "either",
     "version": "1.15.0",
     "authors": "bluss",
@@ -2239,6 +2770,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "The enum `Either` with variants `Left` and `Right` is a general purpose sum type with two cases."
+  },
+  {
+    "name": "elliptic-curve",
+    "version": "0.13.8",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/traits/tree/master/elliptic-curve",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "General purpose Elliptic Curve Cryptography (ECC) support, including types and traits for representing various elliptic curve forms, scalars, points, and public/secret keys composed thereof."
   },
   {
     "name": "embed-resource",
@@ -2311,6 +2851,24 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "A proc-macro for deriving inner field accessor functions on enums."
+  },
+  {
+    "name": "enum-ordinalize",
+    "version": "4.3.2",
+    "authors": null,
+    "repository": "https://github.com/magiclen/enum-ordinalize",
+    "license": "MIT",
+    "license_file": null,
+    "description": "This library enables enums to not only obtain the ordinal values of their variants but also allows for the construction of enums from an ordinal value."
+  },
+  {
+    "name": "enum-ordinalize-derive",
+    "version": "4.3.2",
+    "authors": null,
+    "repository": "https://github.com/magiclen/enum-ordinalize",
+    "license": "MIT",
+    "license_file": null,
+    "description": "This crate provides a procedural macro that enables enums to not only obtain the ordinal values of their variants but also allows for the construction of enums from an ordinal value."
   },
   {
     "name": "enumflags2",
@@ -2484,6 +3042,24 @@
     "description": "A simple and fast random number generator"
   },
   {
+    "name": "fastrlp",
+    "version": "0.3.1",
+    "authors": null,
+    "repository": "https://github.com/vorot93/fastrlp",
+    "license": "MPL-2.0",
+    "license_file": null,
+    "description": "Fast RLP serialization library"
+  },
+  {
+    "name": "fastrlp",
+    "version": "0.4.0",
+    "authors": null,
+    "repository": "https://github.com/vorot93/fastrlp",
+    "license": "MPL-2.0",
+    "license_file": null,
+    "description": "Fast RLP serialization library"
+  },
+  {
     "name": "fd-lock",
     "version": "4.0.4",
     "authors": "Yoshua Wuyts <yoshuawuyts@gmail.com>",
@@ -2500,6 +3076,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Fast specialized deflate implementation"
+  },
+  {
+    "name": "ff",
+    "version": "0.13.1",
+    "authors": "Sean Bowe <ewillbefull@gmail.com>|Jack Grigg <thestr4d@gmail.com>",
+    "repository": "https://github.com/zkcrypto/ff",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Library for building and interfacing with finite fields"
   },
   {
     "name": "fiat-crypto",
@@ -2536,6 +3121,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Find windows-specific tools, read MSVC versions from the registry and from COM interfaces"
+  },
+  {
+    "name": "fixed-hash",
+    "version": "0.8.0",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": "https://github.com/paritytech/parity-common",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Macros to define custom fixed-size hash types"
   },
   {
     "name": "fixedbitset",
@@ -2709,6 +3303,15 @@
     "description": null
   },
   {
+    "name": "funty",
+    "version": "2.0.0",
+    "authors": "myrrlyn <self@myrrlyn.dev>",
+    "repository": "https://github.com/myrrlyn/funty",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Trait generalization over the primitive types"
+  },
+  {
     "name": "futf",
     "version": "0.1.5",
     "authors": "Keegan McAllister <kmcallister@mozilla.com>",
@@ -2824,6 +3427,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Common utilities and extension traits for the futures-rs library."
+  },
+  {
+    "name": "futures-utils-wasm",
+    "version": "0.1.0",
+    "authors": "DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/danipopes/futures-utils-wasm",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Simple utilities for futures Send bounds"
   },
   {
     "name": "fxhash",
@@ -3087,6 +3699,15 @@
     "description": "A rate-limiting implementation in Rust"
   },
   {
+    "name": "group",
+    "version": "0.13.0",
+    "authors": "Sean Bowe <ewillbefull@gmail.com>|Jack Grigg <jack@z.cash>",
+    "repository": "https://github.com/zkcrypto/group",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Elliptic curve group traits and utilities"
+  },
+  {
     "name": "gtk",
     "version": "0.18.2",
     "authors": "The gtk-rs Project Developers",
@@ -3247,6 +3868,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Encoding and decoding data into/from hexadecimal representation."
+  },
+  {
+    "name": "hex-conservative",
+    "version": "0.2.2",
+    "authors": "Martin Habovštiak <martin.habovstiak@gmail.com>|Andrew Poelstra <apoelstra@wpsoftware.net>",
+    "repository": "https://github.com/rust-bitcoin/hex-conservative",
+    "license": "CC0-1.0",
+    "license_file": null,
+    "description": "A hex encoding and decoding crate with a conservative MSRV and dependency policy."
   },
   {
     "name": "hkdf",
@@ -3654,6 +4284,24 @@
     "description": "A simple library that provides perceptual hashing and difference calculation for images."
   },
   {
+    "name": "impl-codec",
+    "version": "0.6.0",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": null,
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Parity Codec serialization support for uint and fixed hash."
+  },
+  {
+    "name": "impl-trait-for-tuples",
+    "version": "0.2.3",
+    "authors": "Bastian Köcher <git@kchr.de>",
+    "repository": "https://github.com/bkchr/impl-trait-for-tuples",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Attribute macro to implement a trait for tuples"
+  },
+  {
     "name": "include_dir",
     "version": "0.7.4",
     "authors": "Michael Bryan <michaelfbryan@gmail.com>",
@@ -4005,6 +4653,33 @@
     "description": "Create and decode JWTs in a strongly typed way."
   },
   {
+    "name": "k256",
+    "version": "0.13.4",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/elliptic-curves/tree/master/k256",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "secp256k1 elliptic curve library written in pure Rust with support for ECDSA signing/verification/public-key recovery, Taproot Schnorr signatures (BIP340), Elliptic Curve Diffie-Hellman (ECDH), and general-purpose secp256k1 elliptic curve group operations which can be used to implement arbitrary protocols"
+  },
+  {
+    "name": "keccak",
+    "version": "0.1.6",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/sponges/tree/master/keccak",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of the Keccak sponge function including the keccak-f and keccak-p variants"
+  },
+  {
+    "name": "keccak-asm",
+    "version": "0.1.6",
+    "authors": "DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/danipopes/keccak-asm",
+    "license": "BSD-3-Clause",
+    "license_file": null,
+    "description": "Simple wrappers for SHA-3 algorithms written in assembly"
+  },
+  {
     "name": "key-proxy",
     "version": "1.0.0",
     "authors": null,
@@ -4021,6 +4696,24 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Contains types to define keyboard related events."
+  },
+  {
+    "name": "konst",
+    "version": "0.2.20",
+    "authors": "rodrimati1992 <rodrimatt1985@gmail.com>",
+    "repository": "https://github.com/rodrimati1992/konst/",
+    "license": "Zlib",
+    "license_file": null,
+    "description": "Const equivalents of std functions, compile-time comparison, and parsing"
+  },
+  {
+    "name": "konst_macro_rules",
+    "version": "0.2.19",
+    "authors": "rodrimati1992 <rodrimatt1985@gmail.com>",
+    "repository": "https://github.com/rodrimati1992/konst/",
+    "license": "Zlib",
+    "license_file": null,
+    "description": "Implementation detail of the konst crate"
   },
   {
     "name": "kuchikiki",
@@ -4239,6 +4932,15 @@
     "description": "A Rust interface to the user-space API of the Mach 3.0 kernel that underlies OSX."
   },
   {
+    "name": "macro-string",
+    "version": "0.1.4",
+    "authors": "David Tolnay <dtolnay@gmail.com>",
+    "repository": "https://github.com/dtolnay/macro-string",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Eager evaluation of macros like `concat!` and `env!`"
+  },
+  {
     "name": "management-console",
     "version": "1.0.0",
     "authors": "you",
@@ -4419,6 +5121,15 @@
     "description": "A pure-Rust library to work with Linux memfd and sealing"
   },
   {
+    "name": "memo-map",
+    "version": "0.3.3",
+    "authors": "Armin Ronacher <armin.ronacher@active-4.com>",
+    "repository": "https://github.com/mitsuhiko/memo-map",
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "A crate implementing a synchronized map for memoization"
+  },
+  {
     "name": "memoffset",
     "version": "0.9.1",
     "authors": "Gilad Naaman <gilad.naaman@gmail.com>",
@@ -4480,6 +5191,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Derive macros for miniserde. Use the re-exports from the miniserde crate instead."
+  },
+  {
+    "name": "minijinja",
+    "version": "2.19.0",
+    "authors": "Armin Ronacher <armin.ronacher@active-4.com>",
+    "repository": "https://github.com/mitsuhiko/minijinja",
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "a powerful template engine for Rust with minimal dependencies"
   },
   {
     "name": "minimal-lexical",
@@ -4923,6 +5643,15 @@
     "description": "Library for numeric prefixes (kilo, giga, kibi)."
   },
   {
+    "name": "nybbles",
+    "version": "0.4.8",
+    "authors": "DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/alloy-rs/nybbles",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Efficient nibble-sized (4-bit) byte sequence data structure"
+  },
+  {
     "name": "objc2",
     "version": "0.6.4",
     "authors": "Mads Marquart <mads@marquart.dk>",
@@ -5166,6 +5895,24 @@
     "description": "FFI bindings to libpango-1.0"
   },
   {
+    "name": "parity-scale-codec",
+    "version": "3.7.5",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": "https://github.com/paritytech/parity-scale-codec",
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "SCALE - Simple Concatenating Aggregated Little Endians"
+  },
+  {
+    "name": "parity-scale-codec-derive",
+    "version": "3.7.5",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": "https://github.com/paritytech/parity-scale-codec",
+    "license": "Apache-2.0",
+    "license_file": null,
+    "description": "Serialization and deserialization derive macro for Parity SCALE Codec"
+  },
+  {
     "name": "parking",
     "version": "2.2.1",
     "authors": "Stjepan Glavina <stjepang@gmail.com>|The Rust Project Developers",
@@ -5200,6 +5947,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Traits which describe the functionality of password hashing algorithms, as well as a `no_std`-friendly implementation of the PHC string format (a well-defined subset of the Modular Crypt Format a.k.a. MCF)"
+  },
+  {
+    "name": "paste",
+    "version": "1.0.15",
+    "authors": "David Tolnay <dtolnay@gmail.com>",
+    "repository": "https://github.com/dtolnay/paste",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Macros for all your token pasting needs"
   },
   {
     "name": "pathdiff",
@@ -5733,6 +6489,15 @@
     "description": "Fast standalone primality testing."
   },
   {
+    "name": "primitive-types",
+    "version": "0.12.2",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": null,
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Primitive types shared by Ethereum and Substrate"
+  },
+  {
     "name": "proc-macro-crate",
     "version": "1.3.1",
     "authors": "Bastian Köcher <git@kchr.de>",
@@ -5776,6 +6541,24 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Attribute macro for proc-macro-error crate"
+  },
+  {
+    "name": "proc-macro-error-attr2",
+    "version": "2.0.0",
+    "authors": "CreepySkeleton <creepy-skeleton@yandex.ru>|GnomedDev <david2005thomas@gmail.com>",
+    "repository": "https://github.com/GnomedDev/proc-macro-error-2",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Attribute macro for the proc-macro-error2 crate"
+  },
+  {
+    "name": "proc-macro-error2",
+    "version": "2.0.1",
+    "authors": "CreepySkeleton <creepy-skeleton@yandex.ru>|GnomedDev <david2005thomas@gmail.com>",
+    "repository": "https://github.com/GnomedDev/proc-macro-error-2",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Almost drop-in replacement to panics in proc-macros"
   },
   {
     "name": "proc-macro-hack",
@@ -5994,6 +6777,15 @@
     "description": "UEFI Reference Specification Protocol Constants and Definitions"
   },
   {
+    "name": "radium",
+    "version": "0.7.0",
+    "authors": "Nika Layzell <nika@thelayzells.com>|myrrlyn <self@myrrlyn.dev>",
+    "repository": "https://github.com/bitvecto-rs/radium",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Portable interfaces for maybe-atomic types"
+  },
+  {
     "name": "rand",
     "version": "0.7.3",
     "authors": "The Rand Project Developers|The Rust Project Developers",
@@ -6127,6 +6919,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Map and set data structures whose keys are stored as ranges.  Contiguous and overlapping ranges that map to the same value are coalesced into a single range."
+  },
+  {
+    "name": "rapidhash",
+    "version": "4.4.1",
+    "authors": "Liam Gray <gmail@liamg.me>",
+    "repository": "https://github.com/hoxxep/rapidhash",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "An extremely fast, high quality, platform-independent hashing algorithm."
   },
   {
     "name": "raw-cpuid",
@@ -6327,6 +7128,15 @@
     "description": "The resolv.conf file parser"
   },
   {
+    "name": "rfc6979",
+    "version": "0.4.0",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/signatures/tree/master/rfc6979",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of RFC6979: Deterministic Usage of the Digital Signature Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA)"
+  },
+  {
     "name": "ring",
     "version": "0.17.14",
     "authors": null,
@@ -6334,6 +7144,15 @@
     "license": "Apache-2.0 AND ISC",
     "license_file": null,
     "description": "An experiment."
+  },
+  {
+    "name": "rlp",
+    "version": "0.5.2",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": "https://github.com/paritytech/parity-common",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Recursive-length prefix encoding, decoding, and compression"
   },
   {
     "name": "rmp",
@@ -6379,6 +7198,24 @@
     "license": "MIT",
     "license_file": null,
     "description": "Asynchronous resampling library intended for audio data"
+  },
+  {
+    "name": "ruint",
+    "version": "1.18.0",
+    "authors": "Remco Bloemen <remco@wicked.ventures>",
+    "repository": "https://github.com/recmo/uint",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Unsigned integer type with const-generic bit length"
+  },
+  {
+    "name": "ruint-macro",
+    "version": "1.2.1",
+    "authors": "Remco Bloemen <remco@wicked.ventures>",
+    "repository": "https://github.com/recmo/uint",
+    "license": "MIT",
+    "license_file": null,
+    "description": "The `uint!` macro for `Uint` and `Bits` literals"
   },
   {
     "name": "rust-embed",
@@ -6442,6 +7279,24 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "A speedy, non-cryptographic hashing algorithm used by rustc"
+  },
+  {
+    "name": "rustc-hex",
+    "version": "2.1.0",
+    "authors": "The Rust Project Developers|debris <marek.kotewicz@gmail.com>|Robert Habermeier",
+    "repository": "https://github.com/debris/rustc-hex",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "rustc-serialize compatible hex conversion traits"
+  },
+  {
+    "name": "rustc_version",
+    "version": "0.3.3",
+    "authors": "Marvin Löbel <loebel.marvin@gmail.com>",
+    "repository": "https://github.com/Kimundi/rustc-version-rs",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A library for querying the version of a installed rustc compiler"
   },
   {
     "name": "rustc_version",
@@ -6696,6 +7551,33 @@
     "description": "Scalable lock-free delayed memory reclaimer"
   },
   {
+    "name": "sec1",
+    "version": "0.7.3",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/sec1",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of SEC1: Elliptic Curve Cryptography encoding formats including ASN.1 DER-serialized private keys as well as the Elliptic-Curve-Point-to-Octet-String encoding"
+  },
+  {
+    "name": "secp256k1",
+    "version": "0.30.0",
+    "authors": "Dawid Ciężarkiewicz <dpc@ucore.info>|Andrew Poelstra <apoelstra@wpsoftware.net>",
+    "repository": "https://github.com/rust-bitcoin/rust-secp256k1/",
+    "license": "CC0-1.0",
+    "license_file": null,
+    "description": "Rust wrapper library for Pieter Wuille's `libsecp256k1`. Implements ECDSA and BIP 340 signatures for the SECG elliptic curve group secp256k1 and related utilities."
+  },
+  {
+    "name": "secp256k1-sys",
+    "version": "0.10.1",
+    "authors": "Dawid Ciężarkiewicz <dpc@ucore.info>|Andrew Poelstra <apoelstra@wpsoftware.net>|Steven Roose <steven@stevenroose.org>",
+    "repository": "https://github.com/rust-bitcoin/rust-secp256k1/",
+    "license": "CC0-1.0",
+    "license_file": null,
+    "description": "FFI for Pieter Wuille's `libsecp256k1` library."
+  },
+  {
     "name": "secrecy",
     "version": "0.8.0",
     "authors": "Tony Arcieri <tony@iqlusion.io>",
@@ -6742,12 +7624,30 @@
   },
   {
     "name": "semver",
+    "version": "0.11.0",
+    "authors": "Steve Klabnik <steve@steveklabnik.com>|The Rust Project Developers",
+    "repository": "https://github.com/steveklabnik/semver",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Semantic version parsing and comparison."
+  },
+  {
+    "name": "semver",
     "version": "1.0.28",
     "authors": "David Tolnay <dtolnay@gmail.com>",
     "repository": "https://github.com/dtolnay/semver",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Parser and evaluator for Cargo's flavor of Semantic Versioning"
+  },
+  {
+    "name": "semver-parser",
+    "version": "0.10.3",
+    "authors": "Steve Klabnik <steve@steveklabnik.com>",
+    "repository": "https://github.com/steveklabnik/semver-parser",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Parsing of the semver spec."
   },
   {
     "name": "serde",
@@ -6912,6 +7812,15 @@
     "description": "YAML data format for Serde"
   },
   {
+    "name": "serdect",
+    "version": "0.2.0",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/serdect",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Constant-time serde serializer/deserializer helpers for data that potentially contains secrets (e.g. cryptographic keys)"
+  },
+  {
     "name": "serenity",
     "version": "0.12.5",
     "authors": "Alex M. M. <acdenissk69@gmail.com>",
@@ -6991,6 +7900,24 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Pure Rust implementation of the SHA-2 hash function family including SHA-224, SHA-256, SHA-384, and SHA-512."
+  },
+  {
+    "name": "sha3",
+    "version": "0.10.9",
+    "authors": "RustCrypto Developers",
+    "repository": "https://github.com/RustCrypto/hashes",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Pure Rust implementation of SHA-3, a family of Keccak-based hash functions including the SHAKE family of eXtendable-Output Functions (XOFs), as well as the accelerated variant TurboSHAKE"
+  },
+  {
+    "name": "sha3-asm",
+    "version": "0.1.6",
+    "authors": "DaniPopes <57450786+DaniPopes@users.noreply.github.com>",
+    "repository": "https://github.com/danipopes/keccak-asm",
+    "license": "BSD-3-Clause",
+    "license_file": null,
+    "description": "Raw bindings for SHA-3 algorithms written in assembly"
   },
   {
     "name": "shadow-worker",
@@ -7290,6 +8217,15 @@
     "description": "An unsafe marker trait for types like Box and Rc that dereference to a stable address even when moved, and hence can be used with libraries such as owning_ref and rental."
   },
   {
+    "name": "static_assertions",
+    "version": "1.1.0",
+    "authors": "Nikolai Vazquez",
+    "repository": "https://github.com/nvzqz/static-assertions-rs",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Compile-time assertions to ensure that invariants are met."
+  },
+  {
     "name": "strength_reduce",
     "version": "0.2.4",
     "authors": "Elliott Mahler <join.together@gmail.com>",
@@ -7414,6 +8350,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Parser for Rust source code"
+  },
+  {
+    "name": "syn-solidity",
+    "version": "1.5.7",
+    "authors": "Alloy Contributors",
+    "repository": "https://github.com/alloy-rs/core",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "syn-powered Solidity parser"
   },
   {
     "name": "sync_wrapper",
@@ -7549,6 +8494,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Proc macros for tao"
+  },
+  {
+    "name": "tap",
+    "version": "1.0.1",
+    "authors": "Elliott Linder <elliott.darfink@gmail.com>|myrrlyn <self@myrrlyn.dev>",
+    "repository": "https://github.com/myrrlyn/tap",
+    "license": "MIT",
+    "license_file": null,
+    "description": "Generic extensions for tapping values in Rust"
   },
   {
     "name": "target-lexicon",
@@ -7783,6 +8737,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Per-object thread-local storage"
+  },
+  {
+    "name": "threadpool",
+    "version": "1.8.1",
+    "authors": "The Rust Project Developers|Corey Farwell <coreyf@rwell.org>|Stefan Schindler <dns2utf8@estada.ch>",
+    "repository": "https://github.com/rust-threadpool/rust-threadpool",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A thread pool for running a number of jobs on a fixed set of worker threads."
   },
   {
     "name": "tiff",
@@ -8332,6 +9295,15 @@
     "license": "MIT",
     "license_file": null,
     "description": "Unix Domain Sockets for Windows!"
+  },
+  {
+    "name": "uint",
+    "version": "0.9.5",
+    "authors": "Parity Technologies <admin@parity.io>",
+    "repository": "https://github.com/paritytech/parity-common",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Large fixed-size integer arithmetic"
   },
   {
     "name": "unarray",
@@ -10204,6 +11176,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Cross-platform WebView rendering library"
+  },
+  {
+    "name": "wyz",
+    "version": "0.5.1",
+    "authors": "myrrlyn <self@myrrlyn.dev>",
+    "repository": "https://github.com/myrrlyn/wyz",
+    "license": "MIT",
+    "license_file": null,
+    "description": "myrrlyn’s utility collection"
   },
   {
     "name": "x11",

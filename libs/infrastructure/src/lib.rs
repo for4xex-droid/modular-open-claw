@@ -107,6 +107,7 @@ pub mod grpc;
 pub mod grpc_proof_gate;
 pub mod heartbeat_wakeup;
 pub mod hierarchical_router;
+pub mod html_report;
 /// 脅威シグネチャ監視・遮断
 pub mod immune_system;
 /// Intent の生成・サニタイズ (AgentSense Phase AS-1)

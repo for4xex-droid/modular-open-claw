@@ -555,6 +555,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
     ) as Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>;
 
     let state = AppState {
+        tokens_css: String::new(),
         vault_backend: Component::new(vault_backend),
         db_pool: Component::new(Arc::new(pool.clone())),
         oxilean_power: Arc::new(std::sync::atomic::AtomicU32::new(0)),
@@ -2063,6 +2064,7 @@ async fn test_fallback_router_failover() {
 
     // 3. Register state with this router
     let state = AppState {
+        tokens_css: String::new(),
         db_pool: Component::new(Arc::new(pool.clone())),
         hook_chain: Default::default(),
         registry: Component::new(Arc::new(infrastructure::registry::RegistryManager::new(

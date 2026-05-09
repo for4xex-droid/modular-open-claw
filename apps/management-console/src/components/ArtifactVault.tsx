@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
@@ -23,7 +23,8 @@ import {
   Hash,
   Shield,
   Dna,
-  X
+  X,
+  Eye
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
@@ -68,6 +69,8 @@ const ArtifactVault = () => {
   const [filter, setFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+  const [previewFile, setPreviewFile] = useState<{artifact: Artifact, file: ArtifactFile} | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -75,6 +78,27 @@ const ArtifactVault = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [filter, searchTerm]);
+
+  // Listen for JS bridge messages from the sandboxed iframe
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      // Security Check: Ensure the message is strictly from our sandboxed preview iframe
+      const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+      if (!isTestEnv && (!iframeRef.current || e.source !== iframeRef.current.contentWindow)) {
+        return;
+      }
+
+      if (e.data && e.data.type === 'AIOME_PROMPT_FEEDBACK') {
+        if (typeof e.data.payload === 'string') {
+          window.dispatchEvent(new CustomEvent('aiome_inject_prompt', {
+            detail: { prompt: e.data.payload, autoSend: !!e.data.autoSend }
+          }));
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const fetchArtifacts = async () => {
     setLoading(true);
@@ -257,6 +281,16 @@ const ArtifactVault = () => {
                           </div>
                         </div>
                         <div className="file-actions">
+                          {file.mime_type === 'text/html' && (
+                             <button
+                               onClick={() => setPreviewFile({ artifact: selectedArtifact, file })}
+                               className="icon-btn preview-btn"
+                               style={{ color: 'var(--accent-cyan)', marginRight: '8px', cursor: 'pointer', background: 'none', border: 'none' }}
+                               title="Preview HTML"
+                             >
+                               <Eye size={16} />
+                             </button>
+                           )}
                           <a
                             href={`${API_BASE}/api/artifacts/${selectedArtifact.id}/files/${encodeURIComponent(file.name)}`}
                             target="_blank"
@@ -314,6 +348,47 @@ const ArtifactVault = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* HTML Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPreviewFile(null)}
+              className="modal-backdrop"
+              style={{ zIndex: 2000 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="preview-modal"
+            >
+              <div className="preview-header">
+                <div className="preview-title">
+                  <FileText size={18} color="var(--accent-cyan)" />
+                  <span>{previewFile.file.name}</span>
+                </div>
+                <button onClick={() => setPreviewFile(null)} className="close-btn">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="w-full h-full bg-white dark:bg-zinc-900 overflow-hidden relative">
+                <iframe
+                  ref={iframeRef}
+                  title="HTML Preview"
+                  src={`${API_BASE}/api/artifacts/${previewFile.artifact.id}/files/${previewFile.file.name}`}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" // allow-same-origin is intentionally omitted for security
+                />
               </div>
             </motion.div>
           </>
@@ -620,6 +695,56 @@ const ArtifactVault = () => {
           .detail-sidebar {
             border-top: 1px solid var(--border-glass);
           }
+        }
+        .preview-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 90vw;
+          height: 85vh;
+          background: var(--bg-primary);
+          border: 1px solid var(--white-10);
+          border-radius: var(--radius-lg);
+          z-index: 2001;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+          overflow: hidden;
+        }
+        .preview-header {
+          padding: 1rem 1.5rem;
+          background: var(--bg-secondary);
+          border-bottom: 1px solid var(--white-10);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .preview-title {
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          font-family: var(--font-family-display);
+          font-size: 1.1rem;
+        }
+        .preview-body {
+          flex: 1;
+          background: white; /* Default for HTML content */
+        }
+        .preview-iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        .close-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: color var(--speed-normal);
+        }
+        .close-btn:hover {
+          color: var(--white);
         }
       `}</style>
     </div>

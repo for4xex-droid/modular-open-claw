@@ -37,12 +37,10 @@ pub async fn ingest_url_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Json(req): Json<IngestUrlReq>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let safe_len = req.url.len().clamp(0, 8192);
     if req.url.len() != safe_len {
-        return Err(aiome_core::error::AiomeError::Validation {
-            reason: "URL too long".into(),
-        });
+        return Err(crate::error::AppError::bad_request("URL too long"));
     }
 
     let ingester = state.cortex_ingester.get_inner();
@@ -76,7 +74,7 @@ pub async fn ingest_text_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Json(req): Json<IngestTextReq>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let ingester = state.cortex_ingester.get_inner();
     let doc = ingester.ingest_text(&req.title, &req.content).await?;
 
@@ -100,7 +98,7 @@ pub async fn ingest_text_handler(
 pub async fn list_documents_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let ingester = state.cortex_ingester.get_inner();
     let docs = ingester.list_documents(100).await?;
 
@@ -122,7 +120,7 @@ pub async fn delete_document_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let ingester = state.cortex_ingester.get_inner();
     ingester.delete_document(&id).await?;
 
@@ -149,7 +147,7 @@ pub struct WikiArticleSummary {
 pub async fn list_wiki_articles_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
 
     let rows = sqlx::query(
@@ -205,7 +203,7 @@ pub async fn get_wiki_article_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Path(id): Path<String>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
 
     let row = sqlx::query(
@@ -269,7 +267,7 @@ pub async fn query_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Json(req): Json<QueryReq>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let engine = state.cortex_query.get_inner();
 
     let file_back = req.file_back.unwrap_or(false);
@@ -302,7 +300,7 @@ pub async fn query_handler(
 pub async fn suggest_questions_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let engine = state.cortex_query.get_inner();
     let suggestions = engine.suggest_questions().await?;
     Ok((StatusCode::OK, Json(suggestions)))
@@ -326,7 +324,7 @@ pub async fn synth_dataset_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     Json(req): Json<SynthReq>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     let opt_out = state
         .job_queue
         .get_setting_value("lora_opt_out")
@@ -463,7 +461,7 @@ pub async fn export_dpo_dataset_handler(
     State(state): State<crate::AppState>,
     _auth: crate::auth::Authenticated,
     axum::extract::Query(params): axum::extract::Query<DpoDatasetParams>,
-) -> Result<impl IntoResponse, aiome_core::error::AiomeError> {
+) -> Result<impl IntoResponse, crate::error::AppError> {
     use aiome_core::traits::ImmuneSystemOps;
 
     let limit = params.limit.clamp(1, 5000);

@@ -174,9 +174,17 @@ pub struct AppState {
     pub vault_backend: Component<Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>>,
     pub prompt_registry: Component<Arc<dyn infrastructure::prompt_registry::PromptRegistry>>,
     pub spec_provider: Component<Arc<dyn infrastructure::spec_provider::SpecProvider>>,
+    // --- HTML Report ---
+    pub tokens_css: String,
 }
 
 impl AppState {
+    pub fn html_report_builder(
+        &self,
+    ) -> Result<infrastructure::html_report::HtmlReportBuilder, aiome_core::error::AiomeError> {
+        infrastructure::html_report::HtmlReportBuilder::new(self.tokens_css.clone())
+    }
+
     /// 特徴フラグの状態を取得します。mokaキャッシュを優先し、DBヒットを抑えます。
     pub async fn is_feature_enabled(&self, flag: &str) -> bool {
         if let Some(cache) = self.feature_flags_cache.as_opt() {
