@@ -233,7 +233,7 @@ jobs:
           python-version: '3.x'
 
       - name: Enforce Unwrap/Expect Deny
-        run: python3 scripts/enforce_unwrap_deny.py
+        run: python3 scripts/enforce_unwrap_deny.py apps libs
 
   deep-scan:
     name: Segmented Deep Scan

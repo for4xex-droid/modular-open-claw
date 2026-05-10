@@ -41,6 +41,8 @@ pub enum SandboxProfile {
     LoraTraining,
     /// MCP サーバー用（ネットワーク許可、ファイル書き込みはマニフェストに従う）
     McpServer,
+    /// ブラウザ自律エージェント用（ネットワーク許可、ファイル書き込み禁止、OLLAMAへのアクセス許可）
+    BrowserAgent,
 }
 
 /// ⛓️ RuntimeJail

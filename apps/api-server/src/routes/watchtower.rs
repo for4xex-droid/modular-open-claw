@@ -257,7 +257,10 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
     .await
     {
         Ok(Ok(resp)) => {
-            let reply = resp.content.trim().to_string();
+            let raw_reply = resp.content.trim();
+            // [SEC] Apply Secret Redactor to LLM response
+            let redactor = infrastructure::security::secret_redactor::SecretRedactor::new();
+            let reply = redactor.redact(raw_reply).into_owned();
             if let Err(e) = state
                 .job_queue
                 .store_chat_message(&channel_id, "assistant", &reply, None)

@@ -6,7 +6,9 @@
 # the current `extism` crate (v1.21.0) strictly pins `wasi-common` v41.x.
 # Attempting to bump workspace wasmtime to v43+ handles the root vulnerabilities
 # but does not resolve the extism tree's dependency.
-# Monitor `extism` updates and remove these ignores when they upgrade wasmtime.
+# [BLOCKED_BY_UPSTREAM]
+# TARGET: extism (>= 1.22.0 or wasmtime >= 43.0)
+# ACTION: Remove Wasmtime RUSTSEC ignores. Unblocks Issue C.
 ignore = [
     "RUSTSEC-2026-0085",
     "RUSTSEC-2026-0086",
@@ -22,22 +24,23 @@ ignore = [
     
     # -----------------------------------------------------------------
     # Serenity (tokio-tungstenite v0.21.0 -> rustls v0.22) & Legacy CVEs:
-    # These cannot be patched because serenity 0.12.x pins
-    # tokio-tungstenite 0.21 -> rustls 0.22 -> rustls-webpki 0.102.x.
-    # Monitor serenity v0.13+ for resolution.
+    # [BLOCKED_BY_UPSTREAM]
+    # TARGET: serenity (>= 0.13.0)
+    # ACTION: Remove RUSTSEC-2026-0098, 0099, 0104, 0049. Unblocks Issue B (bastion-core).
     # -----------------------------------------------------------------
     "RUSTSEC-2026-0098", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
     "RUSTSEC-2026-0099", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
     "RUSTSEC-2026-0104", # rustls-webpki 0.102.x (pinned by serenity -> rustls 0.22)
     "RUSTSEC-2026-0097", # rand (legacy crate, pinned by serenity -> rustls 0.22 tree)
     "RUSTSEC-2024-0421", # idna 0.4.0 (pinned by serenity -> reqwest -> hyper-tls -> url)
-    "RUSTSEC-2023-0071", # rsa (pinned by serenity -> rustls 0.22 -> webpki)
+    "RUSTSEC-2023-0071", # rsa (Marvin Attack, pinned by sqlx-mysql)
     "RUSTSEC-2026-0049", # rustls-webpki 0.102.x CRL matching (pinned by serenity)
-    "RUSTSEC-2023-0080", # matrixmultiply (pinned by tauri -> image -> ndarray)
     
     # -----------------------------------------------------------------
     # Tauri & UI dependencies:
-    # Downstream dependencies of tauri (glib, unic-* crates) that cannot be patched.
+    # [BLOCKED_BY_UPSTREAM]
+    # TARGET: tauri (>= 3.0.0 or upstream GTK4 migration)
+    # ACTION: Unblocks Issue D.
     # -----------------------------------------------------------------
     "RUSTSEC-2024-0429", # glib (pinned by tauri -> webkit2gtk -> glib)
     "RUSTSEC-2025-0075", # unic-char-range (pinned by tauri -> unic-ucd-ident)

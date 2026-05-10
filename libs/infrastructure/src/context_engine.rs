@@ -162,6 +162,69 @@ impl ContextEngine {
         })
     }
 
+    /// ツール出力の事前圧縮（LLM不要）と重複排除
+    pub fn prune_tool_results(history: &mut Vec<serde_json::Value>) {
+        let mut to_keep = Vec::new();
+        let mut last_hash = None;
+
+        // 重複排除 (連続した tool_result を排除。最新=末尾を残すため逆順に処理)
+        for msg in history.iter().rev() {
+            if msg["role"] == "tool" {
+                let content = msg["content"].as_str().unwrap_or("");
+                use std::hash::{Hash, Hasher};
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                content.hash(&mut hasher);
+                let h = hasher.finish();
+
+                if Some(h) != last_hash {
+                    to_keep.push(msg.clone());
+                    last_hash = Some(h);
+                }
+            } else {
+                to_keep.push(msg.clone());
+                last_hash = None;
+            }
+        }
+        to_keep.reverse();
+        *history = to_keep;
+
+        // 事前圧縮
+        for msg in history.iter_mut() {
+            if msg["role"] == "tool" {
+                let content = msg["content"].as_str().unwrap_or("");
+                let lower = content.to_lowercase();
+                let is_error = lower.contains("error:")
+                    || lower.contains("command failed")
+                    || lower.contains("[guardrail block]")
+                    || lower.contains("exception:");
+
+                if !is_error {
+                    let lines: Vec<&str> = content.lines().collect();
+                    if lines.len() > 5 {
+                        let mut new_content = lines[0..5].join("\n");
+                        new_content
+                            .push_str(&format!("\n[...truncated {} lines...]", lines.len() - 5));
+                        msg["content"] = serde_json::json!(new_content);
+                    }
+                }
+            }
+        }
+    }
+
+    /// カルマ（教訓）の重複排除
+    pub fn dedup_karma(entries: &mut Vec<aiome_core_contracts::traits::KarmaEntry>) {
+        let mut seen = std::collections::HashSet::new();
+        let mut to_keep = Vec::new();
+        // 最新のものを残すため逆順処理
+        for entry in entries.iter().rev() {
+            if seen.insert(entry.lesson.clone()) {
+                to_keep.push(entry.clone());
+            }
+        }
+        to_keep.reverse();
+        *entries = to_keep;
+    }
+
     /// LLM レスポンスを受け取り、必要に応じて interaction_id を同期する
     pub async fn process_hybrid_response(
         &self,
@@ -202,10 +265,13 @@ impl ContextEngine {
             .await?
             .map(|(s, i)| (Some(s), i))
             .unwrap_or((None, None));
-        let history = self
+        let mut history = self
             .job_queue
             .fetch_chat_history(channel_id, max_recent_turns)
             .await?;
+
+        Self::prune_tool_results(&mut history);
+
         Ok((summary, history))
     }
 
@@ -215,11 +281,24 @@ impl ContextEngine {
         channel_id: &str,
         threshold: usize,
     ) -> Result<(), AiomeError> {
+        static INEFFECTIVE_COUNT: std::sync::LazyLock<dashmap::DashMap<String, u8>> =
+            std::sync::LazyLock::new(dashmap::DashMap::new);
+
+        if let Some(count) = INEFFECTIVE_COUNT.get(channel_id) {
+            if *count >= 2 {
+                INEFFECTIVE_COUNT.insert(channel_id.to_string(), 0);
+                warn!("🧠 [ContextEngine] Anti-thrashing triggered for {}: skipping compression this cycle.", channel_id);
+                return Ok(());
+            }
+        }
+
         // Fetch more than recent to check for compression need
-        let all_recent = self
+        let mut all_recent = self
             .job_queue
             .fetch_chat_history(channel_id, 100) // 常に多めに取得
             .await?;
+
+        Self::prune_tool_results(&mut all_recent);
 
         // 概算トークン数（文字数 * 0.5 程度だが、ここでは単純に文字数で閾値を判定する）
         // RT-10: 各メッセージの加算を1万文字までに制限し、単一の巨大メッセージによる計測の爆発を抑える
@@ -245,10 +324,15 @@ impl ContextEngine {
                 // Take the oldest half of messages to compress
                 let compress_count = all_recent.len() / 2;
                 let to_compress = &all_recent[..compress_count];
+
+                let redactor = crate::security::secret_redactor::SecretRedactor::new();
+
                 let recent_context = to_compress
                     .iter()
                     .map(|m| {
                         let mut content = m["content"].as_str().unwrap_or("").to_string();
+                        content = redactor.redact(&content).into_owned(); // Step 1 Redactor
+
                         if let Some(meta) = m.get("metadata") {
                             if let Some(r) = meta.get("reasoning").and_then(|v| v.as_str()) {
                                 content = format!("<thinking>\n{}\n</thinking>\n{}", r, content);
@@ -274,6 +358,14 @@ impl ContextEngine {
                         } else {
                             0.0
                         };
+
+                        if ratio < 1.1 && original_chars > 0 {
+                            let mut count =
+                                INEFFECTIVE_COUNT.entry(channel_id.to_string()).or_insert(0);
+                            *count += 1;
+                        } else {
+                            INEFFECTIVE_COUNT.insert(channel_id.to_string(), 0);
+                        }
 
                         self.job_queue
                             .update_chat_memory_summary(
@@ -356,10 +448,12 @@ impl ContextEngine {
         let (summary, history) = self.get_intelligent_history(channel_id, 20).await?;
 
         // 2. 関連事実の取得 (RAG)
-        let facts = self
+        let mut facts = self
             .job_queue
             .fetch_relevant_karma_by_category("RAG Context", category, limit)
             .await?;
+
+        Self::dedup_karma(&mut facts.entries);
 
         let budget = ContextBudget::default();
         let filtered_entries: Vec<_> = facts
@@ -459,10 +553,12 @@ impl ContextEngine {
 
         // 2. 関連カルマの取得 (Karma Budget)
         // limit を多くして取得し、バジェットに収まるようにトリミング
-        let karma = self
+        let mut karma = self
             .job_queue
             .fetch_relevant_karma_by_category("Context Search", category, 100)
             .await?;
+
+        Self::dedup_karma(&mut karma.entries);
 
         let filtered_entries: Vec<_> = karma
             .entries
@@ -490,7 +586,9 @@ impl ContextEngine {
         }
 
         // 3. 会話履歴の取得 (History Budget)
-        let history = self.job_queue.fetch_chat_history(channel_id, 20).await?;
+        let mut history = self.job_queue.fetch_chat_history(channel_id, 20).await?;
+        Self::prune_tool_results(&mut history);
+
         let mut history_text = String::new();
         // 直近のメッセージから順にバジェットに詰め込む
         for m in history.iter().rev() {
@@ -580,6 +678,68 @@ pub mod tests {
             ContextEngine::calculate_mood_summary(&[entry.clone()]),
             "Extremely Negative"
         );
+    }
+
+    #[test]
+    fn test_prune_tool_results() {
+        use serde_json::json;
+        let mut history = vec![
+            json!({ "role": "tool", "content": "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7" }),
+            json!({ "role": "tool", "content": "Error: Database connection failed" }),
+            json!({ "role": "tool", "content": "Exact same output" }),
+            json!({ "role": "tool", "content": "Exact same output" }), // should be deduplicated
+            json!({ "role": "user", "content": "Exact same output" }), // not a tool, should remain
+        ];
+
+        ContextEngine::prune_tool_results(&mut history);
+
+        // Deduplication (consecutive identical tool results)
+        assert_eq!(
+            history.len(),
+            4,
+            "Should deduplicate consecutive identical tool results"
+        );
+        assert_eq!(history[2]["content"], "Exact same output");
+
+        // Success truncation (Line 1..5)
+        let first = history[0]["content"].as_str().unwrap();
+        assert!(first.contains("Line 1"));
+        assert!(first.contains("Line 5"));
+        assert!(!first.contains("Line 6"), "Should truncate lines after 5");
+        assert!(
+            first.contains("[...truncated 2 lines...]"),
+            "Should append truncation notice"
+        );
+
+        // Error preservation
+        let second = history[1]["content"].as_str().unwrap();
+        assert_eq!(
+            second, "Error: Database connection failed",
+            "Should preserve full error messages"
+        );
+    }
+
+    #[test]
+    fn test_dedup_karma() {
+        let mut entry1 = KarmaEntry::default();
+        entry1.lesson = "Never do X".into();
+
+        let mut entry2 = KarmaEntry::default();
+        entry2.lesson = "Never do X".into(); // duplicate
+
+        let mut entry3 = KarmaEntry::default();
+        entry3.lesson = "Always do Y".into();
+
+        let mut entries = vec![entry1, entry2, entry3];
+        ContextEngine::dedup_karma(&mut entries);
+
+        assert_eq!(
+            entries.len(),
+            2,
+            "Should deduplicate identical karma lessons"
+        );
+        assert_eq!(entries[0].lesson, "Never do X");
+        assert_eq!(entries[1].lesson, "Always do Y");
     }
 
     #[tokio::test]

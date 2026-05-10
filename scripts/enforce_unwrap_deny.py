@@ -119,11 +119,40 @@ def check_file(filepath: str) -> list:
             continue
 
         if check_line(raw_line):
-            kind = ".unwrap()" if ".unwrap()" in code_only else ".expect()"
-            violations.append({
-                "line_number": line_num,
-                "reason": f"Unsafe {kind} found",
-            })
+            # 前後の行にアノテーションがないか確認する (rustfmt対策)
+            is_allowed = False
+            for offset in (-1, 1):
+                adj_idx = i + offset
+                if 0 <= adj_idx < len(lines):
+                    adj_line = lines[adj_idx].strip()
+                    if adj_line.startswith("//"):
+                        for marker in OPT_OUT_MARKERS:
+                            if marker in adj_line:
+                                is_allowed = True
+                                break
+                if is_allowed:
+                    break
+
+            if not is_allowed:
+                if ".unwrap()" in code_only:
+                    kind = ".unwrap()"
+                elif ".expect(" in code_only:
+                    kind = ".expect()"
+                elif "panic!(" in code_only:
+                    kind = "panic!()"
+                elif "todo!(" in code_only:
+                    kind = "todo!()"
+                elif "unimplemented!(" in code_only:
+                    kind = "unimplemented!()"
+                elif "unreachable!(" in code_only:
+                    kind = "unreachable!()"
+                else:
+                    kind = "Zero-Panic violation"
+
+                violations.append({
+                    "line_number": line_num,
+                    "reason": f"Unsafe {kind} found",
+                })
 
     return violations
 

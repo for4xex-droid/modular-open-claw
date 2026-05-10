@@ -1,5 +1,27 @@
 # 🌊 Aiome Ripple Map
 
+## Test Debt Resolution & Monolith Decomposition
+### 1. `api_integration_tests.rs` Directory Migration
+- **変更内容**:
+    - `apps/api-server/src/api_integration_tests.rs` [DELETE]: 4,100行に及ぶ巨大なテストモジュールを解体し物理削除。
+    - `apps/api-server/src/api_integration_tests/` [NEW]: ドメイン駆動のモジュール分割を導入 (`auth`, `mcp`, `commerce`, `agent`, `biome`, `jobs`, `system`, `common`)。
+    - `apps/api-server/src/api_integration_tests/common.rs` [NEW]: テスト間共有フィクスチャ (`TestServer`, `JobQueue`, モック群) の再エクスポート (`pub use common::*;`) 機構を構築。
+- **波及効果**:
+    - テストファイルでの Git マージコンフリクト（Collision）が根本的に解消され、ドメインごとの並列作業やCIコンパイル効率が向上した。
+    - 環境変数 (`GITHUB_CLIENT_ID` 等) の共有ステートによる Race Condition が `#[serial]` 属性の再適用により解消され、175/175 の全テストが安定して PASS (Zero-Panic) する状態となった。
+
+## Phase 1 & 2: Browser Automation Infrastructure & Dual-Provider Economic Model
+### 1. Secure Execution Environment for browser-use
+- **変更内容**:
+    - `libs/infrastructure/src/browser_conductor.rs` [NEW]: `BrowserConductor` を実装。`BastionGuard` を活用して `SandboxProfile::BrowserAgent` プロファイルを適用。ファイル書き込みを禁止しつつ安全なネットワークアクセスを許可。
+    - `libs/infrastructure/src/browser_conductor.rs` [MODIFY]: Gemini API 実行時は `CommerceEngine` を呼び出して100コインをエスクロー（成功時に徴収、失敗時に返金）。Ollama 実行時 (`OLLAMA_BASE_URL` 指定時) は無料で実行するハイブリッド課金モデルを構築。
+    - `libs/infrastructure/src/browser_conductor.rs` [MODIFY]: `TaskEvent` を用いたプログレスのストリーミング出力を実装。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `TaskDispatcher` に `BrowserConductor` を登録。
+- **波及効果**:
+    - Aiome のインフラストラクチャにおける自律的 Web ブラウザ操作能力（Agentic Web Interaction）が安全に解放された。
+    - ユーザーは Local LLM（無料・高プライバシー）と Gemini（有償・高精度）をシームレスに切り替え可能となり、プラットフォーム側はクラウドコストの赤字リスク（Cost Blowout）を構造的に回避できる。
+    - Docker と `BastionGuard` を組み合わせた多層防御（Defense-in-Depth）により、APIキーの漏洩やホストシステムへの特権昇格・破壊的アクセスが物理レイヤーで遮断された。
+
 ## Phase 4/5: Security Hardening & Zero-Panic Enforcement
 ### 1. Unified AppError & Domain Error Decoupling
 - **変更内容**:

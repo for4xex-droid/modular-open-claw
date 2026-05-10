@@ -15,7 +15,7 @@ Detailed documentation for the `api-server` crate.
 - `src/job_management_tests.rs`
 - `src/bootstrap.rs`
 - `src/plugin_loader.rs`
-- `src/api_integration_tests.rs`
+- `src/api_integration_tests/` (Directory for domain-driven integration test modules)
 - `src/system_instructions.rs`
 - `src/self_diagnosis.rs`
 - `src/router.rs`

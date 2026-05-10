@@ -1,0 +1,657 @@
+    Checking api-server v1.0.0 (/Users/motista/Desktop/antigravity/aiome/apps/api-server)
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:244:21
+    |
+244 |     let job_queue = Arc::new(
+    |                     ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:252:19
+    |
+252 |     let primary = Arc::new(MockLlmProvider {
+    |                   ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:258:20
+    |
+258 |     let fallback = Arc::new(MockLlmProvider {
+    |                    ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0425]: cannot find type `Arc` in this scope
+   --> apps/api-server/src/api_integration_tests/system.rs:263:17
+    |
+263 |     let router: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> = Arc::new(
+    |                 ^^^ not found in this scope
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:263:80
+    |
+263 |     let router: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> = Arc::new(
+    |                                                                                ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0422]: cannot find struct, variant or union type `AppState` in this scope
+   --> apps/api-server/src/api_integration_tests/system.rs:268:17
+    |
+268 |     let state = AppState {
+    |                 ^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+  1 + use crate::AppState;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:270:33
+    |
+270 |         db_pool: Component::new(Arc::new(pool.clone())),
+    |                                 ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:272:34
+    |
+272 |         registry: Component::new(Arc::new(infrastructure::registry::RegistryManager::new(
+    |                                  ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:275:44
+    |
+275 |         wasm_skill_manager: Component::new(Arc::new(
+    |                                            ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/system.rs:285:40
+    |
+285 |         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
+    |                                        ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Mutex`
+   --> apps/api-server/src/api_integration_tests/system.rs:285:49
+    |
+285 |         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
+    |                                                 ^^^^^ use of undeclared type `Mutex`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Mutex;
+    |
+  1 + use std::sync::Mutex;
+    |
+  1 + use std::sync::nonpoison::Mutex;
+    |
+  1 + use futures::lock::Mutex;
+    |
+    = and 2 other candidates
+
+error[E0433]: failed to resolve: use of undeclared type `HealthMonitor`
+   --> apps/api-server/src/api_integration_tests/system.rs:285:60
+    |
+285 |         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
+    |                                                            ^^^^^^^^^^^^^ use of undeclared type `HealthMonitor`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::HealthMonitor;
+    |
+  1 + use shared::health::HealthMonitor;
+    |
+
+error[E0425]: cannot find value `GLOBAL_METRICS_HANDLE` in this scope
+   --> apps/api-server/src/api_integration_tests/system.rs:289:26
+    |
+289 |     let metrics_handle = GLOBAL_METRICS_HANDLE.clone();
+    |                          ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+note: static `crate::api_integration_tests::common::GLOBAL_METRICS_HANDLE` exists but is inaccessible
+   --> apps/api-server/src/api_integration_tests/common.rs:25:1
+    |
+ 25 | / static GLOBAL_METRICS_HANDLE: once_cell::sync::Lazy<metrics_exporter_prometheus::PrometheusHandle> =
+ 26 | |     once_cell::sync::Lazy::new(|| {
+ 27 | |         metrics_exporter_prometheus::PrometheusBuilder::new()
+ 28 | |             .install_recorder()
+ 29 | |             .expect("Failed to install global prometheus recorder in tests")
+ 30 | |     });
+    | |_______^ not accessible
+
+error[E0425]: cannot find function `build_app` in this scope
+   --> apps/api-server/src/api_integration_tests/system.rs:291:15
+    |
+291 |     let app = build_app(
+    |               ^^^^^^^^^ not found in this scope
+    |
+help: consider importing this function through its public re-export
+    |
+  1 + use crate::build_app;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CorsLayer`
+   --> apps/api-server/src/api_integration_tests/system.rs:293:9
+    |
+293 |         CorsLayer::new().allow_origin(tower_http::cors::AllowOrigin::any()),
+    |         ^^^^^^^^^ use of undeclared type `CorsLayer`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::CorsLayer;
+    |
+  1 + use tower_http::cors::CorsLayer;
+    |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `plugin_loader`
+   --> apps/api-server/src/api_integration_tests/system.rs:295:9
+    |
+295 |         plugin_loader::PluginRegistry::new(),
+    |         ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `plugin_loader`
+    |
+    = help: if you wanted to use a crate named `plugin_loader`, use `cargo add plugin_loader` to add it to your `Cargo.toml`
+help: consider importing this struct
+    |
+  1 + use crate::plugin_loader::PluginRegistry;
+    |
+help: if you import `PluginRegistry`, refer to it directly
+    |
+295 -         plugin_loader::PluginRegistry::new(),
+295 +         PluginRegistry::new(),
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `TestServer`
+   --> apps/api-server/src/api_integration_tests/system.rs:298:19
+    |
+298 |     let _server = TestServer::new(app).unwrap();
+    |                   ^^^^^^^^^^ use of undeclared type `TestServer`
+    |
+help: consider importing this struct
+    |
+  1 + use axum_test::TestServer;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `JobQueue`
+   --> apps/api-server/src/api_integration_tests/agent.rs:530:5
+    |
+530 |     JobQueue::store_expression(&**jq, &expr).await.unwrap();
+    |     ^^^^^^^^ use of undeclared type `JobQueue`
+    |
+help: consider importing one of these traits
+    |
+  1 + use crate::JobQueue;
+    |
+  1 + use aiome_core::traits::JobQueue;
+    |
+  1 + use aiome_core_contracts::JobQueue;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `JobQueue`
+   --> apps/api-server/src/api_integration_tests/agent.rs:550:19
+    |
+550 |     let fetched = JobQueue::fetch_expressions(&**jq, 1).await.unwrap();
+    |                   ^^^^^^^^ use of undeclared type `JobQueue`
+    |
+help: consider importing one of these traits
+    |
+  1 + use crate::JobQueue;
+    |
+  1 + use aiome_core::traits::JobQueue;
+    |
+  1 + use aiome_core_contracts::JobQueue;
+    |
+
+error[E0425]: cannot find value `E2eMockForecastProvider` in this scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:753:49
+    |
+753 |     let forecast_provider = std::sync::Arc::new(E2eMockForecastProvider);
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared type `Arc`
+   --> apps/api-server/src/api_integration_tests/commerce.rs:582:24
+    |
+582 |     let sync_counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    |                        ^^^ use of undeclared type `Arc`
+    |
+help: consider importing one of these structs
+    |
+  1 + use crate::Arc;
+    |
+  1 + use std::sync::Arc;
+    |
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/system.rs:301:15
+    |
+301 |     let res = router.complete("hello", None).await.unwrap();
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `fetch_job` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/jobs.rs:160:10
+    |
+158 |       let updated_job = state
+    |  _______________________-
+159 | |         .job_queue
+160 | |         .fetch_job(test_job_id)
+    | |_________-^^^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 |   pub struct Component<T>(pub Option<T>);
+    |   ----------------------- method `fetch_job` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `fetch_job` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use aiome_core_contracts::TaskRegistry;
+    |
+help: there is a method `do_fetch_job` with a similar name
+    |
+160 |         .do_fetch_job(test_job_id)
+    |          +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/jobs.rs:158:23
+    |
+158 |       let updated_job = state
+    |  _______________________^
+159 | |         .job_queue
+160 | |         .fetch_job(test_job_id)
+161 | |         .await
+    | |______________^ cannot infer type
+
+error[E0599]: no method named `fetch_job` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/jobs.rs:218:10
+    |
+216 |       let updated_job = state
+    |  _______________________-
+217 | |         .job_queue
+218 | |         .fetch_job(test_job_id)
+    | |_________-^^^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 |   pub struct Component<T>(pub Option<T>);
+    |   ----------------------- method `fetch_job` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `fetch_job` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use aiome_core_contracts::TaskRegistry;
+    |
+help: there is a method `do_fetch_job` with a similar name
+    |
+218 |         .do_fetch_job(test_job_id)
+    |          +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/jobs.rs:216:23
+    |
+216 |       let updated_job = state
+    |  _______________________^
+217 | |         .job_queue
+218 | |         .fetch_job(test_job_id)
+219 | |         .await
+    | |______________^ cannot infer type
+
+error[E0599]: no method named `enqueue` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+  --> apps/api-server/src/api_integration_tests/agent.rs:15:10
+   |
+13 | /     state
+14 | |         .job_queue
+15 | |         .enqueue("Testing", "A2UI", "standard", None, None, None, 1)
+   | |_________-^^^^^^^
+   |
+  ::: apps/api-server/src/app_state.rs:37:1
+   |
+37 |   pub struct Component<T>(pub Option<T>);
+   |   ----------------------- method `enqueue` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `enqueue` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use aiome_core_contracts::TaskRegistry;
+   |
+help: there is a method `do_enqueue` with a similar name
+   |
+15 |         .do_enqueue("Testing", "A2UI", "standard", None, None, None, 1)
+   |          +++
+
+error[E0282]: type annotations needed
+  --> apps/api-server/src/api_integration_tests/agent.rs:13:5
+   |
+13 | /     state
+14 | |         .job_queue
+15 | |         .enqueue("Testing", "A2UI", "standard", None, None, None, 1)
+16 | |         .await
+   | |______________^ cannot infer type
+
+error[E0599]: no method named `fetch_recent_jobs` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+  --> apps/api-server/src/api_integration_tests/agent.rs:18:32
+   |
+18 |     let jobs = state.job_queue.fetch_recent_jobs(1).await.unwrap();
+   |                                ^^^^^^^^^^^^^^^^^
+   |
+  ::: apps/api-server/src/app_state.rs:37:1
+   |
+37 | pub struct Component<T>(pub Option<T>);
+   | ----------------------- method `fetch_recent_jobs` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `fetch_recent_jobs` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use aiome_core_contracts::TaskRegistry;
+   |
+help: there is a method `do_fetch_recent_jobs` with a similar name
+   |
+18 |     let jobs = state.job_queue.do_fetch_recent_jobs(1).await.unwrap();
+   |                                +++
+
+error[E0282]: type annotations needed
+  --> apps/api-server/src/api_integration_tests/agent.rs:18:16
+   |
+18 |     let jobs = state.job_queue.fetch_recent_jobs(1).await.unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `fetch_job` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+  --> apps/api-server/src/api_integration_tests/agent.rs:36:10
+   |
+34 |       let job = state
+   |  _______________-
+35 | |         .job_queue
+36 | |         .fetch_job(&target_id)
+   | |_________-^^^^^^^^^
+   |
+  ::: apps/api-server/src/app_state.rs:37:1
+   |
+37 |   pub struct Component<T>(pub Option<T>);
+   |   ----------------------- method `fetch_job` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `fetch_job` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use aiome_core_contracts::TaskRegistry;
+   |
+help: there is a method `do_fetch_job` with a similar name
+   |
+36 |         .do_fetch_job(&target_id)
+   |          +++
+
+error[E0282]: type annotations needed
+  --> apps/api-server/src/api_integration_tests/agent.rs:34:15
+   |
+34 |       let job = state
+   |  _______________^
+35 | |         .job_queue
+36 | |         .fetch_job(&target_id)
+37 | |         .await
+   | |______________^ cannot infer type
+
+error[E0599]: no method named `fetch_job` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+  --> apps/api-server/src/api_integration_tests/agent.rs:57:10
+   |
+55 |       let job = state
+   |  _______________-
+56 | |         .job_queue
+57 | |         .fetch_job(&target_id)
+   | |_________-^^^^^^^^^
+   |
+  ::: apps/api-server/src/app_state.rs:37:1
+   |
+37 |   pub struct Component<T>(pub Option<T>);
+   |   ----------------------- method `fetch_job` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `fetch_job` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use aiome_core_contracts::TaskRegistry;
+   |
+help: there is a method `do_fetch_job` with a similar name
+   |
+57 |         .do_fetch_job(&target_id)
+   |          +++
+
+error[E0282]: type annotations needed
+  --> apps/api-server/src/api_integration_tests/agent.rs:55:15
+   |
+55 |       let job = state
+   |  _______________^
+56 | |         .job_queue
+57 | |         .fetch_job(&target_id)
+58 | |         .await
+   | |______________^ cannot infer type
+
+error[E0599]: no method named `store_expression` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:133:25
+    |
+133 |         state.job_queue.store_expression(&expr).await.unwrap();
+    |                         ^^^^^^^^^^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 | pub struct Component<T>(pub Option<T>);
+    | ----------------------- method `store_expression` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `store_expression` are implemented but not in scope; perhaps you want to import one of them
+    |
+  1 + use aiome_core::expression::tts_worker::TtsQueue;
+    |
+  1 + use aiome_core_contracts::JobQueue;
+    |
+help: there is a method `do_store_expression` with a similar name
+    |
+133 |         state.job_queue.do_store_expression(&expr).await.unwrap();
+    |                         +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:133:9
+    |
+133 |         state.job_queue.store_expression(&expr).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `enqueue` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:229:10
+    |
+227 |       let job_id = state
+    |  __________________-
+228 | |         .job_queue
+229 | |         .enqueue(
+    | |_________-^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 |   pub struct Component<T>(pub Option<T>);
+    |   ----------------------- method `enqueue` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `enqueue` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use aiome_core_contracts::TaskRegistry;
+    |
+help: there is a method `do_enqueue` with a similar name
+    |
+229 |         .do_enqueue(
+    |          +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:227:18
+    |
+227 |       let job_id = state
+    |  __________________^
+228 | |         .job_queue
+229 | |         .enqueue(
+230 | |             "LORA_TRAINING",
+...   |
+238 | |         .await
+    | |______________^ cannot infer type
+
+error[E0599]: no method named `update_job_status` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:244:10
+    |
+242 | /     state
+243 | |         .job_queue
+244 | |         .update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::Completed)
+    | |_________-^^^^^^^^^^^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 |   pub struct Component<T>(pub Option<T>);
+    |   ----------------------- method `update_job_status` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `TaskRegistry` which provides `update_job_status` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use aiome_core_contracts::TaskRegistry;
+    |
+help: there is a method `do_update_job_status` with a similar name
+    |
+244 |         .do_update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::Completed)
+    |          +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:242:5
+    |
+242 | /     state
+243 | |         .job_queue
+244 | |         .update_job_status(&job_id, aiome_core_contracts::traits::JobStatus::Completed)
+245 | |         .await
+    | |______________^ cannot infer type
+
+error[E0599]: no method named `encode` found for struct `GeneralPurpose` in the current scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:269:69
+    |
+269 |         "content_base64": base64::engine::general_purpose::STANDARD.encode(vec![0u8; 100]),
+    |                                                                     ^^^^^^
+    |
+   ::: /Users/motista/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/base64-0.22.1/src/engine/mod.rs:115:8
+    |
+115 |     fn encode<T: AsRef<[u8]>>(&self, input: T) -> String {
+    |        ------ the method is available for `GeneralPurpose` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `encode_slice` with a similar name, but with different arguments
+   --> /Users/motista/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/base64-0.22.1/src/engine/mod.rs:194:5
+    |
+194 | /     fn encode_slice<T: AsRef<[u8]>>(
+195 | |         &self,
+196 | |         input: T,
+197 | |         output_buf: &mut [u8],
+198 | |     ) -> Result<usize, EncodeSliceError> {
+    | |________________________________________^
+help: trait `Engine` which provides `encode` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use base64::Engine;
+    |
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:530:5
+    |
+530 |     JobQueue::store_expression(&**jq, &expr).await.unwrap();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:550:19
+    |
+550 |     let fetched = JobQueue::fetch_expressions(&**jq, 1).await.unwrap();
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0599]: no method named `get_agent_stats` found for struct `app_state::Component<Arc<UniversalJobQueue>>` in the current scope
+   --> apps/api-server/src/api_integration_tests/agent.rs:620:10
+    |
+618 |       let stats: aiome_core_contracts::types::AgentStats = state
+    |  __________________________________________________________-
+619 | |         .job_queue
+620 | |         .get_agent_stats()
+    | |_________-^^^^^^^^^^^^^^^
+    |
+   ::: apps/api-server/src/app_state.rs:37:1
+    |
+ 37 |   pub struct Component<T>(pub Option<T>);
+    |   ----------------------- method `get_agent_stats` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `AgentEvolver` which provides `get_agent_stats` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use aiome_core_contracts::AgentEvolver;
+    |
+help: there is a method `do_get_agent_stats` with a similar name
+    |
+620 |         .do_get_agent_stats()
+    |          +++
+
+error[E0282]: type annotations needed
+   --> apps/api-server/src/api_integration_tests/agent.rs:618:58
+    |
+618 |       let stats: aiome_core_contracts::types::AgentStats = state
+    |  __________________________________________________________^
+619 | |         .job_queue
+620 | |         .get_agent_stats()
+621 | |         .await
+    | |______________^ cannot infer type
+
+error[E0433]: failed to resolve: use of undeclared type `E2eMockLoraEngine`
+   --> apps/api-server/src/api_integration_tests/agent.rs:759:41
+    |
+759 |     let mock_lora = std::sync::Arc::new(E2eMockLoraEngine::default());
+    |                                         ^^^^^^^^^^^^^^^^^ use of undeclared type `E2eMockLoraEngine`
+
+Some errors have detailed explanations: E0282, E0422, E0425, E0433, E0599.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `api-server` (bin "api-server" test) due to 46 previous errors

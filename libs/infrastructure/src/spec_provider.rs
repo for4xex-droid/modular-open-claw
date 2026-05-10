@@ -8,15 +8,6 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 
-/// Regex pattern for secret-like values: KEY=value, TOKEN=value, SECRET=value, PASSWORD=value
-/// Matches `UPPER_CASE_KEY=non-whitespace-value` patterns commonly found in config/docs.
-static SECRET_PATTERN: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-    regex::Regex::new(
-        r"(?i)(API_KEY|SECRET|TOKEN|PASSWORD|PRIVATE_KEY|ACCESS_KEY|CLIENT_SECRET)\s*[=:]\s*\S+",
-    )
-    .expect("Invalid regex for secret pattern") // allow-anti-pattern: static regex # gitleaks:allow
-});
-
 #[async_trait]
 pub trait SpecProvider: Send + Sync {
     /// Export the internal workflows and constraints to a spec-kit compatible format
@@ -38,9 +29,8 @@ impl FsSpecProvider {
     /// This is a best-effort defense-in-depth measure; source files
     /// should not contain real secrets in the first place.
     fn sanitize_content(content: &str) -> String {
-        SECRET_PATTERN
-            .replace_all(content, "${1}=REDACTED")
-            .into_owned()
+        let redactor = crate::security::secret_redactor::SecretRedactor::new();
+        redactor.redact(content).into_owned()
     }
 
     /// Validate that `target_path` resolves to a location under `allowed_parent`.
@@ -227,10 +217,8 @@ mod tests {
         assert!(!result.contains("abcdef"));
         assert!(!result.contains("AKIA1234"));
         assert!(result.contains("Safe line."));
-        // Verify the key names are preserved with REDACTED value
-        assert!(result.contains("PASSWORD=REDACTED"));
-        assert!(result.contains("CLIENT_SECRET=REDACTED"));
-        assert!(result.contains("ACCESS_KEY=REDACTED"));
+        // Verify they are replaced with REDACTED
+        assert!(result.contains("[REDACTED]"));
     }
 
     #[tokio::test]

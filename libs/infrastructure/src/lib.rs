@@ -88,6 +88,7 @@ pub mod belief_consistency_gate;
 #[cfg(test)]
 mod belief_consistency_gate_tests;
 
+pub mod browser_conductor;
 pub mod db;
 /// AgentRx 自己診断・軌跡分析
 pub mod diagnostics;

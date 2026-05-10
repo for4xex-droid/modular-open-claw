@@ -521,6 +521,10 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
         100,
     );
     hook_manager.add_hook(Arc::new(behavior_monitor));
+
+    // Register Hermes LoopDetectorHook
+    let loop_detector = infrastructure::security::LoopDetectorHook::default();
+    hook_manager.add_hook(Arc::new(loop_detector));
     // NOTE: Plugin agent hooks are registered here.
     // Plugins MUST be registered via `plugin_registry.register()` BEFORE this point
     // for their hooks to be included. Currently Nurture connects OOP via API,
@@ -1283,6 +1287,18 @@ pub async fn init_core_services(
         docker_gemini_key,
     ));
     task_dispatcher.register_conductor(docker_conductor);
+
+    // Register BrowserConductor
+    let browser_gemini_key = config
+        .gemini_api_key
+        .as_ref()
+        .map(|k| secrecy::SecretString::from(secrecy::ExposeSecret::expose_secret(k).to_string()))
+        .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
+    let browser_conductor = Arc::new(infrastructure::browser_conductor::BrowserConductor::new(
+        commerce_engine.clone(),
+        browser_gemini_key,
+    ));
+    task_dispatcher.register_conductor(browser_conductor);
 
     // Register CsamScanConductor
     let csam_conductor = Arc::new(

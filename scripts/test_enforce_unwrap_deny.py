@@ -134,19 +134,49 @@ mod tests {
         finally:
             os.remove(path)
 
-    def test_violation_reason_distinguishes_unwrap_vs_expect(self):
+    def test_violation_reason_distinguishes_macros(self):
         content = """\
 let a = x.unwrap();
 let b = y.expect("boom");
+panic!("boom");
+todo!("not yet");
+unimplemented!("no");
+unreachable!("impossible");
 """
         path = self._write_temp(content)
         try:
             violations = enforce_unwrap_deny.check_file(path)
-            self.assertEqual(len(violations), 2)
+            self.assertEqual(len(violations), 6)
             self.assertIn(".unwrap()", violations[0]["reason"])
             self.assertIn(".expect()", violations[1]["reason"])
+            self.assertIn("panic!()", violations[2]["reason"])
+            self.assertIn("todo!()", violations[3]["reason"])
+            self.assertIn("unimplemented!()", violations[4]["reason"])
+            self.assertIn("unreachable!()", violations[5]["reason"])
         finally:
             os.remove(path)
+
+    def test_adjacent_line_annotation_is_allowed(self):
+        """対象行の前または後にアノテーションがある場合も許可される"""
+        content = """\
+fn prod() {
+    // allow-anti-pattern
+    let x = Some(1).unwrap(); 
+    
+    let y = Some(2).unwrap();
+    // allow-anti-pattern
+    
+    let z = Some(3).unwrap(); // VIOLATION
+}
+"""
+        path = self._write_temp(content)
+        try:
+            violations = enforce_unwrap_deny.check_file(path)
+            self.assertEqual(len(violations), 1, "Only z should be a violation")
+            self.assertEqual(violations[0]["line_number"], 8)
+        finally:
+            os.remove(path)
+
 
 
 class TestScanDirectory(unittest.TestCase):

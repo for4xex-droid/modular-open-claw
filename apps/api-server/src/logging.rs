@@ -67,28 +67,8 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
         event.record(&mut visitor);
 
         // SEC-4: Secret Masking (Expert 4 Gap)
-        // Simple heuristic to obfuscate common API keys or Stripe secrets from being logged
-        let mut masked_message = if visitor.message.to_lowercase().contains("stripe_")
-            || visitor.message.to_lowercase().contains("api_key")
-            || visitor.message.to_lowercase().contains("sk_")
-            || visitor.message.to_lowercase().contains("bearer")
-            || visitor.message.to_lowercase().contains("secret")
-            || visitor.message.to_lowercase().contains("password")
-        {
-            static RE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
-                std::sync::OnceLock::new();
-            let re = RE.get_or_init(|| {
-                regex::Regex::new(r"(?i)(sk_(live|test)_|STRIPE_[A-Z_]+|API_KEY|Bearer\s+|secret|password|VAULT_MASTER_PASSWORD)[=: ]*[\x21-\x7E]+")
-            });
-            match re.as_ref() {
-                Ok(regex) => regex
-                    .replace_all(&visitor.message, "$1***MASKED***")
-                    .to_string(),
-                Err(_) => "***MASKING ERROR - REDACTED FOR SAFETY***".to_string(),
-            }
-        } else {
-            visitor.message
-        };
+        let redactor = infrastructure::security::secret_redactor::SecretRedactor::new();
+        let mut masked_message = redactor.redact(&visitor.message).into_owned();
 
         // Phase 2-C: Apply GDPR PII Masking
         masked_message = shared::guardrails::mask_pii(&masked_message);

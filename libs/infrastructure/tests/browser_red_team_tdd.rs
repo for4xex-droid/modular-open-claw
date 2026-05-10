@@ -1,0 +1,270 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+#![allow(clippy::unwrap_used)]
+
+use aiome_contracts::commerce::{
+    CommerceEngine, EscrowRecord, PointsBalance, SubscriptionStatus, TransactionRecord,
+};
+use aiome_core::error::AiomeError;
+use aiome_core::traits::Job;
+use async_trait::async_trait;
+use infrastructure::browser_conductor::BrowserConductor;
+use infrastructure::task_orchestrator::TaskConductor;
+use secrecy::SecretString;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use uuid::Uuid;
+
+struct MockCommerceEngine {
+    pub escrow_called_with_amount: Arc<AtomicU64>,
+}
+
+impl MockCommerceEngine {
+    fn new() -> Self {
+        Self {
+            escrow_called_with_amount: Arc::new(AtomicU64::new(0)),
+        }
+    }
+}
+
+#[async_trait]
+impl CommerceEngine for MockCommerceEngine {
+    async fn get_balance(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(1000)
+    }
+
+    async fn validate_activity(
+        &self,
+        _agent_id: Uuid,
+        _activity_type: &str,
+        _amount: u64,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn execute_autonomous_purchase(
+        &self,
+        _agent_id: Uuid,
+        _item_id: Uuid,
+        _metadata: serde_json::Value,
+    ) -> Result<String, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn get_daily_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(0)
+    }
+
+    async fn get_daily_limit(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(1000)
+    }
+
+    async fn escrow_create(&self, _agent_id: Uuid, amount: u64) -> Result<String, AiomeError> {
+        self.escrow_called_with_amount
+            .store(amount, Ordering::SeqCst);
+        Ok("mock_escrow_id".to_string())
+    }
+
+    async fn list_escrows(&self, _agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn escrow_release(
+        &self,
+        _escrow_id: &str,
+        _recipient_id: Uuid,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn escrow_refund(&self, _escrow_id: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn register_license(
+        &self,
+        _agent_id: Uuid,
+        _asset_id: Uuid,
+        _transaction_id: &str,
+        _license_type: &str,
+    ) -> Result<String, AiomeError> {
+        unimplemented!()
+    }
+
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn create_checkout_session(
+        &self,
+        _agent_id: Uuid,
+        _price_id: &str,
+        _success_url: &str,
+        _cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: Uuid,
+        _plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        _subscription_id: &str,
+    ) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn get_subscription_status(
+        &self,
+        _agent_id: Uuid,
+    ) -> Result<SubscriptionStatus, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn transfer(
+        &self,
+        _from_id: Uuid,
+        _to_id: Uuid,
+        _amount: u64,
+    ) -> Result<String, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn deduct_generation_cost(
+        &self,
+        _agent_id: Uuid,
+        _asset_id: Option<Uuid>,
+        _amount: u64,
+        _generation_type: &str,
+    ) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn instant_refund(
+        &self,
+        _transaction_id: &str,
+        _actor_id: Uuid,
+    ) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn withdraw_points(
+        &self,
+        _actor_id: Uuid,
+        _points_to_withdraw: u64,
+    ) -> Result<(), AiomeError> {
+        unimplemented!()
+    }
+
+    async fn get_points(&self, _agent_id: Uuid) -> Result<PointsBalance, AiomeError> {
+        unimplemented!()
+    }
+
+    async fn get_transaction_history(
+        &self,
+        _agent_id: Uuid,
+        _limit: u32,
+    ) -> Result<Vec<TransactionRecord>, AiomeError> {
+        unimplemented!()
+    }
+}
+
+#[tokio::test]
+async fn test_browser_conductor_charges_100_coins_for_gemini() {
+    let engine = Arc::new(MockCommerceEngine::new());
+    let engine_ref = engine.clone();
+
+    let conductor = BrowserConductor::new(Some(engine), SecretString::new("gemini-key".into()));
+
+    let job = Job {
+        id: Uuid::new_v4().to_string(),
+        topic: serde_json::json!({
+            "llm_provider": "gemini",
+            "task": "Test task"
+        })
+        .to_string(),
+        ..Default::default()
+    };
+
+    let (tx, _) = mpsc::channel(10);
+    let _ = conductor.conduct(job, tx).await;
+
+    assert_eq!(
+        engine_ref.escrow_called_with_amount.load(Ordering::SeqCst),
+        100,
+        "BrowserConductor must charge 100 coins for Gemini execution"
+    );
+}
+
+#[tokio::test]
+async fn test_browser_conductor_charges_0_coins_for_ollama() {
+    let engine = Arc::new(MockCommerceEngine::new());
+    let engine_ref = engine.clone();
+
+    let conductor = BrowserConductor::new(Some(engine), SecretString::new("gemini-key".into()));
+
+    let job = Job {
+        id: Uuid::new_v4().to_string(),
+        topic: serde_json::json!({
+            "llm_provider": "ollama",
+            "task": "Test task"
+        })
+        .to_string(),
+        ..Default::default()
+    };
+
+    let (tx, _) = mpsc::channel(10);
+    let _ = conductor.conduct(job, tx).await;
+
+    assert_eq!(
+        engine_ref.escrow_called_with_amount.load(Ordering::SeqCst),
+        0,
+        "BrowserConductor must not charge coins for Ollama execution"
+    );
+}
+
+#[tokio::test]
+async fn test_browser_conductor_overrides_max_steps() {
+    // This test ensures that if a user tries to pass {"max_steps": 1000},
+    // BrowserConductor overrides it to 20 for safety.
+    // Since we mock the actual Docker execution, we'll need to expose a method
+    // to build the sanitized payload, or check the generated environment variables.
+
+    let conductor = BrowserConductor::new(None, SecretString::new("gemini-key".into()));
+
+    let raw_topic = serde_json::json!({
+        "llm_provider": "gemini",
+        "task": "Hack task",
+        "max_steps": 10000 // Malicious attempt to cause infinite loop
+    })
+    .to_string();
+
+    let sanitized = conductor.sanitize_payload(&raw_topic).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&sanitized).unwrap();
+
+    assert_eq!(
+        parsed.get("max_steps").unwrap().as_u64().unwrap(),
+        20,
+        "BrowserConductor MUST override max_steps to 20"
+    );
+}

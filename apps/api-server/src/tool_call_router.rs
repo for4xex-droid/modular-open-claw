@@ -424,8 +424,13 @@ impl ToolCallRouter for DefaultToolCallRouter {
             }
 
             let budget = infrastructure::context_engine::ContextBudget::default();
+
+            // [SEC] Apply Secret Redactor before truncation
+            let redactor = infrastructure::security::secret_redactor::SecretRedactor::new();
+            let redacted_output = redactor.redact(&filtered.filtered_output);
+
             let truncated = crate::system_instructions::safe_truncate(
-                &filtered.filtered_output,
+                &redacted_output,
                 budget.max_tool_output_chars,
             );
             let _ = tx_clone.send(ToolExecutionEvent::Result(truncated)).await;

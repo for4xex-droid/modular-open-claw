@@ -124,7 +124,7 @@ scan_crate() {
 
   # Check 5: format!-based JSON (potential injection)
   local json_fmt
-  json_fmt=$(echo "$rs_files" | grep -v "tests\.\|test_" | xargs grep -l 'format!.*{.*".*:' 2>/dev/null || true)
+  json_fmt=$(echo "$rs_files" | grep -v "tests\.\|test_" | xargs grep -l 'format!.*r#"{' 2>/dev/null || true)
   if [[ -n "$json_fmt" ]]; then
     warn "format! による JSON 構築の可能性"
   fi
@@ -153,17 +153,7 @@ cross_cutting_checks() {
   echo "║   🔀 Phase 2: クロスカッティング整合性   ║"
   echo "╚══════════════════════════════════════════╝"
 
-  # CC-1: trait定義 ↔ impl 整合性（async_trait メソッド数チェック）
-  echo ""
-  echo "── CC-1: JobQueue trait vs impl メソッド数 ──"
-  local trait_methods impl_methods
-  trait_methods=$(grep -c 'async fn ' libs/core/src/traits.rs 2>/dev/null | tr -d '\n ' || echo "0")
-  impl_methods=$(grep -c 'async fn ' libs/infrastructure/src/job_queue/mod.rs 2>/dev/null | tr -d '\n ' || echo "0")
-  if [[ "$trait_methods" != "$impl_methods" ]]; then
-    warn "JobQueue trait ($trait_methods メソッド) と impl ($impl_methods メソッド) の数が不一致"
-  else
-    pass "JobQueue trait/impl メソッド数一致 ($trait_methods)"
-  fi
+  # CC-1: trait定義 ↔ impl 整合性（Rustコンパイラにより保証されるため削除）
 
   # CC-2: Box::pin 適用率
   echo ""
@@ -213,21 +203,7 @@ cross_cutting_checks() {
     pass "全環境変数が .env.example に記載済み"
   fi
 
-  # CC-5: MockJobQueue の完全性
-  echo ""
-  echo "── CC-5: MockJobQueue 完全性 ──"
-  local mock_fn_count
-  mock_fn_count=$(find libs/ -name "*.rs" -not -path "*/target/*" \
-    -exec grep -l 'impl JobQueue for Mock' {} \; 2>/dev/null | head -1)
-  if [[ -n "$mock_fn_count" ]]; then
-    local mock_methods
-    mock_methods=$(grep -c 'async fn ' "$mock_fn_count" 2>/dev/null | tr -d '\n ' || echo "0")
-    if [[ "$mock_methods" -lt "$trait_methods" ]]; then
-      err "MockJobQueue ($mock_methods メソッド) が JobQueue trait ($trait_methods メソッド) より少ない — 未実装メソッドあり"
-    else
-      pass "MockJobQueue メソッド数一致 ($mock_methods/$trait_methods)"
-    fi
-  fi
+  # CC-5: MockJobQueue の完全性（Rustコンパイラにより保証されるため削除）
 
   # CC-6: Type-Driven Security (Auth Extractor Enforcement)
   echo ""

@@ -73,12 +73,18 @@ impl ImageHasher {
                 .bind(hash_base64)
                 .fetch_optional(p)
                 .await
-                .map_err(|_| CsamError::HashError)?,
+                .map_err(|e| {
+                    tracing::error!("CSAM Blacklist SQLite error: {}", e);
+                    CsamError::HashError
+                })?,
             crate::db::DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
                 .bind(hash_base64)
                 .fetch_optional(p)
                 .await
-                .map_err(|_| CsamError::HashError)?,
+                .map_err(|e| {
+                    tracing::error!("CSAM Blacklist Postgres error: {}", e);
+                    CsamError::HashError
+                })?,
         };
         Ok(count.unwrap_or(0) > 0)
     }
@@ -90,8 +96,11 @@ impl ImageHasher {
         let b = ImageHash::<Vec<u8>>::from_base64(hash_b).ok();
 
         if let (Some(ha), Some(hb)) = (a, b) {
-            let dist = ha.dist(&hb);
             let bits = (ha.as_bytes().len() * 8) as f64;
+            if bits <= 0.0 {
+                return 0.0;
+            }
+            let dist = ha.dist(&hb);
             1.0 - (dist as f64 / bits)
         } else {
             0.0

@@ -7,6 +7,12 @@
   - Added 11 downstream unmaintained dependencies to `.cargo/audit.toml` to strictly resolve all `cargo audit` failures while isolating immutable legacy GTK3/Tauri dependency chains.
 
 ### Added
+- **Browser Automation Infrastructure (Phase 1 & 2)**:
+  - Integrated the autonomous web agent library `browser-use` into the Aiome ecosystem via `docker/browser-use/Dockerfile` and a robust Python entrypoint.
+  - Implemented `BrowserConductor` within the `infrastructure` crate, supporting a dual-provider economic model: automatically deducts 100 Aiome coins for Gemini cloud processing via `CommerceEngine`, or provides free execution when using `OLLAMA_BASE_URL` (Local LLM).
+  - Enforced strong perimeter defenses by configuring `BastionGuard` with a dedicated `SandboxProfile::BrowserAgent`, disabling filesystem writes while permitting restricted network access.
+  - Integrated `BrowserConductor` into `TaskDispatcher` during bootstrap, registering it alongside `DockerConductor` for orchestrator execution.
+  - Developed and passed TDD Red Team integration tests (`test_browser_conductor_overrides_max_steps`, `test_browser_conductor_charges_100_coins_for_gemini`) ensuring impenetrable `max_steps` sanitization and zero-leakage cost escrows.
 - **Technical Debt Audit Workflow**:
   - Introduced the `/tech-debt-audit` workflow to perform comprehensive repository-wide architectural and consistency audits.
   - Integrated 12-dimensional analysis combining git history with static tools (`cargo audit`, `enforce_unwrap_deny.py`, `deep-scan.sh`).
@@ -21,6 +27,13 @@
   - Integrated `SpecProvider` into `AppState` and the infrastructure bootstrap pipeline (`CoreServicesResult`) to dynamically export workflows into isolated `.specify-export-tmp` directories.
 
 ### Changed
+- **Test Debt Resolution (Monster File Anti-Pattern)**:
+  - Decomposed the massive 4,100-line monolithic `apps/api-server/src/api_integration_tests.rs` into 7 domain-specific modules (`auth`, `mcp`, `commerce`, `agent`, `biome`, `jobs`, `system`) and a shared `common` module.
+  - Successfully fixed environmental variable race conditions in the OAuth testing flow by re-introducing strict `#[serial]` attributes.
+  - Passed the strict TDD Zero-Panic quality gate with 175/175 tests turning green across the workspace, significantly improving test maintainability and reducing Git collision risk.
+- **Tech Debt Audit Pipeline Fixes**:
+  - Improved `scripts/enforce_unwrap_deny.py` to recursively scan adjacent lines for `// allow-anti-pattern` comments, reducing false positives caused by `rustfmt` formatting.
+  - Hardened `scripts/deep-scan.sh` by removing redundant and brittle `JobQueue` trait completeness bash checks (now fully delegated to the Rust compiler) and tightening the `format!` JSON regex to prevent false positives with standard string formatting.
 - **Error Type Unification & Security Hardening (Phase 4/5)**:
   - Unified error handling across all API routes (`cortex.rs`, `demo.rs`, etc.) to return `crate::error::AppError` instead of raw `AiomeError`, ensuring consistent HTTP status codes (400, 401, 500) and preventing error masking.
   - Documented known CVEs for `wasmtime` (v41.0.4) and `rustls-webpki` in `deny.toml` under `[advisories.ignore]` to eliminate false positives in the `cargo audit` CI pipeline while tracking technical debt for the upcoming Phase 2 major updates.

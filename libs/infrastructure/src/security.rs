@@ -454,6 +454,10 @@ impl BastionGuard {
                         s_profile.allow_network = self.manifest.allow_network;
                         s_profile.allow_fs_write = self.manifest.allow_filesystem_write;
                     }
+                    SandboxProfile::BrowserAgent => {
+                        s_profile.allow_network = true;
+                        s_profile.allow_fs_write = false;
+                    }
                     _ => {
                         s_profile.allow_network = true;
                         s_profile.allow_fs_write = true;
@@ -662,13 +666,17 @@ pub mod behavior_monitor;
 pub mod crypto;
 /// 🪝 フック管理基盤 (Phase 36)
 pub mod hook_manager;
+/// ループ検知・防護基盤 (Hermes Integration)
+pub mod loop_detector;
 /// メモリ上に固定(mlock)されたバイトベクタの実装
 pub mod mlock;
+pub mod secret_redactor;
 /// SQLite を使用した Vault Backend の実装。
 pub mod sqlite_vault_backend;
 use crate::db::DatabasePool;
 pub use abyss_voice_vault::AbyssVoiceVault;
 use aiome_core_contracts::voice_vault::VoiceKeyVault;
+pub use loop_detector::LoopDetectorHook;
 use zeroize::Zeroizing;
 
 /// Phase 9: Voice Core DRM (Digital Rights Management)

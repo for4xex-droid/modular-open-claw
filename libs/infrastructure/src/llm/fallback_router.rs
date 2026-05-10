@@ -60,24 +60,80 @@ impl LlmProvider for FallbackRouter {
         prompt: &str,
         system: Option<&str>,
     ) -> Result<LlmResponse, AiomeError> {
+        let mut current_prompt = prompt.to_string();
+        let mut retries = 0;
+
         // 1. サーキットブレーカーの状態確認
         if self.circuit_breaker.check_state().await.is_ok() {
-            match self.primary.complete(prompt, system).await {
-                Ok(resp) => {
-                    self.circuit_breaker.record_success().await;
-                    return Ok(LlmResponse {
-                        content: resp.content,
-                        stop_reason: resp.stop_reason,
-                        reasoning: resp.reasoning,
-                        metadata: resp.metadata,
-                    });
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "⚠️ [FallbackRouter] Primary LLM failed: {}. Recording failure.",
-                        e
-                    );
-                    self.circuit_breaker.record_failure().await;
+            loop {
+                match self.primary.complete(&current_prompt, system).await {
+                    Ok(resp) => {
+                        self.circuit_breaker.record_success().await;
+                        return Ok(LlmResponse {
+                            content: resp.content,
+                            stop_reason: resp.stop_reason,
+                            reasoning: resp.reasoning,
+                            metadata: resp.metadata,
+                        });
+                    }
+                    Err(e) => {
+                        let err_msg = e.to_string();
+                        tracing::warn!(
+                            "⚠️ [FallbackRouter] Primary LLM failed (try {}): {}",
+                            retries + 1,
+                            err_msg
+                        );
+
+                        if retries < self.max_retries {
+                            if err_msg.contains("429")
+                                || err_msg.contains("Rate Limit")
+                                || err_msg.contains("Too Many Requests")
+                            {
+                                // Exponential backoff
+                                let delay = 2_u64.pow(retries as u32);
+                                tracing::warn!(
+                                    "⏳ [FallbackRouter] 429 Rate Limit. Retrying in {}s...",
+                                    delay
+                                );
+                                tokio::time::sleep(Duration::from_secs(delay)).await;
+                                retries += 1;
+                                continue;
+                            } else if err_msg.contains("400")
+                                || err_msg.contains("Context Length")
+                                || err_msg.contains("context_length_exceeded")
+                            {
+                                // Context trim
+                                tracing::warn!("✂️ [FallbackRouter] 400 Context Length Exceeded. Trimming prompt and retrying...");
+                                let total_chars = current_prompt.chars().count();
+                                let chars_to_keep = (total_chars as f64 * 0.8) as usize;
+                                if chars_to_keep > 0 && chars_to_keep < total_chars {
+                                    let chars_to_drop = total_chars - chars_to_keep;
+                                    current_prompt = format!(
+                                        "...[trimmed for context length]...\n{}",
+                                        current_prompt
+                                            .chars()
+                                            .skip(chars_to_drop)
+                                            .collect::<String>()
+                                    );
+                                    retries += 1;
+                                    continue;
+                                }
+                            } else if err_msg.contains("500")
+                                || err_msg.contains("503")
+                                || err_msg.contains("Internal Server Error")
+                            {
+                                // Immediate failover
+                                tracing::error!(
+                                    "🚨 [FallbackRouter] 5xx Server Error. Immediate failover."
+                                );
+                                break;
+                            }
+                        }
+
+                        // If not retriable or retries exhausted
+                        self.circuit_breaker.record_failure().await;
+                        break;
+                    }
                 }
             }
         } else {
@@ -191,5 +247,142 @@ mod tests {
         // 3. 次のリクエストはPrimaryをスキップして即Fallbackへ。
         let result = router.complete("hello", None).await.unwrap();
         assert_eq!(result.content, "fallback");
+    }
+
+    #[derive(Debug)]
+    struct ClassifierMockLlm {
+        pub response: String,
+        pub error_msg: Option<String>,
+        pub call_count: Arc<tokio::sync::Mutex<usize>>,
+        pub received_prompts: Arc<tokio::sync::Mutex<Vec<String>>>,
+    }
+
+    #[async_trait]
+    impl LlmProvider for ClassifierMockLlm {
+        async fn complete(
+            &self,
+            prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
+            let mut count = self.call_count.lock().await;
+            *count += 1;
+            let mut prompts = self.received_prompts.lock().await;
+            prompts.push(prompt.to_string());
+
+            if let Some(msg) = &self.error_msg {
+                if msg.contains("429") && *count < 3 {
+                    return Err(AiomeError::LlmResponse {
+                        source: anyhow::anyhow!("{}", msg),
+                    });
+                }
+                if msg.contains("400") && *count < 2 {
+                    return Err(AiomeError::LlmResponse {
+                        source: anyhow::anyhow!("{}", msg),
+                    });
+                }
+                if msg.contains("500") {
+                    return Err(AiomeError::LlmResponse {
+                        source: anyhow::anyhow!("{}", msg),
+                    });
+                }
+            }
+
+            Ok(LlmResponse {
+                content: self.response.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                reasoning: None,
+                metadata: None,
+            })
+        }
+        async fn stream_complete(
+            &self,
+            _p: &str,
+            _s: Option<&str>,
+        ) -> Result<
+            std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>>,
+            AiomeError,
+        > {
+            unimplemented!()
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "ClassifierMock"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_error_classifier_429_rate_limit() {
+        let call_count = Arc::new(tokio::sync::Mutex::new(0));
+        let primary = Arc::new(ClassifierMockLlm {
+            response: "primary_success".into(),
+            error_msg: Some("HTTP 429: Too Many Requests".into()),
+            call_count: call_count.clone(),
+            received_prompts: Arc::new(tokio::sync::Mutex::new(Vec::new())),
+        });
+        let fallback = Arc::new(MockLlmProvider {
+            response: "fallback".into(),
+            should_fail: false,
+        });
+
+        // 429 should trigger internal retry before fallback
+        let router = FallbackRouter::new(primary, fallback, 3);
+        let result = router.complete("hello", None).await.unwrap();
+
+        // It should succeed on the 3rd try on primary
+        assert_eq!(result.content, "primary_success");
+        let count = *call_count.lock().await;
+        assert_eq!(count, 3, "Should have retried 2 times");
+    }
+
+    #[tokio::test]
+    async fn test_error_classifier_400_context_length() {
+        let received_prompts = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+        let primary = Arc::new(ClassifierMockLlm {
+            response: "primary_success".into(),
+            error_msg: Some("HTTP 400: Context Length Exceeded".into()),
+            call_count: Arc::new(tokio::sync::Mutex::new(0)),
+            received_prompts: received_prompts.clone(),
+        });
+        let fallback = Arc::new(MockLlmProvider {
+            response: "fallback".into(),
+            should_fail: false,
+        });
+
+        let router = FallbackRouter::new(primary, fallback, 3);
+        let long_prompt = "A".repeat(10000);
+        let result = router.complete(&long_prompt, None).await.unwrap();
+
+        assert_eq!(result.content, "primary_success");
+        let prompts = received_prompts.lock().await;
+        assert_eq!(prompts.len(), 2, "Should have retried once");
+        assert!(
+            prompts[1].len() < prompts[0].len(),
+            "Prompt should have been trimmed on 400 error"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_error_classifier_500_immediate_failover() {
+        let call_count = Arc::new(tokio::sync::Mutex::new(0));
+        let primary = Arc::new(ClassifierMockLlm {
+            response: "primary_success".into(),
+            error_msg: Some("HTTP 500: Internal Server Error".into()),
+            call_count: call_count.clone(),
+            received_prompts: Arc::new(tokio::sync::Mutex::new(Vec::new())),
+        });
+        let fallback = Arc::new(MockLlmProvider {
+            response: "fallback".into(),
+            should_fail: false,
+        });
+
+        let router = FallbackRouter::new(primary, fallback, 3);
+        let result = router.complete("hello", None).await.unwrap();
+
+        // Should immediately failover to fallback without retrying primary
+        assert_eq!(result.content, "fallback");
+        let count = *call_count.lock().await;
+        assert_eq!(count, 1, "Should only try primary once on 500");
     }
 }
