@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Security
+- **Defense-in-Depth UI Hardening (Reflexion Pass)**:
+  - `ArtifactVault`: Applied `encodeURIComponent` to search and category filters, mitigating parameter injection vectors.
+  - `SkillVault` & `ArtifactVault`: Added robust `Array.isArray()` structural validation checks against API fetch responses. Prevents silent UI crashes and ensures state integrity when the backend returns unexpected formats.
+
+### Fixed
+- **UI State Race Conditions**:
+  - `McpDashboard`: Refactored `executeRemoveServer` and `handleEnableServer` state updates to await explicit boolean success flags from `handleSaveConfig()`. Resolved critical race conditions where the confirm modal would close prematurely even if the server configuration failed to save.
+  - `ArtifactVault`: Fixed an identical race condition in `executeDeleteArtifact` ensuring the artifact deletion modal only closes upon a successful API response.
+- **Frontend Quality Assurance & Standardization**:
+  - Complete elimination of lingering legacy Tailwind CSS classes across `SkillVault`, `ArtifactVault`, `AgentConsole`, `VoiceStore`, `ImmuneSystem`, and `TaskApprovalOverlay`, migrating to the strictly-typed `tokens.css` design system.
+  - Rectified non-existent CSS token references (replaced `--white` with `--white-100` and `--space-2xl` with `--space-xl`).
+  - Resolved React `key` collisions in `SkillVault.tsx` when rendering tools with identical names.
+  - Improved screen reader accessibility (a11y) by appending missing `aria-label` tags to interactive buttons and inputs.
+  - Completed comprehensive i18n synchronization for all previously hardcoded strings within `SkillVault.tsx`.
+
 ### Hardening & Stability
 - **Tech Debt Remediation & Production Hygiene**:
   - Removed dead codebase artifacts (`bootstrap_builder.rs`) from `api-server` to improve maintainability.

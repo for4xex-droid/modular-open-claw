@@ -28,7 +28,9 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import ConfirmModal from './common/ConfirmModal';
 import { useTranslation } from '../i18n';
+import { useToast } from './common/Toast';
 
 interface ArtifactFile {
   name: string;
@@ -63,13 +65,15 @@ interface Artifact {
 }
 
 const ArtifactVault = () => {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
+  const { showToast } = useToast();
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
   const [previewFile, setPreviewFile] = useState<{artifact: Artifact, file: ArtifactFile} | null>(null);
+  const [deletingArtifactId, setDeletingArtifactId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -105,13 +109,18 @@ const ArtifactVault = () => {
     setLoading(true);
     try {
       let url = `${API_BASE}/api/artifacts?limit=50`;
-      if (filter) url += `&category=${filter}`;
+      if (filter) url += `&category=${encodeURIComponent(filter)}`;
       if (searchTerm) url += `&q=${encodeURIComponent(searchTerm)}`;
 
       const res = await authenticatedFetch(url);
       if (res.ok) {
         const data = await res.json();
-        setArtifacts(data);
+        if (Array.isArray(data)) {
+          setArtifacts(data);
+        } else {
+          console.error("Unexpected artifacts response format:", typeof data);
+          setArtifacts([]);
+        }
       }
     } catch (e) {
       console.error("Failed to fetch artifacts", e);
@@ -133,25 +142,45 @@ const ArtifactVault = () => {
     }
   };
 
-  const deleteArtifact = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!confirm(t('artifact.confirmDelete'))) return;
+  const executeDeleteArtifact = async () => {
+    if (!deletingArtifactId) return;
 
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/artifacts/${id}`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/artifacts/${deletingArtifactId}`, {
         method: "DELETE"
       });
       if (res.ok) {
-        setArtifacts(prev => prev.filter(a => a.id !== id));
-        if (selectedArtifact?.id === id) setSelectedArtifact(null);
+        setArtifacts(prev => prev.filter(a => a.id !== deletingArtifactId));
+        if (selectedArtifact?.id === deletingArtifactId) setSelectedArtifact(null);
+        showToast('success', t('artifact.deleteSuccess', { defaultValue: 'Artifact deleted successfully.' }));
+        setDeletingArtifactId(null);
+      } else {
+        showToast('error', t('artifact.deleteFailed', { defaultValue: 'Failed to delete artifact.' }));
       }
     } catch (e) {
       console.error("Failed to delete artifact", e);
+      showToast('error', t('artifact.deleteFailed', { defaultValue: 'Failed to delete artifact.' }));
     }
+  };
+
+  const handleDeleteRequest = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setDeletingArtifactId(id);
   };
 
   return (
     <div className="vault-container">
+      <ConfirmModal
+        isOpen={!!deletingArtifactId}
+        type="danger"
+        title={t('artifact.confirmDelete')}
+        message={t('artifact.deleteMessage', { defaultValue: 'Are you sure you want to delete this artifact?' })}
+        details={t('artifact.deleteDetails', { defaultValue: 'This action cannot be undone. Associated files will be permanently removed.' })}
+        confirmText={t('common.delete', { defaultValue: 'Delete' })}
+        onConfirm={executeDeleteArtifact}
+        onCancel={() => setDeletingArtifactId(null)}
+      />
+
       <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', alignItems: 'center' }}>
         <div className="search-box">
           <Search size={18} />
@@ -226,7 +255,7 @@ const ArtifactVault = () => {
 
               <button
                 className="delete-btn"
-                onClick={(e) => deleteArtifact(e, artifact.id)}
+                onClick={(e) => handleDeleteRequest(e, artifact.id)}
                 title={t('artifact.purge')}
               >
                 <Trash2 size={14} />
@@ -382,12 +411,12 @@ const ArtifactVault = () => {
                   <X size={20} />
                 </button>
               </div>
-              <div className="w-full h-full bg-white dark:bg-zinc-900 overflow-hidden relative">
+              <div style={{ width: '100%', height: '100%', background: 'var(--white-100)', overflow: 'hidden', position: 'relative' }}>
                 <iframe
                   ref={iframeRef}
                   title="HTML Preview"
                   src={`${API_BASE}/api/artifacts/${previewFile.artifact.id}/files/${previewFile.file.name}`}
-                  className="w-full h-full border-0"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
                   sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" // allow-same-origin is intentionally omitted for security
                 />
               </div>
@@ -745,7 +774,7 @@ const ArtifactVault = () => {
           transition: color var(--speed-normal);
         }
         .close-btn:hover {
-          color: var(--white);
+          color: var(--white-100);
         }
       `}</style>
     </div>

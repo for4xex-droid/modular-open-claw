@@ -43,6 +43,11 @@ jest.mock('../lib/auth', () => ({
   authenticatedFetch: jest.fn()
 }));
 
+// Mock ActivityFeed
+jest.mock('./common/ActivityFeed', () => ({
+  ActivityFeed: () => <div data-testid="activity-feed" />
+}));
+
 import { authenticatedFetch } from '../lib/auth';
 const mockFetch = authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;
 

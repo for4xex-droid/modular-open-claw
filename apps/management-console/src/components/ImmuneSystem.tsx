@@ -12,6 +12,8 @@ import { API_BASE } from "../config";
 import { ImmuneRule, AegisStatusResponse } from "../types";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
+import ConfirmModal from './common/ConfirmModal';
+import { useToast } from './common/Toast';
 
 interface QuarantinedAsset {
     id: string;
@@ -31,6 +33,11 @@ const ImmuneSystem: React.FC = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [newRule, setNewRule] = useState({ pattern: '', severity: 50, action: 'BLOCK' });
     const [editingId, setEditingId] = useState<string | null>(null);
+    const { showToast } = useToast();
+    
+    // Confirm Modals state
+    const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+    const [releasingAssetId, setReleasingAssetId] = useState<string | null>(null);
 
     const fetchRules = async () => {
         try {
@@ -132,34 +139,52 @@ const ImmuneSystem: React.FC = () => {
         }
     };
 
-    const handleDeleteRule = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this immune rule?")) return;
+    const executeDeleteRule = async () => {
+        if (!deletingRuleId) return;
         try {
-            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules/${id}`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules/${deletingRuleId}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
+                showToast('success', 'Immune rule deleted successfully.');
                 fetchRules();
+            } else {
+                showToast('error', 'Failed to delete immune rule.');
             }
         } catch (e) {
             console.error("Failed to delete rule", e);
+            showToast('error', 'Network error occurred while deleting.');
+        } finally {
+            setDeletingRuleId(null);
         }
     };
 
-    const handleReleaseQuarantine = async (id: string) => {
-        if (!confirm("Are you sure you want to release this asset from quarantine?")) return;
+    const handleDeleteRule = (id: string) => {
+        setDeletingRuleId(id);
+    };
+
+    const executeReleaseQuarantine = async () => {
+        if (!releasingAssetId) return;
         try {
-            const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine/${id}/release`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine/${releasingAssetId}/release`, {
                 method: 'POST'
             });
             if (res.ok) {
+                showToast('success', 'Asset released successfully.');
                 fetchQuarantined();
             } else {
-                alert("Failed to release asset: " + (await res.text()));
+                showToast('error', "Failed to release asset: " + (await res.text()));
             }
         } catch (e) {
             console.error("Failed to release asset", e);
+            showToast('error', "Network error occurred.");
+        } finally {
+            setReleasingAssetId(null);
         }
+    };
+
+    const handleReleaseQuarantine = (id: string) => {
+        setReleasingAssetId(id);
     };
 
     const inputStyle = {
@@ -176,6 +201,27 @@ const ImmuneSystem: React.FC = () => {
 
     return (
         <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <ConfirmModal
+                isOpen={!!deletingRuleId}
+                type="danger"
+                title="Delete Immune Rule"
+                message="Are you sure you want to delete this immune rule?"
+                details="This rule will no longer block or warn on matching patterns."
+                confirmText="Delete"
+                onConfirm={executeDeleteRule}
+                onCancel={() => setDeletingRuleId(null)}
+            />
+            <ConfirmModal
+                isOpen={!!releasingAssetId}
+                type="warning"
+                title="Release Asset"
+                message="Are you sure you want to release this asset from quarantine?"
+                details="The asset will bypass the quarantine block and become available."
+                confirmText="Release"
+                onConfirm={executeReleaseQuarantine}
+                onCancel={() => setReleasingAssetId(null)}
+            />
+
             <div className="panel-header" style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-light)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                     <Shield size={20} color="var(--accent-rose)" />

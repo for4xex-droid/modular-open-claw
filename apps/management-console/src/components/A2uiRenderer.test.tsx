@@ -8,6 +8,10 @@ jest.mock('../config', () => ({
   APP_VERSION: 'v1.0.2'
 }));
 
+jest.mock('./common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() })
+}));
+
 describe('A2uiRenderer - Generative UI Components', () => {
     it('renders a progress bar', () => {
         const env: any = {

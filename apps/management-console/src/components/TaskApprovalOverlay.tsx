@@ -5,6 +5,7 @@ import { AlertTriangle, Check, X, ShieldAlert } from 'lucide-react';
 import { useSystemVitality } from '../hooks/useSystemVitality';
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
+import { useToast } from './common/Toast';
 import './TaskApprovalOverlay.css';
 
 interface PendingJob {
@@ -15,18 +16,11 @@ interface PendingJob {
 export default function TaskApprovalOverlay() {
     const { t } = useTranslation();
     const { lastEvent } = useSystemVitality();
+    const { showToast } = useToast();
     
     const [pendingJobs, setPendingJobs] = useState<PendingJob[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [comment, setComment] = useState('');
-    const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
-
-    useEffect(() => {
-        if (notification) {
-            const timer = setTimeout(() => setNotification(null), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [notification]);
 
     // 初期化時、まだ対応していない AwaitingInput のジョブを取得する
     useEffect(() => {
@@ -86,11 +80,11 @@ export default function TaskApprovalOverlay() {
                 setComment('');
             } else {
                 console.error(`Failed to submit review for job ${jobId}`, await response.text());
-                setNotification({ type: 'error', message: t('approval.error_submit', { status: response.status }) });
+                showToast('error', t('approval.error_submit', { status: response.status }));
             }
         } catch (error) {
             console.error("Error submitting job review", error);
-            setNotification({ type: 'error', message: t('approval.error_network') });
+            showToast('error', t('approval.error_network'));
         } finally {
             setIsSubmitting(false);
         }
@@ -101,36 +95,6 @@ export default function TaskApprovalOverlay() {
 
     return (
         <>
-            <AnimatePresence>
-                {notification && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        style={{ 
-                            position: 'fixed', 
-                            top: 'var(--space-xl)', 
-                            right: 'var(--space-xl)', 
-                            zIndex: 1100,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--space-sm)',
-                            padding: 'var(--space-sm) var(--space-md)',
-                            background: 'var(--bg-glass-heavy)',
-                            backdropFilter: 'blur(20px)',
-                            border: `1px solid ${notification.type === 'success' ? 'var(--accent-emerald-50)' : 'var(--accent-rose-50)'}`,
-                            borderRadius: 'var(--radius-md)',
-                            boxShadow: 'var(--shadow-deep)',
-                            color: notification.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-                            pointerEvents: 'none'
-                        }}
-                    >
-                        {notification.type === 'success' ? <Check size={20} /> : <AlertTriangle size={20} />}
-                        <span style={{ fontWeight: 600 }}>{notification.message}</span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             <AnimatePresence>
                 {showOverlay && currentJob && (
                     <motion.div

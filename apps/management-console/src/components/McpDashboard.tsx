@@ -6,10 +6,12 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Server, Plus, Trash2, Save, RefreshCw, Activity, Terminal, AlertTriangle } from 'lucide-react';
+import { Server, Plus, Trash2, Save, RefreshCw, Activity, Terminal, AlertTriangle, Search } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { ActivityFeed } from './common/ActivityFeed';
+import ConfirmModal from './common/ConfirmModal';
 
 interface McpServerConfig {
   transport?: 'stdio' | 'http';
@@ -65,6 +67,12 @@ export default function McpDashboard() {
   // New server form state
   const [newServerId, setNewServerId] = useState('');
   const [newServerConfig, setNewServerConfig] = useState<McpServerConfig>({ ...DEFAULT_SERVER_CONFIG });
+  
+  // Confirm modal state
+  const [removingServerId, setRemovingServerId] = useState<string | null>(null);
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadConfig = useCallback(async () => {
     setIsLoading(true);
@@ -101,7 +109,7 @@ export default function McpDashboard() {
     loadConfig();
   }, [loadConfig]);
 
-  const handleSaveConfig = async (newConfig: McpDiscoveryFile) => {
+  const handleSaveConfig = async (newConfig: McpDiscoveryFile): Promise<boolean> => {
     setIsSaving(true);
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`, {
@@ -114,22 +122,32 @@ export default function McpDashboard() {
         setNewServerId('');
         setNewServerConfig({ ...DEFAULT_SERVER_CONFIG });
         setValidationError(null);
+        return true;
       } else {
         const errorText = await res.text();
         setValidationError(t('mcp.saveFailed', { defaultValue: `Failed to save: ${errorText}` }) as string);
+        return false;
       }
     } catch {
       setValidationError(t('mcp.saveConnectionError', { defaultValue: 'Connection error while saving.' }) as string);
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleRemoveServer = async (id: string) => {
-    if (!confirm(t('mcp.confirmRemove', { defaultValue: `Remove MCP server '${id}'?` }) as string)) return;
+  const executeRemoveServer = async () => {
+    if (!removingServerId) return;
     const newConfig = { ...config, mcp_servers: { ...config.mcp_servers } };
-    delete newConfig.mcp_servers[id];
-    await handleSaveConfig(newConfig);
+    delete newConfig.mcp_servers[removingServerId];
+    const success = await handleSaveConfig(newConfig);
+    if (success) {
+      setRemovingServerId(null);
+    }
+  };
+
+  const handleRemoveServer = (id: string) => {
+    setRemovingServerId(id);
   };
 
   const handleEnableServer = async () => {
@@ -147,8 +165,10 @@ export default function McpDashboard() {
         }
       }
     };
-    await handleSaveConfig(newConfig);
-    setEnablingServerId(null);
+    const success = await handleSaveConfig(newConfig);
+    if (success) {
+      setEnablingServerId(null);
+    }
   };
 
   const handleAddServer = async () => {
@@ -241,21 +261,33 @@ export default function McpDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
           <div>
             <h4 style={{ color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>
-              {t('mcp.registeredServers', { defaultValue: 'Registered MCP Servers' }) as string}
+              {t('mcp.registeredServers', { defaultValue: 'Registered Servers' }) as string}
             </h4>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
               {t('mcp.configPath', { defaultValue: 'Servers configured in' }) as string}{' '}
               <code style={{ background: 'var(--black-30)', padding: '2px 6px', borderRadius: '4px' }}>~/.aiome/mcp_servers.json</code>
             </p>
           </div>
-          <button
-            onClick={() => { setEditingKey('NEW'); setValidationError(null); }}
-            className="primary-button"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--accent-cyan)' }}
-          >
-            <Plus size={18} />
-            {t('mcp.addServer', { defaultValue: 'Add Server' }) as string}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--black-30)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', width: '250px' }}>
+              <Search size={16} color="var(--text-muted)" style={{ marginRight: '0.5rem' }} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder={t('mcp.searchPlaceholder', { defaultValue: 'Search servers...' }) as string}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.85rem' }}
+              />
+            </div>
+            <button
+              onClick={() => { setEditingKey('NEW'); setValidationError(null); }}
+              className="primary-button"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--accent-cyan)' }}
+            >
+              <Plus size={18} />
+              {t('mcp.addServer', { defaultValue: 'Add Server' }) as string}
+            </button>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -350,7 +382,15 @@ export default function McpDashboard() {
             </div>
           )}
 
-          {Object.entries(config.mcp_servers).map(([id, server]) => (
+          {Object.entries(config.mcp_servers)
+            .filter(([id, server]) => {
+              if (!searchTerm) return true;
+              const term = searchTerm.toLowerCase();
+              return id.toLowerCase().includes(term) || 
+                     (server.command && server.command.toLowerCase().includes(term)) ||
+                     (server.url && server.url.toLowerCase().includes(term));
+            })
+            .map(([id, server]) => (
             <motion.div
               key={id}
               initial={{ opacity: 0, y: 10 }}
@@ -443,53 +483,37 @@ export default function McpDashboard() {
             </motion.div>
           ))}
         </div>
+
+        {Object.keys(config.mcp_servers).length > 0 && (
+          <div style={{ marginTop: 'var(--space-xl)', position: 'relative', minHeight: '200px' }}>
+            <h4 style={{ color: 'var(--text-primary)', marginBottom: 'var(--space-md)' }}>
+              {t('mcp.recentActivity', { defaultValue: 'Recent Activity' }) as string}
+            </h4>
+            <ActivityFeed maxItems={5} />
+          </div>
+        )}
       </div>
 
-      {/* Security Warning Modal */}
-      <AnimatePresence>
-        {enablingServerId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-lg)', padding: '2rem', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <AlertTriangle size={24} color="var(--accent-amber)" />
-                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('mcp.securityWarning', { defaultValue: 'Security Warning' }) as string}</h3>
-              </div>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5 }}>
-                {t('mcp.tokenRecommendation', { defaultValue: 'You are about to enable a third-party MCP server. We strongly recommend using Read-Only or minimum privilege tokens to prevent unauthorized data access or modification.' }) as string}
-              </p>
-              <div style={{ background: 'var(--black-20)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                <strong>Server:</strong> <span style={{ color: 'var(--text-primary)' }}>{enablingServerId}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button
-                  onClick={() => setEnablingServerId(null)}
-                  className="secondary-button"
-                  style={{ padding: '0.5rem 1rem' }}
-                >
-                  {t('mcp.cancel', { defaultValue: 'Cancel' }) as string}
-                </button>
-                <button
-                  onClick={handleEnableServer}
-                  className="primary-button"
-                  style={{ background: 'var(--accent-amber)', color: '#000', padding: '0.5rem 1rem' }}
-                >
-                  {t('mcp.confirmEnable', { defaultValue: 'I understand, Enable' }) as string}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmModal
+        isOpen={!!enablingServerId}
+        type="warning"
+        title={t('mcp.securityWarning', { defaultValue: 'Security Warning' }) as string}
+        message={t('mcp.tokenRecommendation', { defaultValue: 'You are about to enable a third-party MCP server. We strongly recommend using Read-Only or minimum privilege tokens to prevent unauthorized data access or modification.' }) as string}
+        details={<><strong>Server:</strong> <span style={{ color: 'var(--text-primary)' }}>{enablingServerId}</span></>}
+        confirmText={t('mcp.confirmEnable', { defaultValue: 'I understand, Enable' }) as string}
+        onConfirm={handleEnableServer}
+        onCancel={() => setEnablingServerId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!removingServerId}
+        type="danger"
+        title={t('mcp.removeServer', { defaultValue: 'Remove Server' }) as string}
+        message={t('mcp.confirmRemove', { defaultValue: `Are you sure you want to remove MCP server '${removingServerId}'?` }) as string}
+        confirmText={t('common.remove', { defaultValue: 'Remove' }) as string}
+        onConfirm={executeRemoveServer}
+        onCancel={() => setRemovingServerId(null)}
+      />
     </div>
   );
 }

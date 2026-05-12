@@ -7,6 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { LanguageProvider } from "./i18n";
 import { initApiBase } from "./config";
 import { SystemVitalityProvider } from "./hooks/useSystemVitality";
+import { ToastProvider } from "./components/common/Toast";
 
 /**
  * [Milestone 3] UI Dynamic Discovery
@@ -28,7 +29,9 @@ async function boot() {
           <LanguageProvider>
             <AvatarCharacterProvider>
               <SystemVitalityProvider>
-                <App />
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
               </SystemVitalityProvider>
             </AvatarCharacterProvider>
           </LanguageProvider>

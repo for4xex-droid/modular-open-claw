@@ -14,6 +14,10 @@ jest.mock('../config', () => ({
   API_BASE: 'http://localhost'
 }));
 
+jest.mock('./common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() })
+}));
+
 // Mock Framer Motion to avoid animation issues in tests
 jest.mock('framer-motion', () => ({
   motion: {

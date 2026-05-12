@@ -5,11 +5,13 @@
  * Licensed under the Business Source License 1.1.
  */
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Volume2, ShieldCheck, Crown, AlertCircle, CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
+import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { useToast } from './common/Toast';
 
 interface VoiceAsset {
   id: string;
@@ -49,26 +51,21 @@ const mockAssets: VoiceAsset[] = [
 
 export default function VoiceStore() {
     const { t } = useTranslation();
+  const { agentId, isEkycVerified } = useAgentIdentity();
+  const { showToast } = useToast();
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
   const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   useEffect(() => {
     fetchBalance();
     fetchVoiceAssets();
-  }, []);
-
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
+  }, [agentId]);
 
   const fetchBalance = async () => {
+    if (!agentId) return;
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/agent-001`);
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
       if (res.ok) {
         const data = await res.json();
         setBalance(data.coins);
@@ -103,36 +100,30 @@ export default function VoiceStore() {
   };
 
   const handlePurchase = async (asset: VoiceAsset) => {
+    if (!agentId) return;
     setPurchasing(asset.id);
     
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/purchase/agent-001`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/purchase/${agentId}`, {
         method: "POST",
         body: JSON.stringify({
-          asset_id: asset.id,
-          amount_coins: asset.price_coins,
-          context_layer: "voice_registry_buy"
+          item_id: asset.id,
+          metadata: {
+            amount_coins: asset.price_coins,
+            context_layer: "voice_registry_buy"
+          }
         })
       });
 
       if (res.ok) {
         setBalance(prev => prev - asset.price_coins);
-        setNotification({
-          type: 'success',
-          message: `${asset.name} purchased successfully. DRM key deposited in Abyss Vault.`
-        });
+        showToast('success', `${asset.name} purchased successfully. DRM key deposited in Abyss Vault.`);
       } else {
         const data = await res.json();
-        setNotification({
-          type: 'error',
-          message: data.message || 'Insufficient funds'
-        });
+        showToast('error', data.message || 'Insufficient funds');
       }
     } catch (e) {
-      setNotification({
-        type: 'error',
-        message: 'Network error occurred during purchase.'
-      });
+      showToast('error', 'Network error occurred during purchase.');
     } finally {
       setPurchasing(null);
     }
@@ -155,10 +146,10 @@ export default function VoiceStore() {
           window.location.assign(data.url);
         }
       } else {
-        setNotification({ type: 'error', message: 'Failed to create checkout session.' });
+        showToast('error', 'Failed to create checkout session.');
       }
     } catch (e) {
-      setNotification({ type: 'error', message: 'Network error occurred.' });
+      showToast('error', 'Network error occurred.');
     } finally {
       setIsRecharging(false);
     }
@@ -166,38 +157,6 @@ export default function VoiceStore() {
 
   return (
     <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto", position: 'relative' }}>
-      
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div 
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            style={{ 
-              position: 'fixed', 
-              top: '2rem', 
-              right: '2rem', 
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '1rem 1.5rem',
-              background: 'var(--bg-glass-heavy)',
-              backdropFilter: 'blur(20px)',
-              border: `1px solid ${notification.type === 'success' ? 'var(--accent-emerald-50)' : 'var(--accent-rose-50)'}`,
-              borderRadius: 'var(--radius-md)',
-              boxShadow: 'var(--shadow-deep)',
-              color: notification.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-              pointerEvents: 'none'
-            }}
-          >
-            {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span style={{ fontWeight: 600 }}>{notification.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -286,7 +245,7 @@ export default function VoiceStore() {
                 className="primary-button" 
                 style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
                 onClick={() => handlePurchase(asset)}
-                disabled={purchasing === asset.id || balance < asset.price_coins}
+                disabled={purchasing === asset.id || balance < asset.price_coins || !isEkycVerified}
               >
                 {purchasing === asset.id ? (
                   <span className="ani-pulse">{t('voice.securing')}</span>
@@ -297,9 +256,9 @@ export default function VoiceStore() {
                 )}
               </button>
             </div>
-            {balance < asset.price_coins && (
+            {(!isEkycVerified || balance < asset.price_coins) && (
               <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--accent-rose)", textAlign: "center" }}>
-                Insufficient funds
+                {!isEkycVerified ? "eKYC Required" : "Insufficient funds"}
               </div>
             )}
             <div style={{ marginTop: "1rem", fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
