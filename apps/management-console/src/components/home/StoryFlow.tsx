@@ -6,13 +6,14 @@
  */
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Send, Sparkles, Volume2, VolumeX, Cpu, Wifi, WifiOff } from 'lucide-react';
+import { Send, Sparkles, Volume2, VolumeX, Cpu, Wifi, WifiOff, Brain } from 'lucide-react';
 import FlowCard, { FlowCardType } from './FlowCard';
 import { useAgentChat } from '../../hooks/useAgentChat';
 import { VitalityEvent } from '../../hooks/useSystemVitality';
 import { useTranslation } from '../../i18n';
 import { useCortexSuggestions } from '../../hooks/useCortexSuggestions';
 import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
+import { SLASH_COMMANDS } from '../../constants/slashCommands';
 
 /** Unified timeline entry for rendering */
 interface TimelineEntry {
@@ -24,6 +25,7 @@ interface TimelineEntry {
     isError?: boolean;
     isOod?: boolean;
     showFeedback?: boolean;
+    a2uiEnvelope?: any;
 }
 
 /**
@@ -37,7 +39,7 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
         case 'level_up':
             return { id: `sys-${index}`, type: 'system', title: 'LEVEL UP', content: `Level ${String(d?.level ?? '?')} reached! 🎉`, timestamp: ts };
         case 'karma_update':
-            return { id: `sys-${index}`, type: 'system', title: 'KARMA', content: `${String(d?.lesson ?? 'Memory updated')}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: 'MEMORY', content: `${String(d?.lesson ?? 'Memory updated')}`, timestamp: ts };
         case 'job_started':
             return { id: `sys-${index}`, type: 'tool_exec', title: 'JOB STARTED', content: `${String(d?.job_type ?? 'Task')} initiated`, timestamp: ts };
         case 'job_completed':
@@ -52,7 +54,7 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
         case 'proactive_talk':
             return { id: `sys-${index}`, type: 'chat_assistant', title: 'AIOME (PROACTIVE)', content: `${String(d?.message ?? '')}`, timestamp: ts };
         case 'sot_progress': {
-            let msg = 'Deliberation in progress';
+            let msg = 'Thinking in progress';
             if (d && d.type) {
                 const innerData = d.data as any;
                 switch (d.type) {
@@ -66,7 +68,7 @@ const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | 
                 }
             }
             if (d?.message) msg = String(d.message);
-            return { id: `sys-${index}`, type: 'system', title: 'SOCIETY OF THOUGHT', content: msg, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: 'THINKING PROCESS', content: msg, timestamp: ts };
         }
         case 'commerce_event':
             return { id: `sys-${index}`, type: 'system', title: '💰 COMMERCE', content: `${String(d?.description ?? 'Commerce transaction processed')} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
@@ -81,6 +83,11 @@ interface StoryFlowProps {
     sessionSavedChars?: number;
 }
 
+const ICON_MAP: Record<string, React.ReactNode> = {
+    Volume2: <Volume2 size={14} />, Sparkles: <Sparkles size={14} />,
+    Brain: <Brain size={14} />, Cpu: <Cpu size={14} />,
+};
+
 const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus = 'disconnected', sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const chat = useAgentChat();
@@ -93,6 +100,19 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             fetchSuggestions();
         }
     }, [isInputFocused, fetchSuggestions]);
+
+    const COMMANDS = SLASH_COMMANDS.map(c => ({
+        ...c,
+        icon: ICON_MAP[c.iconName] || <Cpu size={14} />,
+    }));
+
+    const [slashIndex, setSlashIndex] = useState(0);
+
+    const trimmedInput = chat.input.trimStart().replace('／', '/');
+    const showSlash = trimmedInput.startsWith('/');
+    const filteredCmds = showSlash ? COMMANDS.filter(c => c.cmd.startsWith(trimmedInput.toLowerCase())) : [];
+
+    // Keyboard navigation handled in textarea onKeyDown
 
     // Build unified timeline: chat history + system events
     const timeline = useMemo<TimelineEntry[]>(() => {
@@ -109,6 +129,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 timestamp: baseTime - (chat.history.length - i) * 1000,
                 isError: msg.isError,
                 showFeedback: msg.role === 'assistant' && !msg.isError && i === chat.history.length - 1 && (chat.relevantKarmaData?.entries?.length ?? 0) > 0,
+                a2uiEnvelope: msg.a2uiEnvelope,
             });
         });
 
@@ -296,6 +317,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             isStreaming={entry.type === 'chat_streaming'}
                             isOod={entry.isOod}
                             showFeedback={entry.showFeedback}
+                            a2uiEnvelope={entry.a2uiEnvelope}
                             onFeedback={entry.showFeedback ? (type: 'positive' | 'negative') => chat.handleFeedback(0, type) : undefined}
                         />
                     ))}
@@ -303,8 +325,43 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             </div>
 
             {/* Input Area */}
+            {/* Slash Command Suggestions */}
+            {showSlash && filteredCmds.length > 0 && (
+                <div style={{ padding: '0 1rem', background: 'var(--black-30)' }}>
+                    <div style={{
+                        background: 'var(--bg-glass-heavy)',
+                        backdropFilter: 'blur(16px)', border: '1px solid var(--border-glass)',
+                        borderRadius: 'var(--radius-lg)', padding: '0.5rem',
+                        boxShadow: 'var(--shadow-deep)', marginBottom: '0.5rem',
+                        display: 'flex', flexDirection: 'column', gap: '0.25rem'
+                    }}>
+                        {filteredCmds.map((cmd, i) => (
+                            <div key={cmd.cmd}
+                                onClick={() => {
+                                    chat.setInput(cmd.cmd);
+                                    setTimeout(() => chat.sendMessage(cmd.cmd), 0);
+                                }}
+                                style={{
+                                    padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+                                    background: i === slashIndex ? 'var(--accent-cyan-20)' : 'transparent',
+                                    borderLeft: i === slashIndex ? '3px solid var(--accent-cyan)' : '3px solid transparent'
+                                }}
+                                onMouseEnter={() => setSlashIndex(i)}
+                            >
+                                <div style={{ color: i === slashIndex ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{cmd.icon}</div>
+                                <div>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{cmd.label} <span style={{color:'var(--text-muted)', fontSize:'0.8rem', marginLeft:'0.5rem'}}>{cmd.cmd}</span></div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{cmd.desc}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <AnimatePresence>
-                {isInputFocused && suggestions.length > 0 && (
+                {!showSlash && isInputFocused && suggestions.length > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -355,9 +412,30 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 <div style={{ position: 'relative', display: 'flex', gap: '0.5rem' }}>
                     <textarea
                         value={chat.input}
-                        onChange={e => chat.setInput(e.target.value)}
+                        onChange={e => {
+                            chat.setInput(e.target.value);
+                            setSlashIndex(0);
+                        }}
                         onKeyDown={e => {
                             if (e.nativeEvent.isComposing) return;
+                            if (showSlash && filteredCmds.length > 0) {
+                                if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setSlashIndex(prev => (prev + 1) % filteredCmds.length);
+                                    return;
+                                }
+                                if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setSlashIndex(prev => (prev - 1 + filteredCmds.length) % filteredCmds.length);
+                                    return;
+                                }
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    chat.setInput(filteredCmds[slashIndex].cmd);
+                                    setTimeout(() => chat.sendMessage(filteredCmds[slashIndex].cmd), 0);
+                                    return;
+                                }
+                            }
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 chat.sendMessage();
@@ -388,7 +466,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         }}
                     />
                     <button
-                        onClick={chat.sendMessage}
+                        onClick={() => chat.sendMessage()}
                         disabled={!chat.input.trim() || chat.isTyping}
                         style={{
                             width: '40px',

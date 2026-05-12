@@ -18,11 +18,15 @@ use tracing::{error, info, warn};
 pub async fn run(state: AppState) -> anyhow::Result<()> {
     info!("👁️ [Watchtower] Initializing Unified Watchtower Service...");
 
-    let discord_token = std::env::var("DISCORD_TOKEN").ok();
-    shared::security::scrub_env("DISCORD_TOKEN");
+    let discord_token = state.config.get_inner().discord_token.clone().map(|s| {
+        use secrecy::ExposeSecret;
+        s.expose_secret().to_string()
+    });
 
-    let telegram_token = std::env::var("TELEGRAM_TOKEN").ok();
-    shared::security::scrub_env("TELEGRAM_TOKEN");
+    let telegram_token = state.config.get_inner().telegram_token.clone().map(|s| {
+        use secrecy::ExposeSecret;
+        s.expose_secret().to_string()
+    });
 
     let (command_tx, mut command_rx) = mpsc::channel::<ControlCommand>(100);
     let mut bridges: Vec<Arc<dyn ChannelBridge>> = Vec::new();

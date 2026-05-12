@@ -21,7 +21,7 @@ export const TreasureBox: React.FC = () => {
         // Record feedback (click)
         const success = await recordFeedback(item.id, 'click');
         if (success) {
-            // Visual effect for Resonance increase
+            // Visual effect for Engagement increase
             setShowEffect(true);
             setTimeout(() => setShowEffect(false), 2000);
         }
@@ -121,7 +121,7 @@ export const TreasureBox: React.FC = () => {
                 </div>
             )}
 
-            {/* Resonance Effect Overlay */}
+            {/* Engagement Effect Overlay */}
             <AnimatePresence>
                 {showEffect && (
                     <motion.div 

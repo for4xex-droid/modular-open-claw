@@ -405,6 +405,7 @@ pub async fn update_mcp_config(
         &state.mcp_manager,
         &state.registry,
         Some(state.vault_backend.get_inner().clone()),
+        state.config.get_inner(),
     )
     .await
     .map_err(|e| AppError::internal(format!("Failed to reload Discovery: {}", e)))?;

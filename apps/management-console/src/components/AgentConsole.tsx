@@ -8,6 +8,9 @@ import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Send, Cpu, Brain, Sparkles, ThumbsUp, ThumbsDown, BookOpen } from 'lucide-react';
 import { Volume2, VolumeX } from 'lucide-react';
+import { authenticatedFetch } from '../lib/auth';
+import { API_BASE } from '../config';
+import { SLASH_COMMANDS } from '../constants/slashCommands';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
@@ -36,6 +39,11 @@ interface ArtifactRecord {
     name?: string;
 }
 
+const ICON_MAP: Record<string, React.ReactNode> = {
+    Volume2: <Volume2 size={14} />, Sparkles: <Sparkles size={14} />,
+    Brain: <Brain size={14} />, Cpu: <Cpu size={14} />,
+};
+
 const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) => {
     const { t } = useTranslation();
     const {
@@ -60,6 +68,15 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [stats, setStats] = React.useState<RoiStats | null>(null);
 
+    const [slashIndex, setSlashIndex] = React.useState(0);
+    const COMMANDS = SLASH_COMMANDS.map(c => ({
+        ...c,
+        icon: ICON_MAP[c.iconName] || <Cpu size={14} />,
+    }));
+    const trimmedInput = input.trimStart().replace('／', '/');
+    const showSlash = trimmedInput.startsWith('/');
+    const filteredCmds = showSlash ? COMMANDS.filter(c => c.cmd.startsWith(trimmedInput.toLowerCase())) : [];
+
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -70,8 +87,8 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                 try {
                     // Fetch real metrics from the API
                     const [artifactsRes, ledgerRes] = await Promise.all([
-                        fetch('/api/artifacts'),
-                        fetch('/api/v1/audit/ledger')
+                        authenticatedFetch(`${API_BASE}/api/artifacts`),
+                        authenticatedFetch(`${API_BASE}/api/v1/audit/ledger`)
                     ]);
                     
                     const artifacts = artifactsRes.ok ? await artifactsRes.json() : [];
@@ -249,10 +266,38 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
             {/* Chat Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', background: 'var(--black-20)' }}>
                 {history.length === 0 && !streamingText && (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
                         <Cpu size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
-                        <h4 style={{ fontWeight: 600, color: 'var(--white-20)' }}>{t('agent.ready')}</h4>
-                        <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginTop: '0.5rem' }}>{t('agent.issueCommands')}</p>
+                        <h4 style={{ fontWeight: 600, color: 'var(--white-20)', marginBottom: '0.5rem' }}>{t('agent.ready') || 'How can I help you today?'}</h4>
+                        <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginBottom: '2rem' }}>{t('agent.issueCommands') || 'Choose a template below or type your own command.'}</p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px' }}>
+                            {[
+                                { icon: <Sparkles size={20} color="var(--accent-cyan)" />, title: 'Write code', desc: 'Create a new React component', prompt: 'Create a new React component with Tailwind CSS.' },
+                                { icon: <Brain size={20} color="var(--accent-purple)" />, title: 'Analyze data', desc: 'Find trends in recent logs', prompt: 'Analyze the system logs from the past 24 hours and identify any anomalies.' },
+                                { icon: <Activity size={20} color="var(--accent-emerald)" />, title: 'Automate', desc: 'Schedule a daily backup task', prompt: 'Create an automation blueprint that runs a daily database backup.' },
+                                { icon: <BookOpen size={20} color="var(--accent-amber)" />, title: 'Learn', desc: 'Explain how the Hub works', prompt: 'Explain the architecture of the Samsara Hub.' }
+                            ].map((card, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        setInput(card.prompt);
+                                    }}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem',
+                                        padding: '1rem', background: 'var(--white-03)', border: '1px solid var(--border-glass)',
+                                        borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
+                                        width: '180px', transition: 'all var(--speed-normal)'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--white-05)'}
+                                    onMouseOut={(e) => e.currentTarget.style.background = 'var(--white-03)'}
+                                >
+                                    {card.icon}
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{card.title}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{card.desc}</div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -335,6 +380,14 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             whiteSpace: 'pre-wrap'
                         }}>
                             {m.content && <div>{m.content}</div>}
+                            {m.reasoning && (
+                                <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                    <summary style={{ cursor: 'pointer', fontWeight: 600 }}>🧠 Thinking Process</summary>
+                                    <div style={{ padding: '0.5rem', background: 'var(--black-20)', borderRadius: 'var(--radius-sm)', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
+                                        {m.reasoning}
+                                    </div>
+                                </details>
+                            )}
                             {m.a2uiEnvelope && (
                                 <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem'}}>A2UI render failed — invalid surface data</div>}>
                                     <A2uiRenderer envelope={m.a2uiEnvelope} />
@@ -393,20 +446,77 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                 <div ref={chatEndRef} />
             </div>
 
+            {/* Slash Command Suggestions */}
+            {showSlash && filteredCmds.length > 0 && (
+                <div style={{ padding: '0 2rem', background: 'var(--black-40)' }}>
+                    <div style={{
+                        background: 'var(--bg-glass-heavy)',
+                        backdropFilter: 'blur(16px)', border: '1px solid var(--border-glass)',
+                        borderRadius: 'var(--radius-lg)', padding: '0.5rem',
+                        boxShadow: 'var(--shadow-deep)', marginBottom: '0.5rem',
+                        display: 'flex', flexDirection: 'column', gap: '0.25rem'
+                    }}>
+                        {filteredCmds.map((cmd, i) => (
+                            <div key={cmd.cmd}
+                                onClick={() => {
+                                    setInput(cmd.cmd);
+                                    setTimeout(() => sendMessage(cmd.cmd), 0);
+                                }}
+                                style={{
+                                    padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    cursor: 'pointer', borderRadius: 'var(--radius-sm)',
+                                    background: i === slashIndex ? 'var(--accent-cyan-20)' : 'transparent',
+                                    borderLeft: i === slashIndex ? '3px solid var(--accent-cyan)' : '3px solid transparent'
+                                }}
+                                onMouseEnter={() => setSlashIndex(i)}
+                            >
+                                <div style={{ color: i === slashIndex ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{cmd.icon}</div>
+                                <div>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{cmd.label} <span style={{color:'var(--text-muted)', fontSize:'0.8rem', marginLeft:'0.5rem'}}>{cmd.cmd}</span></div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{cmd.desc}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Input Area */}
             <div style={{ padding: '1.5rem 2rem', background: 'var(--black-40)', borderTop: '1px solid var(--border-glass)' }}>
                 <div style={{ position: 'relative' }}>
                     <textarea
                         value={input}
-                        onChange={e => setInput(e.target.value)}
+                        onChange={e => {
+                            setInput(e.target.value);
+                            setSlashIndex(0);
+                        }}
                         onKeyDown={e => {
                             if (e.nativeEvent.isComposing) return;
+                            if (showSlash && filteredCmds.length > 0) {
+                                if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setSlashIndex((prev) => (prev + 1) % filteredCmds.length);
+                                    return;
+                                }
+                                if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setSlashIndex((prev) => (prev - 1 + filteredCmds.length) % filteredCmds.length);
+                                    return;
+                                }
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const selectedCmd = filteredCmds[slashIndex].cmd;
+                                    setInput(selectedCmd);
+                                    setTimeout(() => sendMessage(selectedCmd), 0);
+                                    return;
+                                }
+                            }
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 sendMessage();
                             }
                         }}
-                        placeholder={t('agent.chatPlaceholder')}
+                        placeholder={t('agent.chatPlaceholder') || "Ask agent or type '/' for commands..."}
                         rows={1}
                         style={{
                             width: '100%',
@@ -423,7 +533,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         }}
                     />
                     <button
-                        onClick={sendMessage}
+                        onClick={() => sendMessage()}
                         disabled={!input.trim() || isTyping}
                         style={{
                             position: 'absolute',

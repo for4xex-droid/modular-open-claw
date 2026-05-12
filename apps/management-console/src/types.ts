@@ -100,6 +100,7 @@ export interface ChatMessage {
     content: string;
     isError?: boolean;
     a2uiEnvelope?: A2uiEnvelope;
+    reasoning?: string;
 }
 
 export interface TreasureItem {

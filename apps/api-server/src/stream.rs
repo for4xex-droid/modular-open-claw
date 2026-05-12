@@ -11,7 +11,7 @@ use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
 };
 use axum::{
-    extract::{Json, State},
+    extract::{Json, Query, State},
     response::sse::{Event, KeepAlive, Sse},
     response::IntoResponse,
 };
@@ -728,4 +728,57 @@ pub async fn trigger_system_vitality_stream(
     };
 
     Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+#[derive(serde::Deserialize)]
+pub struct HistoryQuery {
+    pub channel_id: String,
+    pub limit: Option<i64>,
+}
+
+pub async fn get_chat_history(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Query(query): Query<HistoryQuery>,
+) -> impl axum::response::IntoResponse {
+    let limit = query.limit.unwrap_or(50);
+
+    match state
+        .job_queue
+        .fetch_chat_history(&query.channel_id, limit)
+        .await
+    {
+        Ok(messages) => {
+            let redactor = infrastructure::security::secret_redactor::SecretRedactor::new();
+
+            let mut processed = Vec::new();
+            for msg in messages {
+                let mut p_msg = msg.clone();
+                if let Some(meta) = msg.get("metadata").and_then(|m| m.as_object()) {
+                    if let Some(reasoning) = meta.get("reasoning").and_then(|r| r.as_str()) {
+                        let redacted = redactor.redact(reasoning);
+                        if let Some(obj) = p_msg.as_object_mut() {
+                            if let Some(m) = obj.get_mut("metadata").and_then(|m| m.as_object_mut())
+                            {
+                                m.insert(
+                                    "reasoning".to_string(),
+                                    serde_json::Value::String(redacted.into_owned()),
+                                );
+                            }
+                        }
+                    }
+                }
+                processed.push(p_msg);
+            }
+            axum::response::Json(serde_json::json!({ "messages": processed })).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch chat history: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch history",
+            )
+                .into_response()
+        }
+    }
 }

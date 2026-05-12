@@ -64,6 +64,11 @@ describe('McpDashboard', () => {
     render(<McpDashboard />);
     expect(screen.getByText('MCP Server Management')).toBeInTheDocument();
     expect(screen.getByText('Refresh')).toBeInTheDocument();
+    
+    // Wait for fetch to complete to prevent act() warnings
+    await waitFor(() => {
+      expect(screen.getByText('No MCP Servers Registered')).toBeInTheDocument();
+    });
   });
 
   it('shows empty state when no servers exist', async () => {

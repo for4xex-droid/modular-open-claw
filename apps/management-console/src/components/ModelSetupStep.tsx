@@ -39,6 +39,14 @@ export const ModelSetupStep: React.FC<ModelSetupStepProps> = ({ onNext, onSkip }
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         {t('onboarding.llmSetup.installGuide')}
                     </div>
+                    <div style={{ marginTop: '0.8rem', padding: '0.8rem', background: 'var(--white-05)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>💡 {t('onboarding.llmSetup.tipsTitle', { defaultValue: 'Troubleshooting Tips:' })}</strong>
+                        <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <li>{t('onboarding.llmSetup.tip1', { defaultValue: 'Ensure Ollama is running (check your system tray or menu bar).' })}</li>
+                            <li>{t('onboarding.llmSetup.tip2', { defaultValue: 'The default port is 11434. If changed, please update the API base URL.' })}</li>
+                            <li>{t('onboarding.llmSetup.tip3', { defaultValue: 'For LM Studio, start the local server (default port 1234).' })}</li>
+                        </ul>
+                    </div>
                 </div>
                 
                 <button 

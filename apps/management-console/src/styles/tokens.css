@@ -113,8 +113,8 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-xl: 28px;
-  --font-display: 'Outfit', 'Artemis Inter', system-ui, sans-serif;
-  --font-main: 'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-main: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --timing-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --timing-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);

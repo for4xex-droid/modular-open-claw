@@ -275,6 +275,10 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                             row.get("tags"),
                             row.get("status"),
                         )
+                        .map_err(|e| {
+                            tracing::warn!("Failed to parse listing row: {:?}", e);
+                            e
+                        })
                         .ok()
                     })
                     .collect()
@@ -306,6 +310,10 @@ impl LoraMarketplace for UniversalLoraMarketplace {
                             row.get("tags"),
                             row.get("status"),
                         )
+                        .map_err(|e| {
+                            tracing::warn!("Failed to parse listing row: {:?}", e);
+                            e
+                        })
                         .ok()
                     })
                     .collect()

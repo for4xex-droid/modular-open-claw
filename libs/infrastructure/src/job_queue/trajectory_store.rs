@@ -173,11 +173,24 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         constraint_violations: serde_json::from_str(&violations_str)
                             .unwrap_or_default(),
                         is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
-                        failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
+                        failure_category: failure_cat_str.and_then(|s| {
+                            s.parse()
+                                .inspect_err(|e| {
+                                    tracing::warn!("Failed to parse failure_category: {:?}", e);
+                                })
+                                .ok()
+                        }),
                         reasoning: row.get("reasoning"),
-                        parent_step_id: row
-                            .get::<Option<String>, _>("parent_step_id")
-                            .and_then(|v| v.parse().ok()),
+                        parent_step_id: row.get::<Option<String>, _>("parent_step_id").and_then(
+                            |v| {
+                                v.parse()
+                                    .map_err(|e| {
+                                        tracing::warn!("Failed to parse parent_step_id: {:?}", e);
+                                        e
+                                    })
+                                    .ok()
+                            },
+                        ),
                         step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),
@@ -215,11 +228,24 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         constraint_violations: serde_json::from_str(&violations_str)
                             .unwrap_or_default(),
                         is_critical_failure: row.get::<i32, _>("is_critical_failure") != 0,
-                        failure_category: failure_cat_str.and_then(|s| s.parse().ok()),
+                        failure_category: failure_cat_str.and_then(|s| {
+                            s.parse()
+                                .inspect_err(|e| {
+                                    tracing::warn!("Failed to parse failure_category: {:?}", e);
+                                })
+                                .ok()
+                        }),
                         reasoning: row.get("reasoning"),
-                        parent_step_id: row
-                            .get::<Option<String>, _>("parent_step_id")
-                            .and_then(|v| v.parse().ok()),
+                        parent_step_id: row.get::<Option<String>, _>("parent_step_id").and_then(
+                            |v| {
+                                v.parse()
+                                    .map_err(|e| {
+                                        tracing::warn!("Failed to parse parent_step_id: {:?}", e);
+                                        e
+                                    })
+                                    .ok()
+                            },
+                        ),
                         step_category: serde_json::from_str(&row.get::<String, _>("step_category"))
                             .unwrap_or_default(),
                         completion_criteria: row.get("completion_criteria"),

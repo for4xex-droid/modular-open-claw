@@ -25,6 +25,12 @@ pub(crate) async fn process_generated_tool_calls(
     let calls = parse_tool_calls(reply);
 
     for (skill_name, skill_input) in calls {
+        // CallSkill (MCP tools) are routed via stream.rs's [CallSkill: ...] handler.
+        // Skip here to avoid double-execution, but note: security evaluation above
+        // already covers the full reply including CallSkill patterns.
+        if skill_name == "CallSkill" {
+            continue;
+        }
         *total_steps += 1;
 
         // 2. Unified Tool Execution Stream
@@ -111,7 +117,7 @@ pub(crate) fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
             .unwrap_or("")
             .to_string();
 
-        if !skill_name.is_empty() && skill_name != "CallSkill" {
+        if !skill_name.is_empty() {
             let mut brace_depth = 0;
             let mut json_end = None;
             let json_search_area = &text[abs_brace..];

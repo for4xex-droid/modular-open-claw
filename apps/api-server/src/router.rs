@@ -588,6 +588,7 @@ pub fn build_app(
             "/api/stream/chat",
             get(crate::stream::trigger_agent_chat_stream),
         )
+        .route("/api/stream/history", get(crate::stream::get_chat_history))
         .route(
             "/api/stream/vitality",
             get(crate::stream::trigger_system_vitality_stream),

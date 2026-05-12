@@ -108,18 +108,50 @@ export default function NurtureDashboard() {
             Nurture Economy Engine
           </h3>
           <p style={{ margin: "0.5rem 0 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            Real-time tracking of Karma points and transaction ledgers.
+            Real-time tracking of Experience points and transaction ledgers.
           </p>
         </div>
-        <button
-          className="secondary-button"
-          onClick={() => fetchData()}
-          disabled={isLoading}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-        >
-          <RefreshCcw size={16} className={isLoading ? "ani-spin" : ""} />
-          Refresh
-        </button>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <button
+            className="primary-button"
+            onClick={async () => {
+              try {
+                setIsLoading(true);
+                const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    agent_id: agentId,
+                    price_id: 'price_test_123', // Demo stub
+                    success_url: window.location.href,
+                    cancel_url: window.location.href,
+                  }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.url) window.location.assign(data.url);
+                } else {
+                  throw new Error("Failed to create checkout session");
+                }
+              } catch (err: any) {
+                setError(err.message || "Failed to create checkout session");
+                setIsLoading(false);
+              }
+            }}
+            disabled={isLoading}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
+          >
+            Buy Points
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => fetchData()}
+            disabled={isLoading}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <RefreshCcw size={16} className={isLoading ? "ani-spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -156,7 +188,7 @@ export default function NurtureDashboard() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
             <Award size={20} color="var(--accent-purple)" />
-            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>Karma Balance</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>ポイント残高</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-purple)" }}>
             {isLoading ? "..." : (balance?.balance || 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KP</span>

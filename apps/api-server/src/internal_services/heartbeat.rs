@@ -6,6 +6,7 @@
  */
 
 use crate::AppState;
+use aiome_core::traits::{ChatStore, SettingsOps};
 use aiome_core_contracts::events::CoreEvent;
 use aiome_core_contracts::traits::AgentEvolver;
 use infrastructure::heartbeat_wakeup::HeartbeatWakeupService;
@@ -75,5 +76,39 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
                     channel_id: 0, // 0 = Default Broadcast
                 });
         }
+
+        // C. Intent-First Suggestion
+        check_suggestion(&state).await;
     }
+}
+
+async fn check_suggestion(state: &AppState) {
+    if !is_suggestion_enabled(state).await {
+        return;
+    }
+
+    // Default channel history
+    if let Ok(history) = state.job_queue.fetch_chat_history("default", 10).await {
+        if history.len() >= 5 {
+            // V1: Simple trigger for suggestion based on activity volume
+            let _ = state
+                .event_sender
+                .get_inner()
+                .send(CoreEvent::ProactiveTalk {
+                    message: "【Suggestion】最近のチャット履歴から、システム診断の実行を推奨します。実行しますか？".to_string(),
+                    channel_id: 0,
+                });
+        }
+    }
+}
+
+async fn is_suggestion_enabled(state: &AppState) -> bool {
+    let flag = state
+        .job_queue
+        .get_setting_value("feature_flag.intent_first_suggestion")
+        .await
+        .ok()
+        .flatten();
+    // Default to true if not explicitly set to false
+    flag.as_deref() != Some("false")
 }

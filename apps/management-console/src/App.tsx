@@ -246,9 +246,9 @@ function App() {
   const { isExpired, dismiss } = useTokenHealth();
 
   const isVisible = (tab: string) => {
-    const beginner = ['home-v2', 'dashboard', 'demo', 'karma', 'expressions', 'settings'];
-    const intermediate = [...beginner, 'artifacts', 'agent', 'cortex', 'vault', 'store', 'nurture', 'biome', 'causal', 'lora', 'seo-pulse', 'mcp-dashboard'];
-    const advanced = [...intermediate, 'graph', 'audit', 'prompt-stats', 'immune'];
+    const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
+    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse'];
+    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'biome', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
     if (viewMode === 'intermediate') return intermediate.includes(tab);

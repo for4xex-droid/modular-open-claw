@@ -7,6 +7,10 @@ jest.mock('../lib/auth', () => ({
   authenticatedFetch: jest.fn(),
 }));
 
+jest.mock('../config', () => ({
+  API_BASE: 'http://localhost'
+}));
+
 describe('AiaaOnboardingWizard', () => {
   beforeEach(() => {
     jest.clearAllMocks();

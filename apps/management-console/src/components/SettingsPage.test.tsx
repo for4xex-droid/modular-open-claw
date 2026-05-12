@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SettingsPage from './SettingsPage';
 
 // Mock required contexts
@@ -39,6 +39,13 @@ jest.mock('../lib/auth', () => ({
 jest.mock('../config', () => ({
   API_BASE: 'http://localhost'
 }));
+
+// Mock EscrowManagementView to prevent async act warnings from it
+jest.mock('./EscrowManagementView', () => {
+  return function DummyEscrowView() {
+    return <div data-testid="escrow-management-view" />;
+  };
+});
 
 // Mock useViewMode
 let mockViewMode = 'advanced';
@@ -94,6 +101,16 @@ describe('SettingsPage Integrations', () => {
     fireEvent.blur(tokenInput);
     
     expect(tokenInput).toHaveValue(overflowToken);
+
+    // Wait for the async updateSetting call to resolve
+    // @ts-expect-error
+    const { authenticatedFetch } = require('../lib/auth');
+    await waitFor(() => {
+      expect(authenticatedFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.anything()
+      );
+    });
   });
 
   it('hides intermediate and advanced sections in beginner mode', async () => {
@@ -115,8 +132,9 @@ describe('SettingsPage Integrations', () => {
     mockViewMode = 'intermediate';
     render(<SettingsPage />);
     
-    // Should see Appearance, LLM, Commerce, Channel Bridges, Security
-    expect(await screen.findByText('settings.appearance')).toBeInTheDocument();
+    // Wait for initial render/fetch to settle
+    await screen.findByText('settings.appearance');
+
     expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
     expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
     expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
@@ -130,8 +148,9 @@ describe('SettingsPage Integrations', () => {
     mockViewMode = 'advanced';
     render(<SettingsPage />);
     
-    // All sections should be visible
-    expect(await screen.findByText('settings.appearance')).toBeInTheDocument();
+    // Wait for initial render/fetch to settle
+    await screen.findByText('settings.appearance');
+
     expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
     expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
     expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();

@@ -90,6 +90,10 @@ pub struct AiomeConfig {
     pub shadow_clone_grpc_host: String,
     /// Shadow Clone gRPC Port
     pub shadow_clone_grpc_port: String,
+    /// Discord Bot Token
+    pub discord_token: Option<SecretString>,
+    /// Telegram Bot Token
+    pub telegram_token: Option<SecretString>,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -148,6 +152,8 @@ impl Default for AiomeConfig {
             a2a_node_token: None,
             shadow_clone_grpc_host: "localhost".to_string(),
             shadow_clone_grpc_port: "50051".to_string(),
+            discord_token: None,
+            telegram_token: None,
         }
     }
 }
@@ -280,6 +286,14 @@ impl AiomeConfig {
                 .unwrap_or_else(|_| "localhost".to_string()),
             shadow_clone_grpc_port: env::var("SHADOW_CLONE_GRPC_PORT")
                 .unwrap_or_else(|_| "50051".to_string()),
+            discord_token: env::var("DISCORD_TOKEN").ok().map(|token| {
+                crate::security::scrub_env("DISCORD_TOKEN");
+                SecretString::from(token)
+            }),
+            telegram_token: env::var("TELEGRAM_TOKEN").ok().map(|token| {
+                crate::security::scrub_env("TELEGRAM_TOKEN");
+                SecretString::from(token)
+            }),
         })
     }
 
@@ -337,6 +351,34 @@ mod tests {
         assert!(
             std::env::var("A2A_AUTH_TOKEN").is_err(),
             "A2A_AUTH_TOKEN was not scrubbed!"
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_watchtower_tokens_scrubbing() {
+        std::env::set_var("DISCORD_TOKEN", "mock-discord-123");
+        std::env::set_var("TELEGRAM_TOKEN", "mock-telegram-456");
+
+        let config = AiomeConfig::load().expect("Failed to load config");
+
+        use secrecy::ExposeSecret;
+        assert_eq!(
+            config.discord_token.as_ref().unwrap().expose_secret(),
+            "mock-discord-123"
+        );
+        assert_eq!(
+            config.telegram_token.as_ref().unwrap().expose_secret(),
+            "mock-telegram-456"
+        );
+
+        assert!(
+            std::env::var("DISCORD_TOKEN").is_err(),
+            "DISCORD_TOKEN was not scrubbed!"
+        );
+        assert!(
+            std::env::var("TELEGRAM_TOKEN").is_err(),
+            "TELEGRAM_TOKEN was not scrubbed!"
         );
     }
 }

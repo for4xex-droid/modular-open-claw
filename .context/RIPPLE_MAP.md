@@ -1,5 +1,20 @@
 # 🌊 Aiome Ripple Map
 
+## Hardening Phase: System Isolation & API Consistency
+### 1. McpDiscovery Fail-Closed Prevention
+- **変更内容**:
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `McpDiscoveryTask` をメインの `cancel_token` から切り離し、専用の `mcp_cancel` を付与。さらにワンショット実行から定期的な `interval` ループへ変更。
+- **波及効果**:
+    - MCP サーバーの起動失敗（再試行上限突破）が、API サーバー全体のダウン（Fail-Closed）を引き起こす壊滅的な設計バグが解消された。システムの回復力（Resiliency）が向上。
+
+### 2. Frontend API & Slash Command Consolidation
+- **変更内容**:
+    - `apps/management-console/src/constants/slashCommands.ts` [NEW]: スラッシュコマンド（`/store`, `/treasure`, `/lora`, `/clear`）の定義を抽出。
+    - `AgentConsole.tsx`, `StoryFlow.tsx`, `useAgentChat.ts` [MODIFY]: 三重定義されていたコマンドリストを新規 constant に統合。
+    - `AgentConsole.tsx`, `useCortexSuggestions.ts` [MODIFY]: `fetch` を `authenticatedFetch` + `API_BASE` に統一。
+- **波及効果**:
+    - Vite proxy が存在しない環境での API リクエストの完全な失敗を修正し、認証基盤を堅牢化。また、コマンド定義の単一障害点化を防ぎ、UI（アイコン）と Dispatch（エンベロープ）のロジックが安全に統合された。
+
 ## Test Debt Resolution & Monolith Decomposition
 ### 1. `api_integration_tests.rs` Directory Migration
 - **変更内容**:

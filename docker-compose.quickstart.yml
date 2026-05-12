@@ -3,6 +3,14 @@
 # (like IPC_LOCK, read-only rootfs) to maximize startup speed and compatibility.
 # For any production-facing or remote deployments, you MUST use `docker-compose.production.yml`.
 
+# =====================================================================
+# 🍎 macOS USERS:
+# Native Ollama installation is HIGHLY recommended for performance.
+# If using native Ollama on macOS:
+# 1. Comment out the 'ollama:' block below.
+# 2. In 'api-server', set: OLLAMA_HOST: "http://host.docker.internal:11434"
+# =====================================================================
+
 services:
   ollama:
     image: ollama/ollama

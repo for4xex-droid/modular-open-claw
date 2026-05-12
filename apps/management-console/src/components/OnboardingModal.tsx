@@ -6,8 +6,8 @@
  */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Sparkles, Shield, User, UserCheck } from 'lucide-react';
-import { useAvatarCharacter } from '../hooks/AvatarContext';
+import { BrainCircuit, Sparkles, User } from 'lucide-react';
+
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
@@ -22,7 +22,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
     const { t } = useTranslation();
     const [step, setStep] = useState(0);
     const [aiName, setAiName] = useState("Watchtower");
-    const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
+
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<string>('intermediate');
@@ -112,70 +112,6 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             icon: <BrainCircuit size={48} color="var(--accent-cyan)" />,
             content: <ModelSetupStep onNext={() => setStep(step + 1)} onSkip={() => setStep(step + 1)} />,
             hideNext: true // We hide the global "next" button for this step
-        },
-        {
-            title: t('onboarding.chooseManifestation'),
-            description: t('onboarding.manifestationDesc'),
-            icon: <UserCheck size={48} color="var(--accent-purple)" />,
-            content: (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                         <button 
-                            onClick={() => setCharacter('female')}
-                            style={{ 
-                                flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', 
-                                border: `2px solid ${character === 'female' ? 'var(--accent-purple)' : 'transparent'}`,
-                                background: character === 'female' ? 'var(--accent-purple-10)' : 'var(--white-03)',
-                                cursor: 'pointer', transition: 'all var(--speed-normal) ease'
-                            }}
-                         >
-                             <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♀</div>
-                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{t('settings.female')}</div>
-                         </button>
-                         <button 
-                            onClick={() => setCharacter('male')}
-                            style={{ 
-                                flex: 1, padding: '1rem', borderRadius: 'var(--radius-md)', 
-                                border: `2px solid ${character === 'male' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: character === 'male' ? 'var(--accent-cyan-10)' : 'var(--white-03)',
-                                cursor: 'pointer', transition: 'all var(--speed-normal) ease'
-                            }}
-                         >
-                             <div style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>♂</div>
-                             <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{t('settings.male')}</div>
-                         </button>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                         <button 
-                            onClick={() => setProportion('chibi')}
-                            style={{ 
-                                flex: 1, padding: '0.8rem', borderRadius: 'var(--radius-md)', 
-                                border: `2px solid ${proportion === 'chibi' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: proportion === 'chibi' ? 'var(--accent-cyan-05)' : 'var(--white-03)',
-                                fontSize: '0.8rem', cursor: 'pointer'
-                            }}
-                         >
-                             {t('onboarding.cuteChibi')}
-                         </button>
-                         <button 
-                            onClick={() => setProportion('taller')}
-                            style={{ 
-                                flex: 1, padding: '0.8rem', borderRadius: 'var(--radius-md)', 
-                                border: `2px solid ${proportion === 'taller' ? 'var(--accent-cyan)' : 'transparent'}`,
-                                background: proportion === 'taller' ? 'var(--accent-cyan-05)' : 'var(--white-03)',
-                                fontSize: '0.8rem', cursor: 'pointer'
-                            }}
-                         >
-                             {t('onboarding.modernTaller')}
-                         </button>
-                    </div>
-                </div>
-            )
-        },
-        {
-            title: t('onboarding.abyssSecurity'),
-            description: t('onboarding.abyssSecurityDesc'),
-            icon: <Shield size={48} color="var(--accent-rose)" />,
         },
         {
             title: t('onboarding.chooseExperience'),

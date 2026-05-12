@@ -81,6 +81,9 @@ export default function DemoView({ stats, lastEvent, isConnected }: DemoViewProp
     
     try {
       const headers = getAuthHeaders();
+      // Intentional: Using getAuthHeaders() + raw fetch (not authenticatedFetch)
+      // because this pattern is the project-wide SSE idiom — see also:
+      // useSystemVitality.tsx:86, useModelStatus.ts:58
       addLog(`POST ${API_BASE}/api/v1/demo/start (Auth: ${headers['Authorization'] ? 'Bearer ***' : 'NONE'})`);
       
       const res = await fetch(`${API_BASE}/api/v1/demo/start`, {

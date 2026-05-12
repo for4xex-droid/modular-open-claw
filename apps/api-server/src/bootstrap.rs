@@ -599,6 +599,16 @@ pub async fn init_llm_providers(
         embed_type,
     );
 
+    if std::env::var("ENABLE_TOOL_REVIEWER").unwrap_or_else(|_| "true".to_string()) == "true" {
+        let reviewer_hook = infrastructure::security::ToolCallReviewerHook::new(
+            bg_provider.clone(),
+            20, // max_reviews_per_session
+            Some(db.eval_logger.clone()),
+        );
+        db.hook_manager.add_hook(Arc::new(reviewer_hook));
+        tracing::info!("🛡️ [HookManager] ToolCallReviewerHook registered successfully");
+    }
+
     Ok(ProviderResult {
         provider: provider as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
         bg_provider,
@@ -1085,11 +1095,16 @@ pub async fn init_core_services(
         let mcp_manager = mcp_manager.clone();
         let registry = registry.clone();
         let vault_backend = vault_backend.clone();
+        let config_clone = config.clone();
         let supervisor = infrastructure::supervisor::TaskSupervisor::new(5, 60);
+        // child_token(): サーバーの Graceful Shutdown (cancel_token.cancel()) は McpDiscovery にも伝播する。
+        // 一方、supervisor の Fail-Closed (mcp_cancel.cancel()) は親の cancel_token には伝播しない。
+        let mcp_cancel = cancel_token.child_token();
         struct McpDiscoveryTask {
             mcp_manager: Arc<mcp::client::McpProcessManager>,
             registry: Arc<infrastructure::registry::RegistryManager>,
             vault_backend: Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>,
+            config: Arc<shared::config::AiomeConfig>,
         }
         impl infrastructure::supervisor::SupervisedTask for McpDiscoveryTask {
             fn name(&self) -> &'static str {
@@ -1097,31 +1112,37 @@ pub async fn init_core_services(
             }
             fn run(
                 &self,
-                _ct: tokio_util::sync::CancellationToken,
+                ct: tokio_util::sync::CancellationToken,
             ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
                 let mcp_manager = self.mcp_manager.clone();
                 let registry = self.registry.clone();
                 let vault = self.vault_backend.clone();
+                let config = self.config.clone();
                 Box::pin(async move {
-                    tracing::info!("🔍 [MCP Discovery] Starting automated server discovery...");
-                    let has_error = match mcp::discovery::discover_and_connect(
-                        &mcp_manager,
-                        &registry,
-                        Some(vault),
-                    )
-                    .await
-                    {
-                        Err(e) => {
-                            tracing::error!(
-                                "🚨 [MCP Discovery] Failed during initial discovery: {}",
-                                e
-                            );
-                            true
+                    tracing::info!("🔍 [MCP Discovery] Starting periodic discovery loop...");
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+                    loop {
+                        tokio::select! {
+                            _ = ct.cancelled() => {
+                                tracing::info!("🛑 [MCP Discovery] Shutdown requested");
+                                break;
+                            }
+                            _ = interval.tick() => {
+                                if let Err(e) = mcp::discovery::discover_and_connect(
+                                    &mcp_manager,
+                                    &registry,
+                                    Some(vault.clone()),
+                                    &config,
+                                )
+                                .await
+                                {
+                                    tracing::error!(
+                                        "🚨 [MCP Discovery] Failed during discovery: {}",
+                                        e
+                                    );
+                                }
+                            }
                         }
-                        Ok(_) => false,
-                    };
-                    if has_error {
-                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     }
                 })
             }
@@ -1131,8 +1152,9 @@ pub async fn init_core_services(
                 mcp_manager,
                 registry,
                 vault_backend: vault_backend.clone(),
+                config: config_clone,
             },
-            cancel_token.clone(),
+            mcp_cancel,
         );
     }
 
@@ -1170,7 +1192,7 @@ pub async fn init_core_services(
     let validator = Arc::new(
         infrastructure::validator::DefaultConstitutionalValidator::new(
             bg_provider.clone(),
-            None, // TODO: 将来的にメインプロセスでも SLM を使用する場合は注入
+            slm_bridge.clone(),
         ),
     );
     // [Step 1.8] Initialize TaskDispatcher & DockerConductor (Phase 43)
@@ -1765,6 +1787,22 @@ pub async fn assemble_app_state(
             catalog.register_component(
                 "treasureItem",
                 serde_json::json!({"name": "string", "value": "number", "currency": "string"}),
+            );
+            catalog.register_component("progressBar", serde_json::json!({"progress": "number", "label": "string", "status": "string (optional)"}));
+            catalog.register_component("dataTable", serde_json::json!({"headers": "array of strings", "rows": "array of arrays of strings"}));
+            catalog.register_component("chart", serde_json::json!({"type": "string (line, bar, pie)", "data": "object", "title": "string"}));
+            catalog.register_component("alert", serde_json::json!({"type": "string (info, warning, error, success)", "message": "string"}));
+            catalog.register_component(
+                "cellStatus",
+                serde_json::json!({"cellId": "string", "status": "string", "metrics": "object"}),
+            );
+            catalog.register_component(
+                "timeline",
+                serde_json::json!({"events": "array of objects {date, title, description}"}),
+            );
+            catalog.register_component(
+                "codeBlock",
+                serde_json::json!({"code": "string", "language": "string"}),
             );
             Component::new(std::sync::Arc::new(catalog))
         },

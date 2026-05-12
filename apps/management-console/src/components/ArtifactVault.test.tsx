@@ -1,6 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import ArtifactVault from './ArtifactVault';
-import { useTranslation } from '../i18n';
 
 // Mock translation and auth fetch
 jest.mock('../i18n', () => ({
@@ -24,21 +23,7 @@ jest.mock('framer-motion', () => ({
 }));
 
 describe('ArtifactVault HTML Preview', () => {
-  const mockHtmlArtifact = {
-    id: 'art-123',
-    title: 'Test Report',
-    category: 'Report',
-    tags: ['test'],
-    created_by: 'Agent',
-    dir_path: '/tmp',
-    files: [
-      { name: 'report.html', mime_type: 'text/html', size_bytes: 1024, hash: 'abc' },
-      { name: 'data.json', mime_type: 'application/json', size_bytes: 512, hash: 'def' }
-    ],
-    karma_refs: [],
-    edges: [],
-    created_at: new Date().toISOString()
-  };
+
 
   it('renders a preview button (Eye icon) only for HTML files', async () => {
     // Note: We need a more integrated test or to export internal components

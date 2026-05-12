@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { authenticatedFetch } from '../lib/auth';
+import { API_BASE } from '../config';
 
 export function useCortexSuggestions() {
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -9,10 +11,7 @@ export function useCortexSuggestions() {
         
         setIsLoading(true);
         try {
-            const token = sessionStorage.getItem('aiome_secret') || '';
-            const res = await fetch('/api/v1/cortex/suggestions', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/cortex/suggestions`);
             
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             

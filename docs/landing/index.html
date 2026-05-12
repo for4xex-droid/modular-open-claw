@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aiome - The Self-Healing AI Agent OS</title>
+  <meta name="description" content="Aiome is an open-source, self-healing AI agent operating system.">
+  
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Progressive Enhancement flag -->
+  <script>document.documentElement.className += ' js-enabled';</script>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="nav">
+    <div class="nav-brand">
+      <i data-lucide="boxes"></i>
+      <span>Aiome</span>
+    </div>
+    <div class="nav-center">
+      <a href="#features" class="nav-link" data-i18n="nav_features">Features</a>
+      <a href="#quickstart" class="nav-link" data-i18n="nav_quickstart">Quickstart</a>
+      <a href="https://github.com/motivationstudio-llc/aiome/tree/main/docs" target="_blank" class="nav-link" data-i18n="nav_docs">Documentation</a>
+    </div>
+    <div class="nav-right">
+      <button id="lang-toggle" class="lang-switch" aria-label="Toggle Language">EN | 日</button>
+      <a href="https://github.com/motivationstudio-llc/aiome" target="_blank" class="btn btn-sm btn-secondary" data-i18n="nav_github">GitHub</a>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero dark" id="hero">
+      <div class="hero-glow"></div>
+      <div class="hero-content container">
+        <h1 class="text-gradient" data-i18n="hero_title">The Self-Healing AI Agent OS</h1>
+        <p data-i18n="hero_subtitle">Written entirely by AI agents. 90,000+ lines of production Rust.</p>
+        
+        <div class="hero-actions">
+          <a href="#quickstart" class="btn btn-primary" data-i18n="hero_cta_primary">Get Started Free — $0/mo</a>
+          <a href="https://github.com/motivationstudio-llc/aiome" target="_blank" class="btn btn-secondary" data-i18n="hero_cta_secondary">View on GitHub &rarr;</a>
+        </div>
+
+        <div class="social-proof">
+          <span class="badge"><i data-lucide="cpu" width="14"></i> <span data-i18n="badge_rust">Production Rust</span></span>
+          <span class="badge"><i data-lucide="shield-check" width="14"></i> <span data-i18n="badge_license">BUSL-1.1</span></span>
+          <span class="badge"><i data-lucide="git-merge" width="14"></i> <span data-i18n="badge_tla">TLA+ Verified</span></span>
+          <span class="badge"><i data-lucide="bot" width="14"></i> <span data-i18n="badge_agents">Built by Agents</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features light" id="features">
+      <div class="container">
+        <div class="section-header">
+          <h2 data-i18n="features_title">Features</h2>
+        </div>
+        <div class="features-grid">
+          
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="brain-circuit"></i></div>
+            <h3 data-i18n="feat1_title">Soul Engine & Self-Healing</h3>
+            <p data-i18n="feat1_desc">Autonomous diagnostic loop with idempotent retries and repair hint injection.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="shield"></i></div>
+            <h3 data-i18n="feat2_title">Trust Layer & Zero-Trust</h3>
+            <p data-i18n="feat2_desc">O(1) boundary verification, SHA-256 audit chain, governed execution.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="library"></i></div>
+            <h3 data-i18n="feat3_title">Cortex Knowledge Base</h3>
+            <p data-i18n="feat3_desc">Beyond RAG — self-reconstructing knowledge web with progressive disclosure.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="network"></i></div>
+            <h3 data-i18n="feat4_title">MCP Federation</h3>
+            <p data-i18n="feat4_desc">Mount GitHub triage, Notion sync, real-time web search instantly.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="coins"></i></div>
+            <h3 data-i18n="feat5_title">Agent Economy</h3>
+            <p data-i18n="feat5_desc">Escrow-backed autonomous contracting between AI agents.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="layout-dashboard"></i></div>
+            <h3 data-i18n="feat6_title">Premium Management Console</h3>
+            <p data-i18n="feat6_desc">100% token-driven UI with real-time semantic elicitation.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Console Preview Section -->
+    <section class="preview dark" id="preview" style="padding-bottom: 60px;">
+      <div class="container">
+        <div class="section-header">
+          <h2 data-i18n="preview_title">See Aiome in Action</h2>
+          <p style="color: var(--lp-text-dark-muted); font-size: 1.125rem; margin-top: 16px;" data-i18n="preview_subtitle">A fully integrated, token-driven management console.</p>
+        </div>
+        <div class="console-preview-container">
+          <!-- Fallback path, assuming image exists -->
+          <img src="console-preview.png" alt="Aiome Management Console Preview">
+        </div>
+      </div>
+    </section>
+
+    <!-- Terminal Demo Section -->
+    <section class="terminal-demo dark" id="terminal-demo" style="padding-top: 0;">
+      <div class="container">
+        <div class="terminal-window" id="terminal-container">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+          </div>
+          <div class="terminal-body" id="terminal-content">
+            <!-- Static fallback for non-JS -->
+            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">git clone https://github.com/motivationstudio-llc/aiome</span></div>
+            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">cd aiome</span></div>
+            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">docker compose -f docker-compose.quickstart.yml up -d</span></div>
+            <div class="term-line term-static"><span class="term-success">✓ All services started successfully</span></div>
+            <div class="term-line term-static"><span class="term-output">→ Open http://localhost:1420</span></div>
+            <!-- Dynamic elements hidden initially by CSS if js-enabled class is present -->
+          </div>
+        </div>
+        <div class="terminal-cta" id="terminal-cta">
+          <span class="badge" style="display:inline-flex; font-size: 1rem; padding: 12px 24px;" data-i18n="terminal_badge">$0 / month — Self-host all features for free</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quickstart Section -->
+    <section class="quickstart light" id="quickstart">
+      <div class="container">
+        <div class="section-header">
+          <h2 data-i18n="quickstart_title">Quickstart</h2>
+        </div>
+        
+        <div class="quickstart-steps">
+          
+          <div class="step-item">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h3 data-i18n="step1_title">Clone Repository</h3>
+              <pre><code>git clone https://github.com/motivationstudio-llc/aiome.git
+cd aiome</code></pre>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h3 data-i18n="step2_title">Launch via Docker</h3>
+              <pre><code>docker compose -f docker-compose.quickstart.yml up -d</code></pre>
+              
+              <details class="step-details">
+                <summary data-i18n="step2_details_title">Build from Source (Alternative)</summary>
+                <div>
+                  <pre style="margin-top: 12px;"><code>cargo build --release
+cd apps/management-console && npm install && npm run build</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="step-item">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h3 data-i18n="step3_title">Access Console</h3>
+              <p data-i18n="step3_desc" style="margin-bottom: 16px;">Open your browser and navigate to the local console address.</p>
+              <pre><code>http://localhost:1420</code></pre>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-col">
+        <div class="nav-brand" style="margin-bottom: 16px;">
+          <i data-lucide="boxes"></i>
+          <span>Aiome</span>
+        </div>
+        <p style="font-size: 0.875rem;" data-i18n="footer_tagline">The Self-Healing AI Agent OS.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-i18n="footer_links_title">Resources</h4>
+        <ul>
+          <li><a href="https://github.com/motivationstudio-llc/aiome" target="_blank">GitHub</a></li>
+          <li><a href="https://github.com/motivationstudio-llc/aiome/tree/main/docs" target="_blank" data-i18n="footer_link_docs">Documentation</a></li>
+          <li><a href="https://github.com/motivationstudio-llc/aiome/blob/main/CONTRIBUTING.md" target="_blank" data-i18n="footer_link_contribute">Contributing</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 data-i18n="footer_legal_title">Legal</h4>
+        <ul>
+          <li><a href="https://github.com/motivationstudio-llc/aiome/blob/main/docs/legal/PRIVACY_POLICY.md" target="_blank" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+          <li><a href="https://github.com/motivationstudio-llc/aiome/blob/main/docs/legal/TERMS_OF_SERVICE.md" target="_blank" data-i18n="footer_link_terms">Terms of Service</a></li>
+          <li><a href="https://github.com/motivationstudio-llc/aiome/blob/main/SECURITY.md" target="_blank" data-i18n="footer_link_security">Security</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 motivationstudio, LLC.</p>
+      <p data-i18n="footer_credits">Built automatically by Agents of motivationstudio, LLC.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    lucide.createIcons();
+  </script>
+  <!-- Defer loading of our custom scripts to ensure progressive enhancement works -->
+  <script src="i18n.js" defer></script>
+  <script src="terminal.js" defer></script>
+</body>
+</html>

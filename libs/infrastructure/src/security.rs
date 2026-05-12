@@ -677,6 +677,8 @@ use crate::db::DatabasePool;
 pub use abyss_voice_vault::AbyssVoiceVault;
 use aiome_core_contracts::voice_vault::VoiceKeyVault;
 pub use loop_detector::LoopDetectorHook;
+pub mod tool_call_reviewer;
+pub use tool_call_reviewer::ToolCallReviewerHook;
 use zeroize::Zeroizing;
 
 /// Phase 9: Voice Core DRM (Digital Rights Management)

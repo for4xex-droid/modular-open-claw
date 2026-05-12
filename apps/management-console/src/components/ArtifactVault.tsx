@@ -83,6 +83,7 @@ const ArtifactVault = () => {
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       // Security Check: Ensure the message is strictly from our sandboxed preview iframe
+      // @ts-ignore
       const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
       if (!isTestEnv && (!iframeRef.current || e.source !== iframeRef.current.contentWindow)) {
         return;

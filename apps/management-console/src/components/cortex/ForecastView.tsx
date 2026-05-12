@@ -41,7 +41,7 @@ export default function ForecastView() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                     <Sparkles size={20} color="var(--accent-purple)" />
-                    TimesFM 予測 (Karma Trend)
+                    TimesFM 予測 (Experience Trend)
                 </h3>
                 <button 
                     className="icon-button" 

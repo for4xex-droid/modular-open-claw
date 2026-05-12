@@ -13,7 +13,7 @@ use async_trait::async_trait;
 #[derive(Debug, Default)]
 pub struct LoopDetectorHook;
 
-fn get_tool_classification(skill_name: &str) -> &'static str {
+pub(crate) fn get_tool_classification(skill_name: &str) -> &'static str {
     match skill_name {
         "run_command"
         | "write_to_file"
@@ -24,7 +24,8 @@ fn get_tool_classification(skill_name: &str) -> &'static str {
         | "git_push" => "Mutating",
         "view_file" | "list_dir" | "grep_search" | "read_url_content" | "search_web"
         | "command_status" => "Readonly",
-        _ => "Idempotent",
+        // Fail-Safe: Unknown tools are treated as Mutating (strictest review + loop limit)
+        _ => "Mutating",
     }
 }
 
@@ -36,7 +37,7 @@ fn get_threshold(skill_name: &str) -> usize {
     }
 }
 
-fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
+pub(crate) fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
     let mut calls = Vec::new();
     let mut start_idx = 0;
 
@@ -54,7 +55,7 @@ fn parse_tool_calls(text: &str) -> Vec<(String, String)> {
             .unwrap_or("")
             .to_string();
 
-        if !skill_name.is_empty() && skill_name != "CallSkill" {
+        if !skill_name.is_empty() {
             let mut brace_depth = 0;
             let mut json_end = None;
             let json_search_area = &text[abs_brace..];
@@ -250,6 +251,60 @@ view_file { "AbsolutePath": "/tmp/test.rs" }"#;
         assert!(
             result.is_err(),
             "Readonly tool loop should be blocked after 5 identical calls"
+        );
+    }
+
+    #[test]
+    fn test_fail_safe_unknown_tool_classified_as_mutating() {
+        // Any tool not in the explicit list must be treated as Mutating (Fail-Safe)
+        assert_eq!(get_tool_classification("some_unknown_mcp_tool"), "Mutating");
+        assert_eq!(get_tool_classification("CallSkill"), "Mutating");
+        assert_eq!(get_tool_classification("dangerous_new_tool"), "Mutating");
+        // Known safe tools must remain Readonly
+        assert_eq!(get_tool_classification("view_file"), "Readonly");
+        assert_eq!(get_tool_classification("grep_search"), "Readonly");
+        // Known dangerous tools must remain Mutating
+        assert_eq!(get_tool_classification("write_to_file"), "Mutating");
+        assert_eq!(get_tool_classification("run_command"), "Mutating");
+    }
+
+    #[test]
+    fn test_parse_tool_calls_includes_callskill() {
+        // CallSkill should no longer be excluded from parsing
+        let text = r#"I will invoke an MCP tool.
+CallSkill { "tool": "web_search", "query": "test" }"#;
+        let calls = parse_tool_calls(text);
+        assert_eq!(calls.len(), 1, "CallSkill should be parsed");
+        assert_eq!(calls[0].0, "CallSkill");
+    }
+
+    #[tokio::test]
+    async fn test_unknown_tool_loop_uses_mutating_threshold() {
+        let hook = LoopDetectorHook::default();
+        let mut request = LlmRequest::default();
+
+        // Unknown MCP tool should use Mutating threshold (3)
+        let tool_content = r#"Let me call the external tool.
+custom_mcp_tool { "action": "destroy", "target": "/data" }"#;
+
+        for _ in 0..4 {
+            request.messages.push(LlmMessage {
+                role: "assistant".into(),
+                content: tool_content.into(),
+                cache: false,
+            });
+            request.messages.push(LlmMessage {
+                role: "tool".into(),
+                content: "Error: access denied".into(),
+                cache: false,
+            });
+        }
+
+        // 4th attempt should be blocked since unknown tools use Mutating limit (3)
+        let result = hook.on_pre_execute(&request).await;
+        assert!(
+            result.is_err(),
+            "Unknown tool should be blocked at Mutating threshold (3)"
         );
     }
 }

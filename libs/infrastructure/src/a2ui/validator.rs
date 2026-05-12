@@ -18,6 +18,14 @@ const ALLOWED_COMPONENT_TYPES: &[&str] = &[
     "form",
     "button",
     "input",
+    "progressBar",
+    "dataTable",
+    "chart",
+    "alert",
+    "cellStatus",
+    "timeline",
+    "codeBlock",
+    "card",
 ];
 
 /// ネストされた children の再帰深度上限（StackOverflow 防止）

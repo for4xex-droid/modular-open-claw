@@ -11,9 +11,11 @@
  * AgentConsole（既存）と StoryFlow（新規）の両方で共用可能。
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { SLASH_COMMANDS } from '../constants/slashCommands';
 import { API_BASE } from '../config';
 import { ChatMessage } from '../types';
 import { authenticatedFetch } from '../lib/auth';
+import { useSystemVitality } from './useSystemVitality';
 
 export interface KarmaData {
     is_ood: boolean;
@@ -54,6 +56,28 @@ export const useAgentChat = (): UseAgentChatReturn => {
     const autoTtsRef = useRef(autoTts);
     autoTtsRef.current = autoTts;
     
+    // P3: Intent-First Suggestion Integration
+    const { lastEvent } = useSystemVitality();
+
+    useEffect(() => {
+        if (lastEvent?.type === 'proactive_talk') {
+            const message = (lastEvent.data as any)?.message;
+            if (message) {
+                setHistory(prev => {
+                    // Prevent duplicate consecutive messages
+                    const lastMsg = prev[prev.length - 1];
+                    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content === message) {
+                        return prev;
+                    }
+                    return [...prev, { role: "assistant", content: message }];
+                });
+                if (autoTtsRef.current) {
+                    playTts(message);
+                }
+            }
+        }
+    }, [lastEvent]); // playTts is not in deps to avoid issues, we use ref inside playTts if needed, but it's useCallback. Let's omit playTts from deps.
+
     const [channelId] = useState(() => {
         const stored = sessionStorage.getItem('aiome_console_channel_id');
         if (stored) return stored;
@@ -62,8 +86,29 @@ export const useAgentChat = (): UseAgentChatReturn => {
         return newId;
     });
 
+    useEffect(() => {
+        const loadHistory = async () => {
+            try {
+                const resp = await authenticatedFetch(`${API_BASE}/api/stream/history?channel_id=${channelId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.messages && Array.isArray(data.messages)) {
+                        setHistory(data.messages.map((m: any) => ({
+                            role: m.role,
+                            content: m.content,
+                            reasoning: m.metadata?.reasoning
+                        })));
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load history", e);
+            }
+        };
+        loadHistory();
+    }, [channelId]);
+
     // We must declare sendMessage before the ref if we want to initialize it, but since sendMessage uses many states, we'll initialize the ref as null or use a separate ref update.
-    const sendMessageRef = useRef<(overridePrompt?: string) => Promise<void>>();
+    const sendMessageRef = useRef<((overridePrompt?: string) => Promise<void>) | null>(null);
 
     // Listen for JS bridge feedback from HTML artifacts
     useEffect(() => {
@@ -101,6 +146,45 @@ export const useAgentChat = (): UseAgentChatReturn => {
     const sendMessage = useCallback(async (overridePrompt?: string) => {
         const currentPrompt = overridePrompt || input;
         if (!currentPrompt.trim() || isTyping) return;
+
+        // NOTE: '/clear' は SLASH_COMMANDS 内で envelopeType: null として定義されている特殊コマンド。
+        // UI サーフェスの生成ではなくステートリセットを行うため、ここで明示的にハンドリングする。
+        // コマンド名を変更する場合は slashCommands.ts と同期すること。
+        if (currentPrompt === '/clear') {
+            setHistory([]);
+            setStreamingText("");
+            setRelevantKarma(null);
+            setRelevantKarmaData(null);
+            setActiveKnowledge(null);
+            setStatus("IDLE");
+            setInput("");
+            return;
+        }
+
+        const matchedCmd = SLASH_COMMANDS.find(c => c.cmd === currentPrompt && c.envelopeType);
+        const matchedEnvelopeType = matchedCmd?.envelopeType;
+        if (matchedEnvelopeType) {
+            setHistory(prev => [
+                ...prev,
+                { role: "user", content: currentPrompt },
+                {
+                    role: "assistant",
+                    content: "",
+                    a2uiEnvelope: {
+                        type: 'createSurface',
+                        surface: {
+                            id: crypto.randomUUID(),
+                            version: 'local',
+                            source: 'slash-command',
+                            components: [{ type: matchedEnvelopeType, props: {}, children: [] }]
+                        }
+                    }
+                }
+            ]);
+            setInput("");
+            return;
+        }
+
         const userMsg: ChatMessage = { role: "user", content: currentPrompt };
         setHistory(prev => [...prev, userMsg]);
         setInput("");

@@ -11,9 +11,13 @@ import react from "@vitejs/plugin-react";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(async ({ mode }) => ({
   plugins: [react()],
   assetsInclude: ['**/*.vrm'],
+  // Production: strip console.log / console.warn (keep console.error for diagnostics)
+  esbuild: {
+    pure: mode === 'production' ? ['console.log', 'console.warn'] : [],
+  },
   build: {
     rollupOptions: {
       output: {

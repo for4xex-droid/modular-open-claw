@@ -66,7 +66,6 @@ mod auth;
 #[cfg(any(debug_assertions, feature = "demo"))]
 mod autonomous_demo;
 pub mod bootstrap;
-pub mod bootstrap_builder;
 #[cfg(test)]
 mod commerce_e2e_tests;
 mod docker;

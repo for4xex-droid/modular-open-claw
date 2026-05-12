@@ -38,7 +38,7 @@ const GraphView: React.FC = () => {
                 const karmaData = await karmaRes.json();
                 const artifacts = await artifactRes.json();
 
-                // 1. Process Karma Nodes/Edges
+                // 1. Process Memory Nodes/Edges
                 const nodes = new DataSet<any>(karmaData.nodes.map((n: GraphNode) => ({
                     ...n,
                     color: {
@@ -79,7 +79,7 @@ const GraphView: React.FC = () => {
                         title: `Category: ${art.category}`
                     });
 
-                    // Add edges from Karma refs if present
+                    // Add edges from Memory refs if present
                     if (art.karma_refs) {
                         art.karma_refs.forEach((karmaId: string) => {
                             edges.add({

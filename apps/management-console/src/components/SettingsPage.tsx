@@ -418,6 +418,20 @@ const SettingsPage: React.FC = () => {
                             onUpdate={(v) => updateSetting('feature_flag.gig_marketplace', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.gig_marketplace'} 
                         />
+                        <FeatureToggle 
+                            label="Intent-First Suggestion" 
+                            flag="feature_flag.intent_first_suggestion" 
+                            current={getSetting('feature_flag.intent_first_suggestion')} 
+                            onUpdate={(v) => updateSetting('feature_flag.intent_first_suggestion', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.intent_first_suggestion'} 
+                        />
+                        <FeatureToggle 
+                            label="Semantic Tool Reviewer" 
+                            flag="ENABLE_TOOL_REVIEWER" 
+                            current={getSetting('ENABLE_TOOL_REVIEWER') || "true"} 
+                            onUpdate={(v) => updateSetting('ENABLE_TOOL_REVIEWER', v, 'feature_flags')} 
+                            saving={saving === 'ENABLE_TOOL_REVIEWER'} 
+                        />
                     </div>
                 </section>
                 )}

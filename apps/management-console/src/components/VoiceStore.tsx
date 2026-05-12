@@ -138,6 +138,32 @@ export default function VoiceStore() {
     }
   };
 
+  const [isRecharging, setIsRecharging] = useState(false);
+
+  const handleRecharge = async () => {
+    setIsRecharging(true);
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
+        method: "POST",
+        body: JSON.stringify({
+          amount: 5000
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.assign(data.url);
+        }
+      } else {
+        setNotification({ type: 'error', message: 'Failed to create checkout session.' });
+      }
+    } catch (e) {
+      setNotification({ type: 'error', message: 'Network error occurred.' });
+    } finally {
+      setIsRecharging(false);
+    }
+  };
+
   return (
     <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto", position: 'relative' }}>
       
@@ -197,8 +223,13 @@ export default function VoiceStore() {
               {balance.toLocaleString()} KC
             </div>
           </div>
-          <button className="primary-button" style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}>
-            Recharge
+          <button 
+            className="primary-button" 
+            style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+            onClick={handleRecharge}
+            disabled={isRecharging}
+          >
+            {isRecharging ? 'Processing...' : 'Recharge'}
           </button>
         </div>
       </div>

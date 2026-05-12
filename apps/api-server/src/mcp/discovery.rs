@@ -72,6 +72,7 @@ pub async fn discover_and_connect(
     manager: &McpProcessManager,
     registry: &infrastructure::registry::RegistryManager,
     vault_backend: Option<std::sync::Arc<dyn aiome_core_contracts::vault_backend::VaultBackend>>,
+    aiome_config: &shared::config::AiomeConfig,
 ) -> anyhow::Result<()> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = PathBuf::from(home).join(".aiome/mcp_servers.json");
@@ -292,7 +293,27 @@ pub async fn discover_and_connect(
                             .chars()
                             .all(|c| c.is_ascii_alphanumeric() || c == '_')
                         {
-                            std::env::var(var_name).unwrap_or_default()
+                            if var_name == "DISCORD_TOKEN" {
+                                aiome_config
+                                    .discord_token
+                                    .as_ref()
+                                    .map(|t| {
+                                        use secrecy::ExposeSecret;
+                                        t.expose_secret().to_string()
+                                    })
+                                    .unwrap_or_default()
+                            } else if var_name == "TELEGRAM_TOKEN" {
+                                aiome_config
+                                    .telegram_token
+                                    .as_ref()
+                                    .map(|t| {
+                                        use secrecy::ExposeSecret;
+                                        t.expose_secret().to_string()
+                                    })
+                                    .unwrap_or_default()
+                            } else {
+                                std::env::var(var_name).unwrap_or_default()
+                            }
                         } else {
                             warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
                             "".to_string()
@@ -363,7 +384,27 @@ pub async fn discover_and_connect(
                             .chars()
                             .all(|c| c.is_ascii_alphanumeric() || c == '_')
                         {
-                            std::env::var(var_name).unwrap_or_default()
+                            if var_name == "DISCORD_TOKEN" {
+                                aiome_config
+                                    .discord_token
+                                    .as_ref()
+                                    .map(|t| {
+                                        use secrecy::ExposeSecret;
+                                        t.expose_secret().to_string()
+                                    })
+                                    .unwrap_or_default()
+                            } else if var_name == "TELEGRAM_TOKEN" {
+                                aiome_config
+                                    .telegram_token
+                                    .as_ref()
+                                    .map(|t| {
+                                        use secrecy::ExposeSecret;
+                                        t.expose_secret().to_string()
+                                    })
+                                    .unwrap_or_default()
+                            } else {
+                                std::env::var(var_name).unwrap_or_default()
+                            }
                         } else {
                             warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
                             "".to_string()
@@ -378,7 +419,27 @@ pub async fn discover_and_connect(
                                 .chars()
                                 .all(|c| c.is_ascii_alphanumeric() || c == '_')
                             {
-                                let var_val = std::env::var(var_name).unwrap_or_default();
+                                let var_val = if var_name == "DISCORD_TOKEN" {
+                                    aiome_config
+                                        .discord_token
+                                        .as_ref()
+                                        .map(|t| {
+                                            use secrecy::ExposeSecret;
+                                            t.expose_secret().to_string()
+                                        })
+                                        .unwrap_or_default()
+                                } else if var_name == "TELEGRAM_TOKEN" {
+                                    aiome_config
+                                        .telegram_token
+                                        .as_ref()
+                                        .map(|t| {
+                                            use secrecy::ExposeSecret;
+                                            t.expose_secret().to_string()
+                                        })
+                                        .unwrap_or_default()
+                                } else {
+                                    std::env::var(var_name).unwrap_or_default()
+                                };
                                 replaced.replace_range(idx..end_idx, &var_val);
                             } else {
                                 warn!("🚨 [SECURITY] Skipping invalid inline environment variable name in MCP config: {}", var_name);
@@ -774,6 +835,7 @@ pub async fn oauth_callback(
         &state.mcp_manager,
         &state.registry,
         Some(state.vault_backend.get_inner().clone()),
+        state.config.get_inner(),
     )
     .await
     {
@@ -847,7 +909,8 @@ mod tests {
         );
 
         // This path probably doesn't exist in test env, but we can verify the function returns Ok if file is missing
-        let res = discover_and_connect(&manager, &registry, None).await;
+        let dummy_config = shared::config::AiomeConfig::default();
+        let res = discover_and_connect(&manager, &registry, None, &dummy_config).await;
         assert!(res.is_ok());
     }
 
@@ -957,7 +1020,8 @@ mod tests {
             infrastructure::db::DatabasePool::Sqlite(pool),
         );
 
-        let _ = discover_and_connect(&manager, &registry, None).await;
+        let dummy_config = shared::config::AiomeConfig::default();
+        let _ = discover_and_connect(&manager, &registry, None, &dummy_config).await;
 
         let config_path = temp_dir.join(".aiome/mcp_servers.json");
         let content =

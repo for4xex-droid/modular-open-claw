@@ -164,7 +164,7 @@ def scan_directory(directory: str) -> list:
     for root, _dirs, files in os.walk(directory):
         # tests/ ディレクトリ全体を除外
         path_parts = root.split(os.sep)
-        if "tests" in path_parts:
+        if "tests" in path_parts or "api_integration_tests" in path_parts:
             continue
 
         for filename in files:

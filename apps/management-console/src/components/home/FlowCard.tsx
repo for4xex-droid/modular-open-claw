@@ -1,12 +1,8 @@
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1.
- */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Sparkles, Activity, Zap, Brain, BookOpen, ThumbsUp, ThumbsDown, Cpu } from 'lucide-react';
+import { A2uiRenderer } from '../A2uiRenderer';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 export type FlowCardType = 'chat_user' | 'chat_assistant' | 'chat_streaming' | 'system' | 'karma' | 'knowledge' | 'tool_exec';
 
@@ -23,9 +19,11 @@ export interface FlowCardProps {
     // Feedback
     showFeedback?: boolean;
     onFeedback?: (type: 'positive' | 'negative') => void;
+    // Generative UI
+    a2uiEnvelope?: any;
 }
 
-const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, isError, isStreaming, isOod, showFeedback, onFeedback }) => {
+const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, isError, isStreaming, isOod, showFeedback, onFeedback, a2uiEnvelope }) => {
     const getIcon = () => {
         switch (type) {
             case 'chat_user': return <MessageSquare size={14} color="var(--accent-cyan)" />;
@@ -90,7 +88,7 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
 
             {/* Content Bubble */}
             <div style={{
-                maxWidth: isChat ? '85%' : '100%',
+                maxWidth: (isChat && !a2uiEnvelope) ? '85%' : '100%',
                 padding: isChat ? '0.9rem 1.2rem' : '0.75rem 1rem',
                 borderRadius: type === 'chat_user'
                     ? '16px 16px 4px 16px'
@@ -118,6 +116,13 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
                         transition={{ duration: 0.8, repeat: Infinity }}
                         style={{ display: 'inline-block', width: '7px', height: '1.1em', background: 'var(--accent-cyan)', marginLeft: '3px', verticalAlign: 'middle', borderRadius: '1px' }}
                     />
+                )}
+                {a2uiEnvelope && (
+                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem', marginTop: '0.5rem'}}>A2UI render failed — invalid surface data</div>}>
+                        <div style={{ marginTop: content ? '0.75rem' : '0' }}>
+                            <A2uiRenderer envelope={a2uiEnvelope} />
+                        </div>
+                    </ErrorBoundary>
                 )}
             </div>
 

@@ -10,7 +10,8 @@ import { useTokenHealth } from '../hooks/useTokenHealth';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { TreasureBox } from './TreasureBox';
-
+import VoiceStore from './VoiceStore';
+import LoraTrainingView from './LoraTrainingView';
 interface A2uiRendererProps {
     envelope: A2uiEnvelope;
 }
@@ -159,6 +160,108 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
             return (
                 <div style={{ margin: '0.5rem 0', width: '100%', maxWidth: '28rem' }}>
                     <TreasureBox />
+                </div>
+            );
+        case 'voiceStore':
+            return (
+                <div style={{ margin: '0.5rem 0', width: '100%' }}>
+                    <VoiceStore />
+                </div>
+            );
+        case 'loraMarket':
+            return (
+                <div style={{ margin: '0.5rem 0', width: '100%' }}>
+                    <LoraTrainingView />
+                </div>
+            );
+        case 'progressBar':
+            const progress = Number(component.props?.progress || 0);
+            return (
+                <div style={{ width: '100%', margin: '0.5rem 0' }}>
+                    {component.props?.label ? <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{String(component.props.label)}</div> : null}
+                    <div style={{ height: '8px', background: 'var(--white-10)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div role="progressbar" aria-valuenow={progress} style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: '100%', background: 'var(--accent-cyan)', transition: 'width 0.3s' }} />
+                    </div>
+                </div>
+            );
+        case 'alert':
+            const severity = String(component.props?.severity || 'info');
+            const alertColor = severity === 'error' ? 'var(--accent-rose)' : severity === 'warning' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+            const alertBg = severity === 'error' ? 'var(--accent-rose-10)' : severity === 'warning' ? 'var(--accent-amber-10)' : 'var(--accent-cyan-10)';
+            return (
+                <div style={{ padding: '0.75rem', background: alertBg, borderLeft: `3px solid ${alertColor}`, borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '0.875rem', margin: '0.5rem 0' }}>
+                    {component.props?.message ? <div>{String(component.props.message)}</div> : null}
+                </div>
+            );
+        case 'card':
+            return (
+                <div style={{ padding: '1rem', background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass-bright)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
+                    {component.props?.title ? <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '1rem' }}>{String(component.props.title)}</h4> : null}
+                    {component.props?.content ? <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{String(component.props.content)}</p> : null}
+                </div>
+            );
+        case 'codeBlock':
+            return (
+                <pre style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-sm)', overflowX: 'auto', fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0.5rem 0' }}>
+                    <code>{String(component.props?.code || '')}</code>
+                </pre>
+            );
+        case 'chart':
+            const metrics = Array.isArray(component.props?.metrics) ? component.props.metrics : [];
+            return (
+                <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
+                    {component.props?.title ? <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{String(component.props.title)}</h4> : null}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {metrics.map((m: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ width: '80px', fontSize: '0.75rem', color: 'var(--text-secondary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.label}</span>
+                                <div style={{ flex: 1, height: '6px', background: 'var(--white-10)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${Math.min(100, Math.max(0, m.value || 0))}%`, height: '100%', background: 'var(--accent-purple)' }} />
+                                </div>
+                                <span style={{ width: '30px', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>{m.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        case 'dataTable':
+            const cols = Array.isArray(component.props?.columns) ? component.props.columns : [];
+            const rows = Array.isArray(component.props?.rows) ? component.props.rows : [];
+            return (
+                <div style={{ overflowX: 'auto', margin: '0.5rem 0', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-sm)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                        <thead style={{ background: 'var(--white-05)' }}>
+                            <tr>{cols.map((c: any, i: number) => <th key={i} style={{ padding: '0.5rem', textAlign: 'left', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-glass)' }}>{c}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row: any, i: number) => (
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border-glass-dim)' }}>
+                                    {cols.map((c: any, j: number) => <td key={j} style={{ padding: '0.5rem', color: 'var(--text-primary)' }}>{row[c]}</td>)}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        case 'cellStatus':
+            const statusColor = component.props?.status === 'active' ? 'var(--accent-emerald)' : component.props?.status === 'error' ? 'var(--accent-rose)' : 'var(--text-muted)';
+            return (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '1rem', background: 'var(--white-05)', border: `1px solid ${statusColor}40` }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor }}></span>
+                    {String(component.props?.label || component.props?.status || 'unknown')}
+                </span>
+            );
+        case 'timeline':
+            const events = Array.isArray(component.props?.events) ? component.props.events : [];
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-glass)' }}>
+                    {events.map((ev: any, i: number) => (
+                        <div key={i} style={{ position: 'relative', paddingLeft: '1rem' }}>
+                            <div style={{ position: 'absolute', left: '-0.6rem', top: '0.25rem', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }} />
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{ev.time}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{ev.title}</div>
+                        </div>
+                    ))}
                 </div>
             );
         default:

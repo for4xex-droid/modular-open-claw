@@ -8,11 +8,11 @@ use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmRequest, LlmResponse};
 use aiome_core_contracts::security::AgentHook;
 use async_trait::async_trait;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct HookManager {
-    hooks: Vec<Arc<dyn AgentHook>>,
+    hooks: RwLock<Vec<Arc<dyn AgentHook>>>,
 }
 
 impl Default for HookManager {
@@ -23,15 +23,38 @@ impl Default for HookManager {
 
 impl HookManager {
     pub fn new() -> Self {
-        Self { hooks: Vec::new() }
+        Self {
+            hooks: RwLock::new(Vec::new()),
+        }
     }
 
-    pub fn add_hook(&mut self, hook: Arc<dyn AgentHook>) {
-        self.hooks.push(hook);
+    pub fn add_hook(&self, hook: Arc<dyn AgentHook>) {
+        match self.hooks.write() {
+            Ok(mut hooks) => hooks.push(hook),
+            Err(e) => {
+                tracing::error!(
+                    "⛔ [HookManager] Failed to acquire write lock for add_hook: {}",
+                    e
+                );
+            }
+        }
     }
 
     pub async fn trigger_pre_execute(&self, request: &LlmRequest) -> Result<(), AiomeError> {
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_pre_execute: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             hook.on_pre_execute(request).await?;
         }
         Ok(())
@@ -42,7 +65,20 @@ impl HookManager {
         request: &LlmRequest,
         response: &LlmResponse,
     ) -> Result<(), AiomeError> {
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_post_execute: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             hook.on_post_execute(request, response).await?;
         }
         Ok(())
@@ -56,7 +92,20 @@ impl HookManager {
         status: &str,
     ) -> Result<(), AiomeError> {
         let mut last_error: Option<AiomeError> = None;
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_job_completed: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             if let Err(e) = hook.on_job_completed(job_id, status).await {
                 tracing::warn!(
                     "⚠️ [HookManager] Hook {:?} failed on job_completed({}): {}",
@@ -81,7 +130,20 @@ impl HookManager {
         is_valid: bool,
     ) -> Result<(), AiomeError> {
         let mut last_error: Option<AiomeError> = None;
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_proof_completed: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             if let Err(e) = hook.on_proof_completed(skill_name, is_valid).await {
                 tracing::warn!(
                     "⚠️ [HookManager] Hook {:?} failed on proof_completed({}): {}",
@@ -107,7 +169,20 @@ impl HookManager {
         reason: &str,
     ) -> Result<bool, AiomeError> {
         let mut allowed = true;
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_permission_request: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             if !hook.on_permission_request(tool, reason).await? {
                 allowed = false;
             }
@@ -117,7 +192,20 @@ impl HookManager {
 
     /// セッション開始時のフック通知。
     pub async fn trigger_session_start(&self) -> Result<(), AiomeError> {
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_session_start: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             hook.on_session_start().await?;
         }
         Ok(())
@@ -125,7 +213,17 @@ impl HookManager {
 
     /// 停止時のフック通知。
     pub async fn trigger_stop(&self, reason: &str) -> Result<(), AiomeError> {
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!("⛔ [HookManager] RwLock poisoned in trigger_stop: {}", e);
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             hook.on_stop(reason).await?;
         }
         Ok(())
@@ -141,7 +239,20 @@ impl HookManager {
         transaction_id: &str,
     ) -> Result<(), AiomeError> {
         let mut last_error: Option<AiomeError> = None;
-        for hook in &self.hooks {
+        let hooks = self
+            .hooks
+            .read()
+            .map_err(|e| {
+                tracing::error!(
+                    "⛔ [HookManager] RwLock poisoned in trigger_transaction_completed: {}",
+                    e
+                );
+                AiomeError::Infrastructure {
+                    reason: "HookManager RwLock poisoned".to_string(),
+                }
+            })?
+            .clone();
+        for hook in hooks {
             if let Err(e) = hook
                 .on_transaction_completed(source, amount_cents, actor_id, transaction_id)
                 .await
@@ -218,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_executes_hooks() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -249,7 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_executes_job_completed_hooks() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -269,7 +380,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_executes_proof_completed_hooks() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -289,7 +400,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_executes_transaction_completed_hooks() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -309,7 +420,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_permission_request_default_allows() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -327,7 +438,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_session_start() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),
@@ -344,7 +455,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hook_manager_stop() {
-        let mut manager = HookManager::new();
+        let manager = HookManager::new();
         let hook = Arc::new(MockHook {
             pre_called: std::sync::atomic::AtomicBool::new(false),
             job_completed_called: std::sync::atomic::AtomicBool::new(false),

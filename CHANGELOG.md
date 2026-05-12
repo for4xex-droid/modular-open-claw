@@ -1,5 +1,54 @@
 ## [Unreleased]
 
+### Hardening & Stability
+- **Tech Debt Remediation & Production Hygiene**:
+  - Removed dead codebase artifacts (`bootstrap_builder.rs`) from `api-server` to improve maintainability.
+  - Standardized production logging policy in `management-console` (`vite.config.ts`) using `esbuild.pure` to effectively strip `console.log/warn` while preserving critical `console.error` diagnostics.
+  - Documented intentional architectural usage of `getAuthHeaders` + `fetch` for SSE streams in `DemoView.tsx` to align with the rest of the application idioms.
+- **McpDiscovery Zero-Panic Isolation**: Separated the `McpDiscoveryTask` CancellationToken from the global server cancellation token. This prevents minor discovery failures (such as a timeout or offline server) from triggering a cascading system-wide shutdown of the main API server.
+- **Frontend API Reliability**: Corrected widespread incorrect `fetch` usage across the Management Console (`AgentConsole`, `useCortexSuggestions`). Enforced strict usage of `authenticatedFetch` and `API_BASE` for all internal API requests to resolve unexpected token loss and 404 errors due to missing Vite proxy configurations.
+- **Unified Slash Commands & UX Fixes**: Consolidated triplicate slash command definitions across the frontend into a single `slashCommands.ts` constant. Fixed a bug in `StoryFlow.tsx` where global `window.addEventListener('keydown')` intercepted keystrokes outside the chat, and removed strict width constraints on A2UI surfaces inside chat bubbles to restore layout flexibility.
+
+### Added
+- **Beta Launch Readiness (Phase 6)**:
+  - **Commerce UI Integration**: Implemented a functional `Buy Points` module within the `NurtureDashboard`, facilitating direct creation of Stripe Checkout sessions via the API layer.
+  - **E2E Commerce Verification**: Validated full-stack payment lifecycle including Webhook-based coin grants (`test_stripe_webhook_checkout_completed`).
+  - **Test Suite Stabilization**: Resolved all outstanding React `act(...)` warnings in `SettingsPage`, `McpDashboard`, and `useAgentChat`, achieving a 100% clean test execution for the entire `apps/management-console` suite (77/77 tests passing).
+- **Beta Launch Readiness (Phase 5)**:
+  - **Landing Page**: Implemented a responsive single-page Landing Page in `docs/landing/` using the system's `tokens.css` design aesthetic. Added features overview, Quickstart links, and integrated legal document navigation.
+- **Beta Launch Readiness (Phase 3 & Phase 4)**:
+  - **Onboarding UX**: Simplified `OnboardingModal` flow (removed Avatar Style and Security Explanation steps to reduce cognitive load). Added an Ollama/LM Studio troubleshooting panel to `ModelSetupStep.tsx` to assist beginners with connection issues.
+  - **Agent Console Zero-State**: Replaced the empty chat placeholder in `AgentConsole.tsx` with actionable contextual proposal cards (e.g. "Draft an email", "Analyze data") to guide new users.
+  - **Docker Quickstart**: Created `docs/guides/QUICKSTART.md` for simplified zero-configuration local deployment.
+  - **Docker-Compose Polish**: Added prominent macOS native Ollama acceleration instructions to `docker-compose.quickstart.yml`.
+
+
+### Security
+- **Configuration Security Hardening (Zero-Trust)**:
+  - Migrated `discord_token` and `telegram_token` to `AiomeConfig` using `secrecy::SecretString`. Eliminated raw `std::env::var` usage across all initialization paths.
+  - Implemented proactive environment variable scrubbing in `AiomeConfig::load()` to securely purge secrets from memory upon boot, adhering to zero-trust principles.
+  - Eliminated token race-conditions during MCP Discovery by directly passing `AiomeConfig` reference down the call stack, preventing errors during early scrub cycles.
+  - Mitigated architectural vulnerabilities by replacing the `affiliate_adapter.rs` TODO stub with an explicit `[Architectural Stub]` block.
+
+### Changed
+- **Zero-Panic Enforcements**:
+  - Remediated silent failure anti-patterns in `trajectory_store.rs` and `lora_marketplace.rs`. Replaced `.ok()` error suppressions with explicit error mapping and `tracing::warn!` observability.
+  - Passed rigorous workspace-wide testing (175/175 tests GREEN) with Zero-Panic Policy intact.
+- **Dependency Injection**:
+  - Refactored `ConstitutionalValidator::new` in `bootstrap.rs` to correctly inject `slm_bridge`, completing the required architecture injection TODO.
+
+### Security
+- **Inference-Time ToolCallReviewerHook Integration**:
+  - Dynamically registered `ToolCallReviewerHook` within `bootstrap.rs` to enforce semantic guardrails on autonomous tool calls.
+  - Refactored `HookManager` to use thread-safe `RwLock<Vec<Arc<dyn AgentHook>>>`, enabling secure runtime hook injection without race conditions.
+  - Added `ENABLE_TOOL_REVIEWER` feature flag to the `SettingsPage` management console for administrative control.
+  - Stabilized integration tests, achieving 100% GREEN for the `tool_call_router_mcp_suspended_guard` and broader system tests.
+- **Tool Classification Fail-Safe & CallSkill Bypass Elimination (Reflexion)**:
+  - Removed `CallSkill` exclusion from `parse_tool_calls` in both `loop_detector.rs` and `tool_call_processor.rs`, ensuring MCP tool invocations are visible to all security hooks (`ToolCallReviewerHook`, `LoopDetectorHook`).
+  - Changed default tool classification from `Idempotent` to `Mutating` (Fail-Safe), ensuring unknown tools receive the strictest semantic review and loop limits (3 identical calls max).
+  - Moved `CallSkill` filtering from parser-level exclusion to execution-level skip in `process_generated_tool_calls`, properly separating detection (security) from execution (routing) responsibilities.
+  - Added 3 regression tests: `test_fail_safe_unknown_tool_classified_as_mutating`, `test_parse_tool_calls_includes_callskill`, `test_unknown_tool_loop_uses_mutating_threshold`.
+
 ### Security
 - **CVE & Tech Debt Resolution (Phase 2)**:
   - Resolved `RUSTSEC-2023-0080` (`img_hash`) and `RUSTSEC-2025-0056` (`adler` via `image`) by safely migrating `img_hash` to `visual-hash` and upgrading the workspace `image` crate from `0.23` to `0.24`.
